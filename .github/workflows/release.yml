@@ -8,6 +8,12 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Tag to release
+        required: true
+        type: string
 
 jobs:
   release-for-github:
@@ -39,8 +45,12 @@ jobs:
         run: ./gradlew assembleFdroidRelease --stacktrace
 
       - name: Get tag name
-        if: startsWith(github.ref, 'refs/tags/')
-        run: echo "VERSION_TAG=$(basename $GITHUB_REF)" >> $GITHUB_ENV
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "VERSION_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION_TAG=${{ inputs.tag_name }}" >> "$GITHUB_ENV"
+          fi
 
       - name: Verify build output
         run: |
