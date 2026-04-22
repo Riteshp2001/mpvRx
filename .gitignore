@@ -1,15 +1,154 @@
-*.iml
-.gradle
-/local.properties
-.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-app/release
+# =========================
+# Android / Gradle
+# =========================
+.gradle/
+.gradle-user/
+.gradle-user-home/
+build/
+*/build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Gradle Daemon
 /gradle/gradle-daemon-jvm.properties
+
+# Local configuration
+local.properties
+
+# APK / AAB outputs
+*.apk
+*.ap_
+*.aab
+*.aar
+
+# Release folders
+app/release/
+app/debug/
+
+# Generated files
+bin/
+gen/
+out/
+
+# Captures
+captures/
+
+# External native build
+.externalNativeBuild/
+.cxx/
+
+# =========================
+# Android Studio
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Android Studio specific
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/navEditor.xml
+.idea/deploymentTargetDropDown.xml
+
+# Kotlin
+.kotlin/
+
+# =========================
+# macOS
+# =========================
+.DS_Store
+
+# =========================
+# Windows
+# =========================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Linux
+# =========================
+*~
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Signing Keys (VERY IMPORTANT)
+# =========================
+*.jks
+*.keystore
+*.key
+*.pem
+*.p12
+
+# Gradle signing configs
+keystore.properties
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
+*.swp
+
+# =========================
+# Firebase / Google services (optional)
+# =========================
+google-services.json
+serviceAccount.json
+
+# =========================
+# F-Droid / Playstore variants
+# =========================
 /app/standard/
 /app/fdroid/
 /app/playstore/
+
+# =========================
+# NDK
+# =========================
+obj/
+.libs/
+
+# =========================
+# Proguard mapping
+# =========================
+/mapping/
+/outputs/mapping/
+
+# =========================
+# JetBrains
+# =========================
+.idea_modules/
+
+# =========================
+# Lint
+# =========================
+lint/intermediates/
+lint/generated/
+lint/tmp/
+
+# =========================
+# Android Studio Navigation
+# =========================
+.navigation/
+
+# =========================
+# Test outputs
+# =========================
+/test-output/
+/androidTest-results/
+
+# =========================
+# Profiling
+# =========================
+*.hprof

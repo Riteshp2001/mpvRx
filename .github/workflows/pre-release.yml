@@ -86,7 +86,7 @@ jobs:
 
           for abi in "${apks[@]}"; do
             src="app/build/outputs/apk/standard/preview/app-standard-${abi}-preview.apk"
-            dest="preview/mpvEx-preview-${abi}-${{ env.VERSION_TAG }}.apk"
+            dest="preview/mpvRx-preview-${abi}-${{ env.VERSION_TAG }}.apk"
             if [ -f "$src" ]; then
               cp "$src" "$dest"
               sha=$(sha256sum "$dest" | awk '{ print $1 }')
@@ -98,7 +98,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.VERSION_TAG }}
-          name: "mpvEx ${{ env.VERSION_TAG }}"
+          name: "MpvRx ${{ env.VERSION_TAG }}"
           body: |
             
             ### Checksums
@@ -110,11 +110,11 @@ jobs:
             | x86 | ${{ env.apk-x86-sha256 }} |
             | x86_64 | ${{ env.apk-x86_64-sha256 }} |
           files: |
-            preview/mpvEx-preview-universal-${{ env.VERSION_TAG }}.apk
-            preview/mpvEx-preview-arm64-v8a-${{ env.VERSION_TAG }}.apk
-            preview/mpvEx-preview-armeabi-v7a-${{ env.VERSION_TAG }}.apk
-            preview/mpvEx-preview-x86-${{ env.VERSION_TAG }}.apk
-            preview/mpvEx-preview-x86_64-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-universal-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-arm64-v8a-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-armeabi-v7a-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-x86-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-x86_64-${{ env.VERSION_TAG }}.apk
           draft: false
           prerelease: true
         env:

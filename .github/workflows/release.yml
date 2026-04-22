@@ -167,7 +167,7 @@ jobs:
           standard_apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
           for abi in "${standard_apks[@]}"; do
             src="app/build/outputs/apk/standard/release/app-standard-${abi}-release.apk"
-            dst="mpvEx-${abi}-${VERSION_TAG}.apk"
+            dst="mpvRx-${abi}-${VERSION_TAG}.apk"
             if [ ! -f "$src" ]; then
               echo "::error file=$src::Signed standard APK for $abi was not found"
               exit 1
@@ -180,7 +180,7 @@ jobs:
           
           # Play Store flavor APK (universal only)
           playstore_src="app/build/outputs/apk/playstore/release/app-playstore-universal-release.apk"
-          playstore_dst="mpvEx-playstore-${VERSION_TAG}.apk"
+          playstore_dst="mpvRx-playstore-${VERSION_TAG}.apk"
           if [ ! -f "$playstore_src" ]; then
             echo "::error file=$playstore_src::Signed Play Store APK was not found"
             exit 1
@@ -191,7 +191,7 @@ jobs:
           
           # F-Droid flavor APK (only arm64-v8a, same package name)
           fdroid_src="app/build/outputs/apk/fdroid/release/app-fdroid-arm64-v8a-release.apk"
-          fdroid_dst="mpvEx-fdroid-${VERSION_TAG}.apk"
+          fdroid_dst="mpvRx-fdroid-${VERSION_TAG}.apk"
           if [ ! -f "$fdroid_src" ]; then
             echo "::error file=$fdroid_src::Signed F-Droid APK was not found"
             exit 1
@@ -200,14 +200,33 @@ jobs:
           fdroid_checksum=$(sha256sum "$fdroid_dst" | awk '{ print $1 }')
           echo "apk_fdroid_sha256=$fdroid_checksum" >> "$GITHUB_ENV"
           
-          ls -lah mpvEx-*.apk
+          ls -lah mpvRx-*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
-          name: mpvEx ${{ env.VERSION_TAG }}
+          name: MpvRx ${{ env.VERSION_TAG }}
           body: |
+            ## What's New in 1.3.0
+            - The project now carries the `MpvRx` name across the app, docs, and release files.
+            - Tree View `NEW` labels now work properly and update as you watch.
+            - Single-child folders now flatten automatically so you reach files faster.
+            - Subtitle matching is smarter and better at finding subtitles that line up.
+            - Cached library data shows up first, then refreshes quietly in the background.
+            - Browser updates now react to changes instead of constantly polling.
+            - The player now remembers your chosen aspect ratio.
+            - Seeking feels steadier and cleanup after playback is smoother.
+            - Ambient mode and Lua scripting were reverted.
+            - The settings page was revamped.
+            - New tab and video animations were added.
+            - Icons were refreshed across the app.
+            - Network and playlist behavior was cleaned up.
+            - Folder pinning was added.
+            - A video size downgrade option was added in the video editing section.
+            - Page 6 was added to More Sheet for battery usage and extra system info.
+            - A new status icon row can show network speed, battery percentage, and time.
+
             ---
             ### Checksums
 
@@ -224,7 +243,7 @@ jobs:
             ---
             ### Play Store Version
             
-            The Play Store variant (`mpvEx-playstore-${{ env.VERSION_TAG }}.apk`) is specifically built for Google Play Store:
+            The Play Store variant (`mpvRx-playstore-${{ env.VERSION_TAG }}.apk`) is specifically built for Google Play Store:
             - Universal APK supporting all architectures (arm64-v8a, armeabi-v7a, x86, x86_64)
             - Removed automatic update feature (handled by Play Store)
             - Minimal permissions for maximum compatibility
@@ -232,19 +251,19 @@ jobs:
             ---
             ### F-Droid Version
             
-            The F-Droid variant (`mpvEx-fdroid-${{ env.VERSION_TAG }}.apk`) is specifically built for F-Droid compatibility:
+            The F-Droid variant (`mpvRx-fdroid-${{ env.VERSION_TAG }}.apk`) is specifically built for F-Droid compatibility:
             - Removed automatic update feature
             - Removed install packages permission
             - ARM64-v8a architecture only
           files: |
-            mpvEx-universal-${{ env.VERSION_TAG }}.apk
-            mpvEx-arm64-v8a-${{ env.VERSION_TAG }}.apk
-            mpvEx-armeabi-v7a-${{ env.VERSION_TAG }}.apk
-            mpvEx-x86-${{ env.VERSION_TAG }}.apk
-            mpvEx-x86_64-${{ env.VERSION_TAG }}.apk
-            mpvEx-playstore-${{ env.VERSION_TAG }}.apk
-            mpvEx-fdroid-${{ env.VERSION_TAG }}.apk
-          draft: true
+            mpvRx-universal-${{ env.VERSION_TAG }}.apk
+            mpvRx-arm64-v8a-${{ env.VERSION_TAG }}.apk
+            mpvRx-armeabi-v7a-${{ env.VERSION_TAG }}.apk
+            mpvRx-x86-${{ env.VERSION_TAG }}.apk
+            mpvRx-x86_64-${{ env.VERSION_TAG }}.apk
+            mpvRx-playstore-${{ env.VERSION_TAG }}.apk
+            mpvRx-fdroid-${{ env.VERSION_TAG }}.apk
+          draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

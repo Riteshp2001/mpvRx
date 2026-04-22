@@ -1,8 +1,0 @@
-.next
-node_modules
-public
-dist
-coverage
-app/globals.css
-app\globals.css
-**/*.css

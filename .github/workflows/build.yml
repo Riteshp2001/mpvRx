@@ -2,6 +2,7 @@ name: CI/CD Build
 
 on:
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}

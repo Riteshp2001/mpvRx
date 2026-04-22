@@ -1,0 +1,17 @@
+MpvRx branding refresh across the app and project links
+Tree View NEW labels now update properly as you watch
+Single-child folders now flatten automatically
+Subtitle matching is smarter and more accurate
+Cached libraries open first and refresh quietly in the background
+Browser updates use less battery
+Aspect ratio choice now stays saved between sessions
+Seeking feels steadier and player cleanup is smoother
+Ambient mode and Lua scripting were reverted
+The settings page was revamped
+New tab and video animations were added
+Icons were refreshed across the app
+Network and playlist behavior was cleaned up
+Folder pinning was added
+Video size downgrade was added in the editing section
+Page 6 was added to More Sheet for battery and extra system info
+Status icons can now show network speed, battery percentage, and time

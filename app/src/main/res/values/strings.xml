@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name" translatable="false">mpvEx</string>
+  <string name="app_name" translatable="false">MpvRx</string>
   <string name="generic_reset">Reset</string>
   <string name="generic_share">Share</string>
   <string name="generic_confirm">Confirm</string>
@@ -16,6 +16,8 @@
   <string name="pref_appearance_darkmode_dark">Dark</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED Black Mode</string>
   <string name="pref_appearance_amoled_mode_summary">Use pure black background for dark themes</string>
+  <string name="pref_appearance_system_font_title">Use system font</string>
+  <string name="pref_appearance_system_font_summary">Use the Android system typeface across MpvRx instead of Google Sans Flex</string>
   <string name="pref_appearance_material_you_title">Material You</string>
   <string name="pref_appearance_material_you_summary">Enable dynamic colors</string>
   <string name="pref_appearance_material_you_summary_disabled">Only available on Android 12 and above</string>
@@ -24,12 +26,33 @@
   <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
   <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
   <string name="pref_appearance_category_file_browser">File Browser</string>
+  <string name="pref_appearance_category_thumbnails">Thumbnails</string>
   <string name="pref_appearance_show_unplayed_old_video_label_title">Show label for new unplayed videos</string>
   <string name="pref_appearance_show_unplayed_old_video_label_summary">Display a \"New\" label on videos added within specified days that have never been played</string>
   <string name="pref_appearance_unplayed_old_video_days_title">Days threshold for new video label</string>
   <string name="pref_appearance_unplayed_old_video_days_summary">Videos added within the last %d days without playback history will be marked as new</string>
+  <string name="pref_appearance_show_video_thumbnails_title">Show video thumbnails</string>
+  <string name="pref_appearance_show_video_thumbnails_summary">Display generated thumbnails in video lists and folders</string>
+  <string name="pref_appearance_thumbnail_generation_title">Thumbnail generation strategy</string>
+  <string name="pref_appearance_thumbnail_generation_summary">Choose how thumbnails are generated, including embedded artwork or a specific frame position</string>
+  <string name="pref_appearance_thumbnail_generation_change_title">Change thumbnail strategy?</string>
+  <string name="pref_appearance_thumbnail_generation_change_summary">This will clear cached thumbnails. New thumbnails will be generated with the selected strategy as you browse.</string>
+  <string name="pref_appearance_thumbnail_position_title">Thumbnail frame position</string>
+  <string name="pref_appearance_thumbnail_position_summary">Capture the frame at %1$d%% of the video</string>
   <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails (Experimental)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Generate thumbnails for network streams (May increase data usage on mobile networks)</string>
+  <string name="pref_appearance_category_navigation">Navigation</string>
+  <string name="pref_nav_home_title">Show Home tab</string>
+  <string name="pref_nav_home_summary">Show or hide Home in the bottom navigation bar</string>
+  <string name="pref_nav_recents_title">Show Recents tab</string>
+  <string name="pref_nav_recents_summary">Show or hide Recents in the bottom navigation bar</string>
+  <string name="pref_nav_playlists_title">Show Playlists tab</string>
+  <string name="pref_nav_playlists_summary">Show or hide Playlists in the bottom navigation bar</string>
+  <string name="pref_nav_network_title">Show Network tab</string>
+  <string name="pref_nav_network_summary">Show or hide Network in the bottom navigation bar</string>
+  <string name="pref_appearance_nav_style_slide">Slide</string>
+  <string name="pref_appearance_nav_style_fade">Fade</string>
+  <string name="pref_appearance_nav_style_none">None (Instant)</string>
   <string name="pref_appearance_theme_picker_label">App Theme</string>
   <string name="pref_appearance_auto_scroll_title">Auto-scroll to last played</string>
   <string name="pref_appearance_auto_scroll_summary">Automatically scroll to the last played video when opening video lists</string>
@@ -77,8 +100,15 @@
   <string name="pref_autoplay_summary">Show next/previous buttons for all videos in folder</string>
   <string name="pref_autoplay_next_video_title">Autoplay next video</string>
   <string name="pref_autoplay_next_video_summary">Automatically play next video when current ends</string>
+  <string name="pref_autoplay_next_video_summary_disabled">Stay on current video when it ends</string>
   <string name="pref_auto_pip_title">Auto Picture-in-Picture</string>
   <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
+  <string name="pref_player_keep_screen_on_when_paused_title">Keep screen on when paused</string>
+  <string name="pref_player_keep_screen_on_when_paused_summary">Screen stays awake while video is paused</string>
+  <string name="pref_player_keep_screen_on_when_paused_summary_disabled">Screen can turn off while video is paused</string>
+  <string name="pref_player_autoplay_after_screen_unlock_title">Autoplay after screen unlock</string>
+  <string name="pref_player_autoplay_after_screen_unlock_summary">Resume video automatically after unlocking if it was playing before the screen locked</string>
+  <string name="pref_player_autoplay_after_screen_unlock_summary_disabled">Keep video paused after the screen is unlocked</string>
   <string name="pref_dynamic_speed_overlay_title">Dynamic Speed Overlay</string>
   <string name="pref_dynamic_speed_overlay_summary">Show advance overlay for speed control during long press and swipe</string>
   <string name="pref_show_navigation_bar_title">Show navigation bar with controls</string>
@@ -155,6 +185,8 @@
   <string name="pref_gesture_double_tap_right_title">Double tap (right)</string>
   <string name="pref_gesture_use_single_tap_for_center_title">Use single tap for center gesture</string>
   <string name="pref_gesture_use_single_tap_for_center_summary">Use a single tap in the center for gestures (like play/pause) instead of a double tap.</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_title">Hold and drag moves subtitles</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">Hold in the center, then drag up or down to move subtitle position</string>
   <string name="pref_gesture_view_title">View</string>
   <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">Media controls</string>
@@ -180,6 +212,14 @@
   <string name="pref_decoder_vulkan_not_supported">Not supported (requires Android 13+ with Vulkan 1.3)</string>
   <string name="pref_decoder_yuv420p_title">Use YUV420P pixel format</string>
   <string name="pref_decoder_yuv420p_summary">May fix black screens on some video codecs, can also improve performance at the cost of quality</string>
+  <!-- Frame Interpolation -->
+  <string name="pref_interpolation_section">Frame Interpolation</string>
+  <string name="pref_interpolation_title">Smooth Motion (Frame Interpolation)</string>
+  <string name="pref_interpolation_summary">Generates intermediate frames to make motion smoother. Best for 24fps content on 60Hz+ displays.</string>
+  <string name="pref_interpolation_mode_title">Interpolation Algorithm</string>
+  <string name="pref_interpolation_fps_limit_title">Target FPS</string>
+  <string name="pref_interpolation_fps_limit_auto">Auto (Match Display Refresh Rate)</string>
+  <string name="pref_interpolation_fps_limit_value">%d FPS</string>
   <string name="pref_subtitles">Subtitles</string>
   <string name="pref_subtitles_summary">Preferred languages, fonts and search</string>
   <string name="pref_subtitle_search_title">Online Subtitle Search</string>
@@ -227,14 +267,16 @@
   <string name="pref_advanced_cleared_playback_history">Cleared playback history</string>
   <string name="pref_advanced_clear_fonts_cache">Clear cached fonts</string>
   <string name="pref_advanced_cleared_fonts_cache">Cleared cached fonts</string>
+  <string name="pref_thumbnail_cache_cleared">Thumbnail cache cleared</string>
+  <string name="pref_thumbnail_cache_clear_failed">Failed to clear thumbnail cache: %1$s</string>
   <string name="pref_advanced_enable_recently_played_title">Recently Played</string>
   <string name="pref_advanced_enable_recently_played_summary">Track and display recently played videos and playlists</string>
   <string name="pref_advanced_features_tooltip">Enable experimental or advanced features such as stats page and Anime4K upscaling</string>
   <string name="pref_anime4k_title">Anime4K upscaling (Experimental)</string>
   <string name="pref_anime4k_summary">Enable Anime4K upscaling filter</string>
   <string name="pref_anime4k_incompatibility">Anime4K Incompatibility</string>
-  <string name="pref_anime4k_gpu_next_error">gpu-next is incompatible with Anime4K shaders. When Anime4K is enabled, the app will automatically use the legacy \'gpu\' backend for shader compatibility.</string>
-  <string name="pref_anime4k_cannot_use_with_gpu_next">Cannot use Anime4K when gpu-next is enabled</string>
+  <string name="pref_anime4k_gpu_next_error">Anime4K requires either legacy gpu, or gpu-next with Vulkan enabled. gpu-next on OpenGL will fall back to legacy gpu for shader compatibility.</string>
+  <string name="pref_anime4k_cannot_use_with_gpu_next">Cannot use Anime4K with gpu-next unless Vulkan is enabled</string>
   <string name="anime4k_mode_title">Anime4K Presets</string>
   <string name="anime4k_mode_toast">Anime4K: Preset %1$s</string>
   <string name="anime4k_quality_title">Anime4K Variants</string>
@@ -287,6 +329,8 @@
   <string name="player_sheets_sub_override_ass_subtitle">Force override ASS/SSA subtitle formatting</string>
   <string name="player_sheets_sub_scale_by_window">Scale by window</string>
   <string name="player_sheets_sub_scale_by_window_summary">Scale subtitles by window size and use video margins</string>
+  <string name="player_sheets_sub_blend_with_video">Blend subtitles with video</string>
+  <string name="player_sheets_sub_blend_with_video_summary">When ambient mode is on, draw subtitles with the video instead of over the ambient area</string>
   <string name="player_sheets_sub_scale">Scale</string>
   <string name="player_sheets_sub_position">Position</string>
   <string name="player_sheets_sub_typography_card_title">Typography</string>
@@ -355,9 +399,15 @@
   <string name="timer_remaining">%s remaining</string>
   <string name="toast_sleep_timer_ended">Sleep timer ended</string>
   <string name="volume_slider_absolute_value" translatable="false">%d</string>
-  <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvex</string>
+  <string name="github_repo_url" translatable="false">https://github.com/Riteshp2001/mpvRx</string>
   <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
   <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
+  <!-- Animation settings -->
+  <string name="pref_anim_section">Animations</string>
+  <string name="pref_anim_controls_style">Controls animation style</string>
+  <string name="pref_anim_video_open">Video opening animation</string>
+  <string name="pref_anim_nav_style">Tab navigation style</string>
+  <string name="pref_anim_speed">Animation speed</string>
   <string name="pref_player_display_hide_player_control_time">Hide player control time</string>
   <string name="show_splash_ovals_on_double_tap_to_seek">Show ripple when double tap seeking</string>
   <string name="show_time_on_double_tap_to_seek">Show seek time</string>
@@ -401,11 +451,17 @@
   <string name="notification_channel_name">Media Playback</string>
   <string name="notification_channel_description">Media playback controls</string>
   <string name="notification_playing">Playing</string>
+  <string name="notification_chapter_counter">Chapter %1$d of %2$d</string>
+  <string name="notification_permission_denied">Notification permission is required for background playback controls.</string>
+  <string name="notification_permission_disabled">Notifications are disabled for MpvRx. Enable them to show playback controls.</string>
+  <string name="pref_advanced_notification_style">Notification style</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Use precise seeking</string>
   <!-- Folders Preferences -->
   <string name="pref_folders_title">Folders</string>
-  <string name="pref_folders_summary">Manage folder blacklist</string>
+  <string name="pref_folders_summary">Manage folder blacklist and .nomedia handling</string>
+  <string name="pref_folders_include_nomedia_title">Include .nomedia folders</string>
+  <string name="pref_folders_include_nomedia_summary">When enabled, scans also include videos from folders hidden by .nomedia and their subfolders.</string>
   <string name="pref_folders_empty_title">No blacklisted folders</string>
   <string name="pref_folders_empty_message">Tap the button below to add folders you want to hide from the folder list</string>
   <string name="pref_folders_add_folder">Add Folder to Blacklist</string>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <font
+        android:font="@font/roboto_flex"
+        android:fontStyle="normal"
+        android:fontWeight="100"
+        app:font="@font/roboto_flex"
+        app:fontStyle="normal"
+        app:fontWeight="100" />
+
+    <font
+        android:font="@font/roboto_flex"
+        android:fontStyle="normal"
+        android:fontWeight="200"
+        app:font="@font/roboto_flex"
+        app:fontStyle="normal"
+        app:fontWeight="200" />
+
+    <font
+        android:font="@font/roboto_flex"
+        android:fontStyle="normal"
+        android:fontWeight="300"
+        app:font="@font/roboto_flex"
+        app:fontStyle="normal"
+        app:fontWeight="300" />
+
+    <font
+        android:font="@font/roboto_flex"
+        android:fontStyle="normal"
+        android:fontWeight="400"
+        app:font="@font/roboto_flex"
+        app:fontStyle="normal"
+        app:fontWeight="400" />
+
+    <font
+        android:font="@font/roboto_flex"
+        android:fontStyle="normal"
+        android:fontWeight="500"
+        app:font="@font/roboto_flex"
+        app:fontStyle="normal"
+        app:fontWeight="500" />
+
+    <font
+        android:font="@font/roboto_flex"
+        android:fontStyle="normal"
+        android:fontWeight="700"
+        app:font="@font/roboto_flex"
+        app:fontStyle="normal"
+        app:fontWeight="700" />
+
+    <font
+        android:font="@font/roboto_flex"
+        android:fontStyle="normal"
+        android:fontWeight="900"
+        app:font="@font/roboto_flex"
+        app:fontStyle="normal"
+        app:fontWeight="900" />
+</font-family>
