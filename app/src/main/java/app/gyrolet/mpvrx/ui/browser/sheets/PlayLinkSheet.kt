@@ -118,7 +118,7 @@ fun PlayLinkSheet(
           },
           modifier = Modifier.fillMaxWidth(),
           label = { Text("Enter URL") },
-          placeholder = { Text("https://example.com/video.mp4 or https://site/watch?v=...") },
+          placeholder = { Text("Normal Links + YT Supported") },
           singleLine = true,
           isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
           trailingIcon = {

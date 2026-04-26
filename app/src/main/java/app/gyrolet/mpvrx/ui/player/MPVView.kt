@@ -20,7 +20,6 @@ import app.gyrolet.mpvrx.ui.preferences.VulkanUtils
 import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.KeyMapping
 import `is`.xyz.mpv.MPVLib
-import `is`.xyz.mpv.YTDLPManager
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.reflect.KProperty
@@ -145,9 +144,6 @@ class MPVView(
 
     MPVLib.setOptionString("tls-verify", "yes")
     MPVLib.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
-    if (!YTDLPManager.initialize(context)) {
-      Log.w(TAG, "YT-DLP runtime is unavailable; remote extractor support remains disabled")
-    }
 
     val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
     screenshotDir.mkdirs()
