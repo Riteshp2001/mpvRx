@@ -11,15 +11,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -77,10 +80,18 @@ data class LuaScriptEditorScreen(
     val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
     
     val isNewScript = scriptName == null
-    val title = if (isNewScript) "Create Lua Script" else "Edit Lua Script"
     
     var scriptContent by remember { mutableStateOf("") }
-    var fileName by remember { mutableStateOf(scriptName?.removeSuffix(".lua") ?: "") }
+    var fileName by remember { mutableStateOf(scriptName?.substringBeforeLast('.') ?: "") }
+    var scriptExtension by remember {
+      mutableStateOf(
+        scriptName
+          ?.substringAfterLast('.', "lua")
+          ?.lowercase()
+          ?.takeIf { it == "lua" || it == "js" }
+          ?: "lua",
+      )
+    }
     var hasUnsavedChanges by remember { mutableStateOf(isNewScript) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     
@@ -119,7 +130,7 @@ data class LuaScriptEditorScreen(
         return
       }
       
-      val finalFileName = "$fileName.lua"
+      val finalFileName = "$fileName.$scriptExtension"
       
       scope.launch(Dispatchers.IO) {
         try {
@@ -314,6 +325,31 @@ data class LuaScriptEditorScreen(
                 }
               }
             )
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              modifier = Modifier.padding(top = 4.dp),
+            ) {
+              ScriptExtensionChip(
+                label = "Lua",
+                selected = scriptExtension == "lua",
+                onClick = {
+                  if (scriptExtension != "lua") {
+                    scriptExtension = "lua"
+                    hasUnsavedChanges = true
+                  }
+                },
+              )
+              ScriptExtensionChip(
+                label = "JS",
+                selected = scriptExtension == "js",
+                onClick = {
+                  if (scriptExtension != "js") {
+                    scriptExtension = "js"
+                    hasUnsavedChanges = true
+                  }
+                },
+              )
+            }
             if (hasUnsavedChanges) {
               Text(
                 text = "Unsaved changes",
@@ -446,6 +482,37 @@ data class LuaScriptEditorScreen(
         },
       )
     }
+  }
+}
+
+@Composable
+private fun ScriptExtensionChip(
+  label: String,
+  selected: Boolean,
+  onClick: () -> Unit,
+) {
+  Surface(
+    modifier = Modifier.clickable(onClick = onClick),
+    shape = RoundedCornerShape(999.dp),
+    color =
+      if (selected) {
+        MaterialTheme.colorScheme.primaryContainer
+      } else {
+        MaterialTheme.colorScheme.surfaceVariant
+      },
+    contentColor =
+      if (selected) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+      } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+      },
+  ) {
+    Text(
+      text = label,
+      modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+      style = MaterialTheme.typography.labelMedium,
+      fontWeight = FontWeight.SemiBold,
+    )
   }
 }
 

@@ -81,7 +81,7 @@ fun LuaScriptsPanel(
             .padding(top = MaterialTheme.spacing.small),
       ) {
         Text(
-          text = "Lua Scripts",
+          text = "Scripts (Lua / JS)",
           style = MaterialTheme.typography.titleLarge,
         )
         Spacer(Modifier.weight(1f))

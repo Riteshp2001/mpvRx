@@ -358,10 +358,10 @@ object AdvancedPreferencesScreen : Screen {
               SwitchPreference(
                 value = enableLuaScripts,
                 onValueChange = preferences.enableLuaScripts::set,
-                title = { Text("Enable Lua Scripts") },
+                title = { Text("Enable Scripts (Lua / JS)") },
                 summary = { 
                   Text(
-                    "Load Lua scripts from configuration directory",
+                    "Load Lua and JavaScript scripts from your MPV configuration directory",
                     color = MaterialTheme.colorScheme.outline,
                   ) 
                 },
@@ -370,11 +370,11 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
               
               Preference(
-                title = { Text("Manage Lua Scripts") },
+                title = { Text("Manage Scripts (Lua / JS)") },
                 summary = {
                   when {
                     mpvConfStorageLocation.isBlank() || !enableLuaScripts -> Text(
-                      "Set storage location and enable Lua scripts first", 
+                      "Set storage location and enable scripts first", 
                       color = MaterialTheme.colorScheme.outline
                     )
                     selectedScripts.isEmpty() -> Text(

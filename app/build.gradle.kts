@@ -212,7 +212,7 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
-  implementation(files("libs/mpv-android-lib-v0.0.1.aar"))
+  implementation(files("libs/mpvlib.aar"))
 
   // Network protocol libraries
   implementation(libs.smbj)

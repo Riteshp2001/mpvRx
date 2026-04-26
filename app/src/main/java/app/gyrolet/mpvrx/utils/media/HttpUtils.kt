@@ -13,6 +13,17 @@ object HttpUtils {
   private const val TAG = "HttpUtils"
   private const val CONNECTION_TIMEOUT = 3000
   private const val READ_TIMEOUT = 3000
+  private val directMediaExtensions =
+    setOf(
+      "mp4", "m4v", "mkv", "webm", "avi", "mov", "wmv", "flv", "ts", "m2ts",
+      "mp3", "m4a", "aac", "flac", "wav", "ogg", "opus",
+      "m3u", "m3u8", "mpd",
+    )
+  private val genericRouteTitles =
+    setOf(
+      "watch", "stream", "video", "play", "embed", "download", "media",
+      "live", "reel", "reels", "short", "shorts", "player",
+    )
 
   suspend fun extractFilenameFromUrl(url: String): String? = withContext(Dispatchers.IO) {
     try {
@@ -115,6 +126,23 @@ object HttpUtils {
     return scheme in listOf("http", "https", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh", "ftp", "ftps")
   }
 
+  fun shouldPreferResolvedMediaTitle(
+    uri: Uri?,
+    fallbackTitle: String?,
+  ): Boolean {
+    if (uri == null || !isNetworkStream(uri)) return false
+    val scheme = uri.scheme?.lowercase()
+    if (scheme !in listOf("http", "https")) return false
+    return isLikelyJunkTitle(fallbackTitle) || !hasDirectMediaExtension(uri)
+  }
+
+  private fun hasDirectMediaExtension(uri: Uri): Boolean {
+    val lastSegment = uri.lastPathSegment?.substringAfterLast('/')?.let(Uri::decode).orEmpty()
+    if (lastSegment.isBlank()) return false
+    val extension = lastSegment.substringAfterLast('.', "").lowercase()
+    return extension in directMediaExtensions
+  }
+
   /**
    * Extracts the referer domain from a Uri.
    * Returns the full origin (scheme + host + port) to be used as Referer header.
@@ -152,6 +180,8 @@ object HttpUtils {
     if (title.isNullOrBlank()) return true
     
     val lower = title.lowercase()
+
+    if (lower in genericRouteTitles) return true
     
     // Check for common URL patterns
     if (lower.startsWith("http") || lower.contains("://") || lower.contains("www.")) return true

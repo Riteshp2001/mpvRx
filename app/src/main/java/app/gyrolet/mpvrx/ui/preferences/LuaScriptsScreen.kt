@@ -137,7 +137,7 @@ object LuaScriptsScreen : Screen {
         TopAppBar(
           title = {
             Text(
-              text = "Lua Scripts",
+              text = "Scripts (Lua / JS)",
               style = MaterialTheme.typography.headlineSmall,
             )
           },

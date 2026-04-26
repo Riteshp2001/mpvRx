@@ -118,7 +118,7 @@ fun PlayLinkSheet(
           },
           modifier = Modifier.fillMaxWidth(),
           label = { Text("Enter URL") },
-          placeholder = { Text("https://example.com/video.mp4") },
+          placeholder = { Text("https://example.com/video.mp4 or https://site/watch?v=...") },
           singleLine = true,
           isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
           trailingIcon = {
@@ -130,7 +130,7 @@ fun PlayLinkSheet(
 
         if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
           Text(
-            text = "Invalid URL protocol",
+            text = "Unsupported URL protocol",
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,

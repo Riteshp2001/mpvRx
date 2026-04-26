@@ -562,10 +562,10 @@ class PlayerActivity :
             loadScriptAtRuntime(scriptName)
           }
           if (advancedPreferences.selectedLuaScripts.get().isEmpty()) {
-            viewModel.showToast("Lua scripts enabled")
+            viewModel.showToast("Scripts enabled")
           }
         } else {
-          viewModel.showToast("Lua scripts disabled. Reopen the video if a script stays active.")
+          viewModel.showToast("Scripts disabled. Reopen the video if a script stays active.")
         }
       }
     }
@@ -1249,7 +1249,7 @@ class PlayerActivity :
 
     if (!advancedPreferences.enableLuaScripts.get()) {
       internalScriptsDir.listFiles()?.forEach { it.delete() }
-      Log.d(TAG, "Lua scripts disabled, skipping")
+      Log.d(TAG, "Scripts disabled, skipping")
       return
     }
 
@@ -1952,7 +1952,7 @@ class PlayerActivity :
   private fun shouldForceCurrentMediaTitle(): Boolean =
     getPlaylistItemByIndex(playlistIndex)?.fileName?.isNotBlank() == true ||
       getExplicitIntentTitle() != null ||
-      !isCurrentStreamM3U()
+      (!isCurrentStreamM3U() && !HttpUtils.shouldPreferResolvedMediaTitle(extractUriFromIntent(intent), fileName))
 
   private fun getExplicitIntentTitle(): String? =
     intent.getStringExtra("title")?.takeIf { !HttpUtils.isLikelyJunkTitle(it) }
@@ -2492,7 +2492,8 @@ class PlayerActivity :
         if (betterFilename != null && betterFilename.isNotBlank() &&
           betterFilename != fileName &&
           betterFilename != uri.host &&
-          betterFilename != "Network Stream"
+          betterFilename != "Network Stream" &&
+          !HttpUtils.isLikelyJunkTitle(betterFilename)
         ) {
 
           Log.d(TAG, "Found better filename from HTTP headers: $betterFilename")
@@ -3904,6 +3905,12 @@ class PlayerActivity :
    */
   fun getTitleForControls(): String {
     getExplicitIntentTitle()?.let { return it }
+
+    if (HttpUtils.shouldPreferResolvedMediaTitle(extractUriFromIntent(intent), fileName)) {
+      MPVLib.getPropertyString("media-title")
+        ?.takeIf { !HttpUtils.isLikelyJunkTitle(it) }
+        ?.let { return it }
+    }
 
     // For m3u/m3u8 streams, only trust MPV if it produced a real title.
     if (isCurrentStreamM3U()) {
