@@ -218,24 +218,13 @@ jobs:
           tag_name: ${{ env.VERSION_TAG }}
           name: MpvRx ${{ env.VERSION_TAG }}
           body: |
-            ## What's New in 1.3.0
-            - The project now carries the `MpvRx` name across the app, docs, and release files.
-            - Tree View `NEW` labels now work properly and update as you watch.
-            - Single-child folders now flatten automatically so you reach files faster.
-            - Subtitle matching is smarter and better at finding subtitles that line up.
-            - Cached library data shows up first, then refreshes quietly in the background.
-            - Browser updates now react to changes instead of constantly polling.
-            - The player now remembers your chosen aspect ratio.
-            - Seeking feels steadier and cleanup after playback is smoother.
-            - Ambient mode and Lua scripting were reverted.
-            - The settings page was revamped.
-            - New tab and video animations were added.
-            - Icons were refreshed across the app.
-            - Network and playlist behavior was cleaned up.
-            - Folder pinning was added.
-            - A video size downgrade option was added in the video editing section.
-            - Page 6 was added to More Sheet for battery usage and extra system info.
-            - A new status icon row can show network speed, battery percentage, and time.
+            ## What's New in 1.3.1
+            - JavaScript (.js) scripts are now supported alongside Lua scripts; UI renamed to "Scripts (Lua / JS)" everywhere.
+            - Script editor now includes a chip toggle to choose between `.lua` and `.js` file extensions when creating or editing scripts.
+            - Media title resolution improved: MPV's resolved title is preferred for non-direct-media URLs and when the current filename looks like a generic route (e.g., `/watch`, `/stream`).
+            - HTTP utility expanded with `shouldPreferResolvedMediaTitle()` and `hasDirectMediaExtension()`; junk-title detection now catches generic route names like "watch", "reels", "shorts".
+            - Updated mpv library dependency from `mpv-android-lib-v0.0.1.aar` to `mpvlib.aar` and removed the old AAR.
+            - Added Multiple new providers to Wyzie subtitle sources.
 
             ---
             ### Checksums

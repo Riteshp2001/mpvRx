@@ -129,7 +129,11 @@ object WyzieSources {
         "opensubtitles" to "OpenSubtitles",
         "podnapisi" to "Podnapisi",
         "gestdown" to "Gestdown",
-        "animetosho" to "AnimeTosho"
+        "animetosho" to "AnimeTosho",
+        "jimaku" to "Jimaku",
+        "kitsunekko" to "Kitsunekko",
+        "yify" to "YIFY",
+        "ajatttools" to "AjattTools"
     )
 }
 

@@ -10,24 +10,8 @@
 
 No ads. No trackers. No noise. Just a serious video player with a calmer surface and a sharper edge.
 
-## 1.3.0 Highlights
-- The project now carries the `MpvRx` name across the app, docs, and release files.
-- Tree View `NEW` labels now work properly and update as you watch.
-- Single-child folders flatten automatically so you reach files faster.
-- Subtitle matching is smarter and better at finding subtitles that line up.
-- Cached library data shows up first, then refreshes quietly in the background.
-- Browser updates now react to changes instead of constantly polling.
-- The player remembers your chosen aspect ratio.
-- Seeking feels steadier and cleanup after playback is smoother.
-- Ambient mode and Lua scripting were reverted.
-- The settings page was revamped.
-- New tab and video animations were added.
-- Icons were refreshed across the app.
-- Network and playlist behavior was cleaned up.
-- Folder pinning was added.
-- A video size downgrade option was added in the video editing section.
-- Page 6 was added to More Sheet for battery usage and extra system info.
-- A new status icon row can show network speed, battery percentage, and time.
+## Latest Updates
+ - See (CHANGELOG)[CHANGELOG.md]
 
 
 ## Why This Fork Exists
@@ -78,15 +62,15 @@ To cut a signed GitHub release through Actions, configure these repository secre
 Then bump `versionCode` and `versionName` in `app/build.gradle.kts`, create a tag, and push it:
 
 ```bash
-git tag -a v1.3.0 -m "Release version 1.3.0"
-git push origin v1.3.0
+git tag -a v1.3.1 -m "Release version 1.3.1"
+git push origin v1.3.1
 ```
 
 Preview releases use the same flow with preview tags such as:
 
 ```bash
-git tag -a v1.3.0-preview.1 -m "Preview release"
-git push origin v1.3.0-preview.1
+git tag -a v1.3.1-preview.1 -m "Preview release"
+git push origin v1.3.1-preview.1
 ```
 
 ## Acknowledgments

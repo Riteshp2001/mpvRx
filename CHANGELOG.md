@@ -7,9 +7,8 @@ These notes are written in plain English and focus on what changed for real use.
 - Script editor now includes a chip toggle to choose between `.lua` and `.js` file extensions when creating or editing scripts.
 - Media title resolution improved: MPV's resolved title is preferred for non-direct-media URLs and when the current filename looks like a generic route (e.g., `/watch`, `/stream`).
 - HTTP utility expanded with `shouldPreferResolvedMediaTitle()` and `hasDirectMediaExtension()`; junk-title detection now catches generic route names like "watch", "reels", "shorts".
-- YT-DLP runtime is now initialized on player startup for future remote extractor support.
-- Play Link sheet placeholder and error text updated to reflect broader URL support.
 - Updated mpv library dependency from `mpv-android-lib-v0.0.1.aar` to `mpvlib.aar` and removed the old AAR.
+- Added Multiple new provider to Wyzie subtitle sources.
 
 ## 1.3.0
 - The project now carries the `MpvRx` name across the app, docs, and release files.

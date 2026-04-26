@@ -48,7 +48,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
-import app.gyrolet.mpvrx.util.YTDLPUtil
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistItemEntity
@@ -3067,36 +3066,8 @@ class PlayerActivity :
       viewModel.onVideoLoadStarted()
       // Avoid blocking UI thread while mpv opens network streams (e.g., HLS).
       lifecycleScope.launch(Dispatchers.Default) {
-        val finalUri = resolveUriWithYtdlp(uri)
-        MPVLib.command("loadfile", finalUri)
+        MPVLib.command("loadfile", uri)
       }
-    }
-  }
-
-  private suspend fun resolveUriWithYtdlp(uri: String): String {
-    return if (uri.startsWith("http")) {
-      withContext(Dispatchers.Main) {
-        Toast.makeText(this@PlayerActivity, "Resolving URL with yt-dlp...", Toast.LENGTH_SHORT).show()
-      }
-      try {
-        val ytdlp = YTDLPUtil(this)
-        val resolved = ytdlp.getStreamingUrlWithFallback(uri)
-        if (resolved != null) {
-          Log.d(TAG, "Resolved $uri to $resolved")
-          withContext(Dispatchers.Main) {
-            Toast.makeText(this@PlayerActivity, "URL resolved successfully", Toast.LENGTH_SHORT).show()
-          }
-          resolved
-        } else {
-          Log.w(TAG, "Failed to resolve $uri with yt-dlp, trying direct playback")
-          uri
-        }
-      } catch (e: Exception) {
-        Log.e(TAG, "Error resolving $uri with yt-dlp: ${e.message}", e)
-        uri
-      }
-    } else {
-      uri
     }
   }
 
@@ -3852,8 +3823,7 @@ class PlayerActivity :
     viewModel.onVideoLoadStarted()
 
     lifecycleScope.launch(Dispatchers.Default) {
-      val finalUri = resolveUriWithYtdlp(playableUri)
-      MPVLib.command("loadfile", finalUri)
+      MPVLib.command("loadfile", playableUri)
     }
 
     // Update media title (this will trigger UI update)
