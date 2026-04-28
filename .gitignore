@@ -20,7 +20,6 @@ local.properties
 *.ap_
 *.aab
 *.aar
-!app/libs/mpvlib.aar
 
 # Release folders
 app/release/
