@@ -2,6 +2,7 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -84,10 +85,6 @@ import java.io.File
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.presentation.Screen
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import app.gyrolet.mpvrx.R
@@ -664,8 +661,10 @@ fun ButtonSlotCard(
                             }
                         },
                     )
-                    val dialogScrollState = rememberScrollState()
-                    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+                    val language = when (draftScriptLanguage) {
+                        CustomButtonScriptLanguage.LUA -> "lua"
+                        CustomButtonScriptLanguage.JS -> "js"
+                    }
                     
                     Box(
                         modifier = Modifier
@@ -673,25 +672,17 @@ fun ButtonSlotCard(
                             .weight(1f)
                             .imePadding()
                     ) {
-                        BasicTextField(
-                            value         = fieldValue,
-                            onValueChange = { newCode ->
+                        MpvScriptEditor(
+                            content = fieldValue,
+                            onContentChange = { newCode ->
                                 when (fieldKey) {
                                     "content"   -> draftContent   = newCode
                                     "longPress" -> draftLongPress = newCode
                                     "startup"   -> draftStartup   = newCode
                                 }
                             },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(dialogScrollState)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            textStyle = TextStyle(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            language = language,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
