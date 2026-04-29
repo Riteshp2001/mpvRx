@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +20,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.lang.EmptyLanguage
+import android.os.Bundle
 import io.github.rosemoe.sora.lang.Language
+import io.github.rosemoe.sora.lang.completion.CompletionHelper
+import io.github.rosemoe.sora.lang.completion.CompletionPublisher
+import io.github.rosemoe.sora.text.CharPosition
+import io.github.rosemoe.sora.text.ContentReference
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
 import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
@@ -51,47 +57,62 @@ fun MpvScriptEditor(
     ScriptEditorTextMate.ensureInitialized(context)
   }
 
-  AndroidView(
-    factory = {
-      ScriptEditorTextMate.ensureInitialized(it)
-      CodeEditor(it).apply {
-        setText(content)
-        setTextSize(textSize.value)
-        typefaceText = Typeface.MONOSPACE
-        typefaceLineNumber = Typeface.MONOSPACE
-        setPinLineNumber(true)
-        editable = true
-        colorScheme = createEditorColorScheme(isDarkTheme)
-        colorScheme.applyMpvColors(
-          colors = colors,
-          selectionBackground = selectionColors.backgroundColor.toArgb(),
-        )
-        setEditorLanguage(language.toTextMateLanguage())
-        subscribeAlways<ContentChangeEvent> { event ->
-          if (!applyingExternalText) {
-            latestOnContentChange(event.editor.text.toString())
-          }
-        }
-      }
-    },
-    update = { editor ->
-      ScriptEditorTextMate.setTheme(isDarkTheme)
-      editor.setTextSize(textSize.value)
-      editor.colorScheme.applyMpvColors(
+  val editor = remember {
+    ScriptEditorTextMate.ensureInitialized(context)
+    CodeEditor(context).apply {
+      setTextSize(textSize.value)
+      typefaceText = Typeface.MONOSPACE
+      typefaceLineNumber = Typeface.MONOSPACE
+      setPinLineNumber(true)
+      editable = true
+      colorScheme = createEditorColorScheme(isDarkTheme)
+      colorScheme.applyMpvColors(
         colors = colors,
         selectionBackground = selectionColors.backgroundColor.toArgb(),
       )
-      editor.setEditorLanguage(language.toTextMateLanguage())
-
-      val editorText = editor.text.toString()
-      if (editorText != content) {
-        applyingExternalText = true
-        editor.setText(content)
-        applyingExternalText = false
+      setEditorLanguage(language.toTextMateLanguage())
+      subscribeAlways<ContentChangeEvent> { event ->
+        if (!applyingExternalText) {
+          latestOnContentChange(event.editor.text.toString())
+        }
       }
-    },
-    onRelease = { editor ->
+    }
+  }
+
+  DisposableEffect(editor) {
+    onDispose {
       editor.release()
+    }
+  }
+
+  LaunchedEffect(isDarkTheme, colors, selectionColors) {
+    editor.colorScheme = createEditorColorScheme(isDarkTheme)
+    editor.colorScheme.applyMpvColors(
+      colors = colors,
+      selectionBackground = selectionColors.backgroundColor.toArgb(),
+    )
+  }
+
+  LaunchedEffect(language) {
+    editor.setEditorLanguage(language.toTextMateLanguage())
+  }
+
+  LaunchedEffect(content) {
+    val editorText = editor.text.toString()
+    if (editorText != content) {
+      applyingExternalText = true
+      editor.setText(content)
+      applyingExternalText = false
+    }
+  }
+
+  AndroidView(
+    factory = {
+      ScriptEditorTextMate.ensureInitialized(it)
+      editor
+    },
+    update = {
+      it.setTextSize(textSize.value)
     },
     modifier = modifier,
   )
@@ -145,16 +166,52 @@ private fun createEditorColorScheme(isDarkTheme: Boolean): EditorColorScheme {
 }
 
 private fun String.toTextMateLanguage(): Language {
-  val scopeName = when (lowercase()) {
+  val normalizedLanguage = lowercase()
+  val scopeName = when (normalizedLanguage) {
     "lua" -> "source.lua"
     "js", "javascript" -> "source.js"
+    "mpv.conf", "mpv-conf", "mpv_config" -> "source.mpv.conf"
+    "input.conf", "input-conf", "input_config" -> "source.mpv.input"
+    else -> null
+  }
+  val completionMode = when (normalizedLanguage) {
+    "lua", "js", "javascript" -> MpvCompletionMode.SCRIPT
+    "mpv.conf", "mpv-conf", "mpv_config" -> MpvCompletionMode.MPV_CONF
+    "input.conf", "input-conf", "input_config" -> MpvCompletionMode.INPUT_CONF
     else -> null
   }
 
-  return scopeName
-    ?.let { runCatching { TextMateLanguage.create(it, true) }.getOrNull() }
+  val baseLanguage = scopeName
+    ?.let { 
+      runCatching { 
+        TextMateLanguage.create(it, false)
+      }.getOrNull() 
+    }
     ?: EmptyLanguage()
+
+  return completionMode
+    ?.let { MpvLanguageWrapper(baseLanguage, it) }
+    ?: baseLanguage
 }
+
+private class MpvLanguageWrapper(
+  private val base: Language,
+  private val completionMode: MpvCompletionMode,
+) : Language by base {
+  override fun requireAutoComplete(
+    content: ContentReference,
+    position: CharPosition,
+    publisher: CompletionPublisher,
+    extraArguments: Bundle
+  ) {
+    base.requireAutoComplete(content, position, publisher, extraArguments)
+    val prefix = CompletionHelper.computePrefix(content, position, ::isMpvCompletionChar)
+    MpvAutoCompleteProvider.provideCompletion(prefix, completionMode, publisher)
+  }
+}
+
+private fun isMpvCompletionChar(ch: Char): Boolean =
+  ch.isLetterOrDigit() || ch == '_' || ch == '-' || ch == '.' || ch == '/' || ch == '+'
 
 private fun EditorColorScheme.applyMpvColors(
   colors: androidx.compose.material3.ColorScheme,

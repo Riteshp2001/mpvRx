@@ -11,7 +11,7 @@
 No ads. No trackers. No noise. Just a serious video player with a calmer surface and a sharper edge.
 
 ## Latest Updates
- - See (CHANGELOG)[CHANGELOG.md]
+ - See [CHANGELOG](CHANGELOG.md)
 
 
 ## Why This Fork Exists

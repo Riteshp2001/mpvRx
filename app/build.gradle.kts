@@ -94,6 +94,7 @@ android {
   }
 
   compileOptions {
+    isCoreLibraryDesugaringEnabled = true
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
@@ -211,7 +212,9 @@ dependencies {
   implementation(platform(libs.sora.editor.bom))
   implementation(libs.sora.editor)
   implementation(libs.sora.language.textmate)
-  implementation(libs.sora.oniguruma.native)
+  // implementation(libs.sora.oniguruma.native)
+
+  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)

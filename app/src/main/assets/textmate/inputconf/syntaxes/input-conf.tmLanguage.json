@@ -1,0 +1,88 @@
+{
+  "name": "input.conf",
+  "scopeName": "source.mpv.input",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#properties"
+    },
+    {
+      "include": "#key"
+    },
+    {
+      "include": "#command"
+    },
+    {
+      "include": "#constants"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.number-sign.mpv-input",
+      "match": "#.*$"
+    },
+    "key": {
+      "match": "^\\s*([^\\s#]+)",
+      "captures": {
+        "1": {
+          "name": "constant.language.key.mpv-input"
+        }
+      }
+    },
+    "command": {
+      "match": "(?<=\\s)([A-Za-z0-9][A-Za-z0-9_-]*)(?=\\s|$)",
+      "captures": {
+        "1": {
+          "name": "support.function.command.mpv-input"
+        }
+      }
+    },
+    "properties": {
+      "name": "variable.other.property.mpv-input",
+      "match": "\\$\\{[^}]+\\}"
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.mpv-input",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.mpv-input",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.mpv-input",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.mpv-input",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.mpv-input",
+          "match": "\\b(?:yes|no|true|false|auto|default|inf|exact|fuzzy|all)\\b"
+        },
+        {
+          "name": "constant.numeric.mpv-input",
+          "match": "(?<![\\w.-])-?\\d+(?:\\.\\d+)?(?:%|ms|s)?\\b"
+        }
+      ]
+    }
+  }
+}

@@ -65,7 +65,7 @@ androidx-media3-transformer = { module = "androidx.media3:media3-transformer", v
 sora-editor-bom = { module = "io.github.rosemoe:editor-bom", version.ref = "soraEditor" }
 sora-editor = { module = "io.github.rosemoe:editor" }
 sora-language-textmate = { module = "io.github.rosemoe:language-textmate" }
-sora-oniguruma-native = { module = "io.github.rosemoe:oniguruma-native" }
+# sora-oniguruma-native = { module = "io.github.rosemoe:oniguruma-native" }
 
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core" }

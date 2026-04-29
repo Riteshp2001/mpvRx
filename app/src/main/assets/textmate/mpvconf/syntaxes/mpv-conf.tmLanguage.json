@@ -1,0 +1,88 @@
+{
+  "name": "mpv.conf",
+  "scopeName": "source.mpv.conf",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#sections"
+    },
+    {
+      "include": "#options"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#constants"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.number-sign.mpv-conf",
+      "match": "#.*$"
+    },
+    "sections": {
+      "name": "entity.name.section.mpv-conf",
+      "match": "^\\s*(\\[[^\\]]+\\])",
+      "captures": {
+        "1": {
+          "name": "entity.name.section.mpv-conf"
+        }
+      }
+    },
+    "options": {
+      "match": "^\\s*(--)?([A-Za-z0-9][A-Za-z0-9_/-]*)(\\s*(=)\\s*)?",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.option.mpv-conf"
+        },
+        "2": {
+          "name": "support.type.property-name.mpv-conf"
+        },
+        "4": {
+          "name": "keyword.operator.assignment.mpv-conf"
+        }
+      }
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.mpv-conf",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.mpv-conf",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.mpv-conf",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.mpv-conf",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.mpv-conf",
+          "match": "\\b(?:yes|no|true|false|auto|default|inf|always)\\b"
+        },
+        {
+          "name": "constant.numeric.mpv-conf",
+          "match": "(?<![\\w.-])-?\\d+(?:\\.\\d+)?(?:%|ms|s|hz|khz|k|m|g|kb|mb|gb)?\\b"
+        }
+      ]
+    }
+  }
+}
