@@ -669,7 +669,7 @@ object SearchablePreferences {
             add(SearchablePreference(
                 titleRes = R.string.pref_custom_lua_title,
                 summaryRes = R.string.pref_custom_lua_summary,
-                keywords = listOf("lua", "custom", "button", "code", "player", "overlay", "script"),
+                keywords = listOf("lua", "js", "javascript", "custom", "button", "code", "player", "overlay", "script"),
                 category = "Player",
                 screen = CustomButtonScreen,
             ))
@@ -722,14 +722,14 @@ object SearchablePreferences {
             add(SearchablePreference(
                 titleRes = R.string.pref_enable_lua_scripts_title,
                 summaryRes = R.string.pref_enable_lua_scripts_summary,
-                keywords = listOf("scripts", "lua", "enable", "load", "plugin"),
+                keywords = listOf("scripts", "lua", "js", "javascript", "enable", "load", "plugin"),
                 category = "Advanced",
                 screen = AdvancedPreferencesScreen,
             ))
             add(SearchablePreference(
                 titleRes = R.string.pref_manage_lua_scripts_title,
                 summaryRes = R.string.pref_manage_lua_scripts_summary,
-                keywords = listOf("scripts", "lua", "manage", "select", "plugin"),
+                keywords = listOf("scripts", "lua", "js", "javascript", "manage", "select", "plugin"),
                 category = "Advanced",
                 screen = AdvancedPreferencesScreen,
             ))

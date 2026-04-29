@@ -1232,10 +1232,14 @@ private fun FileSystemBrowserContent(
             val visibleIndexes = listState.layoutInfo.visibleItemsInfo.map { it.index }
             val startIndex = visibleIndexes.minOrNull() ?: 0
             val endExclusive = ((visibleIndexes.maxOrNull() ?: startIndex) + 25).coerceAtMost(items.size)
-            items
+            val visibleWindow =
+              items
               .subList(startIndex.coerceAtLeast(0), endExclusive)
               .filterIsInstance<FileSystemItem.VideoFile>()
               .map { it.video }
+            (videos.take(25) + visibleWindow).distinctBy { video ->
+              video.path.ifBlank { video.uri.toString() }
+            }
           }
         }
       }

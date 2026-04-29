@@ -176,9 +176,9 @@ fun MoreSheet(
               Text(
                 text =
                   if (selectedLuaScripts.isEmpty()) {
-                    "Lua"
+                    "Scripts"
                   } else {
-                    "Lua (${selectedLuaScripts.size})"
+                    "Scripts (${selectedLuaScripts.size})"
                   },
                 color =
                   if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {

@@ -122,6 +122,7 @@ enum class Panels {
   AudioDelay,
   VideoFilters,
   LuaScripts,
+  HdrScreenOutput,
 }
 
 sealed class PlayerUpdates {

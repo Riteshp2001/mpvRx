@@ -208,6 +208,10 @@ dependencies {
   implementation(libs.androidx.media3.common)
   implementation(libs.androidx.media3.effect)
   implementation(libs.androidx.media3.transformer)
+  implementation(platform(libs.sora.editor.bom))
+  implementation(libs.sora.editor)
+  implementation(libs.sora.language.textmate)
+  implementation(libs.sora.oniguruma.native)
 
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)

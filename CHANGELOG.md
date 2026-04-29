@@ -3,12 +3,17 @@
 These notes are written in plain English and focus on what changed for real use.
 
 ## 1.3.1
-- JavaScript (.js) scripts are now supported alongside Lua scripts; UI renamed to "Scripts (Lua / JS)" everywhere.
-- Script editor now includes a chip toggle to choose between `.lua` and `.js` file extensions when creating or editing scripts.
+- JavaScript (.js) scripts are now supported alongside Lua scripts, with "Scripts (Lua / JS)" kept to the main section titles.
+- Script editor now uses the native Sora editor with TextMate syntax highlighting for Lua and JavaScript.
+- Script editor includes a chip toggle to choose between `.lua` and `.js` file extensions when creating or editing scripts.
+- Custom player buttons can now run either Lua or JavaScript, with language selection per button and import/export support.
+- Long-pressing the HDR button now opens an HDR Output panel with Off, SDR with HDR, and Normal HDR modes.
 - Media title resolution improved: MPV's resolved title is preferred for non-direct-media URLs and when the current filename looks like a generic route (e.g., `/watch`, `/stream`).
-- HTTP utility expanded with `shouldPreferResolvedMediaTitle()` and `hasDirectMediaExtension()`; junk-title detection now catches generic route names like "watch", "reels", "shorts".
 - Updated mpv library dependency from `mpv-android-lib-v0.0.1.aar` to `mpvlib.aar` and removed the old AAR.
 - Added Multiple new provider to Wyzie subtitle sources.
+- PiP and background playback now save the latest watched position instead of returning to the timestamp from before PiP started.
+- Video lists refresh playback progress as soon as the saved position changes, so returning from the player shows the current progress.
+- Folder thumbnails now begin rendering immediately when a folder opens, while still using cached thumbnail data first.
 
 ## 1.3.0
 - The project now carries the `MpvRx` name across the app, docs, and release files.

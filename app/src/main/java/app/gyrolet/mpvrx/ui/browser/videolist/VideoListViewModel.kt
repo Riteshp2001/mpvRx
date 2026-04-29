@@ -12,6 +12,7 @@ import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
+import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -98,6 +99,14 @@ class VideoListViewModel(
           loadVideos()
         }
       }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      PlaybackStateEvents.changes.collectLatest {
+        if (_videos.value.isNotEmpty()) {
+          loadPlaybackInfo(_videos.value)
+        }
+      }
+    }
   }
 
   override fun refresh() {

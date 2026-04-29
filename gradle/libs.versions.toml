@@ -23,6 +23,7 @@ androidxPreference = "1.2.1"
 androidxConstraintLayout = "2.2.0"
 coil = "3.4.0"
 media3 = "1.10.0"
+soraEditor = "0.24.5"
 
 
 [libraries]
@@ -61,6 +62,10 @@ coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version
 androidx-media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
 androidx-media3-effect = { module = "androidx.media3:media3-effect", version.ref = "media3" }
 androidx-media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "media3" }
+sora-editor-bom = { module = "io.github.rosemoe:editor-bom", version.ref = "soraEditor" }
+sora-editor = { module = "io.github.rosemoe:editor" }
+sora-language-textmate = { module = "io.github.rosemoe:language-textmate" }
+sora-oniguruma-native = { module = "io.github.rosemoe:oniguruma-native" }
 
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core" }

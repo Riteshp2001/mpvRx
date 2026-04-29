@@ -300,6 +300,7 @@ fun RenderPlayerButton(
       ControlsButton(
         icon = if (isHdrEnabled) Icons.Default.HdrOn else Icons.Default.HdrOff,
         onClick = viewModel::toggleHdrScreenOutput,
+        onLongClick = { onOpenPanel(Panels.HdrScreenOutput) },
         color = if (hideBackground) {
           if (isHdrEnabled) MaterialTheme.colorScheme.primary else controlColor
         } else {

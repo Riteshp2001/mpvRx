@@ -106,6 +106,14 @@ import java.util.UUID
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Serializable
+enum class CustomButtonScriptLanguage(
+    val displayName: String,
+) {
+    LUA("Lua"),
+    JS("JavaScript"),
+}
+
+@Serializable
 data class CustomButton(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
@@ -113,6 +121,7 @@ data class CustomButton(
     val longPressContent: String = "",
     val onStartup: String = "",
     val enabled: Boolean = true,
+    val scriptLanguage: CustomButtonScriptLanguage = CustomButtonScriptLanguage.LUA,
 )
 
 @Serializable
@@ -328,7 +337,7 @@ object CustomButtonScreen : Screen {
                             )
                             
                             Text(
-                                text = "Backup or share all your custom buttons with their Lua code as an XML file",
+                                text = "Backup or share all your custom buttons with their script code as an XML file",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -427,8 +436,11 @@ fun ButtonSlotCard(
     var draftLongPress by remember(button?.id) { mutableStateOf(button?.longPressContent ?: "") }
     var draftStartup   by remember(button?.id) { mutableStateOf(button?.onStartup ?: "") }
     var draftEnabled   by remember(button?.id) { mutableStateOf(button?.enabled ?: true) }
+    var draftScriptLanguage by remember(button?.id) {
+        mutableStateOf(button?.scriptLanguage ?: CustomButtonScriptLanguage.LUA)
+    }
 
-    var activeLuaField by remember { mutableStateOf<String?>(null) }
+    var activeScriptField by remember { mutableStateOf<String?>(null) }
 
     val isPopulated = button != null
     val sideColor   = if (slotLabel.startsWith("L")) MaterialTheme.colorScheme.primary
@@ -558,8 +570,10 @@ fun ButtonSlotCard(
                     draftLongPress = draftLongPress,
                     draftStartup   = draftStartup,
                     draftEnabled   = draftEnabled,
+                    draftScriptLanguage = draftScriptLanguage,
                     onTitleChange   = { draftTitle   = it },
                     onEnabledChange = { draftEnabled = it },
+                    onScriptLanguageChange = { draftScriptLanguage = it },
                     onSave = {
                         // Build and save the button
                         onSave(
@@ -570,19 +584,20 @@ fun ButtonSlotCard(
                                 longPressContent = draftLongPress,
                                 onStartup        = draftStartup,
                                 enabled          = draftEnabled,
+                                scriptLanguage   = draftScriptLanguage,
                             )
                         )
                         expanded = false
                     },
                     onCollapse      = { expanded = false },
-                    onOpenLuaEditor = { field -> activeLuaField = field },
+                    onOpenScriptEditor = { field -> activeScriptField = field },
                 )
             }
         }
     }
     
-    if (activeLuaField != null) {
-        val fieldKey = activeLuaField!!
+    if (activeScriptField != null) {
+        val fieldKey = activeScriptField!!
         val fieldLabel = when (fieldKey) {
             "content"   -> "Tap action  ·  $slotLabel"
             "longPress" -> "Long press  ·  $slotLabel"
@@ -607,10 +622,11 @@ fun ButtonSlotCard(
                         longPressContent = draftLongPress,
                         onStartup        = draftStartup,
                         enabled          = draftEnabled,
+                        scriptLanguage   = draftScriptLanguage,
                     )
                 )
             }
-            activeLuaField = null
+            activeScriptField = null
         }
 
         Dialog(
@@ -698,11 +714,13 @@ fun ButtonExpandedContent(
     draftLongPress: String,
     draftStartup: String,
     draftEnabled: Boolean,
+    draftScriptLanguage: CustomButtonScriptLanguage,
     onTitleChange: (String) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
+    onScriptLanguageChange: (CustomButtonScriptLanguage) -> Unit,
     onSave: () -> Unit,
     onCollapse: () -> Unit,
-    onOpenLuaEditor: (String) -> Unit,
+    onOpenScriptEditor: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -722,28 +740,54 @@ fun ButtonExpandedContent(
             shape         = RoundedCornerShape(12.dp),
         )
 
-        HorizontalDividerWithLabel("Lua scripts")
+        HorizontalDividerWithLabel("Scripts (Lua / JS)")
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CustomButtonScriptLanguage.entries.forEach { language ->
+                val selected = draftScriptLanguage == language
+                if (selected) {
+                    Button(
+                        onClick = { onScriptLanguageChange(language) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(language.displayName)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { onScriptLanguageChange(language) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(language.displayName)
+                    }
+                }
+            }
+        }
 
         // Tap action — required
         LuaEditorEntryCard(
             label      = "Tap action *",
             code       = draftContent,
             isRequired = true,
-            onClick    = { onOpenLuaEditor("content") },
+            onClick    = { onOpenScriptEditor("content") },
         )
 
         // Long press
         LuaEditorEntryCard(
             label   = "Long press action",
             code    = draftLongPress,
-            onClick = { onOpenLuaEditor("longPress") },
+            onClick = { onOpenScriptEditor("longPress") },
         )
 
         // On startup
         LuaEditorEntryCard(
             label   = "On startup",
             code    = draftStartup,
-            onClick = { onOpenLuaEditor("startup") },
+            onClick = { onOpenScriptEditor("startup") },
         )
 
         HorizontalDividerWithLabel("Settings")
@@ -813,7 +857,7 @@ fun HorizontalDividerWithLabel(label: String) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lua code entry card — tappable, shows preview
+// Script code entry card — tappable, shows preview
 // ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -888,7 +932,7 @@ fun LuaEditorEntryCard(
                     )
                 } else {
                     Text(
-                        text = "Tap to write Lua code…",
+                        text = "Tap to write code...",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
@@ -1102,6 +1146,7 @@ private fun buildXmlExport(slots: List<CustomButton?>): String {
             sb.appendLine("    <id>${escapeXml(button.id)}</id>")
             sb.appendLine("    <title>${escapeXml(button.title)}</title>")
             sb.appendLine("    <enabled>${button.enabled}</enabled>")
+            sb.appendLine("    <scriptLanguage>${button.scriptLanguage.name}</scriptLanguage>")
             sb.appendLine("    <content><![CDATA[${button.content}]]></content>")
             sb.appendLine("    <longPressContent><![CDATA[${button.longPressContent}]]></longPressContent>")
             sb.appendLine("    <onStartup><![CDATA[${button.onStartup}]]></onStartup>")
@@ -1121,6 +1166,7 @@ private fun parseXmlImport(xmlContent: String): List<CustomButton?> {
     val idPattern = """<id>(.*?)</id>""".toRegex(RegexOption.DOT_MATCHES_ALL)
     val titlePattern = """<title>(.*?)</title>""".toRegex(RegexOption.DOT_MATCHES_ALL)
     val enabledPattern = """<enabled>(.*?)</enabled>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val scriptLanguagePattern = """<scriptLanguage>(.*?)</scriptLanguage>""".toRegex(RegexOption.DOT_MATCHES_ALL)
     val contentPattern = """<content><!\[CDATA\[(.*?)\]\]></content>""".toRegex(RegexOption.DOT_MATCHES_ALL)
     val longPressPattern = """<longPressContent><!\[CDATA\[(.*?)\]\]></longPressContent>""".toRegex(RegexOption.DOT_MATCHES_ALL)
     val startupPattern = """<onStartup><!\[CDATA\[(.*?)\]\]></onStartup>""".toRegex(RegexOption.DOT_MATCHES_ALL)
@@ -1134,6 +1180,12 @@ private fun parseXmlImport(xmlContent: String): List<CustomButton?> {
         val id = idPattern.find(buttonXml)?.groupValues?.get(1)?.let { unescapeXml(it) } ?: UUID.randomUUID().toString()
         val title = titlePattern.find(buttonXml)?.groupValues?.get(1)?.let { unescapeXml(it) } ?: ""
         val enabled = enabledPattern.find(buttonXml)?.groupValues?.get(1)?.toBoolean() ?: true
+        val scriptLanguage =
+            scriptLanguagePattern.find(buttonXml)
+                ?.groupValues
+                ?.get(1)
+                ?.let { parseCustomButtonScriptLanguage(it) }
+                ?: CustomButtonScriptLanguage.LUA
         val content = contentPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
         val longPress = longPressPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
         val startup = startupPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
@@ -1144,11 +1196,20 @@ private fun parseXmlImport(xmlContent: String): List<CustomButton?> {
             content = content,
             longPressContent = longPress,
             onStartup = startup,
-            enabled = enabled
+            enabled = enabled,
+            scriptLanguage = scriptLanguage,
         )
     }
     
     return slots
+}
+
+private fun parseCustomButtonScriptLanguage(value: String): CustomButtonScriptLanguage {
+    return when (value.trim().uppercase()) {
+        "JS", "JAVASCRIPT" -> CustomButtonScriptLanguage.JS
+        "LUA" -> CustomButtonScriptLanguage.LUA
+        else -> CustomButtonScriptLanguage.LUA
+    }
 }
 
 private fun escapeXml(text: String): String {

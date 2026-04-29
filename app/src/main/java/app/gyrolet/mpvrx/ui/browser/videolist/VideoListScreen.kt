@@ -742,7 +742,12 @@ private fun VideoListContent(
               ((visibleIndexes.maxOrNull() ?: startIndex) + aheadCount + 1)
                 .coerceAtMost(videosWithInfo.size)
 
-            videosWithInfo.subList(startIndex.coerceAtLeast(0), endExclusive).map { it.video }
+            val visibleWindow =
+              videosWithInfo.subList(startIndex.coerceAtLeast(0), endExclusive).map { it.video }
+            val initialCount = if (mediaLayoutMode == MediaLayoutMode.GRID) videoGridColumns * 4 else 16
+            (videosWithInfo.take(initialCount).map { it.video } + visibleWindow).distinctBy { video ->
+              video.path.ifBlank { video.uri.toString() }
+            }
           }
         }
       }

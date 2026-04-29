@@ -14,6 +14,7 @@ import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
+import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.sort.SortUtils
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
 import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
@@ -151,6 +152,14 @@ class FileSystemBrowserViewModel(
           loadCurrentDirectory()
         }
       }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      PlaybackStateEvents.changes.collectLatest {
+        if (_unsortedItems.value.isNotEmpty()) {
+          applyPlaybackState(_unsortedItems.value)
+        }
+      }
+    }
 
     // Apply sorting whenever items or sort preferences change
     // Based on Fossify's ChangeSortingDialog callback and sorting logic

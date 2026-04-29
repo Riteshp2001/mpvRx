@@ -90,25 +90,54 @@ jobs:
             if [ -f "$src" ]; then
               cp "$src" "$dest"
               sha=$(sha256sum "$dest" | awk '{ print $1 }')
-              echo "apk-${abi}-sha256=$sha" >> $GITHUB_ENV
+              echo "apk_${abi//-/_}_sha256=$sha" >> $GITHUB_ENV
             fi
           done
 
+      - name: Prepare pre-release notes from changelog
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          section = []
+          in_latest = False
+
+          for line in changelog:
+              if line.startswith("## "):
+                  if in_latest:
+                      break
+                  in_latest = True
+              if in_latest:
+                  section.append(line)
+
+          latest = "\n".join(section).strip()
+          if not latest:
+              raise SystemExit("Could not find latest changelog section")
+
+          Path("pre-release-notes.md").write_text(latest + "\n", encoding="utf-8")
+          PY
+          cat >> pre-release-notes.md <<EOF
+
+          ---
+          ### Checksums
+
+          | Variant | SHA-256 |
+          | ------- | ------- |
+          | arm64-v8a | ${apk_arm64_v8a_sha256} |
+          | armeabi-v7a | ${apk_armeabi_v7a_sha256} |
+          | Universal | ${apk_universal_sha256} |
+          | x86 | ${apk_x86_sha256} |
+          | x86_64 | ${apk_x86_64_sha256} |
+          EOF
+
       - name: Create GitHub pre-release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
           name: "MpvRx ${{ env.VERSION_TAG }}"
-          body: |
-            
-            ### Checksums
-            | Variant | SHA-256 |
-            | ------- | ------- |
-            | arm64-v8a | ${{ env.apk-arm64-v8a-sha256 }} |
-            | armeabi-v7a | ${{ env.apk-armeabi-v7a-sha256 }} |
-            | Universal | ${{ env.apk-universal-sha256 }} |
-            | x86 | ${{ env.apk-x86-sha256 }} |
-            | x86_64 | ${{ env.apk-x86_64-sha256 }} |
+          body_path: pre-release-notes.md
           files: |
             preview/mpvRx-preview-universal-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-arm64-v8a-${{ env.VERSION_TAG }}.apk

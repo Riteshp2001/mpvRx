@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.player.Panels
+import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.AudioDelayPanel
+import app.gyrolet.mpvrx.ui.player.controls.components.panels.HdrScreenOutputPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.LuaScriptsPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.SubtitleDelayPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.SubtitleSettingsPanel
@@ -25,6 +27,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.panels.VideoSettingsPanel
 @Composable
 fun PlayerPanels(
   panelShown: Panels,
+  viewModel: PlayerViewModel,
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -56,6 +59,12 @@ fun PlayerPanels(
       }
       Panels.LuaScripts -> {
         LuaScriptsPanel(onDismissRequest)
+      }
+      Panels.HdrScreenOutput -> {
+        HdrScreenOutputPanel(
+          viewModel = viewModel,
+          onDismissRequest = onDismissRequest,
+        )
       }
     }
   }

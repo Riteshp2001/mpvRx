@@ -1525,6 +1525,7 @@ fun PlayerControls(
     val panel by viewModel.panelShown.collectAsState()
     PlayerPanels(
       panelShown = panel,
+      viewModel = viewModel,
       onDismissRequest = { onOpenPanel(Panels.None) },
     )
   }

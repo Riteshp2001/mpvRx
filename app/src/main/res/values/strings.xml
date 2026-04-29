@@ -120,10 +120,10 @@
   <string name="pref_export_settings_summary">Export settings to an XML file</string>
   <string name="pref_import_settings_title">Import Settings</string>
   <string name="pref_import_settings_summary">Import settings from an XML file</string>
-  <string name="pref_enable_lua_scripts_title">Enable Scripts (Lua / JS)</string>
-  <string name="pref_enable_lua_scripts_summary">Load Lua and JavaScript scripts from your MPV configuration directory</string>
-  <string name="pref_manage_lua_scripts_title">Manage Scripts (Lua / JS)</string>
-  <string name="pref_manage_lua_scripts_summary">Manage enabled Lua and JavaScript scripts</string>
+  <string name="pref_enable_lua_scripts_title">Enable scripts</string>
+  <string name="pref_enable_lua_scripts_summary">Load scripts from your MPV configuration directory</string>
+  <string name="pref_manage_lua_scripts_title">Manage scripts</string>
+  <string name="pref_manage_lua_scripts_summary">Manage enabled scripts</string>
   <string name="pref_clear_config_cache_title">Clear config cache</string>
   <string name="pref_clear_config_cache_summary">Clear the cached mpv.conf settings</string>
   <string name="pref_clear_thumbnail_cache_title">Clear thumbnail cache</string>
@@ -224,8 +224,8 @@
   <string name="pref_subtitles_summary">Preferred languages, fonts and search</string>
   <string name="pref_subtitle_search_title">Online Subtitle Search</string>
   <string name="pref_subtitle_search_summary">Search and download subtitles from Online sources</string>
-  <string name="pref_custom_lua_title">Custom Lua Buttons</string>
-  <string name="pref_custom_lua_summary">Manage custom player buttons with Lua code</string>
+  <string name="pref_custom_lua_title">Custom buttons</string>
+  <string name="pref_custom_lua_summary">Manage script-powered player buttons</string>
   <string name="pref_preferred_languages">Preferred languages</string>
   <string name="pref_subtitles_fonts_dir">Fonts directory</string>
   <string name="pref_subtitles_autoload_title">Automatically load subtitles</string>
@@ -524,8 +524,8 @@
   <string name="auto_picture_in_picture">Auto picture-in-picture</string>
   <string name="dynamic_speed_overlay">Dynamic speed overlay</string>
   <string name="show_navigation_bar_with_controls">Show navigation bar with controls</string>
-  <string name="enable_lua_scripts">Enable scripts (Lua / JS)</string>
-  <string name="manage_lua_scripts">Manage scripts (Lua / JS)</string>
+  <string name="enable_lua_scripts">Enable scripts</string>
+  <string name="manage_lua_scripts">Manage scripts</string>
   <string name="rename_playlist">Rename playlist</string>
   <string name="create_playlist">Create playlist</string>
   <string name="add_connection">Add connection</string>

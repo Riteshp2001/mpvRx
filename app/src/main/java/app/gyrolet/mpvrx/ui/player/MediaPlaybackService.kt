@@ -24,15 +24,21 @@ import androidx.core.graphics.ColorUtils
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
+import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
+import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
-import app.gyrolet.mpvrx.preferences.AdvancedPreferences
-import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.Locale
@@ -49,6 +55,7 @@ class MediaPlaybackService :
     private const val TAG = "MediaPlaybackService"
     private const val NOTIFICATION_ID = 1
     private const val NOTIFICATION_CHANNEL_ID = "mpvrx_playback_channel"
+    private const val PLAYBACK_STATE_SAVE_INTERVAL_MS = 5000L
     private val DEFAULT_ACCENT_COLOR = Color.rgb(214, 220, 228)
     const val ACTION_NOTIFICATION_PREVIOUS = "app.gyrolet.mpvrx.action.NOTIFICATION_PREVIOUS"
     const val ACTION_NOTIFICATION_NEXT = "app.gyrolet.mpvrx.action.NOTIFICATION_NEXT"
@@ -81,12 +88,16 @@ class MediaPlaybackService :
   private lateinit var mediaSession: MediaSessionCompat
   private val playerPreferences: PlayerPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
+  private val browserPreferences: BrowserPreferences by inject()
+  private val playbackStateRepository: PlaybackStateRepository by inject()
 
+  private var mediaIdentifier = ""
   private var mediaTitle = ""
   private var mediaArtist = ""
   private var mediaUri: String? = null
   private var paused = false
   private var lastNotificationUpdateTime = 0L
+  private var lastPlaybackStateSaveTime = 0L
   private val notificationUpdateIntervalMs = 1000L
 
   // Chapter & progress state for progress-centric notification
@@ -100,6 +111,7 @@ class MediaPlaybackService :
   private var lastPaletteThumbnail: Bitmap? = null
   private val notificationDispatcher = Dispatchers.Default.limitedParallelism(1)
   private val serviceScope = CoroutineScope(SupervisorJob() + notificationDispatcher)
+  private var playbackStateSaveJob: Job? = null
 
   inner class MediaPlaybackBinder : Binder() {
     fun getService() = this@MediaPlaybackService
@@ -148,11 +160,15 @@ class MediaPlaybackService :
       val title = it.getStringExtra("media_title")
       val artist = it.getStringExtra("media_artist")
       val uri = it.getStringExtra("media_uri")
+      val identifier = it.getStringExtra("media_identifier")
 
       if (!title.isNullOrBlank()) {
         mediaTitle = title
         mediaArtist = artist ?: ""
         Log.d(TAG, "Media info from intent: $mediaTitle")
+      }
+      if (!identifier.isNullOrBlank()) {
+        mediaIdentifier = identifier
       }
       if (!uri.isNullOrBlank()) {
         mediaUri = uri
@@ -214,12 +230,14 @@ class MediaPlaybackService :
     artist: String,
     thumbnail: Bitmap? = null,
     uri: String? = null,
+    identifier: String? = null,
   ) {
     serviceScope.launch {
       MediaPlaybackService.thumbnail = thumbnail
       mediaTitle = title
       mediaArtist = artist
       uri?.let { mediaUri = it }
+      identifier?.takeIf { it.isNotBlank() }?.let { mediaIdentifier = it }
       refreshNotificationPalette()
       updateMediaSession()
     }
@@ -610,6 +628,7 @@ class MediaPlaybackService :
       serviceScope.launch {
         paused = value
         updateMediaSession()
+        schedulePlaybackStateSave(force = true)
       }
     }
   }
@@ -644,6 +663,7 @@ class MediaPlaybackService :
       "time-pos" -> {
         serviceScope.launch {
           currentPositionSeconds = value
+          schedulePlaybackStateSave()
           val currentTime = System.currentTimeMillis()
           if (currentTime - lastNotificationUpdateTime >= notificationUpdateIntervalMs) {
             lastNotificationUpdateTime = currentTime
@@ -667,15 +687,127 @@ class MediaPlaybackService :
   override fun event(eventId: Int, data: MPVNode) {
     if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) {
       Log.d(TAG, "MPV shutdown event received, stopping service")
+      savePlaybackStateBlocking()
       stopSelf()
     }
   }
+
+  private fun schedulePlaybackStateSave(force: Boolean = false) {
+    val identifier = mediaIdentifier
+    if (identifier.isBlank()) return
+
+    val now = System.currentTimeMillis()
+    if (!force && now - lastPlaybackStateSaveTime < PLAYBACK_STATE_SAVE_INTERVAL_MS) return
+    lastPlaybackStateSaveTime = now
+
+    playbackStateSaveJob?.cancel()
+    playbackStateSaveJob =
+      serviceScope.launch(Dispatchers.IO) {
+        persistPlaybackState(identifier)
+      }
+  }
+
+  private fun savePlaybackStateBlocking() {
+    val identifier = mediaIdentifier
+    if (identifier.isBlank()) return
+
+    playbackStateSaveJob?.cancel()
+    runCatching {
+      runBlocking(Dispatchers.IO) {
+        persistPlaybackState(identifier)
+      }
+    }.onFailure { error ->
+      Log.e(TAG, "Error force-saving playback state", error)
+    }
+  }
+
+  private suspend fun persistPlaybackState(identifier: String) {
+    if (identifier.isBlank()) return
+
+    runCatching {
+      val oldState = playbackStateRepository.getVideoDataByTitle(identifier)
+      val snapshot = capturePlaybackStateSnapshot(identifier, oldState) ?: return
+      val playbackState =
+        PlaybackStatePersistence.buildEntity(
+          oldState = oldState,
+          snapshot = snapshot,
+          savePositionOnQuit = playerPreferences.savePositionOnQuit.get(),
+          watchedThreshold = browserPreferences.watchedThreshold.get(),
+        )
+      playbackStateRepository.upsert(playbackState)
+      PlaybackStateEvents.notifyChanged(identifier)
+    }.onFailure { error ->
+      Log.e(TAG, "Error saving playback state from service", error)
+    }
+  }
+
+  private fun capturePlaybackStateSnapshot(
+    identifier: String,
+    oldState: PlaybackStateEntity?,
+  ): PlaybackStateSnapshot? {
+    if (identifier.isBlank()) return null
+
+    return PlaybackStateSnapshot(
+      mediaIdentifier = identifier,
+      mediaTitle = mediaTitle.ifBlank { identifier },
+      currentPosition = readMpvIntSeconds("time-pos", currentPositionSeconds.toInt()),
+      duration = readMpvIntSeconds("duration", mediaDurationSeconds.toInt()),
+      playbackSpeed = readMpvDouble("speed", oldState?.playbackSpeed ?: DEFAULT_PLAYBACK_STATE_SPEED),
+      videoZoom = readMpvDouble("video-zoom", oldState?.videoZoom?.toDouble() ?: 0.0).toFloat(),
+      sid = readMpvTrackId("sid", oldState?.sid ?: -1),
+      secondarySid = readMpvTrackId("secondary-sid", oldState?.secondarySid ?: -1),
+      subDelayMs =
+        (readMpvDouble(
+          "sub-delay",
+          (oldState?.subDelay ?: 0) / PLAYBACK_STATE_MILLISECONDS_TO_SECONDS.toDouble(),
+        ) * PLAYBACK_STATE_MILLISECONDS_TO_SECONDS).toInt(),
+      subSpeed = readMpvDouble("sub-speed", oldState?.subSpeed ?: DEFAULT_PLAYBACK_STATE_SUB_SPEED),
+      aid = readMpvTrackId("aid", oldState?.aid ?: -1),
+      audioDelayMs =
+        (readMpvDouble(
+          "audio-delay",
+          (oldState?.audioDelay ?: 0) / PLAYBACK_STATE_MILLISECONDS_TO_SECONDS.toDouble(),
+        ) * PLAYBACK_STATE_MILLISECONDS_TO_SECONDS).toInt(),
+      externalSubtitles = oldState?.externalSubtitles.orEmpty(),
+    )
+  }
+
+  private fun readMpvIntSeconds(
+    property: String,
+    fallback: Int,
+  ): Int =
+    runCatching {
+      MPVLib.getPropertyDouble(property)?.toInt()
+        ?: MPVLib.getPropertyInt(property)
+        ?: fallback
+    }.getOrDefault(fallback)
+
+  private fun readMpvDouble(
+    property: String,
+    fallback: Double,
+  ): Double =
+    runCatching {
+      MPVLib.getPropertyDouble(property) ?: fallback
+    }.getOrDefault(fallback)
+
+  private fun readMpvTrackId(
+    property: String,
+    fallback: Int,
+  ): Int =
+    runCatching {
+      when (val value = MPVLib.getPropertyString(property)) {
+        null -> fallback
+        "no" -> -1
+        else -> value.toIntOrNull() ?: fallback
+      }
+    }.getOrDefault(fallback)
 
   override fun onDestroy() {
     try {
       Log.d(TAG, "Service destroyed")
 
       isServiceRunning = false
+      savePlaybackStateBlocking()
 
       try {
         MPVLib.removeObserver(this)

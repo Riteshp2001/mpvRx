@@ -59,6 +59,7 @@ import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import app.gyrolet.mpvrx.ui.preferences.CustomButton
+import app.gyrolet.mpvrx.ui.preferences.CustomButtonScriptLanguage
 import java.io.File
 import java.security.MessageDigest
 import androidx.core.net.toUri
@@ -545,7 +546,14 @@ class PlayerViewModel(
   private val _transformState = MutableStateFlow(TransformState())
   val transformState: StateFlow<TransformState> = _transformState.asStateFlow()
 
-  private val _isHdrScreenOutputEnabled = MutableStateFlow(isHdrScreenOutputAvailable() && decoderPreferences.hdrScreenOutput.get())
+  private val _hdrScreenMode = MutableStateFlow(initialHdrScreenMode())
+  val hdrScreenMode: StateFlow<HdrScreenMode> = _hdrScreenMode.asStateFlow()
+
+  private val _isHdrScreenOutputPipelineReady = MutableStateFlow(isHdrScreenOutputAvailable())
+  val isHdrScreenOutputPipelineReady: StateFlow<Boolean> = _isHdrScreenOutputPipelineReady.asStateFlow()
+
+  private val _isHdrScreenOutputEnabled =
+    MutableStateFlow(_isHdrScreenOutputPipelineReady.value && _hdrScreenMode.value != HdrScreenMode.OFF)
   val isHdrScreenOutputEnabled: StateFlow<Boolean> = _isHdrScreenOutputEnabled.asStateFlow()
 
   // ==================== Ambience Mode ======================================
@@ -674,9 +682,33 @@ class PlayerViewModel(
   @Volatile
   private var isMpvReadyForCustomButtons = false
   @Volatile
-  private var customButtonsScriptPath: String? = null
-  private val customButtonsLoadedFlagProperty = "user-data/mpvrx/custombuttons_loaded"
-  private val customButtonsVersionProperty = "user-data/mpvrx/custombuttons_version"
+  private var customButtonsScriptPaths: Map<CustomButtonScriptLanguage, String> = emptyMap()
+  private val legacyCustomButtonsLoadedFlagProperty = "user-data/mpvrx/custombuttons_loaded"
+  private val legacyCustomButtonsVersionProperty = "user-data/mpvrx/custombuttons_version"
+  private val customButtonScriptTargets =
+    listOf(
+      CustomButtonScriptTarget(
+        language = CustomButtonScriptLanguage.LUA,
+        fileName = "custombuttons.lua",
+        loadedFlagProperty = "user-data/mpvrx/custombuttons_lua_loaded",
+        versionProperty = "user-data/mpvrx/custombuttons_lua_version",
+      ),
+      CustomButtonScriptTarget(
+        language = CustomButtonScriptLanguage.JS,
+        fileName = "custombuttons.js",
+        loadedFlagProperty = "user-data/mpvrx/custombuttons_js_loaded",
+        versionProperty = "user-data/mpvrx/custombuttons_js_version",
+      ),
+    )
+  private val customButtonScriptTargetsByLanguage =
+    customButtonScriptTargets.associateBy { it.language }
+
+  private data class CustomButtonScriptTarget(
+    val language: CustomButtonScriptLanguage,
+    val fileName: String,
+    val loadedFlagProperty: String,
+    val versionProperty: String,
+  )
 
   fun onMpvCoreInitialized() {
     isMpvReadyForCustomButtons = true
@@ -707,59 +739,101 @@ class PlayerViewModel(
     customButtonsSetupJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         val buttons = mutableListOf<CustomButtonState>()
-        val rawScriptContent = buildString {
-          val jsonString = playerPreferences.customButtons.get()
-          if (jsonString.isNotBlank()) {
+        val scriptBodies = linkedMapOf<CustomButtonScriptLanguage, StringBuilder>()
+        val jsonString = playerPreferences.customButtons.get()
+        if (jsonString.isNotBlank()) {
+          try {
+            // Try new slot-based format first
+            val slotsData = json.decodeFromString<app.gyrolet.mpvrx.ui.preferences.CustomButtonSlots>(jsonString)
+            slotsData.slots.forEachIndexed { index, btn ->
+              if (btn != null && btn.enabled) {
+                val safeId = btn.id.replace("-", "_")
+                val isLeft = index < 4 // Slots 0-3 are left, 4-7 are right
+                processButton(
+                  originalId = btn.id,
+                  safeId = safeId,
+                  label = btn.title,
+                  command = btn.content,
+                  longPressCommand = btn.longPressContent,
+                  onStartup = btn.onStartup,
+                  language = btn.scriptLanguage,
+                  scriptBuilder = scriptBodies.getOrPut(btn.scriptLanguage) { StringBuilder() },
+                  isLeft = isLeft,
+                  uiList = buttons,
+                )
+              }
+            }
+          } catch (e: Exception) {
+            // Fallback to old format for backward compatibility
             try {
-               // Try new slot-based format first
-               val slotsData = json.decodeFromString<app.gyrolet.mpvrx.ui.preferences.CustomButtonSlots>(jsonString)
-               slotsData.slots.forEachIndexed { index, btn ->
-                 if (btn != null && btn.enabled) {   // skip disabled buttons
-                   val safeId = btn.id.replace("-", "_")
-                   val isLeft = index < 4 // Slots 0-3 are left, 4-7 are right
-                   processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, isLeft, buttons)
-                 }
-               }
-            } catch (e: Exception) {
-               // Fallback to old format for backward compatibility
-               try {
-                 val customButtonsList = json.decodeFromString<List<app.gyrolet.mpvrx.ui.preferences.CustomButton>>(jsonString)
-                 customButtonsList.forEachIndexed { index, btn ->
-                   val safeId = btn.id.replace("-", "_")
-                   val isLeft = index < 4 // First 4 are left buttons, rest are right
-                   processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, isLeft, buttons)
-                 }
-               } catch (e2: Exception) {
-                 e2.printStackTrace()
-               }
+              val customButtonsList = json.decodeFromString<List<app.gyrolet.mpvrx.ui.preferences.CustomButton>>(jsonString)
+              customButtonsList.forEachIndexed { index, btn ->
+                val safeId = btn.id.replace("-", "_")
+                val isLeft = index < 4 // First 4 are left buttons, rest are right
+                processButton(
+                  originalId = btn.id,
+                  safeId = safeId,
+                  label = btn.title,
+                  command = btn.content,
+                  longPressCommand = btn.longPressContent,
+                  onStartup = btn.onStartup,
+                  language = btn.scriptLanguage,
+                  scriptBuilder = scriptBodies.getOrPut(btn.scriptLanguage) { StringBuilder() },
+                  isLeft = isLeft,
+                  uiList = buttons,
+                )
+              }
+            } catch (e2: Exception) {
+              e2.printStackTrace()
             }
           }
         }
 
         _customButtons.value = buttons
 
-        if (rawScriptContent.isNotEmpty()) {
-          val scriptVersion = rawScriptContent.md5()
-          val scriptContent = buildCustomButtonsScript(rawScriptContent, scriptVersion)
-          val scriptsDir = File(host.context.filesDir, "scripts")
-          if (!scriptsDir.exists()) scriptsDir.mkdirs()
-          
-          val file = File(scriptsDir, "custombuttons.lua")
-          file.writeText(scriptContent)
-          customButtonsScriptPath = file.absolutePath
+        val generatedPaths = mutableMapOf<CustomButtonScriptLanguage, String>()
+        val scriptsDir = File(host.context.filesDir, "scripts")
+        if (!scriptsDir.exists()) scriptsDir.mkdirs()
 
+        scriptBodies.forEach { (language, bodyBuilder) ->
+          val rawScriptContent = bodyBuilder.toString()
+          if (rawScriptContent.isBlank()) return@forEach
+
+          val target = customButtonScriptTargetsByLanguage[language] ?: return@forEach
+          val scriptVersion = rawScriptContent.md5()
+          val scriptContent = buildCustomButtonsScript(rawScriptContent, scriptVersion, target)
+
+          val file = File(scriptsDir, target.fileName)
+          file.writeText(scriptContent)
+          generatedPaths[language] = file.absolutePath
+        }
+
+        customButtonsScriptPaths = generatedPaths.toMap()
+        deleteCustomButtonsScriptFiles(activePaths = generatedPaths.values.toSet())
+        customButtonScriptTargets
+          .filter { it.language !in generatedPaths.keys }
+          .forEach(::deactivateCustomButtonsScript)
+
+        if (generatedPaths.isNotEmpty()) {
           if (isMpvReadyForCustomButtons) {
-            val loaded = loadCustomButtonsScript(file)
-            if (!loaded) {
-              android.util.Log.w("PlayerViewModel", "Failed to load custombuttons.lua")
+            customButtonsLoadMutex.withLock {
+              deactivateLegacyCustomButtonsScript()
+              generatedPaths.forEach { (language, path) ->
+                val target = customButtonScriptTargetsByLanguage[language] ?: return@forEach
+                val loaded = loadCustomButtonsScript(File(path), target)
+                if (!loaded) {
+                  android.util.Log.w("PlayerViewModel", "Failed to load ${target.fileName}")
+                }
+              }
             }
           } else {
-            android.util.Log.d("PlayerViewModel", "Deferring custombuttons.lua load until MPV is ready")
+            android.util.Log.d("PlayerViewModel", "Deferring custom button scripts until MPV is ready")
           }
         } else {
-          customButtonsScriptPath = null
-          deleteCustomButtonsScriptFile()
-          deactivateCustomButtonsScript()
+          customButtonsScriptPaths = emptyMap()
+          deleteCustomButtonsScriptFiles()
+          customButtonScriptTargets.forEach(::deactivateCustomButtonsScript)
+          deactivateLegacyCustomButtonsScript()
         }
       } catch (e: Exception) {
         android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
@@ -771,74 +845,124 @@ class PlayerViewModel(
     if (!isMpvReadyForCustomButtons) return
 
     viewModelScope.launch(Dispatchers.IO) {
+      var rebuildNeeded = false
       customButtonsLoadMutex.withLock {
-        val scriptPath = customButtonsScriptPath
-        if (scriptPath.isNullOrBlank()) return@withLock
-        if (isCustomButtonsScriptLoaded()) return@withLock
+        val scriptPaths = customButtonsScriptPaths
+        if (scriptPaths.isEmpty()) return@withLock
 
-        val file = File(scriptPath)
-        if (!file.exists()) {
-          android.util.Log.w("PlayerViewModel", "custombuttons.lua missing during $reason, rebuilding")
-          setupCustomButtons()
-          return@withLock
-        }
+        deactivateLegacyCustomButtonsScript()
 
-        val loaded = loadCustomButtonsScript(file)
-        if (!loaded) {
-          android.util.Log.w("PlayerViewModel", "custombuttons.lua load failed during $reason")
+        for ((language, scriptPath) in scriptPaths) {
+          val target = customButtonScriptTargetsByLanguage[language] ?: continue
+          if (isCustomButtonsScriptLoaded(target)) continue
+
+          val file = File(scriptPath)
+          if (!file.exists()) {
+            android.util.Log.w("PlayerViewModel", "${target.fileName} missing during $reason, rebuilding")
+            rebuildNeeded = true
+            break
+          }
+
+          val loaded = loadCustomButtonsScript(file, target)
+          if (!loaded) {
+            android.util.Log.w("PlayerViewModel", "${target.fileName} load failed during $reason")
+          }
         }
+      }
+      if (rebuildNeeded) {
+        setupCustomButtons()
       }
     }
   }
 
-  private fun isCustomButtonsScriptLoaded(): Boolean =
-    runCatching { MPVLib.getPropertyString(customButtonsLoadedFlagProperty) == "1" }
+  private fun isCustomButtonsScriptLoaded(target: CustomButtonScriptTarget): Boolean =
+    runCatching { MPVLib.getPropertyString(target.loadedFlagProperty) == "1" }
       .getOrDefault(false)
 
-  private fun loadCustomButtonsScript(file: File): Boolean {
-    runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
+  private fun loadCustomButtonsScript(
+    file: File,
+    target: CustomButtonScriptTarget,
+  ): Boolean {
+    runCatching { MPVLib.setPropertyString(target.loadedFlagProperty, "0") }
 
     return runCatching {
       MPVLib.command("load-script", file.absolutePath)
       true
     }.getOrElse {
-      android.util.Log.w("PlayerViewModel", "load-script failed: ${it.message}")
+      android.util.Log.w("PlayerViewModel", "load-script failed for ${target.fileName}: ${it.message}")
       false
     }
   }
 
-  private fun deactivateCustomButtonsScript() {
+  private fun deactivateCustomButtonsScript(target: CustomButtonScriptTarget) {
     runCatching {
-      MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0")
-      MPVLib.setPropertyString(customButtonsVersionProperty, "")
+      MPVLib.setPropertyString(target.loadedFlagProperty, "0")
+      MPVLib.setPropertyString(target.versionProperty, "")
     }
   }
 
-  private fun deleteCustomButtonsScriptFile() {
+  private fun deactivateLegacyCustomButtonsScript() {
     runCatching {
-      File(host.context.filesDir, "scripts/custombuttons.lua").takeIf { it.exists() }?.delete()
+      MPVLib.setPropertyString(legacyCustomButtonsLoadedFlagProperty, "0")
+      MPVLib.setPropertyString(legacyCustomButtonsVersionProperty, "")
+    }
+  }
+
+  private fun deleteCustomButtonsScriptFiles(activePaths: Set<String> = emptySet()) {
+    runCatching {
+      val activeNames = activePaths.map { File(it).name }.toSet()
+      val scriptsDir = File(host.context.filesDir, "scripts")
+      customButtonScriptTargets.forEach { target ->
+        val file = File(scriptsDir, target.fileName)
+        if (file.exists() && file.name !in activeNames) {
+          file.delete()
+        }
+      }
     }
   }
 
   private fun buildCustomButtonsScript(
     body: String,
     version: String,
+    target: CustomButtonScriptTarget,
   ): String =
-    buildString {
-      appendLine("local loaded_flag_property = '$customButtonsLoadedFlagProperty'")
-      appendLine("local version_property = '$customButtonsVersionProperty'")
-      appendLine("local instance_version = '$version'")
-      appendLine("if mp.get_property_native(version_property) == instance_version then")
-      appendLine("    mp.set_property_native(loaded_flag_property, '1')")
-      appendLine("    return")
-      appendLine("end")
-      appendLine("mp.set_property_native(version_property, instance_version)")
-      appendLine("mp.set_property_native(loaded_flag_property, '1')")
-      appendLine("local function is_active_instance()")
-      appendLine("    return mp.get_property_native(version_property) == instance_version")
-      appendLine("end")
-      appendLine()
-      append(body)
+    when (target.language) {
+      CustomButtonScriptLanguage.LUA ->
+        buildString {
+          appendLine("local loaded_flag_property = '${target.loadedFlagProperty.toScriptLiteral()}'")
+          appendLine("local version_property = '${target.versionProperty.toScriptLiteral()}'")
+          appendLine("local instance_version = '${version.toScriptLiteral()}'")
+          appendLine("if mp.get_property_native(version_property) == instance_version then")
+          appendLine("    mp.set_property_native(loaded_flag_property, '1')")
+          appendLine("    return")
+          appendLine("end")
+          appendLine("mp.set_property_native(version_property, instance_version)")
+          appendLine("mp.set_property_native(loaded_flag_property, '1')")
+          appendLine("local function is_active_instance()")
+          appendLine("    return mp.get_property_native(version_property) == instance_version")
+          appendLine("end")
+          appendLine()
+          append(body)
+        }
+
+      CustomButtonScriptLanguage.JS ->
+        buildString {
+          appendLine("var loadedFlagProperty = '${target.loadedFlagProperty.toScriptLiteral()}';")
+          appendLine("var versionProperty = '${target.versionProperty.toScriptLiteral()}';")
+          appendLine("var instanceVersion = '${version.toScriptLiteral()}';")
+          appendLine("if (mp.get_property_native(versionProperty) === instanceVersion) {")
+          appendLine("    mp.set_property_native(loadedFlagProperty, '1');")
+          appendLine("} else {")
+          appendLine("    mp.set_property_native(versionProperty, instanceVersion);")
+          appendLine("    mp.set_property_native(loadedFlagProperty, '1');")
+          appendLine("    var isActiveInstance = function() {")
+          appendLine("        return mp.get_property_native(versionProperty) === instanceVersion;")
+          appendLine("    };")
+          appendLine()
+          append(body.prependIndent("    "))
+          appendLine()
+          appendLine("}")
+        }
     }
 
   fun callCustomButton(id: String) {
@@ -851,13 +975,15 @@ class PlayerViewModel(
     MPVLib.command("script-message", "call_button_long_$safeId")
   }
 
-  private fun StringBuilder.processButton(
+  private fun processButton(
     originalId: String,
     safeId: String,
     label: String,
     command: String,
     longPressCommand: String,
     onStartup: String,
+    language: CustomButtonScriptLanguage,
+    scriptBuilder: StringBuilder,
     isLeft: Boolean,
     uiList: MutableList<CustomButtonState>
   ) {
@@ -866,40 +992,68 @@ class PlayerViewModel(
       
       // On Startup Code
       if (onStartup.isNotBlank()) {
-          append(onStartup)
-          append("\n")
+        scriptBuilder.append(onStartup)
+        scriptBuilder.append("\n")
       }
 
       // Click Handler
       if (command.isNotBlank()) {
-        append(
-          """
-          function button_${safeId}()
-              if not is_active_instance() then return end
-              ${command}
-          end
-          mp.register_script_message('call_button_${safeId}', button_${safeId})
-          """.trimIndent()
+        scriptBuilder.appendButtonHandler(
+          functionName = "button_$safeId",
+          messageName = "call_button_$safeId",
+          command = command,
+          language = language,
         )
-        append("\n")
       }
       
       // Long Press Handler
       if (longPressCommand.isNotBlank()) {
-        append(
-          """
-          function button_long_${safeId}()
-              if not is_active_instance() then return end
-              ${longPressCommand}
-          end
-          mp.register_script_message('call_button_long_${safeId}', button_long_${safeId})
-          """.trimIndent()
+        scriptBuilder.appendButtonHandler(
+          functionName = "button_long_$safeId",
+          messageName = "call_button_long_$safeId",
+          command = longPressCommand,
+          language = language,
         )
-        append("\n")
       }
     }
 
   }
+
+  private fun StringBuilder.appendButtonHandler(
+    functionName: String,
+    messageName: String,
+    command: String,
+    language: CustomButtonScriptLanguage,
+  ) {
+    when (language) {
+      CustomButtonScriptLanguage.LUA -> {
+        append(
+          """
+          function $functionName()
+              if not is_active_instance() then return end
+              $command
+          end
+          mp.register_script_message('$messageName', $functionName)
+          """.trimIndent()
+        )
+      }
+      CustomButtonScriptLanguage.JS -> {
+        append(
+          """
+          var $functionName = function() {
+              if (!isActiveInstance()) return;
+              $command
+          };
+          mp.register_script_message('$messageName', $functionName);
+          """.trimIndent()
+        )
+      }
+    }
+    append("\n")
+  }
+
+  private fun String.toScriptLiteral(): String =
+    replace("\\", "\\\\").replace("'", "\\'")
 
   // Cached values
   private val doubleTapToSeekDuration by lazy { gesturePreferences.doubleTapToSeekDuration.get() }
@@ -2194,6 +2348,7 @@ class PlayerViewModel(
             "audio_delay" -> Panels.AudioDelay
             "video_filters" -> Panels.VideoFilters
             "lua_scripts" -> Panels.LuaScripts
+            "hdr_screen_output" -> Panels.HdrScreenOutput
             else -> Panels.None
           }
       }
@@ -2986,28 +3141,52 @@ class PlayerViewModel(
   }
 
   fun toggleHdrScreenOutput() {
-    if (!isHdrScreenOutputAvailable()) {
+    val nextMode = if (_hdrScreenMode.value == HdrScreenMode.OFF) HdrScreenMode.HDR else HdrScreenMode.OFF
+    setHdrScreenMode(nextMode)
+  }
+
+  fun setHdrScreenMode(mode: HdrScreenMode) {
+    val pipelineReady = refreshHdrScreenOutputPipelineState()
+    if (mode != HdrScreenMode.OFF && !pipelineReady) {
       playerUpdate.value = PlayerUpdates.ShowText("HDR screen output needs GPU Next + Vulkan")
+      applyHdrScreenOutput(HdrScreenMode.OFF)
       return
     }
 
-    val enabled = !_isHdrScreenOutputEnabled.value
-    _isHdrScreenOutputEnabled.value = enabled
-    decoderPreferences.hdrScreenOutput.set(enabled)
-    applyHdrScreenOutput(enabled)
-    playerUpdate.value = PlayerUpdates.ShowText(if (enabled) "HDR Screen Output: ON" else "HDR Screen Output: OFF")
+    _hdrScreenMode.value = mode
+    _isHdrScreenOutputEnabled.value = pipelineReady && mode != HdrScreenMode.OFF
+    decoderPreferences.hdrScreenMode.set(mode)
+    decoderPreferences.hdrScreenOutput.set(mode != HdrScreenMode.OFF)
+    applyHdrScreenOutput(mode)
+    playerUpdate.value = PlayerUpdates.ShowText("HDR Screen Output: ${mode.shortTitle}")
   }
 
   private fun isHdrScreenOutputAvailable(): Boolean =
     decoderPreferences.useVulkan.get() && decoderPreferences.gpuNext.get()
 
-  private fun applyHdrScreenOutput(enabled: Boolean) {
+  private fun initialHdrScreenMode(): HdrScreenMode {
+    val savedMode = decoderPreferences.hdrScreenMode.get()
+    return if (savedMode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) {
+      HdrScreenMode.HDR
+    } else {
+      savedMode
+    }
+  }
+
+  private fun refreshHdrScreenOutputPipelineState(): Boolean {
     val pipelineReady = isHdrScreenOutputAvailable()
+    _isHdrScreenOutputPipelineReady.value = pipelineReady
+    _isHdrScreenOutputEnabled.value = pipelineReady && _hdrScreenMode.value != HdrScreenMode.OFF
+    return pipelineReady
+  }
+
+  private fun applyHdrScreenOutput(mode: HdrScreenMode) {
+    val pipelineReady = refreshHdrScreenOutputPipelineState()
     runCatching {
-      applyHdrScreenOutputOptions(enabled, pipelineReady)
-      applyHdrScreenOutputProperties(enabled, pipelineReady)
+      applyHdrScreenOutputOptions(mode, pipelineReady)
+      applyHdrScreenOutputProperties(mode, pipelineReady)
     }.onFailure { e ->
-      Log.e(TAG, "Error applying HDR screen output: enabled=$enabled, pipelineReady=$pipelineReady", e)
+      Log.e(TAG, "Error applying HDR screen output: mode=$mode, pipelineReady=$pipelineReady", e)
     }
   }
 

@@ -120,8 +120,11 @@ class MPVView(
     MPVLib.setOptionString("gpu-context", backend.gpuContext)
     Log.i(TAG, "Selected renderer: vo=${backend.vo}, gpu-api=${backend.gpuApi}, hwdec=$hwdecMode (${backend.reason})")
 
+    val hdrScreenMode = decoderPreferences.hdrScreenMode.get().let { mode ->
+      if (mode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) HdrScreenMode.HDR else mode
+    }
     applyHdrScreenOutputOptions(
-      enabled = decoderPreferences.hdrScreenOutput.get(),
+      mode = hdrScreenMode,
       pipelineReady = useVulkan && backend.vo == "gpu-next",
     )
 

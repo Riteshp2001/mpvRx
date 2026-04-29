@@ -69,6 +69,7 @@ import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.listTreeFilesSafely
 import app.gyrolet.mpvrx.utils.media.openPersistedTreeDocument
+import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.SubtitleOps
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import com.github.k1rakishou.fsaf.FileManager
@@ -287,22 +288,6 @@ class PlayerActivity :
   private var lastBackgroundThumbnail: Bitmap? = null
   private var currentPlayableUri: String? = null // Store current URI for notification re-entry
   private val playbackRenderDispatcher = Dispatchers.Default.limitedParallelism(1)
-
-  private data class PlaybackStateSnapshot(
-    val mediaIdentifier: String,
-    val mediaTitle: String,
-    val currentPosition: Int,
-    val duration: Int,
-    val playbackSpeed: Double,
-    val videoZoom: Float,
-    val sid: Int,
-    val secondarySid: Int,
-    val subDelayMs: Int,
-    val subSpeed: Double,
-    val aid: Int,
-    val audioDelayMs: Int,
-    val externalSubtitles: String,
-  )
 
   // ==================== Background Playback ====================
 
@@ -884,7 +869,7 @@ class PlayerActivity :
         restoreSystemUI()
       }
 
-      saveVideoPlaybackState(fileName)
+      saveVideoPlaybackState(fileName, immediate = true)
     }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
     }
@@ -2655,47 +2640,15 @@ class PlayerActivity :
         val oldState = playbackStateRepository.getVideoDataByTitle(snapshot.mediaIdentifier)
         Log.d(TAG, "Saving playback state for: ${snapshot.mediaTitle} (identifier: ${snapshot.mediaIdentifier})")
 
-        // lastPosition is where the player should resume from
-        val lastPosition = calculateSavePosition(oldState, snapshot.currentPosition, snapshot.duration)
-        val duration = snapshot.duration
-        
-        // timeRemaining represents the actual watch progress, independent of where we resume
-        val timeRemaining = if (duration > snapshot.currentPosition) duration - snapshot.currentPosition else 0
-
-        playbackStateRepository.upsert(
-          PlaybackStateEntity(
-            mediaTitle = snapshot.mediaIdentifier,
-            lastPosition = lastPosition,
-            playbackSpeed = snapshot.playbackSpeed,
-            videoZoom = snapshot.videoZoom,
-            sid = snapshot.sid,
-            secondarySid = snapshot.secondarySid,
-            subDelay = snapshot.subDelayMs,
-            subSpeed = snapshot.subSpeed,
-            aid = snapshot.aid,
-            audioDelay = snapshot.audioDelayMs,
-            timeRemaining = timeRemaining,
-            externalSubtitles = snapshot.externalSubtitles,
-            hasBeenWatched = run {
-              val watchedThreshold = browserPreferences.watchedThreshold.get()
-              val durationSeconds = duration.toFloat()
-              val currentPos = snapshot.currentPosition
-              
-              // Check if we are at the end (effectively watched)
-              // Using a small buffer (1s) to account for float inaccuracies or near-end stops
-              val isFinished = (durationSeconds > 0) && (currentPos >= durationSeconds - 1)
-
-              val progress = if (durationSeconds > 0) currentPos.toFloat() / durationSeconds else 0f
-              val isCurrentlyWatched = progress >= (watchedThreshold / 100f)
-              
-              // Also check lastPosition in case we are saving partway through (though lastPosition might be 0 if finished)
-              val oldProgress = if (durationSeconds > 0) lastPosition.toFloat() / durationSeconds else 0f
-              val wasWatchedThisSession = oldProgress >= (watchedThreshold / 100f)
-
-              isCurrentlyWatched || isFinished || wasWatchedThisSession || (oldState?.hasBeenWatched == true)
-            },
-          ),
-        )
+        val playbackState =
+          PlaybackStatePersistence.buildEntity(
+            oldState = oldState,
+            snapshot = snapshot,
+            savePositionOnQuit = playerPreferences.savePositionOnQuit.get(),
+            watchedThreshold = browserPreferences.watchedThreshold.get(),
+          )
+        playbackStateRepository.upsert(playbackState)
+        PlaybackStateEvents.notifyChanged(snapshot.mediaIdentifier)
       }.onFailure { e ->
         Log.e(TAG, "Error saving playback state", e)
       }
@@ -2708,8 +2661,8 @@ class PlayerActivity :
     return PlaybackStateSnapshot(
       mediaIdentifier = mediaIdentifier,
       mediaTitle = mediaTitle,
-      currentPosition = viewModel.pos ?: 0,
-      duration = viewModel.duration ?: 0,
+      currentPosition = readMpvIntSeconds("time-pos", viewModel.pos ?: 0),
+      duration = readMpvIntSeconds("duration", viewModel.duration ?: 0),
       playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
       videoZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f,
       sid = player.sid,
@@ -2722,26 +2675,15 @@ class PlayerActivity :
     )
   }
 
-  /**
-   * Calculates the position to save based on user preferences.
-   *
-   * If "savePositionOnQuit" is not enabled, returns the previous saved position or 0.
-   * If enabled, saves the current playback position unless at end of video.
-   *
-   * @param oldState Previous playback state if it exists
-   * @return Position in seconds to save
-   */
-  private fun calculateSavePosition(
-    oldState: PlaybackStateEntity?,
-    currentPosition: Int,
-    duration: Int,
-  ): Int {
-    if (!playerPreferences.savePositionOnQuit.get()) {
-      return oldState?.lastPosition ?: 0
-    }
-
-    return if (currentPosition < duration - 1) currentPosition else 0
-  }
+  private fun readMpvIntSeconds(
+    property: String,
+    fallback: Int,
+  ): Int =
+    runCatching {
+      MPVLib.getPropertyDouble(property)?.toInt()
+        ?: MPVLib.getPropertyInt(property)
+        ?: fallback
+    }.getOrDefault(fallback)
 
   /**
    * Loads and applies saved playback state from the database.
@@ -3484,6 +3426,7 @@ class PlayerActivity :
       putExtra("media_title", fileName)
       putExtra("media_artist", artist)
       putExtra("media_uri", currentPlayableUri)
+      putExtra("media_identifier", mediaIdentifier)
     }
     
     try {
@@ -3861,7 +3804,13 @@ class PlayerActivity :
         null
       }
 
-    service.setMediaInfo(title = title, artist = artist, thumbnail = cachedThumbnail, uri = currentPlayableUri)
+    service.setMediaInfo(
+      title = title,
+      artist = artist,
+      thumbnail = cachedThumbnail,
+      uri = currentPlayableUri,
+      identifier = mediaIdentifier,
+    )
     service.setChapters(viewModel.chapters.value.map { ChapterNode(time = it.start, title = it.name) })
 
     if (!updateThumbnail || thumbnailKey.isBlank()) return
@@ -3881,7 +3830,13 @@ class PlayerActivity :
 
         lastBackgroundThumbnailKey = thumbnailKey
         lastBackgroundThumbnail = generatedThumbnail
-        mediaPlaybackService?.setMediaInfo(title = title, artist = artist, thumbnail = generatedThumbnail, uri = currentPlayableUri)
+        mediaPlaybackService?.setMediaInfo(
+          title = title,
+          artist = artist,
+          thumbnail = generatedThumbnail,
+          uri = currentPlayableUri,
+          identifier = mediaIdentifier,
+        )
       }
   }
 

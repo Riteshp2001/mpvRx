@@ -347,7 +347,7 @@ object AdvancedPreferencesScreen : Screen {
           
           // Scripts Section
           item {
-            PreferenceSectionHeader(title = "Scripts")
+            PreferenceSectionHeader(title = "Scripts (Lua / JS)")
           }
           
           item {
@@ -358,10 +358,10 @@ object AdvancedPreferencesScreen : Screen {
               SwitchPreference(
                 value = enableLuaScripts,
                 onValueChange = preferences.enableLuaScripts::set,
-                title = { Text("Enable Scripts (Lua / JS)") },
+                title = { Text("Enable scripts") },
                 summary = { 
                   Text(
-                    "Load Lua and JavaScript scripts from your MPV configuration directory",
+                    "Load scripts from your MPV configuration directory",
                     color = MaterialTheme.colorScheme.outline,
                   ) 
                 },
@@ -370,7 +370,7 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
               
               Preference(
-                title = { Text("Manage Scripts (Lua / JS)") },
+                title = { Text("Manage scripts") },
                 summary = {
                   when {
                     mpvConfStorageLocation.isBlank() || !enableLuaScripts -> Text(
@@ -400,10 +400,10 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
-                title = { Text("Custom Lua") },
+                title = { Text("Custom buttons") },
                 summary = {
                   Text(
-                    "Create and manage custom Lua buttons",
+                    "Create and manage script-powered player buttons",
                     color = MaterialTheme.colorScheme.outline
                   )
                 },

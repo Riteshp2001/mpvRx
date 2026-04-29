@@ -131,7 +131,7 @@ fun LuaRuntimeStatusCard(
     }
   val summary =
     when {
-      !hasStorageLocation -> "Set an MPV config folder in Advanced settings to browse Lua and JavaScript scripts."
+      !hasStorageLocation -> "Set an MPV config folder in Advanced settings to browse scripts."
       enabled && availableScriptsCount == 0 -> "Script runtime is on, but no .lua or .js files were found in your scripts folder."
       enabled && enabledScriptsCount == 0 -> "Script runtime is on. Tap a script below to arm it for playback."
       enabled -> "$enabledScriptsCount of $availableScriptsCount scripts enabled for playback."
@@ -186,7 +186,7 @@ fun LuaRuntimeStatusCard(
         verticalArrangement = Arrangement.spacedBy(2.dp),
       ) {
         Text(
-          text = "Scripts (Lua / JS)",
+          text = "Script runtime",
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.SemiBold,
         )
