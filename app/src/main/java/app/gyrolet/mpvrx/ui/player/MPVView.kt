@@ -279,7 +279,7 @@ class MPVView(
     MPVLib.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
     // Prevent automatic volume normalization when downmixing multi-channel audio
     MPVLib.setOptionString("audio-normalize-downmix", "no")
-    
+
     // Volume normalization using dynamic audio normalization filter
     if (audioPreferences.volumeNormalization.get()) {
       MPVLib.setOptionString("af", "dynaudnorm")
@@ -303,7 +303,7 @@ class MPVView(
     MPVLib.setOptionString("embeddedfonts", "yes")
     // Auto-detect font provider (system fonts, embedded fonts, etc.)
     MPVLib.setOptionString("sub-font-provider", "auto")
-    
+
     // Delay and speed for both primary and secondary
     val subDelay = (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString()
     val subSpeed = subtitlesPreferences.defaultSubSpeed.get().toString()
@@ -441,7 +441,7 @@ class MPVView(
         Anime4KManager.Quality.BALANCED
       }
 
-      val selection = selectRuntimeStableAnime4K(mode, quality)
+      val selection = selectRuntimeStableAnime4K(mode, quality, context)
       selection.reason?.let { reason ->
         Log.i(TAG, "Anime4K thermal guard: $reason")
       }

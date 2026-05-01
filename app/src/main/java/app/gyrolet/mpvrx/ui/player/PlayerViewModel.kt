@@ -371,15 +371,21 @@ class PlayerViewModel(
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
 
   init {
-    // Use MPV's regular property updates for baseline position changes, then add
-    // a lighter-weight poll only while playback is active.
-    viewModelScope.launch(playbackStateDispatcher) {
-      MPVLib.propInt["time-pos"].collect { time ->
-        _precisePosition.value = (time ?: 0).toFloat()
-      }
-    }
-
-    // Poll more frequently only when controls/seek UI is visible.
+    // Single adaptive polling loop for playback position.
+    //
+    // Previously there were TWO concurrent mechanisms writing to _precisePosition:
+    //  1. An event-driven collect on MPVLib.propInt["time-pos"]
+    //  2. This polling loop via MPVLib.getPropertyDouble("time-pos")
+    // Having both caused redundant StateFlow emissions and double recompositions of the
+    // seek bar on every MPV property event.  The polling loop alone is sufficient:
+    //  - It provides Double precision (vs integer from the observer)
+    //  - It drives maybeAutoSkipIntro() which needs sub-second accuracy
+    //  - The adaptive interval keeps CPU cost proportional to actual UI demand
+    //
+    // Intervals:
+    //   50 ms  – seek bar / controls visible (smooth scrubbing)
+    //   500 ms – uninterrupted playback (halved from original 250 ms to cut idle overhead)
+    //   500 ms – paused
     viewModelScope.launch(playbackStateDispatcher) {
       while (isActive) {
         runCatching {
@@ -396,10 +402,34 @@ class PlayerViewModel(
         val intervalMs =
           when {
             paused == false && (seekBarVisibleForPolling || controlsVisibleForPolling) -> 50L
-            paused == false -> 250L
+            paused == false -> 500L   // was 250 ms — halved to reduce idle CPU wake-ups
             else -> 500L
           }
         delay(intervalMs)
+      }
+    }
+
+    // ── Thermal monitor ────────────────────────────────────────────────────────
+    // Sample Android's PowerManager.getThermalHeadroom() every 10 s during active
+    // playback.  When thermal margin shrinks the ambient shader sample budget is
+    // capped automatically, preventing the device from entering hard CPU/GPU throttling
+    // which would otherwise manifest as dropped frames and accelerated battery drain.
+    viewModelScope.launch(playbackStateDispatcher) {
+      while (isActive) {
+        if (paused == false) {
+          val newHeadroom = ThermalMonitor.getHeadroom(host.context)
+          if (kotlin.math.abs(newHeadroom - thermalHeadroom) > 0.08f) {
+            thermalHeadroom = newHeadroom
+            if (_isAmbientEnabled.value) {
+              // Invalidate the shader cache so the new budget cap is applied on the
+              // next scheduled ambient update.
+              lastCompiledShaderCode = null
+              scheduleAmbientUpdate()
+            }
+            Log.d(TAG, "Thermal headroom updated: %.2f".format(newHeadroom))
+          }
+        }
+        delay(10_000L)
       }
     }
 
@@ -410,14 +440,14 @@ class PlayerViewModel(
         if (dur != null && dur > 0) {
             _preciseDuration.value = dur.toFloat()
             mergeSkipSegments()
-            
+
             // --- AMBIENT FIX: Adapt shader to new file dimensions by @Chinna95P ---
             if (_isAmbientEnabled.value) {
                 lastAmbientScaleX = -1.0 // Force a complete shader rewrite
                 ambientDebounceJob?.cancel()
                 ambientDebounceJob = viewModelScope.launch(renderPrepDispatcher) {
                     // Slight delay ensures MPV's video-params (w/h/crop) are fully populated
-                    delay(250) 
+                    delay(250)
                     updateAmbientStretch()
                 }
             }
@@ -512,7 +542,7 @@ class PlayerViewModel(
   val externalSubtitles: List<String> get() = _externalSubtitles.toList()
   // Mutex to prevent race-condition duplicates when scan adds multiple subtitle URIs concurrently
   private val subtitleAddMutex = Mutex()
-  
+
   // Mapping from mpv internal path/URI to the original source URI (resolves deletion issues)
   private val mpvPathToUriMap = mutableMapOf<String, String>()
 
@@ -607,10 +637,22 @@ class PlayerViewModel(
   private var ambientDebounceJob: kotlinx.coroutines.Job? = null
   private var ambientShaderSeq = 0
   private var ambientShaderFile: java.io.File? = null
+  /**
+   * Caches the last compiled GLSL shader source. When [updateAmbientStretch] is called
+   * but every parameter is identical to the previously compiled shader, the expensive
+   * file-write + MPV shader-reload cycle is skipped entirely.
+   */
+  private var lastCompiledShaderCode: String? = null
+  /**
+   * Latest device thermal headroom reading ([0f] = at thermal limit, [1f] = cool).
+   * Sampled every 10 s by the thermal-monitor coroutine and used to cap the ambient
+   * shader sample budget before the SoC enters hard throttling.
+   */
+  @Volatile private var thermalHeadroom: Float = 1.0f
 
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
-    
+
     // Restore repeat mode and shuffle state from preferences
     _repeatMode.value = playerPreferences.repeatMode.get()
     _shuffleEnabled.value = playerPreferences.shuffleEnabled.get()
@@ -621,7 +663,7 @@ class PlayerViewModel(
         val maxVol = 100 + cap
         runCatching {
           MPVLib.setPropertyString("volume-max", maxVol.toString())
-          
+
           // Clamp current volume if it exceeds the new limit
           val currentMpvVol = MPVLib.getPropertyInt("volume") ?: 100
           if (currentMpvVol > maxVol) {
@@ -645,8 +687,8 @@ class PlayerViewModel(
         MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
       }
     }
-    
-    
+
+
     // Refresh custom buttons whenever their configuration changes.
     viewModelScope.launch {
       playerPreferences.customButtons.changes().drop(1).collect {
@@ -969,7 +1011,7 @@ class PlayerViewModel(
     val safeId = id.replace("-", "_")
     MPVLib.command("script-message", "call_button_$safeId")
   }
-  
+
   fun callCustomButtonLongPress(id: String) {
     val safeId = id.replace("-", "_")
     MPVLib.command("script-message", "call_button_long_$safeId")
@@ -989,7 +1031,7 @@ class PlayerViewModel(
   ) {
     if (label.isNotBlank()) {
       uiList.add(CustomButtonState(originalId, label, isLeft))
-      
+
       // On Startup Code
       if (onStartup.isNotBlank()) {
         scriptBuilder.append(onStartup)
@@ -1005,7 +1047,7 @@ class PlayerViewModel(
           language = language,
         )
       }
-      
+
       // Long Press Handler
       if (longPressCommand.isNotBlank()) {
         scriptBuilder.appendButtonHandler(
@@ -1175,10 +1217,10 @@ class PlayerViewModel(
 
           val mpvPath = uri.resolveUri(host.context) ?: uri.toString()
           val mode = if (select) "select" else "auto"
-          
+
           // Store mapping for reliable physical deletion later
           mpvPathToUriMap[mpvPath] = uri.toString()
-          
+
           MPVLib.command("sub-add", mpvPath, mode)
 
           // Track external subtitle URI for persistence
@@ -1207,7 +1249,7 @@ class PlayerViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       val saveFolderUri = subtitlesPreferences.subtitleSaveFolder.get()
       if (saveFolderUri.isBlank()) return@launch
-      
+
       var addedCount = 0
       try {
         val sanitizedTitle = MediaInfoParser.parse(mediaTitle).title
@@ -1699,15 +1741,15 @@ class PlayerViewModel(
       // Find the subtitle track info before removing
       val tracks = subtitleTracks.value
       val trackToRemove = tracks.firstOrNull { it.id == id }
-      
+
       // If it's external, physically delete the file if we can find its URI
       if (trackToRemove?.external == true && trackToRemove.externalFilename != null) {
         val mpvPath = trackToRemove.externalFilename
         val originalUriString = mpvPathToUriMap[mpvPath] ?: mpvPath
         val uri = Uri.parse(originalUriString)
-        
+
         val deleted = wyzieRepository.deleteSubtitleFile(uri)
-        
+
         if (deleted) {
           _externalSubtitles.remove(originalUriString)
           mpvPathToUriMap.remove(mpvPath)
@@ -1716,7 +1758,7 @@ class PlayerViewModel(
           }
         }
       }
-      
+
         MPVLib.command("sub-remove", id.toString())
     }
   }
@@ -1749,7 +1791,7 @@ class PlayerViewModel(
   fun selectMedia(result: app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult) {
     _mediaSearchResults.value = emptyList() // Clear results after selection
     _wyzieSearchResults.value = emptyList() // Clear old subtitle results
-    
+
     if (result.mediaType == "tv") {
       fetchTvShowDetails(result.id)
     } else {
@@ -1779,7 +1821,7 @@ class PlayerViewModel(
   fun selectSeason(season: app.gyrolet.mpvrx.repository.wyzie.WyzieSeason) {
     val tvShowId = _selectedTvShow.value?.id ?: return
     _selectedSeason.value = season
-    
+
     viewModelScope.launch {
       _isFetchingEpisodes.value = true
       wyzieRepository.getSeasonEpisodes(tvShowId, season.season_number)
@@ -2002,7 +2044,7 @@ class PlayerViewModel(
       // Cancel pending relative seek before absolute seek
       seekCoalesceJob?.cancel()
       pendingSeekOffset = 0
-      
+
       // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
       val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
       val seekMode = if (shouldUsePreciseSeeking) "absolute+exact" else "absolute+keyframes"
@@ -2018,11 +2060,11 @@ class PlayerViewModel(
         delay(SEEK_COALESCE_DELAY_MS)
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
-        
+
         if (toApply != 0) {
           val duration = MPVLib.getPropertyInt("duration") ?: 0
           val currentPos = MPVLib.getPropertyInt("time-pos") ?: 0
-          
+
           if (duration > 0 && currentPos + toApply >= duration) {
               // If seeking past the end, force seek to 100% absolute to ensure EOF is triggered
               MPVLib.command("seek", "100", "absolute-percent+exact")
@@ -2220,11 +2262,11 @@ class PlayerViewModel(
         val dm = DisplayMetrics()
         @Suppress("DEPRECATION")
         host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
-        
+
         // Get video rotation from metadata
         val rotate = MPVLib.getPropertyInt("video-params/rotate") ?: 0
         val isVideoRotated = (rotate % 180 == 90) // 90° or 270° rotation
-        
+
         // Calculate screen ratio, inverting if video is rotated
         val screenRatio = if (isVideoRotated) {
           // Video is rotated, so invert the screen ratio
@@ -2906,20 +2948,20 @@ class PlayerViewModel(
    */
   private fun formatDuration(durationMs: Long): String {
     if (durationMs <= 0) return ""
-    
+
     val totalSeconds = durationMs / 1000
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    
+
     return if (hours > 0) {
       String.format("%d:%02d:%02d", hours, minutes, seconds)
     } else {
       String.format("%d:%02d", minutes, seconds)
     }
   }
-  
-  
+
+
 
   fun playPlaylistItem(index: Int) {
     val activity = host as? PlayerActivity ?: return
@@ -3116,7 +3158,7 @@ class PlayerViewModel(
   fun toggleMirroring() {
     val newMirrorState = !_transformState.value.isMirrored
     _transformState.update { it.copy(isMirrored = newMirrorState) }
-    
+
     // Use labeled video filter for mirroring to avoid state desync
     if (newMirrorState) {
       MPVLib.command("vf", "add", "@mpvrx_hflip:hflip")
@@ -3213,6 +3255,11 @@ class PlayerViewModel(
       file.delete()
     }
     ambientShaderFile = null
+    // Reset the shader cache and scale tracking so a subsequent enable always
+    // compiles a fresh shader and recalculates the correct video-scale offsets.
+    lastCompiledShaderCode = null
+    lastAmbientScaleX = -1.0
+    lastAmbientScaleY = -1.0
     runCatching {
       MPVLib.setPropertyDouble("video-scale-x", 1.0)
       MPVLib.setPropertyDouble("video-scale-y", 1.0)
@@ -3253,7 +3300,8 @@ class PlayerViewModel(
     // Clean up our local reference without trying to remove from MPV.
     ambientShaderFile?.delete()
     ambientShaderFile = null
-    lastAmbientScaleX = -1.0  // Force rewrite
+    lastAmbientScaleX = -1.0         // Force scale recalculation
+    lastCompiledShaderCode = null    // Invalidate cache — the old file is gone, must recompile
     // Small delay to let Anime4K shaders settle
     ambientDebounceJob?.cancel()
     ambientDebounceJob = viewModelScope.launch(renderPrepDispatcher) {
@@ -3462,7 +3510,7 @@ class PlayerViewModel(
 
       val screenAr = osdW.toDouble() / osdH.toDouble()
       val vidAr    = vidW / vidH
-      
+
       // Scale the video to fill the screen — the shader remaps it back to the
       // correct aspect ratio, so only the "overflow" area receives ambient glow.
       val scaleX = if (screenAr > vidAr) screenAr / vidAr else 1.0
@@ -3481,7 +3529,10 @@ class PlayerViewModel(
       // ── Snapshot current parameter values ─────────────────────────────────
       val sx      = lastAmbientScaleX
       val sy      = lastAmbientScaleY
-      val samples = _ambientBlurSamples.value
+      // Thermal-aware sample budget: cap shader complexity before the device enters
+      // hard CPU/GPU throttling.  On a cool device this is a no-op.
+      val rawSamples = _ambientBlurSamples.value
+      val samples = ThermalMonitor.clampAmbientSampleBudget(rawSamples, thermalHeadroom)
       val radius  = _ambientMaxRadius.value
       val glow    = _ambientGlowIntensity.value
       val sat     = _ambientSatBoost.value
@@ -3501,6 +3552,17 @@ class PlayerViewModel(
         vignetteStrength = vignette, warmth = warmth,
         fadeCurve = curve, opacity = opacity
       )
+
+      // ── Shader parameter cache ─────────────────────────────────────────────
+      // If every baked-in #define is identical to the last compiled shader AND the
+      // shader file still exists on disk, skip the remove+write+reload cycle.
+      // This prevents redundant GPU shader recompilation on no-op refreshes (e.g.
+      // orientation callbacks that fire with unchanged video dimensions, or thermal
+      // monitor ticks that don't change the effective sample budget).
+      if (shaderCode == lastCompiledShaderCode && ambientShaderFile?.exists() == true) {
+        return
+      }
+      lastCompiledShaderCode = shaderCode
 
       // Each reload gets a unique filename so MPV never reuses a cached
       // compiled shader — incrementing seq guarantees a fresh compile every time.

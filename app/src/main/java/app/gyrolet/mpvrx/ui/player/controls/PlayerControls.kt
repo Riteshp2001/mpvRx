@@ -219,7 +219,7 @@ fun PlayerControls(
     val haptic = LocalHapticFeedback.current
 
     val customButtons by viewModel.customButtons.collectAsState()
-    
+
   val abLoop by viewModel.abLoopState.collectAsState()
   val abLoopA = abLoop.a
   val abLoopB = abLoop.b
@@ -478,12 +478,12 @@ fun PlayerControls(
         ) {
           val boostCap by audioPreferences.volumeBoostCap.collectAsState()
           val displayVolumeAsPercentage by playerPreferences.displayVolumeAsPercentage.collectAsState()
-          
+
           // Show if boost is allowed (boostCap > 0) OR if we are currently boosted (> 100)
           val currentBoost = (mpvVolume ?: 100) - 100
           val showBoost = boostCap > 0 || currentBoost > 0
           val effBoostCap = maxOf(boostCap, currentBoost)
-          
+
           VolumeSlider(
             volume,
             volumePercentage = volumePercent,
@@ -537,7 +537,7 @@ fun PlayerControls(
               val showDynamicSpeedOverlay by playerPreferences.showDynamicSpeedOverlay.collectAsState()
               val shouldShowFull = speedUpdate.showFullOverlay
               var isCollapsed by remember { mutableStateOf(false) }
-              
+
               LaunchedEffect(currentSpeed, shouldShowFull) {
                 if (shouldShowFull) {
                   isCollapsed = false
@@ -547,7 +547,7 @@ fun PlayerControls(
                   isCollapsed = true
                 }
               }
-              
+
               if (showDynamicSpeedOverlay) {
                 if (isCollapsed) {
                   // Simple compact indicator
@@ -574,7 +574,7 @@ fun PlayerControls(
                     } else null
                   } else null
                 }
-                
+
                 customLabel ?: run {
                   // No custom label found, use preset names or format as ratio
                   val ratio = currentAspectRatio
@@ -605,7 +605,7 @@ fun PlayerControls(
             is PlayerUpdates.VideoZoom -> {
               val zoomPercentage = (videoZoom * 100).toInt()
               TextPlayerUpdate(
-                text = String.format("Zoom:%3d%%", zoomPercentage), 
+                text = String.format("Zoom:%3d%%", zoomPercentage),
                 modifier = Modifier.widthIn(min = 112.dp),
               )
             }
@@ -826,7 +826,7 @@ fun PlayerControls(
                 }
             }
         }
-        
+
         AnimatedVisibility(
             visible = showPortraitCustomButtons,
             enter = fadeIn(),
@@ -1573,59 +1573,93 @@ private fun CustomStatsPageSixOverlay(
       ),
   ) {
     val history = ArrayDeque<Float>()
-    var lastCpuMs = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(0L)
-    var lastTimeMs = android.os.SystemClock.elapsedRealtime()
-    while (true) {
-      val fileName = runCatching { MPVLib.getPropertyString("media-title") ?: "--" }.getOrDefault("--")
-      val renderContext = runCatching { MPVLib.getPropertyString("current-vo") ?: "--" }.getOrDefault("--")
-      val cache = runCatching { MPVLib.getPropertyString("demuxer-cache-duration") ?: "--" }.getOrDefault("--")
-      val fps = runCatching { MPVLib.getPropertyDouble("estimated-vf-fps")?.let { String.format("%.3f", it) } ?: "--" }.getOrDefault("--")
-      val dropped = runCatching { MPVLib.getPropertyInt("drop-frame-count") ?: 0 }.getOrDefault(0)
-      val delayed = runCatching { MPVLib.getPropertyInt("vo-delayed-frame-count") ?: 0 }.getOrDefault(0)
-      val videoCodec = runCatching { MPVLib.getPropertyString("video-codec") ?: "--" }.getOrDefault("--")
-      val audioCodec = runCatching { MPVLib.getPropertyString("audio-codec-name") ?: "--" }.getOrDefault("--")
+    var lastCpuMs   = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(0L)
+    var lastTimeMs  = android.os.SystemClock.elapsedRealtime()
+    // Track PREVIOUS cumulative counts so we can compute per-second DELTA rates.
+    // Using raw cumulative totals in the bar gave ever-growing values that drifted
+    // to 100% over time and never reflected the current rendering state.
+    var lastDropped = 0
+    var lastDelayed = 0
 
-      val currentCpuMs = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(lastCpuMs)
+    while (true) {
+      val fileName      = runCatching { MPVLib.getPropertyString("media-title") ?: "--" }.getOrDefault("--")
+      val renderContext = runCatching { MPVLib.getPropertyString("current-vo")  ?: "--" }.getOrDefault("--")
+      val cache         = runCatching { MPVLib.getPropertyString("demuxer-cache-duration") ?: "--" }.getOrDefault("--")
+      val fps           = runCatching { MPVLib.getPropertyDouble("estimated-vf-fps")?.let { String.format("%.3f", it) } ?: "--" }.getOrDefault("--")
+      val dropped       = runCatching { MPVLib.getPropertyInt("drop-frame-count")       ?: 0 }.getOrDefault(0)
+      val delayed       = runCatching { MPVLib.getPropertyInt("vo-delayed-frame-count") ?: 0 }.getOrDefault(0)
+      val videoCodec    = runCatching { MPVLib.getPropertyString("video-codec")      ?: "--" }.getOrDefault("--")
+      val audioCodec    = runCatching { MPVLib.getPropertyString("audio-codec-name") ?: "--" }.getOrDefault("--")
+
+      // ── App CPU % ──────────────────────────────────────────────────────────
+      // getElapsedCpuTime() measures THIS PROCESS's CPU ms, not system-wide.
+      // cpu = (processCpuMs consumed / wallClockMs elapsed) * 100
+      // i.e. "what fraction of one CPU core did mpvRx use last second"
+      val currentCpuMs  = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(lastCpuMs)
       val currentTimeMs = android.os.SystemClock.elapsedRealtime()
-      val cpuDelta = (currentCpuMs - lastCpuMs).coerceAtLeast(0L)
-      val timeDelta = (currentTimeMs - lastTimeMs).coerceAtLeast(1L)
-      val cpu = ((cpuDelta.toFloat() / timeDelta.toFloat()) * 100f).coerceIn(0f, 100f)
-      val estFps = runCatching { MPVLib.getPropertyDouble("estimated-vf-fps") ?: 24.0 }.getOrDefault(24.0).toFloat().coerceAtLeast(1f)
-      val gpuEstimate = ((dropped + delayed) * 4f + (estFps / 60f) * 35f).coerceIn(0f, 100f)
+      val cpuDelta      = (currentCpuMs - lastCpuMs).coerceAtLeast(0L)
+      val timeDelta     = (currentTimeMs - lastTimeMs).coerceAtLeast(1L)
+      val cpu           = ((cpuDelta.toFloat() / timeDelta.toFloat()) * 100f).coerceIn(0f, 100f)
+
+      // ── GPU pressure estimate (delta-based, per-second) ────────────────────
+      // The old formula used CUMULATIVE drop+delay totals which drift to 100%
+      // over a long session, and added a fixed FPS-proportional baseline that
+      // made a 120fps video with ZERO drops show 70% GPU load — meaningless.
+      //
+      // New approach: measure how many frames were dropped/delayed THIS SECOND
+      // relative to the expected frame rate.  0 drops → 0% pressure.  All
+      // frames dropped → 100% pressure.  A small non-zero floor (5%) signals
+      // that the GPU is actively rendering.
+      val estFps         = runCatching { MPVLib.getPropertyDouble("estimated-vf-fps") ?: 0.0 }.getOrDefault(0.0).toFloat()
+      val droppedDelta   = (dropped - lastDropped).coerceAtLeast(0)
+      val delayedDelta   = (delayed - lastDelayed).coerceAtLeast(0)
+      val framePressure  = if (estFps > 0f) {
+        ((droppedDelta + delayedDelta).toFloat() / estFps).coerceIn(0f, 1f)
+      } else 0f
+      // 5% baseline shows the GPU is working; scales to 100% when all frames drop.
+      val gpuEstimate    = (framePressure * 95f + if (estFps > 0f) 5f else 0f).coerceIn(0f, 100f)
+
       val netBps = readNetworkBytesPerSecondForOverlay()
       val netText =
         when {
           netBps >= 1024 * 1024 -> String.format("%.1f MB/s", netBps / (1024 * 1024))
-          netBps >= 1024 -> String.format("%.0f KB/s", netBps / 1024)
-          else -> "${netBps.toInt()} B/s"
+          netBps >= 1024        -> String.format("%.0f KB/s", netBps / 1024)
+          else                  -> "${netBps.toInt()} B/s"
         }
       val netMbps = ((netBps * 8.0) / (1024.0 * 1024.0)).toFloat().coerceAtLeast(0f)
       val battery = readBatterySnapshot(context)
       history.addLast(netMbps)
-      if (history.size > 42) {
-        history.removeFirst()
-      }
+      if (history.size > 42) history.removeFirst()
 
-      value =
-        CustomStatsSnapshot(
-          fileName = fileName,
-          renderContext = renderContext,
-          cache = cache,
-          fps = fps,
-          droppedFrames = "$dropped (decoder)  $delayed (output)",
-          video = videoCodec,
-          audio = audioCodec,
-          cpuPercent = cpu,
-          gpuEstimatePercent = gpuEstimate,
-          networkText = netText,
-          networkMbps = netMbps,
-          networkHistory = history.toList(),
-          batteryPercentText = battery.percentageText,
-          batteryRateText = battery.rateText,
-        )
-      lastCpuMs = currentCpuMs
-      lastTimeMs = currentTimeMs
-      delay(1000)
+      value = CustomStatsSnapshot(
+        fileName          = fileName,
+        renderContext     = renderContext,
+        cache             = cache,
+        fps               = fps,
+        droppedFrames     = "$dropped (decoder)  $delayed (output)  +$droppedDelta/+$delayedDelta this sec",
+        video             = videoCodec,
+        audio             = audioCodec,
+        cpuPercent        = cpu,
+        gpuEstimatePercent= gpuEstimate,
+        networkText       = netText,
+        networkMbps       = netMbps,
+        networkHistory    = history.toList(),
+        batteryPercentText= battery.percentageText,
+        batteryRateText   = battery.rateText,
+      )
+
+      // Advance delta baselines
+      lastCpuMs   = currentCpuMs
+      lastTimeMs  = currentTimeMs
+      lastDropped = dropped
+      lastDelayed = delayed
+
+      // ── Pause-aware backoff ────────────────────────────────────────────────
+      // When playback is paused most metrics are static (FPS=0, no new drops,
+      // network idle for local files).  Polling every 2 s instead of 1 s halves
+      // the wasted JNI overhead without affecting the UX noticeably.
+      val isPaused = runCatching { MPVLib.getPropertyBoolean("pause") }.getOrDefault(false)
+      delay(if (isPaused == true) 2000L else 1000L)
     }
   }
 
@@ -1666,9 +1700,11 @@ private fun CustomStatsPageSixOverlay(
     Spacer(modifier = Modifier.height(6.dp))
     Text("Page 6 • Live Performance", style = textStyle.copy(fontWeight = FontWeight.Bold))
     LinearProgressIndicator(progress = { stats.cpuPercent / 100f }, modifier = Modifier.fillMaxWidth())
-    Text("CPU Usage ${stats.cpuPercent.toInt()}%", style = textStyle)
+    // cpu is process-only (getElapsedCpuTime), not system-wide — label accordingly
+    Text("App CPU (this process) ${stats.cpuPercent.toInt()}%", style = textStyle)
     LinearProgressIndicator(progress = { stats.gpuEstimatePercent / 100f }, modifier = Modifier.fillMaxWidth())
-    Text("GPU Load (estimated) ${stats.gpuEstimatePercent.toInt()}%", style = textStyle)
+    // gpuEstimate is based on per-second frame-drop pressure, not a hardware GPU counter
+    Text("Frame Pressure (drop-based est.) ${stats.gpuEstimatePercent.toInt()}%", style = textStyle)
   }
 }
 
@@ -1734,5 +1770,3 @@ private fun readNetworkBytesPerSecondForOverlay(): Double {
 
   return if (bitratesBitsPerSecond > 0.0) bitratesBitsPerSecond / 8.0 else 0.0
 }
-
-
