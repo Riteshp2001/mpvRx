@@ -370,6 +370,115 @@ object PlayerPreferencesScreen : Screen {
               )
             }
           }
+
+          // ── Overlays ─────────────────────────────────────────────────────
+          item { PreferenceSectionHeader(title = "Gesture & Action Overlays") }
+          item {
+            PreferenceCard {
+              val showVolumeGestureOverlay by preferences.showVolumeGestureOverlay.collectAsState()
+              SwitchPreference(
+                value = showVolumeGestureOverlay,
+                onValueChange = preferences.showVolumeGestureOverlay::set,
+                title = { Text("Volume slider overlay") },
+                summary = {
+                  Text(
+                    "Show the vertical volume pill while swiping for volume",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              val showBrightnessGestureOverlay by preferences.showBrightnessGestureOverlay.collectAsState()
+              SwitchPreference(
+                value = showBrightnessGestureOverlay,
+                onValueChange = preferences.showBrightnessGestureOverlay::set,
+                title = { Text("Brightness slider overlay") },
+                summary = {
+                  Text(
+                    "Show the vertical brightness pill while swiping for brightness",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              val showHoldSpeedOverlay by preferences.showHoldSpeedOverlay.collectAsState()
+              SwitchPreference(
+                value = showHoldSpeedOverlay,
+                onValueChange = preferences.showHoldSpeedOverlay::set,
+                title = { Text("Hold speed overlay") },
+                summary = {
+                  Text(
+                    "Show speed badge and slider while long-pressing to boost playback speed",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              val showAspectRatioOverlay by preferences.showAspectRatioOverlay.collectAsState()
+              SwitchPreference(
+                value = showAspectRatioOverlay,
+                onValueChange = preferences.showAspectRatioOverlay::set,
+                title = { Text("Aspect ratio feedback") },
+                summary = {
+                  Text(
+                    "Show a brief pill when cycling aspect ratio (16:9, Fit, Crop…)",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              val showZoomLevelOverlay by preferences.showZoomLevelOverlay.collectAsState()
+              SwitchPreference(
+                value = showZoomLevelOverlay,
+                onValueChange = preferences.showZoomLevelOverlay::set,
+                title = { Text("Zoom level feedback") },
+                summary = {
+                  Text(
+                    "Show zoom percentage pill when pinching to zoom",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              val showRepeatShuffleOverlay by preferences.showRepeatShuffleOverlay.collectAsState()
+              SwitchPreference(
+                value = showRepeatShuffleOverlay,
+                onValueChange = preferences.showRepeatShuffleOverlay::set,
+                title = { Text("Repeat & shuffle feedback") },
+                summary = {
+                  Text(
+                    "Show pill when toggling repeat mode or shuffle",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              val showActionFeedbackOverlay by preferences.showActionFeedbackOverlay.collectAsState()
+              SwitchPreference(
+                value = showActionFeedbackOverlay,
+                onValueChange = preferences.showActionFeedbackOverlay::set,
+                title = { Text("Action feedback pills") },
+                summary = {
+                  Text(
+                    "Show brief text pills from custom buttons, ambient toggle, subtitle drag, and Lua scripts",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+            }
+          }
         }
       }
     }

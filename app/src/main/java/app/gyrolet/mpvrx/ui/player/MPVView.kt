@@ -14,6 +14,7 @@ import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.ui.player.PlayerActivity.Companion.TAG
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
 import app.gyrolet.mpvrx.ui.preferences.VulkanUtils
@@ -35,6 +36,7 @@ class MPVView(
   private val advancedPreferences: AdvancedPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
+  private val hdrToysManager: HdrToysManager by inject()
 
   var isExiting = false
   var forceOpenGlFallback = false
@@ -121,11 +123,13 @@ class MPVView(
     Log.i(TAG, "Selected renderer: vo=${backend.vo}, gpu-api=${backend.gpuApi}, hwdec=$hwdecMode (${backend.reason})")
 
     val hdrScreenMode = decoderPreferences.hdrScreenMode.get().let { mode ->
-      if (mode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) HdrScreenMode.HDR else mode
+      if (mode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) HdrScreenMode.defaultEnabledMode else mode
     }
+    val hdrPipelineReady = useVulkan && backend.vo == "gpu-next"
     applyHdrScreenOutputOptions(
       mode = hdrScreenMode,
-      pipelineReady = useVulkan && backend.vo == "gpu-next",
+      pipelineReady = hdrPipelineReady,
+      boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
     )
 
     // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
@@ -188,6 +192,8 @@ class MPVView(
 
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
     applyAnime4KShaders(backend.vo, backend.gpuApi)
+    // HDR Toys shaders (loaded after Anime4K so they append in the correct order)
+    applyHdrToysMode(hdrScreenMode, hdrPipelineReady)
 
     setupSubtitlesOptions()
     setupAudioOptions()
@@ -401,6 +407,22 @@ class MPVView(
       activeVo = MPVLib.getPropertyString("vo") ?: "",
       activeGpuApi = MPVLib.getPropertyString("gpu-api") ?: "",
     )
+  }
+
+  /**
+   * Copies bundled hdr-toys GLSL shaders to filesDir on first use, then appends
+   * the chosen profile's shader chain to mpv's glsl-shaders list.
+   * Safe to call on every init — clears previous hdr-toys shaders before re-applying.
+   */
+  fun applyHdrToysMode(mode: HdrScreenMode, pipelineReady: Boolean) {
+    val profile = mode.hdrToysProfile
+    if (!pipelineReady || profile == null) {
+      hdrToysManager.clear()
+      return
+    }
+    if (!hdrToysManager.apply(profile)) {
+      Log.w(TAG, "Skipping HDR Toys mode — bundled shaders unavailable: ${mode.name}")
+    }
   }
 
   private fun applyAnime4KShaders(

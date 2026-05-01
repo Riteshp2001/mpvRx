@@ -2,6 +2,47 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## 1.3.2
+
+### HDR — hdr-toys Pipeline
+
+- Replaced the old 3-mode HDR system (Off / SDR with HDR / Normal HDR) with a proper shader-based pipeline powered by [hdr-toys](https://github.com/natural-harmonia-gropius/hdr-toys).
+- Four HDR modes are now available: **BT.2100 PQ** (HDR10), **BT.2100 HLG**, **BT.2020**, and **Linear HDR** (mpv-native, no shaders).
+- 77 GLSL shaders are bundled in the app and copied to the mpv config directory on first use — no manual setup required.
+- The HDR panel no longer shows an "Off" option. Off is the default and is toggled by the HDR button; the panel only presents the four active modes.
+- Selecting a mode while GPU Next + Vulkan is unavailable shows a clear error pill and falls back to Off safely.
+- Added `boostSdrToHdr` preference (used by the Linear HDR path).
+- `HdrToysManager` cleanly removes all hdr-toys shaders when switching to Off or when the pipeline is not ready, so no stale shaders leak between sessions.
+
+### Thermal & Battery Improvements
+
+- Added `ThermalMonitor` — samples `PowerManager.getThermalHeadroom()` (Android 11+) every 10 seconds during playback.
+- Ambient shader sample budget is automatically capped based on thermal headroom: 8 samples (severe), 12 (moderate), 18 (mild), uncapped (cool).
+- Anime4K is proactively downgraded to C/Fast when thermal headroom drops below 40%, before frame drops even start.
+- Ambient shader recompilation is now skipped when all parameters are identical to the last compiled version — reduces unnecessary GPU stutter on orientation changes and no-op callbacks.
+- Removed redundant dual position polling: the event-driven `time-pos` observer and the polling loop were both updating the same StateFlow, causing double seek-bar recompositions on every MPV event.
+- Background playback position poll interval halved from 250 ms to 500 ms when controls are not visible, cutting idle JNI wake-ups by 50%.
+
+### Stats Page 6 — Fixes
+
+- **GPU estimate bar fixed**: was using cumulative drop + delay totals that drifted to 100% after long sessions and added a fixed FPS-proportional baseline (120fps with zero drops showed 70% GPU load). Now uses per-second delta counts relative to the current frame rate — 0 drops = 0%, all frames dropped = 100%.
+- **CPU label corrected**: relabelled from "CPU Usage" to "App CPU (this process)" to accurately reflect that `getElapsedCpuTime()` measures only MpvRx's own process, not the whole device.
+- **Frame drop text now shows per-second deltas** alongside the all-time totals, so you can tell current rendering pressure at a glance.
+- **Pause-aware poll backoff**: the stats loop backs off from 1 s to 2 s intervals when playback is paused, cutting pointless JNI calls when metrics are static.
+
+### Gesture & Action Overlay Toggles
+
+- Added a new **"Gesture & Action Overlays"** section in Player Settings with seven independent on/off switches:
+  - **Volume slider overlay** — vertical pill shown during volume swipe
+  - **Brightness slider overlay** — vertical pill shown during brightness swipe
+  - **Hold speed overlay** — speed badge and slider shown during long-press speed boost
+  - **Aspect ratio feedback** — pill shown when cycling aspect ratio
+  - **Zoom level feedback** — pill shown when pinching to zoom
+  - **Repeat & shuffle feedback** — pill shown when toggling repeat or shuffle
+  - **Action feedback pills** — brief text pills from custom buttons, ambient toggle, subtitle drag, and Lua/JS scripts
+- All overlays default to **on**, so existing behaviour is unchanged until the user opts out.
+- Disabling an overlay suppresses only the visual pill — the underlying gesture action (volume change, speed change, etc.) still happens normally.
+
 ## 1.3.1
 
 - Update FFmpeg to n8.1 (latest stable)

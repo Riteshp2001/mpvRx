@@ -369,6 +369,9 @@ fun PlayerControls(
         val volumePercent by viewModel.currentVolumePercent.collectAsState()
         val mpvVolume by MPVLib.propInt["volume"].collectAsState()
         val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
+        // Overlay visibility — Group 1
+        val showVolumeGestureOverlay by playerPreferences.showVolumeGestureOverlay.collectAsState()
+        val showBrightnessGestureOverlay by playerPreferences.showBrightnessGestureOverlay.collectAsState()
         val reduceMotion by playerPreferences.reduceMotion.collectAsState()
         val controlsAnimStyle by playerPreferences.controlsAnimStyle.collectAsState()
         val enterMs = (100 * animSpeed).toInt().coerceAtLeast(30)
@@ -438,7 +441,7 @@ fun PlayerControls(
             (navigationBarsPadding?.calculateBottomPadding() ?: 0.dp)
 
         AnimatedVisibility(
-          isBrightnessSliderShown,
+          isBrightnessSliderShown && showBrightnessGestureOverlay,
           enter = buildControlsEnterH(
             controlsAnimStyle, reduceMotion, enterMs,
           ) { if (swapVolumeAndBrightness) -it else it },
@@ -458,7 +461,7 @@ fun PlayerControls(
         ) { BrightnessSlider(brightness, 0f..1f) }
 
         AnimatedVisibility(
-          isVolumeSliderShown,
+          isVolumeSliderShown && showVolumeGestureOverlay,
           enter = buildControlsEnterH(
             controlsAnimStyle, reduceMotion, enterMs,
           ) { if (swapVolumeAndBrightness) it else -it },
@@ -496,6 +499,29 @@ fun PlayerControls(
 
         val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
         val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
+
+        // Overlay visibility — Groups 2 & 5
+        val showHoldSpeedOverlay by playerPreferences.showHoldSpeedOverlay.collectAsState()
+        val showAspectRatioOverlay by playerPreferences.showAspectRatioOverlay.collectAsState()
+        val showZoomLevelOverlay by playerPreferences.showZoomLevelOverlay.collectAsState()
+        val showRepeatShuffleOverlay by playerPreferences.showRepeatShuffleOverlay.collectAsState()
+        val showActionFeedbackOverlay by playerPreferences.showActionFeedbackOverlay.collectAsState()
+
+        // Determines whether the center action-pill should be visible for the current update.
+        // Each update type is gated by its own toggle so the user can silence individual
+        // categories without affecting the others or the underlying gesture behaviour.
+        val shouldShowPlayerUpdate = when (currentPlayerUpdate) {
+          is PlayerUpdates.MultipleSpeed,
+          is PlayerUpdates.DynamicSpeedControl  -> showHoldSpeedOverlay
+          is PlayerUpdates.AspectRatio           -> showAspectRatioOverlay
+          is PlayerUpdates.VideoZoom             -> showZoomLevelOverlay
+          is PlayerUpdates.RepeatMode,
+          is PlayerUpdates.Shuffle               -> showRepeatShuffleOverlay
+          is PlayerUpdates.ShowText              -> showActionFeedbackOverlay
+          is PlayerUpdates.HorizontalSeek,
+          is PlayerUpdates.FrameInfo             -> true   // Groups 3/4 — not in scope
+          is PlayerUpdates.None                  -> false
+        }
         val aspectRatio by viewModel.videoAspect.collectAsState()
         val currentAspectRatio by viewModel.currentAspectRatio.collectAsState()
         val videoZoom by viewModel.videoZoom.collectAsState()
@@ -512,7 +538,7 @@ fun PlayerControls(
         }
 
         AnimatedVisibility(
-          currentPlayerUpdate !is PlayerUpdates.None,
+          shouldShowPlayerUpdate,
           enter = fadeIn(playerControlsEnterAnimationSpec()),
           exit = fadeOut(playerControlsExitAnimationSpec()),
           modifier =

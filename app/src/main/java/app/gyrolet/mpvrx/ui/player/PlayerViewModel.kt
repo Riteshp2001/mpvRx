@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
@@ -130,6 +131,7 @@ class PlayerViewModel(
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
+  private val hdrToysManager: HdrToysManager by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
   private val wyzieRepository: WyzieSearchRepository by inject()
@@ -3183,7 +3185,9 @@ class PlayerViewModel(
   }
 
   fun toggleHdrScreenOutput() {
-    val nextMode = if (_hdrScreenMode.value == HdrScreenMode.OFF) HdrScreenMode.HDR else HdrScreenMode.OFF
+    val nextMode =
+      if (_hdrScreenMode.value == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode
+      else HdrScreenMode.OFF
     setHdrScreenMode(nextMode)
   }
 
@@ -3209,7 +3213,7 @@ class PlayerViewModel(
   private fun initialHdrScreenMode(): HdrScreenMode {
     val savedMode = decoderPreferences.hdrScreenMode.get()
     return if (savedMode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) {
-      HdrScreenMode.HDR
+      HdrScreenMode.defaultEnabledMode
     } else {
       savedMode
     }
@@ -3225,10 +3229,37 @@ class PlayerViewModel(
   private fun applyHdrScreenOutput(mode: HdrScreenMode) {
     val pipelineReady = refreshHdrScreenOutputPipelineState()
     runCatching {
-      applyHdrScreenOutputOptions(mode, pipelineReady)
-      applyHdrScreenOutputProperties(mode, pipelineReady)
+      val boostSdr = decoderPreferences.boostSdrToHdr.get()
+      applyHdrScreenOutputOptions(mode, pipelineReady, boostSdr)
+      applyHdrScreenOutputProperties(mode, pipelineReady, boostSdr)
+      applyHdrToysMode(mode, pipelineReady)
     }.onFailure { e ->
       Log.e(TAG, "Error applying HDR screen output: mode=$mode, pipelineReady=$pipelineReady", e)
+    }
+  }
+
+  /** Re-applies the current HDR mode to a newly loaded video. */
+  fun refreshHdrScreenOutputForCurrentVideo() {
+    applyHdrScreenOutput(_hdrScreenMode.value)
+  }
+
+  /**
+   * Called after an Anime4K shader change that wipes glsl-shaders.
+   * Re-applies HDR toys shaders and then re-injects the ambient shader if active.
+   */
+  fun restartHdrScreenOutputAndAmbientIfActive() {
+    refreshHdrScreenOutputForCurrentVideo()
+    restartAmbientIfActive()
+  }
+
+  private fun applyHdrToysMode(mode: HdrScreenMode, pipelineReady: Boolean) {
+    val profile = mode.hdrToysProfile
+    if (!pipelineReady || profile == null) {
+      hdrToysManager.clear()
+      return
+    }
+    if (!hdrToysManager.apply(profile)) {
+      playerUpdate.value = PlayerUpdates.ShowText("HDR Toys shaders unavailable")
     }
   }
 

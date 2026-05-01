@@ -112,6 +112,22 @@ class PlayerPreferences(
   val ambientExtendGlowMix = preferenceStore.getFloat("ambient_extend_glow_mix", 0.20f)
   val isAmbientEnabled = preferenceStore.getBoolean("ambient_enabled", false)
 
+  // ── Overlay visibility controls ───────────────────────────────────────────
+  /** Show the vertical volume pill while swiping for volume. */
+  val showVolumeGestureOverlay = preferenceStore.getBoolean("show_volume_gesture_overlay", true)
+  /** Show the vertical brightness pill while swiping for brightness. */
+  val showBrightnessGestureOverlay = preferenceStore.getBoolean("show_brightness_gesture_overlay", true)
+  /** Show any speed overlay (badge or full slider) during long-press hold-speed. */
+  val showHoldSpeedOverlay = preferenceStore.getBoolean("show_hold_speed_overlay", true)
+  /** Show the action pill when cycling aspect ratio. */
+  val showAspectRatioOverlay = preferenceStore.getBoolean("show_aspect_ratio_overlay", true)
+  /** Show the action pill when zoom level changes via pinch. */
+  val showZoomLevelOverlay = preferenceStore.getBoolean("show_zoom_level_overlay", true)
+  /** Show the action pill when toggling repeat mode or shuffle. */
+  val showRepeatShuffleOverlay = preferenceStore.getBoolean("show_repeat_shuffle_overlay", true)
+  /** Show brief text pills from custom buttons, ambient toggle, subtitle drag, and Lua scripts. */
+  val showActionFeedbackOverlay = preferenceStore.getBoolean("show_action_feedback_overlay", true)
+
   // ── Animation settings ──────────────────────────────────────────────────
   /** Style used for controls appearing / disappearing. Default = original slide+fade behaviour. */
   val controlsAnimStyle = preferenceStore.getEnum("controls_anim_style", ControlsAnimationStyle.Default)

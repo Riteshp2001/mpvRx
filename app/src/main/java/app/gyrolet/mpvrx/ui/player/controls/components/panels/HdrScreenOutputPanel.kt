@@ -70,11 +70,13 @@ fun HdrScreenOutputPanel(
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
       HdrPipelineStatus(pipelineReady = pipelineReady)
-      HdrScreenMode.entries.forEach { option ->
+      // OFF is the default state controlled by the HDR toggle button, not shown here.
+      // Only the four selectable HDR modes are presented in the panel.
+      HdrScreenMode.selectableModes.forEach { option ->
         HdrModeOption(
           mode = option,
           selected = mode == option,
-          enabled = option == HdrScreenMode.OFF || pipelineReady,
+          enabled = pipelineReady,
           onClick = { viewModel.setHdrScreenMode(option) },
         )
       }
