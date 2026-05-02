@@ -69,7 +69,9 @@ fun HdrScreenOutputPanel(
       modifier = Modifier.padding(MaterialTheme.spacing.medium),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
-      HdrPipelineStatus(pipelineReady = pipelineReady)
+      if (!pipelineReady) {
+        HdrPipelineUnavailableStatus()
+      }
       // OFF is the default state controlled by the HDR toggle button, not shown here.
       // Only the four selectable HDR modes are presented in the panel.
       HdrScreenMode.selectableModes.forEach { option ->
@@ -85,17 +87,12 @@ fun HdrScreenOutputPanel(
 }
 
 @Composable
-private fun HdrPipelineStatus(
-  pipelineReady: Boolean,
+private fun HdrPipelineUnavailableStatus(
   modifier: Modifier = Modifier,
 ) {
   val colors = MaterialTheme.colorScheme
-  val containerColor =
-    if (pipelineReady) colors.primaryContainer.copy(alpha = 0.72f)
-    else colors.errorContainer.copy(alpha = 0.72f)
-  val contentColor =
-    if (pipelineReady) colors.onPrimaryContainer
-    else colors.onErrorContainer
+  val containerColor = colors.errorContainer.copy(alpha = 0.72f)
+  val contentColor = colors.onErrorContainer
 
   Surface(
     modifier = modifier.fillMaxWidth(),
@@ -119,7 +116,7 @@ private fun HdrPipelineStatus(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = if (pipelineReady) Icons.Default.HdrOn else Icons.Default.HdrOff,
+          imageVector = Icons.Default.HdrOff,
           contentDescription = null,
           modifier = Modifier.size(22.dp),
           tint = contentColor,
@@ -127,17 +124,12 @@ private fun HdrPipelineStatus(
       }
       Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
-          text = if (pipelineReady) "HDR pipeline ready" else "HDR pipeline unavailable",
-          style = MaterialTheme.typography.titleSmall,
+          text = "HDR cannot be enabled",
+          style = MaterialTheme.typography.titleLarge,
           fontWeight = FontWeight.SemiBold,
         )
         Text(
-          text =
-            if (pipelineReady) {
-              "GPU Next + Vulkan is active for this player session"
-            } else {
-              "Enable GPU Next and Vulkan before using HDR modes"
-            },
+          text = "Enable GPU Next and Vulkan before using HDR modes",
           style = MaterialTheme.typography.bodySmall,
           color = contentColor.copy(alpha = 0.78f),
         )

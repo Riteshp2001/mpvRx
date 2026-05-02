@@ -95,7 +95,7 @@ class PlayerPreferences(
   val customButtons = preferenceStore.getString("custom_buttons_json", "[]")
 
   // Ambience Mode
-  val ambientBlurSamples = preferenceStore.getInt("ambient_blur_samples", 24)
+  val ambientBlurSamples = preferenceStore.getInt("ambient_blur_samples", 18)
   val ambientMaxRadius = preferenceStore.getFloat("ambient_max_radius", 0.18f)
   val ambientGlowIntensity = preferenceStore.getFloat("ambient_glow_intensity", 1.4f)
   val ambientSatBoost = preferenceStore.getFloat("ambient_sat_boost", 1.2f)

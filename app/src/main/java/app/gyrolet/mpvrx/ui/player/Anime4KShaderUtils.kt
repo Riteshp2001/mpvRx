@@ -5,6 +5,8 @@ import android.util.Log
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import `is`.xyz.mpv.MPVLib
 
+private const val MPV_SHADER_PREFIX = "~~/shaders/"
+
 internal data class Anime4KSelection(
   val mode: Anime4KManager.Mode,
   val quality: Anime4KManager.Quality,
@@ -109,8 +111,11 @@ internal fun selectRuntimeStableAnime4K(
 }
 
 internal fun clearAnime4KShaders() {
-  MPVLib.setOptionString("glsl-shaders", "")
-  MPVLib.setPropertyString("glsl-shaders", "")
+  Anime4KManager.BUILT_IN_SHADER_FILES
+    .map { fileName -> "$MPV_SHADER_PREFIX$fileName" }
+    .forEach { shaderPath ->
+      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", shaderPath) }
+    }
 }
 
 internal fun applyAnime4KShaderChain(
@@ -127,9 +132,7 @@ internal fun applyAnime4KShaderChain(
     return false
   }
 
-  val shaderChain = shaderPaths.joinToString(":")
-  MPVLib.setOptionString("glsl-shaders", shaderChain)
-  MPVLib.setPropertyString("glsl-shaders", "")
+  clearAnime4KShaders()
   shaderPaths.forEach { shaderPath ->
     MPVLib.command("change-list", "glsl-shaders", "append", shaderPath)
   }

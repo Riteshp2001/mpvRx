@@ -2248,7 +2248,7 @@ class PlayerActivity :
           pendingVideoParamRefreshRequiresShaderReload = false
           withContext(playbackRenderDispatcher) {
             player.applyAnime4KShaders()
-            viewModel.updateAmbientStretch()
+            viewModel.restartHdrScreenOutputAndAmbientIfActive()
           }
         }
       }
@@ -2326,8 +2326,8 @@ class PlayerActivity :
     // Reset AB loop values when video changes
     viewModel.clearABLoop()
 
-    // Reset ambient mode to OFF when a new video starts
-    viewModel.resetAmbientMode()
+    // Drop the old ambient shader file, but keep the user's ambient preference/style.
+    viewModel.prepareAmbientForNewVideo()
 
     setIntentExtras(intent.extras)
 
@@ -2397,6 +2397,7 @@ class PlayerActivity :
     lifecycleScope.launch {
       withContext(playbackRenderDispatcher) {
         player.applyAnime4KShaders()
+        viewModel.restartHdrScreenOutputAndAmbientIfActive()
       }
     }
 

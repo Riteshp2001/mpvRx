@@ -238,7 +238,7 @@ fun PlayerSheets(
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
         onEnterLuaScriptsPanel = { onOpenPanel(Panels.LuaScripts) },
-        onAnime4KChanged = viewModel::restartAmbientIfActive,
+        onAnime4KChanged = viewModel::restartHdrScreenOutputAndAmbientIfActive,
       )
     }
 

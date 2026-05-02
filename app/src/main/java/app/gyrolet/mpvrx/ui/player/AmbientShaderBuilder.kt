@@ -1,5 +1,11 @@
 package app.gyrolet.mpvrx.ui.player
 
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
+
 data class AmbientRenderContext(
   val scaleX: Double,
   val scaleY: Double,
@@ -69,7 +75,7 @@ data class AmbientFrameExtendPreset(
 object AmbientShaderPresets {
   val glowFast =
     AmbientGlowPreset(
-      blurSamples = 16,
+      blurSamples = 12,
       maxRadius = 0.22f,
       glowIntensity = 1.4f,
       satBoost = 1.2f,
@@ -81,7 +87,7 @@ object AmbientShaderPresets {
 
   val glowBalanced =
     AmbientGlowPreset(
-      blurSamples = 24,
+      blurSamples = 18,
       maxRadius = 0.28f,
       glowIntensity = 1.45f,
       satBoost = 1.25f,
@@ -93,7 +99,7 @@ object AmbientShaderPresets {
 
   val glowHighQuality =
     AmbientGlowPreset(
-      blurSamples = 32,
+      blurSamples = 24,
       maxRadius = 0.35f,
       glowIntensity = 1.5f,
       satBoost = 1.3f,
@@ -105,7 +111,7 @@ object AmbientShaderPresets {
 
   val frameExtendFast =
     AmbientFrameExtendPreset(
-      sampleBudget = 24,
+      sampleBudget = 16,
       extendStrength = 0.54f,
       detailProtection = 0.86f,
       glowMix = 0.24f,
@@ -117,7 +123,7 @@ object AmbientShaderPresets {
 
   val frameExtendBalanced =
     AmbientFrameExtendPreset(
-      sampleBudget = 40,
+      sampleBudget = 24,
       extendStrength = 0.70f,
       detailProtection = 0.72f,
       glowMix = 0.12f,
@@ -129,7 +135,7 @@ object AmbientShaderPresets {
 
   val frameExtendHighQuality =
     AmbientFrameExtendPreset(
-      sampleBudget = 48,
+      sampleBudget = 32,
       extendStrength = 0.84f,
       detailProtection = 0.62f,
       glowMix = 0.08f,
@@ -186,6 +192,34 @@ fun closeTo(
   tolerance: Float = 0.01f,
 ): Boolean = kotlin.math.abs(left - right) <= tolerance
 
+private const val GOLDEN_ANGLE = 2.399963229728653
+
+private fun glslFloat(value: Double): String {
+  val normalized = if (abs(value) < 0.0000005) 0.0 else value
+  val formatted = String.format(Locale.US, "%.8f", normalized)
+    .trimEnd('0')
+    .trimEnd('.')
+  return if (formatted.contains('.')) formatted else "$formatted.0"
+}
+
+private fun buildSpiralTapTable(
+  name: String,
+  samples: Int,
+  thirdComponent: (radiusNorm: Double, indexNorm: Double) -> Double,
+): String {
+  val count = samples.coerceAtLeast(1)
+  val taps =
+    (0 until count).joinToString(",\n") { index ->
+      val indexNorm = (index.toDouble() + 0.5) / count.toDouble()
+      val radiusNorm = sqrt(indexNorm)
+      val theta = (index.toDouble() + 0.5) * GOLDEN_ANGLE
+      val x = cos(theta) * radiusNorm
+      val y = sin(theta) * radiusNorm
+      "    vec3(${glslFloat(x)}, ${glslFloat(y)}, ${glslFloat(thirdComponent(radiusNorm, indexNorm))})"
+    }
+  return "const vec3 $name[$count] = vec3[$count](\n$taps\n);"
+}
+
 object AmbientShaderBuilder {
   fun build(spec: AmbientShaderSpec): String =
     when (spec) {
@@ -212,7 +246,7 @@ object AmbientShaderBuilder {
 #define SCALE_Y          ${spec.context.scaleY}
 
 const float PI  = 3.14159265358979;
-const float PHI = 1.61803398874989;
+${buildSpiralTapTable("GLOW_TAPS", spec.blurSamples) { radiusNorm, _ -> radiusNorm }}
 
 float rand(vec2 seed) {
     return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
@@ -247,19 +281,22 @@ vec4 hook() {
     float edge_fade = exp(-edge_dist * (3.0 / max(MAX_RADIUS, 0.001)));
 
     float jitter = rand(uv * HOOKED_size) * (PI * 2.0);
-    float angle_inc = PI * 2.0 / (PHI * PHI);
-    float inv_n = 1.0 / float(BLUR_SAMPLES);
+    float jitter_s = sin(jitter);
+    float jitter_c = cos(jitter);
     vec2 aspect_fix = vec2(HOOKED_size.y / HOOKED_size.x, 1.0);
 
     vec3 acc_color = vec3(0.0);
     float acc_weight = 0.0;
 
     for (int i = 0; i < BLUR_SAMPLES; i++) {
-        float fi = float(i) + 0.5;
-        float r = sqrt(fi * inv_n) * MAX_RADIUS;
-        float theta = fi * angle_inc + jitter;
+        vec3 tap = GLOW_TAPS[i];
+        vec2 base_offset = tap.xy * MAX_RADIUS;
+        float r = tap.z * MAX_RADIUS;
 
-        vec2 offset = vec2(cos(theta), sin(theta)) * r * aspect_fix;
+        vec2 offset = vec2(
+            base_offset.x * jitter_c - base_offset.y * jitter_s,
+            base_offset.x * jitter_s + base_offset.y * jitter_c
+        ) * aspect_fix;
         vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
         vec3 sample_rgb = HOOKED_tex(sample_uv).rgb;
 
@@ -291,10 +328,11 @@ vec4 hook() {
     """.trimIndent()
 
   private fun buildFrameExtend(spec: AmbientFrameExtendShaderSpec): String {
-    val extendSteps = (spec.sampleBudget / 4).coerceIn(6, 16)
-    val glowSamples = (spec.sampleBudget / 2).coerceIn(12, 40)
-    val anchorRadius = (spec.sampleBudget / 14).coerceIn(1, 3)
-    val orthoRadius = (spec.sampleBudget / 24).coerceIn(1, 2)
+    val effectiveBudget = spec.sampleBudget.coerceIn(8, 32)
+    val extendSteps = (effectiveBudget / 5).coerceIn(4, 8)
+    val glowSamples = (effectiveBudget / 3).coerceIn(6, 14)
+    val anchorRadius = if (effectiveBudget >= 28) 2 else 1
+    val orthoRadius = 1
     return """
 //!HOOK OUTPUT
 //!BIND HOOKED
@@ -315,6 +353,7 @@ vec4 hook() {
 #define SCALE_Y           ${spec.context.scaleY}
 
 const float PI = 3.14159265358979;
+${buildSpiralTapTable("FRAME_GLOW_TAPS", glowSamples) { _, indexNorm -> indexNorm }}
 
 float rand(vec2 seed) {
     return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
@@ -324,21 +363,19 @@ float luma(vec3 rgb) {
     return dot(rgb, vec3(0.2126, 0.7152, 0.0722));
 }
 
-vec3 tri_noise(vec2 uv) {
-    vec2 px = uv * HOOKED_size;
-    float n0 = rand(px + vec2(11.0, 47.0));
-    float n1 = rand(px + vec2(59.0, 83.0));
-    float n2 = rand(px + vec2(97.0, 23.0));
-    return vec3(n0, n1, n2) - 0.5;
+float noise_value(vec2 uv) {
+    return rand(uv * HOOKED_size + vec2(11.0, 47.0)) - 0.5;
 }
 
 vec3 apply_dither(vec3 rgb, vec2 uv, float flatness) {
+    if (DITHER_NOISE <= 0.0001) {
+        return rgb;
+    }
     float amount = DITHER_NOISE * mix(0.025, 0.15, flatness);
-    return clamp(rgb + tri_noise(uv) * amount, 0.0, 1.0);
+    return clamp(rgb + vec3(noise_value(uv)) * amount, 0.0, 1.0);
 }
 
-float edge_risk(vec2 edge_origin, vec2 inward_dir, vec2 ortho_dir) {
-    vec3 edge = HOOKED_tex(edge_origin).rgb;
+float edge_risk(vec2 edge_origin, vec3 edge, vec2 inward_dir, vec2 ortho_dir) {
     vec3 ortho_a = HOOKED_tex(clamp(edge_origin + ortho_dir * 0.008, 0.0, 1.0)).rgb;
     vec3 ortho_b = HOOKED_tex(clamp(edge_origin - ortho_dir * 0.008, 0.0, 1.0)).rgb;
     vec3 inward = HOOKED_tex(clamp(edge_origin + inward_dir * 0.014, 0.0, 1.0)).rgb;
@@ -350,16 +387,21 @@ float edge_risk(vec2 edge_origin, vec2 inward_dir, vec2 ortho_dir) {
 
 vec3 sample_soft_glow(vec2 edge_origin, vec2 uv, float outside_norm) {
     float jitter = rand(uv * HOOKED_size) * (PI * 2.0);
-    float angle_step = PI * 2.0 / float(GLOW_SAMPLES);
+    float jitter_s = sin(jitter);
+    float jitter_c = cos(jitter);
     float radius = mix(0.016, 0.095, outside_norm);
     vec2 aspect_fix = vec2(HOOKED_size.y / HOOKED_size.x, 1.0);
     vec3 acc = vec3(0.0);
     float acc_weight = 0.0;
 
     for (int i = 0; i < GLOW_SAMPLES; i++) {
-        float fi = (float(i) + 0.5) / float(GLOW_SAMPLES);
-        float theta = jitter + angle_step * float(i);
-        vec2 offset = vec2(cos(theta), sin(theta)) * sqrt(fi) * radius * aspect_fix;
+        vec3 tap = FRAME_GLOW_TAPS[i];
+        float fi = tap.z;
+        vec2 base_offset = tap.xy * radius;
+        vec2 offset = vec2(
+            base_offset.x * jitter_c - base_offset.y * jitter_s,
+            base_offset.x * jitter_s + base_offset.y * jitter_c
+        ) * aspect_fix;
         vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
         vec3 sample_rgb = HOOKED_tex(sample_uv).rgb;
         float weight = (1.15 - fi) * (0.8 + luma(sample_rgb));
@@ -473,7 +515,7 @@ vec4 hook() {
     float outside_norm = clamp(dist_to_edge / bar_extent, 0.0, 1.0);
 
     vec3 edge_rgb = HOOKED_tex(edge_origin).rgb;
-    float risk = edge_risk(edge_origin, inward_dir, ortho_dir);
+    float risk = edge_risk(edge_origin, edge_rgb, inward_dir, ortho_dir);
     vec4 extend_result = sample_predictive_fill(edge_origin, edge_rgb, inward_dir, ortho_dir, outside_norm);
     vec3 glow_rgb = sample_soft_glow(edge_origin, uv, outside_norm);
 

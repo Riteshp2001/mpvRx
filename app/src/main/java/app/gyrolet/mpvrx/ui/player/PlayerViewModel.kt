@@ -3192,9 +3192,11 @@ class PlayerViewModel(
   }
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
-    val pipelineReady = refreshHdrScreenOutputPipelineState()
+    val pipelineReady = isHdrScreenOutputAvailable(mode)
     if (mode != HdrScreenMode.OFF && !pipelineReady) {
-      playerUpdate.value = PlayerUpdates.ShowText("HDR screen output needs GPU Next + Vulkan")
+      val message = if (mode == HdrScreenMode.LINEAR) "Linear HDR needs GPU Next + Vulkan"
+                    else "HDR Screen output needs GPU Next"
+      playerUpdate.value = PlayerUpdates.ShowText(message)
       applyHdrScreenOutput(HdrScreenMode.OFF)
       return
     }
@@ -3207,8 +3209,14 @@ class PlayerViewModel(
     playerUpdate.value = PlayerUpdates.ShowText("HDR Screen Output: ${mode.shortTitle}")
   }
 
-  private fun isHdrScreenOutputAvailable(): Boolean =
-    decoderPreferences.useVulkan.get() && decoderPreferences.gpuNext.get()
+  private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean {
+    val needsVulkan = mode == HdrScreenMode.LINEAR
+    return if (needsVulkan) {
+      decoderPreferences.useVulkan.get() && decoderPreferences.gpuNext.get()
+    } else {
+      decoderPreferences.gpuNext.get()
+    }
+  }
 
   private fun initialHdrScreenMode(): HdrScreenMode {
     val savedMode = decoderPreferences.hdrScreenMode.get()
@@ -3244,8 +3252,8 @@ class PlayerViewModel(
   }
 
   /**
-   * Called after an Anime4K shader change that wipes glsl-shaders.
-   * Re-applies HDR toys shaders and then re-injects the ambient shader if active.
+   * Called after Anime4K or file changes so HDR remains layered with the rest of
+   * the shader stack, then the ambient shader is moved back to the final pass.
    */
   fun restartHdrScreenOutputAndAmbientIfActive() {
     refreshHdrScreenOutputForCurrentVideo()
@@ -3312,8 +3320,8 @@ class PlayerViewModel(
     }
   }
 
-  /** Resets ambient mode to OFF when a new video file is loaded. */
-  fun resetAmbientMode() {
+  /** Removes the old file-specific ambient shader while preserving the user's selected ambient mode. */
+  fun prepareAmbientForNewVideo() {
     if (!_isAmbientEnabled.value) return
     disableAmbientShader()
     lastAmbientScaleX = -1.0
@@ -3322,16 +3330,17 @@ class PlayerViewModel(
 
   /**
    * Re-injects the ambient shader if ambient mode is currently ON.
-   * Called after Anime4K shader changes, since setPropertyString("glsl-shaders", ...)
-   * wipes ALL glsl-shaders including the ambient one.
+   * Called after shader-stack changes so ambient stays as the last OUTPUT pass.
    */
   fun restartAmbientIfActive() {
     if (!_isAmbientEnabled.value) return
-    // The old ambient shader file was wiped by the glsl-shaders reset.
-    // Clean up our local reference without trying to remove from MPV.
-    ambientShaderFile?.delete()
+    ambientShaderFile?.let { oldFile ->
+      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
+      oldFile.delete()
+    }
     ambientShaderFile = null
     lastAmbientScaleX = -1.0         // Force scale recalculation
+    lastAmbientScaleY = -1.0
     lastCompiledShaderCode = null    // Invalidate cache — the old file is gone, must recompile
     // Small delay to let Anime4K shaders settle
     ambientDebounceJob?.cancel()
@@ -3651,7 +3660,7 @@ class PlayerViewModel(
           AmbientFrameExtendShaderSpec(
             context = context,
             shared = shared,
-            sampleBudget = _ambientBlurSamples.value,
+            sampleBudget = blurSamples,
             extendStrength = _frameExtendStrength.value,
             detailProtection = _frameExtendDetailProtection.value,
             glowMix = _frameExtendGlowMix.value,
