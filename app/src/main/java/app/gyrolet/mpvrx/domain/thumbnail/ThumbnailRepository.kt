@@ -59,6 +59,9 @@ class ThumbnailRepository(
   private val folderStates = ConcurrentHashMap<String, FolderState>()
   private val folderJobs = ConcurrentHashMap<String, Job>()
 
+  // Track network URLs where all extraction strategies have failed – avoids endless retries while scrolling
+  private val networkThumbnailFailed = ConcurrentHashMap<String, Boolean>()
+
   private val _thumbnailReadyKeys =
     MutableSharedFlow<String>(
       extraBufferCapacity = 256,
@@ -186,6 +189,7 @@ class ThumbnailRepository(
     folderJobs.clear()
     folderStates.clear()
     ongoingOperations.clear()
+    networkThumbnailFailed.clear()
 
     synchronized(memoryCache) {
       memoryCache.evictAll()
@@ -531,6 +535,13 @@ class ThumbnailRepository(
     if (!appearancePreferences.showNetworkThumbnails.get()) return@withContext null
     if (!isHttpUrl(path)) return@withContext null
 
+    // Check if this network URL has previously failed all extraction strategies
+    val videoKey = path.hashCode().toString()
+    if (networkThumbnailFailed.containsKey(videoKey)) {
+      android.util.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
+      return@withContext null
+    }
+
     val memKey  = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}"
     val diskKey = "video-thumb|$path|network|${thumbnailModeKey()}"
 
@@ -559,7 +570,12 @@ class ThumbnailRepository(
         targetWidth = widthPx.takeIf { it > 0 },
         targetHeight = heightPx.takeIf { it > 0 },
       )?.let { scaleBitmap(it, widthPx, heightPx) }
-        ?: return@withContext null
+
+    if (bitmap == null) {
+      android.util.Log.w("ThumbnailRepository", "All strategies failed for network stream $path")
+      networkThumbnailFailed[videoKey] = true
+      return@withContext null
+    }
 
     // Write to disk cache
     imageLoader.diskCache?.openEditor(diskKey)?.let { editor ->

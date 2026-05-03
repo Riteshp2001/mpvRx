@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
@@ -24,6 +25,7 @@ import app.gyrolet.mpvrx.domain.media.model.VideoFolder
  * @param modifier Optional modifier for the card
  * @param isSelected Whether the card is in a selected state
  * @param isGridMode Whether the card should display in grid mode
+ * @param thumbnail Optional thumbnail bitmap to display
  */
 @Composable
 fun PlaylistCard(
@@ -35,6 +37,7 @@ fun PlaylistCard(
   modifier: Modifier = Modifier,
   isSelected: Boolean = false,
   isGridMode: Boolean = false,
+  thumbnail: android.graphics.Bitmap? = null,
 ) {
   // Convert playlist to VideoFolder format for FolderCard
   val folderModel = VideoFolder(
@@ -84,7 +87,8 @@ fun PlaylistCard(
     customIcon = Icons.Filled.PlaylistPlay,
     modifier = modifier,
     customChipContent = customChipRenderer,
-    isGridMode = isGridMode
+    isGridMode = isGridMode,
+    thumbnail = thumbnail?.asImageBitmap()
   )
 }
 

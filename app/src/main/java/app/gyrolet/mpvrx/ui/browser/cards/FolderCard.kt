@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,6 +57,7 @@ fun FolderCard(
   isGridMode: Boolean = false,
   isPinned: Boolean = false,
   onPinClick: (() -> Unit)? = null,
+  thumbnail: ImageBitmap? = null,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -157,12 +160,21 @@ fun FolderCard(
               ),
             contentAlignment = Alignment.Center,
           ) {
-            Icon(
-              customIcon ?: Icons.Filled.Folder,
-              contentDescription = "Folder",
-              modifier = Modifier.size(56.dp),
-              tint = MaterialTheme.colorScheme.secondary,
-            )
+            if (thumbnail != null) {
+              androidx.compose.foundation.Image(
+                bitmap = thumbnail,
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+              )
+            } else {
+              Icon(
+                customIcon ?: Icons.Filled.Folder,
+                contentDescription = "Folder",
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
 
             if (newVideoCount > 0) {
               Box(
@@ -250,12 +262,21 @@ fun FolderCard(
                 ),
             contentAlignment = Alignment.Center,
           ) {
-            Icon(
-              customIcon ?: Icons.Filled.Folder,
-              contentDescription = "Folder",
-              modifier = Modifier.size(48.dp),
-              tint = MaterialTheme.colorScheme.secondary,
-            )
+            if (thumbnail != null) {
+              androidx.compose.foundation.Image(
+                bitmap = thumbnail,
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+              )
+            } else {
+              Icon(
+                customIcon ?: Icons.Filled.Folder,
+                contentDescription = "Folder",
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
 
             // Show new video count badge if folder contains new videos
             if (newVideoCount > 0) {
