@@ -498,32 +498,18 @@ private fun RecentItemsContent(
     recentItems.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video }
   }
 
-  val thumbnailPrefetchVideos by remember(recentItems, isGridMode, listState, gridState) {
-    derivedStateOf {
-      if (recentVideos.isEmpty()) {
-        emptyList()
-      } else {
-        val visibleIndexes =
-          if (isGridMode) {
-            gridState.layoutInfo.visibleItemsInfo.map { it.index }
-          } else {
-            listState.layoutInfo.visibleItemsInfo.map { it.index }
-          }
-        val startIndex = visibleIndexes.minOrNull() ?: 0
-        val endExclusive = ((visibleIndexes.maxOrNull() ?: startIndex) + 16).coerceAtMost(recentItems.size)
-        recentItems
-          .subList(startIndex.coerceAtLeast(0), endExclusive)
-          .filterIsInstance<RecentlyPlayedItem.VideoItem>()
-          .map { it.video }
-      }
-    }
-  }
-
-  LaunchedEffect(thumbnailPrefetchVideos, showVideoThumbnails, thumbWidthPx, thumbHeightPx) {
-    if (showVideoThumbnails && thumbnailPrefetchVideos.isNotEmpty()) {
+  // Unified thumbnail generation - starts with initial batch and continues as needed
+  // This avoids the overhead of multiple conflicting LaunchedEffect calls
+  LaunchedEffect(showVideoThumbnails, thumbWidthPx, thumbHeightPx, recentItems.size) {
+    if (showVideoThumbnails && recentVideos.isNotEmpty()) {
+      // Start with all videos - the ThumbnailRepository will handle batching internally
+      // This avoids redundant job restarts when scrolling
+      val allVideos = recentItems
+        .filterIsInstance<RecentlyPlayedItem.VideoItem>()
+        .map { it.video }
       thumbnailRepository.startFolderThumbnailGeneration(
         folderId = "recently_played",
-        videos = thumbnailPrefetchVideos,
+        videos = allVideos,
         widthPx = thumbWidthPx,
         heightPx = thumbHeightPx,
       )

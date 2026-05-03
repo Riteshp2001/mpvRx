@@ -719,44 +719,15 @@ private fun VideoListContent(
           rememberedGridOffset.intValue = gridState.firstVisibleItemScrollOffset
       }
 
-      val thumbnailPrefetchVideos by remember(
-        videosWithInfo,
-        mediaLayoutMode,
-        videoGridColumns,
-        listState,
-        gridState,
-      ) {
-        derivedStateOf {
-          if (videosWithInfo.isEmpty()) {
-            emptyList()
-          } else {
-            val visibleIndexes =
-              if (mediaLayoutMode == MediaLayoutMode.GRID) {
-                gridState.layoutInfo.visibleItemsInfo.map { it.index }
-              } else {
-                listState.layoutInfo.visibleItemsInfo.map { it.index }
-              }
-            val startIndex = visibleIndexes.minOrNull() ?: 0
-            val aheadCount = if (mediaLayoutMode == MediaLayoutMode.GRID) videoGridColumns * 3 else 12
-            val endExclusive =
-              ((visibleIndexes.maxOrNull() ?: startIndex) + aheadCount + 1)
-                .coerceAtMost(videosWithInfo.size)
-
-            val visibleWindow =
-              videosWithInfo.subList(startIndex.coerceAtLeast(0), endExclusive).map { it.video }
-            val initialCount = if (mediaLayoutMode == MediaLayoutMode.GRID) videoGridColumns * 4 else 16
-            (videosWithInfo.take(initialCount).map { it.video } + visibleWindow).distinctBy { video ->
-              video.path.ifBlank { video.uri.toString() }
-            }
-          }
-        }
-      }
-
-      LaunchedEffect(folderId, showVideoThumbnails, thumbWidthPx, thumbHeightPx, thumbnailPrefetchVideos) {
-        if (showVideoThumbnails && thumbnailPrefetchVideos.isNotEmpty()) {
+      // Unified thumbnail generation - starts with initial batch and continues as needed
+      // This avoids the overhead of multiple conflicting LaunchedEffect calls
+      LaunchedEffect(folderId, showVideoThumbnails, thumbWidthPx, thumbHeightPx, videosWithInfo.size) {
+        if (showVideoThumbnails && videosWithInfo.isNotEmpty()) {
+          // Start with all videos - the ThumbnailRepository will handle batching internally
+          // This avoids redundant job restarts when scrolling
           thumbnailRepository.startFolderThumbnailGeneration(
             folderId = folderId,
-            videos = thumbnailPrefetchVideos,
+            videos = videosWithInfo.map { it.video },
             widthPx = thumbWidthPx,
             heightPx = thumbHeightPx,
           )

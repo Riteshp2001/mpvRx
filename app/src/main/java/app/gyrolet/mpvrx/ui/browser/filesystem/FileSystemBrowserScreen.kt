@@ -1224,31 +1224,15 @@ private fun FileSystemBrowserContent(
     }
 
     else -> {
-      val thumbnailPrefetchVideos by remember(items, listState) {
-        derivedStateOf {
-          if (videos.isEmpty()) {
-            emptyList()
-          } else {
-            val visibleIndexes = listState.layoutInfo.visibleItemsInfo.map { it.index }
-            val startIndex = visibleIndexes.minOrNull() ?: 0
-            val endExclusive = ((visibleIndexes.maxOrNull() ?: startIndex) + 25).coerceAtMost(items.size)
-            val visibleWindow =
-              items
-              .subList(startIndex.coerceAtLeast(0), endExclusive)
-              .filterIsInstance<FileSystemItem.VideoFile>()
-              .map { it.video }
-            (videos.take(25) + visibleWindow).distinctBy { video ->
-              video.path.ifBlank { video.uri.toString() }
-            }
-          }
-        }
-      }
-
-      LaunchedEffect(folderId, showVideoThumbnails, thumbWidthPx, thumbHeightPx, thumbnailPrefetchVideos) {
-        if (showVideoThumbnails && thumbnailPrefetchVideos.isNotEmpty()) {
+      // Unified thumbnail generation - starts with initial batch and continues as needed
+      // This avoids the overhead of multiple conflicting LaunchedEffect calls
+      LaunchedEffect(folderId, showVideoThumbnails, thumbWidthPx, thumbHeightPx, videos.size) {
+        if (showVideoThumbnails && videos.isNotEmpty()) {
+          // Start with all videos - the ThumbnailRepository will handle batching internally
+          // This avoids redundant job restarts when scrolling
           thumbnailRepository.startFolderThumbnailGeneration(
             folderId = folderId,
-            videos = thumbnailPrefetchVideos,
+            videos = videos,
             widthPx = thumbWidthPx,
             heightPx = thumbHeightPx,
           )

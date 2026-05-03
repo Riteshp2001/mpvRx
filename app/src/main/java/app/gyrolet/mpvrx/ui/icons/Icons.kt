@@ -471,21 +471,4 @@ object Icons {
     fun require(name: String): AppIcon = all.getValue(name)
   }
 
-  @Deprecated(
-    message = "Use Icons.RoundedFilled instead.",
-    replaceWith = ReplaceWith("Icons.RoundedFilled"),
-  )
-  object RoundedFilledCatalog {
-    val all: Map<String, AppIcon>
-      get() = RoundedFilled.all
-
-    val names: List<String>
-      get() = RoundedFilled.names
-
-    operator fun get(name: String): AppIcon? = RoundedFilled[name]
-
-    fun require(name: String): AppIcon = RoundedFilled.require(name)
-  }
 }
-
-
