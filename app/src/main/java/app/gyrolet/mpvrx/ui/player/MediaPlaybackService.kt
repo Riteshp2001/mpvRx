@@ -57,6 +57,7 @@ class MediaPlaybackService :
     private const val NOTIFICATION_CHANNEL_ID = "mpvrx_playback_channel"
     private const val PLAYBACK_STATE_SAVE_INTERVAL_MS = 5000L
     private val DEFAULT_ACCENT_COLOR = Color.rgb(214, 220, 228)
+    const val ACTION_OPEN_PLAYER = "app.gyrolet.mpvrx.action.OPEN_PLAYER_FROM_NOTIFICATION"
     const val ACTION_NOTIFICATION_PREVIOUS = "app.gyrolet.mpvrx.action.NOTIFICATION_PREVIOUS"
     const val ACTION_NOTIFICATION_NEXT = "app.gyrolet.mpvrx.action.NOTIFICATION_NEXT"
 
@@ -65,6 +66,8 @@ class MediaPlaybackService :
 
     @Volatile
     private var isServiceRunning = false
+
+    fun isRunning(): Boolean = isServiceRunning
 
     fun createNotificationChannel(context: Context) {
       val channel =
@@ -383,9 +386,10 @@ class MediaPlaybackService :
     PendingIntent.getActivity(
       this, 0,
       Intent(this, PlayerActivity::class.java).apply {
-        action = "app.gyrolet.mpvrx.action.OPEN_PLAYER_FROM_NOTIFICATION"
+        action = ACTION_OPEN_PLAYER
         mediaUri?.let { putExtra("uri", it) }
         putExtra("title", mediaTitle)
+        putExtra("media_identifier", mediaIdentifier)
         putExtra("launch_source", "notification")
         putExtra("internal_launch", true)
         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
