@@ -16,7 +16,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import app.gyrolet.mpvrx.R
@@ -43,7 +43,7 @@ object PlayerPreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val preferences = koinInject<PlayerPreferences>()
     Scaffold(
       topBar = {
@@ -84,7 +84,7 @@ object PlayerPreferencesScreen : Screen {
                 value = orientation,
                 onValueChange = preferences.orientation::set,
                 values = PlayerOrientation.entries,
-                valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
                 title = { Text(stringResource(R.string.pref_player_orientation)) },
                 summary = { Text(stringResource(orientation.titleRes), color = MaterialTheme.colorScheme.outline) },
               )

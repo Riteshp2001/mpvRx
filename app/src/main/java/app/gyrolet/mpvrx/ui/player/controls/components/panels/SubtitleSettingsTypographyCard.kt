@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
@@ -61,6 +62,7 @@ import org.koin.compose.koinInject
 @Composable
 fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   val context = LocalContext.current
+  val resources = LocalResources.current
   val preferences = koinInject<SubtitlesPreferences>()
   val fileManager = koinInject<FileManager>()
   var isExpanded by remember { mutableStateOf(true) }
@@ -227,7 +229,7 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
             MPVLib.setPropertyString("sub-border-style", it.value)
           },
           title = { Text(stringResource(R.string.player_sheets_subtitles_border_style)) },
-          valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+          valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
           values = SubtitlesBorderStyle.entries,
           type = ListPreferenceType.DROPDOWN_MENU,
           summary = { Text(stringResource(borderStyle.titleRes)) },

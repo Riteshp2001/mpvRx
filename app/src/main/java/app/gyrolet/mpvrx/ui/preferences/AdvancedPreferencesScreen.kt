@@ -87,6 +87,8 @@ object AdvancedPreferencesScreen : Screen {
     var showExportDialog by remember { mutableStateOf(false) }
     var importStats by remember { mutableStateOf<SettingsManager.ImportStats?>(null) }
     var exportStats by remember { mutableStateOf<SettingsManager.ExportStats?>(null) }
+    val playbackHistoryClearedMessage = stringResource(R.string.pref_advanced_cleared_playback_history)
+    val fontsCacheClearedMessage = stringResource(R.string.pref_advanced_cleared_fonts_cache)
 
     // Export settings launcher
     val exportLauncher =
@@ -459,7 +461,7 @@ object AdvancedPreferencesScreen : Screen {
                           Toast
                             .makeText(
                               context,
-                              context.getString(R.string.pref_advanced_cleared_playback_history),
+                              playbackHistoryClearedMessage,
                               Toast.LENGTH_SHORT,
                             ).show()
                         }
@@ -580,7 +582,7 @@ object AdvancedPreferencesScreen : Screen {
                       Toast
                         .makeText(
                           context,
-                          context.getString(R.string.pref_advanced_cleared_fonts_cache),
+                          fontsCacheClearedMessage,
                           Toast.LENGTH_SHORT,
                         ).show()
                     }

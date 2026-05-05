@@ -89,6 +89,7 @@ object AppearancePreferencesScreen : Screen {
         var isThemeSectionExpanded by rememberSaveable { mutableStateOf(true) }
         val storedThumbnailMode by browserPreferences.thumbnailMode.collectAsState()
         val thumbnailFramePosition by browserPreferences.thumbnailFramePosition.collectAsState()
+        val thumbnailCacheClearedMessage = stringResource(R.string.pref_thumbnail_cache_cleared)
 
         LaunchedEffect(storedThumbnailMode) {
             when (storedThumbnailMode) {
@@ -135,14 +136,14 @@ object AppearancePreferencesScreen : Screen {
                                     Toast
                                         .makeText(
                                             context,
-                                            context.getString(R.string.pref_thumbnail_cache_cleared),
+                                            thumbnailCacheClearedMessage,
                                             Toast.LENGTH_SHORT,
                                         ).show()
                                 }.onFailure { error ->
                                     Toast
                                         .makeText(
                                             context,
-                                            context.getString(
+                                            context.resources.getString(
                                                 R.string.pref_thumbnail_cache_clear_failed,
                                                 error.message ?: "Unknown error",
                                             ),

@@ -167,13 +167,7 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
   ): Response {
     // Parse range header: bytes=start-end
     val rangeValue = rangeHeader.removePrefix("bytes=")
-    val parts = rangeValue.split("-")
-    val start = parts[0].toLongOrNull() ?: 0L
-    val end = if (parts.size > 1 && parts[1].isNotEmpty()) {
-      parts[1].toLongOrNull()
-    } else {
-      null
-    }
+    val parts = rangeValue.split("-", limit = 2)
 
     // Get file size if not known
     if (streamInfo.fileSize < 0) {
@@ -181,7 +175,41 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     }
 
     val fileSize = streamInfo.fileSize
-    val rangeEnd = end ?: (fileSize - 1)
+    if (fileSize <= 0L) {
+      val response = newFixedLengthResponse(
+        Response.Status.RANGE_NOT_SATISFIABLE,
+        MIME_PLAINTEXT,
+        "File size unavailable",
+      )
+      response.addHeader("Content-Range", "bytes */*")
+      return response
+    }
+
+    val startPart = parts.getOrNull(0).orEmpty()
+    val endPart = parts.getOrNull(1).orEmpty()
+    val start: Long
+    val requestedEnd: Long?
+
+    if (startPart.isEmpty() && endPart.isNotEmpty()) {
+      val suffixLength = endPart.toLongOrNull()
+      if (suffixLength == null || suffixLength <= 0L) {
+        return rangeNotSatisfiable(fileSize)
+      }
+      start = (fileSize - suffixLength).coerceAtLeast(0L)
+      requestedEnd = fileSize - 1
+    } else {
+      start = startPart.toLongOrNull() ?: return rangeNotSatisfiable(fileSize)
+      requestedEnd = endPart.takeIf { it.isNotEmpty() }?.toLongOrNull()
+    }
+
+    if (start < 0L || start >= fileSize) {
+      return rangeNotSatisfiable(fileSize)
+    }
+
+    val rangeEnd = (requestedEnd ?: (fileSize - 1)).coerceAtMost(fileSize - 1)
+    if (rangeEnd < start) {
+      return rangeNotSatisfiable(fileSize)
+    }
     val contentLength = rangeEnd - start + 1
 
     // Get stream with offset
@@ -210,6 +238,16 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     return response
   }
 
+  private fun rangeNotSatisfiable(fileSize: Long): Response =
+    newFixedLengthResponse(
+      Response.Status.RANGE_NOT_SATISFIABLE,
+      MIME_PLAINTEXT,
+      "Requested range not satisfiable",
+    ).apply {
+      addHeader("Content-Range", "bytes */$fileSize")
+      addHeader("Accept-Ranges", "bytes")
+    }
+
   private fun handleFullRequest(
     session: IHTTPSession,
     streamInfo: StreamInfo,
@@ -229,12 +267,21 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
       )
     }
 
-    val response = newFixedLengthResponse(
-      Response.Status.OK,
-      streamInfo.mimeType,
-      inputStream,
-      streamInfo.fileSize,
-    )
+    val response =
+      if (streamInfo.fileSize > 0L) {
+        newFixedLengthResponse(
+          Response.Status.OK,
+          streamInfo.mimeType,
+          inputStream,
+          streamInfo.fileSize,
+        )
+      } else {
+        newChunkedResponse(
+          Response.Status.OK,
+          streamInfo.mimeType,
+          inputStream,
+        )
+      }
 
     response.addHeader("Accept-Ranges", "bytes")
     if (streamInfo.fileSize > 0) {
@@ -793,20 +840,29 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
           return read(b, 0, b.size)
         }
 
+        private var scratch = ByteArray(0)
+
         override fun read(b: ByteArray, off: Int, len: Int): Int {
           if (closed) return -1
           if (len == 0) return 0
 
           try {
             // SMBJ's file.read() signature: read(ByteArray, Long) -> Int
-            // We need to read into a temp buffer then copy to the output buffer
-            val readBuffer = ByteArray(len)
+            // Read directly whenever possible to avoid per-read heap churn.
+            val readBuffer =
+              if (off == 0 && len == b.size) {
+                b
+              } else {
+                if (scratch.size < len) scratch = ByteArray(len)
+                scratch
+              }
             val bytesRead = fileHandle.read(readBuffer, currentPosition)
 
             if (bytesRead <= 0) return -1
 
-            // Copy the data to the output buffer
-            System.arraycopy(readBuffer, 0, b, off, bytesRead)
+            if (readBuffer !== b) {
+              System.arraycopy(readBuffer, 0, b, off, bytesRead)
+            }
             currentPosition += bytesRead
             return bytesRead
           } catch (e: Exception) {

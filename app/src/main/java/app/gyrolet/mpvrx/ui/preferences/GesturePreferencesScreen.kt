@@ -25,7 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -59,7 +59,7 @@ object GesturePreferencesScreen : Screen {
   override fun Content() {
     val preferences = koinInject<GesturePreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val backstack = LocalBackStack.current
     val useSingleTapForCenter by preferences.useSingleTapForCenter.collectAsState()
 
@@ -298,7 +298,7 @@ object GesturePreferencesScreen : Screen {
             value = leftDoubleTap,
             onValueChange = { preferences.leftSingleActionGesture.set(it) },
             values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+            valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_double_tap_left_title)) },
             summary = { Text(
               text = stringResource(leftDoubleTap.titleRes),
@@ -318,7 +318,7 @@ object GesturePreferencesScreen : Screen {
                 SingleActionGesture.PlayPause,
                 SingleActionGesture.Custom,
               ),
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+            valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
             title = {
               Text(
                 text =
@@ -340,7 +340,7 @@ object GesturePreferencesScreen : Screen {
             value = rightDoubleTap,
             onValueChange = { preferences.rightSingleActionGesture.set(it) },
             values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+            valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_double_tap_right_title)) },
             summary = { Text(
               text = stringResource(rightDoubleTap.titleRes),
@@ -429,7 +429,7 @@ object GesturePreferencesScreen : Screen {
             value = mediaPreviousGesture,
             onValueChange = { preferences.mediaPreviousGesture.set(it) },
             values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+            valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_media_previous)) },
             summary = { Text(
               text = stringResource(mediaPreviousGesture.titleRes),
@@ -448,7 +448,7 @@ object GesturePreferencesScreen : Screen {
                 SingleActionGesture.PlayPause,
                 SingleActionGesture.Custom,
               ),
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+            valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_media_play)) },
             summary = { Text(
               text = stringResource(mediaPlayGesture.titleRes),
@@ -462,7 +462,7 @@ object GesturePreferencesScreen : Screen {
             value = mediaNextGesture,
             onValueChange = { preferences.mediaNextGesture.set(it) },
             values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+            valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_media_next)) },
             summary = { Text(
               text = stringResource(mediaNextGesture.titleRes),

@@ -33,11 +33,11 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.Modifier
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -331,7 +331,7 @@ class PlayerActivity :
           getString(R.string.notification_permission_denied),
           Toast.LENGTH_LONG,
         ).show()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
           !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
         ) {
           openNotificationSettings()
@@ -448,7 +448,6 @@ class PlayerActivity :
       }
     }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
@@ -585,8 +584,7 @@ class PlayerActivity :
       }
     }
 
-    window.attributes.layoutInDisplayCutoutMode =
-      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    setLayoutInDisplayCutoutModeIfSupported(shortEdges = true)
   }
 
   override fun attachBaseContext(newBase: Context?) {
@@ -612,7 +610,6 @@ class PlayerActivity :
     onBackPressedDispatcher.addCallback(
       this,
       object : OnBackPressedCallback(true) {
-        @RequiresApi(Build.VERSION_CODES.P)
         override fun handleOnBackPressed() {
           handleBackPress()
         }
@@ -620,7 +617,6 @@ class PlayerActivity :
     )
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   private fun handleBackPress() {
     // Dismiss overlays first
     if (viewModel.sheetShown.value != Sheets.None) {
@@ -645,7 +641,6 @@ class PlayerActivity :
     finish()
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   private fun setupPlayerControls() {
     binding.controls.setContent {
       MpvrxTheme {
@@ -760,7 +755,6 @@ class PlayerActivity :
     }
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   override fun onDestroy() {
     Log.d(TAG, "PlayerActivity onDestroy")
     val keepBackgroundPlaybackAlive =
@@ -877,7 +871,6 @@ class PlayerActivity :
     }
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   override fun onPause() {
     runCatching {
       val isInPip = isInPictureInPictureMode
@@ -907,7 +900,6 @@ class PlayerActivity :
     super.onPause()
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
       // Don't restore UI during normal finish to prevent flickering
@@ -927,7 +919,6 @@ class PlayerActivity :
     super.finish()
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   override fun finishAndRemoveTask() {
     runCatching {
       // Don't restore UI during normal finish to prevent flickering
@@ -1011,7 +1002,6 @@ class PlayerActivity :
 
   fun getCurrentPlayableUriForLookup(): String? = currentPlayableUri ?: intent?.dataString
 
-  @RequiresApi(Build.VERSION_CODES.P)
   override fun onStart() {
     super.onStart()
 
@@ -1051,6 +1041,19 @@ class PlayerActivity :
     )
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+  }
+
+  private fun setLayoutInDisplayCutoutModeIfSupported(shortEdges: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
+    val mode =
+      if (shortEdges) {
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+      } else {
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+      }
+    val attributes = window.attributes
+    attributes.layoutInDisplayCutoutMode = mode
+    window.attributes = attributes
   }
 
   private fun setupSystemBarsAutoHide() {
@@ -1123,10 +1126,8 @@ class PlayerActivity :
         if (playerPreferences.showSystemStatusBar.get()) 0 else View.SYSTEM_UI_FLAG_LOW_PROFILE
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   private fun setupSystemUI() {
-    window.attributes.layoutInDisplayCutoutMode =
-      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    setLayoutInDisplayCutoutModeIfSupported(shortEdges = true)
 
     // Set status bar color for when it will be shown (with controls)
     applyStatusBarColorIfNeeded()
@@ -1142,7 +1143,6 @@ class PlayerActivity :
     }
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   private fun restoreSystemUI() {
     cancelSystemBarsAutoHide()
 
@@ -1151,8 +1151,7 @@ class PlayerActivity :
     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
     // Set cutout mode before showing bars for smoother transition
-    window.attributes.layoutInDisplayCutoutMode =
-      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+    setLayoutInDisplayCutoutModeIfSupported(shortEdges = false)
 
     // Update window insets configuration
     WindowCompat.setDecorFitsSystemWindows(window, true)
@@ -1436,7 +1435,7 @@ class PlayerActivity :
     val syncPrefs = getSharedPreferences("mpv_asset_sync", MODE_PRIVATE)
     val currentVersion =
       runCatching {
-        packageManager.getPackageInfo(packageName, 0).longVersionCode
+        PackageInfoCompat.getLongVersionCode(packageManager.getPackageInfo(packageName, 0))
       }.getOrDefault(-1L)
 
     val assetsAlreadyPrepared =
@@ -3130,7 +3129,6 @@ class PlayerActivity :
    * @param isInPictureInPictureMode true if entering PiP, false if exiting
    * @param newConfig The new configuration
    */
-  @RequiresApi(Build.VERSION_CODES.P)
   override fun onPictureInPictureModeChanged(
     isInPictureInPictureMode: Boolean,
     newConfig: Configuration,
@@ -3178,7 +3176,6 @@ class PlayerActivity :
    * Restores window configuration when exiting Picture-in-Picture mode.
    * Hides system UI for immersive playback.
    */
-  @RequiresApi(Build.VERSION_CODES.P)
   private fun exitPipUIMode() {
     setupWindowFlags()
     setupSystemUI()
@@ -3630,7 +3627,6 @@ class PlayerActivity :
    * Manually triggers background playback when the user clicks the background playback button.
    * This works independently of the automaticBackgroundPlayback preference.
    */
-  @RequiresApi(Build.VERSION_CODES.P)
   fun triggerBackgroundPlayback() {
     if (fileName.isBlank() || !isReady) {
       Log.w(TAG, "Cannot trigger background playback: video not ready")
@@ -3651,7 +3647,6 @@ class PlayerActivity :
     }
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
   private fun finishForManualBackgroundPlayback() {
     // Restore system UI before going to background
     restoreSystemUI()

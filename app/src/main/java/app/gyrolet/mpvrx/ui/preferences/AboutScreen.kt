@@ -88,6 +88,7 @@ object AboutScreen : Screen {
     val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
     val versionName = packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName ?: BuildConfig.VERSION_NAME
     val buildType = BuildConfig.BUILD_TYPE
+    val githubRepoUrl = stringResource(R.string.github_repo_url)
 
     // Conditionally initialize update feature based on build config
     val updateViewModel: UpdateViewModel? = if (BuildConfig.ENABLE_UPDATE_FEATURE) {
@@ -254,7 +255,7 @@ object AboutScreen : Screen {
                     context.startActivity(
                       Intent(
                         Intent.ACTION_VIEW,
-                        context.getString(R.string.github_repo_url).toUri(),
+                        githubRepoUrl.toUri(),
                       ),
                     )
                   },

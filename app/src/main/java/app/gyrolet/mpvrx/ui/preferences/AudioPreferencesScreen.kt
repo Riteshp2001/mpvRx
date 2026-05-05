@@ -19,7 +19,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +43,7 @@ object AudioPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val backstack = LocalBackStack.current
     val preferences = koinInject<AudioPreferences>()
 
@@ -156,11 +156,11 @@ object AudioPreferencesScreen : Screen {
             value = audioChannel,
             onValueChange = { preferences.audioChannels.set(it) },
             values = AudioChannels.entries,
-            valueToText = { AnnotatedString(context.getString(it.title)) },
+            valueToText = { AnnotatedString(resources.getString(it.title)) },
             title = { Text(text = stringResource(id = R.string.pref_audio_channels)) },
             summary = { 
               Text(
-                text = context.getString(audioChannel.title),
+                text = stringResource(audioChannel.title),
                 color = MaterialTheme.colorScheme.outline,
               ) 
             },
