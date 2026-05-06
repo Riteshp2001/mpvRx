@@ -35,12 +35,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchMode
+import app.gyrolet.mpvrx.repository.subtitlehub.MpvRxSubtitleHubSources
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleStorageDirectory
@@ -50,6 +53,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
+import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.SwitchPreference
 import me.zhanghai.compose.preference.TextFieldPreference
 import androidx.compose.material3.AlertDialog
@@ -100,6 +104,8 @@ object SubtitlesPreferencesScreen : Screen {
         val wyzieFormats by preferences.wyzieFormats.collectAsState()
         val wyzieEncodings by preferences.wyzieEncodings.collectAsState()
         val wyzieApiKey by preferences.wyzieApiKey.collectAsState()
+        val onlineSubtitleSearchMode by preferences.onlineSubtitleSearchMode.collectAsState()
+        val subtitleHubSources by preferences.subtitleHubSources.collectAsState()
 
         LazyColumn(
           modifier =
@@ -205,6 +211,37 @@ object SubtitlesPreferencesScreen : Screen {
               var showClearDialog by remember { mutableStateOf(false) }
               val scope = androidx.compose.runtime.rememberCoroutineScope()
 
+              ListPreference(
+                value = onlineSubtitleSearchMode,
+                onValueChange = { preferences.onlineSubtitleSearchMode.set(it) },
+                values = OnlineSubtitleSearchMode.entries,
+                valueToText = { AnnotatedString(it.displayName) },
+                title = { Text("Search Mode") },
+                summary = { Text(onlineSubtitleSearchMode.displayName, color = MaterialTheme.colorScheme.outline) },
+              )
+
+              PreferenceDivider()
+
+              MultiChoicePreference(
+                title = { Text("SubHub Sources") },
+                summary = {
+                  val selected = MpvRxSubtitleHubSources.resolveSelected(subtitleHubSources)
+                  val summaryText =
+                    if (subtitleHubSources.isEmpty() || subtitleHubSources.contains("all")) {
+                      "All verified"
+                    } else {
+                      selected.mapNotNull { MpvRxSubtitleHubSources.ALL[it] }.joinToString(", ")
+                    }
+                  Text(summaryText, color = MaterialTheme.colorScheme.outline)
+                },
+                values = MpvRxSubtitleHubSources.ALL,
+                selectedValues = subtitleHubSources,
+                onValuesChange = { preferences.subtitleHubSources.set(it) },
+                hasAllOption = true,
+              )
+
+              PreferenceDivider()
+
               TextFieldPreference(
                 value = wyzieApiKey,
                 onValueChange = preferences.wyzieApiKey::set,
@@ -235,7 +272,7 @@ object SubtitlesPreferencesScreen : Screen {
 
               // Wyzie Sources
               MultiChoicePreference(
-                title = { Text("Subtitle Sources") },
+                title = { Text("Wyzie Sources") },
                 summary = {
                   val summaryText = if (wyzieSources.isEmpty() || wyzieSources.contains("all")) {
                     "All"

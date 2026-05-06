@@ -18,16 +18,18 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.repository.wyzie.WyzieSubtitle
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitle
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchMode
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
 sealed class OnlineSubtitleItem {
-  data class OnlineTrack(val subtitle: WyzieSubtitle) : OnlineSubtitleItem()
+  data class OnlineTrack(val subtitle: OnlineSubtitle) : OnlineSubtitleItem()
   data class Header(val title: String) : OnlineSubtitleItem()
   object Divider : OnlineSubtitleItem()
 }
@@ -35,14 +37,16 @@ sealed class OnlineSubtitleItem {
 @Composable
 fun OnlineSubtitleSearchSheet(
   onDismissRequest: () -> Unit,
-  onDownloadOnline: (WyzieSubtitle) -> Unit,
+  onDownloadOnline: (OnlineSubtitle) -> Unit,
   isSearching: Boolean = false,
   isDownloading: Boolean = false,
-  searchResults: ImmutableList<WyzieSubtitle> = emptyList<WyzieSubtitle>().toImmutableList(),
+  searchResults: ImmutableList<OnlineSubtitle> = emptyList<OnlineSubtitle>().toImmutableList(),
   isOnlineSectionExpanded: Boolean = true,
   onToggleOnlineSection: () -> Unit = {},
   modifier: Modifier = Modifier,
   mediaTitle: String = "",
+  subtitleSearchMode: OnlineSubtitleSearchMode = OnlineSubtitleSearchMode.HYBRID,
+  onSearchModeChange: (OnlineSubtitleSearchMode) -> Unit = {},
   // Autocomplete & Series Selection
   mediaSearchResults: ImmutableList<app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult> = emptyList<app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult>().toImmutableList(),
   isSearchingMedia: Boolean = false,
@@ -58,17 +62,28 @@ fun OnlineSubtitleSearchSheet(
   onSelectEpisode: (app.gyrolet.mpvrx.repository.wyzie.WyzieEpisode) -> Unit = {},
   onClearMediaSelection: () -> Unit = {}
 ) {
-  val items = remember(searchResults, isSearching, isOnlineSectionExpanded) {
+  val parsedMediaInfo = remember(mediaTitle) { MediaInfoParser.parse(mediaTitle) }
+  val activeEpisodeLabel = remember(selectedSeason, selectedEpisode, parsedMediaInfo) {
+    val season = selectedSeason?.season_number ?: selectedEpisode?.season_number ?: parsedMediaInfo.season
+    val episode = selectedEpisode?.episode_number ?: parsedMediaInfo.episode
+    if (season != null && episode != null) {
+      "S${season.toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}"
+    } else {
+      null
+    }
+  }
+
+  val items = remember(searchResults, isSearching, isOnlineSectionExpanded, activeEpisodeLabel) {
     val list = mutableListOf<OnlineSubtitleItem>()
     
     // Online Search Results section
     if (searchResults.isNotEmpty() || isSearching) {
         val hashMatches = searchResults.count { it.isHashMatch }
         val headerText =
-          if (hashMatches > 0) {
-            "Verified Matches ($hashMatches) + Others"
-          } else {
-            "Online Results (${searchResults.size})"
+          when {
+            hashMatches > 0 -> "Verified Matches ($hashMatches) + Others"
+            activeEpisodeLabel != null -> "$activeEpisodeLabel Results (${searchResults.size})"
+            else -> "Online Results (${searchResults.size})"
           }
         list.add(OnlineSubtitleItem.Header(headerText))
         if (isOnlineSectionExpanded) {
@@ -84,7 +99,7 @@ fun OnlineSubtitleSearchSheet(
     onDismissRequest = onDismissRequest,
     header = {
       val keyboardController = LocalSoftwareKeyboardController.current
-      val mediaInfo = remember(mediaTitle) { MediaInfoParser.parse(mediaTitle) }
+      val mediaInfo = parsedMediaInfo
       var searchQuery by remember { mutableStateOf(mediaInfo.title) }
 
       // Build the detected info string for display
@@ -193,6 +208,28 @@ fun OnlineSubtitleSearchSheet(
           )
         )
 
+        SearchModeSelector(
+          mode = subtitleSearchMode,
+          onModeChange = { mode ->
+            onSearchModeChange(mode)
+            val q = if (searchQuery.isNotBlank()) searchQuery else mediaInfo.title
+            if (q.isNotBlank()) onSearchMedia(q)
+          },
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.medium)
+            .padding(top = MaterialTheme.spacing.extraSmall, bottom = MaterialTheme.spacing.smaller)
+        )
+
+        if (activeEpisodeLabel != null) {
+          EpisodeScopePill(
+            text = "$activeEpisodeLabel locked",
+            modifier = Modifier
+              .padding(horizontal = MaterialTheme.spacing.medium)
+              .padding(bottom = MaterialTheme.spacing.smaller)
+          )
+        }
+
         // Autocomplete Results
         if (mediaSearchResults.isNotEmpty()) {
           Card(
@@ -247,7 +284,7 @@ fun OnlineSubtitleSearchSheet(
     track = { item ->
       when (item) {
         is OnlineSubtitleItem.OnlineTrack -> {
-            WyzieSubtitleRow(
+            OnlineSubtitleRow(
                 subtitle = item.subtitle,
                 onDownload = { onDownloadOnline(item.subtitle) },
                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = 2.dp)
@@ -293,8 +330,8 @@ fun OnlineSubtitleSearchSheet(
 }
 
 @Composable
-fun WyzieSubtitleRow(
-    subtitle: WyzieSubtitle,
+fun OnlineSubtitleRow(
+    subtitle: OnlineSubtitle,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -330,6 +367,7 @@ fun WyzieSubtitleRow(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.basicMarquee()
                     )
                 }
@@ -350,6 +388,64 @@ fun WyzieSubtitleRow(
             IconButton(onClick = onDownload) {
                 Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchModeSelector(
+    mode: OnlineSubtitleSearchMode,
+    onModeChange: (OnlineSubtitleSearchMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
+        OnlineSubtitleSearchMode.entries.forEachIndexed { index, option ->
+            SegmentedButton(
+                selected = mode == option,
+                onClick = { onModeChange(option) },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = OnlineSubtitleSearchMode.entries.size,
+                ),
+                icon = {},
+            ) {
+                Text(
+                    text = option.displayName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EpisodeScopePill(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.36f),
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -413,7 +509,7 @@ fun SeriesDetailsSection(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
 

@@ -26,8 +26,10 @@ import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.repository.IntroDbLookupOutcome
 import app.gyrolet.mpvrx.repository.IntroDbLookupRequest
 import app.gyrolet.mpvrx.repository.IntroDbRepository
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitle
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchRequest
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
-import app.gyrolet.mpvrx.repository.wyzie.WyzieSubtitle
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
@@ -135,6 +137,7 @@ class PlayerViewModel(
   private val json: Json by inject()
   private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
   private val wyzieRepository: WyzieSearchRepository by inject()
+  private val onlineSubtitleOrchestrator: OnlineSubtitleOrchestrator by inject()
   private val introDbRepository: IntroDbRepository by inject()
   private val introMarkerCachePrefs by lazy {
     host.context.getSharedPreferences(INTRO_MARKER_CACHE_PREFS, Context.MODE_PRIVATE)
@@ -144,9 +147,9 @@ class PlayerViewModel(
   private val _playlistItems = kotlinx.coroutines.flow.MutableStateFlow<List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>>(emptyList())
   val playlistItems: kotlinx.coroutines.flow.StateFlow<List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>> = _playlistItems.asStateFlow()
 
-  // Wyzie Search Results
-  private val _wyzieSearchResults = MutableStateFlow<List<WyzieSubtitle>>(emptyList())
-  val wyzieSearchResults: StateFlow<List<WyzieSubtitle>> = _wyzieSearchResults.asStateFlow()
+  // Online subtitle search results
+  private val _onlineSubtitleSearchResults = MutableStateFlow<List<OnlineSubtitle>>(emptyList())
+  val onlineSubtitleSearchResults: StateFlow<List<OnlineSubtitle>> = _onlineSubtitleSearchResults.asStateFlow()
 
   private val _isDownloadingSub = MutableStateFlow(false)
   val isDownloadingSub: StateFlow<Boolean> = _isDownloadingSub.asStateFlow()
@@ -1792,18 +1795,25 @@ class PlayerViewModel(
 
   fun selectMedia(result: app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult) {
     _mediaSearchResults.value = emptyList() // Clear results after selection
-    _wyzieSearchResults.value = emptyList() // Clear old subtitle results
+    _onlineSubtitleSearchResults.value = emptyList() // Clear old subtitle results
 
     if (result.mediaType == "tv") {
-      fetchTvShowDetails(result.id)
+      val parsed = MediaInfoParser.parse(currentMediaTitle)
+      fetchTvShowDetails(
+        id = result.id,
+        preferredSeason = parsed.season,
+        preferredEpisode = parsed.episode,
+      )
     } else {
-      // For movies, just search subtitles directly with the TMDB ID
-      searchSubtitles(result.title)
-      // Ideally we should pass the TMDB ID to searchSubtitles too if the API supports it
+      searchSubtitles(result.title, year = result.releaseYear, tmdbId = result.id)
     }
   }
 
-  private fun fetchTvShowDetails(id: Int) {
+  private fun fetchTvShowDetails(
+    id: Int,
+    preferredSeason: Int? = null,
+    preferredEpisode: Int? = null,
+  ) {
     viewModelScope.launch {
       _isFetchingTvDetails.value = true
       wyzieRepository.getTvShowDetails(id)
@@ -1812,6 +1822,9 @@ class PlayerViewModel(
           _selectedTvShow.value = details.copy(seasons = validSeasons)
           _selectedSeason.value = null
           _seasonEpisodes.value = emptyList()
+          validSeasons
+            .firstOrNull { it.season_number == preferredSeason }
+            ?.let { selectSeason(it, preferredEpisode) }
         }
         .onFailure {
           showToast("Failed to load series details: ${it.message}")
@@ -1821,6 +1834,13 @@ class PlayerViewModel(
   }
 
   fun selectSeason(season: app.gyrolet.mpvrx.repository.wyzie.WyzieSeason) {
+    selectSeason(season, preferredEpisode = null)
+  }
+
+  private fun selectSeason(
+    season: app.gyrolet.mpvrx.repository.wyzie.WyzieSeason,
+    preferredEpisode: Int?,
+  ) {
     val tvShowId = _selectedTvShow.value?.id ?: return
     _selectedSeason.value = season
 
@@ -1830,7 +1850,17 @@ class PlayerViewModel(
         .onSuccess { episodes ->
           val validEpisodes = episodes.filter { it.episode_number > 0 }.sortedBy { it.episode_number }
           _seasonEpisodes.value = validEpisodes
-          _selectedEpisode.value = null
+          val episodeToSelect = validEpisodes.firstOrNull { it.episode_number == preferredEpisode }
+          _selectedEpisode.value = episodeToSelect
+          if (episodeToSelect != null) {
+            val tvShowName = _selectedTvShow.value?.name ?: currentMediaTitle
+            searchSubtitles(
+              query = tvShowName,
+              season = season.season_number,
+              episode = episodeToSelect.episode_number,
+              tmdbId = tvShowId,
+            )
+          }
         }
         .onFailure {
           showToast("Failed to load episodes: ${it.message}")
@@ -1842,7 +1872,12 @@ class PlayerViewModel(
   fun selectEpisode(episode: app.gyrolet.mpvrx.repository.wyzie.WyzieEpisode) {
     _selectedEpisode.value = episode
     val tvShowName = _selectedTvShow.value?.name ?: currentMediaTitle
-    searchSubtitles(tvShowName, episode.season_number, episode.episode_number)
+    searchSubtitles(
+      query = tvShowName,
+      season = episode.season_number,
+      episode = episode.episode_number,
+      tmdbId = _selectedTvShow.value?.id,
+    )
   }
 
   fun clearMediaSelection() {
@@ -1854,12 +1889,28 @@ class PlayerViewModel(
   }
 
   // --- Subtitle Search ---
-  fun searchSubtitles(query: String, season: Int? = null, episode: Int? = null, year: String? = null) {
+  fun searchSubtitles(
+    query: String,
+    season: Int? = null,
+    episode: Int? = null,
+    year: String? = null,
+    tmdbId: Int? = null,
+  ) {
      viewModelScope.launch {
          _isSearchingSub.value = true
-         wyzieRepository.search(query, season, episode, year, movieHash = _videoHash.value)
+         onlineSubtitleOrchestrator.search(
+             OnlineSubtitleSearchRequest(
+                 query = query,
+                 tmdbId = tmdbId,
+                 season = season,
+                 episode = episode,
+                 year = year,
+                 movieHash = _videoHash.value,
+             ),
+             subtitlesPreferences.onlineSubtitleSearchMode.get(),
+         )
              .onSuccess { results ->
-                 _wyzieSearchResults.value = results
+                 _onlineSubtitleSearchResults.value = results
              }
              .onFailure {
                  showToast("Search failed: ${it.message}")
@@ -1868,10 +1919,10 @@ class PlayerViewModel(
      }
   }
 
-  fun downloadSubtitle(subtitle: WyzieSubtitle) {
+  fun downloadSubtitle(subtitle: OnlineSubtitle) {
       viewModelScope.launch {
           _isDownloadingSub.value = true
-          wyzieRepository.download(subtitle, currentMediaTitle)
+          onlineSubtitleOrchestrator.download(subtitle, currentMediaTitle)
               .onSuccess { uri ->
                   if (subtitle.isHashMatch) {
                     MPVLib.setPropertyDouble("sub-delay", 0.0)

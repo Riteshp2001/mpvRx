@@ -15,6 +15,7 @@ kotlinx-collections-immutable = "0.4.0"
 truetype-parser = "2.1.4"
 accompanist = "0.37.3"
 okhttp = "5.3.2"
+jsoup = "1.22.2"
 sardineAndroid = "0.8"
 reorderable = "3.0.0"
 googleMaterial = "1.13.0"
@@ -87,6 +88,8 @@ fsaf = { module = "com.github.K1rakishou:Fuck-Storage-Access-Framework", version
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
 
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+junit = { module = "junit:junit", version = "4.13.2" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
 [bundles]

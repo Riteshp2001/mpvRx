@@ -206,6 +206,7 @@ dependencies {
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.okhttp)
+  implementation(libs.jsoup)
   implementation(libs.androidx.media3.common)
   implementation(libs.androidx.media3.effect)
   implementation(libs.androidx.media3.transformer)
@@ -230,6 +231,9 @@ dependencies {
   implementation(libs.nanohttpd)
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
+
+  testImplementation(libs.junit)
+  testImplementation(libs.kotlinx.serialization.json)
 }
 
 /* ---------------- Git helpers ---------------- */

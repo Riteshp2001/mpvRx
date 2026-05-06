@@ -5,6 +5,10 @@ import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitle
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleProvider
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchRequest
+import app.gyrolet.mpvrx.repository.subtitle.SubtitleProvider
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleStorageDirectory
@@ -235,20 +239,36 @@ class WyzieSearchRepository(
     private val client: OkHttpClient,
     private val json: Json,
     private val preferences: SubtitlesPreferences
-) {
+) : OnlineSubtitleProvider {
+    override val provider: SubtitleProvider = SubtitleProvider.WYZIE
+
     private val baseUrl = "https://sub.wyzie.io"
     private val tmdbMirrorBaseUrl = "https://db.videasy.net/3"
 
+    override suspend fun search(request: OnlineSubtitleSearchRequest): Result<List<OnlineSubtitle>> =
+        search(
+            query = request.query,
+            tmdbId = request.tmdbId,
+            season = request.season,
+            episode = request.episode,
+            year = request.year,
+            movieHash = request.movieHash
+        ).map { subtitles -> subtitles.map { it.toOnlineSubtitle() } }
+
+    override suspend fun download(subtitle: OnlineSubtitle, mediaTitle: String): Result<Uri> =
+        download(subtitle.toWyzieSubtitle(), mediaTitle)
+
     suspend fun search(
         query: String,
+        tmdbId: Int? = null,
         season: Int? = null,
         episode: Int? = null,
         year: String? = null,
         movieHash: String? = null
     ): Result<List<WyzieSubtitle>> = withContext(Dispatchers.IO) {
         try {
-            var searchId = query
-            if (!query.startsWith("tt", ignoreCase = true) && !query.all { it.isDigit() }) {
+            var searchId = tmdbId?.toString() ?: query
+            if (tmdbId == null && !query.startsWith("tt", ignoreCase = true) && !query.all { it.isDigit() }) {
                 val tmdbResults = tmdbSearch(query)
                 if (tmdbResults.isNotEmpty()) {
                     // If year is provided, prefer match with matching release year
@@ -281,6 +301,11 @@ class WyzieSearchRepository(
             
             val hearingImpaired = preferences.wyzieHearingImpaired.get()
 
+            val releaseFilter = preferences.wyzieRelease.get()
+            val fileFilter = preferences.wyzieFile.get()
+            val originFilter = preferences.wyzieOrigin.get()
+            val refreshFlag = preferences.wyzieRefresh.get()
+
             val results = fetchSubtitles(
                 id = searchId,
                 season = season,
@@ -290,7 +315,11 @@ class WyzieSearchRepository(
                 encoding = encodingParam,
                 source = sourceParam,
                 hi = if (hearingImpaired) true else null,
-                movieHash = movieHash
+                movieHash = movieHash,
+                release = releaseFilter.takeIf { it.isNotBlank() },
+                file = fileFilter.takeIf { it.isNotBlank() },
+                origin = originFilter.takeIf { it.isNotBlank() },
+                refresh = if (refreshFlag) true else null
             )
             
             // The Wyzie API often returns all languages regardless of query parameters.
@@ -340,7 +369,11 @@ class WyzieSearchRepository(
         encoding: String? = null,
         source: String = "all",
         hi: Boolean? = null,
-        movieHash: String? = null
+        movieHash: String? = null,
+        release: String? = null,
+        file: String? = null,
+        origin: String? = null,
+        refresh: Boolean? = null
     ): List<WyzieSubtitle> {
         fun encode(s: String) = URLEncoder.encode(s, "UTF-8")
         val apiKey = preferences.wyzieApiKey.get().trim()
@@ -352,17 +385,64 @@ class WyzieSearchRepository(
                     append("&episode=$episode")
                 }
                 
-                // Wyzie API language format: single or multiple language codes are comma separated: `language=en,es`
-                language?.filter { !it.isWhitespace() }?.let { append("&language=${encode(it)}") }
+                // Language parameter: comma-separated ISO codes, e.g., language=en,es
+                language?.takeIf { it.isNotBlank() }
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.joinToString(",") { encode(it) }
+                    ?.let { append("&language=$it") }
                 
                 // Format and Encoding parameters
-                format?.split(",")?.filter { it.isNotBlank() }?.forEach { append("&${encode(it.trim())}=true") }
-                encoding?.split(",")?.filter { it.isNotBlank() }?.forEach { append("&${encode(it.trim())}=true") }
+                format?.takeIf { it.isNotBlank() }
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.joinToString(",") { encode(it) }
+                    ?.let { append("&format=$it") }
+
+                encoding?.takeIf { it.isNotBlank() }
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.joinToString(",") { encode(it) }
+                    ?.let { append("&encoding=$it") }
                 
-                // Source is a special case, "all" defaults to all sources implicitly, but adding specific sources works like `opensubtitles=true`
+                // Source parameter: 'all' means all sources; otherwise comma-separated list (e.g., source=opensubtitles,subf2m)
                 if (source != "all") {
-                   source.split(",").filter { it.isNotBlank() }.forEach { append("&${encode(it.trim())}=true") }
+                    source.split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                        .joinToString(",") { encode(it) }
+                        .let { append("&source=$it") }
                 }
+
+                // Release filter
+                release?.takeIf { it.isNotBlank() }
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.joinToString(",") { encode(it) }
+                    ?.let { append("&release=$it") }
+
+                // File/filename filter
+                file?.takeIf { it.isNotBlank() }
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.joinToString(",") { encode(it) }
+                    ?.let { append("&file=$it") }
+
+                // Origin filter (WEB, BLURAY, DVD, etc.)
+                origin?.takeIf { it.isNotBlank() }
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    ?.joinToString(",") { encode(it) }
+                    ?.let { append("&origin=$it") }
+
+                // Refresh cache bypass
+                refresh?.let { if (it) append("&refresh=true") }
 
                 append("&unzip=true")
                 hi?.let { append("&hi=$it") }
@@ -600,3 +680,46 @@ class WyzieSearchRepository(
         }
     }
 }
+
+private fun WyzieSubtitle.toOnlineSubtitle(): OnlineSubtitle =
+    OnlineSubtitle(
+        provider = SubtitleProvider.WYZIE,
+        id = id,
+        url = url,
+        fileName = fileName,
+        release = release,
+        media = media,
+        displayName = displayName,
+        displayLanguage = displayLanguage,
+        language = language,
+        source = source ?: SubtitleProvider.WYZIE.displayName,
+        format = format,
+        encoding = encoding,
+        downloadCount = downloadCount,
+        isHashMatch = isHashMatch,
+        isHearingImpaired = isHearingImpaired,
+        metadata = buildMap {
+            matchedFilter?.let { put("matchedFilter", it) }
+            matchedRelease?.let { put("matchedRelease", it) }
+            origin?.let { put("origin", it) }
+        },
+    )
+
+private fun OnlineSubtitle.toWyzieSubtitle(): WyzieSubtitle =
+    WyzieSubtitle(
+        id = id,
+        url = url,
+        format = format,
+        encoding = encoding,
+        display = displayLanguage,
+        language = language,
+        media = media,
+        isHearingImpaired = isHearingImpaired,
+        source = source,
+        release = release,
+        fileName = fileName ?: displayName,
+        matchedRelease = metadata["matchedRelease"],
+        matchedFilter = metadata["matchedFilter"],
+        downloadCount = downloadCount,
+        isHashMatch = isHashMatch,
+    )

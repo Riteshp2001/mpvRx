@@ -7,6 +7,9 @@ import app.gyrolet.mpvrx.domain.thumbnail.toThumbnailStrategy
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.repository.IntroDbRepository
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleFileStore
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
+import app.gyrolet.mpvrx.repository.subtitlehub.MpvRxSubtitleHubRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import coil3.ImageLoader
 import coil3.disk.DiskCache
@@ -75,5 +78,8 @@ val domainModule = module {
     single { Anime4KManager(androidContext()) }
     single { HdrToysManager(androidContext()) }
     single { WyzieSearchRepository(androidContext(), get(), get(), get()) }
+    single { OnlineSubtitleFileStore(androidContext(), get()) }
+    single { MpvRxSubtitleHubRepository(androidContext(), get(), get(), get(), get()) }
+    single { OnlineSubtitleOrchestrator(get<WyzieSearchRepository>(), get<MpvRxSubtitleHubRepository>()) }
     single { IntroDbRepository(get(), get()) }
 }

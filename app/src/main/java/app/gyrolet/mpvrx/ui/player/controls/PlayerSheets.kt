@@ -139,9 +139,11 @@ fun PlayerSheets(
     }
 
     Sheets.OnlineSubtitleSearch -> {
+      val subtitlesPreferences = koinInject<app.gyrolet.mpvrx.preferences.SubtitlesPreferences>()
+      val searchMode by subtitlesPreferences.onlineSubtitleSearchMode.collectAsState()
       val isSearching by viewModel.isSearchingSub.composeCollectAsState()
       val isDownloading by viewModel.isDownloadingSub.composeCollectAsState()
-      val results by viewModel.wyzieSearchResults.composeCollectAsState()
+      val results by viewModel.onlineSubtitleSearchResults.composeCollectAsState()
       val isOnlineSectionExpanded by viewModel.isOnlineSectionExpanded.composeCollectAsState()
 
       // Media Search / Autocomplete
@@ -165,6 +167,8 @@ fun PlayerSheets(
         isOnlineSectionExpanded = isOnlineSectionExpanded,
         onToggleOnlineSection = { viewModel.toggleOnlineSection() },
         mediaTitle = viewModel.currentMediaTitle,
+        subtitleSearchMode = searchMode,
+        onSearchModeChange = { subtitlesPreferences.onlineSubtitleSearchMode.set(it) },
         // Autocomplete & Series Selection
         mediaSearchResults = mediaResults.toImmutableList(),
         isSearchingMedia = isSearchingMedia,
@@ -181,7 +185,7 @@ fun PlayerSheets(
           val s = selectedSeason?.season_number ?: queryInfo.season ?: fileInfo.season
           val e = selectedEpisode?.episode_number ?: queryInfo.episode ?: fileInfo.episode
           val y = queryInfo.year ?: fileInfo.year
-          viewModel.searchSubtitles(searchTitle, s, e, y)
+          viewModel.searchSubtitles(searchTitle, s, e, y, selectedTvShow?.id)
         },
         onSelectMedia = { viewModel.selectMedia(it) },
         selectedTvShow = selectedTvShow,
