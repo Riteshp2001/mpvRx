@@ -297,6 +297,9 @@ object Icons {
     val Refresh = Shared.Refresh
     val Remove = Shared.Remove
     val RemoveCircle = Shared.RemoveCircle
+    val Repeat = Shared.Repeat
+    val RepeatOn = Shared.RepeatOn
+    val RepeatOne = Shared.RepeatOne
     val ResetIso = Shared.ResetIso
     val RoundedCorner = Shared.RoundedCorner
     val ScreenRotation = Shared.ScreenRotation
@@ -422,6 +425,8 @@ object Icons {
     val PictureInPictureAlt = Shared.PictureInPictureAlt
     val PlaylistAdd = Shared.PlaylistAdd
     val Repeat = Shared.Repeat
+    val RepeatOn = Shared.RepeatOn
+    val RepeatOne = Shared.RepeatOne
     val ScreenRotation = Shared.ScreenRotation
     val Search = Shared.Search
     val Settings = Shared.Settings

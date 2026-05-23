@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="charsets_list">
+        <item>Auto (Automatic)</item>
+        <item>UTF-8 (UTF-8)</item>
+        <item>UTF-16 (UTF-16)</item>
+        <item>UTF-16BE (UTF-16BE)</item>
+        <item>UTF-16LE (UTF-16LE)</item>
+        <item>US-ASCII (US-ASCII)</item>
+        <item>ISO-8859-1 (ISO-8859-1)</item>
+        <item>ISO-8859-2 (ISO-8859-2)</item>
+        <item>ISO-8859-5 (ISO-8859-5)</item>
+        <item>ISO-8859-6 (ISO-8859-6)</item>
+        <item>ISO-8859-7 (ISO-8859-7)</item>
+        <item>ISO-8859-8 (ISO-8859-8)</item>
+        <item>ISO-8859-9 (ISO-8859-9)</item>
+        <item>Windows-1250 (Windows-1250)</item>
+        <item>Windows-1251 (Windows-1251)</item>
+        <item>Windows-1252 (Windows-1252)</item>
+        <item>Windows-1253 (Windows-1253)</item>
+        <item>Windows-1254 (Windows-1254)</item>
+        <item>Windows-1255 (Windows-1255)</item>
+        <item>Windows-1256 (Windows-1256)</item>
+        <item>Shift_JIS (Shift_JIS)</item>
+        <item>EUC-JP (EUC-JP)</item>
+        <item>ISO-2022-JP (ISO-2022-JP)</item>
+        <item>GBK (GBK)</item>
+        <item>GB18030 (GB18030)</item>
+        <item>Big5 (Big5)</item>
+        <item>EUC-KR (EUC-KR)</item>
+    </string-array>
+</resources>

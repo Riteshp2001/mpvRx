@@ -46,6 +46,7 @@ class App : Application() {
         DatabaseModule,
         FileManagerModule,
         app.gyrolet.mpvrx.di.domainModule,
+        app.gyrolet.mpvrx.exoplayer.di.exoPlayerModule,
       )
     }
 

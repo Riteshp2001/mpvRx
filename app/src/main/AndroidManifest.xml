@@ -332,6 +332,24 @@
                 <data android:pathPattern=".*" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".exoplayer.ExoPlayerActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:theme="@style/Theme.mpvrx.Player" />
+
+        <service
+            android:name=".exoplayer.ExoPlayerService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService"/>
+            </intent-filter>
+        </service>
+
         <activity android:name=".presentation.crash.CrashActivity" />
 
         <activity

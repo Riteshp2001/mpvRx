@@ -197,7 +197,10 @@ dependencies {
   implementation(libs.androidx.compose.animation.graphics)
   implementation(libs.mediasession)
   implementation(libs.androidx.documentfile)
+  implementation(libs.androidx.datastore.core)
+  implementation(libs.androidx.datastore.preferences)
   implementation(libs.bundles.coil)
+
 
   implementation(platform(libs.koin.bom))
   implementation(libs.bundles.koin)
@@ -212,11 +215,21 @@ dependencies {
   implementation(libs.room.ktx)
 
   implementation(libs.kotlinx.immutable.collections)
+  implementation(libs.kotlinx.coroutines.guava)
   implementation(libs.kotlinx.serialization.json)
+
   implementation(libs.okhttp)
   implementation(libs.jsoup)
   implementation(libs.androidx.media3.common)
+  implementation(libs.androidx.media3.datasource.okhttp)
   implementation(libs.androidx.media3.effect)
+  implementation(libs.androidx.media3.exoplayer)
+  implementation(libs.androidx.media3.exoplayer.dash)
+  implementation(libs.androidx.media3.exoplayer.hls)
+  implementation(libs.androidx.media3.exoplayer.rtsp)
+  implementation(libs.androidx.media3.session)
+  implementation(libs.androidx.media3.ui)
+  implementation(libs.androidx.media3.ui.compose)
   implementation(libs.androidx.media3.transformer)
   implementation(platform(libs.sora.editor.bom))
   implementation(libs.sora.editor)
@@ -226,11 +239,17 @@ dependencies {
   coreLibraryDesugaring(libs.desugar.jdk.libs)
 
   implementation(libs.truetype.parser)
+  implementation(libs.juniversalchardet)
+  implementation(libs.ass.media)
   implementation(libs.fsaf)
+
+
   implementation(libs.mediainfo.lib)
   implementation("com.llamatik:library:1.4.0")
   
   implementation(files("libs/mpvlib.aar"))
+  implementation(files("libs/media3ext-release.aar"))
+
 
   // Network protocol libraries
   implementation(libs.smbj)

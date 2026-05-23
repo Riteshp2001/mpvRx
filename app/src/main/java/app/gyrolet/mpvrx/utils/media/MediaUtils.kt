@@ -6,7 +6,10 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.exoplayer.ExoPlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import org.koin.java.KoinJavaComponent.inject
 import app.gyrolet.mpvrx.ui.player.PlayerLookupHints
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import `is`.xyz.mpv.Utils
@@ -42,6 +45,15 @@ data class PlaybackSubtitleTrack(
  * bypassing MediaUtils.
  */
 object MediaUtils {
+  private val playerPreferences: PlayerPreferences by inject(PlayerPreferences::class.java)
+
+  private fun getPlayerActivityClass(): Class<*> {
+    return if (playerPreferences.enableExoPlayer.get()) {
+      ExoPlayerActivity::class.java
+    } else {
+      PlayerActivity::class.java
+    }
+  }
   /**
    * Play video content from any source.
    *
@@ -68,7 +80,7 @@ object MediaUtils {
       when (source) {
         is Video -> {
           val intent = Intent(Intent.ACTION_VIEW, source.uri)
-          intent.setClass(context, PlayerActivity::class.java)
+          intent.setClass(context, getPlayerActivityClass())
           intent.putExtra("internal_launch", true) // Enables subtitle autoload
           applyPlaybackExtras(
             intent = intent,
@@ -113,7 +125,7 @@ object MediaUtils {
       }
 
     val intent = Intent(Intent.ACTION_VIEW, uri)
-    intent.setClass(context, PlayerActivity::class.java)
+    intent.setClass(context, getPlayerActivityClass())
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     applyPlaybackExtras(

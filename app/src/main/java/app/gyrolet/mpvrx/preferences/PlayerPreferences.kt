@@ -93,6 +93,8 @@ class PlayerPreferences(
   val keepScreenOnWhenPaused = preferenceStore.getBoolean("keep_screen_on_when_paused", false)
   val autoplayAfterScreenUnlock = preferenceStore.getBoolean("autoplay_after_screen_unlock", false)
 
+  val enableExoPlayer = preferenceStore.getBoolean("enable_exoplayer", false)
+
   // Custom Buttons - JSON List
   val customButtons = preferenceStore.getString("custom_buttons_json", "[]")
 
