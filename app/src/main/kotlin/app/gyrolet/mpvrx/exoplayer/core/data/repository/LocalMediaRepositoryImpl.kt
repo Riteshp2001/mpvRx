@@ -25,7 +25,7 @@ class LocalMediaRepositoryImpl(
     }
 
     override fun getVideosFlowFromFolderPath(folderPath: String): Flow<List<Video>> = flow {
-        val mpvVideos = MediaFileRepository.getVideosInFolder(context, folderPath)
+        val mpvVideos = runCatching { MediaFileRepository.getVideosInFolder(context, folderPath) }.getOrElse { emptyList() }
         emit(mpvVideos.map { it.toExoVideo() })
     }
 
@@ -48,6 +48,7 @@ class LocalMediaRepositoryImpl(
                 return Video(
                     id = uri.hashCode().toLong(),
                     path = file.absolutePath,
+                    parentPath = file.parent ?: "",
                     duration = 0,
                     uriString = uri,
                     nameWithExtension = file.name,
@@ -200,6 +201,7 @@ class LocalMediaRepositoryImpl(
         return Video(
             id = this.id,
             path = this.path,
+            parentPath = File(this.path).parent ?: "",
             duration = this.duration,
             uriString = this.uri.toString(),
             nameWithExtension = this.displayName,

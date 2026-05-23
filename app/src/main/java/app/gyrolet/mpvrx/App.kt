@@ -38,16 +38,21 @@ class App : Application() {
   override fun onCreate() {
     super.onCreate()
 
-    // Initialize Koin
-    startKoin {
-      androidContext(this@App)
-      modules(
-        PreferencesModule,
-        DatabaseModule,
-        FileManagerModule,
-        app.gyrolet.mpvrx.di.domainModule,
-        app.gyrolet.mpvrx.exoplayer.di.exoPlayerModule,
-      )
+    try {
+        android.util.Log.d("App", "Starting Koin...")
+        startKoin {
+          androidContext(this@App)
+          modules(
+            PreferencesModule,
+            DatabaseModule,
+            FileManagerModule,
+            app.gyrolet.mpvrx.di.domainModule,
+            app.gyrolet.mpvrx.exoplayer.di.exoPlayerModule,
+          )
+        }
+        android.util.Log.d("App", "Koin initialized successfully")
+    } catch (e: Exception) {
+        android.util.Log.e("App", "Koin initialization failed!", e)
     }
 
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))

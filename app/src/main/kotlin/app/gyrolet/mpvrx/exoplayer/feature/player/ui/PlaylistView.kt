@@ -197,7 +197,7 @@ private fun ReorderableCollectionItemScope.PlaylistItemView(
         },
         content = {
             Text(
-                text = mediaItem.mediaMetadata.title?.toString() ?: stringResource(R.string.unknown),
+                text = mediaItem.mediaMetadata.title?.toString() ?: stringResource(R.string.exo_unknown),
                 maxLines = 2,
                 style = MaterialTheme.typography.titleSmall,
                 overflow = TextOverflow.Ellipsis,

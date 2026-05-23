@@ -82,7 +82,7 @@ private fun AudioPreferencesContent(
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.audio),
+                title = stringResource(id = R.string.exo_audio),
                 navigationIcon = {
                     FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(
@@ -167,7 +167,7 @@ private fun AudioPreferencesContent(
                     modifier = Modifier.testTag("item_settings_audio_initial_volume_limit"),
                     sliderModifier = Modifier.testTag("slider_settings_audio_initial_volume_limit"),
                     title = stringResource(id = R.string.initial_volume_limit),
-                    description = stringResource(id = R.string.percent, uiState.preferences.maxInitialPlayerVolumePercentage),
+                    description = stringResource(id = R.string.exo_percent, uiState.preferences.maxInitialPlayerVolumePercentage),
                     icon = NextIcons.VolumeUp,
                     isEnabled = uiState.preferences.shouldRememberPlayerVolume,
                     value = uiState.preferences.maxInitialPlayerVolumePercentage.toFloat(),

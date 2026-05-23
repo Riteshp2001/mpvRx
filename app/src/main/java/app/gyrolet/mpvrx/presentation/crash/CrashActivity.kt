@@ -32,7 +32,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.OutlinedButton
@@ -70,6 +69,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
+import org.koin.core.context.GlobalContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -81,21 +81,36 @@ class CrashActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    val exception = intent.getStringExtra("exception") ?: "No exception provided"
+    android.util.Log.e("CrashActivity", "CRASH DETECTED: $exception")
     lifecycle.coroutineScope.launch {
       logcat = collectLogcat()
     }
     setContent {
-      val dark by appearancePreferences.darkMode.collectAsState()
-      val isSystemInDarkTheme = isSystemInDarkTheme()
-      val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
-      enableEdgeToEdge(
-        SystemBarStyle.auto(
-          lightScrim = Color.White.toArgb(),
-          darkScrim = Color.Transparent.toArgb(),
-        ) { isDarkMode },
-      )
-      MpvrxTheme {
-        CrashScreen(intent.getStringExtra("exception") ?: "")
+      if (GlobalContext.getOrNull() != null) {
+        val dark by appearancePreferences.darkMode.collectAsState()
+        val isSystemInDarkTheme = isSystemInDarkTheme()
+        val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
+        enableEdgeToEdge(
+          SystemBarStyle.auto(
+            lightScrim = Color.White.toArgb(),
+            darkScrim = Color.Transparent.toArgb(),
+          ) { isDarkMode },
+        )
+        MpvrxTheme {
+          CrashScreen(intent.getStringExtra("exception") ?: "")
+        }
+      } else {
+        val isDarkMode = isSystemInDarkTheme()
+        enableEdgeToEdge(
+          SystemBarStyle.auto(
+            lightScrim = Color.White.toArgb(),
+            darkScrim = Color.Transparent.toArgb(),
+          ) { isDarkMode },
+        )
+        MaterialTheme {
+          CrashScreen(intent.getStringExtra("exception") ?: "")
+        }
       }
     }
   }

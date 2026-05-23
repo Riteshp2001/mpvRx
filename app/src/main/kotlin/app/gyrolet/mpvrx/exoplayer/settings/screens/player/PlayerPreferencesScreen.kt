@@ -86,7 +86,7 @@ private fun PlayerPreferencesContent(
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.pref_player),
+                title = stringResource(id = R.string.exo_player),
                 navigationIcon = {
                     FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(
@@ -114,7 +114,7 @@ private fun PlayerPreferencesContent(
                     modifier = Modifier.testTag("item_settings_player_controller_timeout"),
                     sliderModifier = Modifier.testTag("slider_settings_player_controller_timeout"),
                     title = stringResource(R.string.controller_timeout),
-                    description = stringResource(R.string.seconds, uiState.preferences.controllerAutoHideTimeout),
+                    description = stringResource(R.string.exo_seconds, uiState.preferences.controllerAutoHideTimeout),
                     icon = NextIcons.Timer,
                     value = uiState.preferences.controllerAutoHideTimeout.toFloat(),
                     valueRange = 1.0f..60.0f,

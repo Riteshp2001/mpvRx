@@ -364,8 +364,8 @@ internal fun PlayerCustomizableControlButton(
 @Composable
 private fun PlayerControl.label(): String = when (this) {
     PlayerControl.PLAYLIST -> stringResource(R.string.now_playing)
-    PlayerControl.PLAYBACK_SPEED -> stringResource(R.string.speed)
-    PlayerControl.AUDIO -> stringResource(R.string.audio)
+    PlayerControl.PLAYBACK_SPEED -> stringResource(R.string.exo_speed)
+    PlayerControl.AUDIO -> stringResource(R.string.exo_audio)
     PlayerControl.SUBTITLE -> stringResource(R.string.subtitle)
     PlayerControl.LOCK -> stringResource(R.string.controls_lock)
     PlayerControl.SCALE -> stringResource(R.string.video_zoom)
@@ -377,7 +377,7 @@ private fun PlayerControl.label(): String = when (this) {
     PlayerControl.BACKGROUND_PLAY -> stringResource(R.string.background_play)
     PlayerControl.LOOP -> stringResource(R.string.loop_mode)
     PlayerControl.SHUFFLE -> stringResource(R.string.shuffle)
-    PlayerControl.SLEEP_TIMER -> stringResource(R.string.sleep_timer)
+    PlayerControl.SLEEP_TIMER -> stringResource(R.string.exo_sleep_timer)
     PlayerControl.ROTATE -> stringResource(R.string.screen_rotation)
     PlayerControl.BACK,
     PlayerControl.PREVIOUS,

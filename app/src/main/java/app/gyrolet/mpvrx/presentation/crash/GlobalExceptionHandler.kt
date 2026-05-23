@@ -15,7 +15,9 @@ class GlobalExceptionHandler(
     val intent = Intent(context, activity)
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-    intent.putExtra("exception", e.stackTraceToString())
+    val stackTrace = e.stackTraceToString()
+    android.util.Log.e("GlobalExceptionHandler", "CRASH DETECTED: $stackTrace")
+    intent.putExtra("exception", stackTrace)
     context.startActivity(intent)
     exitProcess(0)
   }

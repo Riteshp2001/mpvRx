@@ -67,27 +67,41 @@ class PlayerViewModel(
     val uiState = internalUiState.asStateFlow()
 
     init {
+        android.util.Log.d("PlayerViewModel", "init starting")
         viewModelScope.launch {
-            preferencesRepository.playerPreferences.collect { prefs ->
-                internalUiState.update { it.copy(playerPreferences = prefs) }
-            }
-        }
-        viewModelScope.launch {
-            preferencesRepository.applicationPreferences.collect { prefs ->
-                internalUiState.update {
-                    it.copy(
-                        applicationPreferences = prefs,
-                        shouldPreventScreenshots = prefs.shouldPreventScreenshots,
-                        shouldHideInRecents = prefs.shouldHideInRecents,
-                    )
+            try {
+                preferencesRepository.playerPreferences.collect { prefs ->
+                    internalUiState.update { it.copy(playerPreferences = prefs) }
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "Failed to collect player preferences", e)
             }
         }
         viewModelScope.launch {
-            subtitleFontRepository.source.collect { source ->
-                internalUiState.update { it.copy(externalSubtitleFontSource = source) }
+            try {
+                preferencesRepository.applicationPreferences.collect { prefs ->
+                    internalUiState.update {
+                        it.copy(
+                            applicationPreferences = prefs,
+                            shouldPreventScreenshots = prefs.shouldPreventScreenshots,
+                            shouldHideInRecents = prefs.shouldHideInRecents,
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "Failed to collect app preferences", e)
             }
         }
+        viewModelScope.launch {
+            try {
+                subtitleFontRepository.source.collect { source ->
+                    internalUiState.update { it.copy(externalSubtitleFontSource = source) }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "Failed to collect font source", e)
+            }
+        }
+        android.util.Log.d("PlayerViewModel", "init finished")
     }
 
     suspend fun getPlaylistFromUri(uri: Uri): List<Video> = getSortedPlaylistUseCase.invoke(uri)

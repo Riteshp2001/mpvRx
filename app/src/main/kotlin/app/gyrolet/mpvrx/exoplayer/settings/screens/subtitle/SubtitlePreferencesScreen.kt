@@ -121,7 +121,7 @@ private fun SubtitlePreferencesContent(
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.subtitle),
+                title = stringResource(id = R.string.exo_subtitle),
                 navigationIcon = {
                     FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(
@@ -166,7 +166,7 @@ private fun SubtitlePreferencesContent(
                 ClickablePreferenceItem(
                     modifier = Modifier.testTag("item_settings_subtitle_encoding"),
                     title = stringResource(R.string.subtitle_text_encoding),
-                    description = charsetResource.first { it.contains(uiState.preferences.subtitleTextEncoding) },
+                    description = charsetResource.firstOrNull { it.contains(uiState.preferences.subtitleTextEncoding) } ?: uiState.preferences.subtitleTextEncoding,
                     icon = NextIcons.Subtitle,
                     onClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(SubtitlePreferenceDialog.SubtitleEncodingDialog)) },
                     isLastItem = true,

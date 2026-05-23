@@ -53,6 +53,9 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -199,7 +202,7 @@ class ExoPlayerActivity : AppCompatActivity() {
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
-    private lateinit var playerApi: PlayerApi
+    private var playerApi: PlayerApi? = null
 
     private val playbackStateListener: Player.Listener = playbackStateListener()
 
@@ -220,114 +223,120 @@ class ExoPlayerActivity : AppCompatActivity() {
 
     @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        applyPrivacyProtection(
-            shouldPreventScreenshots = viewModel.uiState.value.shouldPreventScreenshots,
-            shouldHideInRecents = viewModel.uiState.value.shouldHideInRecents,
-        )
-        presetVideoOrientation()
-        val systemBarScrim = resolvePrivacyPreviewScrim(
-            shouldHideInRecents = viewModel.uiState.value.shouldHideInRecents,
-        )
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(systemBarScrim),
-            navigationBarStyle = SystemBarStyle.dark(systemBarScrim),
-        )
-        applyNavigationBarStyle(color = Color.BLACK, shouldUseDarkIcons = false)
+        try {
+            super.onCreate(savedInstanceState)
+            val initialUiState = viewModel.uiState.value
+            applyPrivacyProtection(
+                shouldPreventScreenshots = initialUiState.shouldPreventScreenshots,
+                shouldHideInRecents = initialUiState.shouldHideInRecents,
+            )
+            presetVideoOrientation()
+            val systemBarScrim = resolvePrivacyPreviewScrim(
+                shouldHideInRecents = initialUiState.shouldHideInRecents,
+            )
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.dark(systemBarScrim),
+                navigationBarStyle = SystemBarStyle.dark(systemBarScrim),
+            )
+            applyNavigationBarStyle(color = Color.BLACK, shouldUseDarkIcons = false)
 
-        setContent {
-            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-            var player by remember { mutableStateOf<MediaController?>(null) }
-            var isTakingScreenshot by remember { mutableStateOf(false) }
+            setContent {
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                var player by remember { mutableStateOf<MediaController?>(null) }
+                var isTakingScreenshot by remember { mutableStateOf(false) }
 
-            LifecycleStartEffect(
-                uiState.shouldPreventScreenshots,
-                uiState.shouldHideInRecents,
-            ) {
-                this@ExoPlayerActivity.applyPrivacyProtection(
-                    shouldPreventScreenshots = uiState.shouldPreventScreenshots,
-                    shouldHideInRecents = uiState.shouldHideInRecents,
-                )
-                onStopOrDispose {}
-            }
-
-            LifecycleStartEffect(Unit) {
-                maybeInitControllerFuture()
-                lifecycleScope.launch {
-                    player = controllerFuture?.await()
+                LifecycleStartEffect(
+                    uiState.shouldPreventScreenshots,
+                    uiState.shouldHideInRecents,
+                ) {
+                    this@ExoPlayerActivity.applyPrivacyProtection(
+                        shouldPreventScreenshots = uiState.shouldPreventScreenshots,
+                        shouldHideInRecents = uiState.shouldHideInRecents,
+                    )
+                    onStopOrDispose {}
                 }
 
-                onStopOrDispose {
-                    player = null
-                }
-            }
+                LifecycleStartEffect(Unit) {
+                    maybeInitControllerFuture()
+                    lifecycleScope.launch {
+                        player = controllerFuture?.await()
+                    }
 
-            MpvrxTheme {
-                MediaPlayerScreen(
-                    modifier = Modifier.semantics {
-                        testTagsAsResourceId = true
-                    },
-                    player = player,
-                    viewModel = viewModel,
-                    playerPreferences = uiState.playerPreferences ?: return@MpvrxTheme,
-                    externalSubtitleFontSource = uiState.externalSubtitleFontSource,
-                    onSelectSubtitleClick = {
-                        lifecycleScope.launch {
-                            val uri = subtitleFileSuspendLauncher.launch(
-                                OpenDocumentWithInitialUri.Input(
-                                    mimeTypes = SUBTITLE_DOCUMENT_MIME_TYPES,
-                                    initialUri = IntentCompat.getParcelableExtra(
-                                        intent,
-                                        "initial_subtitle_directory_uri",
-                                        Uri::class.java,
+                    onStopOrDispose {
+                        player = null
+                    }
+                }
+
+                MpvrxTheme {
+                    MediaPlayerScreen(
+                        modifier = Modifier.semantics {
+                            testTagsAsResourceId = true
+                        },
+                        player = player,
+                        viewModel = viewModel,
+                        playerPreferences = uiState.playerPreferences ?: return@MpvrxTheme,
+                        externalSubtitleFontSource = uiState.externalSubtitleFontSource,
+                        onSelectSubtitleClick = {
+                            lifecycleScope.launch {
+                                val uri = subtitleFileSuspendLauncher.launch(
+                                    OpenDocumentWithInitialUri.Input(
+                                        mimeTypes = SUBTITLE_DOCUMENT_MIME_TYPES,
+                                        initialUri = IntentCompat.getParcelableExtra(
+                                            intent,
+                                            "initial_subtitle_directory_uri",
+                                            Uri::class.java,
+                                        ),
                                     ),
-                                ),
-                            ) ?: return@launch
-                            if (!isSupportedSubtitleDocument(uri)) {
-                                showToast(R.string.local_subtitle_unsupported)
-                                return@launch
+                                ) ?: return@launch
+                                if (!isSupportedSubtitleDocument(uri)) {
+                                    showToast(R.string.local_subtitle_unsupported)
+                                    return@launch
+                                }
+                                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                maybeInitControllerFuture()
+                                controllerFuture?.await()?.addSubtitleTrack(uri)
                             }
-                            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            maybeInitControllerFuture()
-                            controllerFuture?.await()?.addSubtitleTrack(uri)
-                        }
-                    },
-                    onAddOnlineSubtitleClick = ::addOnlineSubtitle,
-                    onBackClick = { finishAndStopPlayerSession() },
-                    onPlayInBackgroundClick = {
-                        shouldPlayInBackground = true
-                        finish()
-                    },
-                    isTakingScreenshot = isTakingScreenshot,
-                    onScreenshotClick = screenshotClick@{
-                        if (isTakingScreenshot) return@screenshotClick
-                        lifecycleScope.launch {
-                            isTakingScreenshot = true
-                            try {
-                                val messageResId = runCatching {
-                                    if (saveCurrentFrameScreenshot()) {
-                                        R.string.screenshot_saved
-                                    } else {
+                        },
+                        onAddOnlineSubtitleClick = ::addOnlineSubtitle,
+                        onBackClick = { finishAndStopPlayerSession() },
+                        onPlayInBackgroundClick = {
+                            shouldPlayInBackground = true
+                            finish()
+                        },
+                        isTakingScreenshot = isTakingScreenshot,
+                        onScreenshotClick = screenshotClick@{
+                            if (isTakingScreenshot) return@screenshotClick
+                            lifecycleScope.launch {
+                                isTakingScreenshot = true
+                                try {
+                                    val messageResId = runCatching {
+                                        if (saveCurrentFrameScreenshot()) {
+                                            R.string.screenshot_saved
+                                        } else {
+                                            R.string.screenshot_failed
+                                        }
+                                    }.getOrElse {
+                                        Logger.error(TAG, "Failed to take screenshot", it)
                                         R.string.screenshot_failed
                                     }
-                                }.getOrElse {
-                                    Logger.error(TAG, "Failed to take screenshot", it)
-                                    R.string.screenshot_failed
+                                    Toast.makeText(this@ExoPlayerActivity, messageResId, Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    isTakingScreenshot = false
                                 }
-                                Toast.makeText(this@ExoPlayerActivity, messageResId, Toast.LENGTH_SHORT).show()
-                            } finally {
-                                isTakingScreenshot = false
                             }
-                        }
-                    },
-                    onKeyboardEventHandlerChanged = { handler ->
-                        keyboardEventHandler = handler
-                    },
-                )
+                        },
+                        onKeyboardEventHandlerChanged = { handler ->
+                            keyboardEventHandler = handler
+                        },
+                    )
+                }
             }
-        }
 
-        playerApi = PlayerApi(this)
+            playerApi = PlayerApi(this)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "ExoPlayerActivity onCreate failed!", e)
+            finish()
+        }
     }
 
     override fun onStart() {
@@ -495,7 +504,7 @@ class ExoPlayerActivity : AppCompatActivity() {
 
         withContext(Dispatchers.Main) {
             mediaController?.run {
-                setMediaItem(currentMediaItem, playerApi.position?.toLong() ?: C.TIME_UNSET)
+                setMediaItem(currentMediaItem, (playerApi?.position?.times(1000))?.toLong() ?: C.TIME_UNSET)
                 playWhenReady = viewModel.shouldPlayWhenReady
                 prepare()
                 Logger.info(TAG, "playVideo prepare total=${System.currentTimeMillis() - t0}ms")
@@ -503,6 +512,7 @@ class ExoPlayerActivity : AppCompatActivity() {
         }
 
         appendPlaylistAfterCurrent(
+            currentMediaItem = currentMediaItem,
             playbackTarget = playbackTarget,
             requestHeaders = requestHeaders,
             startedAtMs = t0,
@@ -511,12 +521,13 @@ class ExoPlayerActivity : AppCompatActivity() {
     }
 
     private suspend fun appendPlaylistAfterCurrent(
+        currentMediaItem: MediaItem,
         playbackTarget: PlaybackTarget,
         requestHeaders: Map<String, String>,
         startedAtMs: Long,
         playlistStartedAtMs: Long,
-    ) {
-        val apiPlaylist = playerApi.getPlaylist()
+    ) = coroutineScope {
+        val apiPlaylist = playerApi?.getPlaylist().orEmpty()
         val folderPlaylist = if (apiPlaylist.isEmpty()) {
             viewModel.getPlaylistFromUri(Uri.parse(playbackTarget.playbackUriString))
         } else {
@@ -535,31 +546,35 @@ class ExoPlayerActivity : AppCompatActivity() {
         }
         val playlist = playbackPlaylist.items
         Logger.info(TAG, "playVideo playlist=${System.currentTimeMillis() - playlistStartedAtMs}ms size=${playlist.size}")
-        if (playlist.size <= 1) return
+        if (playlist.size <= 1) return@coroutineScope
 
         val currentIndex = playbackPlaylist.currentIndex
         val currentLocalParentPath = findLocalParentPath(folderPlaylist, playbackTarget.playbackUriString)
             ?: findLocalParentPath(folderPlaylist, playbackTarget.sourceUriString)
         val beforeItems = playlist.take(currentIndex).map { uriString ->
-            buildMediaItem(
-                uriString = uriString,
-                requestHeaders = requestHeaders,
-                isCurrentItem = false,
-                localParentPath = findLocalParentPath(folderPlaylist, uriString),
-            )
-        }
+            async {
+                buildMediaItem(
+                    uriString = uriString,
+                    requestHeaders = requestHeaders,
+                    isCurrentItem = false,
+                    localParentPath = findLocalParentPath(folderPlaylist, uriString),
+                )
+            }
+        }.awaitAll()
         val afterItems = playlist.drop(currentIndex + 1).map { uriString ->
-            buildMediaItem(
-                uriString = uriString,
-                requestHeaders = requestHeaders,
-                isCurrentItem = false,
-                localParentPath = findLocalParentPath(folderPlaylist, uriString),
-            )
-        }
+            async {
+                buildMediaItem(
+                    uriString = uriString,
+                    requestHeaders = requestHeaders,
+                    isCurrentItem = false,
+                    localParentPath = findLocalParentPath(folderPlaylist, uriString),
+                )
+            }
+        }.awaitAll()
 
         withContext(Dispatchers.Main) {
             mediaController?.run {
-                val currentItem = currentMediaItem ?: return@run
+                val currentItem = currentMediaItem
                 if (currentItem.localConfiguration?.uri.toString() != playbackTarget.playbackUriString) return@run
                 if (mediaItemCount != 1) return@run
 
@@ -581,9 +596,10 @@ class ExoPlayerActivity : AppCompatActivity() {
         requestHeaders: Map<String, String>,
         isCurrentItem: Boolean,
         localParentPath: String?,
-    ): MediaItem = MediaItem.Builder().apply {
-        setUri(uriString)
-        setMediaId(uriString)
+    ): MediaItem = coroutineScope {
+        val builder = MediaItem.Builder()
+        builder.setUri(uriString)
+        builder.setMediaId(uriString)
         val remoteServerId = requestHeaders["_remote_server_id"]?.toLongOrNull()
         val remoteProtocol = requestHeaders["_remote_protocol"]
         val hasRemoteMetadata = remoteServerId != null && remoteProtocol != null
@@ -593,14 +609,14 @@ class ExoPlayerActivity : AppCompatActivity() {
             } else {
                 Uri.parse(uriString).path
             }
-            setMediaMetadata(
+            builder.setMediaMetadata(
                 MediaMetadata.Builder().apply {
-                    if (isCurrentItem) setTitle(playerApi.title)
+                    if (isCurrentItem) setTitle(playerApi?.title)
                     val remoteDirectoryPath = filePath
                         ?.substringBeforeLast('/', missingDelimiterValue = "")
                         ?.ifBlank { "/" }
                     setMetadataExtras(
-                        positionMs = if (isCurrentItem) playerApi.position?.toLong() else null,
+                        positionMs = if (isCurrentItem) (playerApi?.position?.times(1000))?.toLong() else null,
                         requestHeaders = requestHeaders,
                         remoteServerId = remoteServerId,
                         remoteFilePath = filePath,
@@ -612,16 +628,19 @@ class ExoPlayerActivity : AppCompatActivity() {
             )
         }
         if (isCurrentItem) {
-            val apiSubs = playerApi.getSubs().map { subtitle ->
-                uriToSubtitleConfiguration(
-                    uri = subtitle.uri,
-                    subtitleEncoding = playerPreferences?.subtitleTextEncoding ?: "",
-                    isSelected = subtitle.isSelected,
-                )
-            }
-            setSubtitleConfigurations(apiSubs)
+            val apiSubs = playerApi?.getSubs().orEmpty().map { subtitle ->
+                async {
+                    uriToSubtitleConfiguration(
+                        uri = subtitle.uri,
+                        subtitleEncoding = playerPreferences?.subtitleTextEncoding ?: "",
+                        isSelected = subtitle.isSelected,
+                    )
+                }
+            }.awaitAll()
+            builder.setSubtitleConfigurations(apiSubs)
         }
-    }.build()
+        builder.build()
+    }
 
     private fun findLocalParentPath(
         folderPlaylist: List<Video>,
@@ -725,8 +744,8 @@ class ExoPlayerActivity : AppCompatActivity() {
     }
 
     override fun finish() {
-        if (playerApi.shouldReturnResult) {
-            val result = playerApi.getResult(
+        if (playerApi?.shouldReturnResult == true) {
+            val result = playerApi?.getResult(
                 isPlaybackFinished = isPlaybackFinished,
                 duration = mediaController?.duration ?: C.TIME_UNSET,
                 position = mediaController?.currentPosition ?: C.TIME_UNSET,

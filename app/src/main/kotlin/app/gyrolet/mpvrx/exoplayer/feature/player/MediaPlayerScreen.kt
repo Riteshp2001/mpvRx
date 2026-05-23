@@ -1240,13 +1240,13 @@ internal fun MediaPlayerScreen(
                                 modifier = Modifier.testTag("btn_customize_controls_confirm"),
                                 onClick = ::exitControlCustomization,
                             ) {
-                                Text(text = stringResource(R.string.done))
+                                Text(text = stringResource(R.string.exo_done))
                             }
                             TextButton(
                                 modifier = Modifier.testTag("btn_customize_controls_cancel"),
                                 onClick = ::cancelControlCustomization,
                             ) {
-                                Text(text = stringResource(R.string.cancel))
+                                Text(text = stringResource(R.string.exo_cancel))
                             }
                         }
                     }
@@ -1420,7 +1420,7 @@ internal fun MediaPlayerScreen(
                         onBackClick()
                     },
                 ) {
-                    Text(text = stringResource(R.string.exit))
+                    Text(text = stringResource(R.string.exo_exit))
                 }
             },
         )
@@ -1446,7 +1446,7 @@ private fun titleForMenuRoute(route: MenuRoute?): String = when (route) {
     MenuRoute.VideoContentScale -> stringResource(R.string.video_zoom)
     MenuRoute.VideoFilters -> stringResource(R.string.video_filters)
     MenuRoute.Playlist -> stringResource(R.string.now_playing)
-    MenuRoute.SleepTimer -> stringResource(R.string.sleep_timer)
+    MenuRoute.SleepTimer -> stringResource(R.string.exo_sleep_timer)
     MenuRoute.Decoder -> stringResource(R.string.decoder_priority)
 }
 

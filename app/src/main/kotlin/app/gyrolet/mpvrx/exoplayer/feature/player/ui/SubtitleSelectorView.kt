@@ -292,7 +292,7 @@ private fun SpeedInput(
     }
 
     NumberChooserInput(
-        title = stringResource(R.string.speed),
+        title = stringResource(R.string.exo_speed),
         value = valueString,
         textFieldTestTag = "input_subtitle_speed",
         decrementButtonTestTag = "btn_subtitle_speed_decrement",

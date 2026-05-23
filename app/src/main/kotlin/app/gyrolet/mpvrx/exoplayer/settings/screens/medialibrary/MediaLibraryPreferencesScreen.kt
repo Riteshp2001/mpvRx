@@ -80,7 +80,7 @@ private fun MediaLibraryPreferencesContent(
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.media_library),
+                title = stringResource(id = R.string.exo_media_library),
                 navigationIcon = {
                     FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(
@@ -100,7 +100,7 @@ private fun MediaLibraryPreferencesContent(
                 .padding(innerPadding.withBottomFallback())
                 .padding(horizontal = 16.dp),
         ) {
-            ListSectionTitle(text = stringResource(id = R.string.media_library))
+            ListSectionTitle(text = stringResource(id = R.string.exo_media_library))
             Column(
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
             ) {
@@ -128,13 +128,13 @@ private fun MediaLibraryPreferencesContent(
                 )
             }
 
-            ListSectionTitle(text = stringResource(id = R.string.thumbnail))
+            ListSectionTitle(text = stringResource(id = R.string.exo_thumbnail))
             Column(
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
             ) {
                 ClickablePreferenceItem(
                     modifier = Modifier.testTag("item_settings_media_thumbnails"),
-                    title = stringResource(id = R.string.thumbnail_generation),
+                    title = stringResource(id = R.string.exo_thumbnail_generation),
                     description = when (preferences.thumbnailGenerationStrategy) {
                         ThumbnailGenerationStrategy.FIRST_FRAME -> stringResource(id = R.string.first_frame)
                         ThumbnailGenerationStrategy.FRAME_AT_PERCENTAGE -> stringResource(R.string.frame_at_position)

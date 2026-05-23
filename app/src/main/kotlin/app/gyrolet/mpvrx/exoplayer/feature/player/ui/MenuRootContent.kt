@@ -76,7 +76,7 @@ fun MenuRootContent(
         )
         MenuItemRow(
             icon = NextIcons.Timer,
-            text = stringResource(R.string.sleep_timer),
+            text = stringResource(R.string.exo_sleep_timer),
             testTag = "menu_item_sleep_timer",
             onClick = { onNavigate(MenuRoute.SleepTimer) },
         )

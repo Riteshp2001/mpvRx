@@ -1,11 +1,14 @@
 package app.gyrolet.mpvrx.exoplayer.core.model
 
+import kotlinx.serialization.Serializable
 import kotlin.comparisons.reversed as kotlinReversed
 
+@Serializable
 data class Sort(
     val by: By,
     val order: Order,
 ) {
+    @Serializable
     enum class By {
         TITLE,
         LENGTH,
@@ -14,6 +17,7 @@ data class Sort(
         DATE,
     }
 
+    @Serializable
     enum class Order {
         ASCENDING,
         DESCENDING,

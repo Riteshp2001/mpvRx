@@ -121,7 +121,7 @@ private fun GeneralPreferencesContent(
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.general_name),
+                title = stringResource(id = R.string.exo_general_name),
                 navigationIcon = {
                     FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(

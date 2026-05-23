@@ -26,7 +26,7 @@ internal class NormalizingAssMatroskaExtractor(
 
     private var currentAttachmentName: String? = null
     private var currentAttachmentMime: String? = null
-    private val subtitleSample = subtitleSampleField.get(this) as ParsableByteArray
+    private val subtitleSample = subtitleSampleField?.get(this) as? ParsableByteArray
 
     override fun getElementType(id: Int): Int = when (id) {
         ID_ATTACHMENTS,
@@ -103,10 +103,10 @@ internal class NormalizingAssMatroskaExtractor(
     private fun wrapExtractorOutput() {
         if (assHandler.renderType == AssRenderType.CUES) return
 
-        val output = extractorOutputField.get(this) as ExtractorOutput
+        val output = extractorOutputField?.get(this) as? ExtractorOutput ?: return
         if (output is NormalizingAssSubtitleExtractorOutput) return
 
-        extractorOutputField.set(
+        extractorOutputField?.set(
             this,
             NormalizingAssSubtitleExtractorOutput(
                 delegate = output,
@@ -121,7 +121,7 @@ internal class NormalizingAssMatroskaExtractor(
         currentAttachmentMime = null
     }
 
-    internal fun getSubtitleSample(): ParsableByteArray = subtitleSample
+    internal fun getSubtitleSample(): ParsableByteArray? = subtitleSample
 
     companion object {
         private const val ID_EBML = 0x1A45DFA3
@@ -149,13 +149,17 @@ internal class NormalizingAssMatroskaExtractor(
             "application/x-font-ttf",
         )
 
-        private val extractorOutputField: Field = MatroskaExtractor::class.java.getDeclaredField("extractorOutput").apply {
-            isAccessible = true
-        }
+        private val extractorOutputField: Field? = runCatching {
+            MatroskaExtractor::class.java.getDeclaredField("extractorOutput").apply {
+                isAccessible = true
+            }
+        }.getOrNull()
 
-        private val subtitleSampleField: Field = MatroskaExtractor::class.java.getDeclaredField("subtitleSample").apply {
-            isAccessible = true
-        }
+        private val subtitleSampleField: Field? = runCatching {
+            MatroskaExtractor::class.java.getDeclaredField("subtitleSample").apply {
+                isAccessible = true
+            }
+        }.getOrNull()
     }
 }
 
@@ -229,7 +233,7 @@ private class NormalizingAssTrackOutput(
 
     private fun readAssDialogue(timeUs: Long) {
         val trackId = trackId ?: return
-        val sample = extractor.getSubtitleSample()
+        val sample = extractor.getSubtitleSample() ?: return
         val data = sample.data
         val firstComma = findTokenIndex(data, 1)
         val secondComma = findTokenIndex(data, 2)

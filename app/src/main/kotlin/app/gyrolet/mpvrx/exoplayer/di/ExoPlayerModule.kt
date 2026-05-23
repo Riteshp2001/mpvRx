@@ -1,6 +1,5 @@
 package app.gyrolet.mpvrx.exoplayer.di
 
-import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.dataStoreFile
@@ -48,43 +47,46 @@ private const val PLAYER_PREFERENCES_DATASTORE_FILE = "exo_player_preferences.js
 private const val SEARCH_HISTORY_DATASTORE_FILE = "exo_search_history.json"
 
 val exoPlayerModule = module {
-    single { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
+    single(named("exoCoroutineScope")) { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
     single(named("ioDispatcher")) { Dispatchers.IO }
     single(named("defaultDispatcher")) { Dispatchers.Default }
 
-    single<DataStore<ApplicationPreferences>> {
+    single(named("appPreferencesDataStore")) {
+        android.util.Log.d("ExoPlayerModule", "Creating appPreferencesDataStore")
         DataStoreFactory.create(
             serializer = ApplicationPreferencesSerializer,
             corruptionHandler = ReplaceFileCorruptionHandler { ApplicationPreferences() },
-            scope = CoroutineScope(get<CoroutineScope>().coroutineContext + get<CoroutineDispatcher>(named("ioDispatcher"))),
+            scope = CoroutineScope(get<CoroutineScope>(named("exoCoroutineScope")).coroutineContext + get<CoroutineDispatcher>(named("ioDispatcher"))),
             produceFile = { androidContext().dataStoreFile(APP_PREFERENCES_DATASTORE_FILE) },
         )
     }
 
-    single<DataStore<PlayerPreferences>> {
+    single(named("playerPreferencesDataStore")) {
+        android.util.Log.d("ExoPlayerModule", "Creating playerPreferencesDataStore")
         DataStoreFactory.create(
             serializer = PlayerPreferencesSerializer,
             corruptionHandler = ReplaceFileCorruptionHandler { PlayerPreferences() },
-            scope = CoroutineScope(get<CoroutineScope>().coroutineContext + get<CoroutineDispatcher>(named("ioDispatcher"))),
+            scope = CoroutineScope(get<CoroutineScope>(named("exoCoroutineScope")).coroutineContext + get<CoroutineDispatcher>(named("ioDispatcher"))),
             produceFile = { androidContext().dataStoreFile(PLAYER_PREFERENCES_DATASTORE_FILE) },
         )
     }
 
-    single<DataStore<SearchHistory>> {
+    single(named("searchHistoryDataStore")) {
+        android.util.Log.d("ExoPlayerModule", "Creating searchHistoryDataStore")
         DataStoreFactory.create(
             serializer = SearchHistorySerializer,
             corruptionHandler = ReplaceFileCorruptionHandler { SearchHistory() },
-            scope = CoroutineScope(get<CoroutineScope>().coroutineContext + get<CoroutineDispatcher>(named("ioDispatcher"))),
+            scope = CoroutineScope(get<CoroutineScope>(named("exoCoroutineScope")).coroutineContext + get<CoroutineDispatcher>(named("ioDispatcher"))),
             produceFile = { androidContext().dataStoreFile(SEARCH_HISTORY_DATASTORE_FILE) },
         )
     }
 
-    single { AppPreferencesDataSource(get()) }
-    single { PlayerPreferencesDataSource(get()) }
-    single { SearchHistoryDataSource(get()) }
+    single { AppPreferencesDataSource(get(named("appPreferencesDataStore"))) }
+    single { PlayerPreferencesDataSource(get(named("playerPreferencesDataStore"))) }
+    single { SearchHistoryDataSource(get(named("searchHistoryDataStore"))) }
 
     single<PreferencesRepository> {
-        LocalPreferencesRepository(get(), get(), get())
+        LocalPreferencesRepository(get(), get(), get<CoroutineScope>(named("exoCoroutineScope")))
     }
 
     single<MediaRepository> {
@@ -97,7 +99,7 @@ val exoPlayerModule = module {
 
     single { SubtitleFontFileValidator() }
     single<SubtitleFontRepository> { 
-        LocalSubtitleFontRepository(androidContext(), get(), get(named("ioDispatcher")), get()) 
+        LocalSubtitleFontRepository(androidContext(), get<CoroutineScope>(named("exoCoroutineScope")), get(named("ioDispatcher")), get()) 
     }
     
     single { GetSortedVideosUseCase(get(), get(), get(named("defaultDispatcher"))) }

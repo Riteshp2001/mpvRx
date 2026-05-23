@@ -82,7 +82,7 @@ private fun DecoderPreferencesContent(
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.decoder),
+                title = stringResource(id = R.string.exo_decoder),
                 navigationIcon = {
                     FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(
@@ -102,7 +102,7 @@ private fun DecoderPreferencesContent(
                 .padding(innerPadding.withBottomFallback())
                 .padding(horizontal = 16.dp),
         ) {
-            ListSectionTitle(text = stringResource(id = R.string.decoder))
+            ListSectionTitle(text = stringResource(id = R.string.exo_decoder))
             Column(
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
             ) {
@@ -240,7 +240,7 @@ private fun VideoFiltersSettings(
             modifier = Modifier.testTag("item_settings_video_hue"),
             sliderModifier = Modifier.testTag("slider_settings_video_hue"),
             title = stringResource(R.string.video_hue),
-            description = stringResource(R.string.degrees, preferences.videoHue.toInt()),
+            description = stringResource(R.string.exo_degrees, preferences.videoHue.toInt()),
             icon = NextIcons.Sensitivity,
             isEnabled = preferences.shouldApplyVideoFilters,
             isSliderEnabled = preferences.shouldApplyVideoFilters && preferences.isVideoHueFilterEnabled,
@@ -286,7 +286,7 @@ private fun VideoFiltersSettings(
             modifier = Modifier.testTag("item_settings_video_sharpening"),
             sliderModifier = Modifier.testTag("slider_settings_video_sharpening"),
             title = stringResource(R.string.video_sharpening),
-            description = stringResource(R.string.percent, (preferences.videoSharpening * 100).toInt()),
+            description = stringResource(R.string.exo_percent, (preferences.videoSharpening * 100).toInt()),
             icon = NextIcons.Sensitivity,
             isEnabled = preferences.shouldApplyVideoFilters,
             isSliderEnabled = preferences.shouldApplyVideoFilters && preferences.isVideoSharpeningFilterEnabled,

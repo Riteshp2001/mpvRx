@@ -85,7 +85,7 @@ private fun GesturePreferencesContent(
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.gestures),
+                title = stringResource(id = R.string.exo_gestures),
                 navigationIcon = {
                     FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(
@@ -284,7 +284,7 @@ private fun GesturePreferencesContent(
                     modifier = Modifier.testTag("item_settings_gesture_seek_increment"),
                     sliderModifier = Modifier.testTag("slider_settings_gesture_seek_increment"),
                     title = stringResource(R.string.seek_increment),
-                    description = stringResource(R.string.seconds, uiState.preferences.seekIncrement),
+                    description = stringResource(R.string.exo_seconds, uiState.preferences.seekIncrement),
                     icon = NextIcons.Replay,
                     value = uiState.preferences.seekIncrement.toFloat(),
                     valueRange = 1.0f..PlayerPreferences.MAX_SEEK_INCREMENT.toFloat(),

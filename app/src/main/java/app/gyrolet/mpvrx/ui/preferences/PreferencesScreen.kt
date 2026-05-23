@@ -50,8 +50,10 @@ object PreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
+    android.util.Log.d("PreferencesScreen", "Content() starting")
     val playerPreferences = koinInject<app.gyrolet.mpvrx.preferences.PlayerPreferences>()
     val enableExoPlayer by playerPreferences.enableExoPlayer.collectAsState()
+    android.util.Log.d("PreferencesScreen", "enableExoPlayer: $enableExoPlayer")
 
     Scaffold(
       topBar = {

@@ -91,6 +91,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.guava.future
@@ -105,9 +106,6 @@ import app.gyrolet.mpvrx.exoplayer.core.common.extensions.getLocalSubtitles
 import app.gyrolet.mpvrx.exoplayer.core.common.extensions.getPath
 import app.gyrolet.mpvrx.exoplayer.core.common.extensions.matchesSubtitleBase
 import app.gyrolet.mpvrx.exoplayer.core.common.extensions.subtitleCacheDir
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.FtpClient
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.SmbClient
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.WebDavClient
 import app.gyrolet.mpvrx.exoplayer.core.data.repository.MediaRepository
 import app.gyrolet.mpvrx.exoplayer.core.data.repository.PreferencesRepository
 import app.gyrolet.mpvrx.exoplayer.core.data.repository.buildPlaybackStateCandidates
@@ -142,7 +140,6 @@ import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.remoteServerId
 import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.requestHeaders
 import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.setMetadataExtras
 import app.gyrolet.mpvrx.exoplayer.core.data.repository.OnlineSubtitleRepository
-import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.getSubtitleMime
 import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.setIsScrubbingModeEnabled
 import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.subtitleDelayMilliseconds
 import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.subtitleSpeed
@@ -210,9 +207,6 @@ class ExoPlayerService : MediaSessionService() {
     val preferencesRepository: PreferencesRepository by inject()
     val mediaRepository: MediaRepository by inject()
     val onlineSubtitleRepository: OnlineSubtitleRepository by inject()
-    val webDavClient: WebDavClient by inject()
-    val smbClient: SmbClient by inject()
-    val ftpClient: FtpClient by inject()
     val imageLoader: ImageLoader by inject()
 
     private val playerPreferences: PlayerPreferences
@@ -1639,7 +1633,13 @@ class ExoPlayerService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+        if (mediaSession == null) {
+            Logger.error(TAG, "onGetSession called but mediaSession is null")
+            return null
+        }
+        return mediaSession
+    }
 
     private fun createPlayer(
         decoderPriority: DecoderPriority,
@@ -1700,98 +1700,102 @@ class ExoPlayerService : MediaSessionService() {
     }
 
     override fun onCreate() {
-        super.onCreate()
-        serviceScope.launch(Dispatchers.IO) { warmUpCodecCache() }
-        serviceScope.launch {
-            preferencesRepository.playerPreferences
-                .distinctUntilChanged { old, new -> old.decoderPriority == new.decoderPriority }
-                .collect { preferences -> switchPlayerDecoderPriority(preferences.decoderPriority) }
-        }
-        serviceScope.launch {
-            preferencesRepository.playerPreferences
-                .distinctUntilChanged { old, new -> old.toVideoFilterPreferences() == new.toVideoFilterPreferences() }
-                .collect(::applyVideoFilters)
-        }
-        serviceScope.launch {
-            preferencesRepository.playerPreferences
-                .distinctUntilChanged { old, new -> old.isVolumeBoostEnabled == new.isVolumeBoostEnabled }
-                .collect { preferences ->
-                    if (preferences.isVolumeBoostEnabled) {
-                        val audioSessionId = mediaSession?.player?.audioSessionId ?: return@collect
-                        initializeLoudnessEnhancer(audioSessionId)
-                    } else {
-                        releaseLoudnessEnhancer()
-                    }
-                }
-        }
-        serviceScope.launch {
-            preferencesRepository.playerPreferences
-                .distinctUntilChanged { old, new -> old.isVolumeNormalizationEnabled == new.isVolumeNormalizationEnabled }
-                .collect { preferences ->
-                    volumeNormalizationAudioProcessor.isEnabled = preferences.isVolumeNormalizationEnabled
-                }
-        }
-        volumeNormalizationAudioProcessor.isEnabled = playerPreferences.isVolumeNormalizationEnabled
-        val assHandler = AssHandler(renderType = AssRenderType.OVERLAY_CANVAS)
-        this.assHandler = assHandler
-        AssHandlerRegistry.register(assHandler)
-        val assSubtitleParserFactory = AssSubtitleParserFactory(assHandler)
-        this.assSubtitleParserFactory = assSubtitleParserFactory
-        fastStartMediaSourceFactory = createMediaSourceFactory(
-            assSubtitleParserFactory = assSubtitleParserFactory,
-            assHandler = assHandler,
-            shouldUseFastStart = true,
-        )
-        preciseSeekMediaSourceFactory = createMediaSourceFactory(
-            assSubtitleParserFactory = assSubtitleParserFactory,
-            assHandler = assHandler,
-            shouldUseFastStart = false,
-        )
-        sessionMediaSourceFactory = object : MediaSource.Factory {
-            override fun setDrmSessionManagerProvider(drmSessionManagerProvider: DrmSessionManagerProvider): MediaSource.Factory {
-                sessionDrmSessionManagerProvider = drmSessionManagerProvider
-                return this
-            }
-
-            override fun setLoadErrorHandlingPolicy(loadErrorHandlingPolicy: LoadErrorHandlingPolicy): MediaSource.Factory {
-                sessionLoadErrorHandlingPolicy = loadErrorHandlingPolicy
-                return this
-            }
-
-            override fun getSupportedTypes(): IntArray = fastStartMediaSourceFactory.supportedTypes
-
-            override fun createMediaSource(mediaItem: MediaItem): MediaSource = this@ExoPlayerService.createMediaSource(mediaItem)
-        }
-
-        val player = createPlayer(
-            decoderPriority = playerPreferences.decoderPriority,
-            assHandler = assHandler,
-        )
-
         try {
-            mediaSession = MediaSession.Builder(this, player).apply {
-                setSessionActivity(
-                    PendingIntent.getActivity(
-                        this@ExoPlayerService,
-                        0,
-                        Intent(this@ExoPlayerService, ExoPlayerActivity::class.java),
-                        PendingIntent.FLAG_IMMUTABLE,
-                    ),
-                )
-                setCallback(mediaSessionCallback)
-                setCustomLayout(
-                    listOf(
-                        CommandButton.Builder(ICON_UNDEFINED)
-                            .setCustomIconResId(app.gyrolet.mpvrx.R.drawable.ic_close)
-                            .setDisplayName("Stop")
-                            .setSessionCommand(CustomCommands.STOP_PLAYER_SESSION.sessionCommand)
-                            .setEnabled(true)
-                            .build(),
-                    ),
-                )
-            }.build()
+            super.onCreate()
+            serviceScope.launch(Dispatchers.IO) { warmUpCodecCache() }
+            serviceScope.launch {
+                preferencesRepository.playerPreferences
+                    .distinctUntilChanged { old, new -> old.decoderPriority == new.decoderPriority }
+                    .collect { preferences -> switchPlayerDecoderPriority(preferences.decoderPriority) }
+            }
+            serviceScope.launch {
+                preferencesRepository.playerPreferences
+                    .distinctUntilChanged { old, new -> old.toVideoFilterPreferences() == new.toVideoFilterPreferences() }
+                    .collect(::applyVideoFilters)
+            }
+            serviceScope.launch {
+                preferencesRepository.playerPreferences
+                    .distinctUntilChanged { old, new -> old.isVolumeBoostEnabled == new.isVolumeBoostEnabled }
+                    .collect { preferences ->
+                        if (preferences.isVolumeBoostEnabled) {
+                            val audioSessionId = mediaSession?.player?.audioSessionId ?: return@collect
+                            initializeLoudnessEnhancer(audioSessionId)
+                        } else {
+                            releaseLoudnessEnhancer()
+                        }
+                    }
+            }
+            serviceScope.launch {
+                preferencesRepository.playerPreferences
+                    .distinctUntilChanged { old, new -> old.isVolumeNormalizationEnabled == new.isVolumeNormalizationEnabled }
+                    .collect { preferences ->
+                        volumeNormalizationAudioProcessor.isEnabled = preferences.isVolumeNormalizationEnabled
+                    }
+            }
+            volumeNormalizationAudioProcessor.isEnabled = playerPreferences.isVolumeNormalizationEnabled
+            val assHandler = AssHandler(renderType = AssRenderType.OVERLAY_CANVAS)
+            this.assHandler = assHandler
+            AssHandlerRegistry.register(assHandler)
+            val assSubtitleParserFactory = AssSubtitleParserFactory(assHandler)
+            this.assSubtitleParserFactory = assSubtitleParserFactory
+            fastStartMediaSourceFactory = createMediaSourceFactory(
+                assSubtitleParserFactory = assSubtitleParserFactory,
+                assHandler = assHandler,
+                shouldUseFastStart = true,
+            )
+            preciseSeekMediaSourceFactory = createMediaSourceFactory(
+                assSubtitleParserFactory = assSubtitleParserFactory,
+                assHandler = assHandler,
+                shouldUseFastStart = false,
+            )
+            sessionMediaSourceFactory = object : MediaSource.Factory {
+                override fun setDrmSessionManagerProvider(drmSessionManagerProvider: DrmSessionManagerProvider): MediaSource.Factory {
+                    sessionDrmSessionManagerProvider = drmSessionManagerProvider
+                    return this
+                }
+
+                override fun setLoadErrorHandlingPolicy(loadErrorHandlingPolicy: LoadErrorHandlingPolicy): MediaSource.Factory {
+                    sessionLoadErrorHandlingPolicy = loadErrorHandlingPolicy
+                    return this
+                }
+
+                override fun getSupportedTypes(): IntArray = fastStartMediaSourceFactory.supportedTypes
+
+                override fun createMediaSource(mediaItem: MediaItem): MediaSource = this@ExoPlayerService.createMediaSource(mediaItem)
+            }
+
+            val player = createPlayer(
+                decoderPriority = playerPreferences.decoderPriority,
+                assHandler = assHandler,
+            )
+
+            try {
+                mediaSession = MediaSession.Builder(this, player).apply {
+                    setSessionActivity(
+                        PendingIntent.getActivity(
+                            this@ExoPlayerService,
+                            0,
+                            Intent(this@ExoPlayerService, ExoPlayerActivity::class.java),
+                            PendingIntent.FLAG_IMMUTABLE,
+                        ),
+                    )
+                    setCallback(mediaSessionCallback)
+                    setCustomLayout(
+                        listOf(
+                            CommandButton.Builder(ICON_UNDEFINED)
+                                .setCustomIconResId(app.gyrolet.mpvrx.R.drawable.ic_close)
+                                .setDisplayName("Stop")
+                                .setSessionCommand(CustomCommands.STOP_PLAYER_SESSION.sessionCommand)
+                                .setEnabled(true)
+                                .build(),
+                        ),
+                    )
+                }.build()
+            } catch (e: Exception) {
+                Logger.error(TAG, "Failed to create media session", e)
+            }
         } catch (e: Exception) {
-            Logger.error(TAG, "Failed to create media session", e)
+            Logger.error(TAG, "Error in onCreate", e)
         }
     }
 
@@ -1850,11 +1854,13 @@ class ExoPlayerService : MediaSessionService() {
                 validExternalSubs.forEach(onlineSubtitleRepository::touchSubtitle)
                 val existingSubConfigurations = mediaItem.localConfiguration?.subtitleConfigurations ?: emptyList()
                 val restoredSubConfigurations = validExternalSubs.map { subtitleUri ->
-                    uriToSubtitleConfiguration(
-                        uri = subtitleUri,
-                        subtitleEncoding = playerPreferences.subtitleTextEncoding,
-                    )
-                }
+                    async {
+                        uriToSubtitleConfiguration(
+                            uri = subtitleUri,
+                            subtitleEncoding = playerPreferences.subtitleTextEncoding,
+                        )
+                    }
+                }.awaitAll()
                 val mergedSubConfigurations = mergeSubtitleConfigurations(
                     existing = existingSubConfigurations,
                     incoming = restoredSubConfigurations,
@@ -2274,7 +2280,7 @@ class ExoPlayerService : MediaSessionService() {
     private suspend fun buildExternalSubtitleConfigurations(
         mediaId: String,
         requestHeaders: Map<String, String>,
-    ): List<MediaItem.SubtitleConfiguration> {
+    ): List<MediaItem.SubtitleConfiguration> = coroutineScope {
         val uri = mediaId.toUri()
         val playbackStateUri = mediaRepository.getCanonicalMediaUri(uri = mediaId)
         val video = mediaRepository.getVideoByUri(uri = playbackStateUri)
@@ -2289,14 +2295,16 @@ class ExoPlayerService : MediaSessionService() {
         } ?: emptyList()
 
         val allExternalSubs = dbExternalSubs + localSubs
-        if (allExternalSubs.isEmpty()) return emptyList()
+        if (allExternalSubs.isEmpty()) return@coroutineScope emptyList()
 
-        return allExternalSubs.map { subtitleUri ->
-            uriToSubtitleConfiguration(
-                uri = subtitleUri,
-                subtitleEncoding = playerPreferences.subtitleTextEncoding,
-            )
-        }
+        allExternalSubs.map { subtitleUri ->
+            async {
+                uriToSubtitleConfiguration(
+                    uri = subtitleUri,
+                    subtitleEncoding = playerPreferences.subtitleTextEncoding,
+                )
+            }
+        }.awaitAll()
     }
 
     private fun mergeSubtitleConfigurations(

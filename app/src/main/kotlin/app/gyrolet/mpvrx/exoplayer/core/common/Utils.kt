@@ -17,7 +17,11 @@ val storagePermission = when {
     else -> Manifest.permission.READ_EXTERNAL_STORAGE
 }
 
-fun hasManageExternalStorageAccess(): Boolean = Environment.isExternalStorageManager()
+fun hasManageExternalStorageAccess(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    Environment.isExternalStorageManager()
+} else {
+    true
+}
 
 fun createManageExternalStorageAccessIntent(context: Context): Intent {
     val manageAppIntent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
