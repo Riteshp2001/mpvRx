@@ -917,6 +917,15 @@ fun RenderPlayerButton(
       }
     }
 
+    PlayerButton.VIDEO_FILTERS -> {
+      ControlsButton(
+        icon = Icons.Default.Tune,
+        onClick = { onOpenPanel(Panels.VideoFilters) },
+        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
     PlayerButton.NONE -> { /* Do nothing */
     }
   }

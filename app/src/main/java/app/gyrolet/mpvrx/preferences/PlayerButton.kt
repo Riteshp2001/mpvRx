@@ -36,6 +36,7 @@ enum class PlayerButton(
   BACKGROUND_PLAYBACK(Icons.Outlined.Headset),
   AMBIENT_MODE(Icons.Outlined.BlurOff),
   TIME_NETWORK(Icons.Default.AccessTime),
+  VIDEO_FILTERS(Icons.Default.Tune),
   NONE(Icons.Outlined.Bookmarks),
 }
 
@@ -82,5 +83,6 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.BACKGROUND_PLAYBACK -> "Background Playback"
     PlayerButton.AMBIENT_MODE -> "Ambience Mode"
     PlayerButton.TIME_NETWORK -> "Time + Network"
+    PlayerButton.VIDEO_FILTERS -> "Video Filters"
     PlayerButton.NONE -> "None"
   }

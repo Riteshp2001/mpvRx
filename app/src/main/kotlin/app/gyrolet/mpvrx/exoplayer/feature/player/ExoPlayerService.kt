@@ -275,6 +275,7 @@ class ExoPlayerService : MediaSessionService() {
     private var hasRenderedFirstFrameForCurrentItem = false
     private var pendingVideoFiltersJob: Job? = null
     private var videoFilterTransition = VideoFilterTransition.default()
+    private var screenAspectRatio: Float = 0f
     private lateinit var fastStartMediaSourceFactory: DefaultMediaSourceFactory
     private lateinit var preciseSeekMediaSourceFactory: DefaultMediaSourceFactory
     private var sessionLoadErrorHandlingPolicy: LoadErrorHandlingPolicy? = null
@@ -1186,7 +1187,7 @@ class ExoPlayerService : MediaSessionService() {
         preferences: PlayerPreferences,
         force: Boolean = false,
     ) {
-        val videoFilters = preferences.toVideoFilterPreferences()
+        val videoFilters = preferences.toVideoFilterPreferences(screenAspectRatio)
         scheduleVideoFilters(
             player = player,
             videoFilters = videoFilters,
@@ -1199,7 +1200,7 @@ class ExoPlayerService : MediaSessionService() {
 
     private fun previewVideoFilters(preferences: PlayerPreferences) {
         val player = mediaSession?.player as? ExoPlayer ?: return
-        val videoFilters = preferences.toVideoFilterPreferences()
+        val videoFilters = preferences.toVideoFilterPreferences(screenAspectRatio)
         scheduleVideoFilters(
             player = player,
             videoFilters = videoFilters,
@@ -1222,7 +1223,7 @@ class ExoPlayerService : MediaSessionService() {
 
         pendingVideoFiltersJob = serviceScope.launch {
             fun hasStalePreferences() = shouldSkipStalePreferences &&
-                preferencesRepository.playerPreferences.value.toVideoFilterPreferences() != videoFilters
+                preferencesRepository.playerPreferences.value.toVideoFilterPreferences(screenAspectRatio) != videoFilters
 
             if (delayMs > 0L) delay(delayMs)
             if (hasStalePreferences()) return@launch
@@ -1258,7 +1259,7 @@ class ExoPlayerService : MediaSessionService() {
             )
         if (canUpdateActiveEffect) {
             videoFilterTransition = transition
-            effect!!.updateTransition(transition)
+            effect.updateTransition(transition)
             currentVideoEffectsState = VideoEffectsState(
                 filters = videoFilters,
                 decoderPriority = decoderPriority,
@@ -1325,11 +1326,13 @@ class ExoPlayerService : MediaSessionService() {
         Logger.debug(TAG, "Video effects availability: available=$isVideoEffectsAvailable decoder=$activeDecoderPriority")
     }
 
-    private fun PlayerPreferences.toVideoFilterPreferences(): VideoFilterPreferences {
-        if (!shouldApplyVideoFilters) return VideoFilterPreferences.default()
+    private fun PlayerPreferences.toVideoFilterPreferences(screenAspectRatio: Float): VideoFilterPreferences {
+        if (!shouldApplyVideoFilters && !isAmbienceModeEnabled) return VideoFilterPreferences.default()
 
         val filters = VideoFilterPreferences(
-            shouldApply = true,
+            shouldApply = shouldApplyVideoFilters || isAmbienceModeEnabled,
+            isAmbienceModeEnabled = isAmbienceModeEnabled,
+            screenAspectRatio = screenAspectRatio,
             isBrightnessEnabled = isVideoBrightnessFilterEnabled,
             brightness = if (isVideoBrightnessFilterEnabled) {
                 videoBrightness.coerceIn(PlayerPreferences.MIN_VIDEO_BRIGHTNESS, PlayerPreferences.MAX_VIDEO_BRIGHTNESS)
@@ -1581,6 +1584,15 @@ class ExoPlayerService : MediaSessionService() {
                     return@future SessionResult(SessionResult.RESULT_SUCCESS)
                 }
 
+                CustomCommands.SET_SCREEN_ASPECT_RATIO -> {
+                    val aspectRatio = args.getFloat(CustomCommands.SCREEN_ASPECT_RATIO_KEY, 0f)
+                    if (aspectRatio > 0f && aspectRatio != screenAspectRatio) {
+                        screenAspectRatio = aspectRatio
+                        applyVideoFilters(playerPreferences)
+                    }
+                    return@future SessionResult(SessionResult.RESULT_SUCCESS)
+                }
+
                 CustomCommands.GET_SUBTITLE_DELAY -> {
                     val subtitleDelay = mediaSession?.player?.playerSpecificSubtitleDelayMilliseconds ?: 0
                     return@future SessionResult(
@@ -1710,7 +1722,9 @@ class ExoPlayerService : MediaSessionService() {
             }
             serviceScope.launch {
                 preferencesRepository.playerPreferences
-                    .distinctUntilChanged { old, new -> old.toVideoFilterPreferences() == new.toVideoFilterPreferences() }
+                    .distinctUntilChanged { old, new ->
+                        old.toVideoFilterPreferences(screenAspectRatio) == new.toVideoFilterPreferences(screenAspectRatio)
+                    }
                     .collect(::applyVideoFilters)
             }
             serviceScope.launch {

@@ -156,6 +156,22 @@ class PlayerViewModel(
         }
     }
 
+    fun updateStatisticsPage(page: Int) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(statisticsPage = page)
+            }
+        }
+    }
+
+    fun updateAmbienceMode(isEnabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(isAmbienceModeEnabled = isEnabled)
+            }
+        }
+    }
+
     fun updateVideoBrightness(value: Float) {
         val normalizedValue = value.normalizeVideoFilter(PlayerPreferences.MIN_VIDEO_BRIGHTNESS, PlayerPreferences.MAX_VIDEO_BRIGHTNESS)
         updateVideoFilter("brightness=$normalizedValue") { it.copy(videoBrightness = normalizedValue) }

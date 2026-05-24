@@ -31,6 +31,8 @@ data class PlayerPreferences(
     val shouldAutoEnterPip: Boolean = true,
     val shouldAutoPlayInBackground: Boolean = false,
     val loopMode: LoopMode = LoopMode.OFF,
+    val isAmbienceModeEnabled: Boolean = false,
+    val statisticsPage: Int = 0,
 
     // 手势控制
     @Deprecated(message = "Use individual isVolumeSwipeGestureEnabled and isBrightnessSwipeGestureEnabled instead")
@@ -139,6 +141,7 @@ fun PlayerPreferences.withSubtitleStyleFrom(preferences: PlayerPreferences): Pla
 
 fun PlayerPreferences.withVideoFiltersFrom(preferences: PlayerPreferences): PlayerPreferences = copy(
     shouldApplyVideoFilters = preferences.shouldApplyVideoFilters,
+    isAmbienceModeEnabled = preferences.isAmbienceModeEnabled,
     isVideoBrightnessFilterEnabled = preferences.isVideoBrightnessFilterEnabled,
     videoBrightness = preferences.videoBrightness,
     isVideoContrastFilterEnabled = preferences.isVideoContrastFilterEnabled,

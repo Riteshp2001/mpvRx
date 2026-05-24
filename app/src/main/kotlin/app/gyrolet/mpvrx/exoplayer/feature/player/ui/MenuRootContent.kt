@@ -36,6 +36,7 @@ fun MenuRootContent(
     onPlayInBackgroundClick: () -> Unit,
     onLoopClick: () -> Unit,
     onShuffleClick: () -> Unit,
+    onStatsClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -44,6 +45,12 @@ fun MenuRootContent(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        MenuItemRow(
+            icon = NextIcons.BugReport,
+            text = stringResource(R.string.player_sheets_stats_page_title),
+            testTag = "menu_item_stats",
+            onClick = onStatsClick,
+        )
         MenuItemRow(
             icon = NextIcons.Subtitle,
             text = stringResource(R.string.select_subtitle_track),

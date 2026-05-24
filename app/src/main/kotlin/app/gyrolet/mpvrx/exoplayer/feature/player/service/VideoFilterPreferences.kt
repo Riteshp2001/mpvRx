@@ -4,6 +4,8 @@ import app.gyrolet.mpvrx.exoplayer.core.model.PlayerPreferences
 
 data class VideoFilterPreferences(
     val shouldApply: Boolean,
+    val isAmbienceModeEnabled: Boolean,
+    val screenAspectRatio: Float,
     val isBrightnessEnabled: Boolean,
     val brightness: Float,
     val isContrastEnabled: Boolean,
@@ -25,6 +27,8 @@ data class VideoFilterPreferences(
 
         return VideoFilterPreferences(
             shouldApply = shouldApply || target.shouldApply,
+            isAmbienceModeEnabled = target.isAmbienceModeEnabled,
+            screenAspectRatio = target.screenAspectRatio,
             isBrightnessEnabled = isBrightnessEnabled || target.isBrightnessEnabled,
             brightness = brightness.interpolate(target.brightness, fraction),
             isContrastEnabled = isContrastEnabled || target.isContrastEnabled,
@@ -42,6 +46,7 @@ data class VideoFilterPreferences(
 
     fun shouldCreateEffect(): Boolean = shouldApply &&
         (
+            isAmbienceModeEnabled ||
             isBrightnessEnabled &&
                 brightness != PlayerPreferences.DEFAULT_VIDEO_BRIGHTNESS ||
                 isContrastEnabled &&
@@ -59,6 +64,8 @@ data class VideoFilterPreferences(
     companion object {
         fun default(): VideoFilterPreferences = VideoFilterPreferences(
             shouldApply = false,
+            isAmbienceModeEnabled = false,
+            screenAspectRatio = 0f,
             isBrightnessEnabled = false,
             brightness = PlayerPreferences.DEFAULT_VIDEO_BRIGHTNESS,
             isContrastEnabled = false,

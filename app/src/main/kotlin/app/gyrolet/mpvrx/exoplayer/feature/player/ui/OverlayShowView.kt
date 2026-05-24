@@ -15,6 +15,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.exoplayer.feature.player.extensions.noRippleClickable
 import app.gyrolet.mpvrx.exoplayer.feature.player.state.SleepTimerState
 import app.gyrolet.mpvrx.exoplayer.feature.player.state.SubtitleOptionsEvent
+import app.gyrolet.mpvrx.exoplayer.core.ui.components.VideoFiltersPanel
 
 @Composable
 fun BoxScope.OverlayShowView(
@@ -117,8 +118,12 @@ private fun BoxScope.VideoFilterOverlayView(
         title = stringResource(R.string.video_filters),
         testTag = "panel_video_filters",
     ) {
-        // Placeholder for VideoFiltersPanel
-        Box(modifier = Modifier.fillMaxSize())
+        VideoFiltersPanel(
+            preferences = preferences,
+            onDismissRequest = onDismissRequest,
+            onPreviewPreferences = onPreviewPreferences,
+            onConfirmPreferences = onConfirmPreferences,
+        )
     }
 }
 
