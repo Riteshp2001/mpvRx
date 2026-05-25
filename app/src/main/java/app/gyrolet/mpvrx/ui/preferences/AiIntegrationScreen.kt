@@ -83,7 +83,7 @@ import app.gyrolet.mpvrx.ui.preferences.PreferenceCard
 import app.gyrolet.mpvrx.ui.preferences.PreferenceDivider
 import app.gyrolet.mpvrx.ui.preferences.PreferenceSectionHeader
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import org.koin.compose.koinInject
 
 private val allLanguages = mapOf(
@@ -223,7 +223,7 @@ object AiIntegrationScreen : Screen {
 
           item {
             PreferenceCard {
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = enabled,
                 onValueChange = { preferences.enabled.set(it) },
                 title = { Text("Enable AI Features") },
@@ -746,7 +746,7 @@ object AiIntegrationScreen : Screen {
 
             item {
               PreferenceCard {
-                SwitchPreference(
+                AdaptiveSwitchPreference(
                   value = preferences.showThinking.collectAsState().value,
                   onValueChange = { preferences.showThinking.set(it) },
                   title = { Text("Show AI Reasoning (Thinking)") },
@@ -760,7 +760,7 @@ object AiIntegrationScreen : Screen {
 
             item {
               PreferenceCard {
-                SwitchPreference(
+                AdaptiveSwitchPreference(
                   value = renameWithAi,
                   onValueChange = { preferences.renameWithAi.set(it) },
                   title = { Text("AI-Powered Rename") },
@@ -774,7 +774,7 @@ object AiIntegrationScreen : Screen {
 
                 PreferenceDivider()
 
-                SwitchPreference(
+                AdaptiveSwitchPreference(
                   value = subtitleFormatWithAi,
                   onValueChange = { preferences.subtitleFormatWithAi.set(it) },
                   title = { Text("AI Search") },
@@ -797,7 +797,7 @@ object AiIntegrationScreen : Screen {
                   val sttProvider by preferences.sttProvider.collectAsState()
                   val sttModel by preferences.sttModel.collectAsState()
 
-                  SwitchPreference(
+                  AdaptiveSwitchPreference(
                     value = realtimeSubsEnabled,
                     onValueChange = { preferences.realtimeSubsEnabled.set(it) },
                     title = { Text("Real-time Subtitle Generation") },
@@ -889,7 +889,7 @@ object AiIntegrationScreen : Screen {
 
               item {
                 PreferenceCard {
-                  SwitchPreference(
+                  AdaptiveSwitchPreference(
                     value = subtitleTranslationEnabled,
                     onValueChange = { enabled ->
                       preferences.subtitleTranslationEnabled.set(enabled)
@@ -920,7 +920,7 @@ object AiIntegrationScreen : Screen {
 
             item {
               PreferenceCard {
-                SwitchPreference(
+                AdaptiveSwitchPreference(
                   value = customPromptEnabled,
                   onValueChange = { preferences.customPromptEnabled.set(it) },
                   title = { Text("Override Default Instructions") },

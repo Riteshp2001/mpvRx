@@ -54,7 +54,7 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStylePreview
 import app.gyrolet.mpvrx.ui.preferences.components.PlayerButtonChip
 import org.koin.compose.koinInject
@@ -241,7 +241,7 @@ object PlayerControlsPreferencesScreen : Screen {
             var customTimeValue by remember { mutableStateOf("") }
             
             PreferenceCard {
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = hidePlayerButtonsBackground,
                 onValueChange = { appearancePrefs.hidePlayerButtonsBackground.set(it) },
                 title = {

@@ -53,7 +53,7 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import org.koin.compose.koinInject
 
 @Serializable
@@ -120,7 +120,7 @@ object DecoderPreferencesScreen : Screen {
               PreferenceDivider()
 
               val tryHWDecoding by preferences.tryHWDecoding.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = tryHWDecoding,
                 onValueChange = {
                   preferences.tryHWDecoding.set(it)
@@ -132,7 +132,7 @@ object DecoderPreferencesScreen : Screen {
 
               val gpuNext by preferences.gpuNext.collectAsState()
               val useVulkan by preferences.useVulkan.collectAsState() // Added to check Vulkan state
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = gpuNext,
                 onValueChange = { enabled ->
                     if (enabled && !gpuNext && !useVulkan) { // Only show warning if Vulkan is disabled
@@ -200,7 +200,7 @@ object DecoderPreferencesScreen : Screen {
 
               PreferenceDivider()
 
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = useVulkan,
                 onValueChange = { enabled ->
                   preferences.useVulkan.set(enabled)
@@ -247,7 +247,7 @@ object DecoderPreferencesScreen : Screen {
               PreferenceDivider()
 
               val useYUV420p by preferences.useYUV420P.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = useYUV420p,
                 onValueChange = {
                   preferences.useYUV420P.set(it)
@@ -264,7 +264,7 @@ object DecoderPreferencesScreen : Screen {
               PreferenceDivider()
               
               val enableAnime4K by preferences.enableAnime4K.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = enableAnime4K,
                 onValueChange = { enabled ->
                     preferences.enableAnime4K.set(enabled)

@@ -48,7 +48,7 @@ import me.zhanghai.compose.preference.FooterPreference
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import org.koin.compose.koinInject
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 
@@ -101,7 +101,7 @@ object GesturePreferencesScreen : Screen {
           item {
             PreferenceCard {
               val brightnessGesture by playerPreferences.brightnessGesture.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = brightnessGesture,
                 onValueChange = playerPreferences.brightnessGesture::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_brightness)) },
@@ -110,7 +110,7 @@ object GesturePreferencesScreen : Screen {
               PreferenceDivider()
 
               val volumeGesture by playerPreferences.volumeGesture.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = volumeGesture,
                 onValueChange = playerPreferences.volumeGesture::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_volume)) },
@@ -119,7 +119,7 @@ object GesturePreferencesScreen : Screen {
               PreferenceDivider()
 
               val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = pinchToZoomGesture,
                 onValueChange = playerPreferences.pinchToZoomGesture::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_pinch_to_zoom)) },
@@ -128,7 +128,7 @@ object GesturePreferencesScreen : Screen {
               PreferenceDivider()
 
               val horizontalSwipeToSeek by playerPreferences.horizontalSwipeToSeek.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = horizontalSwipeToSeek,
                 onValueChange = playerPreferences.horizontalSwipeToSeek::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_horizontal_swipe_to_seek)) },
@@ -180,7 +180,7 @@ object GesturePreferencesScreen : Screen {
               PreferenceDivider()
 
               val showDynamicSpeedOverlay by playerPreferences.showDynamicSpeedOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showDynamicSpeedOverlay,
                 onValueChange = playerPreferences.showDynamicSpeedOverlay::set,
                 title = { Text(stringResource(R.string.pref_dynamic_speed_overlay_title)) },
@@ -356,7 +356,7 @@ object GesturePreferencesScreen : Screen {
           PreferenceDivider()
 
           val useSingleTapForCenter by preferences.useSingleTapForCenter.collectAsState()
-          SwitchPreference(
+          AdaptiveSwitchPreference(
             value = useSingleTapForCenter,
             onValueChange = { preferences.useSingleTapForCenter.set(it) },
             title = {
@@ -375,7 +375,7 @@ object GesturePreferencesScreen : Screen {
           PreferenceDivider()
 
           val centerVerticalSubtitlePositionGesture by preferences.centerVerticalSubtitlePositionGesture.collectAsState()
-          SwitchPreference(
+          AdaptiveSwitchPreference(
             value = centerVerticalSubtitlePositionGesture,
             onValueChange = { preferences.centerVerticalSubtitlePositionGesture.set(it) },
             title = { Text(text = stringResource(R.string.pref_gesture_center_vertical_subtitle_position_title)) },

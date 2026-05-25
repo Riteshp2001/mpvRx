@@ -18,11 +18,12 @@ import app.gyrolet.mpvrx.ui.components.LiquidToggle
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 @Composable
-fun LiquidSwitchPreference(
+fun LiquidAdaptiveSwitchPreference(
     value: Boolean,
     onValueChange: (Boolean) -> Unit,
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    icon: (@Composable () -> Unit)? = null,
     summary: (@Composable () -> Unit)? = null,
     accentColor: Color = MaterialTheme.colorScheme.primary,
     enabled: Boolean = true,
@@ -32,6 +33,7 @@ fun LiquidSwitchPreference(
     ListItem(
         headlineContent = title,
         supportingContent = summary,
+        leadingContent = icon,
         trailingContent = {
             Box(contentAlignment = Alignment.Center) {
                 LiquidToggle(

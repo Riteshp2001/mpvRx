@@ -70,7 +70,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import app.gyrolet.mpvrx.ui.components.AdaptiveSwitch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -957,7 +957,7 @@ private fun CompressorAudioTab(
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       Text("Remove audio", style = MaterialTheme.typography.bodyLarge)
-      Switch(checked = state.removeAudio, onCheckedChange = { onToggleRemoveAudio() })
+      AdaptiveSwitch(checked = state.removeAudio, onCheckedChange = { onToggleRemoveAudio() })
     }
 
     AnimatedVisibility(visible = !state.removeAudio) {
@@ -1365,7 +1365,7 @@ private fun CompressorInfoDialog(
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
           Text("Show bitrate")
-          Switch(checked = state.showBitrate, onCheckedChange = { onToggleShowBitrate() })
+          AdaptiveSwitch(checked = state.showBitrate, onCheckedChange = { onToggleShowBitrate() })
         }
         if (state.showBitrate) {
           Row(
@@ -1374,7 +1374,7 @@ private fun CompressorInfoDialog(
             horizontalArrangement = Arrangement.SpaceBetween,
           ) {
             Text("Use Mbps")
-            Switch(checked = state.useMbps, onCheckedChange = { onToggleBitrateUnit() })
+            AdaptiveSwitch(checked = state.useMbps, onCheckedChange = { onToggleBitrateUnit() })
           }
         }
         Row(
@@ -1383,7 +1383,7 @@ private fun CompressorInfoDialog(
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
           Text("Preserve metadata")
-          Switch(checked = state.preserveMetadata, onCheckedChange = { onTogglePreserveMetadata() })
+          AdaptiveSwitch(checked = state.preserveMetadata, onCheckedChange = { onTogglePreserveMetadata() })
         }
         HorizontalDivider()
         Text("Supported Codecs", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)

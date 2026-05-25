@@ -97,6 +97,7 @@ fun PlayerSheet(
   val liquidLensRadius by preferences.liquidDialogLensRadius.collectAsState()
   val liquidLensDepth by preferences.liquidDialogLensDepth.collectAsState()
   val liquidAlpha by preferences.liquidDialogContainerAlpha.collectAsState()
+  val liquidDarkText by preferences.liquidDialogDarkText.collectAsState()
 
   val sheetShape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize)
   val themeSurfaceColor = MaterialTheme.colorScheme.surface
@@ -226,7 +227,11 @@ fun PlayerSheet(
           onBack = internalOnDismissRequest,
         )
         CompositionLocalProvider(
-          LocalContentColor provides if (enableLiquidGlass) PlayerLiquidTokens.contentColor else MaterialTheme.colorScheme.onSurface,
+          LocalContentColor provides if (enableLiquidGlass) {
+              if (liquidDarkText) Color.Black else PlayerLiquidTokens.contentColor
+          } else {
+              MaterialTheme.colorScheme.onSurface
+          },
         ) {
           content()
         }

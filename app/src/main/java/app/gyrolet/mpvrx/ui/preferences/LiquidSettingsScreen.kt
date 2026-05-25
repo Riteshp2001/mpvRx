@@ -488,6 +488,7 @@ object LiquidSettingsScreen : Screen {
                         val liquidLensRadius by preferences.liquidDialogLensRadius.collectAsState()
                         val liquidLensDepth by preferences.liquidDialogLensDepth.collectAsState()
                         val liquidAlpha by preferences.liquidDialogContainerAlpha.collectAsState()
+                        val liquidDarkText by preferences.liquidDialogDarkText.collectAsState()
                         var showPreview by remember { mutableStateOf(false) }
 
                         if (showPreview) {
@@ -551,6 +552,21 @@ object LiquidSettingsScreen : Screen {
                                 }
 
                                 Spacer(modifier = Modifier.height(12.dp))
+
+                                app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference(
+                                    value = liquidDarkText,
+                                    onValueChange = { preferences.liquidDialogDarkText.set(it) },
+                                    title = { Text("Use Dark Text", style = MaterialTheme.typography.titleMedium) },
+                                    summary = {
+                                        Text(
+                                            text = "Use dark text for better readability on lighter video backgrounds",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.outline
+                                        )
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
 
                                 PremiumParameterSlider(
                                     value = liquidBlur,

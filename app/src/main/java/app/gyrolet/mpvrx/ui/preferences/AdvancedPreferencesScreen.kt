@@ -68,7 +68,7 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import me.zhanghai.compose.preference.TwoTargetIconButtonPreference
 import org.koin.compose.koinInject
 import java.io.File
@@ -429,7 +429,7 @@ object AdvancedPreferencesScreen : Screen {
               val selectedScripts by preferences.selectedLuaScripts.collectAsState()
               val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
               
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = enableLuaScripts,
                 onValueChange = preferences.enableLuaScripts::set,
                 title = { Text(stringResource(R.string.pref_enable_lua_scripts_title)) },
@@ -532,7 +532,7 @@ object AdvancedPreferencesScreen : Screen {
                 }
               }
 
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = enableRecentlyPlayed,
                 onValueChange = preferences.enableRecentlyPlayed::set,
                 title = { Text(stringResource(R.string.pref_advanced_enable_recently_played_title)) },
@@ -822,7 +822,7 @@ object AdvancedPreferencesScreen : Screen {
               val clipboardManager = context.getSystemService(ClipboardManager::class.java)
               val verboseLogging by preferences.verboseLogging.collectAsState()
               
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = verboseLogging,
                 onValueChange = preferences.verboseLogging::set,
                 title = { Text(stringResource(R.string.pref_advanced_verbose_logging_title)) },

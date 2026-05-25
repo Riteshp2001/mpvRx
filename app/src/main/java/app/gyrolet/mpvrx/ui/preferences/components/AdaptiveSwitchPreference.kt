@@ -16,6 +16,7 @@ fun AdaptiveSwitchPreference(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    icon: (@Composable () -> Unit)? = null,
     summary: (@Composable () -> Unit)? = null,
 ) {
     val preferences = koinInject<AppearancePreferences>()
@@ -23,12 +24,13 @@ fun AdaptiveSwitchPreference(
     val liquidToggleColor by preferences.liquidToggleColor.collectAsState()
 
     if (enableLiquidGlass) {
-        LiquidSwitchPreference(
+        LiquidAdaptiveSwitchPreference(
             value = value,
             onValueChange = onValueChange,
             title = title,
             modifier = modifier,
             enabled = enabled,
+            icon = icon,
             summary = summary,
             accentColor = Color(liquidToggleColor)
         )
@@ -39,6 +41,7 @@ fun AdaptiveSwitchPreference(
             title = title,
             modifier = modifier,
             enabled = enabled,
+            icon = icon,
             summary = summary
         )
     }

@@ -36,7 +36,7 @@ import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 
 @Serializable
 object YtdlpSettingsScreen : Screen {
@@ -215,7 +215,7 @@ object YtdlpSettingsScreen : Screen {
 
                         PreferenceDivider()
 
-                        SwitchPreference(
+                        AdaptiveSwitchPreference(
                             value = preferH264,
                             onValueChange = { newValue ->
                                 ytdlPreferences.preferH264.set(newValue)
@@ -268,7 +268,7 @@ object YtdlpSettingsScreen : Screen {
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                     ) {
-                        SwitchPreference(
+                        AdaptiveSwitchPreference(
                             value = writeSubs,
                             onValueChange = { ytdlPreferences.writeSubs.set(it) },
                             title = { Text("Download Media Subtitles", fontWeight = FontWeight.Medium) },
@@ -277,7 +277,7 @@ object YtdlpSettingsScreen : Screen {
 
                         PreferenceDivider()
 
-                        SwitchPreference(
+                        AdaptiveSwitchPreference(
                             value = writeAutoSubs,
                             onValueChange = { ytdlPreferences.writeAutoSubs.set(it) },
                             title = { Text("Include Auto-Generated Subtitles", fontWeight = FontWeight.Medium) },

@@ -53,6 +53,7 @@ fun LiquidDialog(
     val liquidLensRadius by preferences.liquidDialogLensRadius.collectAsState()
     val liquidLensDepth by preferences.liquidDialogLensDepth.collectAsState()
     val liquidAlpha by preferences.liquidDialogContainerAlpha.collectAsState()
+    val liquidDarkText by preferences.liquidDialogDarkText.collectAsState()
     val density = LocalDensity.current
 
     BasicAlertDialog(
@@ -92,7 +93,7 @@ fun LiquidDialog(
             tonalElevation = if (enableLiquidGlass) 0.dp else AlertDialogDefaults.TonalElevation
         ) {
             val dialogContentColor = if (enableLiquidGlass) {
-                PlayerLiquidTokens.contentColor
+                if (liquidDarkText) Color.Black else PlayerLiquidTokens.contentColor
             } else {
                 AlertDialogDefaults.textContentColor
             }
@@ -109,7 +110,7 @@ fun LiquidDialog(
                         if (title != null) {
                             CompositionLocalProvider(
                                 LocalContentColor provides if (enableLiquidGlass) {
-                                    PlayerLiquidTokens.contentColor
+                                    if (liquidDarkText) Color.Black else PlayerLiquidTokens.contentColor
                                 } else {
                                     AlertDialogDefaults.titleContentColor
                                 }

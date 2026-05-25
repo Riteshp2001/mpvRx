@@ -93,6 +93,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val isBalanced = when (ambientMode) {
         AmbientVisualMode.GLOW -> matchesGlowPreset(
@@ -117,6 +118,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val isHQ = when (ambientMode) {
         AmbientVisualMode.GLOW -> matchesGlowPreset(
@@ -141,6 +143,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val isEco = when (ambientMode) {
         AmbientVisualMode.GLOW -> matchesGlowPreset(
@@ -165,7 +168,9 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
+    val isYouTube = ambientMode == AmbientVisualMode.YOUTUBE
 
     val configuration = LocalConfiguration.current
     val customMaxHeight = if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
@@ -203,7 +208,7 @@ fun AmbientSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = MaterialTheme.spacing.medium),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ExpressivePresetButton(
@@ -223,8 +228,13 @@ fun AmbientSheet(
                 )
                 ExpressivePresetButton(
                     label = "HQ",
-                    selected = isHQ,
+                    selected = isHQ && !isYouTube,
                     onClick = { viewModel.applyAmbientProfileHighQuality() },
+                )
+                ExpressivePresetButton(
+                    label = "YouTube",
+                    selected = isYouTube,
+                    onClick = { viewModel.applyAmbientProfileYouTube() },
                 )
             }
 
@@ -233,18 +243,19 @@ fun AmbientSheet(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
             )
 
-            // ── Section: Glow ────────────────────────────────────────────────
-            var glowExpanded by remember { mutableStateOf(true) }
-            SectionHeader(
-                title = "Glow",
-                isExpanded = glowExpanded,
-                onClick = { glowExpanded = !glowExpanded },
-            )
-            AnimatedVisibility(
-                visible = glowExpanded,
-                enter = expandVertically(animationSpec = spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness)) + fadeIn(animationSpec = spring(stiffness = AppMotion.Effect.Alpha.stiffness)),
-                exit = shrinkVertically(animationSpec = spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness)) + fadeOut(animationSpec = spring(stiffness = AppMotion.Effect.Alpha.stiffness)),
-            ) {
+            if (ambientMode != AmbientVisualMode.YOUTUBE) {
+                // ── Section: Glow ────────────────────────────────────────────────
+                var glowExpanded by remember { mutableStateOf(true) }
+                SectionHeader(
+                    title = "Glow",
+                    isExpanded = glowExpanded,
+                    onClick = { glowExpanded = !glowExpanded },
+                )
+                AnimatedVisibility(
+                    visible = glowExpanded,
+                    enter = expandVertically(animationSpec = spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness)) + fadeIn(animationSpec = spring(stiffness = AppMotion.Effect.Alpha.stiffness)),
+                    exit = shrinkVertically(animationSpec = spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness)) + fadeOut(animationSpec = spring(stiffness = AppMotion.Effect.Alpha.stiffness)),
+                ) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 ) {
@@ -437,6 +448,8 @@ fun AmbientSheet(
                 }
             }
 
+            } // end of if (ambientMode != AmbientVisualMode.YOUTUBE)
+
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
@@ -460,6 +473,11 @@ fun AmbientSheet(
                     label = AmbientVisualMode.FRAME_EXTEND.label,
                     selected = ambientMode == AmbientVisualMode.FRAME_EXTEND,
                     onClick = { viewModel.updateAmbientVisualMode(AmbientVisualMode.FRAME_EXTEND) },
+                )
+                AmbientModeButton(
+                    label = AmbientVisualMode.YOUTUBE.label,
+                    selected = ambientMode == AmbientVisualMode.YOUTUBE,
+                    onClick = { viewModel.updateAmbientVisualMode(AmbientVisualMode.YOUTUBE) },
                 )
             }
 

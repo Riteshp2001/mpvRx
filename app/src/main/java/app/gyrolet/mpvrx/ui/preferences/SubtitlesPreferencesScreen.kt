@@ -52,7 +52,7 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.ListPreference
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import me.zhanghai.compose.preference.TextFieldPreference
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -157,7 +157,7 @@ object SubtitlesPreferencesScreen : Screen {
               PreferenceDivider()
 
               val autoload by preferences.autoloadMatchingSubtitles.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = autoload,
                 onValueChange = { preferences.autoloadMatchingSubtitles.set(it) },
                 title = { Text(stringResource(R.string.pref_subtitles_autoload_title)) },
@@ -172,7 +172,7 @@ object SubtitlesPreferencesScreen : Screen {
               PreferenceDivider()
 
               val overrideAss by preferences.overrideAssSubs.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = overrideAss,
                 onValueChange = { preferences.overrideAssSubs.set(it) },
                 title = { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
@@ -187,7 +187,7 @@ object SubtitlesPreferencesScreen : Screen {
               PreferenceDivider()
 
               val scaleByWindow by preferences.scaleByWindow.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = scaleByWindow,
                 onValueChange = { preferences.scaleByWindow.set(it) },
                 title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
@@ -339,7 +339,7 @@ object SubtitlesPreferencesScreen : Screen {
                 
                 if (showAdvanced) {
                   Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    SwitchPreference(
+                    AdaptiveSwitchPreference(
                       value = wyzieHearingImpaired,
                       onValueChange = { preferences.wyzieHearingImpaired.set(it) },
                       title = { Text(stringResource(R.string.pref_hearing_impaired_title)) },

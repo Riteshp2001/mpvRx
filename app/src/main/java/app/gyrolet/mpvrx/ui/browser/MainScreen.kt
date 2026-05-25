@@ -25,9 +25,13 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import org.koin.compose.koinInject
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -184,60 +188,68 @@ object MainScreen : Screen {
             targetOffsetY = { fullHeight -> fullHeight }
           )
         ) {
-          NavigationBar(
-            modifier = Modifier
-              .clip(AppShapeScale.extraLargeIncreased)
-              .then(
-                if (enableLiquidGlass) {
-                  Modifier.drawBackdrop(
-                    backdrop = rememberLayerBackdrop(),
-                    shape = { AppShapeScale.extraLargeIncreased },
-                    effects = {
-                      colorControls(
-                        brightness = liquidBrightness * 0.5f,
-                        saturation = liquidSaturation
-                      )
-                      blur(with(density) { (liquidBlur * 0.8f).dp.toPx() })
-                      lens(
-                        with(density) { (liquidLensRadius * 0.8f).dp.toPx() },
-                        with(density) { (liquidLensDepth * 0.8f).dp.toPx() },
-                        depthEffect = true
-                      )
-                    },
-                    highlight = { Highlight.Plain },
-                    onDrawSurface = {
-                      drawRect(surfaceColor.copy(alpha = liquidAlpha * 0.6f))
-                    }
-                  )
-                } else {
-                  Modifier
+          if (enableLiquidGlass) {
+            app.gyrolet.mpvrx.ui.components.LiquidBottomTabs(
+              selectedTabIndex = { visibleTabs.indexOf(selectedTab).coerceAtLeast(0) },
+              onTabSelected = { index -> 
+                if (index in visibleTabs.indices) {
+                  selectedTab = visibleTabs[index] 
                 }
-              ),
-            containerColor = if (enableLiquidGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
-          ) {
-            visibleTabs.forEach { tab ->
-              NavigationBarItem(
-                icon = {
+              },
+              backdrop = rememberLayerBackdrop(),
+              tabsCount = visibleTabs.size,
+              modifier = Modifier.padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+            ) {
+              visibleTabs.forEach { tab ->
+                Box(
+                  modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                      interactionSource = remember { MutableInteractionSource() },
+                      indication = null,
+                      onClick = { selectedTab = tab }
+                    ),
+                  contentAlignment = Alignment.Center
+                ) {
                   when (tab) {
                     MainTab.HOME -> Icon(Icons.Filled.Home, contentDescription = "Home")
                     MainTab.RECENTS -> Icon(Icons.Filled.History, contentDescription = "Recents")
                     MainTab.PLAYLISTS -> Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists")
                     MainTab.NETWORK -> Icon(Icons.Filled.BringYourOwnIp, contentDescription = "Network")
                   }
-                },
-                label = {
-                  Text(
+                }
+              }
+            }
+          } else {
+            NavigationBar(
+              modifier = Modifier
+                .clip(AppShapeScale.extraLargeIncreased),
+              containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ) {
+              visibleTabs.forEach { tab ->
+                NavigationBarItem(
+                  icon = {
                     when (tab) {
-                      MainTab.HOME -> "Home"
-                      MainTab.RECENTS -> "Recents"
-                      MainTab.PLAYLISTS -> "Playlists"
-                      MainTab.NETWORK -> "Network"
+                      MainTab.HOME -> Icon(Icons.Filled.Home, contentDescription = "Home")
+                      MainTab.RECENTS -> Icon(Icons.Filled.History, contentDescription = "Recents")
+                      MainTab.PLAYLISTS -> Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists")
+                      MainTab.NETWORK -> Icon(Icons.Filled.BringYourOwnIp, contentDescription = "Network")
                     }
-                  )
-                },
-                selected = selectedTab == tab,
-                onClick = { selectedTab = tab },
-              )
+                  },
+                  label = {
+                    Text(
+                      when (tab) {
+                        MainTab.HOME -> "Home"
+                        MainTab.RECENTS -> "Recents"
+                        MainTab.PLAYLISTS -> "Playlists"
+                        MainTab.NETWORK -> "Network"
+                      }
+                    )
+                  },
+                  selected = selectedTab == tab,
+                  onClick = { selectedTab = tab },
+                )
+              }
             }
           }
         }

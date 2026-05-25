@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 import androidx.compose.ui.text.AnnotatedString
@@ -92,7 +92,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = savePositionOnQuit,
                 onValueChange = preferences.savePositionOnQuit::set,
                 title = { Text(stringResource(R.string.pref_player_save_position_on_quit)) },
@@ -101,7 +101,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val closeAfterEndOfVideo by preferences.closeAfterReachingEndOfVideo.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = closeAfterEndOfVideo,
                 onValueChange = preferences.closeAfterReachingEndOfVideo::set,
                 title = { Text(stringResource(R.string.pref_player_close_after_eof)) },
@@ -110,7 +110,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val autoplayNextVideo by preferences.autoplayNextVideo.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = autoplayNextVideo,
                 onValueChange = preferences.autoplayNextVideo::set,
                 title = { Text(stringResource(R.string.pref_autoplay_next_video_title)) },
@@ -126,7 +126,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val playlistMode by preferences.playlistMode.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = playlistMode,
                 onValueChange = preferences.playlistMode::set,
                 title = { Text(stringResource(R.string.pref_playlist_mode_title)) },
@@ -142,7 +142,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val rememberBrightness by preferences.rememberBrightness.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = rememberBrightness,
                 onValueChange = preferences.rememberBrightness::set,
                 title = { Text(stringResource(R.string.pref_player_remember_brightness)) },
@@ -151,7 +151,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val autoPiPOnNavigation by preferences.autoPiPOnNavigation.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = autoPiPOnNavigation,
                 onValueChange = preferences.autoPiPOnNavigation::set,
                 title = { Text(stringResource(R.string.pref_auto_pip_title)) },
@@ -166,7 +166,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val keepScreenOnWhenPaused by preferences.keepScreenOnWhenPaused.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = keepScreenOnWhenPaused,
                 onValueChange = preferences.keepScreenOnWhenPaused::set,
                 title = { Text(stringResource(R.string.pref_player_keep_screen_on_when_paused_title)) },
@@ -182,7 +182,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val autoplayAfterScreenUnlock by preferences.autoplayAfterScreenUnlock.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = autoplayAfterScreenUnlock,
                 onValueChange = preferences.autoplayAfterScreenUnlock::set,
                 title = { Text(stringResource(R.string.pref_player_autoplay_after_screen_unlock_title)) },
@@ -202,7 +202,7 @@ object PlayerPreferencesScreen : Screen {
           item {
             PreferenceCard {
               val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showDoubleTapOvals,
                 onValueChange = preferences.showDoubleTapOvals::set,
                 title = { Text(stringResource(R.string.show_splash_ovals_on_double_tap_to_seek)) },
@@ -211,7 +211,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showSeekTimeWhileSeeking by preferences.showSeekTimeWhileSeeking.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showSeekTimeWhileSeeking,
                 onValueChange = preferences.showSeekTimeWhileSeeking::set,
                 title = { Text(stringResource(R.string.show_time_on_double_tap_to_seek)) },
@@ -220,7 +220,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showBufferedRange by preferences.showBufferedRange.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showBufferedRange,
                 onValueChange = preferences.showBufferedRange::set,
                 title = { Text(stringResource(R.string.pref_player_show_buffered_range_title)) },
@@ -235,7 +235,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val usePreciseSeeking by preferences.usePreciseSeeking.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = usePreciseSeeking,
                 onValueChange = preferences.usePreciseSeeking::set,
                 title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
@@ -262,7 +262,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val enableIntroDb by preferences.enableIntroDb.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = enableIntroDb,
                 onValueChange = preferences.enableIntroDb::set,
                 title = { Text(stringResource(R.string.pref_online_skip_markers_title)) },
@@ -296,7 +296,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val detectFromChapters by preferences.detectIntroOutroFromChapters.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = detectFromChapters,
                 onValueChange = preferences.detectIntroOutroFromChapters::set,
                 title = { Text(stringResource(R.string.pref_chapter_detect_title)) },
@@ -311,7 +311,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val autoSkipIntro by preferences.autoSkipIntro.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = autoSkipIntro,
                 onValueChange = preferences.autoSkipIntro::set,
                 title = { Text(stringResource(R.string.pref_auto_skip_intro_title)) },
@@ -326,7 +326,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val autoSkipOutro by preferences.autoSkipOutro.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = autoSkipOutro,
                 onValueChange = preferences.autoSkipOutro::set,
                 title = { Text(stringResource(R.string.pref_auto_skip_outro_title)) },
@@ -345,7 +345,7 @@ object PlayerPreferencesScreen : Screen {
           item {
             PreferenceCard {
               val showSystemStatusBar by preferences.showSystemStatusBar.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showSystemStatusBar,
                 onValueChange = preferences.showSystemStatusBar::set,
                 title = { Text(stringResource(R.string.pref_player_display_show_status_bar)) },
@@ -354,7 +354,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showSystemNavigationBar by preferences.showSystemNavigationBar.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showSystemNavigationBar,
                 onValueChange = preferences.showSystemNavigationBar::set,
                 title = { Text(stringResource(R.string.pref_nav_bar_title)) },
@@ -369,7 +369,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val safeAreaWindow by preferences.safeAreaWindow.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = safeAreaWindow,
                 onValueChange = preferences.safeAreaWindow::set,
                 title = { Text(stringResource(R.string.pref_player_safe_area_window_title)) },
@@ -384,7 +384,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val reduceMotion by preferences.reduceMotion.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = reduceMotion,
                 onValueChange = preferences.reduceMotion::set,
                 title = { Text(stringResource(R.string.pref_player_display_reduce_player_animation)) },
@@ -393,7 +393,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showLoadingCircle by preferences.showLoadingCircle.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showLoadingCircle,
                 onValueChange = preferences.showLoadingCircle::set,
                 title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) },
@@ -402,7 +402,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val allowGesturesInPanels by preferences.allowGesturesInPanels.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = allowGesturesInPanels,
                 onValueChange = preferences.allowGesturesInPanels::set,
                 title = { Text(stringResource(R.string.pref_player_controls_allow_gestures_in_panels)) },
@@ -411,7 +411,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val swapVolumeAndBrightness by preferences.swapVolumeAndBrightness.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = swapVolumeAndBrightness,
                 onValueChange = preferences.swapVolumeAndBrightness::set,
                 title = { Text(stringResource(R.string.swap_the_volume_and_brightness_slider)) },
@@ -424,7 +424,7 @@ object PlayerPreferencesScreen : Screen {
           item {
             PreferenceCard {
               val showVolumeGestureOverlay by preferences.showVolumeGestureOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showVolumeGestureOverlay,
                 onValueChange = preferences.showVolumeGestureOverlay::set,
                 title = { Text(stringResource(R.string.pref_volume_overlay_title)) },
@@ -439,7 +439,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showBrightnessGestureOverlay by preferences.showBrightnessGestureOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showBrightnessGestureOverlay,
                 onValueChange = preferences.showBrightnessGestureOverlay::set,
                 title = { Text(stringResource(R.string.pref_brightness_overlay_title)) },
@@ -454,7 +454,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showHoldSpeedOverlay by preferences.showHoldSpeedOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showHoldSpeedOverlay,
                 onValueChange = preferences.showHoldSpeedOverlay::set,
                 title = { Text(stringResource(R.string.pref_hold_speed_overlay_pref_title)) },
@@ -469,7 +469,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showAspectRatioOverlay by preferences.showAspectRatioOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showAspectRatioOverlay,
                 onValueChange = preferences.showAspectRatioOverlay::set,
                 title = { Text(stringResource(R.string.pref_aspect_ratio_overlay_title)) },
@@ -484,7 +484,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showZoomLevelOverlay by preferences.showZoomLevelOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showZoomLevelOverlay,
                 onValueChange = preferences.showZoomLevelOverlay::set,
                 title = { Text(stringResource(R.string.pref_zoom_overlay_title)) },
@@ -499,7 +499,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showRepeatShuffleOverlay by preferences.showRepeatShuffleOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showRepeatShuffleOverlay,
                 onValueChange = preferences.showRepeatShuffleOverlay::set,
                 title = { Text(stringResource(R.string.pref_repeat_shuffle_overlay_title)) },
@@ -514,7 +514,7 @@ object PlayerPreferencesScreen : Screen {
               PreferenceDivider()
 
               val showActionFeedbackOverlay by preferences.showActionFeedbackOverlay.collectAsState()
-              SwitchPreference(
+              AdaptiveSwitchPreference(
                 value = showActionFeedbackOverlay,
                 onValueChange = preferences.showActionFeedbackOverlay::set,
                 title = { Text(stringResource(R.string.pref_action_feedback_overlay_title)) },

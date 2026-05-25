@@ -47,6 +47,7 @@ class AppearancePreferences(
   val liquidDialogLensRadius = preferenceStore.getFloat("liquid_dialog_lens_radius", 55f)
   val liquidDialogLensDepth = preferenceStore.getFloat("liquid_dialog_lens_depth", 85f)
   val liquidDialogContainerAlpha = preferenceStore.getFloat("liquid_dialog_container_alpha", 0.35f)
+  val liquidDialogDarkText = preferenceStore.getBoolean("liquid_dialog_dark_text", false)
 
   // Liquid Button Parameters
   val liquidButtonBlur = preferenceStore.getFloat("liquid_button_blur", 26f)

@@ -331,7 +331,7 @@ object PreferencesScreen : Screen {
           item { PreferenceSectionHeader(title = "ExoPlayer") }
           item {
             PreferenceCard {
-              me.zhanghai.compose.preference.SwitchPreference(
+              app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference(
                 value = enableExoPlayer,
                 onValueChange = { playerPreferences.enableExoPlayer.set(it) },
                 title = { Text("Enable ExoPlayer") },

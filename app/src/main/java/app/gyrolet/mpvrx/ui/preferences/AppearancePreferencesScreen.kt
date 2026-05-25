@@ -64,7 +64,7 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
-import me.zhanghai.compose.preference.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
@@ -230,7 +230,7 @@ object AppearancePreferencesScreen : Screen {
 
                                     PreferenceDivider()
 
-                                    SwitchPreference(
+                                    AdaptiveSwitchPreference(
                                         value = amoledMode,
                                         onValueChange = { newValue ->
                                             preferences.amoledMode.set(newValue)
@@ -248,7 +248,7 @@ object AppearancePreferencesScreen : Screen {
                                     PreferenceDivider()
 
                                     val useSystemFont by preferences.useSystemFont.collectAsState()
-                                    SwitchPreference(
+                                    AdaptiveSwitchPreference(
                                         value = useSystemFont,
                                         onValueChange = preferences.useSystemFont::set,
                                         title = { Text(text = stringResource(id = R.string.pref_appearance_system_font_title)) },
@@ -271,7 +271,7 @@ object AppearancePreferencesScreen : Screen {
                     item {
                         PreferenceCard {
                             val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = unlimitedNameLines,
                                 onValueChange = { preferences.unlimitedNameLines.set(it) },
                                 title = {
@@ -290,7 +290,7 @@ object AppearancePreferencesScreen : Screen {
                             PreferenceDivider()
 
                             val showUnplayedOldVideoLabel by preferences.showUnplayedOldVideoLabel.collectAsState()
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = showUnplayedOldVideoLabel,
                                 onValueChange = { preferences.showUnplayedOldVideoLabel.set(it) },
                                 title = {
@@ -331,7 +331,7 @@ object AppearancePreferencesScreen : Screen {
                             PreferenceDivider()
 
                             val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = autoScrollToLastPlayed,
                                 onValueChange = { browserPreferences.autoScrollToLastPlayed.set(it) },
                                 title = {
@@ -376,7 +376,7 @@ object AppearancePreferencesScreen : Screen {
                     item {
                         PreferenceCard {
                             val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = showVideoThumbnails,
                                 onValueChange = { browserPreferences.showVideoThumbnails.set(it) },
                                 title = {
@@ -444,7 +444,7 @@ object AppearancePreferencesScreen : Screen {
                             PreferenceDivider()
 
                             val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = tapThumbnailToSelect,
                                 onValueChange = { gesturePreferences.tapThumbnailToSelect.set(it) },
                                 title = {
@@ -464,7 +464,7 @@ object AppearancePreferencesScreen : Screen {
                             PreferenceDivider()
 
                             val showNetworkThumbnails by preferences.showNetworkThumbnails.collectAsState()
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = showNetworkThumbnails,
                                 onValueChange = { preferences.showNetworkThumbnails.set(it) },
                                 title = {
@@ -494,7 +494,7 @@ object AppearancePreferencesScreen : Screen {
                             val showPlaylistsTab by preferences.showPlaylistsTab.collectAsState()
                             val showNetworkTab by preferences.showNetworkTab.collectAsState()
 
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = showHomeTab,
                                 onValueChange = preferences.showHomeTab::set,
                                 title = { Text(text = stringResource(id = R.string.pref_nav_home_title)) },
@@ -508,7 +508,7 @@ object AppearancePreferencesScreen : Screen {
 
                             PreferenceDivider()
 
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = showRecentsTab,
                                 onValueChange = preferences.showRecentsTab::set,
                                 title = { Text(text = stringResource(id = R.string.pref_nav_recents_title)) },
@@ -522,7 +522,7 @@ object AppearancePreferencesScreen : Screen {
 
                             PreferenceDivider()
 
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = showPlaylistsTab,
                                 onValueChange = preferences.showPlaylistsTab::set,
                                 title = { Text(text = stringResource(id = R.string.pref_nav_playlists_title)) },
@@ -536,7 +536,7 @@ object AppearancePreferencesScreen : Screen {
 
                             PreferenceDivider()
 
-                            SwitchPreference(
+                            AdaptiveSwitchPreference(
                                 value = showNetworkTab,
                                 onValueChange = preferences.showNetworkTab::set,
                                 title = { Text(text = stringResource(id = R.string.pref_nav_network_title)) },
