@@ -47,10 +47,12 @@ fun BoxScope.PlaybackSpeedSelectorView(
     modifier: Modifier = Modifier,
     shouldShow: Boolean,
     player: Player,
+    onDismiss: () -> Unit = {},
 ) {
     OverlayView(
         modifier = modifier,
         shouldShow = shouldShow,
+        onDismissRequest = onDismiss,
         title = stringResource(R.string.select_playback_speed),
     ) {
         PlaybackSpeedSelectorContent(player = player)

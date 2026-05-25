@@ -37,6 +37,7 @@ fun BoxScope.SleepTimerSelectorView(
     OverlayView(
         modifier = modifier,
         shouldShow = shouldShow,
+        onDismissRequest = onDismiss,
         title = stringResource(R.string.exo_sleep_timer),
         testTag = "panel_sleep_timer",
     ) {

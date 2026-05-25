@@ -32,6 +32,7 @@ fun BoxScope.VideoContentScaleSelectorView(
     OverlayView(
         modifier = modifier,
         shouldShow = shouldShow,
+        onDismissRequest = onDismiss,
         title = stringResource(R.string.video_zoom),
     ) {
         VideoContentScaleSelectorContent(

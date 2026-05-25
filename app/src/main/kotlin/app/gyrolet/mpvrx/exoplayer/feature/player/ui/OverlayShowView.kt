@@ -68,6 +68,7 @@ fun BoxScope.OverlayShowView(
     PlaybackSpeedSelectorView(
         shouldShow = overlayView == OverlayView.PLAYBACK_SPEED,
         player = player,
+        onDismiss = onDismiss,
     )
 
     VideoContentScaleSelectorView(
@@ -89,6 +90,7 @@ fun BoxScope.OverlayShowView(
     PlaylistView(
         shouldShow = overlayView == OverlayView.PLAYLIST,
         player = player,
+        onDismiss = onDismiss,
     )
 
     SleepTimerSelectorView(
@@ -115,6 +117,7 @@ private fun BoxScope.VideoFilterOverlayView(
 ) {
     OverlayView(
         shouldShow = shouldShow,
+        onDismissRequest = onDismissRequest,
         title = stringResource(R.string.video_filters),
         testTag = "panel_video_filters",
     ) {

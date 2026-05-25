@@ -1,13 +1,8 @@
 package app.gyrolet.mpvrx.exoplayer.feature.player.ui
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -16,29 +11,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.exoplayer.core.common.extensions.isPortrait
 import app.gyrolet.mpvrx.exoplayer.core.ui.designsystem.NextIcons
 import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 
 sealed interface MenuRoute {
     data object Root : MenuRoute
@@ -60,31 +51,20 @@ fun BoxScope.MenuOverlayView(
     onBack: () -> Unit,
     content: @Composable (MenuRoute) -> Unit,
 ) {
-    val configuration = LocalConfiguration.current
     val layoutDirection = LocalLayoutDirection.current
     val endPadding = WindowInsets.safeDrawing
         .asPaddingValues()
         .calculateEndPadding(layoutDirection)
 
-    AnimatedVisibility(
-        modifier = Modifier.align(
-            if (configuration.isPortrait) Alignment.BottomCenter else Alignment.CenterEnd,
-        ),
-        visible = externalRoute != null,
-        enter = if (configuration.isPortrait) slideInVertically { it } else slideInHorizontally { it },
-        exit = if (configuration.isPortrait) slideOutVertically { it } else slideOutHorizontally { it },
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .testTag("panel_player_menu")
-                .then(
-                    if (configuration.isPortrait) {
-                        Modifier.fillMaxWidth().fillMaxHeight(0.45f)
-                    } else {
-                        Modifier.fillMaxWidth(0.45f).fillMaxHeight()
-                    },
-                ),
+    if (externalRoute != null) {
+        PlayerSheet(
+            onDismissRequest = {
+                // If we can go back, back should probably pop the route rather than close the entire sheet,
+                // or just let onBack handle it. But typically a swipe down should dismiss entirely.
+                // We'll call onBack and expect the caller to handle dismissing if we are at root.
+                onBack()
+            },
+            modifier = Modifier.testTag("panel_player_menu")
         ) {
             Column(
                 modifier = Modifier
@@ -119,7 +99,7 @@ fun BoxScope.MenuOverlayView(
                 }
                 Spacer(modifier = Modifier.size(8.dp))
                 AnimatedContent(
-                    targetState = externalRoute ?: MenuRoute.Root,
+                    targetState = externalRoute,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
                     label = "menu_route",
                     modifier = Modifier.fillMaxSize(),

@@ -64,10 +64,12 @@ fun BoxScope.PlaylistView(
     modifier: Modifier = Modifier,
     shouldShow: Boolean,
     player: Player,
+    onDismiss: () -> Unit = {},
 ) {
     OverlayView(
         modifier = modifier,
         shouldShow = shouldShow,
+        onDismissRequest = onDismiss,
         title = stringResource(R.string.now_playing),
     ) {
         PlaylistContent(

@@ -24,6 +24,7 @@ fun BoxScope.DecoderPrioritySelectorView(
     OverlayView(
         modifier = modifier,
         shouldShow = shouldShow,
+        onDismissRequest = onDismiss,
         title = stringResource(R.string.decoder_priority),
         testTag = "panel_decoder_priority",
     ) {

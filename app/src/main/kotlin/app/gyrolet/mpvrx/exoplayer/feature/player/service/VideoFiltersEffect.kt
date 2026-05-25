@@ -85,13 +85,8 @@ internal class VideoFiltersEffect(
                 Size(inputWidth, inputHeight)
             }
 
-            glProgram.setFloatsUniform(
-                "uTexelSize",
-                floatArrayOf(
-                    1f / inputWidth,
-                    1f / inputHeight,
-                ),
-            )
+            glProgram.setFloatUniform("uTexelWidth", 1f / inputWidth)
+            glProgram.setFloatUniform("uTexelHeight", 1f / inputHeight)
             return outputSize
         }
 
@@ -179,7 +174,8 @@ internal class VideoFiltersEffect(
             #version 100
             precision highp float;
             uniform sampler2D uTexSampler;
-            uniform vec2 uTexelSize;
+            uniform float uTexelWidth;
+            uniform float uTexelHeight;
             uniform float uBrightness;
             uniform float uContrast;
             uniform float uSaturation;
@@ -246,13 +242,14 @@ internal class VideoFiltersEffect(
                 // Ambient region
                 vec3 avg_color = vec3(0.0);
                 const int samples = 20;
-                float base_seed = 42.0;
+                vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
                 
                 for (int i = 0; i < samples; i++) {
-                  float seed = base_seed + float(i) * 0.618034;
-                  float x = hash(vec2(seed, 0.123));
-                  float y = hash(vec2(seed, 0.456));
-                  avg_color += texture2D(uTexSampler, vec2(x, y)).rgb;
+                  float angle = float(i) * 2.39996; // Golden angle
+                  float r = sqrt(float(i) + 0.5) / sqrt(float(samples)) * 0.15; // Blur radius
+                  vec2 offset = vec2(cos(angle), sin(angle)) * r;
+                  vec2 sample_pos = clamp(edge_uv + offset, 0.0, 1.0);
+                  avg_color += texture2D(uTexSampler, sample_pos).rgb;
                 }
                 avg_color /= float(samples);
 
@@ -260,7 +257,6 @@ internal class VideoFiltersEffect(
                 avg_color = mix(vec3(luma), avg_color, 1.3); // Saturation boost
                 avg_color *= 0.30; // Brightness
 
-                vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
                 float dist = length(video_uv - edge_uv);
                 float fade = exp(-dist * 2.5);
                 avg_color *= fade;
@@ -273,14 +269,14 @@ internal class VideoFiltersEffect(
                 vec3 sourceColor = center.rgb;
 
                 if (uSharpness > 0.0) {
-                  vec3 north = texture2D(uTexSampler, sample_uv + vec2(0.0, -uTexelSize.y)).rgb;
-                  vec3 south = texture2D(uTexSampler, sample_uv + vec2(0.0, uTexelSize.y)).rgb;
-                  vec3 west = texture2D(uTexSampler, sample_uv + vec2(-uTexelSize.x, 0.0)).rgb;
-                  vec3 east = texture2D(uTexSampler, sample_uv + vec2(uTexelSize.x, 0.0)).rgb;
-                  vec3 northwest = texture2D(uTexSampler, sample_uv + vec2(-uTexelSize.x, -uTexelSize.y)).rgb;
-                  vec3 northeast = texture2D(uTexSampler, sample_uv + vec2(uTexelSize.x, -uTexelSize.y)).rgb;
-                  vec3 southwest = texture2D(uTexSampler, sample_uv + vec2(-uTexelSize.x, uTexelSize.y)).rgb;
-                  vec3 southeast = texture2D(uTexSampler, sample_uv + vec2(uTexelSize.x, uTexelSize.y)).rgb;
+                  vec3 north = texture2D(uTexSampler, sample_uv + vec2(0.0, -uTexelHeight)).rgb;
+                  vec3 south = texture2D(uTexSampler, sample_uv + vec2(0.0, uTexelHeight)).rgb;
+                  vec3 west = texture2D(uTexSampler, sample_uv + vec2(-uTexelWidth, 0.0)).rgb;
+                  vec3 east = texture2D(uTexSampler, sample_uv + vec2(uTexelWidth, 0.0)).rgb;
+                  vec3 northwest = texture2D(uTexSampler, sample_uv + vec2(-uTexelWidth, -uTexelHeight)).rgb;
+                  vec3 northeast = texture2D(uTexSampler, sample_uv + vec2(uTexelWidth, -uTexelHeight)).rgb;
+                  vec3 southwest = texture2D(uTexSampler, sample_uv + vec2(-uTexelWidth, uTexelHeight)).rgb;
+                  vec3 southeast = texture2D(uTexSampler, sample_uv + vec2(uTexelWidth, uTexelHeight)).rgb;
                   vec3 blur = center.rgb * 0.25 + (north + south + west + east) * 0.125 + (northwest + northeast + southwest + southeast) * 0.0625;
                   sourceColor = clamp(center.rgb + (center.rgb - blur) * uSharpness, 0.0, 1.0);
                 }

@@ -29,6 +29,7 @@ fun BoxScope.AudioTrackSelectorView(
     OverlayView(
         modifier = modifier,
         shouldShow = shouldShow,
+        onDismissRequest = onDismiss,
         title = stringResource(R.string.select_audio_track),
     ) {
         AudioTrackSelectorContent(
@@ -84,6 +85,7 @@ fun BoxScope.SubtitleTrackSelectorView(
     OverlayView(
         modifier = modifier,
         shouldShow = shouldShow,
+        onDismissRequest = onDismiss,
         title = stringResource(R.string.select_subtitle_track),
     ) {
         SubtitleTrackSelectorContent(
