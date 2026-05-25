@@ -33,8 +33,8 @@ fun BoxScope.OverlayView(
     title: String,
     testTag: String? = null,
     contentPadding: PaddingValues = PaddingValues(),
+    onDismissRequest: () -> Unit = {}, // Add this to allow dismissal
     content: @Composable ColumnScope.() -> Unit,
-    onDismissRequest: () -> Unit = {} // Add this to allow dismissal
 ) {
     if (shouldShow) {
         val resolvedContentPadding = contentPadding.withBottomFallback()

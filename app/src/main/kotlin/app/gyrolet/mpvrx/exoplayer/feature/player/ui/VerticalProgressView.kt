@@ -160,7 +160,7 @@ fun VerticalProgressView(
                 overflowRange = overflowRange,
                 isActive = true
             )
-            Icon(
+            app.gyrolet.mpvrx.ui.icons.Icon(
                 imageVector = icon,
                 contentDescription = null,
             )
