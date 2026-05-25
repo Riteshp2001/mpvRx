@@ -15,12 +15,10 @@ object GpuDriverBridge {
     fun isAvailable(): Boolean = isLibraryLoaded
 
     external fun setDriver(
-        dlopenFlags: Int,
-        featureFlags: Int,
-        tmpLibDir: String?,
         hookLibDir: String?,
-        driverDir: String?,
-        driverName: String?
+        customDriverDir: String?,
+        customDriverName: String?,
+        fileRedirectDir: String?
     ): Boolean
 
     external fun isAdrenoDevice(): Boolean

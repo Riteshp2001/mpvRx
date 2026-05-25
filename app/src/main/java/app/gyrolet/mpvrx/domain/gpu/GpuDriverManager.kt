@@ -17,14 +17,28 @@ import java.util.UUID
 import java.util.zip.ZipInputStream
 
 class GpuDriverManager(private val context: Context, private val okHttpClient: OkHttpClient) {
-    private val driversDir = File(context.filesDir, "gpu_drivers")
-    private val json = Json { ignoreUnknownKeys = true }
+    private val driversDir: File
+        get() {
+            val dir = File(context.filesDir, "gpu_drivers")
+            if (!dir.exists()) dir.mkdirs()
+            return dir
+        }
 
-    init {
-        if (!driversDir.exists()) {
-            driversDir.mkdirs()
+    private fun getSafGpuDriverFolder(): androidx.documentfile.provider.DocumentFile? {
+        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+        val baseStorageFolder = prefs.getString("base_storage_folder", "") ?: ""
+        if (baseStorageFolder.isBlank()) return null
+        
+        return try {
+            val tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, Uri.parse(baseStorageFolder))
+            val gpuFolder = tree?.findFile("gpudriver")
+            if (gpuFolder != null && gpuFolder.isDirectory) gpuFolder else null
+        } catch (e: Exception) {
+            null
         }
     }
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val repoList = listOf(
         DriverRepo("Eden Adreno Tools", "eden-emulator/libadrenotools", 0),
@@ -133,7 +147,7 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
                     val response = okHttpClient.newCall(request).execute()
                     if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
                     
-                    val content = response.body?.string() ?: ""
+                    val content = response.body.string()
                     val releasesJson = json.parseToJsonElement(content).jsonArray
                     
                     val remoteReleases = releasesJson.mapIndexed { index, release ->
@@ -215,6 +229,28 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
                 driverPath = targetDir.absolutePath,
                 vulkanLibName = metaJson["vulkanLibName"]?.jsonPrimitive?.content ?: "libvulkan_freedreno.so"
             )
+
+            // Backup the zip to the SAF folder if possible
+            try {
+                val safFolder = getSafGpuDriverFolder()
+                if (safFolder != null) {
+                    val zipFileName = driver.name.replace(Regex("[^a-zA-Z0-9.-]"), "_") + ".zip"
+                    var destFile = safFolder.findFile(zipFileName)
+                    if (destFile == null) {
+                        destFile = safFolder.createFile("application/zip", zipFileName)
+                    }
+                    if (destFile != null) {
+                        context.contentResolver.openInputStream(zipUri)?.use { input ->
+                            context.contentResolver.openOutputStream(destFile.uri)?.use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("GpuDriverManager", "Failed to backup zip to SAF", e)
+            }
+
             Result.success(driver)
         } catch (e: Exception) {
             Log.e("GpuDriverManager", "Failed to install driver", e)
@@ -233,7 +269,7 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
             
-            val body = response.body ?: throw Exception("Empty response body")
+            val body = response.body
             val totalSize = body.contentLength()
             
             body.byteStream().use { input ->
@@ -266,6 +302,52 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
             dir.deleteRecursively()
         }
     }
+
+    suspend fun getSafDrivers(): List<SafGpuDriver> = withContext(Dispatchers.IO) {
+        val drivers = mutableListOf<SafGpuDriver>()
+        val safFolder = getSafGpuDriverFolder() ?: return@withContext drivers
+        
+        safFolder.listFiles().filter { it.name?.endsWith(".zip", ignoreCase = true) == true }.forEach { zipFile ->
+            try {
+                context.contentResolver.openInputStream(zipFile.uri)?.use { inputStream ->
+                    java.util.zip.ZipInputStream(inputStream).use { zipStream ->
+                        var entry = zipStream.nextEntry
+                        while (entry != null) {
+                            if (!entry.isDirectory && entry.name.lowercase().endsWith("meta.json")) {
+                                val metaContent = String(zipStream.readBytes())
+                                val metaJson = json.parseToJsonElement(metaContent).jsonObject
+                                drivers.add(SafGpuDriver(
+                                    uri = zipFile.uri,
+                                    name = metaJson["name"]?.jsonPrimitive?.content ?: zipFile.name ?: "Unknown",
+                                    description = metaJson["description"]?.jsonPrimitive?.content ?: "",
+                                    author = metaJson["author"]?.jsonPrimitive?.content ?: "",
+                                    version = metaJson["driverVersion"]?.jsonPrimitive?.content ?: "",
+                                    vendor = metaJson["vendor"]?.jsonPrimitive?.content ?: "",
+                                    fileSize = zipFile.length()
+                                ))
+                                break
+                            }
+                            zipStream.closeEntry()
+                            entry = zipStream.nextEntry
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("GpuDriverManager", "Failed to parse SAF zip: ${zipFile.name}", e)
+            }
+        }
+        drivers
+    }
+
+    data class SafGpuDriver(
+        val uri: Uri,
+        val name: String,
+        val description: String,
+        val author: String,
+        val version: String,
+        val vendor: String,
+        val fileSize: Long
+    )
 
     data class RemoteGpuDriver(val name: String, val downloadUrl: String)
     data class RemoteRelease(val title: String, val version: String, val isLatest: Boolean, val drivers: List<RemoteGpuDriver>)

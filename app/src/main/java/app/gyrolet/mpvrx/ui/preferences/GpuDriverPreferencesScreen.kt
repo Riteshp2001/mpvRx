@@ -41,7 +41,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons as AppIcons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
-import app.gyrolet.mpvrx.utils.NativeFreedrenoConfig
+
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -59,6 +59,7 @@ object GpuDriverPreferencesScreen : Screen {
         val scope = rememberCoroutineScope()
 
         val drivers = remember { mutableStateListOf<GpuDriver>() }
+        val safDrivers = remember { mutableStateListOf<GpuDriverManager.SafGpuDriver>() }
         val remoteDriverGroups = remember { mutableStateListOf<GpuDriverManager.RemoteDriverGroup>() }
         var isFetching by remember { mutableStateOf(false) }
         var showFetchSheet by remember { mutableStateOf(false) }
@@ -90,6 +91,8 @@ object GpuDriverPreferencesScreen : Screen {
         LaunchedEffect(Unit) {
             drivers.clear()
             drivers.addAll(driverManager.getInstalledDrivers())
+            safDrivers.clear()
+            safDrivers.addAll(driverManager.getSafDrivers())
         }
 
         val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -99,6 +102,8 @@ object GpuDriverPreferencesScreen : Screen {
                     if (result.isSuccess) {
                         drivers.clear()
                         drivers.addAll(driverManager.getInstalledDrivers())
+                        safDrivers.clear()
+                        safDrivers.addAll(driverManager.getSafDrivers())
                         Toast.makeText(context, R.string.gpu_driver_install_success, Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, context.getString(R.string.gpu_driver_install_failed, result.exceptionOrNull()?.message), Toast.LENGTH_LONG).show()
@@ -232,12 +237,38 @@ object GpuDriverPreferencesScreen : Screen {
                                         driverManager.deleteDriver(driver.id)
                                         drivers.clear()
                                         drivers.addAll(driverManager.getInstalledDrivers())
+                                        safDrivers.clear()
+                                        safDrivers.addAll(driverManager.getSafDrivers())
                                         if (activeDriverId == driver.id) {
                                             preferences.activeDriverId.set("system")
                                         }
                                     }
                                 }
                             )
+                        }
+
+                        if (safDrivers.isNotEmpty()) {
+                            item { PreferenceSectionHeader("Drivers in Storage (gpudriver/)") }
+                            items(safDrivers, key = { it.uri.toString() }) { safDriver ->
+                                SafDriverItem(
+                                    driver = safDriver,
+                                    onInstall = {
+                                        scope.launch {
+                                            val result = driverManager.installDriver(safDriver.uri)
+                                            if (result.isSuccess) {
+                                                drivers.clear()
+                                                drivers.addAll(driverManager.getInstalledDrivers())
+                                                safDrivers.clear()
+                                                safDrivers.addAll(driverManager.getSafDrivers())
+                                                preferences.activeDriverId.set(result.getOrNull()?.id ?: "system")
+                                                Toast.makeText(context, "Driver installed and activated", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "Failed to install driver", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
                         
                         item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -398,6 +429,8 @@ object GpuDriverPreferencesScreen : Screen {
                                                                         if (result.isSuccess) {
                                                                             drivers.clear()
                                                                             drivers.addAll(driverManager.getInstalledDrivers())
+                                                                            safDrivers.clear()
+                                                                            safDrivers.addAll(driverManager.getSafDrivers())
                                                                             showFetchSheet = false
                                                                             Toast.makeText(context, R.string.gpu_driver_install_success, Toast.LENGTH_SHORT).show()
                                                                         } else {
@@ -568,6 +601,55 @@ object GpuDriverPreferencesScreen : Screen {
                     }
                 }
             )
+        }
+    }
+
+    @Composable
+    private fun SafDriverItem(
+        driver: GpuDriverManager.SafGpuDriver,
+        onInstall: () -> Unit
+    ) {
+        Card(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth(),
+            onClick = onInstall,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(AppIcons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
+                Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+                    Text(
+                        driver.name, 
+                        style = MaterialTheme.typography.titleMedium, 
+                        fontWeight = FontWeight.Bold, 
+                        maxLines = 1, 
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        listOfNotNull(
+                            if (driver.version.isNotEmpty()) "v${driver.version}" else null,
+                            if (driver.author.isNotEmpty()) "by ${driver.author}" else null
+                        ).joinToString(" • "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Button(
+                    onClick = onInstall,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text("Install", style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 

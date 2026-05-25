@@ -15,34 +15,33 @@ extern "C" {
 #include <adrenotools/driver.h>
 }
 
+#include <bytehook.h>
+
 namespace {
-struct FreedrenoConfig {
-    std::map<std::string, std::string> env_vars;
-    std::string base_path;
-};
+void* g_vulkan_handle = nullptr;
+bytehook_stub_t g_dlopen_stub = nullptr;
+bytehook_stub_t g_android_dlopen_ext_stub = nullptr;
 
-std::unique_ptr<FreedrenoConfig> g_config;
-
-std::string GetConfigPath() {
-    if (g_config && !g_config->base_path.empty()) {
-        return g_config->base_path + "/.freedreno.conf";
+void* my_dlopen(const char* filename, int flags) {
+    if (filename && strstr(filename, "vulkan.so") && g_vulkan_handle) {
+        LOGI("Intercepted dlopen for %s, returning custom driver handle", filename);
+        return g_vulkan_handle;
     }
-    return "";
+    BYTEHOOK_STACK_SCOPE();
+    return BYTEHOOK_CALL_PREV(my_dlopen, filename, flags);
 }
 
-bool ApplyEnvironmentVariable(const std::string& key, const std::string& value) {
-    // Use adrenotools specialized function for setting env vars
-    if (!adrenotools_set_freedreno_env(key.c_str(), value.c_str())) {
-        LOGE("[Freedreno] Failed to set %s=%s via adrenotools", key.c_str(), value.c_str());
-        // Fallback to standard setenv
-        if (setenv(key.c_str(), value.c_str(), 1) != 0) {
-            LOGE("[Freedreno] Fallback setenv also failed");
-            return false;
-        }
+void* my_android_dlopen_ext(const char* filename, int flags, const void* extinfo) {
+    if (filename && strstr(filename, "vulkan.so") && g_vulkan_handle) {
+        LOGI("Intercepted android_dlopen_ext for %s", filename);
+        return g_vulkan_handle;
     }
-    return true;
+    BYTEHOOK_STACK_SCOPE();
+    return BYTEHOOK_CALL_PREV(my_android_dlopen_ext, filename, flags, extinfo);
 }
+} // namespace
 
+namespace {
 std::string GetJString(JNIEnv* env, jstring jstr) {
     if (!jstr) return "";
     const char* chars = env->GetStringUTFChars(jstr, nullptr);
@@ -59,33 +58,70 @@ JNIEXPORT jboolean JNICALL
 Java_app_gyrolet_mpvrx_domain_gpu_GpuDriverBridge_setDriver(
     JNIEnv* env,
     jobject /* this */,
-    jint dlopenFlags,
-    jint featureFlags,
-    jstring tmpLibDir,
     jstring hookLibDir,
-    jstring driverDir,
-    jstring driverName) {
+    jstring customDriverDir,
+    jstring customDriverName,
+    jstring fileRedirectDir) {
 
-    const char* nativeTmpLibDir = tmpLibDir ? env->GetStringUTFChars(tmpLibDir, nullptr) : nullptr;
     const char* nativeHookLibDir = hookLibDir ? env->GetStringUTFChars(hookLibDir, nullptr) : nullptr;
-    const char* nativeDriverDir = driverDir ? env->GetStringUTFChars(driverDir, nullptr) : nullptr;
-    const char* nativeDriverName = driverName ? env->GetStringUTFChars(driverName, nullptr) : nullptr;
+    const char* nativeDriverDir = customDriverDir ? env->GetStringUTFChars(customDriverDir, nullptr) : nullptr;
+    const char* nativeDriverName = customDriverName ? env->GetStringUTFChars(customDriverName, nullptr) : nullptr;
+    const char* nativeFileRedirectDir = fileRedirectDir ? env->GetStringUTFChars(fileRedirectDir, nullptr) : nullptr;
 
-    void* handle = adrenotools_open_libvulkan(
-        dlopenFlags,
-        featureFlags,
-        nativeTmpLibDir,
-        nativeHookLibDir,
-        nativeDriverDir,
-        nativeDriverName,
-        nullptr, // fileRedirectDir
-        nullptr  // userMappingHandle
-    );
+    void* handle = nullptr;
+    int featureFlags = 0;
 
-    if (nativeTmpLibDir) env->ReleaseStringUTFChars(tmpLibDir, nativeTmpLibDir);
+    // Enable driver file redirection when renderer debugging is enabled (or a directory is provided)
+    if (nativeFileRedirectDir && strlen(nativeFileRedirectDir) > 0) {
+        featureFlags |= ADRENOTOOLS_DRIVER_FILE_REDIRECT;
+    }
+
+    // Try to load a custom driver
+    if (nativeDriverName && strlen(nativeDriverName) > 0) {
+        handle = adrenotools_open_libvulkan(
+            2 /* RTLD_NOW */, featureFlags | ADRENOTOOLS_DRIVER_CUSTOM, nullptr, nativeHookLibDir,
+            nativeDriverDir, nativeDriverName, nativeFileRedirectDir, nullptr);
+    }
+
+    // Try to load the system driver
+    if (!handle) {
+        handle = adrenotools_open_libvulkan(
+            2 /* RTLD_NOW */, featureFlags, nullptr, nativeHookLibDir,
+            nullptr, nullptr, nativeFileRedirectDir, nullptr);
+    }
+
+    if (handle) {
+        g_vulkan_handle = handle;
+        bytehook_init(BYTEHOOK_MODE_AUTOMATIC, false);
+
+        if (!g_dlopen_stub) {
+            g_dlopen_stub = bytehook_hook_single(
+                "libmpv.so",
+                nullptr,
+                "dlopen",
+                (void*)my_dlopen,
+                nullptr,
+                nullptr
+            );
+        }
+
+        if (!g_android_dlopen_ext_stub) {
+            g_android_dlopen_ext_stub = bytehook_hook_single(
+                "libmpv.so",
+                nullptr,
+                "android_dlopen_ext",
+                (void*)my_android_dlopen_ext,
+                nullptr,
+                nullptr
+            );
+        }
+        LOGI("ByteHook initialized for libmpv.so");
+    }
+
     if (nativeHookLibDir) env->ReleaseStringUTFChars(hookLibDir, nativeHookLibDir);
-    if (nativeDriverDir) env->ReleaseStringUTFChars(driverDir, nativeDriverDir);
-    if (nativeDriverName) env->ReleaseStringUTFChars(driverName, nativeDriverName);
+    if (nativeDriverDir) env->ReleaseStringUTFChars(customDriverDir, nativeDriverDir);
+    if (nativeDriverName) env->ReleaseStringUTFChars(customDriverName, nativeDriverName);
+    if (nativeFileRedirectDir) env->ReleaseStringUTFChars(fileRedirectDir, nativeFileRedirectDir);
 
     return handle != nullptr ? JNI_TRUE : JNI_FALSE;
 }
@@ -105,124 +141,6 @@ Java_app_gyrolet_mpvrx_domain_gpu_GpuDriverBridge_getGpuInfo(
         return env->NewStringUTF("Qualcomm Adreno GPU Detected");
     }
     return env->NewStringUTF("Generic GPU Driver Active");
-}
-
-// NativeFreedrenoConfig Implementations
-
-JNIEXPORT void JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_setFreedrenoBasePath(
-    JNIEnv* env, jclass /* clazz */, jstring jbasePath) {
-    if (!g_config) g_config = std::make_unique<FreedrenoConfig>();
-    g_config->base_path = GetJString(env, jbasePath);
-}
-
-JNIEXPORT void JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_initializeFreedrenoConfig(
-    JNIEnv* /* env */, jclass /* clazz */) {
-    if (!g_config) g_config = std::make_unique<FreedrenoConfig>();
-}
-
-JNIEXPORT void JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_saveFreedrenoConfig(
-    JNIEnv* /* env */, jclass /* clazz */) {
-    if (!g_config) return;
-    const std::string config_path = GetConfigPath();
-    if (config_path.empty()) return;
-    FILE* file = fopen(config_path.c_str(), "w");
-    if (!file) return;
-    for (const auto& entry : g_config->env_vars) {
-        fprintf(file, "%s=%s\n", entry.first.c_str(), entry.second.c_str());
-    }
-    fclose(file);
-}
-
-JNIEXPORT void JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_reloadFreedrenoConfig(
-    JNIEnv* /* env */, jclass /* clazz */) {
-    if (!g_config) return;
-    const std::string config_path = GetConfigPath();
-    if (config_path.empty()) return;
-    g_config->env_vars.clear();
-    FILE* file = fopen(config_path.c_str(), "r");
-    if (!file) return;
-    char line[512];
-    while (fgets(line, sizeof(line), file)) {
-        size_t len = strlen(line);
-        if (len > 0 && line[len - 1] == '\n') line[--len] = '\0';
-        if (len == 0 || line[0] == '#') continue;
-        const char* eq = strchr(line, '=');
-        if (!eq) continue;
-        std::string key(line, eq - line);
-        std::string value(eq + 1);
-        g_config->env_vars[key] = value;
-        ApplyEnvironmentVariable(key, value);
-    }
-    fclose(file);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_setFreedrenoEnv(
-    JNIEnv* env, jclass /* clazz */, jstring jvarName, jstring jvalue) {
-    if (!g_config) return JNI_FALSE;
-    auto var_name = GetJString(env, jvarName);
-    auto value = GetJString(env, jvalue);
-    if (var_name.empty()) return JNI_FALSE;
-    g_config->env_vars[var_name] = value;
-    return ApplyEnvironmentVariable(var_name, value) ? JNI_TRUE : JNI_FALSE;
-}
-
-JNIEXPORT jstring JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_getFreedrenoEnv(
-    JNIEnv* env, jclass /* clazz */, jstring jvarName) {
-    if (!g_config) return env->NewStringUTF("");
-    auto var_name = GetJString(env, jvarName);
-    auto it = g_config->env_vars.find(var_name);
-    return it != g_config->env_vars.end() ? env->NewStringUTF(it->second.c_str()) : env->NewStringUTF("");
-}
-
-JNIEXPORT jboolean JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_isFreedrenoEnvSet(
-    JNIEnv* env, jclass /* clazz */, jstring jvarName) {
-    if (!g_config) return JNI_FALSE;
-    auto var_name = GetJString(env, jvarName);
-    auto it = g_config->env_vars.find(var_name);
-    return (it != g_config->env_vars.end() && !it->second.empty()) ? JNI_TRUE : JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_clearFreedrenoEnv(
-    JNIEnv* env, jclass /* clazz */, jstring jvarName) {
-    if (!g_config) return JNI_FALSE;
-    auto var_name = GetJString(env, jvarName);
-    auto it = g_config->env_vars.find(var_name);
-    if (it != g_config->env_vars.end()) {
-        g_config->env_vars.erase(it);
-        unsetenv(var_name.c_str());
-        return JNI_TRUE;
-    }
-    return JNI_FALSE;
-}
-
-JNIEXPORT void JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_clearAllFreedrenoEnv(
-    JNIEnv* /* env */, jclass /* clazz */) {
-    if (!g_config) return;
-    for (const auto& entry : g_config->env_vars) {
-        unsetenv(entry.first.c_str());
-    }
-    g_config->env_vars.clear();
-}
-
-JNIEXPORT jstring JNICALL
-Java_app_gyrolet_mpvrx_utils_NativeFreedrenoConfig_getFreedrenoEnvSummary(
-    JNIEnv* env, jclass /* clazz */) {
-    if (!g_config || g_config->env_vars.empty()) return env->NewStringUTF("");
-    std::string summary;
-    for (const auto& entry : g_config->env_vars) {
-        if (!summary.empty()) summary += ",";
-        summary += entry.first + "=" + entry.second;
-    }
-    return env->NewStringUTF(summary.c_str());
 }
 
 } // extern "C"

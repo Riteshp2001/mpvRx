@@ -24,16 +24,11 @@ object GpuDriverHelper : KoinComponent {
         if (isInitialized) return
         
         try {
-            if (!NativeFreedrenoConfig.isAvailable()) {
+            if (!GpuDriverBridge.isAvailable()) {
                 Log.d(TAG, "Native library not available, skipping GPU driver initialization")
                 isInitialized = true
                 return
             }
-
-            // Initialize Freedreno config early like Eden
-            NativeFreedrenoConfig.setFreedrenoBasePath(context.cacheDir.absolutePath)
-            NativeFreedrenoConfig.initializeFreedrenoConfig()
-            NativeFreedrenoConfig.reloadFreedrenoConfig()
 
             if (!Build.SUPPORTED_ABIS.contains("arm64-v8a")) {
                 Log.d(TAG, "Custom GPU drivers only supported on arm64-v8a")
@@ -41,18 +36,29 @@ object GpuDriverHelper : KoinComponent {
                 return
             }
 
-            // Apply HUD setting early
+            val activeDriverId = preferences.activeDriverId.get()
+            
+            // File redirect dir if HUD or debug is enabled
+            var fileRedirectDir: String? = null
             if (preferences.showDriverHud.get()) {
-                NativeFreedrenoConfig.setFreedrenoEnv("TU_DEBUG", "sysmem,stat")
-                NativeFreedrenoConfig.setFreedrenoEnv("KGSL_REDIRECT_HUD", "1")
-            } else {
-                NativeFreedrenoConfig.clearFreedrenoEnv("TU_DEBUG")
-                NativeFreedrenoConfig.clearFreedrenoEnv("KGSL_REDIRECT_HUD")
+                // In Azahar/Adrenotools this allows shader/config redirection
+                fileRedirectDir = context.cacheDir.absolutePath
             }
 
-            val activeDriverId = preferences.activeDriverId.get()
             if (activeDriverId == "system") {
                 Log.d(TAG, "Using system default GPU driver")
+                // Load system driver with hooks (to allow file redirection if needed)
+                val success = GpuDriverBridge.setDriver(
+                    hookLibDir = context.applicationInfo.nativeLibraryDir,
+                    customDriverDir = null,
+                    customDriverName = null,
+                    fileRedirectDir = fileRedirectDir
+                )
+                if (success) {
+                    Log.i(TAG, "Successfully initialized system GPU driver hooks")
+                } else {
+                    Log.w(TAG, "Failed to initialize system GPU driver hooks")
+                }
                 isInitialized = true
                 return
             }
@@ -65,12 +71,10 @@ object GpuDriverHelper : KoinComponent {
                 Log.d(TAG, "Initializing custom GPU driver: ${activeDriver.name}")
                 
                 val success = GpuDriverBridge.setDriver(
-                    2, // RTLD_NOW
-                    0x0001 or 0x0002, // ADRENOTOOLS_GPU_DEFAULT | ADRENOTOOLS_GPU_HELPERS
-                    context.cacheDir.absolutePath,
-                    context.applicationInfo.nativeLibraryDir,
-                    activeDriver.driverPath,
-                    activeDriver.vulkanLibName
+                    hookLibDir = context.applicationInfo.nativeLibraryDir,
+                    customDriverDir = activeDriver.driverPath,
+                    customDriverName = activeDriver.vulkanLibName,
+                    fileRedirectDir = fileRedirectDir
                 )
                 
                 if (success) {
@@ -80,6 +84,14 @@ object GpuDriverHelper : KoinComponent {
                     // Don't automatically revert to system here to allow user to see the error/retry
                     // and because it might fail due to temporary conditions (though unlikely for local files)
                 }
+            } else {
+                // Fallback if the active driver is missing from installed list
+                GpuDriverBridge.setDriver(
+                    hookLibDir = context.applicationInfo.nativeLibraryDir,
+                    customDriverDir = null,
+                    customDriverName = null,
+                    fileRedirectDir = fileRedirectDir
+                )
             }
             
             isInitialized = true

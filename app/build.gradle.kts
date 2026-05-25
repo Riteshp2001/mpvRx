@@ -1,7 +1,7 @@
 import com.android.build.api.variant.FilterConfiguration
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-val enableX86 = project.findProperty("enableX86") != "false"
+val enableX86 = project.findProperty("enableX86") == "true"
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 
 plugins {
@@ -109,6 +109,7 @@ android {
     viewBinding = true
     buildConfig = true
     resValues = true
+    prefab = true
   }
 
   packaging {
@@ -242,6 +243,7 @@ dependencies {
   implementation(libs.juniversalchardet)
   implementation(libs.ass.media)
   implementation(libs.fsaf)
+  implementation("com.bytedance:bytehook:1.1.1")
 
 
   implementation(libs.mediainfo.lib)

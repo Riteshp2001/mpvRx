@@ -56,6 +56,10 @@ import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import app.gyrolet.mpvrx.ui.preferences.components.AdaptiveSwitchPreference
 import org.koin.compose.koinInject
 
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import app.gyrolet.mpvrx.preferences.GpuDriverPreferences
+
 @Serializable
 object DecoderPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
@@ -346,8 +350,9 @@ object DecoderPreferencesScreen : Screen {
   }
 }
 
-object VulkanUtils {
+object VulkanUtils : KoinComponent {
     private const val TAG = "VulkanUtils"
+    private val gpuDriverPreferences: GpuDriverPreferences by inject()
 
     /**
      * Checks if the device supports Vulkan for MPV rendering
@@ -361,6 +366,12 @@ object VulkanUtils {
      */
     fun isVulkanSupported(context: Context): Boolean {
         try {
+            // Bypass all system checks if a custom driver is active
+            if (gpuDriverPreferences.activeDriverId.get() != "system") {
+                Log.d(TAG, "Custom GPU driver is active, bypassing system Vulkan checks.")
+                return true
+            }
+
             // Vulkan 1.3 requires Android 13 (API 33) minimum
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                 Log.d(TAG, "Vulkan not supported: Android version ${Build.VERSION.SDK_INT} < 33 (Tiramisu)")
