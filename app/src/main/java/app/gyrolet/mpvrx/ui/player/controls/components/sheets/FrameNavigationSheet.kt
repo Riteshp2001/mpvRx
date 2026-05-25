@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
@@ -222,11 +223,17 @@ private fun FrameNavigationCard(
   title: @Composable () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+
   val panelCardsColors: @Composable () -> CardColors = {
     val colors = CardDefaults.cardColors()
+    
+    val alpha = if (enableLiquidGlass) 0.1f else 0.6f
+    
     colors.copy(
-      containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-      disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+      containerColor = MaterialTheme.colorScheme.background.copy(alpha = alpha),
+      disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = alpha),
     )
   }
 

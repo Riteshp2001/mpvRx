@@ -145,7 +145,7 @@ fun SubtitlesSheet(
       if (langSearch.isBlank()) source
       else source.filter { it.contains(langSearch, ignoreCase = true) }
     }
-    androidx.compose.material3.AlertDialog(
+    app.gyrolet.mpvrx.presentation.components.LiquidDialog(
       onDismissRequest = {
         showLanguagePicker = null
         langSearch = ""

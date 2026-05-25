@@ -439,7 +439,7 @@ fun TimePickerDialog(
       }
     }
   }
-  }
+}
 
 @Composable
 fun SectionHeaderWithInfo(

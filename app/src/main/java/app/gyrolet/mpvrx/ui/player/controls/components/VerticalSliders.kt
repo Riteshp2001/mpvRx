@@ -28,6 +28,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.theme.spacing
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.BlendMode
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 fun percentage(
   value: Float,
@@ -50,13 +59,16 @@ fun VerticalSlider(
   colorEnd: Color = MaterialTheme.colorScheme.primary,
 ) {
   val coercedValue = value.coerceIn(range)
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+
   Box(
     modifier =
       modifier
         .height(130.dp)
         .width(36.dp)
         .clip(AppShapeScale.largeIncreased)
-        .background(Color.Black.copy(alpha = 0.3f)),
+        .background(if (enableLiquidGlass) Color.Black.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f)),
     contentAlignment = Alignment.BottomCenter,
   ) {
     val targetHeight by animateFloatAsState(
@@ -98,13 +110,17 @@ fun VerticalSlider(
   colorEnd: Color = MaterialTheme.colorScheme.primary,
 ) {
   val coercedValue = value.coerceIn(range)
+  
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+
   Box(
     modifier =
       modifier
         .height(130.dp)
         .width(36.dp)
         .clip(AppShapeScale.largeIncreased)
-        .background(Color.Black.copy(alpha = 0.3f)),
+        .background(if (enableLiquidGlass) Color.Black.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f)),
     contentAlignment = Alignment.BottomCenter,
   ) {
     val targetHeight by animateFloatAsState(
@@ -142,10 +158,35 @@ fun BrightnessSlider(
   modifier: Modifier = Modifier,
 ) {
   val coercedBrightness = brightness.coerceIn(range)
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+  val blurRadius by preferences.liquidButtonBlur.collectAsState()
+  val lensRadius by preferences.liquidButtonLensRadius.collectAsState()
+  val lensDepth by preferences.liquidButtonLensDepth.collectAsState()
+  val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+  val liquidTint by preferences.liquidButtonTint.collectAsState()
+  val density = LocalDensity.current
+
   Surface(
-    modifier = modifier,
+    modifier = modifier.then(
+        if (enableLiquidGlass) {
+            Modifier.drawBackdrop(
+                backdrop = rememberLayerBackdrop(),
+                shape = { AppShapeScale.extraLarge },
+                effects = {
+                    blur(with(density) { blurRadius.dp.toPx() })
+                    lens(with(density) { lensRadius.dp.toPx() }, with(density) { lensDepth.dp.toPx() }, chromaticAberration = true)
+                },
+                onDrawSurface = {
+                    val tintColor = Color(liquidTint)
+                    drawRect(tintColor, blendMode = BlendMode.Screen, alpha = liquidOpacity)
+                    drawRect(tintColor.copy(alpha = liquidOpacity * 0.2f))
+                }
+            )
+        } else Modifier
+    ),
     shape = AppShapeScale.extraLarge,
-    color = Color.Black.copy(alpha = 0.5f),
+    color = if (enableLiquidGlass) Color.Transparent else Color.Black.copy(alpha = 0.5f),
     contentColor = Color.White,
   ) {
     Column(
@@ -191,10 +232,35 @@ fun VolumeSlider(
   displayAsPercentage: Boolean = false,
 ) {
   val percentage = volumePercentage.coerceIn(0, 100)
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+  val blurRadius by preferences.liquidButtonBlur.collectAsState()
+  val lensRadius by preferences.liquidButtonLensRadius.collectAsState()
+  val lensDepth by preferences.liquidButtonLensDepth.collectAsState()
+  val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+  val liquidTint by preferences.liquidButtonTint.collectAsState()
+  val density = LocalDensity.current
+
   Surface(
-    modifier = modifier,
+    modifier = modifier.then(
+        if (enableLiquidGlass) {
+            Modifier.drawBackdrop(
+                backdrop = rememberLayerBackdrop(),
+                shape = { AppShapeScale.extraLarge },
+                effects = {
+                    blur(with(density) { blurRadius.dp.toPx() })
+                    lens(with(density) { lensRadius.dp.toPx() }, with(density) { lensDepth.dp.toPx() }, chromaticAberration = true)
+                },
+                onDrawSurface = {
+                    val tintColor = Color(liquidTint)
+                    drawRect(tintColor, blendMode = BlendMode.Screen, alpha = liquidOpacity)
+                    drawRect(tintColor.copy(alpha = liquidOpacity * 0.2f))
+                }
+            )
+        } else Modifier
+    ),
     shape = AppShapeScale.extraLarge,
-    color = Color.Black.copy(alpha = 0.5f),
+    color = if (enableLiquidGlass) Color.Transparent else Color.Black.copy(alpha = 0.5f),
     contentColor = Color.White,
   ) {
     Column(

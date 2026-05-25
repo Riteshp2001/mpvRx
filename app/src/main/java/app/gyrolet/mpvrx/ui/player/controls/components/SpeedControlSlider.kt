@@ -49,6 +49,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.ui.theme.spacing
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.BlendMode
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * A compact speed control display that shows available speed options (0.25x to 4x)
@@ -72,18 +81,44 @@ fun SpeedControlSlider(
   
   val primaryColor = MaterialTheme.colorScheme.primary
   val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+  
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+  val blurRadius by preferences.liquidButtonBlur.collectAsState()
+  val lensRadius by preferences.liquidButtonLensRadius.collectAsState()
+  val lensDepth by preferences.liquidButtonLensDepth.collectAsState()
+  val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+  val liquidTint by preferences.liquidButtonTint.collectAsState()
+  val density = LocalDensity.current
+
   // Use a Surface with less rounded corners instead of CircleShape
   Surface(
     shape = AppShapeScale.medium,
-    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+    color = if (enableLiquidGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
     contentColor = MaterialTheme.colorScheme.onSurface,
     tonalElevation = 0.dp,
     shadowElevation = 0.dp,
-    border = BorderStroke(
+    border = if (enableLiquidGlass) null else BorderStroke(
       1.dp,
       MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
     ),
-    modifier = modifier.animateContentSize(),
+    modifier = modifier.animateContentSize().then(
+        if (enableLiquidGlass) {
+            Modifier.drawBackdrop(
+                backdrop = rememberLayerBackdrop(),
+                shape = { AppShapeScale.medium },
+                effects = {
+                    blur(with(density) { blurRadius.dp.toPx() })
+                    lens(with(density) { lensRadius.dp.toPx() }, with(density) { lensDepth.dp.toPx() }, chromaticAberration = true)
+                },
+                onDrawSurface = {
+                    val tintColor = Color(liquidTint)
+                    drawRect(tintColor, blendMode = BlendMode.Screen, alpha = liquidOpacity)
+                    drawRect(tintColor.copy(alpha = liquidOpacity * 0.2f))
+                }
+            )
+        } else Modifier
+    ),
   ) {
     Box(
       modifier = Modifier.padding(
@@ -197,17 +232,43 @@ fun CompactSpeedIndicator(
   currentSpeed: Float,
   modifier: Modifier = Modifier,
 ) {
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+  val blurRadius by preferences.liquidButtonBlur.collectAsState()
+  val lensRadius by preferences.liquidButtonLensRadius.collectAsState()
+  val lensDepth by preferences.liquidButtonLensDepth.collectAsState()
+  val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+  val liquidTint by preferences.liquidButtonTint.collectAsState()
+  val density = LocalDensity.current
+
   Row(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.Center,
     modifier = modifier
-      .background(
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-        shape = AppShapeScale.full
-      )
-      .border(
-        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-        shape = AppShapeScale.full
+      .then(
+        if (enableLiquidGlass) {
+            Modifier.drawBackdrop(
+                backdrop = rememberLayerBackdrop(),
+                shape = { AppShapeScale.full },
+                effects = {
+                    blur(with(density) { blurRadius.dp.toPx() })
+                    lens(with(density) { lensRadius.dp.toPx() }, with(density) { lensDepth.dp.toPx() }, chromaticAberration = true)
+                },
+                onDrawSurface = {
+                    val tintColor = Color(liquidTint)
+                    drawRect(tintColor, blendMode = BlendMode.Screen, alpha = liquidOpacity)
+                    drawRect(tintColor.copy(alpha = liquidOpacity * 0.2f))
+                }
+            )
+        } else {
+            Modifier.background(
+                color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+                shape = AppShapeScale.full
+            ).border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                shape = AppShapeScale.full
+            )
+        }
       )
       .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
   ) {

@@ -41,6 +41,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.BlendMode
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 @Composable
 fun SlideToUnlock(
@@ -55,13 +64,40 @@ fun SlideToUnlock(
   
   val offsetX = remember { Animatable(0f) }
   var isDragging by remember { mutableStateOf(false) }
+
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+  val blurRadius by preferences.liquidButtonBlur.collectAsState()
+  val lensRadius by preferences.liquidButtonLensRadius.collectAsState()
+  val lensDepth by preferences.liquidButtonLensDepth.collectAsState()
+  val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+  val liquidTint by preferences.liquidButtonTint.collectAsState()
+  val density = LocalDensity.current
   
   Box(
     modifier = modifier
       .width(200.dp)
       .height(64.dp)
       .clip(RoundedCornerShape(32.dp))
-      .background(Color.Black.copy(alpha = 0.6f))
+      .then(
+          if (enableLiquidGlass) {
+              Modifier.drawBackdrop(
+                  backdrop = rememberLayerBackdrop(),
+                  shape = { RoundedCornerShape(32.dp) },
+                  effects = {
+                      blur(with(density) { blurRadius.dp.toPx() })
+                      lens(with(density) { lensRadius.dp.toPx() }, with(density) { lensDepth.dp.toPx() }, chromaticAberration = true)
+                  },
+                  onDrawSurface = {
+                      val tintColor = Color(liquidTint)
+                      drawRect(tintColor, blendMode = BlendMode.Screen, alpha = liquidOpacity)
+                      drawRect(tintColor.copy(alpha = liquidOpacity * 0.2f))
+                  }
+              )
+          } else {
+              Modifier.background(Color.Black.copy(alpha = 0.6f))
+          }
+      )
       .padding(4.dp)
       .onSizeChanged { size ->
         containerWidthPx = size.width.toFloat()

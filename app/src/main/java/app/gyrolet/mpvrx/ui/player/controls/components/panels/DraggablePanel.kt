@@ -37,8 +37,16 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-
 import kotlin.math.roundToInt
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * A draggable panel with an optional fixed header and scrollable content.
@@ -76,14 +84,43 @@ fun DraggablePanel(
         val panelMaxHeight = if (isPortrait) maxHeight * 0.5f else maxHeight
 
         val colors = panelCardsColors()
+        
+        val preferences = koinInject<AppearancePreferences>()
+        val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+        val blurRadius by preferences.liquidButtonBlur.collectAsState()
+        val lensRadius by preferences.liquidButtonLensRadius.collectAsState()
+        val lensDepth by preferences.liquidButtonLensDepth.collectAsState()
+        val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+        val liquidTint by preferences.liquidButtonTint.collectAsState()
+        
+        val panelShape = MaterialTheme.shapes.extraLarge
+        val liquidBackdrop = rememberLayerBackdrop()
+
         Surface(
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .onSizeChanged { panelWidth = it.width }
                 .widthIn(max = 380.dp)
-                .heightIn(max = panelMaxHeight),
+                .heightIn(max = panelMaxHeight)
+                .then(
+                    if (enableLiquidGlass) {
+                        Modifier.drawBackdrop(
+                            backdrop = liquidBackdrop,
+                            shape = { panelShape },
+                            effects = {
+                                blur(with(density) { blurRadius.dp.toPx() })
+                                lens(with(density) { lensRadius.dp.toPx() }, with(density) { lensDepth.dp.toPx() }, chromaticAberration = true)
+                            },
+                            onDrawSurface = {
+                                val tintColor = Color(liquidTint)
+                                drawRect(tintColor, blendMode = BlendMode.Screen, alpha = liquidOpacity)
+                                drawRect(tintColor.copy(alpha = liquidOpacity * 0.2f))
+                            }
+                        )
+                    } else Modifier
+                ),
             shape = MaterialTheme.shapes.extraLarge,
-            color = colors.containerColor,
+            color = if (enableLiquidGlass) Color.Transparent else colors.containerColor,
             contentColor = colors.contentColor,
             tonalElevation = 0.dp,
         ) {

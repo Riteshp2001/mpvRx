@@ -23,6 +23,10 @@ import app.gyrolet.mpvrx.ui.player.controls.components.panels.LuaScriptsPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.SubtitleDelayPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.SubtitleSettingsPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.VideoSettingsPanel
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import androidx.compose.runtime.getValue
 
 @Composable
 fun PlayerPanels(
@@ -72,8 +76,11 @@ fun PlayerPanels(
 
 val CARDS_MAX_WIDTH = 420.dp
 val panelCardsColors: @Composable () -> CardColors = {
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+
   // Higher alpha for better readability in panels (less transparent)
-  val alpha = 0.85f
+  val alpha = if (enableLiquidGlass) 0.1f else 0.85f
 
   CardDefaults.cardColors(
     containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = alpha),
