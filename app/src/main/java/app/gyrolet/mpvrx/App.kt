@@ -41,6 +41,7 @@ class App : Application() {
 
     try {
         android.util.Log.d("App", "Starting Koin...")
+        com.bytedance.android.bytehook.ByteHook.init()
         startKoin {
           androidContext(this@App)
           modules(

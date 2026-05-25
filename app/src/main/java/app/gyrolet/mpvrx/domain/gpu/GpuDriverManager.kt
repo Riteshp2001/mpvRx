@@ -112,6 +112,25 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
                 try {
                     val metaContent = metaFile.readText()
                     val metaJson = json.parseToJsonElement(metaContent).jsonObject
+                    var expectedLibName = metaJson["vulkanLibName"]?.jsonPrimitive?.content ?: "libvulkan_freedreno.so"
+                    var actualDriverDir = dir.absolutePath
+                    var foundLibName = expectedLibName
+                    val soFiles = dir.walkTopDown().filter { it.isFile && it.name.endsWith(".so") }.toList()
+                    if (soFiles.isNotEmpty()) {
+                        val match = soFiles.find { it.name == expectedLibName } 
+                            ?: soFiles.find { it.name.contains("vulkan", ignoreCase = true) }
+                            ?: soFiles.first()
+                        
+                        actualDriverDir = match.parentFile?.absolutePath ?: dir.absolutePath
+                        foundLibName = match.name
+                        
+                        // Ensure executable and read-only permissions for all found .so files to fix existing installations
+                        soFiles.forEach { 
+                            it.setExecutable(true, false)
+                            it.setReadOnly()
+                        }
+                    }
+                    
                     drivers.add(GpuDriver(
                         id = dir.name,
                         name = metaJson["name"]?.jsonPrimitive?.content ?: dir.name,
@@ -119,8 +138,8 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
                         author = metaJson["author"]?.jsonPrimitive?.content ?: "",
                         version = metaJson["driverVersion"]?.jsonPrimitive?.content ?: "",
                         vendor = metaJson["vendor"]?.jsonPrimitive?.content ?: "",
-                        driverPath = dir.absolutePath,
-                        vulkanLibName = metaJson["vulkanLibName"]?.jsonPrimitive?.content ?: "libvulkan_freedreno.so"
+                        driverPath = actualDriverDir,
+                        vulkanLibName = foundLibName
                     ))
                 } catch (e: Exception) {
                     Log.e("GpuDriverManager", "Failed to parse meta.json in ${dir.name}", e)
@@ -204,6 +223,9 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
                             FileOutputStream(file).use { output ->
                                 zipStream.copyTo(output)
                             }
+                            if (file.name.endsWith(".so")) {
+                                file.setExecutable(true, false)
+                            }
                         }
                         zipStream.closeEntry()
                         entry = zipStream.nextEntry
@@ -219,6 +241,27 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
 
             val metaContent = metaFile.readText()
             val metaJson = json.parseToJsonElement(metaContent).jsonObject
+            var expectedLibName = metaJson["vulkanLibName"]?.jsonPrimitive?.content ?: "libvulkan_freedreno.so"
+            
+            // Search for the actual driver file in case it's in a subdirectory or has a different name
+            var actualDriverDir = targetDir.absolutePath
+            var foundLibName = expectedLibName
+            val soFiles = targetDir.walkTopDown().filter { it.isFile && it.name.endsWith(".so") }.toList()
+            if (soFiles.isNotEmpty()) {
+                val match = soFiles.find { it.name == expectedLibName }
+                    ?: soFiles.find { it.name.contains("vulkan", ignoreCase = true) }
+                    ?: soFiles.first()
+                    
+                actualDriverDir = match.parentFile?.absolutePath ?: targetDir.absolutePath
+                foundLibName = match.name
+                
+                // Ensure executable and read-only permissions for all found .so files
+                soFiles.forEach { 
+                    it.setExecutable(true, false)
+                    it.setReadOnly()
+                }
+            }
+            
             val driver = GpuDriver(
                 id = tempId,
                 name = metaJson["name"]?.jsonPrimitive?.content ?: tempId,
@@ -226,8 +269,8 @@ class GpuDriverManager(private val context: Context, private val okHttpClient: O
                 author = metaJson["author"]?.jsonPrimitive?.content ?: "",
                 version = metaJson["driverVersion"]?.jsonPrimitive?.content ?: "",
                 vendor = metaJson["vendor"]?.jsonPrimitive?.content ?: "",
-                driverPath = targetDir.absolutePath,
-                vulkanLibName = metaJson["vulkanLibName"]?.jsonPrimitive?.content ?: "libvulkan_freedreno.so"
+                driverPath = actualDriverDir,
+                vulkanLibName = foundLibName
             )
 
             // Backup the zip to the SAF folder if possible

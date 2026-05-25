@@ -52,7 +52,8 @@ object GpuDriverHelper : KoinComponent {
                     hookLibDir = context.applicationInfo.nativeLibraryDir,
                     customDriverDir = null,
                     customDriverName = null,
-                    fileRedirectDir = fileRedirectDir
+                    fileRedirectDir = fileRedirectDir,
+                    tmpDir = context.cacheDir.absolutePath
                 )
                 if (success) {
                     Log.i(TAG, "Successfully initialized system GPU driver hooks")
@@ -70,11 +71,33 @@ object GpuDriverHelper : KoinComponent {
             if (activeDriver != null && !activeDriver.isSystem) {
                 Log.d(TAG, "Initializing custom GPU driver: ${activeDriver.name}")
                 
+                // Create an ICD json file to force Vulkan loaders to use this driver
+                val icdFile = java.io.File(activeDriver.driverPath, "icd.json")
+                val icdContent = """
+                {
+                    "file_format_version": "1.0.0",
+                    "ICD": {
+                        "library_path": "${activeDriver.driverPath}/${activeDriver.vulkanLibName}",
+                        "api_version": "1.1.0"
+                    }
+                }
+                """.trimIndent()
+                icdFile.writeText(icdContent)
+                
+                // Inject the VK_ICD_FILENAMES environment variable
+                try {
+                    android.system.Os.setenv("VK_ICD_FILENAMES", icdFile.absolutePath, true)
+                    Log.i(TAG, "Injected VK_ICD_FILENAMES=${icdFile.absolutePath}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to set VK_ICD_FILENAMES", e)
+                }
+
                 val success = GpuDriverBridge.setDriver(
                     hookLibDir = context.applicationInfo.nativeLibraryDir,
                     customDriverDir = activeDriver.driverPath,
                     customDriverName = activeDriver.vulkanLibName,
-                    fileRedirectDir = fileRedirectDir
+                    fileRedirectDir = fileRedirectDir,
+                    tmpDir = context.cacheDir.absolutePath
                 )
                 
                 if (success) {
@@ -90,7 +113,8 @@ object GpuDriverHelper : KoinComponent {
                     hookLibDir = context.applicationInfo.nativeLibraryDir,
                     customDriverDir = null,
                     customDriverName = null,
-                    fileRedirectDir = fileRedirectDir
+                    fileRedirectDir = fileRedirectDir,
+                    tmpDir = context.cacheDir.absolutePath
                 )
             }
             

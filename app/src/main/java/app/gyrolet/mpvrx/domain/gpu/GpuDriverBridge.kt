@@ -7,8 +7,10 @@ object GpuDriverBridge {
         try {
             System.loadLibrary("adrenotools_bridge")
             isLibraryLoaded = true
-        } catch (_: Throwable) {
+            android.util.Log.i("GpuDriverBridge", "Successfully loaded adrenotools_bridge")
+        } catch (t: Throwable) {
             isLibraryLoaded = false
+            android.util.Log.e("GpuDriverBridge", "Failed to load adrenotools_bridge", t)
         }
     }
 
@@ -18,7 +20,8 @@ object GpuDriverBridge {
         hookLibDir: String?,
         customDriverDir: String?,
         customDriverName: String?,
-        fileRedirectDir: String?
+        fileRedirectDir: String?,
+        tmpDir: String?
     ): Boolean
 
     external fun isAdrenoDevice(): Boolean
