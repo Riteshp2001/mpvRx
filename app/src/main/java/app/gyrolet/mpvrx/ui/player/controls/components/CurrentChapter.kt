@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import app.gyrolet.mpvrx.ui.player.controls.components.LiquidPillButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,8 +52,67 @@ fun CurrentChapter(
   onClick: () -> Unit = {},
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
 
-  Surface(
+  if (enableLiquidGlass) {
+    LiquidPillButton(
+      onClick = onClick,
+      modifier = modifier.height(45.dp).widthIn(max = 220.dp),
+      useGlass = true,
+      horizontalPadding = MaterialTheme.spacing.medium,
+    ) {
+      AnimatedContent(
+        targetState = chapter,
+        transitionSpec = {
+          if (targetState.start > initialState.start) {
+            (slideInVertically { height -> height } + fadeIn())
+              .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+          } else {
+            (slideInVertically { height -> -height } + fadeIn())
+              .togetherWith(slideOutVertically { height -> height } + fadeOut())
+          }.using(
+            SizeTransform(clip = false),
+          )
+        },
+        label = "Chapter",
+      ) { currentChapter ->
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+          Text(
+            text = Utils.prettyTime(currentChapter.start.toInt()),
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            color = MaterialTheme.colorScheme.primary,
+          )
+          currentChapter.name.let {
+            Text(
+              text = Typography.bullet.toString(),
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              color = MaterialTheme.colorScheme.onSurface,
+              overflow = TextOverflow.Clip,
+            )
+            Text(
+              text = it,
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              fontWeight = FontWeight.ExtraBold,
+              color = MaterialTheme.colorScheme.onSurface,
+              modifier = Modifier.basicMarquee(),
+            )
+          }
+        }
+      }
+    }
+  } else {
+    Surface(
     modifier =
       modifier
         .height(45.dp)
@@ -122,6 +182,7 @@ fun CurrentChapter(
         }
       }
     }
+  }
   }
 }
 

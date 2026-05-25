@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -36,11 +37,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.theme.spacing
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +63,17 @@ fun MultiCardPanel(
 ) {
   BackHandler(onBack = onDismissRequest)
   val orientation = LocalConfiguration.current.orientation
+  val density = LocalDensity.current
   val cards = remember { movableContentOf { p1: Int, p2: Modifier -> cards(p1, p2) } }
+
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+  val liquidBlur by preferences.liquidDialogBlur.collectAsState()
+  val liquidSaturation by preferences.liquidDialogSaturation.collectAsState()
+  val liquidBrightness by preferences.liquidDialogBrightness.collectAsState()
+  val liquidLensRadius by preferences.liquidDialogLensRadius.collectAsState()
+  val liquidLensDepth by preferences.liquidDialogLensDepth.collectAsState()
+  val liquidAlpha by preferences.liquidDialogContainerAlpha.collectAsState()
 
   ConstraintLayout(modifier = modifier.fillMaxSize()) {
     val settingsCards = createRef()
@@ -62,10 +82,37 @@ fun MultiCardPanel(
     if (orientation == ORIENTATION_PORTRAIT) {
       Column(
         modifier =
-          Modifier.constrainAs(settingsCards) {
-            top.linkTo(parent.top)
-            start.linkTo(parent.start)
-          },
+          Modifier
+            .then(
+                if (enableLiquidGlass) {
+                    Modifier.drawBackdrop(
+                        backdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop(),
+                        shape = { androidx.compose.ui.graphics.RectangleShape },
+                        effects = {
+                            colorControls(
+                                brightness = liquidBrightness,
+                                saturation = liquidSaturation
+                            )
+                            blur(with(density) { liquidBlur.dp.toPx() })
+                            lens(
+                                with(density) { liquidLensRadius.dp.toPx() },
+                                with(density) { liquidLensDepth.dp.toPx() },
+                                depthEffect = true
+                            )
+                        },
+                        highlight = { Highlight.Plain },
+                        onDrawSurface = {
+                            drawRect(Color.Black.copy(alpha = liquidAlpha))
+                        }
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .constrainAs(settingsCards) {
+                top.linkTo(parent.top)
+                start.linkTo(parent.start)
+            },
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
         TopAppBar(

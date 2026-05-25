@@ -108,6 +108,8 @@ object LiquidSettingsScreen : Screen {
                                     preferences.liquidDialogLensRadius.set(55f)
                                     preferences.liquidDialogLensDepth.set(85f)
                                     preferences.liquidDialogContainerAlpha.set(0.35f)
+                                    preferences.liquidButtonOpacity.set(0.15f)
+                                    preferences.liquidButtonTint.set(0x26FFFFFF)
                                 }
                                 preferences.enableLiquidGlass.set(enabled)
                             },
@@ -359,6 +361,8 @@ object LiquidSettingsScreen : Screen {
                         val liquidBlur by preferences.liquidButtonBlur.collectAsState()
                         val liquidLensRadius by preferences.liquidButtonLensRadius.collectAsState()
                         val liquidLensDepth by preferences.liquidButtonLensDepth.collectAsState()
+                        val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+                        val liquidTint by preferences.liquidButtonTint.collectAsState()
 
                         PreferenceCard {
                             Column(
@@ -423,6 +427,29 @@ object LiquidSettingsScreen : Screen {
                                     accentColor = MaterialTheme.colorScheme.tertiary
                                 )
 
+                                PremiumParameterSlider(
+                                    value = liquidOpacity,
+                                    onValueChange = { preferences.liquidButtonOpacity.set(it) },
+                                    valueRange = 0f..1f,
+                                    title = "Button Opacity",
+                                    summary = "Base translucency of the liquid button",
+                                    icon = Icons.Default.Opacity,
+                                    accentColor = MaterialTheme.colorScheme.primary
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Button Tint",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                PremiumColorPicker(
+                                    color = liquidTint,
+                                    onColorChange = { preferences.liquidButtonTint.set(it) },
+                                    badgeColor = Color(liquidTint)
+                                )
+
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End
@@ -432,6 +459,8 @@ object LiquidSettingsScreen : Screen {
                                             preferences.liquidButtonBlur.set(26f)
                                             preferences.liquidButtonLensRadius.set(42f)
                                             preferences.liquidButtonLensDepth.set(72f)
+                                            preferences.liquidButtonOpacity.set(0.15f)
+                                            preferences.liquidButtonTint.set(0x26FFFFFF)
                                         },
                                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                                     ) {

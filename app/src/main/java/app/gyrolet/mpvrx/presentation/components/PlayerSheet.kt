@@ -30,8 +30,10 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -42,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -54,10 +57,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.player.controls.components.PlayerLiquidTokens
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 private val sheetAnimationSpec = tween<Float>(350)
@@ -76,6 +88,19 @@ fun PlayerSheet(
   val scope = rememberCoroutineScope()
   val density = LocalDensity.current
   val latestOnDismissRequest by rememberUpdatedState(onDismissRequest)
+  
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+  val liquidBlur by preferences.liquidDialogBlur.collectAsState()
+  val liquidSaturation by preferences.liquidDialogSaturation.collectAsState()
+  val liquidBrightness by preferences.liquidDialogBrightness.collectAsState()
+  val liquidLensRadius by preferences.liquidDialogLensRadius.collectAsState()
+  val liquidLensDepth by preferences.liquidDialogLensDepth.collectAsState()
+  val liquidAlpha by preferences.liquidDialogContainerAlpha.collectAsState()
+
+  val sheetShape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize)
+  val themeSurfaceColor = MaterialTheme.colorScheme.surface
+
   val maxWidth = customMaxWidth ?:
   if (LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE) {
     640.dp
@@ -147,7 +172,36 @@ fun PlayerSheet(
             remember(anchoredDraggableState) {
               anchoredDraggableState.preUpPostDownNestedScrollConnection()
             },
-          ).then(modifier)
+          )
+          .then(
+            if (enableLiquidGlass) {
+              Modifier.drawBackdrop(
+                backdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop(),
+                shape = { sheetShape },
+                effects = {
+                  colorControls(
+                    brightness = liquidBrightness,
+                    saturation = liquidSaturation
+                  )
+                  blur(with(density) { liquidBlur.dp.toPx() })
+                  lens(
+                    with(density) { liquidLensRadius.dp.toPx() },
+                    with(density) { liquidLensDepth.dp.toPx() },
+                    depthEffect = true
+                  )
+                },
+                highlight = { Highlight.Plain },
+                onDrawSurface = { 
+                  drawRect(
+                    surfaceColor?.copy(alpha = liquidAlpha) ?: themeSurfaceColor.copy(alpha = liquidAlpha)
+                  )
+                }
+              )
+            } else {
+              Modifier
+            }
+          )
+          .then(modifier)
           .offset {
             IntOffset(
               0,
@@ -163,15 +217,19 @@ fun PlayerSheet(
             WindowInsets.systemBars
               .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
           ).imePadding(),
-      shape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
-      color = surfaceColor ?: MaterialTheme.colorScheme.surface,
-      tonalElevation = tonalElevation,
+      shape = sheetShape,
+      color = if (enableLiquidGlass) Color.Transparent else (surfaceColor ?: themeSurfaceColor),
+      tonalElevation = if (enableLiquidGlass) 0.dp else tonalElevation,
       content = {
         BackHandler(
           enabled = anchoredDraggableState.targetValue == 0,
           onBack = internalOnDismissRequest,
         )
-        content()
+        CompositionLocalProvider(
+          LocalContentColor provides if (enableLiquidGlass) PlayerLiquidTokens.contentColor else MaterialTheme.colorScheme.onSurface,
+        ) {
+          content()
+        }
       },
     )
 

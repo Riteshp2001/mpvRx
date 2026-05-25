@@ -21,7 +21,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.player.controls.components.LiquidPillButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +59,8 @@ fun TopLeftPlayerControlsLandscape(
 ) {
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
   val clickEvent = LocalPlayerButtonsClickEvent.current
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
 
   Column(
     modifier = Modifier.width(IntrinsicSize.Max),
@@ -70,71 +77,99 @@ fun TopLeftPlayerControlsLandscape(
       )
 
       Column {
-        val titleInteractionSource = remember { MutableInteractionSource() }
-
-        Box(
-          modifier =
-            Modifier
-              .height(45.dp)
-              .clip(CircleShape)
-              .clickable(
-                interactionSource = titleInteractionSource,
-                indication = ripple(bounded = true),
-                enabled = playlistModeEnabled,
-                onClick = {
-                  clickEvent()
-                  onOpenSheet(Sheets.Playlist)
-                },
-              ),
-        ) {
-          Surface(
-            shape = CircleShape,
-            color =
-              if (hideBackground) {
-                Color.Transparent
-              } else {
-                MaterialTheme.colorScheme.surfaceContainer.copy(
-                  alpha = 0.55f,
-                )
-              },
-            contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            border =
-              if (hideBackground) {
-                null
-              } else {
-                BorderStroke(
-                  1.dp,
-                  MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                )
-              },
+        if (enableLiquidGlass) {
+          LiquidPillButton(
+            onClick = {
+              clickEvent()
+              onOpenSheet(Sheets.Playlist)
+            },
+            useGlass = true,
+            height = 45.dp,
+            horizontalPadding = MaterialTheme.spacing.medium,
           ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              modifier =
-                Modifier
-                  .padding(
-                    start = MaterialTheme.spacing.medium,
-                    end = MaterialTheme.spacing.medium,
-                    top = MaterialTheme.spacing.small,
-                    bottom = MaterialTheme.spacing.small,
-                  ),
-            ) {
+            Text(
+              mediaTitle ?: "",
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              style = MaterialTheme.typography.bodyMedium,
+              modifier = Modifier.weight(1f, fill = false),
+            )
+            viewModel.getPlaylistInfo()?.let { playlistInfo ->
               Text(
-                mediaTitle ?: "",
+                " • $playlistInfo",
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f, fill = false),
+                overflow = TextOverflow.Visible,
+                style = MaterialTheme.typography.bodySmall,
               )
-              viewModel.getPlaylistInfo()?.let { playlistInfo ->
+            }
+          }
+        } else {
+          val titleInteractionSource = remember { MutableInteractionSource() }
+
+          Box(
+            modifier =
+              Modifier
+                .height(45.dp)
+                .clip(CircleShape)
+                .clickable(
+                  interactionSource = titleInteractionSource,
+                  indication = ripple(bounded = true),
+                  enabled = playlistModeEnabled,
+                  onClick = {
+                    clickEvent()
+                    onOpenSheet(Sheets.Playlist)
+                  },
+                ),
+          ) {
+            Surface(
+              shape = CircleShape,
+              color =
+                if (hideBackground) {
+                  Color.Transparent
+                } else {
+                  MaterialTheme.colorScheme.surfaceContainer.copy(
+                    alpha = 0.55f,
+                  )
+                },
+              contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+              tonalElevation = 0.dp,
+              shadowElevation = 0.dp,
+              border =
+                if (hideBackground) {
+                  null
+                } else {
+                  BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                  )
+                },
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                  Modifier
+                    .padding(
+                      start = MaterialTheme.spacing.medium,
+                      end = MaterialTheme.spacing.medium,
+                      top = MaterialTheme.spacing.small,
+                      bottom = MaterialTheme.spacing.small,
+                    ),
+              ) {
                 Text(
-                  " • $playlistInfo",
+                  mediaTitle ?: "",
                   maxLines = 1,
-                  overflow = TextOverflow.Visible,
-                  style = MaterialTheme.typography.bodySmall,
+                  overflow = TextOverflow.Ellipsis,
+                  style = MaterialTheme.typography.bodyMedium,
+                  modifier = Modifier.weight(1f, fill = false),
                 )
+                viewModel.getPlaylistInfo()?.let { playlistInfo ->
+                  Text(
+                    " • $playlistInfo",
+                    maxLines = 1,
+                    overflow = TextOverflow.Visible,
+                    style = MaterialTheme.typography.bodySmall,
+                  )
+                }
               }
             }
           }

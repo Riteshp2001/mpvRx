@@ -23,7 +23,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.player.controls.components.LiquidPillButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +62,8 @@ fun TopPlayerControlsPortrait(
 ) {
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
   val clickEvent = LocalPlayerButtonsClickEvent.current
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
 
   Column(
     modifier = Modifier
@@ -78,23 +85,17 @@ fun TopPlayerControlsPortrait(
         Column(
           modifier = Modifier.padding(start = 4.dp),
         ) {
-          val titleInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-
-          Surface(
-            shape = CircleShape,
-            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-            contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-            onClick = {
-              clickEvent()
-              onOpenSheet(Sheets.Playlist)
-            },
-            enabled = playlistModeEnabled,
-            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
-            modifier = Modifier.height(45.dp),
-          ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              modifier = Modifier.padding(horizontal = 14.dp),
+          if (enableLiquidGlass) {
+            LiquidPillButton(
+              onClick = {
+                if (playlistModeEnabled) {
+                  clickEvent()
+                  onOpenSheet(Sheets.Playlist)
+                }
+              },
+              useGlass = true,
+              height = 45.dp,
+              horizontalPadding = 14.dp,
             ) {
               Text(
                 mediaTitle ?: "",
@@ -108,8 +109,43 @@ fun TopPlayerControlsPortrait(
                   " • $playlistInfo",
                   maxLines = 1,
                   style = MaterialTheme.typography.bodySmall,
-                  color = LocalContentColor.current.copy(alpha = 0.7f),
                 )
+              }
+            }
+          } else {
+            val titleInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+
+            Surface(
+              shape = CircleShape,
+              color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+              contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+              onClick = {
+                clickEvent()
+                onOpenSheet(Sheets.Playlist)
+              },
+              enabled = playlistModeEnabled,
+              border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+              modifier = Modifier.height(45.dp),
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 14.dp),
+              ) {
+                Text(
+                  mediaTitle ?: "",
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                  style = MaterialTheme.typography.bodyMedium,
+                  modifier = Modifier.weight(1f, fill = false),
+                )
+                viewModel.getPlaylistInfo()?.let { playlistInfo ->
+                  Text(
+                    " • $playlistInfo",
+                    maxLines = 1,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.7f),
+                  )
+                }
               }
             }
           }

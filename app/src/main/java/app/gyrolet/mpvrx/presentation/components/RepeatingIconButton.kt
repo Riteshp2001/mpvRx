@@ -13,7 +13,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.components.LiquidButton
+
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -30,34 +37,70 @@ fun RepeatingIconButton(
   val currentClickListener by rememberUpdatedState(onClick)
   var pressed by remember { mutableStateOf(false) }
 
-  FilledTonalIconButton(
-    modifier =
-      modifier.pointerInteropFilter {
+  val preferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by preferences.enableLiquidGlass.collectAsState()
+
+  if (enableLiquidGlass) {
+    val backdrop = rememberLayerBackdrop()
+    LiquidButton(
+      onClick = currentClickListener,
+      backdrop = backdrop,
+      modifier = modifier.pointerInteropFilter {
         pressed =
           when (it.action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> true
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> false
             else -> pressed
           }
-
         true
       },
-    onClick = {},
-    enabled = enabled,
-    interactionSource = interactionSource,
-    content = content,
-  )
+      isInteractive = true,
+      height = 40.dp,
+      horizontalPadding = 0.dp,
+      content = { content() },
+    )
 
-  LaunchedEffect(pressed, enabled) {
-    var currentDelayMillis = maxDelayMillis
+    LaunchedEffect(pressed, enabled) {
+      var currentDelayMillis = maxDelayMillis
+      while (enabled && pressed) {
+        currentClickListener()
+        delay(currentDelayMillis)
+        currentDelayMillis =
+          (currentDelayMillis - (currentDelayMillis * delayDecayFactor))
+            .toLong()
+            .coerceAtLeast(minDelayMillis)
+      }
+    }
+  } else {
+    FilledTonalIconButton(
+      modifier =
+        modifier.pointerInteropFilter {
+          pressed =
+            when (it.action) {
+              MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> true
+              MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> false
+              else -> pressed
+            }
 
-    while (enabled && pressed) {
-      currentClickListener()
-      delay(currentDelayMillis)
-      currentDelayMillis =
-        (currentDelayMillis - (currentDelayMillis * delayDecayFactor))
-          .toLong()
-          .coerceAtLeast(minDelayMillis)
+          true
+        },
+      onClick = {},
+      enabled = enabled,
+      interactionSource = interactionSource,
+      content = content,
+    )
+
+    LaunchedEffect(pressed, enabled) {
+      var currentDelayMillis = maxDelayMillis
+
+      while (enabled && pressed) {
+        currentClickListener()
+        delay(currentDelayMillis)
+        currentDelayMillis =
+          (currentDelayMillis - (currentDelayMillis * delayDecayFactor))
+            .toLong()
+            .coerceAtLeast(minDelayMillis)
+      }
     }
   }
 }

@@ -51,8 +51,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.player.controls.components.LiquidIconButton
+import app.gyrolet.mpvrx.ui.player.controls.components.LiquidPillButton
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
@@ -106,55 +109,20 @@ fun RenderPlayerButton(
 
     PlayerButton.VIDEO_TITLE -> {
       val playlistModeEnabled = viewModel.hasPlaylistSupport()
+      val appearancePreferences = koinInject<AppearancePreferences>()
+      val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
 
-      val titleInteractionSource = remember { MutableInteractionSource() }
-
-      Surface(
-        shape = CircleShape,
-        color =
-          if (hideBackground) {
-            Color.Transparent
-          } else {
-            MaterialTheme.colorScheme.surfaceContainer.copy(
-              alpha = 0.55f,
-            )
+      if (enableLiquidGlass) {
+        LiquidPillButton(
+          onClick = {
+            if (playlistModeEnabled) {
+              clickEvent()
+              onOpenSheet(Sheets.Playlist)
+            }
           },
-        contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border =
-          if (hideBackground) {
-            null
-          } else {
-            BorderStroke(
-              1.dp,
-              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            )
-          },
-        modifier =
-          Modifier
-            .height(buttonSize)
-            .clip(CircleShape)
-            .clickable(
-              interactionSource = titleInteractionSource,
-              indication = ripple(
-                bounded = true,
-              ),
-              enabled = playlistModeEnabled,
-              onClick = {
-                clickEvent()
-                onOpenSheet(Sheets.Playlist)
-              },
-            ),
-      ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          modifier =
-            Modifier
-              .padding(
-                horizontal = MaterialTheme.spacing.extraSmall,
-                vertical = MaterialTheme.spacing.small,
-              ),
+          modifier = Modifier.height(buttonSize),
+          useGlass = true,
+          horizontalPadding = MaterialTheme.spacing.extraSmall,
         ) {
           Text(
             mediaTitle ?: "",
@@ -172,6 +140,73 @@ fun RenderPlayerButton(
             )
           }
         }
+      } else {
+        val titleInteractionSource = remember { MutableInteractionSource() }
+
+        Surface(
+          shape = CircleShape,
+          color =
+            if (hideBackground) {
+              Color.Transparent
+            } else {
+              MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = 0.55f,
+              )
+            },
+          contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          tonalElevation = 0.dp,
+          shadowElevation = 0.dp,
+          border =
+            if (hideBackground) {
+              null
+            } else {
+              BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+              )
+            },
+          modifier =
+            Modifier
+              .height(buttonSize)
+              .clip(CircleShape)
+              .clickable(
+                interactionSource = titleInteractionSource,
+                indication = ripple(
+                  bounded = true,
+                ),
+                enabled = playlistModeEnabled,
+                onClick = {
+                  clickEvent()
+                  onOpenSheet(Sheets.Playlist)
+                },
+              ),
+        ) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+              Modifier
+                .padding(
+                  horizontal = MaterialTheme.spacing.extraSmall,
+                  vertical = MaterialTheme.spacing.small,
+                ),
+          ) {
+            Text(
+              mediaTitle ?: "",
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              style = MaterialTheme.typography.bodyMedium,
+              modifier = Modifier.weight(1f, fill = false),
+            )
+            viewModel.getPlaylistInfo()?.let { playlistInfo ->
+              Text(
+                " • $playlistInfo",
+                maxLines = 1,
+                overflow = TextOverflow.Visible,
+                style = MaterialTheme.typography.bodySmall,
+              )
+            }
+          }
+        }
       }
     }
 
@@ -187,36 +222,20 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.PLAYBACK_SPEED -> {
+      val appearancePreferences = koinInject<AppearancePreferences>()
+      val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+
       if (isSpeedNonOne) {
-        Surface(
-          shape = CircleShape,
-          color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-          contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-          tonalElevation = 0.dp,
-          shadowElevation = 0.dp,
-          border = if (hideBackground) null else BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-          ),
-          modifier = Modifier
-            .height(buttonSize)
-            .clip(CircleShape)
-            .clickable(
-              interactionSource = remember { MutableInteractionSource() },
-              indication = ripple(bounded = true),
-              onClick = {
-                clickEvent()
-                onOpenSheet(Sheets.PlaybackSpeed)
-              },
-            ),
-        ) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            modifier = Modifier.padding(
-              horizontal = MaterialTheme.spacing.small,
-              vertical = MaterialTheme.spacing.small,
-            ),
+        if (enableLiquidGlass) {
+          LiquidPillButton(
+            onClick = {
+              clickEvent()
+              onOpenSheet(Sheets.PlaybackSpeed)
+            },
+            modifier = Modifier.height(buttonSize),
+            useGlass = true,
+            tint = MaterialTheme.colorScheme.primary,
+            horizontalPadding = MaterialTheme.spacing.small,
           ) {
             AppSymbolIcon(
               imageVector = Icons.Default.Speed,
@@ -230,6 +249,50 @@ fun RenderPlayerButton(
               style = MaterialTheme.typography.bodyMedium,
             )
           }
+        } else {
+          Surface(
+            shape = CircleShape,
+            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = if (hideBackground) null else BorderStroke(
+              1.dp,
+              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            ),
+            modifier = Modifier
+              .height(buttonSize)
+              .clip(CircleShape)
+              .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = true),
+                onClick = {
+                  clickEvent()
+                  onOpenSheet(Sheets.PlaybackSpeed)
+                },
+              ),
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              modifier = Modifier.padding(
+                horizontal = MaterialTheme.spacing.small,
+                vertical = MaterialTheme.spacing.small,
+              ),
+            ) {
+              AppSymbolIcon(
+                imageVector = Icons.Default.Speed,
+                contentDescription = "Playback Speed",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+              )
+              Text(
+                text = String.format("%.2fx", playbackSpeed),
+                maxLines = 1,
+                style = MaterialTheme.typography.bodyMedium,
+              )
+            }
+          }
         }
       } else {
         ControlsButton(
@@ -242,48 +305,18 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.DECODER -> {
-      Surface(
-        shape = CircleShape,
-        color =
-          if (hideBackground) {
-            Color.Transparent
-          } else {
-            MaterialTheme.colorScheme.surfaceContainer.copy(
-              alpha = 0.55f,
-            )
+      val appearancePreferences = koinInject<AppearancePreferences>()
+      val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+
+      if (enableLiquidGlass) {
+        LiquidPillButton(
+          onClick = {
+            clickEvent()
+            onOpenSheet(Sheets.Decoders)
           },
-        contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border =
-          if (hideBackground) {
-            null
-          } else {
-            BorderStroke(
-              1.dp,
-              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            )
-          },
-        modifier = Modifier
-          .height(buttonSize)
-          .clip(CircleShape)
-          .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = ripple(bounded = true),
-            onClick = {
-              clickEvent()
-              onOpenSheet(Sheets.Decoders)
-            },
-          ),
-      ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          modifier =
-            Modifier
-              .padding(
-                horizontal = MaterialTheme.spacing.medium,
-                vertical = MaterialTheme.spacing.small,
-              ),
+          modifier = Modifier.height(buttonSize),
+          useGlass = true,
+          horizontalPadding = MaterialTheme.spacing.medium,
         ) {
           Text(
             text = decoder.title,
@@ -291,6 +324,58 @@ fun RenderPlayerButton(
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
           )
+        }
+      } else {
+        Surface(
+          shape = CircleShape,
+          color =
+            if (hideBackground) {
+              Color.Transparent
+            } else {
+              MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = 0.55f,
+              )
+            },
+          contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          tonalElevation = 0.dp,
+          shadowElevation = 0.dp,
+          border =
+            if (hideBackground) {
+              null
+            } else {
+              BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+              )
+            },
+          modifier = Modifier
+            .height(buttonSize)
+            .clip(CircleShape)
+            .clickable(
+              interactionSource = remember { MutableInteractionSource() },
+              indication = ripple(bounded = true),
+              onClick = {
+                clickEvent()
+                onOpenSheet(Sheets.Decoders)
+              },
+            ),
+        ) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+              Modifier
+                .padding(
+                  horizontal = MaterialTheme.spacing.medium,
+                  vertical = MaterialTheme.spacing.small,
+                ),
+          ) {
+            Text(
+              text = decoder.title,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              style = MaterialTheme.typography.bodyMedium,
+            )
+          }
         }
       }
     }
@@ -334,8 +419,66 @@ fun RenderPlayerButton(
         label = "FrameNavExpandCollapse",
       ) { expanded ->
         if (expanded) {
-          Surface(
-            shape = MaterialTheme.shapes.extraLarge,
+          val appearancePreferences = koinInject<AppearancePreferences>()
+          val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+
+          if (enableLiquidGlass) {
+            LiquidPillButton(
+              onClick = {},
+              modifier = Modifier.height(buttonSize),
+              useGlass = true,
+              horizontalPadding = 4.dp,
+            ) {
+              LiquidIconButton(
+                icon = Icons.Default.FastRewind,
+                onClick = {
+                  viewModel.frameStepBackward()
+                  viewModel.resetFrameNavigationTimer()
+                },
+                tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                size = buttonSize - 4.dp,
+                iconSize = 20.dp,
+              )
+              if (isSnapshotLoading) {
+                Box(
+                  modifier = Modifier
+                    .size(buttonSize - 4.dp)
+                    .padding(horizontal = 2.dp),
+                  contentAlignment = Alignment.Center,
+                ) {
+                  CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.primary,
+                  )
+                }
+              } else {
+                LiquidIconButton(
+                  icon = Icons.Default.Aperture,
+                  onClick = {
+                    viewModel.takeSnapshot(context)
+                    viewModel.resetFrameNavigationTimer()
+                  },
+                  onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
+                  tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  size = buttonSize - 4.dp,
+                  iconSize = 20.dp,
+                )
+              }
+              LiquidIconButton(
+                icon = Icons.Default.FastForward,
+                onClick = {
+                  viewModel.frameStepForward()
+                  viewModel.resetFrameNavigationTimer()
+                },
+                tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                size = buttonSize - 4.dp,
+                iconSize = 20.dp,
+              )
+            }
+          } else {
+            Surface(
+              shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
             border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
             modifier = Modifier.height(buttonSize),
@@ -434,6 +577,7 @@ fun RenderPlayerButton(
               }
             }
           }
+          }
         } else {
           // Collapsed: Show camera icon button
           ControlsButton(
@@ -448,9 +592,40 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.VIDEO_ZOOM -> {
+      val appearancePreferences = koinInject<AppearancePreferences>()
+      val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+
       if (kotlin.math.abs(currentZoom) >= 0.005f) {
-        @OptIn(ExperimentalFoundationApi::class)
-        Surface(
+        if (enableLiquidGlass) {
+          LiquidPillButton(
+            onClick = {
+              clickEvent()
+              onOpenSheet(Sheets.VideoZoom)
+            },
+            onLongClick = {
+              clickEvent()
+              viewModel.resetVideoZoom()
+            },
+            modifier = Modifier.height(buttonSize),
+            useGlass = true,
+            tint = MaterialTheme.colorScheme.primary,
+            horizontalPadding = MaterialTheme.spacing.small,
+          ) {
+            AppSymbolIcon(
+              imageVector = Icons.Default.ZoomIn,
+              contentDescription = "Video Zoom",
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(20.dp),
+            )
+            Text(
+              text = String.format("%.0f%%", currentZoom * 100),
+              maxLines = 1,
+              style = MaterialTheme.typography.bodyMedium,
+            )
+          }
+        } else {
+          @OptIn(ExperimentalFoundationApi::class)
+          Surface(
           shape = CircleShape,
           color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
           contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
@@ -496,6 +671,7 @@ fun RenderPlayerButton(
               style = MaterialTheme.typography.bodyMedium,
             )
           }
+        }
         }
       } else {
         ControlsButton(
@@ -672,7 +848,20 @@ fun RenderPlayerButton(
       } else {
         if (isVerticalFlipped) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
       }
-      Surface(
+      val appearancePreferences = koinInject<AppearancePreferences>()
+      val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+
+      if (enableLiquidGlass) {
+        LiquidIconButton(
+          icon = Icons.Default.Flip,
+          onClick = viewModel::toggleVerticalFlip,
+          tint = vFlipColor,
+          size = buttonSize,
+          iconSize = 20.dp,
+          modifier = Modifier.rotate(90f),
+        )
+      } else {
+        Surface(
         shape = CircleShape,
         color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
         contentColor = vFlipColor,
@@ -694,6 +883,7 @@ fun RenderPlayerButton(
           )
         }
       }
+      }
     }
 
     PlayerButton.AB_LOOP -> {
@@ -701,6 +891,8 @@ fun RenderPlayerButton(
       val isExpanded = abLoop.isExpanded
       val loopA = abLoop.a
       val loopB = abLoop.b
+      val appearancePreferences = koinInject<AppearancePreferences>()
+      val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
 
       AnimatedContent(
         targetState = isExpanded,
@@ -712,7 +904,51 @@ fun RenderPlayerButton(
         label = "ABLoopExpandCollapse",
       ) { expanded ->
         if (expanded) {
-          Surface(
+          if (enableLiquidGlass) {
+            LiquidPillButton(
+              onClick = {},
+              modifier = Modifier.height(buttonSize),
+              useGlass = true,
+              horizontalPadding = 4.dp,
+            ) {
+              LiquidPillButton(
+                onClick = { viewModel.setLoopA() },
+                useGlass = true,
+                tint = if (loopA != null) MaterialTheme.colorScheme.onTertiaryContainer else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
+                surfaceColor = if (loopA != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Unspecified,
+                height = buttonSize - 4.dp,
+                horizontalPadding = if (loopA != null) 8.dp else 16.dp,
+              ) {
+                Text(
+                  text = if (loopA != null) viewModel.formatTimestamp(loopA) else "A",
+                  style = MaterialTheme.typography.labelLarge,
+                )
+              }
+              LiquidIconButton(
+                icon = Icons.Default.Close,
+                onClick = {
+                  viewModel.clearABLoop()
+                  viewModel.toggleABLoopExpanded()
+                },
+                size = buttonSize - 4.dp,
+                iconSize = 16.dp,
+              )
+              LiquidPillButton(
+                onClick = { viewModel.setLoopB() },
+                useGlass = true,
+                tint = if (loopB != null) MaterialTheme.colorScheme.onTertiaryContainer else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
+                surfaceColor = if (loopB != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Unspecified,
+                height = buttonSize - 4.dp,
+                horizontalPadding = if (loopB != null) 8.dp else 16.dp,
+              ) {
+                Text(
+                  text = if (loopB != null) viewModel.formatTimestamp(loopB) else "B",
+                  style = MaterialTheme.typography.labelLarge,
+                )
+              }
+            }
+          } else {
+            Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
             border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
@@ -795,9 +1031,18 @@ fun RenderPlayerButton(
               }
             }
           }
+          }
         } else {
           // Collapsed: Show the custom A-B loop icon
-          Surface(
+          if (enableLiquidGlass) {
+            LiquidIconButton(
+              icon = Icons.Default.Flip,
+              onClick = viewModel::toggleABLoopExpanded,
+              tint = if (loopA != null && loopB != null) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
+              size = buttonSize,
+            )
+          } else {
+            Surface(
             shape = CircleShape,
             color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
             border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
@@ -815,6 +1060,7 @@ fun RenderPlayerButton(
               )
             }
           }
+          }
         }
       }
     }
@@ -830,8 +1076,31 @@ fun RenderPlayerButton(
 
     PlayerButton.AMBIENT_MODE -> {
         val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
-        @OptIn(ExperimentalFoundationApi::class)
-        Surface(
+        val appearancePreferences = koinInject<AppearancePreferences>()
+        val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+
+        if (enableLiquidGlass) {
+          LiquidIconButton(
+            icon = if (isAmbientEnabled) Icons.Filled.BlurOn else Icons.Outlined.BlurOff,
+            onClick = {
+              clickEvent()
+              viewModel.toggleAmbientMode()
+            },
+            onLongClick = {
+              clickEvent()
+              onOpenSheet(Sheets.AmbientConfig)
+            },
+            tint = if (isAmbientEnabled) {
+              MaterialTheme.colorScheme.primary
+            } else {
+              if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+            },
+            size = buttonSize,
+            iconSize = 24.dp,
+          )
+        } else {
+          @OptIn(ExperimentalFoundationApi::class)
+          Surface(
           shape = CircleShape,
           color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
           contentColor = if (isAmbientEnabled) {
@@ -865,11 +1134,47 @@ fun RenderPlayerButton(
             )
           }
         }
+        }
     }
 
     PlayerButton.TIME_NETWORK -> {
       val stat by rememberTimeAndNetworkStat()
-      Surface(
+      val appearancePreferences = koinInject<AppearancePreferences>()
+      val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+
+      if (enableLiquidGlass) {
+        LiquidPillButton(
+          onClick = {
+            clickEvent()
+            if (statisticsPage == 6) {
+              advancedPreferences.enabledStatisticsPage.set(0)
+            } else {
+              if (statisticsPage in 1..5) {
+                MPVLib.command("script-binding", "stats/display-stats-toggle")
+              }
+              advancedPreferences.enabledStatisticsPage.set(6)
+            }
+            onOpenSheet(Sheets.None)
+          },
+          modifier = Modifier.height(buttonSize),
+          useGlass = true,
+          horizontalPadding = MaterialTheme.spacing.small,
+        ) {
+          AppSymbolIcon(
+            imageVector = Icons.Default.AccessTime,
+            contentDescription = "Time and Network",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp),
+          )
+          Text(
+            text = "${stat.time} • ${stat.network}",
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+      } else {
+        Surface(
         shape = CircleShape,
         color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
         contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
@@ -915,18 +1220,10 @@ fun RenderPlayerButton(
           )
         }
       }
+      }
     }
 
-    PlayerButton.VIDEO_FILTERS -> {
-      ControlsButton(
-        icon = Icons.Default.Tune,
-        onClick = { onOpenPanel(Panels.VideoFilters) },
-        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(buttonSize),
-      )
-    }
-
-    PlayerButton.NONE -> { /* Do nothing */
+    PlayerButton.NONE, PlayerButton.VIDEO_FILTERS -> { /* Do nothing */
     }
   }
 }

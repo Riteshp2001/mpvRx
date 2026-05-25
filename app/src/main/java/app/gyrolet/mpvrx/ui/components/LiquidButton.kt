@@ -70,6 +70,8 @@ fun LiquidButton(
     val blurRadius by preferences.liquidButtonBlur.collectAsState()
     val lensRadius by preferences.liquidButtonLensRadius.collectAsState()
     val lensDepth by preferences.liquidButtonLensDepth.collectAsState()
+    val liquidOpacity by preferences.liquidButtonOpacity.collectAsState()
+    val liquidTint by preferences.liquidButtonTint.collectAsState()
     val density = androidx.compose.ui.platform.LocalDensity.current
 
     val interactiveHighlight = remember(animationScope) {
@@ -119,10 +121,10 @@ fun LiquidButton(
                             null
                         },
                         onDrawSurface = {
-                            if (effectiveTint.isSpecified) {
-                                drawRect(effectiveTint, blendMode = BlendMode.Screen, alpha = 0.15f)
-                                drawRect(effectiveTint.copy(alpha = 0.03f))
-                            }
+                            val tintColor = if (tint.isSpecified) tint else Color(liquidTint)
+                            drawRect(tintColor, blendMode = BlendMode.Screen, alpha = liquidOpacity)
+                            drawRect(tintColor.copy(alpha = liquidOpacity * 0.2f))
+                            
                             if (surfaceColor.isSpecified) {
                                 drawRect(surfaceColor)
                             }

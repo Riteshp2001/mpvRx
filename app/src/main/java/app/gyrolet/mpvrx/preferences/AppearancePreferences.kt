@@ -52,6 +52,8 @@ class AppearancePreferences(
   val liquidButtonBlur = preferenceStore.getFloat("liquid_button_blur", 26f)
   val liquidButtonLensRadius = preferenceStore.getFloat("liquid_button_lens_radius", 42f)
   val liquidButtonLensDepth = preferenceStore.getFloat("liquid_button_lens_depth", 72f)
+  val liquidButtonOpacity = preferenceStore.getFloat("liquid_button_opacity", 0.15f)
+  val liquidButtonTint = preferenceStore.getInt("liquid_button_tint", 0x26FFFFFF)
 
   val topLeftControls =
     preferenceStore.getString(

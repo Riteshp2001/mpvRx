@@ -3,6 +3,7 @@ package app.gyrolet.mpvrx.ui.player.controls
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.AnimatedPlayPauseIcon
+import app.gyrolet.mpvrx.ui.player.controls.components.PlayerLiquidTokens
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -142,6 +143,10 @@ import app.gyrolet.mpvrx.ui.player.controls.components.SpeedControlSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.TextPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.VolumeSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
+import app.gyrolet.mpvrx.ui.player.controls.components.LiquidPillButton
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerBackdrop
 import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -189,6 +194,7 @@ fun PlayerControls(
   val aiEnabled by aiPreferences.enabled.collectAsState()
   val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
+  val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
   val showSystemStatusBar by playerPreferences.showSystemStatusBar.collectAsState()
@@ -329,6 +335,8 @@ fun PlayerControls(
 
   DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekTime, showSeekTime, interactionSource)
 
+  val playerBackdrop = rememberLayerBackdrop()
+
   Box(
     modifier = modifier.fillMaxSize(),
   ) {
@@ -337,6 +345,24 @@ fun PlayerControls(
       speedMultiplier = animSpeed,
       animationState = videoOpenAnimState,
     )
+
+    if (enableLiquidGlass) {
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .background(
+            Brush.verticalGradient(
+              Pair(0f, Color.Black),
+              Pair(.4f, Color.Transparent),
+              Pair(.6f, Color.Transparent),
+              Pair(1f, Color.Black),
+            ),
+            alpha = transparentOverlay,
+          )
+          .layerBackdrop(playerBackdrop)
+      )
+    }
+
     if (statisticsPage == 6) {
       CustomStatsPageSixOverlay(
         modifier =
@@ -351,6 +377,7 @@ fun PlayerControls(
       LocalRippleConfiguration provides playerRippleConfiguration,
       LocalPlayerButtonsClickEvent provides { resetControlsTimestamp = System.currentTimeMillis() },
       LocalContentColor provides Color.White,
+      LocalPlayerBackdrop provides playerBackdrop,
     ) {
       CompositionLocalProvider(
         LocalLayoutDirection provides LayoutDirection.Ltr,
@@ -370,14 +397,20 @@ fun PlayerControls(
             Modifier
               .fillMaxSize()
               .onSizeChanged { controlsLayoutHeightPx = it.height }
-              .background(
-                Brush.verticalGradient(
-                  Pair(0f, Color.Black),
-                  Pair(.4f, Color.Transparent),
-                  Pair(.6f, Color.Transparent),
-                  Pair(1f, Color.Black),
-                ),
-                alpha = transparentOverlay,
+              .then(
+                if (!enableLiquidGlass) {
+                  Modifier.background(
+                    Brush.verticalGradient(
+                      Pair(0f, Color.Black),
+                      Pair(.4f, Color.Transparent),
+                      Pair(.6f, Color.Transparent),
+                      Pair(1f, Color.Black),
+                    ),
+                    alpha = transparentOverlay,
+                  )
+                } else {
+                  Modifier
+                }
               )
               .then(safeAreaInsetModifier)
               .then(navigationBarBottomInsetModifier),
@@ -796,6 +829,24 @@ fun PlayerControls(
             ) {
                 leftCustomButtons.forEach { button ->
                     key(button.id) {
+                    if (enableLiquidGlass) {
+                      LiquidPillButton(
+                        onClick = {
+                          resetControlsTimestamp = System.currentTimeMillis()
+                          viewModel.callCustomButton(button.id)
+                        },
+                        onLongClick = {
+                          haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                          resetControlsTimestamp = System.currentTimeMillis()
+                          viewModel.callCustomButtonLongPress(button.id)
+                        },
+                        useGlass = true,
+                        horizontalPadding = 12.dp,
+                        height = 36.dp,
+                      ) {
+                        Text(text = button.label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), maxLines = 1, softWrap = false)
+                      }
+                    } else {
                     val buttonInteractionSource = remember { MutableInteractionSource() }
                     Surface(
                         shape = CircleShape,
@@ -827,6 +878,7 @@ fun PlayerControls(
                             maxLines = 1,
                             softWrap = false
                         )
+                    }
                     }
                     }
                 }
@@ -858,6 +910,24 @@ fun PlayerControls(
             ) {
                 rightCustomButtons.forEach { button ->
                     key(button.id) {
+                    if (enableLiquidGlass) {
+                      LiquidPillButton(
+                        onClick = {
+                          resetControlsTimestamp = System.currentTimeMillis()
+                          viewModel.callCustomButton(button.id)
+                        },
+                        onLongClick = {
+                          haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                          resetControlsTimestamp = System.currentTimeMillis()
+                          viewModel.callCustomButtonLongPress(button.id)
+                        },
+                        useGlass = true,
+                        horizontalPadding = 12.dp,
+                        height = 36.dp,
+                      ) {
+                        Text(text = button.label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), maxLines = 1, softWrap = false)
+                      }
+                    } else {
                     val buttonInteractionSource = remember { MutableInteractionSource() }
                     Surface(
                         shape = CircleShape,
@@ -889,6 +959,7 @@ fun PlayerControls(
                             maxLines = 1,
                             softWrap = false
                         )
+                    }
                     }
                     }
                 }
@@ -921,6 +992,24 @@ fun PlayerControls(
             ) {
                 customButtons.forEach { button ->
                     key(button.id) {
+                    if (enableLiquidGlass) {
+                      LiquidPillButton(
+                        onClick = {
+                          resetControlsTimestamp = System.currentTimeMillis()
+                          viewModel.callCustomButton(button.id)
+                        },
+                        onLongClick = {
+                          haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                          resetControlsTimestamp = System.currentTimeMillis()
+                          viewModel.callCustomButtonLongPress(button.id)
+                        },
+                        useGlass = true,
+                        horizontalPadding = 12.dp,
+                        height = 36.dp,
+                      ) {
+                        Text(text = button.label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), maxLines = 1, softWrap = false)
+                      }
+                    } else {
                     val buttonInteractionSource = remember { MutableInteractionSource() }
                     Surface(
                         shape = CircleShape,
@@ -952,6 +1041,7 @@ fun PlayerControls(
                             maxLines = 1,
                             softWrap = false
                         )
+                    }
                     }
                     }
                 }
@@ -989,38 +1079,56 @@ fun PlayerControls(
         ) {
           val segment = currentSkippableSegment ?: return@AnimatedVisibility
           val segmentColor = segment.type.accentColor
-          val segmentSurfaceColor =
-            Color(
-              red = segmentColor.red * 0.30f,
-              green = segmentColor.green * 0.30f,
-              blue = segmentColor.blue * 0.30f,
-              alpha = 0.88f,
-            )
-          val segmentBorderColor =
-            Color(
-              red = segmentColor.red * 0.72f,
-              green = segmentColor.green * 0.72f,
-              blue = segmentColor.blue * 0.72f,
-              alpha = 0.96f,
-            )
-          Surface(
-            shape = RoundedCornerShape(999.dp),
-            color = segmentSurfaceColor,
-            border = BorderStroke(1.5.dp, segmentBorderColor),
-            modifier =
-              Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .clickable {
-                  resetControlsTimestamp = System.currentTimeMillis()
-                  viewModel.skipActiveSegment()
-                },
-          ) {
-            Text(
-              text = segment.label,
-              style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-              color = segmentColor.copy(alpha = 1f),
-              modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
+          if (enableLiquidGlass) {
+            LiquidPillButton(
+              onClick = {
+                resetControlsTimestamp = System.currentTimeMillis()
+                viewModel.skipActiveSegment()
+              },
+              useGlass = true,
+              tint = segmentColor,
+              height = 40.dp,
+              horizontalPadding = 16.dp,
+            ) {
+              Text(
+                text = segment.label,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+              )
+            }
+          } else {
+            val segmentSurfaceColor =
+              Color(
+                red = segmentColor.red * 0.30f,
+                green = segmentColor.green * 0.30f,
+                blue = segmentColor.blue * 0.30f,
+                alpha = 0.88f,
+              )
+            val segmentBorderColor =
+              Color(
+                red = segmentColor.red * 0.72f,
+                green = segmentColor.green * 0.72f,
+                blue = segmentColor.blue * 0.72f,
+                alpha = 0.96f,
+              )
+            Surface(
+              shape = RoundedCornerShape(999.dp),
+              color = segmentSurfaceColor,
+              border = BorderStroke(1.5.dp, segmentBorderColor),
+              modifier =
+                Modifier
+                  .clip(RoundedCornerShape(999.dp))
+                  .clickable {
+                    resetControlsTimestamp = System.currentTimeMillis()
+                    viewModel.skipActiveSegment()
+                  },
+            ) {
+              Text(
+                text = segment.label,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = segmentColor.copy(alpha = 1f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+              )
+            }
           }
         }
 
@@ -1059,7 +1167,95 @@ fun PlayerControls(
                 )
 
               if (playlistMode && viewModel.hasPlaylistSupport()) {
-                androidx.compose.foundation.layout.Row(
+                if (enableLiquidGlass) {
+                  val backdrop = playerBackdrop
+                  androidx.compose.foundation.layout.Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                  ) {
+                    app.gyrolet.mpvrx.ui.components.LiquidButton(
+                      onClick = {
+                        resetControlsTimestamp = System.currentTimeMillis()
+                        if (viewModel.hasPrevious()) viewModel.playPrevious()
+                      },
+                      backdrop = backdrop,
+                      modifier = Modifier.size(56.dp),
+                      useGlass = true,
+                      surfaceColor = PlayerLiquidTokens.surfaceColor,
+                      height = 56.dp,
+                      horizontalPadding = 0.dp,
+                    ) {
+                      Icon(
+                        imageVector = Icons.Default.SkipPrevious,
+                        contentDescription = "Previous",
+                        tint = if (viewModel.hasPrevious()) {
+                          if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+                        } else {
+                          if (hideBackground) {
+                            controlColor.copy(alpha = 0.38f)
+                          } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          }
+                        },
+                        modifier = Modifier
+                          .fillMaxSize()
+                          .padding(MaterialTheme.spacing.small),
+                      )
+                    }
+
+                    app.gyrolet.mpvrx.ui.components.LiquidButton(
+                      onClick = {
+                        resetControlsTimestamp = System.currentTimeMillis()
+                        viewModel.pauseUnpause()
+                      },
+                      backdrop = backdrop,
+                      modifier = Modifier.size(64.dp),
+                      useGlass = true,
+                      surfaceColor = PlayerLiquidTokens.surfaceColor,
+                      height = 64.dp,
+                      horizontalPadding = 0.dp,
+                    ) {
+                      AnimatedPlayPauseIcon(
+                        isPlaying = paused == false,
+                        modifier = Modifier
+                          .fillMaxSize()
+                          .padding(MaterialTheme.spacing.medium),
+                        tint = LocalContentColor.current,
+                      )
+                    }
+
+                    app.gyrolet.mpvrx.ui.components.LiquidButton(
+                      onClick = {
+                        resetControlsTimestamp = System.currentTimeMillis()
+                        if (viewModel.hasNext()) viewModel.playNext()
+                      },
+                      backdrop = backdrop,
+                      modifier = Modifier.size(56.dp),
+                      useGlass = true,
+                      surfaceColor = PlayerLiquidTokens.surfaceColor,
+                      height = 56.dp,
+                      horizontalPadding = 0.dp,
+                    ) {
+                      Icon(
+                        imageVector = Icons.Default.SkipNext,
+                        contentDescription = "Next",
+                        tint = if (viewModel.hasNext()) {
+                          if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+                        } else {
+                          if (hideBackground) {
+                            controlColor.copy(alpha = 0.38f)
+                          } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          }
+                        },
+                        modifier = Modifier
+                          .fillMaxSize()
+                          .padding(MaterialTheme.spacing.small),
+                      )
+                    }
+                  }
+                } else {
+                  androidx.compose.foundation.layout.Row(
                   horizontalArrangement = Arrangement.spacedBy(24.dp),
                   verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -1215,8 +1411,32 @@ fun PlayerControls(
                     )
                   }
                 }
+                }
               } else {
-                Surface(
+                if (enableLiquidGlass) {
+                  val backdrop = playerBackdrop
+                  app.gyrolet.mpvrx.ui.components.LiquidButton(
+                    onClick = {
+                      resetControlsTimestamp = System.currentTimeMillis()
+                      viewModel.pauseUnpause()
+                    },
+                    backdrop = backdrop,
+                    modifier = Modifier.size(64.dp),
+                    useGlass = true,
+                    surfaceColor = PlayerLiquidTokens.surfaceColor,
+                    height = 64.dp,
+                    horizontalPadding = 0.dp,
+                  ) {
+                    AnimatedPlayPauseIcon(
+                      isPlaying = paused == false,
+                      modifier = Modifier
+                        .fillMaxSize()
+                        .padding(MaterialTheme.spacing.medium),
+                      tint = LocalContentColor.current,
+                    )
+                  }
+                } else {
+                  Surface(
                   modifier =
                     Modifier
                       .size(64.dp)
@@ -1255,8 +1475,9 @@ fun PlayerControls(
                       .fillMaxSize()
                       .padding(MaterialTheme.spacing.medium),
                     tint = LocalContentColor.current,
-                  )
-                }
+                   )
+                 }
+                 }
               }
             }
           }
@@ -1737,9 +1958,8 @@ private fun CustomStatsPageSixOverlay(
         batteryWattsText  = battery.wattsText,
         batteryTempText   = battery.tempText,
         hdrActive         = runCatching {
-          val transfer = MPVLib.getPropertyString("video-params/transfer")
-          val primaries = MPVLib.getPropertyString("video-params/primaries")
-          if (transfer == "pq" || transfer == "hlg" || primaries == "bt.2020") "HDR Active" else "SDR"
+          val hdrProp = MPVLib.getPropertyString("hdr-active")
+          if (hdrProp == "yes") "HDR Active" else "SDR"
         }.getOrDefault("SDR"),
       )
 
