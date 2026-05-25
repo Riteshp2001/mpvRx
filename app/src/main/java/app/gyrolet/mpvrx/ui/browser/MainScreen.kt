@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -43,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.presentation.Screen
@@ -50,6 +52,12 @@ import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
 import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistScreen
 import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
 
 import kotlinx.serialization.Serializable
 
@@ -117,6 +125,15 @@ object MainScreen : Screen {
     val showNetworkTab by appearancePreferences.showNetworkTab.collectAsState()
     val hideNavigationBar = NavigationBarState.shouldHideNavigationBar
     val isPermissionDenied = NavigationBarState.isPermissionDenied
+
+    val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
+    val liquidBlur by appearancePreferences.liquidDialogBlur.collectAsState()
+    val liquidSaturation by appearancePreferences.liquidDialogSaturation.collectAsState()
+    val liquidBrightness by appearancePreferences.liquidDialogBrightness.collectAsState()
+    val liquidLensRadius by appearancePreferences.liquidDialogLensRadius.collectAsState()
+    val liquidLensDepth by appearancePreferences.liquidDialogLensDepth.collectAsState()
+    val liquidAlpha by appearancePreferences.liquidDialogContainerAlpha.collectAsState()
+    val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
     
     val visibleTabs = remember(
       showHomeTab,
@@ -170,6 +187,33 @@ object MainScreen : Screen {
           NavigationBar(
             modifier = Modifier
               .clip(AppShapeScale.extraLargeIncreased)
+              .then(
+                if (enableLiquidGlass) {
+                  Modifier.drawBackdrop(
+                    backdrop = rememberLayerBackdrop(),
+                    shape = { AppShapeScale.extraLargeIncreased },
+                    effects = {
+                      colorControls(
+                        brightness = liquidBrightness * 0.5f,
+                        saturation = liquidSaturation
+                      )
+                      blur(with(density) { (liquidBlur * 0.8f).dp.toPx() })
+                      lens(
+                        with(density) { (liquidLensRadius * 0.8f).dp.toPx() },
+                        with(density) { (liquidLensDepth * 0.8f).dp.toPx() },
+                        depthEffect = true
+                      )
+                    },
+                    highlight = { Highlight.Plain },
+                    onDrawSurface = {
+                      drawRect(surfaceColor.copy(alpha = liquidAlpha * 0.6f))
+                    }
+                  )
+                } else {
+                  Modifier
+                }
+              ),
+            containerColor = if (enableLiquidGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
           ) {
             visibleTabs.forEach { tab ->
               NavigationBarItem(

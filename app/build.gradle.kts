@@ -260,6 +260,8 @@ dependencies {
   implementation(libs.nanohttpd)
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
+  implementation(libs.kyant.backdrop)
+  implementation(libs.kyant.shapes)
 }
 
 /* ---------------- Git helpers ---------------- */

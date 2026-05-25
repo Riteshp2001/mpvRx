@@ -50,6 +50,8 @@
   <string name="pref_nav_playlists_summary">Show or hide Playlists in the bottom navigation bar</string>
   <string name="pref_nav_network_title">Show Network tab</string>
   <string name="pref_nav_network_summary">Show or hide Network in the bottom navigation bar</string>
+  <string name="pref_anim_liquid_glass_title">Liquid Glass Effects</string>
+  <string name="pref_anim_liquid_glass_summary">Enable advanced physical glass refraction and optical distortion effects</string>
   <string name="pref_appearance_nav_style_slide">Slide</string>
   <string name="pref_appearance_nav_style_fade">Fade</string>
   <string name="pref_appearance_nav_style_none">None (Instant)</string>
@@ -1286,4 +1288,19 @@
     <string name="exo_player">Player</string>
     <string name="exo_media_library">Media library</string>
     <string name="exo_appearance">Appearance</string>
+
+    <!-- GPU Driver -->
+    <string name="pref_gpu_driver_title">GPU Driver Manager</string>
+    <string name="gpu_driver_device_info">Device GPU Information</string>
+    <string name="gpu_driver_installed_drivers">Installed Drivers</string>
+    <string name="gpu_driver_fetch_drivers">Fetch Remote Drivers</string>
+    <string name="gpu_driver_install_from_file">Install from ZIP</string>
+    <string name="gpu_driver_fetching">Fetching driver list…</string>
+    <string name="gpu_driver_install_success">Driver installed successfully</string>
+    <string name="gpu_driver_install_failed">Failed to install driver: %1$s</string>
+    <string name="gpu_driver_delete_confirm">Are you sure you want to delete this driver?</string>
+    <string name="gpu_driver_restart_required">Restart MpvRx to apply the new GPU driver</string>
+    <string name="gpu_driver_not_supported">Custom GPU drivers are not supported on this device architecture.</string>
+    <string name="gpu_driver_show_hud">Show Driver HUD</string>
+    <string name="gpu_driver_show_hud_summary">Overlay driver version and performance info during playback</string>
 </resources>

@@ -20,15 +20,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.components.LiquidButton
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.gyrolet.mpvrx.ui.theme.spacing
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.Backdrop
 import org.koin.compose.koinInject
+
+val LocalPlayerBackdrop = androidx.compose.runtime.compositionLocalOf<com.kyant.backdrop.Backdrop?> { null }
 
 @Suppress("ModifierClickableOrder")
 @OptIn(ExperimentalFoundationApi::class)
@@ -40,49 +46,76 @@ fun ControlsButton(
   onLongClick: () -> Unit = {},
   title: String? = null,
   color: Color? = null,
+  buttonSize: Dp = 45.dp,
+  backdrop: Backdrop? = null,
 ) {
-  val interactionSource = remember { MutableInteractionSource() }
   val appearancePreferences = koinInject<AppearancePreferences>()
+  val enableLiquidGlass by appearancePreferences.enableLiquidGlass.collectAsState()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
-
   val clickEvent = LocalPlayerButtonsClickEvent.current
-  Surface(
-    modifier =
-      modifier
-        .clip(CircleShape)
-        .combinedClickable(
-          onClick = {
-            clickEvent()
-            onClick()
-          },
-          onLongClick = onLongClick,
-          interactionSource = interactionSource,
-          indication = ripple(),
-        ),
-    shape = CircleShape,
-    color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-    contentColor = color ?: MaterialTheme.colorScheme.onSurface,
-    tonalElevation = 0.dp,
-    shadowElevation = 0.dp,
-    border =
-      if (hideBackground) {
-        null
-      } else {
-        BorderStroke(
-          1.dp,
-          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-        )
+  val resolvedBackdrop = backdrop ?: LocalPlayerBackdrop.current ?: rememberLayerBackdrop()
+
+  if (enableLiquidGlass) {
+    LiquidButton(
+      onClick = {
+        clickEvent()
+        onClick()
       },
-  ) {
-    Icon(
-      imageVector = icon,
-      contentDescription = title,
-      tint = color ?: MaterialTheme.colorScheme.onSurface,
+      onLongClick = onLongClick,
+      backdrop = resolvedBackdrop,
+      modifier = modifier.size(buttonSize),
+      tint = color ?: Color.White,
+      surfaceColor = PlayerLiquidTokens.surfaceColor,
+      height = buttonSize,
+      horizontalPadding = 0.dp,
+    ) {
+      Icon(
+        imageVector = icon,
+        contentDescription = title,
+        tint = color ?: Color.White,
+        modifier = Modifier.size(20.dp),
+      )
+    }
+  } else {
+    val interactionSource = remember { MutableInteractionSource() }
+    Surface(
       modifier =
-        Modifier
-          .padding(MaterialTheme.spacing.small)
-          .size(20.dp),
-    )
+        modifier
+          .clip(CircleShape)
+          .combinedClickable(
+            onClick = {
+              clickEvent()
+              onClick()
+            },
+            onLongClick = onLongClick,
+            interactionSource = interactionSource,
+            indication = ripple(),
+          ),
+      shape = CircleShape,
+      color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+      contentColor = color ?: MaterialTheme.colorScheme.onSurface,
+      tonalElevation = 0.dp,
+      shadowElevation = 0.dp,
+      border =
+        if (hideBackground) {
+          null
+        } else {
+          BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f),
+          )
+        },
+    ) {
+      Icon(
+        imageVector = icon,
+        contentDescription = title,
+        tint = color ?: MaterialTheme.colorScheme.onSurface,
+        modifier =
+          Modifier
+            .padding(MaterialTheme.spacing.small)
+            .size(20.dp),
+      )
+    }
   }
 }
 
@@ -111,4 +144,3 @@ private fun PreviewControlsButton() {
     onClick = {},
   )
 }
-

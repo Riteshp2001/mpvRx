@@ -1,5 +1,6 @@
 package app.gyrolet.mpvrx.di
 
+import app.gyrolet.mpvrx.domain.gpu.GpuDriverManager
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.domain.thumbnail.CoilVideoThumbnailDecoder
@@ -39,6 +40,7 @@ import okhttp3.OkHttpClient
 import okio.FileSystem
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.qualifier.named
+import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 import java.util.concurrent.TimeUnit
 
@@ -51,6 +53,7 @@ val domainModule = module {
             .cookieJar(AndroidCookieJar())
             .build()
     }
+    single { GpuDriverManager(get(), get()) }
     single<ImageLoader> {
         val context = androidContext()
         val browserPreferences = get<BrowserPreferences>()

@@ -301,11 +301,13 @@ object Icons {
     val RepeatOn = Shared.RepeatOn
     val RepeatOne = Shared.RepeatOne
     val ResetIso = Shared.ResetIso
+    val Restore = Shared.Restore
     val RoundedCorner = Shared.RoundedCorner
     val ScreenRotation = Shared.ScreenRotation
     val Screenshot = Shared.Screenshot
     val SdCard = Shared.SdCard
     val Search = Shared.Search
+    val Settings = Shared.Settings
     val Shadow = Shared.Shadow
     val Share = Shared.Share
     val Shuffle = Shared.Shuffle
@@ -388,6 +390,7 @@ object Icons {
     val Repeat = Shared.Repeat
     val RepeatOn = Shared.RepeatOn
     val RepeatOne = Shared.RepeatOne
+    val Restore = Shared.Restore
     val Search = Shared.Search
     val Settings = Shared.Settings
     val Share = Shared.Share
@@ -427,6 +430,7 @@ object Icons {
     val Repeat = Shared.Repeat
     val RepeatOn = Shared.RepeatOn
     val RepeatOne = Shared.RepeatOne
+    val Restore = Shared.Restore
     val ScreenRotation = Shared.ScreenRotation
     val Search = Shared.Search
     val Settings = Shared.Settings

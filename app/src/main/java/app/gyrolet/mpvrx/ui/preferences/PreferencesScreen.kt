@@ -327,33 +327,7 @@ object PreferencesScreen : Screen {
             }
           }
 
-          // ── 7. Advanced ───────────────────────────────────────────────────
-          if (!enableExoPlayer) {
-            item { PreferenceSectionHeader(title = stringResource(R.string.pref_section_advanced)) }
-            item {
-              PreferenceCard {
-                Preference(
-                  title = { Text(stringResource(R.string.pref_advanced)) },
-                  summary = {
-                    Text(
-                      stringResource(R.string.pref_advanced_summary),
-                      color = MaterialTheme.colorScheme.outline
-                    )
-                  },
-                  icon = {
-                    Icon(
-                      Icons.Alternatives.AdvancedSettings,
-                      contentDescription = null,
-                      tint = MaterialTheme.colorScheme.primary
-                    )
-                  },
-                  onClick = { backstack.add(AdvancedPreferencesScreen) },
-                )
-              }
-            }
-          }
-
-          // ── 8. ExoPlayer ──────────────────────────────────────────────────
+          // ── 7. ExoPlayer ──────────────────────────────────────────────────
           item { PreferenceSectionHeader(title = "ExoPlayer") }
           item {
             PreferenceCard {
@@ -425,6 +399,32 @@ object PreferencesScreen : Screen {
             }
           }
 
+          // ── 8. Advanced ───────────────────────────────────────────────────
+          if (!enableExoPlayer) {
+            item { PreferenceSectionHeader(title = stringResource(R.string.pref_section_advanced)) }
+            item {
+              PreferenceCard {
+                Preference(
+                  title = { Text(stringResource(R.string.pref_advanced)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_advanced_summary),
+                      color = MaterialTheme.colorScheme.outline
+                    )
+                  },
+                  icon = {
+                    Icon(
+                      Icons.Alternatives.AdvancedSettings,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.primary
+                    )
+                  },
+                  onClick = { backstack.add(AdvancedPreferencesScreen) },
+                )
+              }
+            }
+          }
+
           // ── 9. About ──────────────────────────────────────────────────────
           item { PreferenceSectionHeader(title = stringResource(R.string.pref_section_about)) }
           item {
@@ -434,6 +434,19 @@ object PreferencesScreen : Screen {
                 summary = { Text(stringResource(R.string.pref_about_summary), color = MaterialTheme.colorScheme.outline) },
                 icon = { Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { backstack.add(AboutScreen) },
+              )
+            }
+          }
+
+          // ── 10. Liquid Glass ──────────────────────────────────────────────
+          item { PreferenceSectionHeader(title = "Liquid Glass") }
+          item {
+            PreferenceCard {
+              Preference(
+                title = { Text("Liquid Glass Effects") },
+                summary = { Text("Optical glass refraction and backdrop effects", color = MaterialTheme.colorScheme.outline) },
+                icon = { Icon(Icons.Default.BlurOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                onClick = { backstack.add(LiquidSettingsScreen) },
               )
             }
           }

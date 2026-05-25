@@ -48,8 +48,10 @@ import app.gyrolet.mpvrx.ui.player.MPVProfile
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.preferences.VulkanUtils
+import app.gyrolet.mpvrx.ui.preferences.GpuDriverPreferencesScreen
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
+import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SwitchPreference
 import org.koin.compose.koinInject
@@ -289,6 +291,28 @@ object DecoderPreferencesScreen : Screen {
                     )
                   }
                 },
+              )
+
+              PreferenceDivider()
+
+              Preference(
+                title = { Text(stringResource(R.string.pref_gpu_driver_title)) },
+                summary = {
+                  Text(
+                    "Manage custom GPU drivers (Adreno/Turnip)",
+                    color = MaterialTheme.colorScheme.outline
+                  )
+                },
+                icon = {
+                  Icon(
+                    Icons.Default.Memory,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                  )
+                },
+                onClick = {
+                  backstack.add(GpuDriverPreferencesScreen)
+                }
               )
 
               PreferenceDivider()
