@@ -56,12 +56,23 @@ import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
 import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistScreen
 import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
+import app.gyrolet.mpvrx.ui.components.LocalLiquidBottomTabScale
+import app.gyrolet.mpvrx.ui.components.LocalScreenBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 import kotlinx.serialization.Serializable
 
@@ -166,6 +177,9 @@ object MainScreen : Screen {
       }
     }
 
+    // Backdrop for Liquid Glass effect
+    val screenBackdrop = rememberLayerBackdrop()
+
     // Scaffold with bottom navigation bar
     Scaffold(
       modifier = Modifier.fillMaxSize(),
@@ -196,26 +210,61 @@ object MainScreen : Screen {
                   selectedTab = visibleTabs[index] 
                 }
               },
-              backdrop = rememberLayerBackdrop(),
+              backdrop = screenBackdrop,
               tabsCount = visibleTabs.size,
-              modifier = Modifier.padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+              modifier = Modifier
+                .navigationBarsPadding()
+                .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)
             ) {
               visibleTabs.forEach { tab ->
+                val isSelected = selectedTab == tab
+                val tabScale = LocalLiquidBottomTabScale.current
+                val interactionSource = remember { MutableInteractionSource() }
+
                 Box(
                   modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .clickable(
-                      interactionSource = remember { MutableInteractionSource() },
-                      indication = null,
-                      onClick = { selectedTab = tab }
-                    ),
+                      interactionSource = interactionSource,
+                      indication = null
+                    ) {
+                      selectedTab = tab
+                    },
                   contentAlignment = Alignment.Center
                 ) {
-                  when (tab) {
-                    MainTab.HOME -> Icon(Icons.Filled.Home, contentDescription = "Home")
-                    MainTab.RECENTS -> Icon(Icons.Filled.History, contentDescription = "Recents")
-                    MainTab.PLAYLISTS -> Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists")
-                    MainTab.NETWORK -> Icon(Icons.Filled.BringYourOwnIp, contentDescription = "Network")
+                  Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.graphicsLayer {
+                      val scale = tabScale()
+                      scaleX = scale
+                      scaleY = scale
+                    }
+                  ) {
+                    val iconTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    val textTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+
+                    when (tab) {
+                      MainTab.HOME -> Icon(Icons.Filled.Home, contentDescription = "Home", tint = iconTint, modifier = Modifier.size(22.dp))
+                      MainTab.RECENTS -> Icon(Icons.Filled.History, contentDescription = "Recents", tint = iconTint, modifier = Modifier.size(22.dp))
+                      MainTab.PLAYLISTS -> Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists", tint = iconTint, modifier = Modifier.size(22.dp))
+                      MainTab.NETWORK -> Icon(Icons.Filled.BringYourOwnIp, contentDescription = "Network", tint = iconTint, modifier = Modifier.size(22.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(3.dp))
+
+                    Text(
+                      text = when (tab) {
+                        MainTab.HOME -> "Home"
+                        MainTab.RECENTS -> "Recents"
+                        MainTab.PLAYLISTS -> "Playlists"
+                        MainTab.NETWORK -> "Network"
+                      },
+                      style = MaterialTheme.typography.labelSmall,
+                      color = textTint,
+                      maxLines = 1
+                    )
                   }
                 }
               }
@@ -255,9 +304,18 @@ object MainScreen : Screen {
         }
       }
     ) { paddingValues ->
-      Box(modifier = Modifier.fillMaxSize()) {
-        // Always use 80dp bottom padding regardless of navigation bar visibility
-        val fabBottomPadding = 80.dp
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .layerBackdrop(screenBackdrop)
+      ) {
+        val bottomNavVisible = !hideNavigationBar && visibleTabs.isNotEmpty() && !isPermissionDenied
+        val fabBottomPadding =
+          if (bottomNavVisible) {
+            if (enableLiquidGlass) 112.dp else 80.dp
+          } else {
+            0.dp
+          }
 
         AnimatedContent(
           targetState = selectedTab,
@@ -274,7 +332,8 @@ object MainScreen : Screen {
           label = "tab_animation"
         ) { targetTab ->
           CompositionLocalProvider(
-            LocalNavigationBarHeight provides fabBottomPadding
+            LocalNavigationBarHeight provides fabBottomPadding,
+            LocalScreenBackdrop provides screenBackdrop
           ) {
             val effectiveTab = if (visibleTabs.isEmpty()) MainTab.HOME else targetTab
             when (effectiveTab) {

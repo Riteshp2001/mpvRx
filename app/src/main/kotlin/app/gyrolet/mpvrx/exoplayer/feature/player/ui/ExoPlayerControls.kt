@@ -228,7 +228,11 @@ fun ExoPlayerControls(
                 enter = fadeIn(playerControlsEnterAnimationSpec()),
                 exit = fadeOut(playerControlsExitAnimationSpec()),
                 modifier = Modifier.constrainAs(centerControls) {
-                    centerTo(parent)
+                    if (isPortrait) {
+                        bottom.linkTo(bottomControls.top, spacing.medium)
+                    } else {
+                        centerTo(parent)
+                    }
                 }
             ) {
                 Row(

@@ -241,22 +241,23 @@ internal class VideoFiltersEffect(
               if (uAmbienceEnabled > 0.5 && (video_uv.x < 0.0 || video_uv.x > 1.0 || video_uv.y < 0.0 || video_uv.y > 1.0)) {
                 // Ambient region
                 vec3 avg_color = vec3(0.0);
-                const int samples = 20;
-                vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
+                float base_seed = 42.0;
                 
-                for (int i = 0; i < samples; i++) {
-                  float angle = float(i) * 2.39996; // Golden angle
-                  float r = sqrt(float(i) + 0.5) / sqrt(float(samples)) * 0.15; // Blur radius
-                  vec2 offset = vec2(cos(angle), sin(angle)) * r;
-                  vec2 sample_pos = clamp(edge_uv + offset, 0.0, 1.0);
+                for (int i = 0; i < 20; i++) {
+                  float seed = base_seed + float(i) * 0.618034;
+                  float x = hash(vec2(seed, 0.123));
+                  float y = hash(vec2(seed, 0.456));
+                  
+                  vec2 sample_pos = vec2(x, y);
                   avg_color += texture2D(uTexSampler, sample_pos).rgb;
                 }
-                avg_color /= float(samples);
+                avg_color /= 20.0;
 
                 float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
                 avg_color = mix(vec3(luma), avg_color, 1.3); // Saturation boost
                 avg_color *= 0.30; // Brightness
 
+                vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
                 float dist = length(video_uv - edge_uv);
                 float fade = exp(-dist * 2.5);
                 avg_color *= fade;
