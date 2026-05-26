@@ -3,13 +3,18 @@ package app.gyrolet.mpvrx.exoplayer.feature.player.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,6 +33,10 @@ fun MenuRootContent(
     isLockEnabled: Boolean,
     isPipSupported: Boolean,
     isTakingScreenshot: Boolean,
+    isVideoFiltersEnabled: Boolean,
+    isStatsEnabled: Boolean,
+    isAmbienceModeEnabled: Boolean,
+    isShuffleEnabled: Boolean,
     onNavigate: (MenuRoute) -> Unit,
     onLockClick: () -> Unit,
     onAmbienceClick: () -> Unit,
@@ -37,6 +46,7 @@ fun MenuRootContent(
     onLoopClick: () -> Unit,
     onShuffleClick: () -> Unit,
     onStatsClick: () -> Unit,
+    onVideoFiltersToggle: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -45,10 +55,12 @@ fun MenuRootContent(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        MenuItemRow(
+        // Stats toggle
+        MenuToggleItemRow(
             icon = NextIcons.BugReport,
             text = stringResource(R.string.player_sheets_stats_page_title),
             testTag = "menu_item_stats",
+            isChecked = isStatsEnabled,
             onClick = onStatsClick,
         )
         MenuItemRow(
@@ -75,11 +87,14 @@ fun MenuRootContent(
             testTag = "menu_item_decoder",
             onClick = { onNavigate(MenuRoute.Decoder) },
         )
-        MenuItemRow(
+        // Video Filters toggle
+        MenuToggleItemRow(
             icon = NextIcons.Sensitivity,
             text = stringResource(R.string.video_filters),
             testTag = "menu_item_video_filters",
+            isChecked = isVideoFiltersEnabled,
             onClick = { onNavigate(MenuRoute.VideoFilters) },
+            onToggle = onVideoFiltersToggle,
         )
         MenuItemRow(
             icon = NextIcons.Timer,
@@ -93,10 +108,12 @@ fun MenuRootContent(
             testTag = "menu_item_lock",
             onClick = onLockClick,
         )
-        MenuItemRow(
+        // Ambience Mode toggle
+        MenuToggleItemRow(
             icon = NextIcons.Style,
             text = stringResource(R.string.ambience_mode),
             testTag = "menu_item_ambience",
+            isChecked = isAmbienceModeEnabled,
             onClick = onAmbienceClick,
         )
         if (isPipSupported) {
@@ -126,10 +143,12 @@ fun MenuRootContent(
             testTag = "menu_item_loop",
             onClick = onLoopClick,
         )
-        MenuItemRow(
+        // Shuffle toggle
+        MenuToggleItemRow(
             icon = NextIcons.Shuffle,
             text = stringResource(R.string.shuffle),
             testTag = "menu_item_shuffle",
+            isChecked = isShuffleEnabled,
             onClick = onShuffleClick,
         )
     }
@@ -168,6 +187,82 @@ private fun MenuItemRow(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/**
+ * Menu item row with a toggle switch that dynamically adapts to the theme colors.
+ * The switch uses Material theme primary color when ON, and surfaceVariant when OFF.
+ * Clicking the row text/icon triggers [onClick], clicking the switch triggers [onToggle]
+ * (or [onClick] if [onToggle] is null).
+ */
+@Composable
+private fun MenuToggleItemRow(
+    icon: AppIcon,
+    text: String,
+    testTag: String,
+    isChecked: Boolean,
+    onClick: () -> Unit,
+    onToggle: (() -> Unit)? = null,
+    isEnabled: Boolean = true,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .testTag(testTag),
+        onClick = onClick,
+        enabled = isEnabled,
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isChecked) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isChecked) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = isChecked,
+                onCheckedChange = { onToggle?.invoke() ?: onClick() },
+                enabled = isEnabled,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                ),
+                thumbContent = if (isChecked) {
+                    {
+                        Icon(
+                            imageVector = NextIcons.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                        )
+                    }
+                } else null,
             )
         }
     }

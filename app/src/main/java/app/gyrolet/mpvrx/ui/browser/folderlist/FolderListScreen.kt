@@ -764,7 +764,11 @@ private fun GridContent(
       horizontalArrangement = Arrangement.spacedBy(2.dp),
       verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-      items(count = folders.size, key = { index -> folders[index].bucketId }) { index ->
+      items(
+        count = folders.size,
+        key = { index -> folders[index].bucketId },
+        contentType = { "folder" },
+      ) { index ->
         val folder = folders[index]
         val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
           val file = File(filePath)
@@ -843,7 +847,11 @@ private fun ListContent(
         bottom = navigationBarHeight
       ),
     ) {
-      items(folders) { folder ->
+      items(
+        items = folders,
+        key = { it.bucketId },
+        contentType = { "folder" },
+      ) { folder ->
         val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
           val file = File(filePath)
           file.parent == folder.path
@@ -1146,7 +1154,11 @@ private fun SearchResultsContent(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
-        items(count = folders.size, key = { index -> folders[index].bucketId }) { index ->
+        items(
+          count = folders.size,
+          key = { index -> folders[index].bucketId },
+          contentType = { "folder" },
+        ) { index ->
           val folder = folders[index]
           FolderCard(
             folder = folder,
@@ -1160,7 +1172,11 @@ private fun SearchResultsContent(
           )
         }
         
-        items(count = videos.size, key = { index -> videos[index].id }) { index ->
+        items(
+          count = videos.size,
+          key = { index -> videos[index].id },
+          contentType = { "video" },
+        ) { index ->
           val video = videos[index]
           VideoCard(
             video = video,
@@ -1184,7 +1200,11 @@ private fun SearchResultsContent(
           bottom = navigationBarHeight + 8.dp
         ),
       ) {
-        items(count = folders.size, key = { index -> folders[index].bucketId }) { index ->
+        items(
+          count = folders.size,
+          key = { index -> folders[index].bucketId },
+          contentType = { "folder" },
+        ) { index ->
           val folder = folders[index]
           FolderCard(
             folder = folder,
@@ -1198,7 +1218,11 @@ private fun SearchResultsContent(
           )
         }
         
-        items(count = videos.size, key = { index -> videos[index].id }) { index ->
+        items(
+          count = videos.size,
+          key = { index -> videos[index].id },
+          contentType = { "video" },
+        ) { index ->
           val video = videos[index]
           VideoCard(
             video = video,

@@ -211,7 +211,8 @@ object SettingsSearchScreen : Screen {
                     ) {
                         itemsIndexed(
                             items = searchResults,
-                            key = { index, pref -> "${pref.titleRes}_${pref.category}_${pref.screen}_$index".hashCode() }
+                            key = { index, pref -> "${pref.titleRes}_${pref.category}_${pref.screen}_$index".hashCode() },
+                            contentType = { _, _ -> "searchResult" }
                         ) { _, preference ->
                             SearchResultItem(
                                 preference = preference,

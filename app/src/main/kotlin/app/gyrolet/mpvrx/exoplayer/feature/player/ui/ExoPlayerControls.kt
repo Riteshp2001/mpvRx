@@ -116,7 +116,18 @@ fun ExoPlayerControls(
         }
 
     val portraitBottomButtons = remember(portraitBottomControlsPref) {
-        appearancePreferences.parseButtons(portraitBottomControlsPref, mutableSetOf())
+        val buttons = appearancePreferences.parseButtons(portraitBottomControlsPref, mutableSetOf())
+        // Ensure stats button is always present in portrait
+        if (buttons.none { it == PlayerButton.TIME_NETWORK }) {
+            buttons + PlayerButton.TIME_NETWORK
+        } else buttons
+    }
+
+    // Ensure stats button is available in landscape (add to bottom-right if not in any group)
+    val hasStatsInLandscape = remember(topRightButtons, bottomRightButtons, bottomLeftButtons) {
+        topRightButtons.contains(PlayerButton.TIME_NETWORK) ||
+            bottomRightButtons.contains(PlayerButton.TIME_NETWORK) ||
+            bottomLeftButtons.contains(PlayerButton.TIME_NETWORK)
     }
 
     val transparentOverlay by animateFloatAsState(
@@ -195,10 +206,15 @@ fun ExoPlayerControls(
                 exit = fadeOut(playerControlsExitAnimationSpec()),
                 modifier = Modifier.constrainAs(topRight) {
                     top.linkTo(parent.top, spacing.medium)
+                    start.linkTo(topLeft.end, spacing.medium)
                     end.linkTo(parent.end, spacing.large)
+                    width = Dimension.preferredWrapContent
                 }
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+                ) {
                     topRightButtons.forEach { button ->
                         RenderExoPlayerButton(
                             button = button,
@@ -339,7 +355,10 @@ fun ExoPlayerControls(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+                        ) {
                             bottomLeftButtons.forEach { button ->
                                 RenderExoPlayerButton(
                                     button = button,
@@ -361,10 +380,34 @@ fun ExoPlayerControls(
                                 )
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+                        ) {
                             bottomRightButtons.forEach { button ->
                                 RenderExoPlayerButton(
                                     button = button,
+                                    player = player,
+                                    viewModel = viewModel,
+                                    controlsVisibilityState = controlsVisibilityState,
+                                    mediaPresentationState = mediaPresentationState,
+                                    onOpenOverlay = onOpenOverlay,
+                                    onScreenshotClick = onScreenshotClick,
+                                    onPlayInBackgroundClick = onPlayInBackgroundClick,
+                                    onRotateClick = onRotateClick,
+                                    onPipClick = onPipClick,
+                                    onAspectRatioClick = onAspectRatioClick,
+                                    onVideoFiltersClick = onVideoFiltersClick,
+                                    onAmbienceModeClick = onAmbienceModeClick,
+                                    isAmbienceModeEnabled = isAmbienceModeEnabled,
+                                    hideBackground = hideBackground,
+                                    playerPreferences = playerPreferences
+                                )
+                            }
+                            // Guaranteed stats button if not in any landscape group
+                            if (!hasStatsInLandscape) {
+                                RenderExoPlayerButton(
+                                    button = PlayerButton.TIME_NETWORK,
                                     player = player,
                                     viewModel = viewModel,
                                     controlsVisibilityState = controlsVisibilityState,

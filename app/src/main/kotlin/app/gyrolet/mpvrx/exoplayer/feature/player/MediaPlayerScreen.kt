@@ -607,6 +607,10 @@ internal fun MediaPlayerScreen(
                             isLockEnabled = controlsVisibilityState.isControlsLocked,
                             isPipSupported = pictureInPictureState.isPipSupported,
                             isTakingScreenshot = isTakingScreenshot,
+                            isVideoFiltersEnabled = playerPreferences.shouldApplyVideoFilters,
+                            isStatsEnabled = playerPreferences.statisticsPage == 1,
+                            isAmbienceModeEnabled = isAmbienceModeEnabled,
+                            isShuffleEnabled = player.shuffleModeEnabled,
                             onNavigate = ::navigateToMenuRoute,
                             onLockClick = {
                                 controlsVisibilityState.showControls()
@@ -615,7 +619,6 @@ internal fun MediaPlayerScreen(
                             },
                             onAmbienceClick = {
                                 viewModel.updateAmbienceMode(!isAmbienceModeEnabled)
-                                dismissOverlay()
                             },
                             onPictureInPictureClick = {
                                 if (!pictureInPictureState.hasPipPermission) {
@@ -644,12 +647,13 @@ internal fun MediaPlayerScreen(
                             },
                             onShuffleClick = {
                                 player.shuffleModeEnabled = !player.shuffleModeEnabled
-                                dismissOverlay()
                             },
                             onStatsClick = {
                                 viewModel.updateStatisticsPage(if (playerPreferences.statisticsPage == 1) 0 else 1)
-                                dismissOverlay()
-                            }
+                            },
+                            onVideoFiltersToggle = {
+                                viewModel.toggleVideoFilters()
+                            },
                         )
                         MenuRoute.Audio -> AudioTrackSelectorContent(
                             player = player,

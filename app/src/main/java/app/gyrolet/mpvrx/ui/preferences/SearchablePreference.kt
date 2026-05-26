@@ -2,12 +2,14 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
+import androidx.compose.runtime.Immutable
 import app.gyrolet.mpvrx.presentation.Screen
 
 /**
  * Represents a searchable preference item.
  * Used to index all preferences for the settings search feature.
  */
+@Immutable
 data class SearchablePreference(
     @StringRes val titleRes: Int? = null,
     val title: String? = null,

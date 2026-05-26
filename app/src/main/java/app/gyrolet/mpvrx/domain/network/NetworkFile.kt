@@ -1,8 +1,11 @@
 package app.gyrolet.mpvrx.domain.network
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Represents a file or directory on a network share
  */
+@Immutable
 data class NetworkFile(
   val name: String,
   val path: String,

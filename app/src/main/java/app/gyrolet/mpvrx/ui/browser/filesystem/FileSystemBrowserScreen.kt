@@ -213,9 +213,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
   // Animation duration for responsive slide animations
   val animationDuration = 200
 
-  // Selection managers - separate for folders and videos
-  val folders = items.filterIsInstance<FileSystemItem.Folder>()
-  val videos = items.filterIsInstance<FileSystemItem.VideoFile>().map { it.video }
+  val folders = remember(items) { items.filterIsInstance<FileSystemItem.Folder>() }
+  val videoFiles = remember(items) { items.filterIsInstance<FileSystemItem.VideoFile>() }
+  val videos = remember(videoFiles) { videoFiles.map { it.video } }
 
   val folderSelectionManager = rememberSelectionManager(
     items = folders,
@@ -1195,8 +1195,9 @@ private fun FileSystemBrowserContent(
   val thumbWidthPx = with(density) { thumbWidthDp.roundToPx() }
   val thumbHeightPx = ((thumbWidthPx.toFloat() / aspect).toInt())
 
-  val folders = items.filterIsInstance<FileSystemItem.Folder>()
-  val videos = items.filterIsInstance<FileSystemItem.VideoFile>().map { it.video }
+  val folders = remember(items) { items.filterIsInstance<FileSystemItem.Folder>() }
+  val videoFiles = remember(items) { items.filterIsInstance<FileSystemItem.VideoFile>() }
+  val videos = remember(videoFiles) { videoFiles.map { it.video } }
 
   // Create a unique folderId based on the current directories
   val folderId = remember(folders, isAtRoot, breadcrumbs) {
@@ -1314,8 +1315,9 @@ private fun FileSystemBrowserContent(
 
             // Folders first
             items(
-              items = items.filterIsInstance<FileSystemItem.Folder>(),
+              items = folders,
               key = { it.path },
+              contentType = { "folder" },
             ) { folder ->
               val folderModel = app.gyrolet.mpvrx.domain.media.model.VideoFolder(
                 bucketId = folder.path,
@@ -1345,8 +1347,9 @@ private fun FileSystemBrowserContent(
 
             // Videos second
             items(
-              items = items.filterIsInstance<FileSystemItem.VideoFile>(),
+              items = videoFiles,
               key = { "${it.video.id}_${it.video.path}" },
+              contentType = { "video" },
             ) { videoFile ->
               VideoCard(
                 video = videoFile.video,
@@ -1514,6 +1517,8 @@ private fun FileSystemSearchContent(
       }
 
       else -> {
+        val folders = remember(searchResults) { searchResults.filterIsInstance<FileSystemItem.Folder>().distinctBy { it.path } }
+        val videos = remember(searchResults) { searchResults.filterIsInstance<FileSystemItem.VideoFile>().distinctBy { it.video.id } }
         Box(
           modifier = Modifier.fillMaxSize()
         ) {
@@ -1529,13 +1534,11 @@ private fun FileSystemSearchContent(
             ),
           ) {
             // Separate folders and videos for proper ordering and deduplicate
-            val folders = searchResults.filterIsInstance<FileSystemItem.Folder>().distinctBy { it.path }
-            val videos = searchResults.filterIsInstance<FileSystemItem.VideoFile>().distinctBy { it.video.id }
-            
             // Folders first
             items(
               items = folders,
               key = { "search_folder_${it.path}_${it.hashCode()}" },
+              contentType = { "folder" },
             ) { folder ->
               val folderModel = app.gyrolet.mpvrx.domain.media.model.VideoFolder(
                 bucketId = folder.path,
@@ -1563,6 +1566,7 @@ private fun FileSystemSearchContent(
             items(
               items = videos,
               key = { "search_video_${it.video.id}_${it.video.path}_${it.hashCode()}" },
+              contentType = { "video" },
             ) { videoFile ->
               VideoCard(
                 video = videoFile.video,

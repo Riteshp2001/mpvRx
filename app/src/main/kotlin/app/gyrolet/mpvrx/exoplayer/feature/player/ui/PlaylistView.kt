@@ -114,6 +114,7 @@ fun PlaylistContent(
             itemsIndexed(
                 items = playlistState.playlist,
                 key = { _, item -> item.mediaId },
+                contentType = { _, _ -> "playlist_item" }
             ) { index, mediaItem ->
                 ReorderableItem(
                     state = reorderableLazyListState,

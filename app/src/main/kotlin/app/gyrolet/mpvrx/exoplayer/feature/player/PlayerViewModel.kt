@@ -164,6 +164,14 @@ class PlayerViewModel(
         }
     }
 
+    fun toggleVideoFilters() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(shouldApplyVideoFilters = !it.shouldApplyVideoFilters)
+            }
+        }
+    }
+
     fun updateAmbienceMode(isEnabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {

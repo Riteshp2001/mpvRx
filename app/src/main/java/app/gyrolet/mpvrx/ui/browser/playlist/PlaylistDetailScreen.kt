@@ -699,6 +699,7 @@ private fun PlaylistVideoListContent(
           items(
             count = videoItems.size,
             key = { index -> videoItems[index].playlistItem.id },
+            contentType = { index -> if (isM3uPlaylist) "m3u" else "video" },
           ) { index ->
             ReorderableItem(reorderableLazyListState, key = videoItems[index].playlistItem.id) {
               val item = videoItems[index]

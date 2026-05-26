@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,11 +89,31 @@ fun DeviceStatsOverlay(
     var deviceStats by remember { mutableStateOf(DeviceStats()) }
     var playbackStats by remember { mutableStateOf(PlaybackStats()) }
 
+    val videoFpsState by app.gyrolet.mpvrx.exoplayer.feature.player.state.ExoPlayerStatsTracker.videoFps.collectAsState()
+    val videoDecoderNameState by app.gyrolet.mpvrx.exoplayer.feature.player.state.ExoPlayerStatsTracker.videoDecoderName.collectAsState()
+
+    // Collect device stats (CPU, memory, battery) on IO thread
     LaunchedEffect(visible) {
         if (visible) {
             while (true) {
-                deviceStats = collectStats(context, videoFps)
-                playbackStats = collectPlaybackStats(player, context, videoFps)
+                val newDeviceStats = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    collectStats(context, videoFpsState)
+                }
+                deviceStats = newDeviceStats
+                delay(1000)
+            }
+        }
+    }
+
+    // Collect playback stats on Main thread (MediaController requires main thread)
+    LaunchedEffect(visible) {
+        if (visible) {
+            while (true) {
+                try {
+                    playbackStats = collectPlaybackStats(player, context, videoFpsState)
+                } catch (_: Exception) {
+                    // Safely ignore if player is not ready
+                }
                 delay(1000)
             }
         }
@@ -148,11 +169,11 @@ fun DeviceStatsOverlay(
                 StatItem("Codec", playbackStats.videoCodec)
                 
                 val decoderLabel = when {
-                    videoDecoderName == null -> "-"
-                    videoDecoderName.contains("c2.android", ignoreCase = true) -> "[SW] $videoDecoderName"
-                    videoDecoderName.contains("omx.google", ignoreCase = true) -> "[SW] $videoDecoderName"
-                    videoDecoderName.contains("ffmpeg", ignoreCase = true) -> "[SW] $videoDecoderName"
-                    else -> "[HW] $videoDecoderName"
+                    videoDecoderNameState == null -> "-"
+                    videoDecoderNameState!!.contains("c2.android", ignoreCase = true) -> "[SW] $videoDecoderNameState"
+                    videoDecoderNameState!!.contains("omx.google", ignoreCase = true) -> "[SW] $videoDecoderNameState"
+                    videoDecoderNameState!!.contains("ffmpeg", ignoreCase = true) -> "[SW] $videoDecoderNameState"
+                    else -> "[HW] $videoDecoderNameState"
                 }
                 StatItem("Decoder", decoderLabel, if (decoderLabel.contains("[SW]")) Color(0xFFFF9800) else Color(0xFF4CAF50))
                 

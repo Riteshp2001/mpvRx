@@ -509,7 +509,7 @@ fun MultiChoicePreference(
       onDismissRequest = { showDialog = false },
       title = title,
       text = {
-        val valuesList = values.toList()
+        val valuesList = remember(values) { values.toList() }
         LazyColumn {
           items(count = valuesList.size, key = { index -> valuesList[index].first }) { index ->
             val entry = valuesList[index]

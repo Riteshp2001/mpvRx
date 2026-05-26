@@ -340,6 +340,7 @@ class ExoPlayerService : MediaSessionService() {
             initializedTimestampMs: Long,
             initializationDurationMs: Long,
         ) {
+            app.gyrolet.mpvrx.exoplayer.feature.player.state.ExoPlayerStatsTracker.updateDecoderName(decoderName)
             Logger.info(TAG, "startup decoderInit=$decoderName dur=${initializationDurationMs}ms t=${elapsed()}ms")
         }
 
@@ -1375,6 +1376,7 @@ class ExoPlayerService : MediaSessionService() {
 
     private fun Bundle.toPlayerPreferences(): PlayerPreferences = PlayerPreferences(
         shouldApplyVideoFilters = getBoolean(CustomCommands.SHOULD_APPLY_VIDEO_FILTERS_KEY, false),
+        isAmbienceModeEnabled = getBoolean(CustomCommands.IS_AMBIENCE_MODE_ENABLED_KEY, false),
         isVideoBrightnessFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_BRIGHTNESS_FILTER_ENABLED_KEY, false),
         videoBrightness = getFloat(CustomCommands.VIDEO_BRIGHTNESS_KEY, PlayerPreferences.DEFAULT_VIDEO_BRIGHTNESS),
         isVideoContrastFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_CONTRAST_FILTER_ENABLED_KEY, false),
@@ -1693,6 +1695,27 @@ class ExoPlayerService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(preferences.shouldPauseOnHeadsetDisconnect)
             .build()
             .also {
+                it.setVideoFrameMetadataListener(object : androidx.media3.exoplayer.video.VideoFrameMetadataListener {
+                    private var frameCount = 0
+                    private var lastTimeMs = System.currentTimeMillis()
+
+                    override fun onVideoFrameAboutToBeRendered(
+                        presentationTimeUs: Long,
+                        releaseTimeNs: Long,
+                        format: androidx.media3.common.Format,
+                        mediaFormat: android.media.MediaFormat?
+                    ) {
+                        frameCount++
+                        val now = System.currentTimeMillis()
+                        val diff = now - lastTimeMs
+                        if (diff >= 1000) {
+                            val currentFps = (frameCount * 1000f) / diff
+                            app.gyrolet.mpvrx.exoplayer.feature.player.state.ExoPlayerStatsTracker.updateFps(currentFps)
+                            frameCount = 0
+                            lastTimeMs = now
+                        }
+                    }
+                })
                 assHandler.init(it)
                 it.addListener(playbackStateListener)
                 it.addAnalyticsListener(startupAnalyticsListener)
