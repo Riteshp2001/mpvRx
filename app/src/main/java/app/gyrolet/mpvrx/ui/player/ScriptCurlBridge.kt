@@ -6,11 +6,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.isString
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.parseToJsonElement
 import java.util.UUID
 
 class ScriptCurlBridge(
@@ -33,6 +38,7 @@ class ScriptCurlBridge(
 
         private const val DEFAULT_TIMEOUT_SECONDS = 30L
         private const val MAX_TIMEOUT_SECONDS = 120L
+        private const val MAX_JSON_UNWRAP_DEPTH = 8
 
         init {
             System.loadLibrary("curl_bridge")
@@ -113,55 +119,143 @@ class ScriptCurlBridge(
         }
     }
 
-    private fun parseRequest(
-        rawJson: String
-    ): CurlRequest {
-        val current = rawJson.trim()
+    private fun parseRequest(rawJson: String): CurlRequest {
+        val original = rawJson.trim()
 
-        // 1. Try to parse directly
-        try {
-            return json.decodeFromString<CurlRequest>(current)
-        } catch (_: Exception) {}
-
-        // 2. If it is wrapped in double quotes, it's a JSON-encoded string.
-        // Try to decode it as a string first, then parse.
-        if (current.startsWith("\"") && current.endsWith("\"")) {
-            try {
-                val decoded = json.decodeFromString<String>(current)
-                return json.decodeFromString<CurlRequest>(decoded.trim())
-            } catch (_: Exception) {}
+        require(original.isNotEmpty()) {
+            "Request JSON cannot be empty"
         }
 
-        // 3. If it starts with '{' but contains escaped quotes (like \" or \\\" or \\\"),
-        // it is a raw JSON object string with corrupted/escaped quotes.
-        // We can manually sanitize it by replacing all backslash-quote sequences with a single double quote.
-        if (current.startsWith("{")) {
-            try {
-                var sanitized = current
-                // Replace any sequence of backslashes followed by a quote with a single double quote
-                // e.g. \\\" -> ", \\" -> ", \" -> "
-                sanitized = sanitized.replace(Regex("""\\+""""), "\"")
-                return json.decodeFromString<CurlRequest>(sanitized)
-            } catch (_: Exception) {}
-        }
+        var current = original
+        val seen = LinkedHashSet<String>()
+        val errors = mutableListOf<String>()
 
-        // 4. Fallback: recursively try to decode as a string if it's still double-encoded
-        var temp = current
-        for (i in 0 until 5) {
-            try {
-                val decoded = json.decodeFromString<String>(temp)
-                if (decoded == temp) break
-                temp = decoded.trim()
-                try {
-                    return json.decodeFromString<CurlRequest>(temp)
-                } catch (_: Exception) {}
-            } catch (_: Exception) {
-                break
+        repeat(MAX_JSON_UNWRAP_DEPTH) { depth ->
+            current = current.trim()
+
+            if (!seen.add(current)) {
+                throw buildParseRequestException(
+                    original = original,
+                    current = current,
+                    errors = errors + "Stopped because JSON decoding entered a loop at depth $depth."
+                )
             }
+
+            // 1. Best case: current is already a CurlRequest JSON object.
+            try {
+                return json.decodeFromString<CurlRequest>(current)
+            } catch (e: Exception) {
+                errors += "Depth $depth direct CurlRequest parse failed: ${e.message}"
+            }
+
+            // 2. Handle valid JSON string-wrapped object:
+            //
+            // Example:
+            // "{\"url\":\"https://example.com\",\"method\":\"GET\"}"
+            val decodedJsonString = decodeIfJsonString(current)
+
+            if (decodedJsonString != null && decodedJsonString != current) {
+                current = decodedJsonString
+                return@repeat
+            }
+
+            // 3. Handle broken input where the outer quotes were stripped:
+            //
+            // Example:
+            // {\"url\":\"https://example.com\",\"method\":\"GET\"}
+            //
+            // This is not valid JSON by itself, but it is the body of a JSON string.
+            val decodedStrippedJsonString = decodeIfStrippedJsonStringBody(current)
+
+            if (decodedStrippedJsonString != null && decodedStrippedJsonString != current) {
+                current = decodedStrippedJsonString
+                return@repeat
+            }
+
+            throw buildParseRequestException(
+                original = original,
+                current = current,
+                errors = errors
+            )
         }
 
-        // Final try with the original string to throw the proper exception if it still fails
-        return json.decodeFromString(current)
+        throw buildParseRequestException(
+            original = original,
+            current = current,
+            errors = errors + "Exceeded max JSON unwrap depth: $MAX_JSON_UNWRAP_DEPTH."
+        )
+    }
+
+    private fun decodeIfJsonString(value: String): String? {
+        return try {
+            val element = json.parseToJsonElement(value)
+
+            if (element is JsonPrimitive && element.isString) {
+                element.content.trim()
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun decodeIfStrippedJsonStringBody(value: String): String? {
+        val current = value.trim()
+
+        if (!looksLikeStrippedEncodedJsonObject(current)) {
+            return null
+        }
+
+        return try {
+            // Important:
+            // This intentionally adds only the missing outer quotes.
+            // Do NOT use JsonPrimitive(current).toString() here because that would preserve
+            // the backslashes instead of decoding the escaped JSON body.
+            val wrapped = "\"$current\""
+            json.decodeFromString<String>(wrapped).trim()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun looksLikeStrippedEncodedJsonObject(value: String): Boolean {
+        return value.startsWith("{") &&
+            value.endsWith("}") &&
+            (
+                value.contains("\\\"") ||
+                    value.contains("\\\\") ||
+                    value.contains("\\/")
+            )
+    }
+
+    private fun buildParseRequestException(
+        original: String,
+        current: String,
+        errors: List<String>
+    ): IllegalArgumentException {
+        val originalPreview = original.take(500)
+        val currentPreview = current.take(500)
+
+        return IllegalArgumentException(
+            buildString {
+                appendLine("Unable to parse CurlRequest JSON.")
+                appendLine()
+                appendLine("Original input preview:")
+                appendLine(originalPreview)
+                appendLine()
+                appendLine("Last normalized input preview:")
+                appendLine(currentPreview)
+
+                if (errors.isNotEmpty()) {
+                    appendLine()
+                    appendLine("Parser attempts:")
+                    errors.takeLast(10).forEach {
+                        appendLine("- $it")
+                    }
+                }
+            }
+        )
     }
 
     private fun executeRequest(
