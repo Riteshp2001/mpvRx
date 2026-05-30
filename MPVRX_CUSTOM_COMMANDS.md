@@ -277,23 +277,7 @@ The response is a JSON **array**. The quote text is in `[0].q` and the author is
 
 #### Expected OSD output
 
-When the script runs, you will see these messages appear as OSD text overlays on the player screen in sequence:
-
-```
-1. "Fetching quote of the day..."
-   (appears briefly when the video starts)
-
-2. "Perseverance and spirit have done wonders in all ages."
-   "-- George Washington"
-   (appears once the API responds, replaces the fetching message)
-```
-
-If something goes wrong, you will see one of:
-```
-"Quote fetch failed: <error message>"    ← network error / timeout
-"Quote API error: HTTP 404"              ← non-200 status code
-"Could not parse quote response"         ← malformed response body
-```
+When the script runs, you will see the raw response details formatted and displayed as an OSD text overlay on the player screen for 20 seconds. It will show the request ID, status code, and raw body containing the quote data.
 
 ---
 
@@ -303,64 +287,29 @@ Save as `quote_of_session.lua` in your MPV scripts folder.
 
 ```lua
 -- quote_of_session.lua
--- Fetches a random quote when a file loads and shows it as OSD.
+-- Fetches a random quote and prints the raw response as an OSD message for 20 seconds.
 
 local utils = require("mp.utils")
 
--- Step 1: Observe curl_response once at script load time.
--- Every response from any curl_request arrives here.
-mp.observe_property("user-data/mpvrx/curl_response", "string", function(name, value)
-    if value == nil or value == "" then return end
+mp.observe_property("user-data/mpvrx/curl_response", "string", function(_, value)
+    if not value then return end
 
     local res = utils.parse_json(value)
-    if res == nil then return end
 
-    -- Ignore responses meant for other requests
-    if res.id ~= "zenquotes-random" then return end
-
-    -- OSD: Network / timeout error
-    if res.error then
-        mp.set_property("user-data/mpvrx/show_text",
-            "Quote fetch failed: " .. res.error)
-        return
-    end
-
-    -- OSD: Non-200 status
-    if res.status ~= 200 then
-        mp.set_property("user-data/mpvrx/show_text",
-            "Quote API error: HTTP " .. res.status)
-        return
-    end
-
-    -- Parse the ZenQuotes response array
-    local data = utils.parse_json(res.body)
-    if data == nil or data[1] == nil then
-        mp.set_property("user-data/mpvrx/show_text",
-            "Could not parse quote response")
-        return
-    end
-
-    local quote  = data[1].q or "..."
-    local author = data[1].a or "Unknown"
-
-    -- OSD: Show the quote on screen
-    mp.set_property("user-data/mpvrx/show_text",
-        "\"" .. quote .. "\"\n-- " .. author)
+    mp.osd_message(
+        utils.format_json(res),
+        20
+    )
 end)
 
--- Step 2: Fire request when the file starts playing.
 mp.register_event("file-loaded", function()
-    -- OSD: Let the user know we are fetching
-    mp.set_property("user-data/mpvrx/show_text",
-        "Fetching quote of the day...")
-
-    mp.set_property("user-data/mpvrx/curl_request", utils.format_json({
-        id      = "zenquotes-random",
-        url     = "https://zenquotes.io/api/random",
-        method  = "GET",
-        headers = { Accept = "application/json" },
-        timeout = 10,
-    }))
+    mp.set_property("user-data/mpvrx/curl_request",
+        utils.format_json({
+            id = "quote",
+            url = "https://zenquotes.io/api/random",
+            method = "GET"
+        })
+    )
 end)
 ```
 

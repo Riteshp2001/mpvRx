@@ -184,7 +184,7 @@ MpvRx pushes the mpv-android experience further with deep customization, thermal
 
 | Feature | Description |
 |---|---|
-| **Provider Support** | Gemini and Groq with configurable API keys and models |
+| **Provider Support** | OpenCode and Groq with configurable API keys and models |
 | **AI Subtitle Translation** | Translate subtitles with custom prompts |
 | **AI Subtitle Formatting** | Reformat subtitle styling with custom prompts |
 | **AI File Renaming** | Bulk rename video files with custom rename prompts |
