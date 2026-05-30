@@ -1,6 +1,7 @@
 package app.gyrolet.mpvrx.di
 
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.domain.gpu.GpuDriverManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.domain.thumbnail.CoilVideoThumbnailDecoder
 import app.gyrolet.mpvrx.domain.thumbnail.toThumbnailStrategy
@@ -42,6 +43,7 @@ import org.koin.dsl.module
 import java.util.concurrent.TimeUnit
 
 val domainModule = module {
+    single { GpuDriverManager(get(), get()) }
     single {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)

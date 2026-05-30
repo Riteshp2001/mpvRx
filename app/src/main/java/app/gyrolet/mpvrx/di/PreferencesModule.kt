@@ -8,6 +8,7 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
+import app.gyrolet.mpvrx.preferences.GpuDriverPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SettingsManager
@@ -36,5 +37,6 @@ val PreferencesModule =
     singleOf(::AiPreferences)
     singleOf(::YtdlPreferences)
     singleOf(::SettingsManager)
+    singleOf(::GpuDriverPreferences)
   }
 

@@ -2,6 +2,7 @@ package app.gyrolet.mpvrx
 
 import android.app.Application
 import android.util.Log
+import app.gyrolet.mpvrx.utils.GpuDriverHelper
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
@@ -41,15 +42,27 @@ class App : Application() {
   override fun onCreate() {
     super.onCreate()
 
-    // Initialize Koin
-    startKoin {
-      androidContext(this@App)
-      modules(
-        PreferencesModule,
-        DatabaseModule,
-        FileManagerModule,
-        app.gyrolet.mpvrx.di.domainModule,
-      )
+    try {
+        android.util.Log.d("App", "Starting Koin...")
+        com.bytedance.android.bytehook.ByteHook.init()
+        startKoin {
+          androidContext(this@App)
+          modules(
+            PreferencesModule,
+            DatabaseModule,
+            FileManagerModule,
+            app.gyrolet.mpvrx.di.domainModule,
+          )
+        }
+        android.util.Log.d("App", "Koin initialized successfully")
+        
+        try {
+            GpuDriverHelper.initialize(this)
+        } catch (t: Throwable) {
+            android.util.Log.e("App", "CRITICAL: Failed to initialize GPU driver helper", t)
+        }
+    } catch (t: Throwable) {
+        android.util.Log.e("App", "CRITICAL: App initialization failed!", t)
     }
 
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))

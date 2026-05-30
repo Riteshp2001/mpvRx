@@ -1,7 +1,7 @@
 import com.android.build.api.variant.FilterConfiguration
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-val enableX86 = project.findProperty("enableX86") != "false"
+val enableX86 = project.findProperty("enableX86") == "true"
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 
 plugins {
@@ -40,7 +40,7 @@ android {
   externalNativeBuild {
     cmake {
       path = file("src/main/cpp/CMakeLists.txt")
-      version = "3.22.1"
+      version = "4.1.2"
     }
   }
 
@@ -237,6 +237,7 @@ dependencies {
   implementation(libs.mediainfo.lib)
   implementation("com.llamatik:library:1.4.0")
   implementation(libs.androidx.profileinstaller)
+  implementation("com.bytedance:bytehook:1.1.1")
   
   implementation(files("libs/mpvlib.aar"))
 
