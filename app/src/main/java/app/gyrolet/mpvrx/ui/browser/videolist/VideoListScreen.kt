@@ -1011,7 +1011,7 @@ private fun responsiveVideoGridColumns(
   val spacingDp = 4
   val usableWidthDp = (availableWidthDp - horizontalPaddingDp).coerceAtLeast(minCellDp)
   val widthBasedColumns = ((usableWidthDp + spacingDp) / (minCellDp + spacingDp)).coerceAtLeast(1)
-  return widthBasedColumns.coerceIn(1, safePreferred + 2)
+  return widthBasedColumns.coerceIn(1, safePreferred)
 }
 
 @Composable
