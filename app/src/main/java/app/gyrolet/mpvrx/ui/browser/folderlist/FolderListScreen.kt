@@ -324,7 +324,7 @@ object FolderListScreen : Screen {
     LaunchedEffect(selectionManager.isInSelectionMode) {
       navBarState.updateSelectionState(
         inSelectionMode = selectionManager.isInSelectionMode,
-        onlyVideos = false,
+        onlyVideos = true,
       )
     }
 

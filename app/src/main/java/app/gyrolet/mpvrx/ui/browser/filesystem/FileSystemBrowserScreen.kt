@@ -306,7 +306,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
         mainScreenObj.updateBottomBarVisibility(showBottomNavigation)
         mainScreenObj.updateSelectionState(
           isInSelectionMode = isInSelectionMode,
-          isOnlyVideosSelected = onlyVideosSelected,
+          isOnlyVideosSelected = true,
           selectionManager = if (onlyVideosSelected) selectionManager else null
         )
         mainScreenObj.updatePermissionState(
