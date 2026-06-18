@@ -93,6 +93,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val isBalanced = when (ambientMode) {
         AmbientVisualMode.GLOW -> matchesGlowPreset(
@@ -117,6 +118,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val isHQ = when (ambientMode) {
         AmbientVisualMode.GLOW -> matchesGlowPreset(
@@ -141,6 +143,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val configuration = LocalConfiguration.current
     val customMaxHeight = if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
@@ -184,16 +187,19 @@ fun AmbientSheet(
                 ExpressivePresetButton(
                     label = "Fast",
                     selected = isFast,
+                    enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                     onClick = { viewModel.applyAmbientProfileFast() },
                 )
                 ExpressivePresetButton(
                     label = "Balanced",
                     selected = isBalanced,
+                    enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                     onClick = { viewModel.applyAmbientProfileBalanced() },
                 )
                 ExpressivePresetButton(
                     label = "HQ",
                     selected = isHQ,
+                    enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                     onClick = { viewModel.applyAmbientProfileHighQuality() },
                 )
             }
@@ -225,6 +231,7 @@ fun AmbientSheet(
                         onChange = { viewModel.updateAmbientParams(blurSamples = it) },
                         min = 5,
                         max = 64,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.BlurOn,
@@ -243,6 +250,7 @@ fun AmbientSheet(
                         min = 0.05f,
                         max = 0.80f,
                         steps = 75,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.Gradient,
@@ -261,6 +269,7 @@ fun AmbientSheet(
                         min = 0.5f,
                         max = 3.0f,
                         steps = 25,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.Brightness6,
@@ -279,6 +288,7 @@ fun AmbientSheet(
                         min = 0.5f,
                         max = 3.0f,
                         steps = 25,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.WbSunny,
@@ -319,6 +329,7 @@ fun AmbientSheet(
                         min = 0.0f,
                         max = 3.0f,
                         steps = 30,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.Palette,
@@ -337,6 +348,7 @@ fun AmbientSheet(
                         min = -1.0f,
                         max = 1.0f,
                         steps = 40,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.Thermostat,
@@ -377,6 +389,7 @@ fun AmbientSheet(
                         min = 0.0f,
                         max = 1.0f,
                         steps = 20,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.Opacity,
@@ -395,6 +408,7 @@ fun AmbientSheet(
                         min = 0.0f,
                         max = 1.0f,
                         steps = 10,
+                        enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                         icon = {
                             AppSymbolIcon(
                                 imageVector = Icons.Default.Vignette,
@@ -430,6 +444,11 @@ fun AmbientSheet(
                     label = AmbientVisualMode.FRAME_EXTEND.label,
                     selected = ambientMode == AmbientVisualMode.FRAME_EXTEND,
                     onClick = { viewModel.updateAmbientVisualMode(AmbientVisualMode.FRAME_EXTEND) },
+                )
+                AmbientModeButton(
+                    label = AmbientVisualMode.YOUTUBE.label,
+                    selected = ambientMode == AmbientVisualMode.YOUTUBE,
+                    onClick = { viewModel.updateAmbientVisualMode(AmbientVisualMode.YOUTUBE) },
                 )
             }
 
@@ -556,6 +575,7 @@ fun AmbientSheet(
 private fun RowScope.ExpressivePresetButton(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val targetScale = if (selected) 1.02f else 1.0f
@@ -567,6 +587,7 @@ private fun RowScope.ExpressivePresetButton(
 
     FilledTonalButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier
             .weight(1f)
             .graphicsLayer(scaleX = scale, scaleY = scale),

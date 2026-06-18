@@ -225,12 +225,12 @@ fun MoreSheet(
             },
             onClick = {
               val isConsoleOpen = MPVLib.getPropertyBoolean("user-data/mpv/console/open") == true
-              
+
               // If we are choosing any page OTHER than Console, close the console if it's currently open
               if (page != 7 && isConsoleOpen) {
                 MPVLib.command("script-message-to", "console", "disable")
               }
-              
+
               when (page) {
                 0 -> {
                   if (statisticsPage in 1..5) MPVLib.command("script-binding", "stats/display-stats-toggle")
@@ -292,6 +292,10 @@ fun MoreSheet(
               leadingIcon = null,
               onClick = {
                 decoderPreferences.anime4kMode.set(mode.name)
+                if (mode != Anime4KManager.Mode.OFF) {
+                  decoderPreferences.anime4kUltraMode.set("OFF")
+                  decoderPreferences.enableAnime4K.set(true)
+                }
 
                 // Apply shaders immediately (runtime change)
                 scope.launch(Dispatchers.Default) {
@@ -311,7 +315,45 @@ fun MoreSheet(
         }
       }
 
+      // Anime4K Ultra
+      if (enableAnime4KUltra) {
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.smaller))
 
+        Text(
+            text = stringResource(R.string.anime4k_ultra_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          items(Anime4KManager.UltraMode.entries) { mode ->
+            FilterChip(
+              label = { Text(stringResource(mode.titleRes)) },
+              selected = anime4kUltraMode == mode.name,
+              enabled = !isHighRes || mode == Anime4KManager.UltraMode.OFF,
+              leadingIcon = null,
+              onClick = {
+                decoderPreferences.anime4kUltraMode.set(mode.name)
+                decoderPreferences.enableAnime4KUltra.set(mode != Anime4KManager.UltraMode.OFF)
+                if (mode != Anime4KManager.UltraMode.OFF) {
+                  decoderPreferences.anime4kMode.set("OFF")
+                }
+
+                // Apply shaders immediately (runtime change)
+                scope.launch(Dispatchers.Default) {
+                  applyAnime4KUltraRuntimeSelection(
+                    anime4kManager = anime4kManager,
+                    mode = mode,
+                    onAnime4KChanged = onAnime4KChanged,
+                  )
+                }
+              }
+            )
+          }
+        }
+      }
     }
   }
 }

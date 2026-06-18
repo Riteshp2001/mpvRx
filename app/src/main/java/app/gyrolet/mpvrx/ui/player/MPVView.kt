@@ -441,6 +441,29 @@ class MPVView(
       val isGpuNext = activeVo == "gpu-next"
       val useVulkan = activeGpuApi == "vulkan"
 
+      // ── Anime4K Ultra ────────────────────────────────────────────────────
+      val enableUltra = decoderPreferences.enableAnime4KUltra.get()
+      val ultraModeStr = decoderPreferences.anime4kUltraMode.get()
+      if (enableUltra && ultraModeStr != "OFF") {
+        val ultraMode = try {
+          Anime4KManager.UltraMode.valueOf(ultraModeStr)
+        } catch (e: IllegalArgumentException) {
+          Anime4KManager.UltraMode.OFF
+        }
+
+        if (ultraMode == Anime4KManager.UltraMode.OFF) {
+          clearAnime4KShaders()
+          return
+        }
+
+        if (applyAnime4KUltraShader(anime4kManager, ultraMode)) {
+          applyAnime4KStabilityOptions(useVulkan = useVulkan)
+        } else {
+          Log.w(TAG, "Anime4K Ultra shader failed to apply for mode=$ultraMode")
+        }
+        return
+      }
+
       // ── Standard Anime4K (requires master switch) ─────────────────────────
       val enabled = decoderPreferences.enableAnime4K.get()
       if (!enabled) {
@@ -518,8 +541,8 @@ class MPVView(
   }
 
   private fun selectRenderBackend(): RenderBackendSelection {
-    val anime4kEnabled = decoderPreferences.enableAnime4K.get() &&
-        (decoderPreferences.anime4kMode.get() != "OFF")
+    val anime4kEnabled = (decoderPreferences.enableAnime4K.get() && decoderPreferences.anime4kMode.get() != "OFF") ||
+        (decoderPreferences.enableAnime4KUltra.get() && decoderPreferences.anime4kUltraMode.get() != "OFF")
     val gpuNextEnabled = decoderPreferences.gpuNext.get()
     val vulkanEnabled = shouldUseVulkan()
 

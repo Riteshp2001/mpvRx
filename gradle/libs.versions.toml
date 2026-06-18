@@ -2,33 +2,34 @@
 agp = "9.2.1"
 commonsNet = "3.13.0"
 smbj = "0.14.0"
-kotlin = "2.3.21"
-ksp = "2.3.7"
-composeBom = "2026.05.00"
+kotlin = "2.4.0"
+ksp = "2.3.9"
+composeBom = "2026.05.01"
 activityCompose = "1.13.0"
-koin = "4.2.1"
+koin = "4.2.2"
 lazycolumnscrollbar = "2.2.0"
 nanohttpd = "2.3.1"
 room = "2.8.4"
-navigation3 = "1.1.1"
+navigation3 = "1.1.2"
 kotlinx-serialization = "1.11.0"
-kotlinx-collections-immutable = "0.4.0"
+kotlinx-collections-immutable = "0.5.0"
 profileinstaller = "1.4.1"
+llamatik = "1.8.0"
 
 truetype-parser = "2.1.4"
 accompanist = "0.37.3"
-okhttp = "5.3.2"
+okhttp = "5.4.0"
 jsoup = "1.22.2"
 sardineAndroid = "0.9"
 reorderable = "3.1.0"
-googleMaterial = "1.13.0"
-androidxCore = "1.18.0"
+googleMaterial = "1.14.0"
+androidxCore = "1.19.0"
 androidxPreference = "1.2.1"
 androidxConstraintLayout = "2.2.1"
-coil = "3.4.0"
-media3 = "1.10.0"
-soraEditor = "0.24.5"
-androidxMaterial3 = "1.5.0-alpha19"
+coil = "3.5.0"
+media3 = "1.10.1"
+soraEditor = "0.24.6"
+androidxMaterial3 = "1.5.0-alpha21"
 androidxAppcompat = "1.7.1"
 composeConstraintLayout = "1.1.1"
 androidxMedia = "1.8.0"
@@ -38,9 +39,13 @@ desugarJdkLibs = "2.1.5"
 fsaf = "1.1.3"
 materialSymbols = "2.2.1"
 seeker = "2.0.1"
-kotlinTest = "2.3.21"
+kotlinTest = "2.4.0"
 curlAndroid = "8.18.0"
 
+benchmarkMacroJunit4 = "1.4.1"
+uiautomator = "2.3.0"
+androidxTestExtJunit = "1.3.0"
+espressoCore = "3.7.0"
 [libraries]
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -68,6 +73,7 @@ androidx-documentfile = { group = "androidx.documentfile", name = "documentfile"
 seeker = { module = "com.github.abdallahmehiz:seeker", version.ref = "seeker" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlinTest" }
 mediainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"
+llamatik-library = { module = "com.llamatik:library", version.ref = "llamatik" }
 
 google-material = { module = "com.google.android.material:material", version.ref = "googleMaterial" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -109,6 +115,10 @@ curl-android = { module = "io.github.vvb2060.ndk:curl", version.ref = "curlAndro
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
+androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
+androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCore" }
 [bundles]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel"]
 coil = ["coil", "coil-compose", "coil-network-okhttp"]
@@ -120,3 +130,5 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 room = { id = "androidx.room", version.ref = "room" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+test-android = { id = "com.android.test", version.ref = "agp" }

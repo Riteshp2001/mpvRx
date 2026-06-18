@@ -1,8 +1,6 @@
+
 import com.android.build.api.variant.FilterConfiguration
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
-val enableX86 = project.findProperty("enableX86") != "false"
-val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 
 plugins {
   alias(libs.plugins.android.application)
@@ -18,7 +16,7 @@ android {
 
   defaultConfig {
     applicationId = "app.gyrolet.mpvrx"
-    minSdk = 26
+    minSdk = 33
     targetSdk = 36
     versionCode = 150
     versionName = "1.5.0-preview.1"
@@ -32,8 +30,14 @@ android {
 
     externalNativeBuild {
       cmake {
-        abiFilters += listOf("arm64-v8a", "armeabi-v7a") + x86Abis
+        abiFilters.clear()
+        abiFilters.add("arm64-v8a")
       }
+    }
+
+    ndk {
+      abiFilters.clear()
+      abiFilters.add("arm64-v8a")
     }
   }
 
@@ -61,13 +65,7 @@ android {
 
   splits {
     abi {
-      isEnable = true
-      reset()
-      include("armeabi-v7a", "arm64-v8a")
-      if (enableX86) {
-        include("x86", "x86_64")
-      }
-      isUniversalApk = true
+      isEnable = false
     }
   }
 
@@ -100,8 +98,8 @@ android {
 
   compileOptions {
     isCoreLibraryDesugaringEnabled = true
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
   }
 
   buildFeatures {
@@ -124,6 +122,9 @@ android {
     jniLibs {
       useLegacyPackaging = true
       pickFirsts += "**/libc++_shared.so"
+      excludes += "lib/armeabi-v7a/**"
+      excludes += "lib/x86/**"
+      excludes += "lib/x86_64/**"
     }
   }
 
@@ -140,13 +141,8 @@ android {
 
 androidComponents {
   val abiCodes = mutableMapOf(
-    "armeabi-v7a" to 1,
-    "arm64-v8a" to 2
+    "arm64-v8a" to 1
   )
-  if (enableX86) {
-    abiCodes["x86"] = 3
-    abiCodes["x86_64"] = 4
-  }
 
   onVariants { variant ->
     variant.outputs.forEach { output ->
@@ -154,9 +150,11 @@ androidComponents {
         .find { it.filterType == FilterConfiguration.FilterType.ABI }
         ?.identifier
 
-      output.versionCode.set(
-        (output.versionCode.orNull ?: 0) * 10 + (abiCodes[abi] ?: 0)
-      )
+      if (abi != null) {
+        output.versionCode.set(
+          (output.versionCode.orNull ?: 0) * 10 + (abiCodes[abi] ?: 0)
+        )
+      }
     }
   }
 }
@@ -170,7 +168,7 @@ kotlin {
       "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
       "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi"
     )
-    jvmTarget.set(JvmTarget.JVM_17)
+    jvmTarget.set(JvmTarget.JVM_21)
   }
 }
 
@@ -235,7 +233,7 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
-  implementation("com.llamatik:library:1.4.0")
+  implementation(libs.llamatik.library)
   implementation(libs.androidx.profileinstaller)
   
   implementation(files("libs/mpvlib.aar"))
@@ -273,6 +271,6 @@ fun runCommand(command: String): String? =
 
     process.waitFor()
     output.ifEmpty { null }
-  } catch (e: Exception) {
+  } catch (_: Exception) {
     null
   }

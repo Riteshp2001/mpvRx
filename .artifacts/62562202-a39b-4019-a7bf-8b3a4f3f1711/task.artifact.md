@@ -1,0 +1,5 @@
+- [x] Modify `AmbientVisualMode` and add `AmbientYouTubeShaderSpec` in `AmbientShaderBuilder.kt`
+- [x] Implement YouTube shader logic in `AmbientShaderBuilder.kt`
+- [x] Update `PlayerViewModel.kt` to support `YOUTUBE` mode in `buildAmbientShader`
+- [x] Update `AmbientSheet.kt` UI to include YouTube mode and disable parameters when active
+- [x] Verify changes

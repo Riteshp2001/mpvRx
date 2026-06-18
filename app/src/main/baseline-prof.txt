@@ -1,26 +1,4 @@
-# Jetpack Compose core classes
-Landroidx/compose/runtime/Composer;
-Landroidx/compose/runtime/ComposerImpl;
-Landroidx/compose/runtime/RecomposeScopeImpl;
-Landroidx/compose/runtime/snapshots/Snapshot;
-Landroidx/compose/runtime/snapshots/SnapshotKt;
-
-# Compose UI and layout rendering
-Landroidx/compose/ui/layout/LayoutNode;
-Landroidx/compose/ui/node/LayoutNode;
-Landroidx/compose/ui/platform/AndroidComposeView;
-Landroidx/compose/ui/platform/WrappedComposition;
-
-# List scrolling and animations
-Landroidx/compose/foundation/lazy/LazyListState;
-Landroidx/compose/foundation/lazy/layout/LazyLayoutState;
-Landroidx/compose/animation/core/Animatable;
-Landroidx/compose/animation/core/AnimationState;
-
-# MPV player rendering and bridge
-Lis/xyz/mpv/MPVLib;
-Lis/xyz/mpv/BaseMPVView;
-Lapp/gyrolet/mpvrx/ui/player/MPVView;
-Lapp/gyrolet/mpvrx/domain/anime4k/Anime4KManager;
+HSPLapp/gyrolet/mpvrx/**;->**(**)**
+Lapp/gyrolet/mpvrx/**;
 HSPLis/xyz/mpv/**;->**(**)**
 Lis/xyz/mpv/**;

@@ -35,3 +35,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "MpvRx"
 include(":app")
+include(":macrobenchmark")

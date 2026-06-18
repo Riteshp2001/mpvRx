@@ -41,6 +41,22 @@ class Anime4KManager(private val context: Context) {
     )
     val BUILT_IN_SHADER_FILES: Set<String> = REQUIRED_SHADER_FILES.toSet()
     val DEFAULT_QUALITY = Quality.BALANCED
+
+    // GLSL tokens that require FP32 (highp) float precision. Passes containing any
+    // of these (FSR EASU/RCAS) are excluded from the FP16/mediump optimization.
+    private val FP32_MARKERS = listOf(
+      "floatBitsToUint",
+      "uintBitsToFloat",
+      "floatBitsToInt",
+      "intBitsToFloat",
+      "bitfieldExtract",
+      "bitfieldInsert",
+      "FsrEasu",
+      "FsrRcas",
+      "APrxLoRcpF1",
+      "APrxLoRsqF1",
+      "APrxMedRcpF1",
+    )
   }
 
   // Shader quality levels
@@ -155,8 +171,15 @@ class Anime4KManager(private val context: Context) {
 
   /**
    * Dynamically optimizes GLSL shader code for mobile GPUs:
-   * 1. Injects 'precision mediump float;' to force ultra-fast FP16 mode.
+   * 1. Injects a per-pass float precision qualifier to enable fast FP16 (mediump)
+   *    where it is safe, while keeping FP32 (highp) on passes that need it.
    * 2. Eliminates redundant texture fetches in C.R.E.L.U. shader passes.
+   *
+   * FP16 safety: CNN convolutions and edge/blur filters tolerate FP16 well and gain
+   * a large speed-up. However, FSR (EASU/RCAS) relies on raw bit manipulation
+   * (floatBitsToUint/uintBitsToFloat) and fast reciprocal/rsqrt bit tricks that
+   * produce garbage under FP16. Those passes must stay highp. Integers are always
+   * kept highp (mediump int is too narrow for the bit tricks and texel indices).
    */
   private fun optimizeShaderContent(fileName: String, content: String): String {
     if (!fileName.endsWith(".glsl")) return content
@@ -166,7 +189,8 @@ class Anime4KManager(private val context: Context) {
     var inHeader = false
     var precisionInjectedForBlock = false
 
-    for (line in lines) {
+    for (i in lines.indices) {
+      val line = lines[i]
       val trimmed = line.trim()
       if (trimmed.startsWith("//!")) {
         if (!inHeader) {
@@ -177,19 +201,9 @@ class Anime4KManager(private val context: Context) {
       } else {
         if (inHeader) {
           inHeader = false
-          if (!precisionInjectedForBlock) {
-            // Inject precision at the FIRST body line of the pass — i.e. the
-            // moment we leave the //! directive block — regardless of whether
-            // that line is blank or a // comment. Most Anime4K shaders put a
-            // blank line between the //! directives and the code; the previous
-            // `trimmed.isNotEmpty() && !startsWith("//")` guard caused those
-            // passes (Clamp, AutoDownscalePre, Thin, Darken, Deblur, ArtCNN and
-            // every Anime4K-Ultra pass) to be skipped entirely, silently leaving
-            // them at mpv's global `precision highp float` (FP32). A leading
-            // `precision` declaration is valid GLSL at the top of the hook body,
-            // so emitting it here (before the blank/comment) is safe.
-            // Choose float precision from this pass's body (until the next //!
-            // header or end of file). Keep highp int for every pass.
+          if (!precisionInjectedForBlock && trimmed.isNotEmpty() && !trimmed.startsWith("//")) {
+            // Choose float precision based on this pass's body (until the next
+            // //! header or end of file). Keep highp int for every pass.
             val floatPrecision = if (passNeedsHighpFloat(lines, i)) "highp" else "mediump"
             newLines.add("precision $floatPrecision float;")
             newLines.add("precision highp int;")
@@ -203,6 +217,22 @@ class Anime4KManager(private val context: Context) {
 
     // Optimize redundant texture fetches inside C.R.E.L.U. convolution passes
     return optimizeCreluPasses(withPrecision)
+  }
+
+  /**
+   * Returns true if the pass body starting at [bodyStart] contains FP32-sensitive
+   * operations (FSR bit tricks) that must not be compiled as FP16/mediump.
+   */
+  private fun passNeedsHighpFloat(lines: List<String>, bodyStart: Int): Boolean {
+    var j = bodyStart
+    while (j < lines.size && !lines[j].trim().startsWith("//!")) {
+      val body = lines[j]
+      if (FP32_MARKERS.any { body.contains(it) }) {
+        return true
+      }
+      j++
+    }
+    return false
   }
 
   private fun optimizeCreluPasses(content: String): String {
