@@ -22,3 +22,5 @@ Lis/xyz/mpv/MPVLib;
 Lis/xyz/mpv/BaseMPVView;
 Lapp/gyrolet/mpvrx/ui/player/MPVView;
 Lapp/gyrolet/mpvrx/domain/anime4k/Anime4KManager;
+HSPLis/xyz/mpv/**;->**(**)**
+Lis/xyz/mpv/**;

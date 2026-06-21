@@ -89,7 +89,7 @@ class Anime4KManager(private val context: Context) {
     if (isInitialized) {
       return true
     }
-    
+
     return try {
       // Create shader directory
       shaderDir = File(context.filesDir, SHADER_DIR)
@@ -117,7 +117,7 @@ class Anime4KManager(private val context: Context) {
       if (missingRequiredFiles) {
         return false
       }
-      
+
       isInitialized = true
       true
     } catch (e: Exception) {
@@ -177,9 +177,22 @@ class Anime4KManager(private val context: Context) {
       } else {
         if (inHeader) {
           inHeader = false
-          if (!precisionInjectedForBlock && trimmed.isNotEmpty() && !trimmed.startsWith("//")) {
-            // Force mobile GPU to compile all operations using efficient FP16 precision
-            newLines.add("precision mediump float;")
+          if (!precisionInjectedForBlock) {
+            // Inject precision at the FIRST body line of the pass — i.e. the
+            // moment we leave the //! directive block — regardless of whether
+            // that line is blank or a // comment. Most Anime4K shaders put a
+            // blank line between the //! directives and the code; the previous
+            // `trimmed.isNotEmpty() && !startsWith("//")` guard caused those
+            // passes (Clamp, AutoDownscalePre, Thin, Darken, Deblur, ArtCNN and
+            // every Anime4K-Ultra pass) to be skipped entirely, silently leaving
+            // them at mpv's global `precision highp float` (FP32). A leading
+            // `precision` declaration is valid GLSL at the top of the hook body,
+            // so emitting it here (before the blank/comment) is safe.
+            // Choose float precision from this pass's body (until the next //!
+            // header or end of file). Keep highp int for every pass.
+            val floatPrecision = if (passNeedsHighpFloat(lines, i)) "highp" else "mediump"
+            newLines.add("precision $floatPrecision float;")
+            newLines.add("precision highp int;")
             precisionInjectedForBlock = true
           }
         }
@@ -250,6 +263,15 @@ class Anime4KManager(private val context: Context) {
       val x = mapCoord(result.groupValues[1])
       val y = mapCoord(result.groupValues[2])
       "max(-t_${x}_${y}, 0.0)"
+    }
+
+    // Defensive: mapCoord() emits "unknown" for any offset outside {-1,0,1}.
+    // If that ever happens (a future shader with a larger kernel), the rewrite
+    // would reference an undeclared texel like `t_unknown_0` and fail to
+    // compile, causing mpv to drop the whole shader. Bail to the original pass
+    // in that case so correctness never depends on the kernel being 3x3.
+    if (optimized.contains("_unknown")) {
+      return pass
     }
 
     return optimized
@@ -365,7 +387,7 @@ class Anime4KManager(private val context: Context) {
     val missingShaders = shaders.filterNot { file ->
       file.exists()
     }
-    
+
     if (missingShaders.isNotEmpty()) {
       return emptyList()
     }
