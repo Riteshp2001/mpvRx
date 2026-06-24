@@ -203,6 +203,11 @@ class PlayerActivity :
   private val fileManager: FileManager by inject()
 
   /**
+   * Drives audio-to-vibration haptics during playback.
+   */
+  private val hapticsManager: app.gyrolet.mpvrx.domain.haptics.HapticsManager by inject()
+
+  /**
    * Track selector for automatic audio/subtitle selection
    */
   private val trackSelector: TrackSelector by lazy {
@@ -1088,6 +1093,7 @@ class PlayerActivity :
   }
 
   override fun onStop() {
+    runCatching { hapticsManager.stop() }
     runCatching {
       pipHelper.onStop()
 
@@ -1996,6 +2002,7 @@ class PlayerActivity :
     enableVideoAfterBackground()
     updateVolume()
     resumePlaybackAfterScreenUnlockIfNeeded()
+    startHapticsIfActive()
   }
 
   /**
@@ -2544,6 +2551,23 @@ class PlayerActivity :
       val currentPosMs = (viewModel.pos ?: 0).toLong() * 1000L
       reporter.reportPlaybackProgress(currentPosMs, isPaused)
     }
+
+    // Audio-driven haptics: only run the engine while actually playing.
+    if (isPaused) {
+      runCatching { hapticsManager.stop() }
+    } else {
+      startHapticsIfActive()
+    }
+  }
+
+  /**
+   * Starts the haptics engine when a video is playing. No-op when haptics are
+   * disabled, unsupported, or the audio-capture permission is not yet granted
+   * (the permission is requested from the Haptics settings screen).
+   */
+  private fun startHapticsIfActive() {
+    if (viewModel.paused != false) return
+    runCatching { hapticsManager.onPlaybackActive() }
   }
 
   /**

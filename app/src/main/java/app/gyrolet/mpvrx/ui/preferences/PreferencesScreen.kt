@@ -149,6 +149,12 @@ object PreferencesScreen : Screen {
             icon = Icons.Outlined.Audiotrack,
             screen = AudioPreferencesScreen,
           ),
+          SettingsDestination(
+            title = stringResource(R.string.pref_haptics),
+            summary = stringResource(R.string.pref_haptics_summary),
+            icon = Icons.Outlined.Headset,
+            screen = HapticsPreferencesScreen,
+          ),
         ),
       ),
       SettingsSection(

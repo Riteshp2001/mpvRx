@@ -243,6 +243,31 @@
   <string name="toast_subtitles_cleared">Subtitle downloads cleared</string>
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
+
+  <!-- Haptics -->
+  <string name="pref_haptics">Haptics</string>
+  <string name="pref_haptics_summary">Feel bass and impacts through vibration while watching</string>
+  <string name="pref_haptics_enable_title">Audio haptics</string>
+  <string name="pref_haptics_enable_summary">Vibrate in time with the audio during playback</string>
+  <string name="pref_haptics_permission_note_title">Microphone permission</string>
+  <string name="pref_haptics_permission_note_summary">Required by Android to read the audio output for haptics. No audio is recorded or stored.</string>
+  <string name="pref_haptics_engine_title">Vibration engine</string>
+  <string name="pref_haptics_engine_full">Full (rumble + impacts)</string>
+  <string name="pref_haptics_engine_standard">Standard (amplitude only)</string>
+  <string name="pref_haptics_preset_title">Preset</string>
+  <string name="pref_haptics_preset_movie">Movie / Action</string>
+  <string name="pref_haptics_preset_music">Music</string>
+  <string name="pref_haptics_preset_game">Game</string>
+  <string name="pref_haptics_preset_custom">Custom</string>
+  <string name="pref_haptics_master_intensity">Master intensity</string>
+  <string name="pref_haptics_bass_gain">Bass / rumble gain</string>
+  <string name="pref_haptics_impact_sensitivity">Impact sensitivity</string>
+  <string name="pref_haptics_noise_threshold">Silence threshold</string>
+  <string name="pref_haptics_max_amplitude">Maximum strength</string>
+  <string name="pref_haptics_test_title">Test vibration</string>
+  <string name="pref_haptics_test_summary">Play a sample pattern with the current settings</string>
+  <string name="haptics_permission_denied">Microphone permission is required for audio haptics</string>
+  <string name="haptics_no_vibrator">This device has no usable vibration motor</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
   <string name="pref_audio_pitch_correction_summary">Prevents the audio from becoming high-pitched at faster speeds and low-pitched at slower speeds</string>
   <string name="pref_audio_volume_normalization_title">Volume normalization</string>
