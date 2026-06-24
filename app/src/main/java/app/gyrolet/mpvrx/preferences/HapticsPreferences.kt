@@ -23,7 +23,7 @@ class HapticsPreferences(
   val engineMode = preferenceStore.getEnum("haptics_engine_mode", HapticsEngineMode.Full)
 
   /** Tuning preset. [HapticsPreset.Custom] exposes the sliders below. */
-  val preset = preferenceStore.getEnum("haptics_preset", HapticsPreset.Movie)
+  val preset = preferenceStore.getEnum("haptics_preset", HapticsPreset.Subtle)
 
   /** Overall strength, 0..100. */
   val masterIntensity = preferenceStore.getInt("haptics_master_intensity", 70)
@@ -39,6 +39,26 @@ class HapticsPreferences(
 
   /** Hard clamp on the maximum vibration amplitude, 1..100. */
   val maxAmplitude = preferenceStore.getInt("haptics_max_amplitude", 100)
+
+  /**
+   * When enabled, the bed vibration is fully suppressed during quiet or
+   * dialogue-heavy scenes. Impacts still fire on strong transients.
+   */
+  val quietSceneAwareness = preferenceStore.getBoolean("haptics_quiet_scene", true)
+
+  /**
+   * Minimum milliseconds between two impact (primitive-based) vibrations.
+   * Prevents the "jackhammer" effect during rapid action sequences.
+   * Range: 80..300, exposed only when preset is Custom.
+   */
+  val impactCooldown = preferenceStore.getInt("haptics_impact_cooldown", 150)
+
+  /**
+   * When enabled, haptic intensity is automatically scaled down when the
+   * media volume is low, and disabled entirely when muted. Mimics Sony's
+   * Dynamic Vibration System behaviour.
+   */
+  val volumeAware = preferenceStore.getBoolean("haptics_volume_aware", false)
 }
 
 enum class HapticsEngineMode(
@@ -54,7 +74,9 @@ enum class HapticsEngineMode(
 enum class HapticsPreset(
   @StringRes val title: Int,
 ) {
+  Subtle(R.string.pref_haptics_preset_subtle),
   Movie(R.string.pref_haptics_preset_movie),
+  Cinema(R.string.pref_haptics_preset_cinema),
   Music(R.string.pref_haptics_preset_music),
   Game(R.string.pref_haptics_preset_game),
   Custom(R.string.pref_haptics_preset_custom),

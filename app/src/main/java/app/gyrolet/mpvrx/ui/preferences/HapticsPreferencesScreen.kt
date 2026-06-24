@@ -236,7 +236,60 @@ object HapticsPreferencesScreen : Screen {
                   title = { Text(stringResource(R.string.pref_haptics_max_amplitude)) },
                   summary = { Text("$maxAmp%", color = MaterialTheme.colorScheme.outline) },
                 )
+
+                PreferenceDivider()
+                val impactCooldown by preferences.impactCooldown.collectAsState()
+                SliderPreference(
+                  value = impactCooldown.toFloat(),
+                  sliderValue = impactCooldown.toFloat(),
+                  onValueChange = {
+                    preferences.impactCooldown.set(it.toInt().coerceIn(80, 300))
+                  },
+                  onSliderValueChange = {
+                    preferences.impactCooldown.set(it.toInt().coerceIn(80, 300))
+                  },
+                  valueRange = 80f..300f,
+                  title = { Text(stringResource(R.string.pref_haptics_impact_cooldown)) },
+                  summary = {
+                    Text(
+                      "${impactCooldown}ms",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
+            }
+          }
+
+          // --- Smart behaviour ----------------------------------------------
+          item {
+            PreferenceCard {
+              val quietScene by preferences.quietSceneAwareness.collectAsState()
+              SwitchPreference(
+                value = quietScene,
+                onValueChange = { preferences.quietSceneAwareness.set(it) },
+                title = { Text(stringResource(R.string.pref_haptics_quiet_scene_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_haptics_quiet_scene_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+              val volumeAware by preferences.volumeAware.collectAsState()
+              SwitchPreference(
+                value = volumeAware,
+                onValueChange = { preferences.volumeAware.set(it) },
+                title = { Text(stringResource(R.string.pref_haptics_volume_aware_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_haptics_volume_aware_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
             }
           }
 

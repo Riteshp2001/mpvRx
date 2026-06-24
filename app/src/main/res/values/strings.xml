@@ -255,7 +255,9 @@
   <string name="pref_haptics_engine_full">Full (rumble + impacts)</string>
   <string name="pref_haptics_engine_standard">Standard (amplitude only)</string>
   <string name="pref_haptics_preset_title">Preset</string>
+  <string name="pref_haptics_preset_subtle">Subtle</string>
   <string name="pref_haptics_preset_movie">Movie / Action</string>
+  <string name="pref_haptics_preset_cinema">Cinema</string>
   <string name="pref_haptics_preset_music">Music</string>
   <string name="pref_haptics_preset_game">Game</string>
   <string name="pref_haptics_preset_custom">Custom</string>
@@ -264,6 +266,12 @@
   <string name="pref_haptics_impact_sensitivity">Impact sensitivity</string>
   <string name="pref_haptics_noise_threshold">Silence threshold</string>
   <string name="pref_haptics_max_amplitude">Maximum strength</string>
+  <string name="pref_haptics_quiet_scene_title">Quiet scene awareness</string>
+  <string name="pref_haptics_quiet_scene_summary">Stay silent during dialogue and quiet moments</string>
+  <string name="pref_haptics_impact_cooldown">Impact cooldown</string>
+  <string name="pref_haptics_impact_cooldown_summary">Minimum gap between impact vibrations (ms)</string>
+  <string name="pref_haptics_volume_aware_title">Volume-aware</string>
+  <string name="pref_haptics_volume_aware_summary">Reduce haptics when media volume is low</string>
   <string name="pref_haptics_test_title">Test vibration</string>
   <string name="pref_haptics_test_summary">Play a sample pattern with the current settings</string>
   <string name="haptics_permission_denied">Microphone permission is required for audio haptics</string>
