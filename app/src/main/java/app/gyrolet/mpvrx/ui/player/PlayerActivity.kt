@@ -2554,16 +2554,39 @@ class PlayerActivity :
 
     // Audio-driven haptics: only run the engine while actually playing.
     if (isPaused) {
+      hapticsStartJob?.cancel()
       runCatching { hapticsManager.stop() }
     } else {
-      startHapticsIfActive()
+      startHapticsWithDelay()
+    }
+  }
+
+  /** Job for the delayed haptics start — cancelled on pause/stop. */
+  private var hapticsStartJob: Job? = null
+
+  /**
+   * Starts the haptics engine with a short delay to allow audio routing to
+   * settle. This fixes the bug where the Visualizer attaches to the global
+   * audio session before mpv has started outputting audio, resulting in
+   * silence capture and no vibration.
+   *
+   * No-op when haptics are disabled, unsupported, or the audio-capture
+   * permission is not yet granted (requested from the Haptics settings screen).
+   */
+  private fun startHapticsWithDelay() {
+    if (viewModel.paused != false) return
+    hapticsStartJob?.cancel()
+    hapticsStartJob = lifecycleScope.launch {
+      delay(HAPTICS_START_DELAY_MS)
+      if (viewModel.paused == false) {
+        runCatching { hapticsManager.onPlaybackActive() }
+      }
     }
   }
 
   /**
-   * Starts the haptics engine when a video is playing. No-op when haptics are
-   * disabled, unsupported, or the audio-capture permission is not yet granted
-   * (the permission is requested from the Haptics settings screen).
+   * Immediate haptics start for onResume (no delay needed — audio is already
+   * routed if we're resuming from background).
    */
   private fun startHapticsIfActive() {
     if (viewModel.paused != false) return
@@ -2638,6 +2661,9 @@ class PlayerActivity :
   ) {
     when (property.substringBeforeLast("/")) {
       "user-data/mpvrx" -> viewModel.handleLuaInvocation(property, value)
+    }
+    if (property == "audio-codec") {
+      hapticsManager.restartAfterAudioReconfig()
     }
   }
 
@@ -5061,6 +5087,12 @@ class PlayerActivity :
      * Milliseconds-to-seconds conversion factor.
      */
     private const val MILLISECONDS_TO_SECONDS = 1000
+
+    /**
+     * Delay before starting the haptics engine when playback resumes.
+     * Allows MPV audio routing to establish, preventing Visualizer silence capture.
+     */
+    private const val HAPTICS_START_DELAY_MS = 200L
 
     /**
      * Lets mpv drain asynchronous quit/HTTPS stream work before destroying the native core.

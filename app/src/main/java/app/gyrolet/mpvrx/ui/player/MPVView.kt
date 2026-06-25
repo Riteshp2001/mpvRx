@@ -301,6 +301,7 @@ class MPVView(
       "user-data/mpvrx/curl_response" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       // Track console visibility state
       "user-data/mpv/console/open" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
+      "audio-codec" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
     )
 
   private fun setupAudioOptions() {
@@ -509,7 +510,7 @@ class MPVView(
   }
 
   private fun selectRenderBackend(): RenderBackendSelection {
-    val anime4kEnabled = decoderPreferences.enableAnime4K.get() && 
+    val anime4kEnabled = decoderPreferences.enableAnime4K.get() &&
         (decoderPreferences.anime4kMode.get() != "OFF")
     val gpuNextEnabled = decoderPreferences.gpuNext.get()
     val vulkanEnabled = shouldUseVulkan()
