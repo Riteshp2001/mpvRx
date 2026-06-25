@@ -131,6 +131,23 @@ class HapticsManager(
     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
       PackageManager.PERMISSION_GRANTED
 
+  /** Whether the user has enabled haptics in the settings. */
+  val isEnabled: Boolean get() = preferences.enabled.get()
+
+  /**
+   * A dedicated Android Audio Session ID for the Visualizer to attach to.
+   * This is passed to mpv's `audiotrack-session-id` so the Visualizer
+   * can reliably capture the player's audio stream instead of relying on
+   * the global mix (session 0), which is often blocked by Android policy.
+   */
+  val audioSessionId: Int by lazy {
+    if (Build.VERSION.SDK_INT >= 21) {
+      audioManager?.generateAudioSessionId() ?: GLOBAL_AUDIO_SESSION
+    } else {
+      GLOBAL_AUDIO_SESSION
+    }
+  }
+
   /**
    * Start the engine if the feature is enabled, supported and permitted.
    * Safe to call repeatedly; it is a no-op when already running.
@@ -248,7 +265,7 @@ class HapticsManager(
   private fun startVisualizerAndEngine() {
     val vis =
       runCatching {
-        Visualizer(GLOBAL_AUDIO_SESSION).apply {
+        Visualizer(audioSessionId).apply {
           val sizeRange = Visualizer.getCaptureSizeRange()
           captureSize = sizeRange[1].coerceAtMost(MAX_CAPTURE_SIZE)
           enabled = true

@@ -1387,9 +1387,22 @@ class PlayerActivity :
       Log.e(TAG, "Error copying MPV config and scripts", e)
     }
 
+    // Fix for Android Visualizer bug: it returns arrays of zeros if the AudioTrack uses float PCM.
+    // Force 16-bit PCM output so the haptics Visualizer can actually read the audio stream.
+    if (hapticsManager.isEnabled) {
+      MPVLib.setOptionString("audio-format", "s16")
+    }
+
     // NOW initialize MPV - it will find and load the scripts we just copied
     initializePlayerWithRendererFallback()
     runCatching { MPVLib.setThumbnailJavaVM(applicationContext) }
+
+    // Route MPV's audio to the dedicated haptics session ID so the Visualizer can capture it.
+    // We set both audiotrack and aaudio in case the user changes the audio output.
+    val sessionId = hapticsManager.audioSessionId
+    runCatching { MPVLib.setPropertyInt("audiotrack-session-id", sessionId) }
+    runCatching { MPVLib.setPropertyInt("aaudio-session-id", sessionId) }
+
     mpvInitialized = true
     Log.d(TAG, "MPV initialized")
 
