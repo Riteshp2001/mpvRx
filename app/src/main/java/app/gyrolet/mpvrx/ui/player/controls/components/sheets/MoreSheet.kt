@@ -58,6 +58,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.player.applyAnime4KShaderChain
 import app.gyrolet.mpvrx.ui.player.applyAnime4KStabilityOptions
+import app.gyrolet.mpvrx.ui.player.applyAnime4KUltraRuntimeSelection
 import app.gyrolet.mpvrx.ui.player.clearAnime4KShaders
 import app.gyrolet.mpvrx.ui.player.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -93,6 +94,8 @@ fun MoreSheet(
   val anime4kDarken by decoderPreferences.anime4kDarken.collectAsState()
   val anime4kThin by decoderPreferences.anime4kThin.collectAsState()
   val anime4kDeblur by decoderPreferences.anime4kDeblur.collectAsState()
+  val enableAnime4KUltra by decoderPreferences.enableAnime4KUltra.collectAsState()
+  val anime4kUltraMode by decoderPreferences.anime4kUltraMode.collectAsState()
   val gpuNext by decoderPreferences.gpuNext.collectAsState()
   val useVulkan by decoderPreferences.useVulkan.collectAsState()
   // Observe video dimensions reactively — avoids raw JNI calls on every recomposition
@@ -320,7 +323,7 @@ fun MoreSheet(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.smaller))
 
         Text(
-            text = stringResource(R.string.anime4k_ultra_title),
+            text = stringResource(R.string.pref_anime4k_ultra_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )

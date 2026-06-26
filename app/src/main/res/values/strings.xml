@@ -318,6 +318,17 @@
   <string name="pref_anime4k_quality_title">Anime4K quality</string>
   <!-- Anime4K Modes (Renamed to Presets in UI) -->
   <string name="anime4k_mode_off">Off</string>
+  
+  <string name="pref_anime4k_ultra_title">Anime4K Ultra</string>
+  <string name="pref_anime4k_ultra_summary">Use Anime4K Ultra Shader (requires fast GPU)</string>
+  <string name="anime4k_ultra_mode_label">Ultra Mode</string>
+  <string name="anime4k_ultra_standard">Standard</string>
+  <string name="anime4k_ultra_dbh">DbH</string>
+  <string name="anime4k_ultra_dbh_sharp">DbH Sharp</string>
+  <string name="anime4k_ultra_dbl">DbL</string>
+  <string name="anime4k_ultra_dbm">DbM</string>
+  <string name="anime4k_ultra_sh">Sh</string>
+  <string name="anime4k_ultra_ssh">SSh</string>
   <string name="anime4k_mode_a">A</string>
   <string name="anime4k_mode_b">B</string>
   <string name="anime4k_mode_c">C</string>

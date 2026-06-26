@@ -119,6 +119,46 @@ internal fun applyAnime4KShaderChain(
   return true
 }
 
+internal fun applyAnime4KUltraShader(
+  anime4kManager: Anime4KManager,
+  mode: Anime4KManager.UltraMode,
+): Boolean {
+  if (!anime4kManager.initialize()) {
+    return false
+  }
+
+  val shaderPaths = anime4kManager.getUltraShaderPaths(mode)
+  if (shaderPaths.isEmpty()) {
+    return false
+  }
+
+  withPreservedVideoGeometry {
+    val retainedShaders = currentShaderList().filterNot(::isBuiltInAnime4KShaderPath)
+    setShaderList(shaderPaths + retainedShaders)
+  }
+  return true
+}
+
+internal fun applyAnime4KUltraRuntimeSelection(
+  anime4kManager: Anime4KManager,
+  mode: Anime4KManager.UltraMode,
+  onAnime4KChanged: () -> Unit,
+) {
+  if (mode == Anime4KManager.UltraMode.OFF) {
+    clearAnime4KShaders()
+    onAnime4KChanged()
+    return
+  }
+
+  if (applyAnime4KUltraShader(anime4kManager, mode)) {
+    applyAnime4KStabilityOptions(useVulkan = MPVLib.getPropertyString("gpu-api") == "vulkan")
+    onAnime4KChanged()
+  } else {
+    Log.w("Anime4KShaderUtils", "Failed to apply Anime4K Ultra mode=$mode at runtime")
+  }
+}
+
+
 internal fun applyAnime4KStabilityOptions(useVulkan: Boolean) {
   // OpenGL-only tuning should not be pushed onto the Vulkan backend.
   if (!useVulkan) {
