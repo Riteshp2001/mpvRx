@@ -122,7 +122,6 @@ sealed class PlayerUpdates {
 
   data class DynamicSpeedControl(
     val speed: Float,
-    val showFullOverlay: Boolean = true,
   ) : PlayerUpdates()
 
   data object AspectRatio : PlayerUpdates()

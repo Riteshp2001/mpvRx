@@ -84,6 +84,11 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+private val holdSpeedPresets = listOf(0.5f, 1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f)
+
+private fun nearestHoldSpeedPreset(speed: Float): Float =
+  holdSpeedPresets.minByOrNull { abs(it - speed) } ?: holdSpeedPresets.first()
+
 @Suppress("CyclomaticComplexMethod", "MultipleEmitters")
 @Composable
 fun GestureHandler(
@@ -205,7 +210,6 @@ fun GestureHandler(
     viewModel.hideSeekBar()
   }
   val multipleSpeedGesture by playerPreferences.holdForMultipleSpeed.collectAsState()
-  val showDynamicSpeedOverlay by playerPreferences.showDynamicSpeedOverlay.collectAsState()
   val brightnessGesture by playerPreferences.brightnessGesture.collectAsState()
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
@@ -538,7 +542,7 @@ fun GestureHandler(
                   originalSpeed = playbackSpeed ?: 1f
                   // Ramp speed up incrementally to avoid audio filter stutter
                   val startSpeed = originalSpeed
-                  val targetSpeed = multipleSpeedGesture
+                  val targetSpeed = nearestHoldSpeedPreset(multipleSpeedGesture)
                   val steps = 5
                   val stepDelay = 16L // ~one frame per step
                   for (i in 1..steps) {
@@ -548,16 +552,12 @@ fun GestureHandler(
                     if (i < steps) delay(stepDelay)
                   }
 
-                  if (showDynamicSpeedOverlay) {
-                    isDynamicSpeedControlActive = true
-                    hasSwipedEnough = false
-                    dynamicSpeedStartX = startPosition.x
-                    dynamicSpeedStartValue = multipleSpeedGesture
-                    lastAppliedSpeed = multipleSpeedGesture
-                    viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(multipleSpeedGesture, false) }
-                  } else {
-                    viewModel.playerUpdate.update { PlayerUpdates.MultipleSpeed }
-                  }
+                  isDynamicSpeedControlActive = true
+                  hasSwipedEnough = false
+                  dynamicSpeedStartX = startPosition.x
+                  dynamicSpeedStartValue = targetSpeed
+                  lastAppliedSpeed = targetSpeed
+                  viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(targetSpeed) }
                 }
               }
             }
@@ -611,7 +611,7 @@ fun GestureHandler(
                         longPressJob.cancel()
 
                         // Check if we're in long press mode with dynamic speed control
-                        if (isLongPressing && isDynamicSpeedControlActive && showDynamicSpeedOverlay && abs(deltaX) > 10f) {
+                        if (isLongPressing && isDynamicSpeedControlActive && abs(deltaX) > 10f) {
                           gestureType = "speed_control"
                         } else {
                           gestureType = if (isHorizontalDrag) {
@@ -662,11 +662,10 @@ fun GestureHandler(
                       change.consume()
                     }
                     "speed_control" -> {
-                      if (!showDynamicSpeedOverlay) return@forEach
                       if (isLongPressing && isDynamicSpeedControlActive && paused == false) {
                         change.consume()
 
-                        val speedPresets = listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f, 4.0f)
+                        val speedPresets = holdSpeedPresets
                         val screenWidth = size.width.toFloat()
 
                         val deltaX = currentPosition.x - dynamicSpeedStartX
@@ -674,7 +673,7 @@ fun GestureHandler(
 
                         if (!hasSwipedEnough && abs(deltaX) >= swipeDetectionThreshold) {
                           hasSwipedEnough = true
-                          viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(lastAppliedSpeed, true) }
+                          viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(lastAppliedSpeed) }
                         }
 
                         if (hasSwipedEnough) {
@@ -683,7 +682,9 @@ fun GestureHandler(
 
                           val startIndex = speedPresets.indexOfFirst {
                             abs(it - dynamicSpeedStartValue) < 0.01f
-                          }.takeIf { it >= 0 } ?: 4
+                          }.takeIf { it >= 0 } ?: speedPresets.indexOfFirst {
+                            it >= dynamicSpeedStartValue
+                          }.takeIf { it >= 0 } ?: speedPresets.lastIndex
 
                           val newIndex = (startIndex + indexDelta.toInt()).coerceIn(0, speedPresets.size - 1)
                           val newSpeed = speedPresets[newIndex]
@@ -692,7 +693,7 @@ fun GestureHandler(
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             lastAppliedSpeed = newSpeed
                             MPVLib.setPropertyFloat("speed", newSpeed)
-                            viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed, true) }
+                            viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed) }
                           }
                         }
                       }

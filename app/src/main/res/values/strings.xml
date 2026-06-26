@@ -111,7 +111,6 @@
   <string name="pref_player_autoplay_after_screen_unlock_summary_disabled">Keep video paused after the screen is unlocked</string>
   <string name="pref_player_show_buffered_range_title">Show buffered range on seek bar</string>
   <string name="pref_player_show_buffered_range_summary">Display the online buffer ahead of the playhead on the seek bar.</string>
-  <string name="pref_dynamic_speed_overlay_title">Dynamic Speed Overlay</string>
   <string name="pref_show_navigation_bar_title">Show navigation bar with controls</string>
   <!-- Gesture Preferences Hardcoded -->
   <string name="pref_double_tap_seek_area_width_title">Double Tap Seek Area Width</string>
@@ -575,7 +574,7 @@
   <string name="pref_brightness_overlay_title">Brightness slider overlay</string>
   <string name="pref_brightness_overlay_summary">Show the vertical brightness pill while swiping for brightness</string>
   <string name="pref_hold_speed_overlay_pref_title">Hold speed overlay</string>
-  <string name="pref_hold_speed_overlay_pref_summary">Show speed badge and slider while long-pressing to boost playback speed</string>
+  <string name="pref_hold_speed_overlay_pref_summary">Show a simple speed label while long-pressing to boost playback speed</string>
   <string name="pref_aspect_ratio_overlay_title">Aspect ratio feedback</string>
   <string name="pref_aspect_ratio_overlay_summary">Show a brief pill when cycling aspect ratio (16:9, Fit, Crop…)</string>
   <string name="pref_zoom_overlay_title">Zoom level feedback</string>
@@ -596,7 +595,6 @@
   <string name="pref_sensitivity_high">High</string>
   <string name="pref_swipe_sensitivity_summary">Current: %1$d/100 (%2$s)</string>
   <string name="pref_hold_speed_summary_format">%.2fx</string>
-  <string name="pref_dynamic_speed_overlay_summary">Show advanced overlay for speed control during long-press and swipe</string>
   <string name="pref_custom_seek_dialog_text">Enter custom seek duration in seconds (1–120)</string>
   <string name="pref_custom_seek_label">Seconds</string>
   <string name="pref_double_tap_seek_area_width_summary">Current: %1$d%%</string>

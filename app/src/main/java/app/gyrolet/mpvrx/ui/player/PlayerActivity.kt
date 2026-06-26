@@ -583,11 +583,15 @@ class PlayerActivity :
               val targetIndex = playlistIndex.coerceIn(0, playlist.lastIndex)
               loadPlaylistItem(targetIndex)
             } else {
-              player.playFile(playableUri)
+              lifecycleScope.launch(Dispatchers.Default) {
+                player.playFile(playableUri)
+              }
             }
           }
         } else {
-          player.playFile(playableUri)
+          lifecycleScope.launch(Dispatchers.Default) {
+            player.playFile(playableUri)
+          }
         }
       }
     }
@@ -3565,7 +3569,9 @@ class PlayerActivity :
           }
         }
       } else {
-        player.playFile(uri)
+        lifecycleScope.launch(Dispatchers.Default) {
+          player.playFile(uri)
+        }
       }
     }
   }

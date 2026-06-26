@@ -327,13 +327,6 @@ object SearchablePreferences {
                 screen = PlayerPreferencesScreen,
             ))
             add(SearchablePreference(
-                titleRes = R.string.pref_dynamic_speed_overlay_title,
-                summaryRes = R.string.pref_dynamic_speed_overlay_summary,
-                keywords = listOf("dynamic", "speed", "overlay", "control", "hold", "swipe"),
-                category = "Player",
-                screen = PlayerPreferencesScreen,
-            ))
-            add(SearchablePreference(
                 titleRes = R.string.pref_player_controls_allow_gestures_in_panels,
                 keywords = listOf("gestures", "panels", "controls", "overlay", "enable"),
                 category = "Player",

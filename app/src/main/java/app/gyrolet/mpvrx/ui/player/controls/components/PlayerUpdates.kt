@@ -85,7 +85,7 @@ fun MultipleSpeedPlayerUpdate(
   currentSpeed: Float,
   modifier: Modifier = Modifier,
 ) {
-  CompactSpeedIndicator(currentSpeed = currentSpeed, modifier = modifier)
+  TextPlayerUpdate(text = "${currentSpeed.formatSpeed()}x", modifier = modifier)
 }
 
 @Composable
@@ -93,6 +93,14 @@ fun MultipleSpeedPlayerUpdate(
 private fun PreviewMultipleSpeedPlayerUpdate() {
   MultipleSpeedPlayerUpdate(currentSpeed = 2f)
 }
+
+private fun Float.formatSpeed(): String =
+  if (this % 1.0f == 0.0f) {
+    this.toInt().toString()
+  } else {
+    String.format("%.1f", this)
+  }
+
 @Composable
 fun SeekPlayerUpdate(
   currentTime: String,

@@ -136,14 +136,12 @@ import app.gyrolet.mpvrx.ui.player.buildControlsExitV
 import app.gyrolet.mpvrx.ui.player.getTrackSelectionId
 import app.gyrolet.mpvrx.ui.player.setTrackSelectionId
 import app.gyrolet.mpvrx.ui.player.controls.components.BrightnessSlider
-import app.gyrolet.mpvrx.ui.player.controls.components.CompactSpeedIndicator
 import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.MultipleSpeedPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekThumbnailPreviewBubble
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.controls.components.SlideToUnlock
-import app.gyrolet.mpvrx.ui.player.controls.components.SpeedControlSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.TextPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.VolumeSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
@@ -625,36 +623,10 @@ fun PlayerControls(
               },
         ) {
           when (currentPlayerUpdate) {
-            is PlayerUpdates.MultipleSpeed -> MultipleSpeedPlayerUpdate(currentSpeed = holdForMultipleSpeed)
+            is PlayerUpdates.MultipleSpeed -> MultipleSpeedPlayerUpdate(currentSpeed = holdForMultipleSpeed.coerceIn(0.5f, 4f))
             is PlayerUpdates.DynamicSpeedControl -> {
               val speedUpdate = currentPlayerUpdate as PlayerUpdates.DynamicSpeedControl
-              val currentSpeed = speedUpdate.speed
-              val showDynamicSpeedOverlay by playerPreferences.showDynamicSpeedOverlay.collectAsState()
-              val shouldShowFull = speedUpdate.showFullOverlay
-              var isCollapsed by remember { mutableStateOf(false) }
-
-              LaunchedEffect(currentSpeed, shouldShowFull) {
-                if (shouldShowFull) {
-                  isCollapsed = false
-                  delay(1500)
-                  isCollapsed = true
-                } else {
-                  isCollapsed = true
-                }
-              }
-
-              if (showDynamicSpeedOverlay) {
-                if (isCollapsed) {
-                  // Simple compact indicator
-                  CompactSpeedIndicator(currentSpeed = currentSpeed)
-                } else {
-                  // Full speed control slider
-                  SpeedControlSlider(currentSpeed = currentSpeed)
-                }
-              } else {
-                // fallback, simple indicator
-                CompactSpeedIndicator(currentSpeed = currentSpeed)
-              }
+              MultipleSpeedPlayerUpdate(currentSpeed = speedUpdate.speed)
             }
             is PlayerUpdates.AspectRatio -> {
               val customRatiosSet by playerPreferences.customAspectRatios.collectAsState()
