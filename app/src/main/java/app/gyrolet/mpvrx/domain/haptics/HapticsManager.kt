@@ -268,7 +268,6 @@ class HapticsManager(
         Visualizer(audioSessionId).apply {
           val sizeRange = Visualizer.getCaptureSizeRange()
           captureSize = sizeRange[1].coerceAtMost(MAX_CAPTURE_SIZE)
-          enabled = true
         }
       }.getOrElse { e ->
         Log.w(TAG, "Failed to start Visualizer for haptics", e)
@@ -329,6 +328,13 @@ class HapticsManager(
       false, // waveform capture: off
       true,  // FFT capture: on
     )
+
+    // Enable the Visualizer ONLY AFTER the listener is attached,
+    // otherwise it returns ERROR_INVALID_OPERATION and never fires callbacks.
+    val status = vis.setEnabled(true)
+    if (status != Visualizer.SUCCESS) {
+      Log.e(TAG, "Failed to enable Visualizer, error code: $status")
+    }
 
     // Bug fix: Schedule a verification check. If the Visualizer captured only
     // silence after startup, it likely attached before audio was routed.
@@ -395,9 +401,12 @@ class HapticsManager(
     } else {
       1f
     }
-    if (volumeScale <= 0f) return // Muted — skip entirely.
-
+    
     val frame = engine.process(fft, samplingRate, params, now)
+
+    if (paramRefreshCounter % 30 == 0) {
+      Log.d(TAG, "Haptics debug [Apple=$isAppleMusic]: onset=${frame.onset} str=${frame.onsetStrength} tier=${frame.impactTier} amp=${frame.amplitude}")
+    }
 
     val isFull = mode == HapticsEngineMode.Full
 

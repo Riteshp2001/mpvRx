@@ -97,9 +97,6 @@ class AudioHapticEngine {
   // Reusable magnitude buffer to avoid per-frame allocation.
   private var magBuf = FloatArray(0)
 
-  // Pre-computed Hann window coefficients (lazily sized).
-  private var hannWindow = FloatArray(0)
-
   // Apple Music mode: spectral centroid tracking for melodic contour.
   private var prevCentroid = 0f
   private var centroidEnvelope = 0f
@@ -148,18 +145,12 @@ class AudioHapticEngine {
     if (magBuf.size != half) magBuf = FloatArray(half)
     val mag = magBuf
 
-    // Ensure Hann window is the right size.
-    if (hannWindow.size != captureSize) {
-      hannWindow = FloatArray(captureSize) { i ->
-        (0.5 * (1.0 - kotlin.math.cos(2.0 * Math.PI * i / (captureSize - 1)))).toFloat()
-      }
-    }
-
-    // Decode magnitudes with Hann windowing.
-    mag[0] = abs(fft[0].toInt().toFloat() * hannWindow[0])
+    // Decode magnitudes from signed 8-bit real/imaginary parts.
+    // Note: Android Visualizer has already performed the FFT. Do NOT apply a time-domain window here.
+    mag[0] = abs(fft[0].toInt().toFloat())
     for (k in 1 until half) {
-      val re = fft[2 * k].toInt().toFloat() * hannWindow[2 * k]
-      val im = fft[2 * k + 1].toInt().toFloat() * hannWindow[2 * k + 1]
+      val re = fft[2 * k].toInt().toFloat()
+      val im = fft[2 * k + 1].toInt().toFloat()
       mag[k] = sqrt(re * re + im * im)
     }
 
@@ -394,16 +385,20 @@ class AudioHapticEngine {
       val d = mag[i] - prev[i]
       if (d > 0f) flux += d
     }
-    flux /= (hiBin - loBin + 1).coerceAtLeast(1)
+    // Do not average the flux across the entire band; we want total transient energy.
+    // Scale by 4 to keep numbers within 0..1 range without heavy dilution.
+    flux /= 4f
     flux /= NORM
 
     prevMag = snapshot
 
     // Adaptive threshold: tighter reaction for Sony DVS.
-    val threshold = fluxAvg * (1f + (1f - params.impactSensitivity) * 2.5f) + 0.015f
-    fluxAvg = fluxAvg * 0.90f + flux * 0.10f
+    // Slower tracking (0.95) so the average doesn't instantly swallow the beat.
+    val threshold = fluxAvg * (1f + (1f - params.impactSensitivity) * 1.5f) + 0.005f
+    fluxAvg = fluxAvg * 0.95f + flux * 0.05f
 
-    val isOnsetCandidate = flux > threshold && flux > tuning.onsetFloor
+    // Halve the onsetFloor so quiet beats still trigger.
+    val isOnsetCandidate = flux > threshold && flux > (tuning.onsetFloor * 0.5f)
     val strength = if (isOnsetCandidate) ((flux - threshold) / 0.25f).coerceIn(0f, 1f) else 0f
 
     // Cooldown with impact chaining support.
@@ -462,16 +457,19 @@ class AudioHapticEngine {
       val d = mag[i] - prev[i]
       if (d > 0f) flux += d
     }
-    flux /= (hiBin - loBin + 1).coerceAtLeast(1)
+    // Apple mode: sum the percussive energy. Do not heavily dilute it.
+    flux /= 4f
     flux /= NORM
 
     prevMag = snapshot
 
     // Apple mode: higher sensitivity, lower threshold for catching every beat.
-    val threshold = fluxAvg * (1f + (1f - params.impactSensitivity) * 1.8f) + 0.01f
-    fluxAvg = fluxAvg * 0.88f + flux * 0.12f // Faster tracking for rhythm.
+    // Slower tracking (0.92) prevents the average from swallowing the peak.
+    val threshold = fluxAvg * (1f + (1f - params.impactSensitivity) * 1.2f) + 0.005f
+    fluxAvg = fluxAvg * 0.92f + flux * 0.08f
 
-    val isOnsetCandidate = flux > threshold && flux > tuning.onsetFloor
+    // Halve the onsetFloor so it triggers even on low volume beats.
+    val isOnsetCandidate = flux > threshold && flux > (tuning.onsetFloor * 0.5f)
     val strength = if (isOnsetCandidate) ((flux - threshold) / 0.2f).coerceIn(0f, 1f) else 0f
 
     // Apple mode: much shorter cooldown to catch rapid beats.

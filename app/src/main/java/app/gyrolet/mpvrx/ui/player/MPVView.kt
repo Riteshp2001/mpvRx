@@ -14,6 +14,7 @@ import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
+import app.gyrolet.mpvrx.preferences.HapticsPreferences
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.ui.player.PlayerActivity.Companion.TAG
@@ -38,6 +39,7 @@ class MPVView(
   private val advancedPreferences: AdvancedPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val ytdlPreferences: YtdlPreferences by inject()
+  private val hapticsPreferences: HapticsPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
   private val hdrToysManager: HdrToysManager by inject()
 
@@ -317,6 +319,12 @@ class MPVView(
     // Volume normalization using dynamic audio normalization filter
     if (audioPreferences.volumeNormalization.get()) {
       MPVLib.setOptionString("af", "dynaudnorm")
+    }
+
+    // Fix for Android Visualizer bug: it returns arrays of zeros if the AudioTrack uses float PCM.
+    // Force 16-bit PCM output so the haptics Visualizer can actually read the audio stream.
+    if (hapticsPreferences.enabled.get()) {
+      MPVLib.setOptionString("audio-format", "s16")
     }
   }
 
