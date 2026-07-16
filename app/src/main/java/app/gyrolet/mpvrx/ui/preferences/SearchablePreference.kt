@@ -442,40 +442,40 @@ object SearchablePreferences {
                 titleRes = R.string.pref_folders_title,
                 summaryRes = R.string.pref_folders_summary,
                 keywords = listOf("folders", "blacklist", "hide", "exclude", "manage"),
-                category = "Storage",
+                category = "Folders",
                 screen = FoldersPreferencesScreen,
             ))
             add(SearchablePreference(
                 titleRes = R.string.pref_folders_include_nomedia_title,
                 summaryRes = R.string.pref_folders_include_nomedia_summary,
                 keywords = listOf("no media", "nomedia", "include", "scan", "media store"),
-                category = "Storage",
+                category = "Folders",
                 screen = FoldersPreferencesScreen,
             ))
             add(SearchablePreference(
                 titleRes = R.string.pref_folders_add_folder,
                 keywords = listOf("add", "folder", "exclude", "blacklist"),
-                category = "Storage",
+                category = "Folders",
                 screen = FoldersPreferencesScreen,
             ))
             add(SearchablePreference(
                 titleRes = R.string.pref_folders_clear_all,
                 keywords = listOf("clear", "all", "folders", "blacklist", "reset"),
-                category = "Storage",
+                category = "Folders",
                 screen = FoldersPreferencesScreen,
             ))
             add(SearchablePreference(
                 title = "Subtitle Save Folder",
                 summary = "Where downloaded subtitles are saved",
                 keywords = listOf("subtitle", "save", "download", "folder", "directory", "location"),
-                category = "Storage",
+                category = "Folders",
                 screen = FoldersPreferencesScreen,
             ))
             add(SearchablePreference(
                 title = "Fonts Folder",
                 summary = "Fonts used for subtitle rendering",
                 keywords = listOf("fonts", "subtitle", "folder", "directory", "custom"),
-                category = "Storage",
+                category = "Folders",
                 screen = FoldersPreferencesScreen,
             ))
 
@@ -587,7 +587,7 @@ object SearchablePreferences {
             add(SearchablePreference(
                 titleRes = R.string.pref_subtitles_save_location,
                 keywords = listOf("subtitle", "download", "save", "location", "folder", "directory"),
-                category = "Storage",
+                category = "Folders",
                 screen = FoldersPreferencesScreen,
             ))
             add(SearchablePreference(
@@ -708,7 +708,7 @@ object SearchablePreferences {
                 title = "Base Storage Folder",
                 summary = "Root folder — auto-creates Subtitles/ and Fonts/ subdirs",
                 keywords = listOf("base", "storage", "root", "folder", "subtitles", "fonts", "directory"),
-                category = "Storage",
+                category = "Advanced",
                 screen = AdvancedPreferencesScreen,
             ))
             add(SearchablePreference(
@@ -919,7 +919,7 @@ object SearchablePreferences {
                 Triple(AudioPreferences::class.java, AudioPreferencesScreen, "Audio"),
                 Triple(BrowserPreferences::class.java, AppearancePreferencesScreen, "Appearance"),
                 Triple(DecoderPreferences::class.java, DecoderPreferencesScreen, "Decoder"),
-                Triple(FoldersPreferences::class.java, FoldersPreferencesScreen, "Storage"),
+                Triple(FoldersPreferences::class.java, FoldersPreferencesScreen, "Folders"),
                 Triple(GesturePreferences::class.java, GesturePreferencesScreen, "Gestures"),
                 Triple(PlayerPreferences::class.java, PlayerPreferencesScreen, "Player"),
                 Triple(SubtitlesPreferences::class.java, SubtitlesPreferencesScreen, "Subtitles"),

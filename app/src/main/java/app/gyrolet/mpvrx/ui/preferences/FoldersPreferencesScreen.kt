@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -119,7 +120,9 @@ object FoldersPreferencesScreen : Screen {
     Scaffold(
       topBar = {
         BrowserTopBar(
-          title = "Storage",
+          title = stringResource(R.string.pref_folders_title),
+          colors = TopAppBarDefaults.topAppBarColors(),
+          forceHeadlineSmall = true,
           isInSelectionMode = selectionState.isInSelectionMode,
           selectedCount = selectionState.selectedCount,
           totalCount = blacklistedFoldersList.size,
