@@ -21,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -83,6 +84,8 @@ fun BrowserTopBar(
   onTitleLongPress: (() -> Unit)? = null,
   useRemoveIcon: Boolean = false,
   onAddToPlaylistClick: (() -> Unit)? = null,
+  colors: TopAppBarColors? = null,
+  forceHeadlineSmall: Boolean = false,
 ) {
   if (isInSelectionMode) {
     SelectionTopBar(
@@ -104,6 +107,7 @@ fun BrowserTopBar(
       modifier = modifier,
       useRemoveIcon = useRemoveIcon,
       onAddToPlaylist = onAddToPlaylistClick,
+      colors = colors,
     )
   } else {
     NormalTopBar(
@@ -115,6 +119,8 @@ fun BrowserTopBar(
       additionalActions = additionalActions,
       modifier = modifier,
       onTitleLongPress = onTitleLongPress,
+      colors = colors,
+      forceHeadlineSmall = forceHeadlineSmall,
     )
   }
 }
@@ -133,6 +139,8 @@ private fun NormalTopBar(
   additionalActions: @Composable RowScope.() -> Unit,
   modifier: Modifier = Modifier,
   onTitleLongPress: (() -> Unit)?,
+  colors: TopAppBarColors? = null,
+  forceHeadlineSmall: Boolean = false,
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
@@ -149,7 +157,7 @@ private fun NormalTopBar(
       DarkMode.System -> if (darkTheme) {
         preferences.darkMode.set(DarkMode.Light)
       } else {
-        preferences.darkMode.set(DarkMode.Dark)
+        preferences.darkMode.set(DarkMode.System)
       }
       DarkMode.Light -> if (darkTheme) {
         preferences.darkMode.set(DarkMode.System)
@@ -165,7 +173,7 @@ private fun NormalTopBar(
   }
 
   TopAppBar(
-    colors = TopAppBarDefaults.topAppBarColors(
+    colors = colors ?: TopAppBarDefaults.topAppBarColors(
       containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
         Color.Black
       } else {
@@ -203,10 +211,10 @@ private fun NormalTopBar(
       Text(
         title,
         style =
-          if (onBackClick == null) {
-            MaterialTheme.typography.headlineMediumEmphasized
-          } else {
+          if (forceHeadlineSmall || onBackClick != null) {
             MaterialTheme.typography.headlineSmall
+          } else {
+            MaterialTheme.typography.headlineMediumEmphasized
           },
         fontWeight = FontWeight.ExtraBold,
         color = MaterialTheme.colorScheme.primary,
@@ -307,11 +315,12 @@ private fun SelectionTopBar(
   modifier: Modifier = Modifier,
   useRemoveIcon: Boolean = false,
   onAddToPlaylist: (() -> Unit)? = null,
+  colors: TopAppBarColors? = null,
 ) {
   var showDropdown by remember { mutableStateOf(false) }
 
   TopAppBar(
-    colors = TopAppBarDefaults.topAppBarColors(
+    colors = colors ?: TopAppBarDefaults.topAppBarColors(
       containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
         Color.Black
       } else {
