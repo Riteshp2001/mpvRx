@@ -2554,6 +2554,8 @@ class PlayerViewModel(
   }
 
   // --- Subtitle Search ---
+  private var subtitleSearchJob: Job? = null
+
   fun searchOnlineSubtitles(query: String) {
     val queryInfo = MediaInfoParser.parse(query)
     val fileInfo = MediaInfoParser.parse(currentMediaTitle)
@@ -2599,39 +2601,44 @@ class PlayerViewModel(
     includeWyzie: Boolean = true,
     includeSubtitleHub: Boolean = true,
   ) {
-     viewModelScope.launch {
-          _isSearchingSub.value = true
-          val cleanSubHubTitle = MediaInfoParser.parse(query).title.ifBlank { query.trim() }
-          val wyzieRequest =
-              OnlineSubtitleSearchRequest(
-                  query = query,
-                  tmdbId = tmdbId,
-                  season = season,
-                  episode = episode,
-                  year = year,
-                  movieHash = _videoHash.value,
-              )
-          val subtitleHubRequest =
-              OnlineSubtitleSearchRequest(
-                  query = cleanSubHubTitle,
-                  year = year,
-              )
-          onlineSubtitleOrchestrator.search(
-              wyzieRequest,
-              subtitlesPreferences.onlineSubtitleSearchMode.get(),
-              subtitleHubRequest = subtitleHubRequest,
-              includeWyzie = includeWyzie,
-              includeSubtitleHub = includeSubtitleHub,
-          )
-              .onSuccess { results ->
-                  _onlineSubtitleSearchResults.value = results
-             }
-             .onFailure {
-                 showProviderStatusToast("Search failed: ${it.message}")
-             }
-          _isSearchingSub.value = false
-      }
-   }
+    subtitleSearchJob?.cancel()
+    _onlineSubtitleSearchResults.value = emptyList()
+    subtitleSearchJob = viewModelScope.launch {
+      _isSearchingSub.value = true
+      val cleanSubHubTitle = MediaInfoParser.parse(query).title.ifBlank { query.trim() }
+      val wyzieRequest =
+        OnlineSubtitleSearchRequest(
+          query = query,
+          tmdbId = tmdbId,
+          season = season,
+          episode = episode,
+          year = year,
+          movieHash = _videoHash.value,
+        )
+      val subtitleHubRequest =
+        OnlineSubtitleSearchRequest(
+          query = cleanSubHubTitle,
+          year = year,
+        )
+      onlineSubtitleOrchestrator.search(
+        wyzieRequest,
+        subtitlesPreferences.onlineSubtitleSearchMode.get(),
+        subtitleHubRequest = subtitleHubRequest,
+        includeWyzie = includeWyzie,
+        includeSubtitleHub = includeSubtitleHub,
+        onResults = { results ->
+          _onlineSubtitleSearchResults.value = results
+        },
+      )
+        .onSuccess { results ->
+          _onlineSubtitleSearchResults.value = results
+        }
+        .onFailure {
+          showProviderStatusToast("Search failed: ${it.message}")
+        }
+      _isSearchingSub.value = false
+    }
+  }
 
   private fun buildWyzieSearchPlan(
     searchTitle: String,

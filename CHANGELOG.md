@@ -15,8 +15,16 @@ These notes are written in plain English and focus on what changed for real use.
 - **One background playback switch**: Audio preferences and the player background button now control the same persistent setting for both audio and video.
 - **Reliable screen lock and unlock handling**: Playback now follows the selected background policy across screen-off, lock-screen, unlock, and resume transitions without losing the prior play state.
 - **PiP lifecycle coordination**: Picture-in-picture transitions, PiP dismissal, screen locking while in PiP, and activity teardown now share one lifecycle policy instead of competing playback paths.
+- **Persistent task-removal playback**: Swiping the app out of Recents no longer kills an active foreground playback session, so background audio continues until explicitly stopped.
 - **Foreground service cleanup**: Disabling background playback immediately pauses playback and stops its foreground service and notification.
 - **Preference migration**: Existing users who enabled the legacy audio-only screen-lock option are migrated to the unified background playback setting.
+
+### Subtitle Search
+- **Results appear as they arrive**: Online subtitle results are merged into the list as each selected SubHub source or Wyzie completes instead of waiting for every request.
+- **Race-free repeat searches**: Starting another subtitle search cancels the previous request and clears stale results before streaming the new matches.
+
+### Playback Engine
+- **Updated bundled mpvlib**: Refreshed the packaged `mpvlib.aar` used by all preview APK variants.
 
 ### Media Library & Audio Browsing
 - **Preference-aware media switch**: The Video/Audio selector appears only when audio browsing is enabled, remembers the selected library type, and resets to Video when audio browsing is disabled.

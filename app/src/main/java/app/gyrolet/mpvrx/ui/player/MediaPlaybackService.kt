@@ -888,42 +888,8 @@ class MediaPlaybackService :
   }
 
   override fun onTaskRemoved(rootIntent: Intent?) {
-    Log.d(TAG, "Task removed - killing playback and cleaning up service")
-    try {
-      try {
-        MPVLib.command("quit")
-        Log.d(TAG, "MPV quit command sent")
-      } catch (e: Exception) {
-        Log.e(TAG, "Error sending quit command to MPV", e)
-      }
-
-      try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-          stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-          @Suppress("DEPRECATION")
-          stopForeground(true)
-        }
-      } catch (e: Exception) {
-        Log.e(TAG, "Error stopping foreground in onTaskRemoved", e)
-      }
-
-      try {
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(NOTIFICATION_ID)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error canceling notification in onTaskRemoved", e)
-      }
-
-      thumbnail = null
-
-      stopSelf()
-
-      android.os.Process.killProcess(android.os.Process.myPid())
-    } catch (e: Exception) {
-      Log.e(TAG, "Error in onTaskRemoved", e)
-      android.os.Process.killProcess(android.os.Process.myPid())
-    }
+    Log.d(TAG, "Task removed - keeping foreground background playback active")
+    schedulePlaybackStateSave(force = true)
     super.onTaskRemoved(rootIntent)
   }
 }

@@ -70,6 +70,14 @@ interface OnlineSubtitleProvider {
 
   suspend fun search(request: OnlineSubtitleSearchRequest): Result<List<OnlineSubtitle>>
 
+  suspend fun searchIncrementally(
+    request: OnlineSubtitleSearchRequest,
+    onResults: suspend (List<OnlineSubtitle>) -> Unit,
+  ): Result<List<OnlineSubtitle>> =
+    search(request).also { result ->
+      result.getOrNull()?.let { onResults(it) }
+    }
+
   suspend fun download(
     subtitle: OnlineSubtitle,
     mediaTitle: String,
