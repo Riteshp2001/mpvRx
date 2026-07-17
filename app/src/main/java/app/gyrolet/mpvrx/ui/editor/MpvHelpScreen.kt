@@ -146,7 +146,7 @@ data class MpvHelpScreen(
                     navigationIcon = {
                         IconButton(onClick = { backstack.popSafely() }) {
                             Icon(
-                                Icons.Outlined.ArrowBack,
+                                Icons.RoundedFilled.ArrowBack,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.secondary,
                             )
@@ -175,7 +175,7 @@ data class MpvHelpScreen(
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Outlined.Search,
+                            imageVector = Icons.RoundedFilled.Search,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.outline,
                         )
@@ -188,7 +188,7 @@ data class MpvHelpScreen(
                         ) {
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Clear,
+                                    imageVector = Icons.RoundedFilled.Clear,
                                     contentDescription = "Clear",
                                     tint = MaterialTheme.colorScheme.outline,
                                 )
@@ -243,7 +243,7 @@ data class MpvHelpScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                imageVector = Icons.Outlined.Search,
+                                imageVector = Icons.RoundedFilled.Search,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
                                 tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),

@@ -236,7 +236,7 @@ object RecentlyPlayedScreen : Screen {
               ) {
                 val imageVector by remember {
                   derivedStateOf {
-                    if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
+                    if (checkedProgress > 0.5f) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
                   }
                 }
                 Icon(
@@ -253,7 +253,7 @@ object RecentlyPlayedScreen : Screen {
               isFabExpanded.value = false
               filePicker.launch(arrayOf("video/*"))
             },
-            icon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
+            icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
             text = { Text(text = "Open File") },
           )
 
@@ -273,7 +273,7 @@ object RecentlyPlayedScreen : Screen {
                 }
               }
             },
-            icon = { Icon(Icons.Filled.History, contentDescription = null) },
+            icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
             text = { Text(text = "Recently Played") },
           )
 
@@ -282,7 +282,7 @@ object RecentlyPlayedScreen : Screen {
               isFabExpanded.value = false
               showLinkDialog.value = true
             },
-            icon = { Icon(Icons.Filled.Link, contentDescription = null) },
+            icon = { Icon(Icons.RoundedFilled.Link, contentDescription = null) },
             text = { Text(text = "Open Link") },
           )
         }
@@ -297,7 +297,7 @@ object RecentlyPlayedScreen : Screen {
             contentAlignment = Alignment.Center,
           ) {
             EmptyState(
-              icon = Icons.Filled.History,
+              icon = Icons.RoundedFilled.History,
               title = "Recently Played is disabled",
               message = "Enable it in Advanced Settings to track your playback history",
             )
@@ -326,7 +326,7 @@ object RecentlyPlayedScreen : Screen {
             contentAlignment = Alignment.Center,
           ) {
             EmptyState(
-              icon = Icons.Filled.History,
+              icon = Icons.RoundedFilled.History,
               title = "No recently played videos",
               message = "Videos you play will appear here",
             )
@@ -668,7 +668,7 @@ private fun RecentItemsContent(
                       }
                     }
                   },
-                  customIcon = Icons.Filled.PlaylistPlay,
+                  customIcon = Icons.RoundedFilled.PlaylistPlay,
                   showDateModified = true,
                   isGridMode = true,
                 )
@@ -788,7 +788,7 @@ private fun RecentItemsContent(
                       }
                     }
                   },
-                  customIcon = Icons.Filled.PlaylistPlay,
+                  customIcon = Icons.RoundedFilled.PlaylistPlay,
                   showDateModified = true,
                   isGridMode = false,
                 )

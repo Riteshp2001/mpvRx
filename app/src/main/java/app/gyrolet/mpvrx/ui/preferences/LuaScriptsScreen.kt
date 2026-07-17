@@ -144,7 +144,7 @@ object LuaScriptsScreen : Screen {
           navigationIcon = {
             IconButton(onClick = { backStack.popSafely() }) {
               Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.RoundedFilled.ArrowBack,
                 contentDescription = "Back",
               )
             }
@@ -157,7 +157,7 @@ object LuaScriptsScreen : Screen {
           containerColor = MaterialTheme.colorScheme.primary,
         ) {
           Icon(
-            imageVector = Icons.Default.Add,
+            imageVector = Icons.RoundedFilled.Add,
             contentDescription = "Create new script",
             tint = MaterialTheme.colorScheme.onPrimary,
           )
@@ -220,14 +220,14 @@ object LuaScriptsScreen : Screen {
                 trailingContent = {
                   IconButton(onClick = { shareScript(scriptName) }) {
                     Icon(
-                      imageVector = Icons.Default.Share,
+                      imageVector = Icons.RoundedFilled.Share,
                       contentDescription = "Share",
                       tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                   }
                   IconButton(onClick = { backStack.add(LuaScriptEditorScreen(scriptName = scriptName)) }) {
                     Icon(
-                      imageVector = Icons.Default.Edit,
+                      imageVector = Icons.RoundedFilled.Edit,
                       contentDescription = "Edit",
                       tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

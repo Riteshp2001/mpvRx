@@ -156,7 +156,7 @@ fun FolderCard(
       modifier = modifier.rotate(-18f),
     ) {
       Icon(
-        imageVector = Icons.Default.PushPin,
+        imageVector = Icons.RoundedFilled.PushPin,
         contentDescription = "Pinned folder",
         modifier =
           Modifier
@@ -263,7 +263,7 @@ fun FolderCard(
               )
             } else {
               Icon(
-                customIcon ?: Icons.Filled.Folder,
+                customIcon ?: Icons.RoundedFilled.Folder,
                 contentDescription = "Folder",
                 modifier = Modifier.size(56.dp),
                 tint = MaterialTheme.colorScheme.secondary,
@@ -371,7 +371,7 @@ fun FolderCard(
               )
             } else {
               Icon(
-                customIcon ?: Icons.Filled.Folder,
+                customIcon ?: Icons.RoundedFilled.Folder,
                 contentDescription = "Folder",
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.secondary,

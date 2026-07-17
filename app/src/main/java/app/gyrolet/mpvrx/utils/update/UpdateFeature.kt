@@ -429,7 +429,7 @@ fun UpdateDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(
-                imageVector = if (actionLabel == "Install") Icons.Filled.SystemUpdate else Icons.Filled.CloudDownload,
+                imageVector = if (actionLabel == "Install") Icons.RoundedFilled.SystemUpdate else Icons.RoundedFilled.CloudDownload,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp)
             )

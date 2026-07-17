@@ -354,7 +354,7 @@ data class LuaScriptEditorScreen(
         navigationIcon = {
           IconButton(onClick = { backStack.popSafely() }) {
             Icon(
-              Icons.Default.ArrowBack,
+              Icons.RoundedFilled.ArrowBack,
               contentDescription = "Back",
               tint = MaterialTheme.colorScheme.secondary,
             )
@@ -370,7 +370,7 @@ data class LuaScriptEditorScreen(
             ),
           ) {
             Icon(
-              imageVector = Icons.Outlined.Info,
+              imageVector = Icons.RoundedFilled.Info,
               contentDescription = "Help",
             )
           }
@@ -389,7 +389,7 @@ data class LuaScriptEditorScreen(
               shape = RoundedCornerShape(8.dp),
             ) {
               Icon(
-                Icons.Default.Share,
+                Icons.RoundedFilled.Share,
                 contentDescription = "Share",
               )
             }
@@ -409,7 +409,7 @@ data class LuaScriptEditorScreen(
               shape = RoundedCornerShape(8.dp),
             ) {
               Icon(
-                Icons.Default.Delete,
+                Icons.RoundedFilled.Delete,
                 contentDescription = "Delete",
               )
             }
@@ -439,7 +439,7 @@ data class LuaScriptEditorScreen(
             shape = RoundedCornerShape(8.dp),
           ) {
             Icon(
-              imageVector = Icons.Default.Check,
+              imageVector = Icons.RoundedFilled.Check,
               contentDescription = "Save",
             )
           }

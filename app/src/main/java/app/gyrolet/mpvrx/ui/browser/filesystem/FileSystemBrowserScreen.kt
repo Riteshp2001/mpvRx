@@ -493,7 +493,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 },
                 leadingIcon = {
                   Icon(
-                    imageVector = Icons.Filled.Search,
+                    imageVector = Icons.RoundedFilled.Search,
                     contentDescription = "Search",
                   )
                 },
@@ -505,7 +505,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                     },
                   ) {
                     Icon(
-                      imageVector = Icons.Filled.Close,
+                      imageVector = Icons.RoundedFilled.Close,
                       contentDescription = "Cancel",
                     )
                   }
@@ -631,7 +631,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 ) {
                   val imageVector by remember {
                     derivedStateOf {
-                      if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
+                      if (checkedProgress > 0.5f) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
                   }
                 }
                 Icon(
@@ -648,7 +648,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 isFabExpanded.value = false
                 filePicker.launch(arrayOf("video/*"))
               },
-              icon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
+              icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
               text = { Text(text = "Open File") },
             )
 
@@ -663,7 +663,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                   }
                 }
               },
-              icon = { Icon(Icons.Filled.History, contentDescription = null) },
+              icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
               text = { Text(text = "Recently Played") },
             )
 
@@ -672,7 +672,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 isFabExpanded.value = false
                 showLinkDialog.value = true
               },
-              icon = { Icon(Icons.Filled.Link, contentDescription = null) },
+              icon = { Icon(Icons.RoundedFilled.Link, contentDescription = null) },
               text = { Text(text = "Open Link") },
             )
           }
@@ -1251,7 +1251,7 @@ private fun FileSystemBrowserContent(
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
-          icon = Icons.Filled.Folder,
+          icon = Icons.RoundedFilled.Folder,
           title = "Error loading directory",
           message = error,
         )
@@ -1264,7 +1264,7 @@ private fun FileSystemBrowserContent(
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
-          icon = Icons.Filled.FolderOpen,
+          icon = Icons.RoundedFilled.FolderOpen,
           title = "Empty folder",
           message = "This folder contains no videos or subfolders",
         )
@@ -1662,7 +1662,7 @@ private fun FileSystemSearchContent(
           contentAlignment = Alignment.Center,
         ) {
           EmptyState(
-            icon = Icons.Filled.Search,
+            icon = Icons.RoundedFilled.Search,
             title = "No results found",
             message = "No files or folders match \"$searchQuery\"",
           )

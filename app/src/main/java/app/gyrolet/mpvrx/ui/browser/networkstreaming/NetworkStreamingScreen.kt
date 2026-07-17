@@ -140,7 +140,7 @@ object NetworkStreamingScreen : Screen {
         if (isFabVisible) {
           ExtendedFloatingActionButton(
             onClick = { showAddSheet = true },
-            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+            icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
             text = { Text("Add Connection") },
             modifier = Modifier.padding(bottom = navigationBarHeight)
           )
@@ -196,7 +196,7 @@ object NetworkStreamingScreen : Screen {
                   horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                   Icon(
-                    imageVector = Icons.Rounded.SignalWifiStatusbarConnectedNoInternet4,
+                    imageVector = Icons.RoundedFilled.SignalWifiStatusbarConnectedNoInternet4,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
@@ -343,7 +343,7 @@ private fun StreamLinkSection(
           },
           leadingIcon = {
             Icon(
-              imageVector = Icons.Filled.Link,
+              imageVector = Icons.RoundedFilled.Link,
               contentDescription = null,
               tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
               modifier = Modifier.size(20.dp),
@@ -355,7 +355,7 @@ private fun StreamLinkSection(
             ) {
               IconButton(onClick = { pasteFromClipboard() }) {
                 Icon(
-                  imageVector = Icons.Filled.ContentPaste,
+                  imageVector = Icons.RoundedFilled.ContentPaste,
                   contentDescription = "Paste stream URL",
                   modifier = Modifier.size(18.dp),
                 )
@@ -363,7 +363,7 @@ private fun StreamLinkSection(
               if (linkUrl.isNotBlank()) {
                 IconButton(onClick = { linkUrl = "" }) {
                   Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = Icons.RoundedFilled.Close,
                     contentDescription = "Clear stream URL",
                     modifier = Modifier.size(18.dp),
                   )
@@ -398,7 +398,7 @@ private fun StreamLinkSection(
           },
         ) {
           Icon(
-            imageVector = Icons.Filled.PlayArrow,
+            imageVector = Icons.RoundedFilled.PlayArrow,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
           )

@@ -132,7 +132,7 @@ private fun ZoomVideoSheet(
         },
         modifier = Modifier.size(36.dp),
       ) {
-        Icon(Icons.Default.Remove, contentDescription = "Decrease zoom", modifier = Modifier.size(18.dp))
+        Icon(Icons.RoundedFilled.Remove, contentDescription = "Decrease zoom", modifier = Modifier.size(18.dp))
       }
 
       SliderItem(
@@ -152,7 +152,7 @@ private fun ZoomVideoSheet(
         },
         modifier = Modifier.size(36.dp),
       ) {
-        Icon(Icons.Default.Add, contentDescription = "Increase zoom", modifier = Modifier.size(18.dp))
+        Icon(Icons.RoundedFilled.Add, contentDescription = "Increase zoom", modifier = Modifier.size(18.dp))
       }
     }
 
@@ -185,14 +185,14 @@ private fun ZoomVideoSheet(
             ) { isChecked ->
               if (isChecked) {
                 Icon(
-                  Icons.Filled.Check,
+                  Icons.RoundedFilled.Check,
                   contentDescription = null,
                   modifier = Modifier.size(SwitchDefaults.IconSize),
                   tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
               } else {
                 Icon(
-                  Icons.Filled.Close,
+                  Icons.RoundedFilled.Close,
                   contentDescription = null,
                   modifier = Modifier.size(SwitchDefaults.IconSize),
                   tint = MaterialTheme.colorScheme.onSurfaceVariant

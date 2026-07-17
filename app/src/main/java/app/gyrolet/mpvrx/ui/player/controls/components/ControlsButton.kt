@@ -107,7 +107,7 @@ fun ControlsGroup(
 @Composable
 private fun PreviewControlsButton() {
   ControlsButton(
-    Icons.Default.CatchingPokemon,
+    Icons.RoundedFilled.CatchingPokemon,
     onClick = {},
   )
 }

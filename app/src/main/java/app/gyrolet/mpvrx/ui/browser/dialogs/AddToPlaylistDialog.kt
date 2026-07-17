@@ -128,7 +128,7 @@ fun AddToPlaylistDialog(
           shape = MaterialTheme.shapes.extraLarge,
         ) {
           Icon(
-            imageVector = Icons.Filled.Add,
+            imageVector = Icons.RoundedFilled.Add,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
           )
@@ -233,7 +233,7 @@ private fun PlaylistItemCard(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(
-        imageVector = Icons.Filled.PlaylistPlay,
+        imageVector = Icons.RoundedFilled.PlaylistPlay,
         contentDescription = null,
         modifier = Modifier.size(40.dp),
         tint = MaterialTheme.colorScheme.primary,
@@ -277,7 +277,7 @@ private fun EmptyPlaylistsMessage() {
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Icon(
-        imageVector = Icons.Outlined.PlaylistAdd,
+        imageVector = Icons.RoundedFilled.PlaylistAdd,
         contentDescription = null,
         modifier = Modifier.size(48.dp),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,

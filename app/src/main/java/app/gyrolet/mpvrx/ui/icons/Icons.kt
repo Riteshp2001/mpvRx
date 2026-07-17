@@ -1,489 +1,394 @@
 package app.gyrolet.mpvrx.ui.icons
 
-import app.gyrolet.mpvrx.R as AppR
+import androidx.annotation.DrawableRes
 import com.composables.icons.materialsymbols.MaterialSymbols
-import com.composables.icons.materialsymbols.roundedfilled.R
-import com.composables.icons.materialsymbols.roundedfilled.Brand_family
-import com.composables.icons.materialsymbols.roundedfilled.Cancel
-import com.composables.icons.materialsymbols.roundedfilled.Cast
-import com.composables.icons.materialsymbols.roundedfilled.Close
-import com.composables.icons.materialsymbols.roundedfilled.Code
-import com.composables.icons.materialsymbols.roundedfilled.Developer_board
-import com.composables.icons.materialsymbols.roundedfilled.Format_clear
-import com.composables.icons.materialsymbols.roundedfilled.Format_color_fill
-import com.composables.icons.materialsymbols.roundedfilled.Link
-import com.composables.icons.materialsymbols.roundedfilled.Link_off
-import com.composables.icons.materialsymbols.roundedfilled.Play_arrow
-import com.composables.icons.materialsymbols.roundedfilled.Repeat
-import com.composables.icons.materialsymbols.roundedfilled.Repeat_on
-import com.composables.icons.materialsymbols.roundedfilled.Repeat_one
-import com.composables.icons.materialsymbols.roundedfilled.Reset_iso
-import com.composables.icons.materialsymbols.roundedfilled.Shadow
-import com.composables.icons.materialsymbols.roundedfilled.Sort_by_alpha
-import com.composables.icons.materialsymbols.roundedfilled.Translate
+import com.composables.icons.materialsymbols.roundedfilled.*
+import com.composables.icons.materialsymbols.roundedfilled.R as MaterialSymbolsR
 
 @Suppress("MemberVisibilityCanBePrivate")
 object Icons {
   private object Shared {
-    val AccessTime = AppIcon(R.drawable.materialsymbols_ic_schedule_rounded_filled)
-    val AccountBalance = AppIcon(R.drawable.materialsymbols_ic_account_balance_rounded_filled)
-    val AccountTree = AppIcon(R.drawable.materialsymbols_ic_account_tree_rounded_filled)
-    val Add = AppIcon(R.drawable.materialsymbols_ic_add_rounded_filled)
-    val AddCircle = AppIcon(R.drawable.materialsymbols_ic_add_circle_rounded_filled)
-    val AlignVerticalCenter = AppIcon(R.drawable.materialsymbols_ic_align_vertical_center_rounded_filled)
-    val Article = AppIcon(R.drawable.materialsymbols_ic_article_rounded_filled)
-    val ArrowBack = AppIcon(R.drawable.materialsymbols_ic_west_rounded_filled)
-    val ArrowBackClassic = AppIcon(R.drawable.materialsymbols_ic_arrow_back_rounded_filled)
-    val ArrowBackIos = AppIcon(R.drawable.materialsymbols_ic_arrow_back_ios_rounded_filled)
-    val ArrowBackIosNew = AppIcon(R.drawable.materialsymbols_ic_arrow_back_ios_new_rounded_filled)
-    val ArrowDropDown = AppIcon(R.drawable.materialsymbols_ic_arrow_drop_down_rounded_filled)
-    val ArrowForward = AppIcon(R.drawable.materialsymbols_ic_east_rounded_filled)
-    val ArrowLeftAlt = AppIcon(R.drawable.materialsymbols_ic_arrow_left_alt_rounded_filled)
-    val AspectRatio = AppIcon(R.drawable.materialsymbols_ic_aspect_ratio_rounded_filled)
-    val Audiotrack = AppIcon(R.drawable.materialsymbols_ic_music_note_rounded_filled)
-    val AutoAwesome = AppIcon(R.drawable.materialsymbols_ic_auto_awesome_rounded_filled)
-    val AutoFixHigh = AppIcon(R.drawable.materialsymbols_ic_auto_fix_high_rounded_filled)
-    val Aperture = AppIcon(R.drawable.materialsymbols_ic_shutter_speed_rounded_filled)
-    val AvTimer = AppIcon(R.drawable.materialsymbols_ic_av_timer_rounded_filled)
-    val Block = AppIcon(R.drawable.materialsymbols_ic_block_rounded_filled)
-    val BlurOff = AppIcon(R.drawable.materialsymbols_ic_blur_off_rounded_filled)
-    val BlurOn = AppIcon(R.drawable.materialsymbols_ic_blur_on_rounded_filled)
-    val Bookmarks = AppIcon(R.drawable.materialsymbols_ic_bookmarks_rounded_filled)
-    val BorderColor = AppIcon(R.drawable.materialsymbols_ic_border_color_rounded_filled)
-    val BorderStyle = AppIcon(R.drawable.materialsymbols_ic_border_style_rounded_filled)
-    val BrandFamily = AppIcon(MaterialSymbols.RoundedFilled.Brand_family)
-    val Brightness6 = AppIcon(R.drawable.materialsymbols_ic_brightness_6_rounded_filled)
-    val BrightnessHigh = AppIcon(R.drawable.materialsymbols_ic_brightness_high_rounded_filled)
-    val BrightnessLow = AppIcon(R.drawable.materialsymbols_ic_brightness_empty_rounded_filled)
-    val BrightnessMedium = AppIcon(R.drawable.materialsymbols_ic_brightness_medium_rounded_filled)
-    val BringYourOwnIp = AppIcon(R.drawable.materialsymbols_ic_bring_your_own_ip_rounded_filled)
-    val BugReport = AppIcon(R.drawable.materialsymbols_ic_bug_report_rounded_filled)
-    val CalendarToday = AppIcon(R.drawable.materialsymbols_ic_calendar_today_rounded_filled)
-    val Camera = AppIcon(R.drawable.materialsymbols_ic_camera_rounded_filled)
-    val CameraAlt = AppIcon(R.drawable.materialsymbols_ic_photo_camera_rounded_filled)
-    val Cancel = AppIcon(MaterialSymbols.RoundedFilled.Cancel)
-    val CatchingPokemon = AppIcon(R.drawable.materialsymbols_ic_pets_rounded_filled)
-    val Cast = AppIcon(MaterialSymbols.RoundedFilled.Cast)
-    val Check = AppIcon(AppR.drawable.ic_material_symbols_check)
-    val CheckCircle = AppIcon(R.drawable.materialsymbols_ic_check_circle_rounded_filled)
-    val Checklist = AppIcon(R.drawable.materialsymbols_ic_checklist_rounded_filled)
-    val ChevronLeft = AppIcon(R.drawable.materialsymbols_ic_chevron_left_rounded_filled)
-    val ChevronRight = AppIcon(R.drawable.materialsymbols_ic_chevron_right_rounded_filled)
-    val Clear = AppIcon(MaterialSymbols.RoundedFilled.Close)
-    val Close = AppIcon(MaterialSymbols.RoundedFilled.Close)
-    val CloudDownload = AppIcon(R.drawable.materialsymbols_ic_cloud_download_rounded_filled)
-    val Code = AppIcon(MaterialSymbols.RoundedFilled.Code)
-    val ContentCopy = AppIcon(R.drawable.materialsymbols_ic_content_copy_rounded_filled)
-    val ContentPaste = AppIcon(R.drawable.materialsymbols_ic_content_paste_rounded_filled)
-    val CreateNewFolder = AppIcon(R.drawable.materialsymbols_ic_create_new_folder_rounded_filled)
-    val CurrencyRupee = AppIcon(R.drawable.materialsymbols_ic_currency_rupee_rounded_filled)
-    val Delete = AppIcon(R.drawable.materialsymbols_ic_delete_rounded_filled)
-    val DeveloperBoard = AppIcon(MaterialSymbols.RoundedFilled.Developer_board)
-    val Download = AppIcon(R.drawable.materialsymbols_ic_download_rounded_filled)
-    val DragHandle = AppIcon(R.drawable.materialsymbols_ic_drag_handle_rounded_filled)
-    val DriveFileMove = AppIcon(R.drawable.materialsymbols_ic_drive_file_move_rounded_filled)
-    val DriveFileMoveOutline = AppIcon(R.drawable.materialsymbols_ic_drive_file_move_outline_rounded_filled)
-    val DriveFileRenameOutline = AppIcon(R.drawable.materialsymbols_ic_drive_file_rename_outline_rounded_filled)
-    val DriveFolderUpload = AppIcon(R.drawable.materialsymbols_ic_drive_folder_upload_rounded_filled)
-    val Edit = AppIcon(R.drawable.materialsymbols_ic_edit_rounded_filled)
-    val EditOff = AppIcon(R.drawable.materialsymbols_ic_edit_off_rounded_filled)
-    val ExpandLess = AppIcon(R.drawable.materialsymbols_ic_expand_less_rounded_filled)
-    val ExpandMore = AppIcon(R.drawable.materialsymbols_ic_expand_more_rounded_filled)
-    val FastForward = AppIcon(R.drawable.materialsymbols_ic_fast_forward_rounded_filled)
-    val FastRewind = AppIcon(R.drawable.materialsymbols_ic_fast_rewind_rounded_filled)
-    val FeaturedPlayList = AppIcon(R.drawable.materialsymbols_ic_featured_play_list_rounded_filled)
-    val FileDownload = AppIcon(R.drawable.materialsymbols_ic_file_download_rounded_filled)
-    val FileOpen = AppIcon(R.drawable.materialsymbols_ic_file_open_rounded_filled)
-    val FileUpload = AppIcon(R.drawable.materialsymbols_ic_file_upload_rounded_filled)
-    val FitScreen = AppIcon(R.drawable.materialsymbols_ic_fit_screen_rounded_filled)
-    val Flip = AppIcon(R.drawable.materialsymbols_ic_flip_rounded_filled)
-    val Folder = AppIcon(R.drawable.materialsymbols_ic_folder_rounded_filled)
-    val FolderOff = AppIcon(R.drawable.materialsymbols_ic_folder_off_rounded_filled)
-    val FolderOpen = AppIcon(R.drawable.materialsymbols_ic_folder_open_rounded_filled)
-    val FormatAlignCenter = AppIcon(R.drawable.materialsymbols_ic_format_align_center_rounded_filled)
-    val FormatAlignJustify = AppIcon(R.drawable.materialsymbols_ic_format_align_justify_rounded_filled)
-    val FormatAlignLeft = AppIcon(R.drawable.materialsymbols_ic_format_align_left_rounded_filled)
-    val FormatAlignRight = AppIcon(R.drawable.materialsymbols_ic_format_align_right_rounded_filled)
-    val FormatBold = AppIcon(R.drawable.materialsymbols_ic_format_bold_rounded_filled)
-    val FormatClear = AppIcon(MaterialSymbols.RoundedFilled.Format_clear)
-    val FormatColorFill = AppIcon(MaterialSymbols.RoundedFilled.Format_color_fill)
-    val FormatColorReset = AppIcon(R.drawable.materialsymbols_ic_format_color_reset_rounded_filled)
-    val FormatColorText = AppIcon(R.drawable.materialsymbols_ic_format_color_text_rounded_filled)
-    val FormatItalic = AppIcon(R.drawable.materialsymbols_ic_format_italic_rounded_filled)
-    val FormatSize = AppIcon(R.drawable.materialsymbols_ic_format_size_rounded_filled)
-    val FrameInspect = AppIcon(R.drawable.materialsymbols_ic_frame_inspect_rounded_filled)
-    val Gesture = AppIcon(R.drawable.materialsymbols_ic_gesture_rounded_filled)
-    val Gradient = AppIcon(R.drawable.materialsymbols_ic_gradient_rounded_filled)
-    val Grain = AppIcon(R.drawable.materialsymbols_ic_grain_rounded_filled)
-    val GridView = AppIcon(R.drawable.materialsymbols_ic_grid_view_rounded_filled)
-    val Headset = AppIcon(R.drawable.materialsymbols_ic_headphones_rounded_filled)
-    val HdrOff = AppIcon(R.drawable.materialsymbols_ic_hdr_off_rounded_filled)
-    val HdrOn = AppIcon(R.drawable.materialsymbols_ic_hdr_on_rounded_filled)
-    val History = AppIcon(R.drawable.materialsymbols_ic_history_2_rounded_filled)
-    val NewReleases = AppIcon(R.drawable.materialsymbols_ic_new_releases_rounded_filled)
-    val Home = AppIcon(R.drawable.materialsymbols_ic_home_rounded_filled)
-    val Info = AppIcon(R.drawable.materialsymbols_ic_info_rounded_filled)
-    val InsertDriveFile = AppIcon(R.drawable.materialsymbols_ic_description_rounded_filled)
-    val KeyboardArrowDown = AppIcon(R.drawable.materialsymbols_ic_keyboard_arrow_down_rounded_filled)
-    val KeyboardArrowLeft = AppIcon(R.drawable.materialsymbols_ic_keyboard_arrow_left_rounded_filled)
-    val KeyboardArrowRight = AppIcon(R.drawable.materialsymbols_ic_keyboard_arrow_right_rounded_filled)
-    val KeyboardArrowUp = AppIcon(R.drawable.materialsymbols_ic_keyboard_arrow_up_rounded_filled)
-    val Language = AppIcon(R.drawable.materialsymbols_ic_language_rounded_filled)
-    val Link = AppIcon(MaterialSymbols.RoundedFilled.Link)
-    val Translate = AppIcon(MaterialSymbols.RoundedFilled.Translate)
-    val LinkOff = AppIcon(MaterialSymbols.RoundedFilled.Link_off)
-    val Lock = AppIcon(R.drawable.materialsymbols_ic_lock_rounded_filled)
-    val LockOpen = AppIcon(R.drawable.materialsymbols_ic_lock_open_rounded_filled)
-    val ListAlt = AppIcon(R.drawable.materialsymbols_ic_list_alt_rounded_filled)
-    val Memory = AppIcon(R.drawable.materialsymbols_ic_memory_rounded_filled)
-    val MonetizationOn = AppIcon(R.drawable.materialsymbols_ic_monetization_on_rounded_filled)
-    val MoreTime = AppIcon(R.drawable.materialsymbols_ic_more_time_rounded_filled)
-    val MoreVert = AppIcon(R.drawable.materialsymbols_ic_more_vert_rounded_filled)
-    val Movie = AppIcon(R.drawable.materialsymbols_ic_movie_rounded_filled)
-    val NotInterested = AppIcon(R.drawable.materialsymbols_ic_block_rounded_filled)
-    val Opacity = AppIcon(R.drawable.materialsymbols_ic_opacity_rounded_filled)
-    val Palette = AppIcon(R.drawable.materialsymbols_ic_palette_rounded_filled)
-    val Pause = AppIcon(R.drawable.materialsymbols_ic_pause_rounded_filled)
-    val PictureInPictureAlt = AppIcon(R.drawable.materialsymbols_ic_picture_in_picture_alt_rounded_filled)
-    val PlayArrow = AppIcon(MaterialSymbols.RoundedFilled.Play_arrow)
-    val PlayCircle = AppIcon(R.drawable.materialsymbols_ic_play_circle_rounded_filled)
-    val PlaylistAddCheck = AppIcon(R.drawable.materialsymbols_ic_playlist_add_check_rounded_filled)
-    val PlaylistAddCircle = AppIcon(R.drawable.materialsymbols_ic_playlist_add_circle_rounded_filled)
-    val SmartDisplay = AppIcon(R.drawable.materialsymbols_ic_smart_display_rounded_filled)
-    val Videocam = AppIcon(R.drawable.materialsymbols_ic_videocam_rounded_filled)
-    val PlaylistAdd = AppIcon(R.drawable.materialsymbols_ic_playlist_add_rounded_filled)
-    val PlaylistPlay = PlayArrow
-    val PushPin = AppIcon(R.drawable.materialsymbols_ic_push_pin_rounded_filled)
-    val QueueMusic = AppIcon(R.drawable.materialsymbols_ic_queue_music_rounded_filled)
-    val Refresh = AppIcon(R.drawable.materialsymbols_ic_refresh_rounded_filled)
-    val Remove = AppIcon(R.drawable.materialsymbols_ic_remove_rounded_filled)
-    val RemoveCircle = AppIcon(R.drawable.materialsymbols_ic_do_not_disturb_on_rounded_filled)
-    val Repeat = AppIcon(MaterialSymbols.RoundedFilled.Repeat)
-    val RepeatOn = AppIcon(MaterialSymbols.RoundedFilled.Repeat_on)
-    val RepeatOne = AppIcon(MaterialSymbols.RoundedFilled.Repeat_one)
-    val ResetIso = AppIcon(MaterialSymbols.RoundedFilled.Reset_iso)
-    val Restore = AppIcon(R.drawable.materialsymbols_ic_undo_rounded_filled)
-    val RoundedCorner = AppIcon(R.drawable.materialsymbols_ic_rounded_corner_rounded_filled)
-    val ScreenRotation = AppIcon(R.drawable.materialsymbols_ic_screen_rotation_rounded_filled)
-    val Screenshot = AppIcon(R.drawable.materialsymbols_ic_screenshot_rounded_filled)
-    val SdCard = AppIcon(R.drawable.materialsymbols_ic_sd_card_rounded_filled)
-    val Search = AppIcon(R.drawable.materialsymbols_ic_search_rounded_filled)
-    val Settings = AppIcon(R.drawable.materialsymbols_ic_settings_rounded_filled)
-    val Shadow = AppIcon(MaterialSymbols.RoundedFilled.Shadow)
-    val Share = AppIcon(R.drawable.materialsymbols_ic_share_rounded_filled)
-    val Shuffle = AppIcon(R.drawable.materialsymbols_ic_shuffle_rounded_filled)
-    val ShuffleOn = AppIcon(R.drawable.materialsymbols_ic_shuffle_on_rounded_filled)
-    val SortByAlpha = AppIcon(MaterialSymbols.RoundedFilled.Sort_by_alpha)
-    val SignalWifiStatusbarConnectedNoInternet4 = AppIcon(R.drawable.materialsymbols_ic_signal_wifi_statusbar_not_connected_rounded_filled)
-    val SkipNext = AppIcon(R.drawable.materialsymbols_ic_skip_next_rounded_filled)
-    val SkipPrevious = AppIcon(R.drawable.materialsymbols_ic_skip_previous_rounded_filled)
-    val Slideshow = AppIcon(R.drawable.materialsymbols_ic_slideshow_rounded_filled)
-    val Speed = AppIcon(R.drawable.materialsymbols_ic_speed_rounded_filled)
-    val Subtitles = AppIcon(R.drawable.materialsymbols_ic_subtitles_rounded_filled)
-    val SwapVert = AppIcon(R.drawable.materialsymbols_ic_swap_vert_rounded_filled)
-    val SystemUpdate = AppIcon(R.drawable.materialsymbols_ic_system_update_rounded_filled)
-    val Thermostat = AppIcon(R.drawable.materialsymbols_ic_thermostat_rounded_filled)
-    val Timer = AppIcon(R.drawable.materialsymbols_ic_timer_rounded_filled)
-    val Terminal = AppIcon(R.drawable.materialsymbols_ic_terminal_rounded_filled)
-    val Title = AppIcon(R.drawable.materialsymbols_ic_title_rounded_filled)
-    val Tune = AppIcon(R.drawable.materialsymbols_ic_tune_rounded_filled)
-    val Update = AppIcon(R.drawable.materialsymbols_ic_update_rounded_filled)
-    val Usb = AppIcon(R.drawable.materialsymbols_ic_usb_rounded_filled)
-    val VideoLibrary = AppIcon(R.drawable.materialsymbols_ic_video_library_rounded_filled)
-    val ViewAgenda = AppIcon(R.drawable.materialsymbols_ic_view_agenda_rounded_filled)
-    val ViewArray = AppIcon(R.drawable.materialsymbols_ic_view_array_rounded_filled)
-    val ViewComfy = AppIcon(R.drawable.materialsymbols_ic_view_comfy_rounded_filled)
-    val ViewList = AppIcon(R.drawable.materialsymbols_ic_view_list_rounded_filled)
-    val ViewModule = AppIcon(R.drawable.materialsymbols_ic_view_module_rounded_filled)
-    val Vignette = AppIcon(R.drawable.materialsymbols_ic_vignette_rounded_filled)
-    val ViewQuilt = AppIcon(R.drawable.materialsymbols_ic_view_quilt_rounded_filled)
-    val VolumeDownAlt = AppIcon(R.drawable.materialsymbols_ic_volume_down_alt_rounded_filled)
-    val VolumeDown = AppIcon(R.drawable.materialsymbols_ic_volume_down_rounded_filled)
-    val VolumeMute = AppIcon(R.drawable.materialsymbols_ic_volume_mute_rounded_filled)
-    val VolumeOff = AppIcon(R.drawable.materialsymbols_ic_volume_off_rounded_filled)
-    val VolumeUp = AppIcon(R.drawable.materialsymbols_ic_volume_up_rounded_filled)
-    val RingVolume = AppIcon(R.drawable.materialsymbols_ic_ring_volume_rounded_filled)
-    val Warning = AppIcon(R.drawable.materialsymbols_ic_warning_rounded_filled)
-    val West = AppIcon(R.drawable.materialsymbols_ic_west_rounded_filled)
-    val WbSunny = AppIcon(R.drawable.materialsymbols_ic_wb_sunny_rounded_filled)
-    val ZoomIn = AppIcon(R.drawable.materialsymbols_ic_zoom_in_rounded_filled)
-    val ZoomOutMap = AppIcon(R.drawable.materialsymbols_ic_zoom_out_map_rounded_filled)
-  }
-
-    object Default {
-    val AccessTime = Shared.AccessTime
-    val Add = Shared.Add
-    val AddCircle = Shared.AddCircle
-    val AlignVerticalCenter = Shared.AlignVerticalCenter
-    val ArrowBack = Shared.ArrowBack
-    val ArrowForward = Shared.ArrowForward
-    val ArrowDropDown = Shared.ArrowDropDown
-    val AspectRatio = Shared.AspectRatio
-    val Audiotrack = Shared.Audiotrack
-    val AutoAwesome = Shared.AutoAwesome
-    val AutoFixHigh = Shared.AutoFixHigh
-    val Aperture = Shared.Aperture
-    val AvTimer = Shared.AvTimer
-    val BlurOff = Shared.BlurOff
-    val BlurOn = Shared.BlurOn
-    val Bookmarks = Shared.Bookmarks
-    val BorderColor = Shared.BorderColor
-    val BorderStyle = Shared.BorderStyle
-    val BrandFamily = Shared.BrandFamily
-    val Brightness6 = Shared.Brightness6
-    val BrightnessHigh = Shared.BrightnessHigh
-    val BrightnessLow = Shared.BrightnessLow
-    val BrightnessMedium = Shared.BrightnessMedium
-    val Camera = Shared.Camera
-    val CameraAlt = Shared.CameraAlt
-    val Cancel = Shared.Cancel
-    val CatchingPokemon = Shared.CatchingPokemon
-    val Check = Shared.Check
-    val Warning = Shared.Warning
-    val ChevronLeft = Shared.ChevronLeft
-    val ChevronRight = Shared.ChevronRight
-    val Clear = Shared.Clear
-    val Close = Shared.Close
-    val CloudDownload = Shared.CloudDownload
-    val Code = Shared.Code
-    val ContentCopy = Shared.ContentCopy
-    val CreateNewFolder = Shared.CreateNewFolder
-    val Delete = Shared.Delete
-    val DeveloperBoard = Shared.DeveloperBoard
-    val Download = Shared.Download
-    val DragHandle = Shared.DragHandle
-    val DriveFolderUpload = Shared.DriveFolderUpload
-    val Edit = Shared.Edit
-    val EditOff = Shared.EditOff
-    val ExpandLess = Shared.ExpandLess
-    val ExpandMore = Shared.ExpandMore
-    val FastForward = Shared.FastForward
-    val FastRewind = Shared.FastRewind
-    val FileDownload = Shared.FileDownload
-    val FileUpload = Shared.FileUpload
-    val FitScreen = Shared.FitScreen
-    val Flip = Shared.Flip
-    val Folder = Shared.Folder
-    val FormatAlignCenter = Shared.FormatAlignCenter
-    val FormatAlignJustify = Shared.FormatAlignJustify
-    val FormatAlignLeft = Shared.FormatAlignLeft
-    val FormatAlignRight = Shared.FormatAlignRight
-    val FormatBold = Shared.FormatBold
-    val FormatClear = Shared.FormatClear
-    val FormatColorFill = Shared.FormatColorFill
-    val FormatColorReset = Shared.FormatColorReset
-    val FormatColorText = Shared.FormatColorText
-    val FormatItalic = Shared.FormatItalic
-    val FormatSize = Shared.FormatSize
-    val Gradient = Shared.Gradient
-    val Grain = Shared.Grain
-    val GridView = Shared.GridView
-    val Headset = Shared.Headset
-    val HdrOff = Shared.HdrOff
-    val HdrOn = Shared.HdrOn
-    val History = Shared.History
-    val Home = Shared.Home
-    val KeyboardArrowDown = Shared.KeyboardArrowDown
-    val KeyboardArrowUp = Shared.KeyboardArrowUp
-    val Language = Shared.Language
-    val LockOpen = Shared.LockOpen
-    val Translate = Shared.Translate
-    val Memory = Shared.Memory
-    val Movie = Shared.Movie
-    val Videocam = Shared.Videocam
-    val Link = Shared.Link
-    val MoreVert = Shared.MoreVert
-    val NewReleases = Shared.NewReleases
-    val NotInterested = Shared.NotInterested
-    val Opacity = Shared.Opacity
-    val Palette = Shared.Palette
-    val Pause = Shared.Pause
-    val PictureInPictureAlt = Shared.PictureInPictureAlt
-    val PlayArrow = Shared.PlayArrow
-    val PlayCircle = Shared.PlayCircle
-    val PushPin = Shared.PushPin
-    val Refresh = Shared.Refresh
-    val Remove = Shared.Remove
-    val RemoveCircle = Shared.RemoveCircle
-    val ResetIso = Shared.ResetIso
-    val RoundedCorner = Shared.RoundedCorner
-    val ScreenRotation = Shared.ScreenRotation
-    val Screenshot = Shared.Screenshot
-    val SdCard = Shared.SdCard
-    val Search = Shared.Search
-    val Shadow = Shared.Shadow
-    val Share = Shared.Share
-    val Shuffle = Shared.Shuffle
-    val ShuffleOn = Shared.ShuffleOn
-    val SortByAlpha = Shared.SortByAlpha
-    val SkipNext = Shared.SkipNext
-    val SkipPrevious = Shared.SkipPrevious
-    val SmartDisplay = Shared.SmartDisplay
-    val Slideshow = Shared.Slideshow
-    val Speed = Shared.Speed
-    val Subtitles = Shared.Subtitles
-    val Bookmark = Shared.Bookmarks
-    val BookmarkBorder = Shared.Bookmarks // Using Bookmarks as fallback
-    val Thermostat = Shared.Thermostat
-    val Tune = Shared.Tune
-    val Update = Shared.Update
-    val Usb = Shared.Usb
-    val ViewAgenda = Shared.ViewAgenda
-    val VolumeDown = Shared.VolumeDown
-    val VolumeMute = Shared.VolumeMute
-    val VolumeOff = Shared.VolumeOff
-    val VolumeUp = Shared.VolumeUp
-    val ViewList = Shared.ViewList
-    val Vignette = Shared.Vignette
-    val WbSunny = Shared.WbSunny
-    val ZoomIn = Shared.ZoomIn
-    val ZoomOutMap = Shared.ZoomOutMap
-  }
-
-  object Filled {
-    val AccessTime = Shared.AccessTime
-    val AccountBalance = Shared.AccountBalance
-    val AccountTree = Shared.AccountTree
-    val Add = Shared.Add
-    val ArrowBack = Shared.ArrowBack
-    val ArrowForward = Shared.ArrowForward
-    val ArrowDropDown = Shared.ArrowDropDown
-    val Block = Shared.Block
-    val BlurOn = Shared.BlurOn
-    val CalendarToday = Shared.CalendarToday
-    val Check = Shared.Check
-    val CheckCircle = Shared.CheckCircle
-    val ChevronLeft = Shared.ChevronLeft
-    val ChevronRight = Shared.ChevronRight
-    val Close = Shared.Close
-    val CloudDownload = Shared.CloudDownload
-    val ContentCopy = Shared.ContentCopy
-    val ContentPaste = Shared.ContentPaste
-    val CurrencyRupee = Shared.CurrencyRupee
-    val Delete = Shared.Delete
-    val DragHandle = Shared.DragHandle
-    val DriveFileMove = Shared.DriveFileMove
-    val DriveFileRenameOutline = Shared.DriveFileRenameOutline
-    val Edit = Shared.Edit
-    val FastForward = Shared.FastForward
-    val FileOpen = Shared.FileOpen
-    val Folder = Shared.Folder
-    val FolderOff = Shared.FolderOff
-    val FolderOpen = Shared.FolderOpen
-    val GridView = Shared.GridView
-    val History = Shared.History
-    val Home = Shared.Home
-    val Info = Shared.Info
-    val InsertDriveFile = Shared.InsertDriveFile
-    val KeyboardArrowDown = Shared.KeyboardArrowDown
-    val KeyboardArrowLeft = Shared.KeyboardArrowLeft
-    val KeyboardArrowRight = Shared.KeyboardArrowRight
-    val KeyboardArrowUp = Shared.KeyboardArrowUp
-    val BringYourOwnIp = Shared.BringYourOwnIp
-    val Link = Shared.Link
-    val LinkOff = Shared.LinkOff
-    val Lock = Shared.Lock
-    val LockOpen = Shared.LockOpen
-    val MonetizationOn = Shared.MonetizationOn
-    val PlayArrow = Shared.PlayArrow
-    val PlaylistAdd = Shared.PlaylistAdd
-    val PlaylistPlay = Shared.PlaylistPlay
-    val PushPin = Shared.PushPin
-    val Remove = Shared.Remove
-    val RemoveCircle = Shared.RemoveCircle
-    val Repeat = Shared.Repeat
-    val RepeatOn = Shared.RepeatOn
-    val RepeatOne = Shared.RepeatOne
-    val Search = Shared.Search
-    val Settings = Shared.Settings
-    val Share = Shared.Share
-    val SortByAlpha = Shared.SortByAlpha
-    val SwapVert = Shared.SwapVert
-    val SystemUpdate = Shared.SystemUpdate
-    val Title = Shared.Title
-    val VideoLibrary = Shared.VideoLibrary
-    val ViewList = Shared.ViewList
-    val ViewModule = Shared.ViewModule
-  }
-
-  object Outlined {
-    val ArrowBack = Shared.ArrowBack
-    val AspectRatio = Shared.AspectRatio
-    val Audiotrack = Shared.Audiotrack
-    val Bookmarks = Shared.Bookmarks
-    val BlurOff = Shared.BlurOff
-    val BlurOn = Shared.BlurOn
-    val Cast = Shared.Cast
-    val BugReport = Shared.BugReport
-    val Clear = Shared.Clear
-    val Edit = Shared.Edit
-    val FastForward = Shared.FastForward
-    val FileDownload = Shared.FileDownload
-    val FileUpload = Shared.FileUpload
-    val Flip = Shared.Flip
-    val Folder = Shared.Folder
-    val Gesture = Shared.Gesture
-    val Headset = Shared.Headset
-    val Info = Shared.Info
-    val LockOpen = Shared.LockOpen
-    val MoreVert = Shared.MoreVert
-    val Movie = Shared.Movie
-    val Palette = Shared.Palette
-    val PictureInPictureAlt = Shared.PictureInPictureAlt
-    val PlaylistAdd = Shared.PlaylistAdd
-    val Repeat = Shared.Repeat
-    val ScreenRotation = Shared.ScreenRotation
-    val Search = Shared.Search
-    val Settings = Shared.Settings
-    val Shuffle = Shared.Shuffle
-    val Speed = Shared.Speed
-    val Subtitles = Shared.Subtitles
-    val SwapVert = Shared.SwapVert
-    val Timer = Shared.Timer
-    val Title = Shared.Title
-    val Warning = Shared.Warning
-    val ZoomIn = Shared.ZoomIn
-  }
-
-  object Rounded {
-    val SignalWifiStatusbarConnectedNoInternet4 = Shared.SignalWifiStatusbarConnectedNoInternet4
-  }
-
-  object Alternatives {
-    val AdvancedSettings = Shared.Code
+    val AccessTime by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Schedule) }
+    val AccountBalance by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Account_balance) }
+    val AccountTree by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Account_tree) }
+    val Add by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Add) }
+    val AddCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Add_circle) }
+    val AlignVerticalCenter by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Align_vertical_center) }
+    val Article by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Article) }
+    val ArrowBack by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.West) }
+    val ArrowBackClassic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Arrow_back) }
+    val ArrowBackIos by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Arrow_back_ios) }
+    val ArrowBackIosNew by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Arrow_back_ios_new) }
+    val ArrowDropDown by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Arrow_drop_down) }
+    val ArrowForward by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.East) }
+    val ArrowLeftAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Arrow_left_alt) }
+    val AspectRatio by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Aspect_ratio) }
+    val Audiotrack by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Music_note) }
+    val AutoAwesome by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Auto_awesome) }
+    val AutoFixHigh by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Auto_fix_high) }
+    val Aperture by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shutter_speed) }
+    val AvTimer by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Av_timer) }
+    val Block by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Block) }
+    val BlurOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Blur_off) }
+    val BlurOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Blur_on) }
+    val Bookmarks by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Bookmarks) }
+    val BorderColor by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Border_color) }
+    val BorderStyle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Border_style) }
+    val BrandFamily by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Brand_family) }
+    val Brightness6 by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Brightness_6) }
+    val BrightnessHigh by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Brightness_high) }
+    val BrightnessLow by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Brightness_empty) }
+    val BrightnessMedium by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Brightness_medium) }
+    val BringYourOwnIp by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Bring_your_own_ip) }
+    val BugReport by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Bug_report) }
+    val CalendarToday by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Calendar_today) }
+    val Camera by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Camera) }
+    val CameraAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Photo_camera) }
+    val Cancel by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Cancel) }
+    val CatchingPokemon by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Pets) }
+    val Cast by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Cast) }
+    val Check by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Check) }
+    val CheckCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Check_circle) }
+    val Checklist by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Checklist) }
+    val ChevronLeft by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Chevron_left) }
+    val ChevronRight by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Chevron_right) }
+    val Clear by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Close) }
+    val Close by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Close) }
+    val CloudDownload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Cloud_download) }
+    val Code by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Code) }
+    val ContentCopy by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Content_copy) }
+    val ContentPaste by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Content_paste) }
+    val CreateNewFolder by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Create_new_folder) }
+    val CurrencyRupee by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Currency_rupee) }
+    val Delete by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Delete) }
+    val DeveloperBoard by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Developer_board) }
+    val Download by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Download) }
+    val DragHandle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drag_handle) }
+    val DriveFileMove by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_file_move) }
+    val DriveFileMoveOutline by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_file_move_outline) }
+    val DriveFileRenameOutline by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_file_rename_outline) }
+    val DriveFolderUpload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_folder_upload) }
+    val Edit by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Edit) }
+    val EditOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Edit_off) }
+    val ExpandLess by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Expand_less) }
+    val ExpandMore by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Expand_more) }
+    val FastForward by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fast_forward) }
+    val FastRewind by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fast_rewind) }
+    val FeaturedPlayList by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Featured_play_list) }
+    val FileDownload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_download) }
+    val FileOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_open) }
+    val FileUpload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_upload) }
+    val FitScreen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fit_screen) }
+    val Flip by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Flip) }
+    val Folder by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder) }
+    val FolderOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder_off) }
+    val FolderOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder_open) }
+    val FormatAlignCenter by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_center) }
+    val FormatAlignJustify by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_justify) }
+    val FormatAlignLeft by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_left) }
+    val FormatAlignRight by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_right) }
+    val FormatBold by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_bold) }
+    val FormatClear by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_clear) }
+    val FormatColorFill by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_color_fill) }
+    val FormatColorReset by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_color_reset) }
+    val FormatColorText by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_color_text) }
+    val FormatItalic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_italic) }
+    val FormatSize by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_size) }
+    val FrameInspect by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Frame_inspect) }
+    val Gesture by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Gesture) }
+    val Gradient by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Gradient) }
+    val Grain by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Grain) }
+    val GridView by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Grid_view) }
+    val Headset by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Headphones) }
+    val HdrOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Hdr_off) }
+    val HdrOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Hdr_on) }
+    val History by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.History_2) }
+    val NewReleases by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.New_releases) }
+    val Home by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Home) }
+    val Info by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Info) }
+    val InsertDriveFile by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Description) }
+    val KeyboardArrowDown by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_down) }
+    val KeyboardArrowLeft by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_left) }
+    val KeyboardArrowRight by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_right) }
+    val KeyboardArrowUp by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_up) }
+    val Language by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Language) }
+    val Link by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Link) }
+    val Translate by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Translate) }
+    val LinkOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Link_off) }
+    val Lock by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Lock) }
+    val LockOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Lock_open) }
+    val ListAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.List_alt) }
+    val Memory by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Memory) }
+    val MonetizationOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Monetization_on) }
+    val MoreTime by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.More_time) }
+    val MoreVert by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.More_vert) }
+    val Movie by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Movie) }
+    val NotInterested by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Block) }
+    val Opacity by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Opacity) }
+    val Palette by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Palette) }
+    val Pause by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Pause) }
+    val PictureInPictureAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Picture_in_picture_alt) }
+    val PlayArrow by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Play_arrow) }
+    val PlayCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Play_circle) }
+    val PlaylistAddCheck by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add_check) }
+    val PlaylistAddCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add_circle) }
+    val SmartDisplay by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Smart_display) }
+    val Videocam by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Videocam) }
+    val PlaylistAdd by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add) }
+    val PlaylistPlay get() = PlayArrow
+    val PushPin by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Push_pin) }
+    val QueueMusic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Queue_music) }
+    val Refresh by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Refresh) }
+    val Remove by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Remove) }
+    val RemoveCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Do_not_disturb_on) }
+    val Repeat by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Repeat) }
+    val RepeatOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Repeat_on) }
+    val RepeatOne by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Repeat_one) }
+    val ResetIso by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Reset_iso) }
+    val Restore by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Undo) }
+    val RoundedCorner by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Rounded_corner) }
+    val ScreenRotation by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Screen_rotation) }
+    val Screenshot by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Screenshot) }
+    val SdCard by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Sd_card) }
+    val Search by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Search) }
+    val Settings by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Settings) }
+    val Shadow by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shadow) }
+    val Share by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Share) }
+    val Shuffle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shuffle) }
+    val ShuffleOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shuffle_on) }
+    val SortByAlpha by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Sort_by_alpha) }
+    val SignalWifiStatusbarConnectedNoInternet4 by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Signal_wifi_statusbar_not_connected) }
+    val SkipNext by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Skip_next) }
+    val SkipPrevious by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Skip_previous) }
+    val Slideshow by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Slideshow) }
+    val Speed by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Speed) }
+    val Subtitles by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Subtitles) }
+    val SwapVert by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Swap_vert) }
+    val SystemUpdate by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.System_update) }
+    val Thermostat by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Thermostat) }
+    val Timer by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Timer) }
+    val Terminal by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Terminal) }
+    val Title by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Title) }
+    val Tune by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Tune) }
+    val Update by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Update) }
+    val Usb by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Usb) }
+    val VideoLibrary by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Video_library) }
+    val ViewAgenda by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.View_agenda) }
+    val ViewArray by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.View_array) }
+    val ViewComfy by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.View_comfy) }
+    val ViewList by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.View_list) }
+    val ViewModule by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.View_module) }
+    val Vignette by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Vignette) }
+    val ViewQuilt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.View_quilt) }
+    val VolumeDownAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Volume_down_alt) }
+    val VolumeDown by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Volume_down) }
+    val VolumeMute by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Volume_mute) }
+    val VolumeOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Volume_off) }
+    val VolumeUp by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Volume_up) }
+    val RingVolume by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Ring_volume) }
+    val Warning by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Warning) }
+    val West by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.West) }
+    val WbSunny by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Wb_sunny) }
+    val ZoomIn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Zoom_in) }
+    val ZoomOutMap by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Zoom_out_map) }
   }
 
   object RoundedFilled {
-    private const val ResourcePrefix = "materialsymbols_ic_"
-    private const val ResourceSuffix = "_rounded_filled"
-
-    val all: Map<String, AppIcon> by lazy(LazyThreadSafetyMode.NONE) {
-      R.drawable::class.java.fields
-        .asSequence()
-        .mapNotNull { field ->
-          val resourceName = field.name
-          if (!resourceName.startsWith(ResourcePrefix) || !resourceName.endsWith(ResourceSuffix)) {
-            return@mapNotNull null
-          }
-
-          val iconName =
-            resourceName
-              .removePrefix(ResourcePrefix)
-              .removeSuffix(ResourceSuffix)
-
-          iconName to AppIcon(field.getInt(null))
-        }
-        .sortedBy { (name, _) -> name }
-        .toMap()
-    }
-
-    val names: List<String> by lazy(LazyThreadSafetyMode.NONE) {
-      all.keys.toList()
-    }
-
-    operator fun get(name: String): AppIcon? = all[name]
-
-    fun require(name: String): AppIcon = all.getValue(name)
+    val AccessTime get() = Shared.AccessTime
+    val AccountBalance get() = Shared.AccountBalance
+    val AccountTree get() = Shared.AccountTree
+    val Add get() = Shared.Add
+    val AddCircle get() = Shared.AddCircle
+    val AlignVerticalCenter get() = Shared.AlignVerticalCenter
+    val Article get() = Shared.Article
+    val ArrowBack get() = Shared.ArrowBack
+    val ArrowBackClassic get() = Shared.ArrowBackClassic
+    val ArrowBackIos get() = Shared.ArrowBackIos
+    val ArrowBackIosNew get() = Shared.ArrowBackIosNew
+    val ArrowDropDown get() = Shared.ArrowDropDown
+    val ArrowForward get() = Shared.ArrowForward
+    val ArrowLeftAlt get() = Shared.ArrowLeftAlt
+    val AspectRatio get() = Shared.AspectRatio
+    val Audiotrack get() = Shared.Audiotrack
+    val AutoAwesome get() = Shared.AutoAwesome
+    val AutoFixHigh get() = Shared.AutoFixHigh
+    val Aperture get() = Shared.Aperture
+    val AvTimer get() = Shared.AvTimer
+    val Block get() = Shared.Block
+    val BlurOff get() = Shared.BlurOff
+    val BlurOn get() = Shared.BlurOn
+    val Bookmarks get() = Shared.Bookmarks
+    val BorderColor get() = Shared.BorderColor
+    val BorderStyle get() = Shared.BorderStyle
+    val BrandFamily get() = Shared.BrandFamily
+    val Brightness6 get() = Shared.Brightness6
+    val BrightnessHigh get() = Shared.BrightnessHigh
+    val BrightnessLow get() = Shared.BrightnessLow
+    val BrightnessMedium get() = Shared.BrightnessMedium
+    val BringYourOwnIp get() = Shared.BringYourOwnIp
+    val BugReport get() = Shared.BugReport
+    val CalendarToday get() = Shared.CalendarToday
+    val Camera get() = Shared.Camera
+    val CameraAlt get() = Shared.CameraAlt
+    val Cancel get() = Shared.Cancel
+    val CatchingPokemon get() = Shared.CatchingPokemon
+    val Cast get() = Shared.Cast
+    val Check get() = Shared.Check
+    val CheckCircle get() = Shared.CheckCircle
+    val Checklist get() = Shared.Checklist
+    val ChevronLeft get() = Shared.ChevronLeft
+    val ChevronRight get() = Shared.ChevronRight
+    val Clear get() = Shared.Clear
+    val Close get() = Shared.Close
+    val CloudDownload get() = Shared.CloudDownload
+    val Code get() = Shared.Code
+    val ContentCopy get() = Shared.ContentCopy
+    val ContentPaste get() = Shared.ContentPaste
+    val CreateNewFolder get() = Shared.CreateNewFolder
+    val CurrencyRupee get() = Shared.CurrencyRupee
+    val Delete get() = Shared.Delete
+    val DeveloperBoard get() = Shared.DeveloperBoard
+    val Download get() = Shared.Download
+    val DragHandle get() = Shared.DragHandle
+    val DriveFileMove get() = Shared.DriveFileMove
+    val DriveFileMoveOutline get() = Shared.DriveFileMoveOutline
+    val DriveFileRenameOutline get() = Shared.DriveFileRenameOutline
+    val DriveFolderUpload get() = Shared.DriveFolderUpload
+    val Edit get() = Shared.Edit
+    val EditOff get() = Shared.EditOff
+    val ExpandLess get() = Shared.ExpandLess
+    val ExpandMore get() = Shared.ExpandMore
+    val FastForward get() = Shared.FastForward
+    val FastRewind get() = Shared.FastRewind
+    val FeaturedPlayList get() = Shared.FeaturedPlayList
+    val FileDownload get() = Shared.FileDownload
+    val FileOpen get() = Shared.FileOpen
+    val FileUpload get() = Shared.FileUpload
+    val FitScreen get() = Shared.FitScreen
+    val Flip get() = Shared.Flip
+    val Folder get() = Shared.Folder
+    val FolderOff get() = Shared.FolderOff
+    val FolderOpen get() = Shared.FolderOpen
+    val FormatAlignCenter get() = Shared.FormatAlignCenter
+    val FormatAlignJustify get() = Shared.FormatAlignJustify
+    val FormatAlignLeft get() = Shared.FormatAlignLeft
+    val FormatAlignRight get() = Shared.FormatAlignRight
+    val FormatBold get() = Shared.FormatBold
+    val FormatClear get() = Shared.FormatClear
+    val FormatColorFill get() = Shared.FormatColorFill
+    val FormatColorReset get() = Shared.FormatColorReset
+    val FormatColorText get() = Shared.FormatColorText
+    val FormatItalic get() = Shared.FormatItalic
+    val FormatSize get() = Shared.FormatSize
+    val FrameInspect get() = Shared.FrameInspect
+    val Gesture get() = Shared.Gesture
+    val Gradient get() = Shared.Gradient
+    val Grain get() = Shared.Grain
+    val GridView get() = Shared.GridView
+    val Headset get() = Shared.Headset
+    val HdrOff get() = Shared.HdrOff
+    val HdrOn get() = Shared.HdrOn
+    val History get() = Shared.History
+    val NewReleases get() = Shared.NewReleases
+    val Home get() = Shared.Home
+    val Info get() = Shared.Info
+    val InsertDriveFile get() = Shared.InsertDriveFile
+    val KeyboardArrowDown get() = Shared.KeyboardArrowDown
+    val KeyboardArrowLeft get() = Shared.KeyboardArrowLeft
+    val KeyboardArrowRight get() = Shared.KeyboardArrowRight
+    val KeyboardArrowUp get() = Shared.KeyboardArrowUp
+    val Language get() = Shared.Language
+    val Link get() = Shared.Link
+    val Translate get() = Shared.Translate
+    val LinkOff get() = Shared.LinkOff
+    val Lock get() = Shared.Lock
+    val LockOpen get() = Shared.LockOpen
+    val ListAlt get() = Shared.ListAlt
+    val Memory get() = Shared.Memory
+    val MonetizationOn get() = Shared.MonetizationOn
+    val MoreTime get() = Shared.MoreTime
+    val MoreVert get() = Shared.MoreVert
+    val Movie get() = Shared.Movie
+    val NotInterested get() = Shared.NotInterested
+    val Opacity get() = Shared.Opacity
+    val Palette get() = Shared.Palette
+    val Pause get() = Shared.Pause
+    val PictureInPictureAlt get() = Shared.PictureInPictureAlt
+    val PlayArrow get() = Shared.PlayArrow
+    val PlayCircle get() = Shared.PlayCircle
+    val PlaylistAddCheck get() = Shared.PlaylistAddCheck
+    val PlaylistAddCircle get() = Shared.PlaylistAddCircle
+    val SmartDisplay get() = Shared.SmartDisplay
+    val Videocam get() = Shared.Videocam
+    val PlaylistAdd get() = Shared.PlaylistAdd
+    val PlaylistPlay get() = Shared.PlaylistPlay
+    val PushPin get() = Shared.PushPin
+    val QueueMusic get() = Shared.QueueMusic
+    val Refresh get() = Shared.Refresh
+    val Remove get() = Shared.Remove
+    val RemoveCircle get() = Shared.RemoveCircle
+    val Repeat get() = Shared.Repeat
+    val RepeatOn get() = Shared.RepeatOn
+    val RepeatOne get() = Shared.RepeatOne
+    val ResetIso get() = Shared.ResetIso
+    val Restore get() = Shared.Restore
+    val RoundedCorner get() = Shared.RoundedCorner
+    val ScreenRotation get() = Shared.ScreenRotation
+    val Screenshot get() = Shared.Screenshot
+    val SdCard get() = Shared.SdCard
+    val Search get() = Shared.Search
+    val Settings get() = Shared.Settings
+    val Shadow get() = Shared.Shadow
+    val Share get() = Shared.Share
+    val Shuffle get() = Shared.Shuffle
+    val ShuffleOn get() = Shared.ShuffleOn
+    val SortByAlpha get() = Shared.SortByAlpha
+    val SignalWifiStatusbarConnectedNoInternet4 get() = Shared.SignalWifiStatusbarConnectedNoInternet4
+    val SkipNext get() = Shared.SkipNext
+    val SkipPrevious get() = Shared.SkipPrevious
+    val Slideshow get() = Shared.Slideshow
+    val Speed get() = Shared.Speed
+    val Subtitles get() = Shared.Subtitles
+    val SwapVert get() = Shared.SwapVert
+    val SystemUpdate get() = Shared.SystemUpdate
+    val Thermostat get() = Shared.Thermostat
+    val Timer get() = Shared.Timer
+    val Terminal get() = Shared.Terminal
+    val Title get() = Shared.Title
+    val Tune get() = Shared.Tune
+    val Update get() = Shared.Update
+    val Usb get() = Shared.Usb
+    val VideoLibrary get() = Shared.VideoLibrary
+    val ViewAgenda get() = Shared.ViewAgenda
+    val ViewArray get() = Shared.ViewArray
+    val ViewComfy get() = Shared.ViewComfy
+    val ViewList get() = Shared.ViewList
+    val ViewModule get() = Shared.ViewModule
+    val Vignette get() = Shared.Vignette
+    val ViewQuilt get() = Shared.ViewQuilt
+    val VolumeDownAlt get() = Shared.VolumeDownAlt
+    val VolumeDown get() = Shared.VolumeDown
+    val VolumeMute get() = Shared.VolumeMute
+    val VolumeOff get() = Shared.VolumeOff
+    val VolumeUp get() = Shared.VolumeUp
+    val RingVolume get() = Shared.RingVolume
+    val Warning get() = Shared.Warning
+    val West get() = Shared.West
+    val WbSunny get() = Shared.WbSunny
+    val ZoomIn get() = Shared.ZoomIn
+    val ZoomOutMap get() = Shared.ZoomOutMap
+  }
+  object Alternatives {
+    val AdvancedSettings get() = Shared.Code
   }
 
+  /** Material Symbols for Android platform APIs that require drawable resource IDs. */
+  object Platform {
+    @DrawableRes val FastRewind = MaterialSymbolsR.drawable.materialsymbols_ic_fast_rewind_rounded_filled
+    @DrawableRes val FastForward = MaterialSymbolsR.drawable.materialsymbols_ic_fast_forward_rounded_filled
+    @DrawableRes val Previous = MaterialSymbolsR.drawable.materialsymbols_ic_skip_previous_rounded_filled
+    @DrawableRes val Play = MaterialSymbolsR.drawable.materialsymbols_ic_play_arrow_rounded_filled
+    @DrawableRes val Pause = MaterialSymbolsR.drawable.materialsymbols_ic_pause_rounded_filled
+    @DrawableRes val Next = MaterialSymbolsR.drawable.materialsymbols_ic_skip_next_rounded_filled
+  }
 }

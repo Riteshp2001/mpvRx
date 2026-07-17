@@ -87,7 +87,7 @@ object DecoderPreferencesScreen : Screen {
             if (LocalShowSettingsBackArrow.current) {
               IconButton(onClick = { backstack.popSafely() }) {
                 Icon(
-                  Icons.Default.ArrowBack, 
+                  Icons.RoundedFilled.ArrowBack,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.secondary,
                 )
@@ -327,7 +327,7 @@ object DecoderPreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.primary,
                   )
                   Icon(
-                    Icons.Default.KeyboardArrowDown,
+                    Icons.RoundedFilled.KeyboardArrowDown,
                     contentDescription = if (anime4kExpanded) "Collapse" else "Expand",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.rotate(rotationState)

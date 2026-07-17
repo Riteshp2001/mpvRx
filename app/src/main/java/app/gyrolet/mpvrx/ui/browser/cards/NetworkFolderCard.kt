@@ -79,7 +79,7 @@ fun NetworkFolderCard(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          Icons.Filled.Folder,
+          Icons.RoundedFilled.Folder,
           contentDescription = "Folder",
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.secondary,

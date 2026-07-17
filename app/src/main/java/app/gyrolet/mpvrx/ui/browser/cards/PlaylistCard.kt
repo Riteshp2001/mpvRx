@@ -85,7 +85,7 @@ fun PlaylistCard(
     onLongClick = onLongClick,
     onThumbClick = onThumbClick,
     showDateModified = true,
-    customIcon = Icons.Filled.PlaylistPlay,
+    customIcon = Icons.RoundedFilled.PlaylistPlay,
     modifier = modifier,
     customChipContent = customChipRenderer,
     isGridMode = isGridMode,

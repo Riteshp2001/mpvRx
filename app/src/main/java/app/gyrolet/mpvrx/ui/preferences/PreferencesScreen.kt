@@ -145,7 +145,7 @@ object PreferencesScreen : Screen {
           navigationIcon = {
             IconButton(onClick = { backstack.popSafely() }) {
               Icon(
-                Icons.Outlined.ArrowBack,
+                Icons.RoundedFilled.ArrowBack,
                 contentDescription = null,
                 tint = colorScheme.secondary,
               )
@@ -190,7 +190,7 @@ object PreferencesScreen : Screen {
           SettingsDestination(
             title = stringResource(R.string.pref_appearance_title),
             summary = stringResource(R.string.pref_appearance_summary),
-            icon = Icons.Outlined.Palette,
+            icon = Icons.RoundedFilled.Palette,
             screen = AppearancePreferencesScreen,
           ),
         ),
@@ -202,19 +202,19 @@ object PreferencesScreen : Screen {
           SettingsDestination(
             title = stringResource(R.string.pref_player),
             summary = stringResource(R.string.pref_player_summary),
-            icon = Icons.Default.Slideshow,
+            icon = Icons.RoundedFilled.Slideshow,
             screen = PlayerPreferencesScreen,
           ),
           SettingsDestination(
             title = stringResource(R.string.pref_decoder),
             summary = stringResource(R.string.pref_decoder_summary),
-            icon = Icons.Default.DeveloperBoard,
+            icon = Icons.RoundedFilled.DeveloperBoard,
             screen = DecoderPreferencesScreen,
           ),
           SettingsDestination(
             title = stringResource(R.string.pref_audio),
             summary = stringResource(R.string.pref_audio_summary),
-            icon = Icons.Outlined.Audiotrack,
+            icon = Icons.RoundedFilled.Audiotrack,
             screen = AudioPreferencesScreen,
           ),
         ),
@@ -226,13 +226,13 @@ object PreferencesScreen : Screen {
           SettingsDestination(
             title = stringResource(R.string.pref_gesture),
             summary = stringResource(R.string.pref_gesture_summary),
-            icon = Icons.Outlined.Gesture,
+            icon = Icons.RoundedFilled.Gesture,
             screen = GesturePreferencesScreen,
           ),
           SettingsDestination(
             title = stringResource(R.string.pref_layout_title),
             summary = stringResource(R.string.pref_layout_summary),
-            icon = Icons.Default.GridView,
+            icon = Icons.RoundedFilled.GridView,
             screen = PlayerControlsPreferencesScreen,
           ),
         ),
@@ -244,7 +244,7 @@ object PreferencesScreen : Screen {
           SettingsDestination(
             title = stringResource(R.string.pref_subtitles),
             summary = stringResource(R.string.pref_subtitles_summary),
-            icon = Icons.Outlined.Subtitles,
+            icon = Icons.RoundedFilled.Subtitles,
             screen = SubtitlesPreferencesScreen,
           ),
         ),
@@ -256,7 +256,7 @@ object PreferencesScreen : Screen {
           SettingsDestination(
             title = stringResource(R.string.pref_folders_title),
             summary = "Media library folders, hidden paths, fonts, and subtitle directories.",
-            icon = Icons.Outlined.Folder,
+            icon = Icons.RoundedFilled.Folder,
             screen = FoldersPreferencesScreen,
           ),
         ),
@@ -268,7 +268,7 @@ object PreferencesScreen : Screen {
           SettingsDestination(
             title = stringResource(R.string.pref_section_ai_title),
             summary = "Provider, model, API keys, rename tools, translation, and offline models.",
-            icon = Icons.Default.AutoAwesome,
+            icon = Icons.RoundedFilled.AutoAwesome,
             screen = AiIntegrationScreen,
           ),
         ),
@@ -292,7 +292,7 @@ object PreferencesScreen : Screen {
           SettingsDestination(
             title = stringResource(R.string.pref_about_title),
             summary = stringResource(R.string.pref_about_summary),
-            icon = Icons.Outlined.Info,
+            icon = Icons.RoundedFilled.Info,
             screen = AboutScreen,
           ),
         ),
@@ -322,7 +322,7 @@ private fun SettingsSearchEntry(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(
-        imageVector = Icons.Outlined.Search,
+        imageVector = Icons.RoundedFilled.Search,
         contentDescription = null,
         modifier = Modifier.size(28.dp),
         tint = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -337,7 +337,7 @@ private fun SettingsSearchEntry(
         )
       }
       Icon(
-        imageVector = Icons.Default.ChevronRight,
+        imageVector = Icons.RoundedFilled.ChevronRight,
         contentDescription = null,
         modifier = Modifier.size(24.dp),
         tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f),
@@ -472,7 +472,7 @@ private fun SettingsDestinationRow(
     Spacer(modifier = Modifier.width(10.dp))
 
     Icon(
-      imageVector = Icons.Default.ChevronRight,
+      imageVector = Icons.RoundedFilled.ChevronRight,
       contentDescription = null,
       modifier = Modifier.size(24.dp),
       tint = MaterialTheme.colorScheme.outline,

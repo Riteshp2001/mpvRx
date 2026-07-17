@@ -205,7 +205,7 @@ fun M3UVideoCard(
           )
         } else {
           Icon(
-            Icons.Filled.PlayArrow,
+            Icons.RoundedFilled.PlayArrow,
             contentDescription = null,
             modifier = Modifier.size(42.dp),
             tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.65f),
@@ -275,7 +275,7 @@ fun M3UVideoCard(
         Spacer(modifier = Modifier.width(8.dp))
         IconButton(onClick = onFavoriteClick) {
           Icon(
-            imageVector = Icons.Outlined.Bookmarks,
+            imageVector = Icons.RoundedFilled.Bookmarks,
             contentDescription = if (isFavorite) "Unsave stream" else "Save stream",
             tint = if (isFavorite) {
               MaterialTheme.colorScheme.primary

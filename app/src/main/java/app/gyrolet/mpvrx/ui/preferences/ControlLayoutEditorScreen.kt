@@ -184,12 +184,12 @@ data class ControlLayoutEditorScreen(
           title = { Text(text = title) },
           navigationIcon = {
             IconButton(onClick = { backstack.popSafely() }) {
-              AppSymbolIcon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+              AppSymbolIcon(Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
             }
           },
           actions = {
             IconButton(onClick = { showResetDialog = true }) {
-              AppSymbolIcon(Icons.Default.Refresh, contentDescription = "Reset to default")
+              AppSymbolIcon(Icons.RoundedFilled.Refresh, contentDescription = "Reset to default")
             }
           },
         )
@@ -252,7 +252,7 @@ data class ControlLayoutEditorScreen(
                              verticalArrangement = Arrangement.Center
                          ) {
                              AppSymbolIcon(
-                                 imageVector = Icons.Default.AddCircle,
+                                 imageVector = Icons.RoundedFilled.AddCircle,
                                  contentDescription = null,
                                  modifier = Modifier
                                      .size(32.dp)
@@ -312,7 +312,7 @@ data class ControlLayoutEditorScreen(
                                 button = button,
                                 enabled = true,
                                 onClick = { selectedButtons = selectedButtons - button },
-                                badgeIcon = Icons.Default.RemoveCircle,
+                                badgeIcon = Icons.RoundedFilled.RemoveCircle,
                                 badgeColor = Color(0xFFEF5350),
                             )
                        }
@@ -348,7 +348,7 @@ data class ControlLayoutEditorScreen(
                                 button = button,
                                 enabled = isEnabled,
                                 onClick = { selectedButtons = selectedButtons + button },
-                                badgeIcon = Icons.Default.AddCircle,
+                                badgeIcon = Icons.RoundedFilled.AddCircle,
                                 badgeColor = if (isEnabled) MaterialTheme.colorScheme.primary 
                                              else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                             )

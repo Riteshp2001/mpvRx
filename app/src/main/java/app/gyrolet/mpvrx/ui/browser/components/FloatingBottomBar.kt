@@ -141,12 +141,12 @@ fun BrowserBottomBar(
           horizontalArrangement = Arrangement.spacedBy(layoutParams.spacing),
           verticalAlignment = Alignment.CenterVertically
         ) {
-          BrowserBottomBarButton(showCopy, onCopyClick, Icons.Filled.ContentCopy, "Copy", layoutParams.buttonSize, layoutParams.iconSize)
-          BrowserBottomBarButton(showMove, onMoveClick, Icons.Filled.DriveFileMove, "Move", layoutParams.buttonSize, layoutParams.iconSize)
-          BrowserBottomBarButton(showDownscale, onDownscaleClick, Icons.Default.FitScreen, "Compressor", layoutParams.buttonSize, layoutParams.iconSize)
-          BrowserBottomBarButton(showRename, onRenameClick, Icons.Filled.DriveFileRenameOutline, "Rename", layoutParams.buttonSize, layoutParams.iconSize)
-          BrowserBottomBarButton(showAddToPlaylist, onAddToPlaylistClick, Icons.Filled.PlaylistAdd, "Add to Playlist", layoutParams.buttonSize, layoutParams.iconSize)
-          BrowserBottomBarButton(showDelete, onDeleteClick, Icons.Filled.Delete, "Delete", layoutParams.buttonSize, layoutParams.iconSize, tint = MaterialTheme.colorScheme.error)
+          BrowserBottomBarButton(showCopy, onCopyClick, Icons.RoundedFilled.ContentCopy, "Copy", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(showMove, onMoveClick, Icons.RoundedFilled.DriveFileMove, "Move", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(showDownscale, onDownscaleClick, Icons.RoundedFilled.FitScreen, "Compressor", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(showRename, onRenameClick, Icons.RoundedFilled.DriveFileRenameOutline, "Rename", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(showAddToPlaylist, onAddToPlaylistClick, Icons.RoundedFilled.PlaylistAdd, "Add to Playlist", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(showDelete, onDeleteClick, Icons.RoundedFilled.Delete, "Delete", layoutParams.buttonSize, layoutParams.iconSize, tint = MaterialTheme.colorScheme.error)
         }
       }
     }

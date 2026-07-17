@@ -190,7 +190,7 @@ private fun NetworkBrowserContent(
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
-          icon = Icons.Filled.Folder,
+          icon = Icons.RoundedFilled.Folder,
           title = "Error loading files",
           message = error,
         )
@@ -203,7 +203,7 @@ private fun NetworkBrowserContent(
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
-          icon = Icons.Filled.Folder,
+          icon = Icons.RoundedFilled.Folder,
           title = "Empty folder",
           message = "This folder contains no files or directories",
         )

@@ -32,6 +32,7 @@ import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -426,18 +427,18 @@ class MediaPlaybackService :
     )
 
   private fun prevAction() = NotificationCompat.Action(
-    android.R.drawable.ic_media_previous, "Previous",
+    Icons.Platform.Previous, "Previous",
     buildTransportIntent(ACTION_NOTIFICATION_PREVIOUS, 1001),
   )
 
   private fun playPauseAction() = NotificationCompat.Action(
-    if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
+    if (paused) Icons.Platform.Play else Icons.Platform.Pause,
     if (paused) "Play" else "Pause",
     MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE),
   )
 
   private fun nextAction() = NotificationCompat.Action(
-    android.R.drawable.ic_media_next, "Next",
+    Icons.Platform.Next, "Next",
     buildTransportIntent(ACTION_NOTIFICATION_NEXT, 1002),
   )
 

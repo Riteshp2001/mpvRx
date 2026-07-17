@@ -116,7 +116,7 @@ fun PermissionDeniedState(
           tonalElevation = 3.dp,
         ) {
           Icon(
-            imageVector = Icons.Outlined.Warning,
+            imageVector = Icons.RoundedFilled.Warning,
             contentDescription = null,
             modifier =
               Modifier
@@ -215,7 +215,7 @@ fun PermissionDeniedState(
           onClick = { showExplanationDialog = true },
         ) {
           Icon(
-            imageVector = Icons.Outlined.Info,
+            imageVector = Icons.RoundedFilled.Info,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
           )
@@ -241,7 +241,7 @@ fun PermissionDeniedState(
       onDismissRequest = { showExplanationDialog = false },
       icon = {
         Icon(
-          imageVector = Icons.Outlined.Info,
+          imageVector = Icons.RoundedFilled.Info,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.primary,
         )

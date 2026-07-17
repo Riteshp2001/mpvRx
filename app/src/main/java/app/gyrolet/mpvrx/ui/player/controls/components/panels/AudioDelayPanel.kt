@@ -98,7 +98,7 @@ fun AudioDelayCardTitle(
     )
     Spacer(Modifier.weight(1f))
     IconButton(onClick = onClose) {
-      Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
+      Icon(Icons.RoundedFilled.Close, null, modifier = Modifier.size(32.dp))
     }
   }
 }

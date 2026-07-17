@@ -14,9 +14,8 @@ import android.util.Log
 import android.util.Rational
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
-import app.gyrolet.mpvrx.R
-import com.composables.icons.materialsymbols.roundedfilled.R as MaterialSymbolsR
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.ui.icons.Icons
 import `is`.xyz.mpv.MPVLib
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -143,13 +142,13 @@ class MPVPipHelper(
     val isPlaying = MPVLib.getPropertyBoolean("pause") == false
 
     return listOf(
-      createRemoteAction("rewind", android.R.drawable.ic_media_rew, PIP_REWIND),
+      createRemoteAction("rewind", Icons.Platform.FastRewind, PIP_REWIND),
       if (isPlaying) {
-        createRemoteAction("pause", MaterialSymbolsR.drawable.materialsymbols_ic_pause_rounded_filled, PIP_PAUSE)
+        createRemoteAction("pause", Icons.Platform.Pause, PIP_PAUSE)
       } else {
-        createRemoteAction("play", MaterialSymbolsR.drawable.materialsymbols_ic_play_arrow_rounded_filled, PIP_PLAY)
+        createRemoteAction("play", Icons.Platform.Play, PIP_PLAY)
       },
-      createRemoteAction("forward", android.R.drawable.ic_media_ff, PIP_FORWARD),
+      createRemoteAction("forward", Icons.Platform.FastForward, PIP_FORWARD),
     )
   }
 

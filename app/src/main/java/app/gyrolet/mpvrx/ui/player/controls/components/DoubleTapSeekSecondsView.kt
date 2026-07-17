@@ -65,7 +65,7 @@ fun DoubleTapSeekTriangles(
 @Composable
 private fun DoubleTapArrow(alpha: Float) {
   Icon(
-    imageVector = Icons.Default.PlayArrow,
+    imageVector = Icons.RoundedFilled.PlayArrow,
     contentDescription = null,
     modifier =
       Modifier

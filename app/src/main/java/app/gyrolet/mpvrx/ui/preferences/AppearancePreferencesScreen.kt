@@ -161,7 +161,7 @@ object AppearancePreferencesScreen : Screen {
                         if (LocalShowSettingsBackArrow.current) {
                             IconButton(onClick = { backstack.popSafely() }) {
                                 Icon(
-                                    Icons.Outlined.ArrowBack,
+                                    Icons.RoundedFilled.ArrowBack,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.secondary,
                                 )
@@ -208,7 +208,7 @@ object AppearancePreferencesScreen : Screen {
                                     )
                                 }
                                 Icon(
-                                    imageVector = if (isThemeSectionExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    imageVector = if (isThemeSectionExpanded) Icons.RoundedFilled.ExpandLess else Icons.RoundedFilled.ExpandMore,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,

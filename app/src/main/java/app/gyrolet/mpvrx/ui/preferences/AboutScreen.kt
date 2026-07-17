@@ -121,7 +121,7 @@ object AboutScreen : Screen {
             if (LocalShowSettingsBackArrow.current) {
               IconButton(onClick = { backstack.popSafely() }) {
                 Icon(
-                  imageVector = Icons.Default.ArrowBack, 
+                  imageVector = Icons.RoundedFilled.ArrowBack,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.secondary,
                 )
@@ -295,7 +295,7 @@ object AboutScreen : Screen {
                   modifier = Modifier.padding(bottom = 8.dp),
                 ) {
                   Icon(
-                    imageVector = Icons.Filled.Info,
+                    imageVector = Icons.RoundedFilled.Info,
                     contentDescription = "Device Info",
                     modifier = Modifier.size(20.dp),
                     tint = cs.onPrimaryContainer,
@@ -326,7 +326,7 @@ object AboutScreen : Screen {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Filled.MonetizationOn,
+                        imageVector = Icons.RoundedFilled.MonetizationOn,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
                         tint = cs.error,
@@ -382,7 +382,7 @@ object AboutScreen : Screen {
                             )
                         }
                         Icon(
-                            imageVector = Icons.Default.ContentCopy,
+                            imageVector = Icons.RoundedFilled.ContentCopy,
                             contentDescription = "Copy UPI ID",
                             modifier = Modifier.size(20.dp),
                             tint = cs.primary,
@@ -410,7 +410,7 @@ object AboutScreen : Screen {
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
                 ) {
-                    Icon(Icons.Filled.MonetizationOn, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.RoundedFilled.MonetizationOn, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Send Love", fontWeight = FontWeight.SemiBold)
                 }
@@ -468,7 +468,7 @@ object AboutScreen : Screen {
                             ),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                         ) {
-                             Icon(Icons.Default.Update, null, modifier = Modifier.size(18.dp))
+                             Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
                              Spacer(Modifier.width(8.dp))
                              Text("Check for Updates Now", fontWeight = FontWeight.SemiBold)
                         }
@@ -601,7 +601,7 @@ object LibrariesScreen : Screen {
           navigationIcon = {
             IconButton(onClick = { backstack.popSafely() }) {
               Icon(
-                imageVector = Icons.Default.ArrowBack, 
+                imageVector = Icons.RoundedFilled.ArrowBack,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
               )

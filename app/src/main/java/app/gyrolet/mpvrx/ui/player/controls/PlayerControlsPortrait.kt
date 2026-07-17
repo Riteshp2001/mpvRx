@@ -69,7 +69,7 @@ fun TopPlayerControlsPortrait(
     ) {
       ControlsGroup {
         ControlsButton(
-          icon = Icons.Default.ArrowBack,
+          icon = Icons.RoundedFilled.ArrowBack,
           onClick = onBackPress,
           color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           modifier = Modifier.size(45.dp),
@@ -128,7 +128,7 @@ fun TopPlayerControlsPortrait(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         Icon(
-          imageVector = Icons.Default.Translate,
+          imageVector = Icons.RoundedFilled.Translate,
           contentDescription = null,
           modifier = Modifier.size(14.dp),
           tint = MaterialTheme.colorScheme.tertiary,

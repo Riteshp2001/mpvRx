@@ -69,7 +69,7 @@ fun SectionHeader(
 
     if (onClick != null) {
       Icon(
-        imageVector = Icons.Default.KeyboardArrowDown,
+        imageVector = Icons.RoundedFilled.KeyboardArrowDown,
         contentDescription = null,
         modifier = Modifier.rotate(iconRotation),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,

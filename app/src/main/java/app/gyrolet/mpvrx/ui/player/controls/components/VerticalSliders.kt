@@ -171,10 +171,10 @@ fun BrightnessSlider(
       )
       Icon(
         when {
-          coercedBrightness < 0 -> Icons.Default.Brightness6
-          percentage(coercedBrightness, positiveRange) <= 0.3f -> Icons.Default.BrightnessLow
-          percentage(coercedBrightness, positiveRange) <= 0.6f -> Icons.Default.BrightnessMedium
-          else -> Icons.Default.BrightnessHigh
+          coercedBrightness < 0 -> Icons.RoundedFilled.Brightness6
+          percentage(coercedBrightness, positiveRange) <= 0.3f -> Icons.RoundedFilled.BrightnessLow
+          percentage(coercedBrightness, positiveRange) <= 0.6f -> Icons.RoundedFilled.BrightnessMedium
+          else -> Icons.RoundedFilled.BrightnessHigh
         },
         contentDescription = null,
         tint = MaterialTheme.colorScheme.primary,
@@ -224,11 +224,11 @@ fun VolumeSlider(
       )
       Icon(
         when (percentage) {
-          0 -> Icons.Default.VolumeOff
-          in 0..30 -> Icons.Default.VolumeMute
-          in 30..60 -> Icons.Default.VolumeDown
-          in 60..100 -> Icons.Default.VolumeUp
-          else -> Icons.Default.VolumeOff
+          0 -> Icons.RoundedFilled.VolumeOff
+          in 0..30 -> Icons.RoundedFilled.VolumeMute
+          in 30..60 -> Icons.RoundedFilled.VolumeDown
+          in 60..100 -> Icons.RoundedFilled.VolumeUp
+          else -> Icons.RoundedFilled.VolumeOff
         },
         contentDescription = null,
         tint = MaterialTheme.colorScheme.primary,

@@ -266,7 +266,7 @@ fun BulkAiRenameDialog(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = MaterialTheme.shapes.extraLarge,
           ) {
-            Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(imageVector = Icons.RoundedFilled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Generate Previews", fontWeight = FontWeight.Bold)
           }
@@ -281,7 +281,7 @@ fun BulkAiRenameDialog(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = MaterialTheme.shapes.extraLarge,
           ) {
-            Icon(imageVector = app.gyrolet.mpvrx.ui.icons.Icons.Filled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(imageVector = app.gyrolet.mpvrx.ui.icons.Icons.RoundedFilled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Rename $checkedCount File(s)", fontWeight = FontWeight.Bold)
           }

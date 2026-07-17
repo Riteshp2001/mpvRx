@@ -243,7 +243,7 @@ object CustomButtonScreen : Screen {
                     navigationIcon = {
                         IconButton(onClick = { backstack.popSafely() }) {
                             Icon(
-                                Icons.Outlined.ArrowBack,
+                                Icons.RoundedFilled.ArrowBack,
                                 contentDescription = "Back",
                                 tint = MaterialTheme.colorScheme.secondary,
                             )
@@ -287,7 +287,7 @@ object CustomButtonScreen : Screen {
                             elevation = elevation,
                             dragHandle = { interceptModifier ->
                                 Icon(
-                                    Icons.Default.DragHandle,
+                                    Icons.RoundedFilled.DragHandle,
                                     contentDescription = "Drag to reorder",
                                     modifier = interceptModifier
                                         .draggableHandle()
@@ -347,7 +347,7 @@ object CustomButtonScreen : Screen {
                                     shape = RoundedCornerShape(12.dp),
                                 ) {
                                     Icon(
-                                        Icons.Default.FileDownload,
+                                        Icons.RoundedFilled.FileDownload,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -361,7 +361,7 @@ object CustomButtonScreen : Screen {
                                     shape = RoundedCornerShape(12.dp),
                                 ) {
                                     Icon(
-                                        Icons.Default.FileUpload,
+                                        Icons.RoundedFilled.FileUpload,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -522,7 +522,7 @@ fun ButtonSlotCard(
                             contentColor   = MaterialTheme.colorScheme.onErrorContainer,
                         ),
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                        Icon(Icons.RoundedFilled.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(4.dp))
                 }
@@ -542,7 +542,7 @@ fun ButtonSlotCard(
                 } else {
                     // Disabled drag handle for empty slots
                     Icon(
-                        Icons.Default.DragHandle,
+                        Icons.RoundedFilled.DragHandle,
                         contentDescription = "Drag disabled",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
@@ -647,7 +647,7 @@ fun ButtonSlotCard(
                         },
                         navigationIcon = {
                             IconButton(onClick = { dismissAndSave() }) {
-                                Icon(Icons.Outlined.ArrowBack, "Back")
+                                Icon(Icons.RoundedFilled.ArrowBack, "Back")
                             }
                         },
                         actions = {
@@ -659,13 +659,13 @@ fun ButtonSlotCard(
                                 ),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Info,
+                                    imageVector = Icons.RoundedFilled.Info,
                                     contentDescription = "Help",
                                 )
                             }
                             IconButton(onClick = { dismissAndSave() }) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    imageVector = Icons.RoundedFilled.Check,
                                     contentDescription = "Done",
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
@@ -904,7 +904,7 @@ fun LuaEditorEntryCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Default.Code,
+                    Icons.RoundedFilled.Code,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = if (hasCode) MaterialTheme.colorScheme.primary
@@ -943,7 +943,7 @@ fun LuaEditorEntryCard(
 
             // Arrow
             Icon(
-                Icons.Default.KeyboardArrowDown,
+                Icons.RoundedFilled.KeyboardArrowDown,
                 contentDescription = null,
                 modifier = Modifier.rotate(-90f),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -987,7 +987,7 @@ fun ImportSelectionScreen(
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
                         Icon(
-                            Icons.Outlined.ArrowBack,
+                            Icons.RoundedFilled.ArrowBack,
                             contentDescription = "Cancel",
                             tint = MaterialTheme.colorScheme.secondary,
                         )
@@ -1007,7 +1007,7 @@ fun ImportSelectionScreen(
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Icon(
-                            Icons.Default.FileDownload,
+                            Icons.RoundedFilled.FileDownload,
                             contentDescription = "Import",
                         )
                     }

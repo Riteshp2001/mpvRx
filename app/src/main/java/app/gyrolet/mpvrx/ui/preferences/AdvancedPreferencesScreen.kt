@@ -233,7 +233,7 @@ object AdvancedPreferencesScreen : Screen {
             if (LocalShowSettingsBackArrow.current) {
               IconButton(onClick = { backStack.popSafely() }) {
                 Icon(
-                  Icons.Default.ArrowBack, 
+                  Icons.RoundedFilled.ArrowBack,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.secondary,
                 )
@@ -267,7 +267,7 @@ object AdvancedPreferencesScreen : Screen {
                 },
                 icon = { 
                   Icon(
-                    Icons.Outlined.FileUpload, 
+                    Icons.RoundedFilled.FileUpload,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   ) 
@@ -289,7 +289,7 @@ object AdvancedPreferencesScreen : Screen {
                 },
                 icon = { 
                   Icon(
-                    Icons.Outlined.FileDownload, 
+                    Icons.RoundedFilled.FileDownload,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   ) 
@@ -321,7 +321,7 @@ object AdvancedPreferencesScreen : Screen {
                     overflow = TextOverflow.Ellipsis,
                   )
                 },
-                icon = { Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                icon = { Icon(Icons.RoundedFilled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { storageRootPicker.launch(null) },
               )
               
@@ -329,7 +329,7 @@ object AdvancedPreferencesScreen : Screen {
                 PreferenceDivider()
                 Preference(
                   title = { Text(stringResource(R.string.pref_clear_storage_root_title)) },
-                  icon = { Icon(Icons.Default.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                  icon = { Icon(Icons.RoundedFilled.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                   onClick = {
                     if (subtitlesPreferences.fontsFolder.get() == baseStorageFolder) {
                       subtitlesPreferences.fontsFolder.set("")
@@ -505,7 +505,7 @@ object AdvancedPreferencesScreen : Screen {
                 },
                 icon = {
                   Icon(
-                    Icons.Default.CloudDownload,
+                    Icons.RoundedFilled.CloudDownload,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   )

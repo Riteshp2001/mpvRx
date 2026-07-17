@@ -295,7 +295,7 @@ fun MediaLibraryContent() {
                },
               leadingIcon = {
                 Icon(
-                  imageVector = Icons.Filled.Search,
+                  imageVector = Icons.RoundedFilled.Search,
                   contentDescription = "Search",
                 )
               },
@@ -307,7 +307,7 @@ fun MediaLibraryContent() {
                   },
                 ) {
                   Icon(
-                    imageVector = Icons.Filled.Close,
+                    imageVector = Icons.RoundedFilled.Close,
                     contentDescription = "Cancel",
                   )
                 }
@@ -401,7 +401,7 @@ fun MediaLibraryContent() {
               }
             },
           ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video")
+            Icon(Icons.RoundedFilled.PlayArrow, contentDescription = "Play recently played or first video")
           }
         }
       }
@@ -450,7 +450,7 @@ fun MediaLibraryContent() {
               contentAlignment = Alignment.Center,
             ) {
               EmptyState(
-                icon = Icons.Filled.Search,
+                icon = Icons.RoundedFilled.Search,
                 title = if (mediaType == MediaLibraryType.Audio) "No audio found" else "No videos found",
                 message = "Try a different search term",
               )

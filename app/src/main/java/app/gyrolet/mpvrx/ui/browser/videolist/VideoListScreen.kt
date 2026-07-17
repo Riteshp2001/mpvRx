@@ -361,7 +361,7 @@ data class VideoListScreen(
                 }
               },
             ) {
-              Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video")
+              Icon(Icons.RoundedFilled.PlayArrow, contentDescription = "Play recently played or first video")
             }
           }
         }
@@ -745,7 +745,7 @@ internal fun VideoListContent(
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
-          icon = Icons.Filled.VideoLibrary,
+          icon = Icons.RoundedFilled.VideoLibrary,
           title = "No videos in this folder",
           message = "Videos you add to this folder will appear here",
         )

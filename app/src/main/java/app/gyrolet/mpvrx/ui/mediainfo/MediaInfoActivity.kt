@@ -215,7 +215,7 @@ class MediaInfoActivity : ComponentActivity() {
           },
           navigationIcon = {
             IconButton(onClick = onBack) {
-              Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+              Icon(Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
             }
           },
           actions = {
@@ -233,7 +233,7 @@ class MediaInfoActivity : ComponentActivity() {
                   ),
                 ) {
                   Icon(
-                    imageVector = Icons.Filled.ContentCopy,
+                    imageVector = Icons.RoundedFilled.ContentCopy,
                     contentDescription = "Copy",
                   )
                 }
@@ -252,7 +252,7 @@ class MediaInfoActivity : ComponentActivity() {
                   ),
                 ) {
                   Icon(
-                    imageVector = Icons.Filled.Share,
+                    imageVector = Icons.RoundedFilled.Share,
                     contentDescription = "Share",
                   )
                 }
@@ -457,11 +457,11 @@ class MediaInfoActivity : ComponentActivity() {
               verticalAlignment = Alignment.CenterVertically
             ) {
               val icon = when (tab) {
-                InfoTab.OVERVIEW -> Icons.Filled.Info
-                InfoTab.VIDEO -> Icons.Default.Videocam
-                InfoTab.AUDIO -> Icons.Default.VolumeUp
-                InfoTab.SUBTITLES -> Icons.Default.Subtitles
-                InfoTab.CHAPTERS -> Icons.Default.ViewList
+                InfoTab.OVERVIEW -> Icons.RoundedFilled.Info
+                InfoTab.VIDEO -> Icons.RoundedFilled.Videocam
+                InfoTab.AUDIO -> Icons.RoundedFilled.VolumeUp
+                InfoTab.SUBTITLES -> Icons.RoundedFilled.Subtitles
+                InfoTab.CHAPTERS -> Icons.RoundedFilled.ViewList
               }
               Icon(
                 imageVector = icon,
@@ -680,14 +680,14 @@ class MediaInfoActivity : ComponentActivity() {
           QuickStatCard(
             title = "Resolution",
             value = resolutionLabel,
-            icon = Icons.Default.Videocam,
+            icon = Icons.RoundedFilled.Videocam,
             accentColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f)
           )
           QuickStatCard(
             title = "File Size",
             value = sizeLabel,
-            icon = Icons.Default.SdCard,
+            icon = Icons.RoundedFilled.SdCard,
             accentColor = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.weight(1f)
           )
@@ -699,14 +699,14 @@ class MediaInfoActivity : ComponentActivity() {
           QuickStatCard(
             title = "Duration",
             value = durationLabel,
-            icon = Icons.Outlined.Timer,
+            icon = Icons.RoundedFilled.Timer,
             accentColor = MaterialTheme.colorScheme.tertiary,
             modifier = Modifier.weight(1f)
           )
           QuickStatCard(
             title = "Bitrate",
             value = mediaInfo.general.overallBitRate.ifBlank { "Unknown" },
-            icon = Icons.Default.Speed,
+            icon = Icons.RoundedFilled.Speed,
             accentColor = Color(0xFFFFB300),
             modifier = Modifier.weight(1f)
           )
@@ -731,11 +731,11 @@ class MediaInfoActivity : ComponentActivity() {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
           ) {
-            TrackSummaryItem(videoCount, "Video", Icons.Default.Videocam, MaterialTheme.colorScheme.primary)
-            TrackSummaryItem(audioCount, "Audio", Icons.Default.VolumeUp, MaterialTheme.colorScheme.secondary)
-            TrackSummaryItem(subtitleCount, "Subtitle", Icons.Default.Subtitles, MaterialTheme.colorScheme.tertiary)
+            TrackSummaryItem(videoCount, "Video", Icons.RoundedFilled.Videocam, MaterialTheme.colorScheme.primary)
+            TrackSummaryItem(audioCount, "Audio", Icons.RoundedFilled.VolumeUp, MaterialTheme.colorScheme.secondary)
+            TrackSummaryItem(subtitleCount, "Subtitle", Icons.RoundedFilled.Subtitles, MaterialTheme.colorScheme.tertiary)
             if (chapterCount > 0) {
-              TrackSummaryItem(chapterCount, "Chapters", Icons.Default.ViewList, Color(0xFFFFB300))
+              TrackSummaryItem(chapterCount, "Chapters", Icons.RoundedFilled.ViewList, Color(0xFFFFB300))
             }
           }
         }
@@ -876,7 +876,7 @@ class MediaInfoActivity : ComponentActivity() {
             contentAlignment = Alignment.Center,
           ) {
             Icon(
-              imageVector = Icons.Filled.ContentCopy,
+              imageVector = Icons.RoundedFilled.ContentCopy,
               contentDescription = "Copy all",
               tint = headerTextColor.copy(alpha = 0.8f),
               modifier = Modifier.size(16.dp)
@@ -975,17 +975,17 @@ class MediaInfoActivity : ComponentActivity() {
           streamTypeLabel.contains("Video", ignoreCase = true) -> Triple(
             MaterialTheme.colorScheme.primaryContainer,
             MaterialTheme.colorScheme.onPrimaryContainer,
-            Icons.Default.Videocam
+            Icons.RoundedFilled.Videocam
           )
           streamTypeLabel.contains("Audio", ignoreCase = true) -> Triple(
             MaterialTheme.colorScheme.tertiaryContainer,
             MaterialTheme.colorScheme.onTertiaryContainer,
-            Icons.Default.VolumeUp
+            Icons.RoundedFilled.VolumeUp
           )
           else -> Triple(
             MaterialTheme.colorScheme.secondaryContainer,
             MaterialTheme.colorScheme.onSecondaryContainer,
-            Icons.Default.Subtitles
+            Icons.RoundedFilled.Subtitles
           )
         }
 

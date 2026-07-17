@@ -495,7 +495,7 @@ private fun ControlButtons(
       contentPadding = PaddingValues(0.dp),
     ) {
       Icon(
-        Icons.Default.FastRewind,
+        Icons.RoundedFilled.FastRewind,
         contentDescription = null,
         modifier = Modifier.size(32.dp),
       )
@@ -509,7 +509,7 @@ private fun ControlButtons(
       contentPadding = PaddingValues(0.dp),
     ) {
       Icon(
-        if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+        if (isPaused) Icons.RoundedFilled.PlayArrow else Icons.RoundedFilled.Pause,
         contentDescription = null,
         modifier = Modifier.size(32.dp),
       )
@@ -523,7 +523,7 @@ private fun ControlButtons(
       contentPadding = PaddingValues(0.dp),
     ) {
       Icon(
-        Icons.Default.FastForward,
+        Icons.RoundedFilled.FastForward,
         contentDescription = null,
         modifier = Modifier.size(32.dp),
       )
@@ -544,7 +544,7 @@ private fun ControlButtons(
         )
       } else {
         Icon(
-          Icons.Default.Aperture,
+          Icons.RoundedFilled.Aperture,
           contentDescription = null,
           modifier = Modifier.size(32.dp),
         )
@@ -569,7 +569,7 @@ private fun FrameNavigationCardTitle(
     )
     IconButton(onClose) {
       Icon(
-        Icons.Default.Close,
+        Icons.RoundedFilled.Close,
         null,
         modifier = Modifier.size(32.dp),
       )
@@ -603,14 +603,14 @@ private fun IncludeSubsToggle(
         ) { isChecked ->
           if (isChecked) {
             Icon(
-              Icons.Filled.Check,
+              Icons.RoundedFilled.Check,
               contentDescription = null,
               modifier = Modifier.size(SwitchDefaults.IconSize),
               tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
           } else {
             Icon(
-              Icons.Filled.Close,
+              Icons.RoundedFilled.Close,
               contentDescription = null,
               modifier = Modifier.size(SwitchDefaults.IconSize),
               tint = MaterialTheme.colorScheme.onSurfaceVariant

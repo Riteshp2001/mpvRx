@@ -66,7 +66,7 @@ fun SubtitleSettingsColorsCard(
       Row(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
-        Icon(Icons.Default.Palette, null)
+        Icon(Icons.RoundedFilled.Palette, null)
         Text(stringResource(R.string.player_sheets_sub_colors_card_title))
       }
     },
@@ -97,10 +97,10 @@ fun SubtitleSettingsColorsCard(
           ) {
             Icon(
               when (type) {
-                SubColorType.Text -> Icons.Default.FormatColorText
-                SubColorType.Border -> Icons.Default.BorderColor
-                SubColorType.Background -> Icons.Default.FormatColorFill
-                SubColorType.Shadow -> Icons.Default.Shadow
+                SubColorType.Text -> Icons.RoundedFilled.FormatColorText
+                SubColorType.Border -> Icons.RoundedFilled.BorderColor
+                SubColorType.Background -> Icons.RoundedFilled.FormatColorFill
+                SubColorType.Shadow -> Icons.RoundedFilled.Shadow
               },
               null,
             )
@@ -118,7 +118,7 @@ fun SubtitleSettingsColorsCard(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            Icon(Icons.Default.FormatColorReset, null)
+            Icon(Icons.RoundedFilled.FormatColorReset, null)
             Text(stringResource(R.string.generic_reset))
           }
         }
@@ -283,7 +283,7 @@ fun AssOverrideWarningBanner(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
       ) {
         Icon(
-          Icons.Default.Warning,
+          Icons.RoundedFilled.Warning,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.error,
           modifier = Modifier.size(24.dp)

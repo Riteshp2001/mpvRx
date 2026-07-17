@@ -145,7 +145,7 @@ object FoldersPreferencesScreen : Screen {
                 modifier = Modifier.padding(horizontal = 2.dp),
               ) {
                 Icon(
-                  Icons.Default.Clear,
+                  Icons.RoundedFilled.Clear,
                   contentDescription = stringResource(R.string.pref_folders_clear_all),
                   modifier = Modifier.size(28.dp),
                   tint = MaterialTheme.colorScheme.error,
@@ -198,7 +198,7 @@ object FoldersPreferencesScreen : Screen {
               .weight(1f),
           ) {
             EmptyState(
-              icon = Icons.Filled.FolderOff,
+              icon = Icons.RoundedFilled.FolderOff,
               title = stringResource(R.string.pref_folders_empty_title),
               message = stringResource(R.string.pref_folders_empty_message),
             )
@@ -255,7 +255,7 @@ object FoldersPreferencesScreen : Screen {
               verticalAlignment = Alignment.CenterVertically,
             ) {
               Icon(
-                imageVector = Icons.Default.Folder,
+                imageVector = Icons.RoundedFilled.Folder,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
               )
@@ -392,7 +392,7 @@ private fun BlacklistedFolderItem(
       if (!isInSelectionMode) {
         IconButton(onClick = onRemove) {
           Icon(
-            imageVector = Icons.Default.RemoveCircle,
+            imageVector = Icons.RoundedFilled.RemoveCircle,
             contentDescription = stringResource(R.string.delete),
             tint = MaterialTheme.colorScheme.error,
           )
@@ -433,7 +433,7 @@ private fun AddFolderDialog(
           overflow = TextOverflow.Ellipsis,
         )
         if (!isLoading && availableFolders.isNotEmpty()) {
-          Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(R.string.selection_options), modifier = Modifier.size(24.dp))
+          Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = stringResource(R.string.selection_options), modifier = Modifier.size(24.dp))
         }
         DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
           DropdownMenuItem(text = { Text(stringResource(R.string.select_all)) }, onClick = {
@@ -511,7 +511,7 @@ internal fun StorageRootPickerCard(
       horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       Icon(
-        imageVector = Icons.Default.Folder,
+        imageVector = Icons.RoundedFilled.Folder,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(24.dp),
@@ -537,7 +537,7 @@ internal fun StorageRootPickerCard(
       if (currentPath.isNotEmpty()) {
         IconButton(onClick = onClearClick) {
           Icon(
-            imageVector = Icons.Default.Clear,
+            imageVector = Icons.RoundedFilled.Clear,
             contentDescription = "Clear",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
           )

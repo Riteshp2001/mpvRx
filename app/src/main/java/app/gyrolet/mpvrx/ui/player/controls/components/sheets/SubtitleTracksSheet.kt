@@ -206,18 +206,18 @@ fun SubtitlesSheet(
         onAddSubtitle,
         actions = {
           IconButton(onClick = onOpenOnlineSearch) {
-            Icon(Icons.Default.Search, null)
+            Icon(Icons.RoundedFilled.Search, null)
           }
           if (isOnlineProvider && aiEnabled && realtimeSubsEnabled) {
             IconButton(onClick = onGenerateSubtitle) {
-              Icon(Icons.Default.Subtitles, "Generate subtitles")
+              Icon(Icons.RoundedFilled.Subtitles, "Generate subtitles")
             }
           }
           IconButton(onClick = onOpenSubtitleSettings) {
-            Icon(Icons.Default.Palette, null)
+            Icon(Icons.RoundedFilled.Palette, null)
           }
           IconButton(onClick = onOpenSubtitleDelay) {
-            Icon(Icons.Default.AvTimer, null)
+            Icon(Icons.RoundedFilled.AvTimer, null)
           }
         },
       )
@@ -248,7 +248,7 @@ fun SubtitlesSheet(
               ),
             ) {
               Icon(
-                imageVector = Icons.Default.Close,
+                imageVector = Icons.RoundedFilled.Close,
                 contentDescription = "Cancel translation",
                 modifier = Modifier.size(20.dp),
               )
@@ -401,9 +401,9 @@ fun SubtitleTrackRow(
     
     if (isExternal) {
       if (translationEnabled) {
-        IconButton(onClick = onTranslate) { Icon(Icons.Default.Translate, contentDescription = "Translate") }
+        IconButton(onClick = onTranslate) { Icon(Icons.RoundedFilled.Translate, contentDescription = "Translate") }
       }
-      IconButton(onClick = onRemove) { Icon(Icons.Default.Delete, contentDescription = null) }
+      IconButton(onClick = onRemove) { Icon(Icons.RoundedFilled.Delete, contentDescription = null) }
     }
   }
 }

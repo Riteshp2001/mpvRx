@@ -148,9 +148,9 @@ fun ExpressiveSwitch(
         modifier = Modifier.matchParentSize(),
       ) {
         if (checked) {
-          Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDimensions.iconSize))
+          Icon(Icons.RoundedFilled.Check, contentDescription = null, modifier = Modifier.size(SwitchDimensions.iconSize))
         } else {
-          Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(SwitchDimensions.iconSize))
+          Icon(Icons.RoundedFilled.Close, contentDescription = null, modifier = Modifier.size(SwitchDimensions.iconSize))
         }
       }
     }

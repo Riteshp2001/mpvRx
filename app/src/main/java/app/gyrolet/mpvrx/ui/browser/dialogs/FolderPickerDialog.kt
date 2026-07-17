@@ -163,7 +163,7 @@ fun FolderPickerDialog(
               shape = MaterialTheme.shapes.extraLarge,
             ) {
               Icon(
-                imageVector = Icons.Filled.ArrowBack,
+                imageVector = Icons.RoundedFilled.ArrowBack,
                 contentDescription = "Go back",
               )
             }
@@ -182,7 +182,7 @@ fun FolderPickerDialog(
             shape = MaterialTheme.shapes.extraLarge,
           ) {
             Icon(
-              imageVector = Icons.Default.Home,
+              imageVector = Icons.RoundedFilled.Home,
               contentDescription = "Go to internal storage",
             )
           }
@@ -199,7 +199,7 @@ fun FolderPickerDialog(
             shape = MaterialTheme.shapes.extraLarge,
           ) {
             Icon(
-              imageVector = Icons.Default.CreateNewFolder,
+              imageVector = Icons.RoundedFilled.CreateNewFolder,
               contentDescription = "Create folder",
             )
           }
@@ -303,10 +303,10 @@ private fun StorageVolumeItem(
   val isRemovable = volume.isRemovable
   
   val icon = when {
-    isPrimary -> Icons.Default.Home
-    isRemovable && volumePath.contains("usb", ignoreCase = true) -> Icons.Default.Usb
-    isRemovable -> Icons.Default.SdCard
-    else -> Icons.Default.Folder
+    isPrimary -> Icons.RoundedFilled.Home
+    isRemovable && volumePath.contains("usb", ignoreCase = true) -> Icons.RoundedFilled.Usb
+    isRemovable -> Icons.RoundedFilled.SdCard
+    else -> Icons.RoundedFilled.Folder
   }
   
   Row(
@@ -362,7 +362,7 @@ private fun FolderItem(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Icon(
-      imageVector = Icons.Default.Folder,
+      imageVector = Icons.RoundedFilled.Folder,
       contentDescription = null,
       tint = MaterialTheme.colorScheme.primary,
       modifier = Modifier.size(28.dp),

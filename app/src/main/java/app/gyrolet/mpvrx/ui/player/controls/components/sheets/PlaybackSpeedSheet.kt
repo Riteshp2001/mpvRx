@@ -112,7 +112,7 @@ fun PlaybackSpeedSheet(
            onClick = { onSpeedChange((speed - 0.05f).coerceAtLeast(0.05f)) },
            modifier = Modifier.size(40.dp)
         ) {
-           Icon(Icons.Default.Remove, null, modifier = Modifier.size(24.dp))
+           Icon(Icons.RoundedFilled.Remove, null, modifier = Modifier.size(24.dp))
         }
 
           Slider(
@@ -130,7 +130,7 @@ fun PlaybackSpeedSheet(
            onClick = { onSpeedChange((speed + 0.05f).coerceAtMost(4.0f)) },
            modifier = Modifier.size(40.dp)
         ) {
-           Icon(Icons.Default.Add, null, modifier = Modifier.size(24.dp))
+           Icon(Icons.RoundedFilled.Add, null, modifier = Modifier.size(24.dp))
         }
       }
 
@@ -185,7 +185,7 @@ fun PlaybackSpeedSheet(
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         modifier = buttonModifier
                     ) {
-                       Icon(Icons.Default.Remove, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
+                       Icon(Icons.RoundedFilled.Remove, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
                        Text("Remove")
                     }
                 }
@@ -195,7 +195,7 @@ fun PlaybackSpeedSheet(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                     modifier = buttonModifier
                 ) {
-                  Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
+                  Icon(Icons.RoundedFilled.Add, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
                   Text("Add")
                 }
             }

@@ -129,7 +129,7 @@ fun AspectRatioSheet(
               leadingIcon = null,
               trailingIcon = {
                 Icon(
-                  Icons.Default.Close,
+                  Icons.RoundedFilled.Close,
                   null,
                   modifier = Modifier.clickable { onDeleteCustomRatio(ratio) },
                 )
@@ -248,7 +248,7 @@ private fun AddCustomRatioRow(
           }
         },
       ) {
-        Icon(Icons.Default.Add, contentDescription = "Add")
+        Icon(Icons.RoundedFilled.Add, contentDescription = "Add")
       }
     }
 

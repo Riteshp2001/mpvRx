@@ -329,10 +329,10 @@ private fun StorageVolumeItem(
   val isRemovable = volume.isRemovable
   
   val icon = when {
-    isPrimary -> Icons.Default.Home
-    isRemovable && volumePath.contains("usb", ignoreCase = true) -> Icons.Default.Usb
-    isRemovable -> Icons.Default.SdCard
-    else -> Icons.Default.Folder
+    isPrimary -> Icons.RoundedFilled.Home
+    isRemovable && volumePath.contains("usb", ignoreCase = true) -> Icons.RoundedFilled.Usb
+    isRemovable -> Icons.RoundedFilled.SdCard
+    else -> Icons.RoundedFilled.Folder
   }
   
   Row(
@@ -388,7 +388,7 @@ private fun FolderItem(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Icon(
-      imageVector = Icons.Default.Folder,
+      imageVector = Icons.RoundedFilled.Folder,
       contentDescription = null,
       tint = MaterialTheme.colorScheme.primary,
       modifier = Modifier.size(28.dp),
@@ -423,7 +423,7 @@ private fun FileItem(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Icon(
-      imageVector = Icons.Filled.InsertDriveFile,
+      imageVector = Icons.RoundedFilled.InsertDriveFile,
       contentDescription = null,
       tint = MaterialTheme.colorScheme.secondary,
       modifier = Modifier.size(28.dp),
@@ -461,7 +461,7 @@ private fun NavigationButtons(
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
       )
     ) {
-      Icon(Icons.Filled.ArrowBack, "Back", modifier = Modifier.size(iconSize))
+      Icon(Icons.RoundedFilled.ArrowBack, "Back", modifier = Modifier.size(iconSize))
     }
   }
 
@@ -473,7 +473,7 @@ private fun NavigationButtons(
       contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
     )
   ) {
-    Icon(Icons.Default.Home, "Home", modifier = Modifier.size(iconSize))
+    Icon(Icons.RoundedFilled.Home, "Home", modifier = Modifier.size(iconSize))
   }
 
   FilledTonalIconButton(
@@ -484,7 +484,7 @@ private fun NavigationButtons(
       contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
     )
   ) {
-    Icon(Icons.Default.DriveFolderUpload, "System Picker", modifier = Modifier.size(iconSize))
+    Icon(Icons.RoundedFilled.DriveFolderUpload, "System Picker", modifier = Modifier.size(iconSize))
   }
 }
 

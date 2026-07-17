@@ -44,7 +44,7 @@ fun BreadcrumbNavigation(
     breadcrumbs.forEachIndexed { index, component ->
       if (index > 0) {
         Icon(
-          imageVector = Icons.Filled.ChevronRight,
+          imageVector = Icons.RoundedFilled.ChevronRight,
           contentDescription = "Separator",
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = 4.dp),

@@ -131,7 +131,7 @@ fun MoreSheet(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             ) {
-              Icon(imageVector = Icons.Outlined.Timer, contentDescription = null)
+              Icon(imageVector = Icons.RoundedFilled.Timer, contentDescription = null)
               Text(
                 text =
                   if (remainingTime == 0) {
@@ -157,7 +157,7 @@ fun MoreSheet(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             ) {
-              Icon(imageVector = Icons.Default.Tune, contentDescription = null)
+              Icon(imageVector = Icons.RoundedFilled.Tune, contentDescription = null)
               Text(text = stringResource(id = R.string.player_sheets_filters_title))
             }
           }
@@ -170,7 +170,7 @@ fun MoreSheet(
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             ) {
               Icon(
-                imageVector = Icons.Default.Code,
+                imageVector = Icons.RoundedFilled.Code,
                 contentDescription = null,
                 tint =
                   if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
@@ -490,7 +490,7 @@ fun SectionHeaderWithInfo(
     Spacer(modifier = Modifier.width(8.dp))
     IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
       Icon(
-        imageVector = Icons.Outlined.Info,
+        imageVector = Icons.RoundedFilled.Info,
         contentDescription = "Info",
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(16.dp)

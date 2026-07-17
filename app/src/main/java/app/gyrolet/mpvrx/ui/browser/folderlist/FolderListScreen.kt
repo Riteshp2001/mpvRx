@@ -435,7 +435,7 @@ object FolderListScreen : Screen {
                   placeholder = { Text("Search folders and videos...") },
                   leadingIcon = {
                     Icon(
-                      imageVector = Icons.Filled.Search,
+                      imageVector = Icons.RoundedFilled.Search,
                       contentDescription = "Search",
                     )
                   },
@@ -447,7 +447,7 @@ object FolderListScreen : Screen {
                       },
                     ) {
                       Icon(
-                        imageVector = Icons.Filled.Close,
+                        imageVector = Icons.RoundedFilled.Close,
                         contentDescription = "Cancel",
                       )
                     }
@@ -590,7 +590,7 @@ object FolderListScreen : Screen {
                 ) {
                   val imageVector by remember {
                     derivedStateOf {
-                      if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
+                      if (checkedProgress > 0.5f) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
                     }
                   }
                   Icon(
@@ -607,7 +607,7 @@ object FolderListScreen : Screen {
                 isFabExpanded.value = false
                 filePicker.launch(arrayOf("video/*"))
               },
-              icon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
+              icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
               text = { Text(text = "Open File") },
             )
 
@@ -622,7 +622,7 @@ object FolderListScreen : Screen {
                   }
                 }
               },
-              icon = { Icon(Icons.Filled.History, contentDescription = null) },
+              icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
               text = { Text(text = "Recently Played") },
             )
 
@@ -631,7 +631,7 @@ object FolderListScreen : Screen {
                 isFabExpanded.value = false
                 showLinkDialog.value = true
               },
-              icon = { Icon(Icons.Filled.Link, contentDescription = null) },
+              icon = { Icon(Icons.RoundedFilled.Link, contentDescription = null) },
               text = { Text(text = "Open Link") },
             )
           }
@@ -654,7 +654,7 @@ object FolderListScreen : Screen {
                   } else if (searchResults.isEmpty()) {
                     // No results
                     EmptyState(
-                      icon = Icons.Filled.Search,
+                      icon = Icons.RoundedFilled.Search,
                       title = "No results found",
                       message = "No folders or videos match your search query",
                       modifier = Modifier.fillMaxSize(),
@@ -988,13 +988,13 @@ private fun FolderListContent(
       ) {
         if (showLoading) {
           LoadingState(
-            icon = Icons.Filled.Folder,
+            icon = Icons.RoundedFilled.Folder,
             title = "Scanning for videos...",
             message = scanStatus ?: "Please wait while we search your device",
           )
         } else if (showEmpty) {
           EmptyState(
-            icon = Icons.Filled.Folder,
+            icon = Icons.RoundedFilled.Folder,
             title = "No video folders found",
             message = "Add some video files to your device to see them here",
           )

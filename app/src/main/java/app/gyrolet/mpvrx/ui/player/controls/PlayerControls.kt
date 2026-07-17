@@ -1141,7 +1141,7 @@ fun PlayerControls(
                       },
                   ) {
                     Icon(
-                      imageVector = Icons.Default.SkipPrevious,
+                      imageVector = Icons.RoundedFilled.SkipPrevious,
                       contentDescription = "Previous",
                       tint =
                         if (viewModel.hasPrevious()) {
@@ -1238,7 +1238,7 @@ fun PlayerControls(
                       },
                   ) {
                     Icon(
-                      imageVector = Icons.Default.SkipNext,
+                      imageVector = Icons.RoundedFilled.SkipNext,
                       contentDescription = "Next",
                       tint =
                         if (viewModel.hasNext()) {

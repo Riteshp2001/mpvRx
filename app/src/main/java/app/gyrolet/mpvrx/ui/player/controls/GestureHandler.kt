@@ -1343,7 +1343,7 @@ fun CombiningChevronsAnimation(
         Box {
              // Static Chevron
              Icon(
-                imageVector = Icons.Filled.KeyboardArrowRight,
+                imageVector = Icons.RoundedFilled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(48.dp)
@@ -1380,7 +1380,7 @@ fun MovingChevron(
     val alpha = 1f - progress.value
     
     Icon(
-        imageVector = Icons.Filled.KeyboardArrowRight,
+        imageVector = Icons.RoundedFilled.KeyboardArrowRight,
         contentDescription = null,
         tint = Color.White,
         modifier = Modifier

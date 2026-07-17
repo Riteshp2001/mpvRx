@@ -117,7 +117,7 @@ object PlayerControlsPreferencesScreen : Screen {
             if (LocalShowSettingsBackArrow.current) {
               IconButton(onClick = { backstack.popSafely() }) {
                 Icon(
-                  Icons.Default.ArrowBack, 
+                  Icons.RoundedFilled.ArrowBack,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.secondary,
                 )
@@ -393,7 +393,7 @@ object PlayerControlsPreferencesScreen : Screen {
       )
       IconButton(onClick = onClick) {
         Icon(
-          imageVector = Icons.Outlined.Edit,
+          imageVector = Icons.RoundedFilled.Edit,
           contentDescription = stringResource(R.string.pref_edit_region_content_desc, title),
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )

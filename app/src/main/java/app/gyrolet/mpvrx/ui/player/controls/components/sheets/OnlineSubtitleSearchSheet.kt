@@ -171,7 +171,7 @@ fun OnlineSubtitleSearchSheet(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Icon(
-              Icons.Default.AutoFixHigh,
+              Icons.RoundedFilled.AutoFixHigh,
               contentDescription = null,
               modifier = Modifier.size(14.dp),
               tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
@@ -207,7 +207,7 @@ fun OnlineSubtitleSearchSheet(
                 searchQuery = mediaInfo.title
                 onSearchMedia(mediaInfo.title)
               }) {
-                Icon(Icons.Default.AutoFixHigh, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.RoundedFilled.AutoFixHigh, null, tint = MaterialTheme.colorScheme.primary)
               }
             },
             trailingIcon = {
@@ -217,7 +217,7 @@ fun OnlineSubtitleSearchSheet(
                     searchQuery = ""
                     onClearMediaSelection()
                   }) {
-                    Icon(Icons.Default.Close, null)
+                    Icon(Icons.RoundedFilled.Close, null)
                   }
                 }
                 if (aiPreferences.enabled.get() && aiPreferences.subtitleFormatWithAi.get()) {
@@ -226,7 +226,7 @@ fun OnlineSubtitleSearchSheet(
                     Spacer(Modifier.width(4.dp))
                   } else {
                     IconButton(onClick = { formatWithAi() }) {
-                      Icon(Icons.Default.AutoAwesome, "Format with AI", tint = MaterialTheme.colorScheme.tertiary)
+                      Icon(Icons.RoundedFilled.AutoAwesome, "Format with AI", tint = MaterialTheme.colorScheme.tertiary)
                     }
                   }
                 }
@@ -235,7 +235,7 @@ fun OnlineSubtitleSearchSheet(
                   Spacer(Modifier.width(8.dp))
                 }
                 IconButton(onClick = { runSearch() }) {
-                  Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary)
+                  Icon(Icons.RoundedFilled.Search, null, tint = MaterialTheme.colorScheme.primary)
                 }
               }
             },
@@ -340,7 +340,7 @@ fun OnlineSubtitleSearchSheet(
                 )
                 if (isOnlineHeader) {
                   Icon(
-                    imageVector = if (isOnlineSectionExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    imageVector = if (isOnlineSectionExpanded) Icons.RoundedFilled.ExpandLess else Icons.RoundedFilled.ExpandMore,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp),
@@ -398,7 +398,7 @@ fun OnlineSubtitleRow(
             // Verification badge
             if (subtitle.isHashMatch) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = Icons.RoundedFilled.Check,
                     contentDescription = "Verified Sync",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp)
@@ -441,7 +441,7 @@ fun OnlineSubtitleRow(
                                 horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.Download,
+                                    Icons.RoundedFilled.Download,
                                     contentDescription = null,
                                     modifier = Modifier.size(12.dp),
                                     tint = MaterialTheme.colorScheme.primary
@@ -536,7 +536,7 @@ fun OnlineSubtitleRow(
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Download,
+                    imageVector = Icons.RoundedFilled.Download,
                     contentDescription = "Download",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
@@ -570,7 +570,7 @@ private fun SubdlEpisodeDropdown(
                 maxLines = 1,
             )
             Icon(
-                imageVector = Icons.Default.ArrowDropDown,
+                imageVector = Icons.RoundedFilled.ArrowDropDown,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
             )
@@ -630,7 +630,7 @@ fun TmdbMediaCard(
                 )
             } else {
                 Icon(
-                    Icons.Default.Movie,
+                    Icons.RoundedFilled.Movie,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier
@@ -736,7 +736,7 @@ fun TmdbResultRow(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.Movie,
+                    Icons.RoundedFilled.Movie,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(24.dp)
@@ -810,7 +810,7 @@ private fun SeriesSelectionControls(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
-                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(20.dp))
             }
             DropdownMenu(
                 expanded = seasonDropdownExpanded.value,
@@ -859,7 +859,7 @@ private fun SeriesSelectionControls(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
-                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(20.dp))
             }
             DropdownMenu(
                 expanded = episodeDropdownExpanded.value,
@@ -901,7 +901,7 @@ private fun SeriesSelectionControls(
             onClick = onClose,
             modifier = Modifier.size(40.dp),
         ) {
-            Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
+            Icon(Icons.RoundedFilled.Close, null, modifier = Modifier.size(18.dp))
         }
     }
 }

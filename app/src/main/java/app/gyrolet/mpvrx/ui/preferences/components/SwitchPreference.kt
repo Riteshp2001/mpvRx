@@ -77,14 +77,14 @@ fun SwitchPreference(
                 ) { isChecked ->
                     if (isChecked) {
                         Icon(
-                            Icons.Filled.Check,
+                            Icons.RoundedFilled.Check,
                             contentDescription = null,
                             modifier = Modifier.size(SwitchDefaults.IconSize),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     } else {
                         Icon(
-                            Icons.Filled.Close,
+                            Icons.RoundedFilled.Close,
                             contentDescription = null,
                             modifier = Modifier.size(SwitchDefaults.IconSize),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant

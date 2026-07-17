@@ -147,7 +147,7 @@ fun SlideToUnlock(
         animationSpec = spring(dampingRatio = AppMotion.Spatial.Standard.dampingRatio, stiffness = AppMotion.Spatial.Standard.stiffness),
       ) { showUnlock ->
         Icon(
-          imageVector = if (showUnlock) Icons.Filled.LockOpen else Icons.Filled.Lock,
+          imageVector = if (showUnlock) Icons.RoundedFilled.LockOpen else Icons.RoundedFilled.Lock,
           contentDescription = "Slide to unlock",
           tint = Color.White,
           modifier = Modifier.size(28.dp),

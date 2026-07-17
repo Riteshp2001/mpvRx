@@ -47,7 +47,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
     isExpanded,
     title = {
       Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-        Icon(Icons.Default.Tune, null)
+        Icon(Icons.RoundedFilled.Tune, null)
         Text(stringResource(R.string.player_sheets_sub_misc_card_title))
       }
     },
@@ -114,7 +114,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           max = 5f,
           icon = {
             Icon(
-              Icons.Default.FormatSize,
+              Icons.RoundedFilled.FormatSize,
               null,
             )
           },
@@ -130,7 +130,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           max = 150,
           icon = {
             Icon(
-              Icons.Default.AlignVerticalCenter,
+              Icons.RoundedFilled.AlignVerticalCenter,
               null,
             )
           },
@@ -163,7 +163,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
             },
           ) {
             Row {
-              Icon(Icons.Default.EditOff, null)
+              Icon(Icons.RoundedFilled.EditOff, null)
               Text(stringResource(R.string.generic_reset))
             }
           }

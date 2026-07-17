@@ -116,8 +116,8 @@ private fun SubtitleDelayCardContent(
           max = 10f,
           step = 0.01f,
           min = 0.1f,
-          increaseIcon = Icons.Filled.Add,
-          decreaseIcon = Icons.Filled.Remove,
+          increaseIcon = Icons.RoundedFilled.Add,
+          decreaseIcon = Icons.RoundedFilled.Remove,
           valueFormatter = { "%.2f".format(it) }
         )
       }
@@ -147,8 +147,8 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
          min = Float.NEGATIVE_INFINITY,
          max = Float.POSITIVE_INFINITY,
          suffix = { Text("s") },
-         increaseIcon = Icons.Filled.Add,
-         decreaseIcon = Icons.Filled.Remove,
+         increaseIcon = Icons.RoundedFilled.Add,
+         decreaseIcon = Icons.RoundedFilled.Remove,
          valueFormatter = { "%.1f".format(it) }
        )
        Column(
@@ -227,7 +227,7 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
            onClick = onReset,
            enabled = isDirectionPositive == null,
          ) {
-           Icon(Icons.Default.Refresh, null)
+           Icon(Icons.RoundedFilled.Refresh, null)
          }
        }
     }
@@ -252,7 +252,7 @@ fun SubtitleDelayTitle(
     )
     Spacer(Modifier.weight(1f))
     IconButton(onClick = onClose) {
-      Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
+      Icon(Icons.RoundedFilled.Close, null, modifier = Modifier.size(32.dp))
     }
   }
 }

@@ -238,7 +238,7 @@ private fun NormalTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.ArrowBack,
+            Icons.RoundedFilled.ArrowBack,
             contentDescription = stringResource(R.string.back),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -254,7 +254,7 @@ private fun NormalTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.Search,
+            Icons.RoundedFilled.Search,
             contentDescription = "Search",
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -267,7 +267,7 @@ private fun NormalTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.SortByAlpha,
+            Icons.RoundedFilled.SortByAlpha,
             contentDescription = stringResource(R.string.sort),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -280,7 +280,7 @@ private fun NormalTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.Settings,
+            Icons.RoundedFilled.Settings,
             contentDescription = "Settings",
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -341,7 +341,7 @@ private fun SelectionTopBar(
           overflow = TextOverflow.Ellipsis,
         )
         Icon(
-          Icons.Filled.ArrowDropDown,
+          Icons.RoundedFilled.ArrowDropDown,
           contentDescription = stringResource(R.string.selection_options),
           modifier = Modifier.size(24.dp),
           tint = MaterialTheme.colorScheme.primary,
@@ -387,7 +387,7 @@ private fun SelectionTopBar(
         modifier = Modifier.padding(horizontal = 2.dp),
       ) {
         Icon(
-          Icons.Filled.Close,
+          Icons.RoundedFilled.Close,
           contentDescription = stringResource(R.string.generic_cancel),
           modifier = Modifier.size(28.dp),
           tint = MaterialTheme.colorScheme.secondary,
@@ -402,7 +402,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.PlayArrow,
+            Icons.RoundedFilled.PlayArrow,
             contentDescription = "Play",
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.primary,
@@ -416,7 +416,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.PushPin,
+            Icons.RoundedFilled.PushPin,
             contentDescription = "Pin folders",
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -431,7 +431,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.PlaylistAdd,
+            Icons.RoundedFilled.PlaylistAdd,
             contentDescription = "Add to Playlist",
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -447,7 +447,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.DriveFileRenameOutline,
+            Icons.RoundedFilled.DriveFileRenameOutline,
             contentDescription = stringResource(R.string.rename),
             modifier = Modifier.size(24.dp),
             tint =
@@ -468,7 +468,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.Info,
+            Icons.RoundedFilled.Info,
             contentDescription = stringResource(R.string.info),
             modifier = Modifier.size(24.dp),
             tint =
@@ -488,7 +488,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.Share,
+            Icons.RoundedFilled.Share,
             contentDescription = stringResource(R.string.generic_share),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -502,7 +502,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.ContentCopy,
+            Icons.RoundedFilled.ContentCopy,
             contentDescription = "Copy path",
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -517,7 +517,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.Block,
+            Icons.RoundedFilled.Block,
             contentDescription = stringResource(R.string.pref_folders_blacklist),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -532,7 +532,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            imageVector = if (useRemoveIcon) Icons.Filled.RemoveCircle else Icons.Filled.Delete,
+            imageVector = if (useRemoveIcon) Icons.RoundedFilled.RemoveCircle else Icons.RoundedFilled.Delete,
             contentDescription = stringResource(R.string.delete),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.error,

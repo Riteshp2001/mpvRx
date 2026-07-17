@@ -45,7 +45,7 @@ fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
       Row(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
-        Icon(Icons.Default.Tune, null)
+        Icon(Icons.RoundedFilled.Tune, null)
         Text(stringResource(R.string.player_sheets_filters_title))
       }
     },

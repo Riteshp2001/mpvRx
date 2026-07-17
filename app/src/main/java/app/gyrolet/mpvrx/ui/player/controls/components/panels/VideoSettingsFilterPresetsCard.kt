@@ -65,7 +65,7 @@ fun VideoSettingsFilterPresetsCard(modifier: Modifier = Modifier) {
       Row(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
-        Icon(Icons.Default.AutoAwesome, null)
+        Icon(Icons.RoundedFilled.AutoAwesome, null)
         Text("Filter Presets")
       }
     },

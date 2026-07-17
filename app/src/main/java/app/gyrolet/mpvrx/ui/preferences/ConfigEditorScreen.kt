@@ -171,7 +171,7 @@ data class ConfigEditorScreen(
         navigationIcon = {
           IconButton(onClick = { backStack.popSafely() }) {
             Icon(
-              Icons.Default.ArrowBack,
+              Icons.RoundedFilled.ArrowBack,
               contentDescription = "Back",
               tint = MaterialTheme.colorScheme.secondary,
             )
@@ -188,7 +188,7 @@ data class ConfigEditorScreen(
             ),
           ) {
             Icon(
-              imageVector = Icons.Outlined.Info,
+              imageVector = Icons.RoundedFilled.Info,
               contentDescription = "Help",
             )
           }
@@ -207,7 +207,7 @@ data class ConfigEditorScreen(
             shape = RoundedCornerShape(8.dp),
           ) {
             Icon(
-              imageVector = Icons.Default.Check,
+              imageVector = Icons.RoundedFilled.Check,
               contentDescription = "Save",
             )
           }

@@ -64,7 +64,7 @@ fun AnimatedSection(
         )
       }
       Icon(
-        imageVector = Icons.Default.KeyboardArrowDown,
+        imageVector = Icons.RoundedFilled.KeyboardArrowDown,
         contentDescription = if (isExpanded) "Collapse" else "Expand",
         modifier = Modifier.rotate(iconRotation),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -124,7 +124,7 @@ fun AnimatedSection(
         modifier = Modifier.weight(1f),
       )
       Icon(
-        imageVector = Icons.Default.KeyboardArrowDown,
+        imageVector = Icons.RoundedFilled.KeyboardArrowDown,
         contentDescription = if (isExpanded) "Collapse" else "Expand",
         modifier = Modifier.rotate(iconRotation),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,

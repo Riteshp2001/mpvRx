@@ -61,7 +61,7 @@ fun HdrScreenOutputPanel(
         )
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onDismissRequest) {
-          Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
+          Icon(Icons.RoundedFilled.Close, null, modifier = Modifier.size(32.dp))
         }
       }
     },
@@ -117,7 +117,7 @@ private fun HdrPipelineUnavailableStatus(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = Icons.Default.HdrOff,
+          imageVector = Icons.RoundedFilled.HdrOff,
           contentDescription = null,
           modifier = Modifier.size(22.dp),
           tint = contentColor,
@@ -190,7 +190,7 @@ private fun HdrModeOption(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = if (mode == HdrScreenMode.OFF) Icons.Default.HdrOff else Icons.Default.HdrOn,
+          imageVector = if (mode == HdrScreenMode.OFF) Icons.RoundedFilled.HdrOff else Icons.RoundedFilled.HdrOn,
           contentDescription = null,
           modifier = Modifier.size(24.dp),
           tint =

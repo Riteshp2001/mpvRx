@@ -103,7 +103,7 @@ fun SubtitleSettingsTypographyCard(
       Row(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
-        Icon(Icons.Default.FormatColorText, null)
+        Icon(Icons.RoundedFilled.FormatColorText, null)
         Text(stringResource(R.string.player_sheets_sub_typography_card_title))
       }
     },
@@ -146,7 +146,7 @@ fun SubtitleSettingsTypographyCard(
           },
         ) {
           Icon(
-            Icons.Default.FormatBold,
+            Icons.RoundedFilled.FormatBold,
             null,
             modifier = Modifier.size(32.dp),
           )
@@ -160,7 +160,7 @@ fun SubtitleSettingsTypographyCard(
           },
         ) {
           Icon(
-            Icons.Default.FormatItalic,
+            Icons.RoundedFilled.FormatItalic,
             null,
             modifier = Modifier.size(32.dp),
           )
@@ -192,7 +192,7 @@ fun SubtitleSettingsTypographyCard(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            Icon(Icons.Default.FormatClear, null)
+            Icon(Icons.RoundedFilled.FormatClear, null)
             Text(stringResource(R.string.generic_reset))
           }
         }
@@ -203,7 +203,7 @@ fun SubtitleSettingsTypographyCard(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Icon(
-          Icons.Default.BrandFamily,
+          Icons.RoundedFilled.BrandFamily,
           null,
           modifier = Modifier.size(32.dp),
         )
@@ -232,7 +232,7 @@ fun SubtitleSettingsTypographyCard(
           MPVLib.setPropertyInt("secondary-sub-font-size", it)
         },
       ) {
-        Icon(Icons.Default.FormatSize, null)
+        Icon(Icons.RoundedFilled.FormatSize, null)
       }
       ProvidePreferenceLocals(
         theme = preferenceTheme(iconContainerMinWidth = 64.dp),
@@ -249,7 +249,7 @@ fun SubtitleSettingsTypographyCard(
           values = SubtitlesBorderStyle.entries,
           type = ListPreferenceType.DROPDOWN_MENU,
           summary = { Text(stringResource(borderStyle.titleRes)) },
-          icon = { Icon(Icons.Default.BorderStyle, null) },
+          icon = { Icon(Icons.RoundedFilled.BorderStyle, null) },
         )
       }
       SliderItem(
@@ -264,7 +264,7 @@ fun SubtitleSettingsTypographyCard(
           MPVLib.setPropertyInt("secondary-sub-outline-size", it)
         },
         max = 20,
-        icon = { Icon(Icons.Default.BorderColor, null) },
+        icon = { Icon(Icons.RoundedFilled.BorderColor, null) },
       )
       SliderItem(
         stringResource(R.string.player_sheets_subtitles_shadow_offset),
@@ -280,7 +280,7 @@ fun SubtitleSettingsTypographyCard(
         },
         min = -20,
         max = 20,
-        icon = { Icon(Icons.Default.Shadow, null) },
+        icon = { Icon(Icons.RoundedFilled.Shadow, null) },
       )
     }
   }

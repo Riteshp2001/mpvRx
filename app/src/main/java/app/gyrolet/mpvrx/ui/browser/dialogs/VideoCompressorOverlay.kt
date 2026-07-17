@@ -382,12 +382,12 @@ private fun CompressorConfigSurface(
         },
         navigationIcon = {
           IconButton(onClick = onClose) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
+            Icon(Icons.RoundedFilled.Close, contentDescription = "Close")
           }
         },
         actions = {
           IconButton(onClick = onShowInfo) {
-            Icon(Icons.Filled.Info, contentDescription = "Info")
+            Icon(Icons.RoundedFilled.Info, contentDescription = "Info")
           }
         },
       )
@@ -413,9 +413,9 @@ private fun CompressorConfigSurface(
                 onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                 icon = {
                   when (index) {
-                    0 -> Icon(Icons.Filled.Settings, contentDescription = null)
-                    1 -> Icon(Icons.Default.Movie, contentDescription = null)
-                    else -> Icon(Icons.Default.Audiotrack, contentDescription = null)
+                    0 -> Icon(Icons.RoundedFilled.Settings, contentDescription = null)
+                    1 -> Icon(Icons.RoundedFilled.Movie, contentDescription = null)
+                    else -> Icon(Icons.RoundedFilled.Audiotrack, contentDescription = null)
                   }
                 },
                 label = { Text(label) },
@@ -763,7 +763,7 @@ private fun CompressorPresetsTab(
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
           if (state.activePreset == preset) {
-            Icon(Icons.Default.Check, contentDescription = null)
+            Icon(Icons.RoundedFilled.Check, contentDescription = null)
           }
         }
       }
@@ -1143,7 +1143,7 @@ private fun CompressorResultSurface(
         title = { Text("Compressor", fontWeight = FontWeight.Bold) },
         navigationIcon = {
           IconButton(onClick = onClose) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
+            Icon(Icons.RoundedFilled.Close, contentDescription = "Close")
           }
         },
       )
@@ -1170,7 +1170,7 @@ private fun CompressorResultSurface(
           shape = AppShapeScale.full,
         ) {
           Icon(
-            Icons.Default.Check,
+            Icons.RoundedFilled.Check,
             contentDescription = null,
             modifier = Modifier.padding(24.dp).size(48.dp),
           )
@@ -1241,7 +1241,7 @@ private fun CompressorResultSurface(
               modifier = Modifier.weight(1f),
               shape = AppShapeScale.largeIncreased,
             ) {
-              Icon(Icons.Default.Share, contentDescription = null)
+              Icon(Icons.RoundedFilled.Share, contentDescription = null)
               Spacer(modifier = Modifier.width(8.dp))
               Text("Share")
             }
@@ -1279,7 +1279,7 @@ private fun CompressorIssueSurface(
         title = { Text("Compressor", fontWeight = FontWeight.Bold) },
         navigationIcon = {
           IconButton(onClick = onClose) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
+            Icon(Icons.RoundedFilled.Close, contentDescription = "Close")
           }
         },
       )
@@ -1306,7 +1306,7 @@ private fun CompressorIssueSurface(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
           ) {
-            Icon(Icons.Outlined.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            Icon(Icons.RoundedFilled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
             Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
           }
           Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

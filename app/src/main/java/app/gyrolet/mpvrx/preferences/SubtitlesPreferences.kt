@@ -86,8 +86,8 @@ enum class SubtitleJustification(
   val value: String,
   val icon: AppIcon,
 ) {
-  Left("left", Icons.Default.FormatAlignLeft),
-  Center("center", Icons.Default.FormatAlignCenter),
-  Right("right", Icons.Default.FormatAlignRight),
-  Auto("auto", Icons.Default.FormatAlignJustify),
+  Left("left", Icons.RoundedFilled.FormatAlignLeft),
+  Center("center", Icons.RoundedFilled.FormatAlignCenter),
+  Right("right", Icons.RoundedFilled.FormatAlignRight),
+  Auto("auto", Icons.RoundedFilled.FormatAlignJustify),
 }

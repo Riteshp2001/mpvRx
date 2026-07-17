@@ -63,7 +63,7 @@ fun TopLeftPlayerControlsLandscape(
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
       ControlsButton(
-        icon = Icons.Default.ArrowBack,
+        icon = Icons.RoundedFilled.ArrowBack,
         onClick = onBackPress,
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(45.dp),
@@ -153,7 +153,7 @@ fun TopLeftPlayerControlsLandscape(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         Icon(
-          imageVector = Icons.Default.Translate,
+          imageVector = Icons.RoundedFilled.Translate,
           contentDescription = null,
           modifier = Modifier.size(14.dp),
           tint = MaterialTheme.colorScheme.tertiary,

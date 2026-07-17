@@ -686,7 +686,7 @@ fun ExpressiveScrollBar(
               },
         ) {
           Icon(
-            imageVector = Icons.Filled.DragHandle,
+            imageVector = Icons.RoundedFilled.DragHandle,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.fillMaxSize(),

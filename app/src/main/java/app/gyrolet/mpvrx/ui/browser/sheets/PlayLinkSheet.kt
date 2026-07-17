@@ -174,13 +174,13 @@ fun PlayLinkSheet(
 private fun ValidationIcon(isValid: Boolean) {
   if (isValid) {
     Icon(
-      Icons.Filled.Check,
+      Icons.RoundedFilled.Check,
       contentDescription = "Valid URL",
       tint = MaterialTheme.colorScheme.primary,
     )
   } else {
     Icon(
-      Icons.Filled.Close,
+      Icons.RoundedFilled.Close,
       contentDescription = "Invalid URL",
       tint = MaterialTheme.colorScheme.error,
     )

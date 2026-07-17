@@ -51,7 +51,7 @@ fun DeleteConfirmationDialog(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         Icon(
-          imageVector = Icons.Default.Delete,
+          imageVector = Icons.RoundedFilled.Delete,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.error,
           modifier = Modifier.size(28.dp),
@@ -81,7 +81,7 @@ fun DeleteConfirmationDialog(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
           ) {
             Icon(
-              imageVector = Icons.Outlined.Warning,
+              imageVector = Icons.RoundedFilled.Warning,
               contentDescription = null,
               tint = MaterialTheme.colorScheme.onErrorContainer,
               modifier = Modifier.size(20.dp),
@@ -150,7 +150,7 @@ fun DeleteConfirmationDialog(
         shape = MaterialTheme.shapes.extraLarge,
       ) {
         Icon(
-          imageVector = Icons.Default.Delete,
+          imageVector = Icons.RoundedFilled.Delete,
           contentDescription = null,
           modifier = Modifier.size(18.dp),
         )
@@ -167,7 +167,7 @@ fun DeleteConfirmationDialog(
         shape = MaterialTheme.shapes.extraLarge,
       ) {
         Icon(
-          imageVector = Icons.Default.Close,
+          imageVector = Icons.RoundedFilled.Close,
           contentDescription = null,
           modifier = Modifier.size(16.dp),
         )

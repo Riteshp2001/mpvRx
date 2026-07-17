@@ -113,7 +113,7 @@ object YtdlpSettingsScreen : Screen {
                     },
                     navigationIcon = {
                         IconButton(onClick = { backStack.popSafely() }) {
-                            Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -148,7 +148,7 @@ object YtdlpSettingsScreen : Screen {
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = if (hasYtdlp) Icons.Default.Check else Icons.Default.CloudDownload,
+                                    imageVector = if (hasYtdlp) Icons.RoundedFilled.Check else Icons.RoundedFilled.CloudDownload,
                                     contentDescription = null,
                                     tint = if (hasYtdlp) MaterialTheme.colorScheme.onPrimaryContainer 
                                            else MaterialTheme.colorScheme.onErrorContainer,
@@ -230,7 +230,7 @@ object YtdlpSettingsScreen : Screen {
                                     contentColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             ) {
-                                Icon(Icons.Default.Download, null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.RoundedFilled.Download, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("Install Core")
                             }
@@ -251,7 +251,7 @@ object YtdlpSettingsScreen : Screen {
                                 ),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
-                                Icon(Icons.Default.Update, null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("Update Core")
                             }
@@ -275,7 +275,7 @@ object YtdlpSettingsScreen : Screen {
                             ),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f))
                         ) {
-                            Icon(Icons.Default.Update, null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Update to Nightly Build")
                         }
@@ -313,7 +313,7 @@ object YtdlpSettingsScreen : Screen {
                                     },
                                     label = { Text(qualityLabels[index]) },
                                     leadingIcon = if (ytdlQuality == level) {
-                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                        { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(16.dp)) }
                                     } else null,
                                     shape = RoundedCornerShape(12.dp)
                                 )
@@ -348,7 +348,7 @@ object YtdlpSettingsScreen : Screen {
                                     },
                                     label = { Text(label) },
                                     leadingIcon = if (maxFps == fps) {
-                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                        { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(16.dp)) }
                                     } else null,
                                     shape = RoundedCornerShape(12.dp)
                                 )
@@ -512,7 +512,7 @@ object YtdlpSettingsScreen : Screen {
                                 )
                             }
                             Icon(
-                                imageVector = if (showAdvancedNetworking) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                imageVector = if (showAdvancedNetworking) Icons.RoundedFilled.KeyboardArrowUp else Icons.RoundedFilled.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )

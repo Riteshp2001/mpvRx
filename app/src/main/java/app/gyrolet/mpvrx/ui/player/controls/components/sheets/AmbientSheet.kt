@@ -227,7 +227,7 @@ fun AmbientSheet(
                         max = 64,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.BlurOn,
+                                imageVector = Icons.RoundedFilled.BlurOn,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -245,7 +245,7 @@ fun AmbientSheet(
                         steps = 75,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.Gradient,
+                                imageVector = Icons.RoundedFilled.Gradient,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -263,7 +263,7 @@ fun AmbientSheet(
                         steps = 25,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.Brightness6,
+                                imageVector = Icons.RoundedFilled.Brightness6,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -281,7 +281,7 @@ fun AmbientSheet(
                         steps = 25,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.WbSunny,
+                                imageVector = Icons.RoundedFilled.WbSunny,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -321,7 +321,7 @@ fun AmbientSheet(
                         steps = 30,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.Palette,
+                                imageVector = Icons.RoundedFilled.Palette,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -339,7 +339,7 @@ fun AmbientSheet(
                         steps = 40,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.Thermostat,
+                                imageVector = Icons.RoundedFilled.Thermostat,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -379,7 +379,7 @@ fun AmbientSheet(
                         steps = 20,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.Opacity,
+                                imageVector = Icons.RoundedFilled.Opacity,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -397,7 +397,7 @@ fun AmbientSheet(
                         steps = 10,
                         icon = {
                             AppSymbolIcon(
-                                imageVector = Icons.Default.Vignette,
+                                imageVector = Icons.RoundedFilled.Vignette,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -463,7 +463,7 @@ fun AmbientSheet(
                             steps = 32,
                             icon = {
                                 AppSymbolIcon(
-                                    imageVector = Icons.Default.Gradient,
+                                    imageVector = Icons.RoundedFilled.Gradient,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp),
@@ -481,7 +481,7 @@ fun AmbientSheet(
                             steps = 20,
                             icon = {
                                 AppSymbolIcon(
-                                    imageVector = Icons.Default.BlurOn,
+                                    imageVector = Icons.RoundedFilled.BlurOn,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp),
@@ -499,7 +499,7 @@ fun AmbientSheet(
                             steps = 32,
                             icon = {
                                 AppSymbolIcon(
-                                    imageVector = Icons.Default.Brightness6,
+                                    imageVector = Icons.RoundedFilled.Brightness6,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp),
@@ -517,7 +517,7 @@ fun AmbientSheet(
                             steps = 50,
                             icon = {
                                 AppSymbolIcon(
-                                    imageVector = Icons.Default.RoundedCorner,
+                                    imageVector = Icons.RoundedFilled.RoundedCorner,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp),
@@ -535,7 +535,7 @@ fun AmbientSheet(
                             steps = 50,
                             icon = {
                                 AppSymbolIcon(
-                                    imageVector = Icons.Default.Grain,
+                                    imageVector = Icons.RoundedFilled.Grain,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp),

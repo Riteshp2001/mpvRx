@@ -52,7 +52,7 @@ fun VideoSettingsPanel(
         )
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onDismissRequest) {
-          Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
+          Icon(Icons.RoundedFilled.Close, null, modifier = Modifier.size(32.dp))
         }
       }
     }

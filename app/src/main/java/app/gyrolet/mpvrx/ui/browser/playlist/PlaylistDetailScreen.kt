@@ -246,7 +246,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                 placeholder = { Text("Search videos...") },
                 leadingIcon = {
                   Icon(
-                    imageVector = Icons.Filled.Search,
+                    imageVector = Icons.RoundedFilled.Search,
                     contentDescription = "Search",
                   )
                 },
@@ -258,7 +258,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                     },
                   ) {
                     Icon(
-                      imageVector = Icons.Filled.Close,
+                      imageVector = Icons.RoundedFilled.Close,
                       contentDescription = "Cancel",
                     )
                   }
@@ -343,7 +343,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                     onClick = { isReorderMode = false },
                   ) {
                     Icon(
-                      imageVector = Icons.Filled.Check,
+                      imageVector = Icons.RoundedFilled.Check,
                       contentDescription = "Done reordering",
                       tint = MaterialTheme.colorScheme.primary,
                     )
@@ -359,7 +359,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                       onClick = { isSearching = true },
                     ) {
                       Icon(
-                        imageVector = Icons.Filled.Search,
+                        imageVector = Icons.RoundedFilled.Search,
                         contentDescription = "Search videos",
                         tint = MaterialTheme.colorScheme.onSurface,
                       )
@@ -372,7 +372,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                         onClick = { isReorderMode = true },
                       ) {
                         Icon(
-                          imageVector = Icons.Outlined.SwapVert,
+                          imageVector = Icons.RoundedFilled.SwapVert,
                           contentDescription = "Reorder playlist",
                           tint = MaterialTheme.colorScheme.onSurface,
                         )
@@ -411,7 +411,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                         verticalAlignment = Alignment.CenterVertically,
                       ) {
                         Icon(
-                          imageVector = Icons.Filled.PlayArrow,
+                          imageVector = Icons.RoundedFilled.PlayArrow,
                           contentDescription = null,
                           modifier = Modifier.size(20.dp),
                         )
@@ -445,7 +445,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             Icon(
-              imageVector = Icons.Filled.Search,
+              imageVector = Icons.RoundedFilled.Search,
               contentDescription = null,
               modifier = Modifier.size(64.dp),
               tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -657,7 +657,7 @@ private fun PlaylistVideoListContent(
           verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
           Icon(
-            imageVector = Icons.Outlined.PlaylistAdd,
+            imageVector = Icons.RoundedFilled.PlaylistAdd,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -763,7 +763,7 @@ private fun PlaylistVideoListContent(
                         .draggableHandle(),
                   ) {
                     Icon(
-                      imageVector = Icons.Filled.DragHandle,
+                      imageVector = Icons.RoundedFilled.DragHandle,
                       contentDescription = "Drag to reorder",
                       tint = MaterialTheme.colorScheme.primary,
                     )
@@ -870,7 +870,7 @@ private fun StreamUrlDialog(
         }
       ) {
         Icon(
-          imageVector = Icons.Filled.ContentCopy,
+          imageVector = Icons.RoundedFilled.ContentCopy,
           contentDescription = null,
           modifier = Modifier.padding(end = 4.dp).size(18.dp)
         )

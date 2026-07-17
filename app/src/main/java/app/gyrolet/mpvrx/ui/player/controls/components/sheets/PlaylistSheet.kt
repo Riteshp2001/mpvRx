@@ -278,7 +278,7 @@ fun PlaylistSheet(
               onClick = { isListMode = !isListMode }
             ) {
               Icon(
-                imageVector = if (isListMode) Icons.Default.GridView else Icons.Default.ViewList,
+                imageVector = if (isListMode) Icons.RoundedFilled.GridView else Icons.RoundedFilled.ViewList,
                 contentDescription = if (isListMode) "Switch to Grid View" else "Switch to List View",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
               )
@@ -386,7 +386,7 @@ fun PlaylistTrackListItem(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = Icons.Default.Videocam,
+          imageVector = Icons.RoundedFilled.Videocam,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
           modifier = Modifier.size(24.dp),
@@ -557,7 +557,7 @@ fun PlaylistTrackGridItem(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = Icons.Default.Videocam,
+          imageVector = Icons.RoundedFilled.Videocam,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
           modifier = Modifier.size(32.dp),

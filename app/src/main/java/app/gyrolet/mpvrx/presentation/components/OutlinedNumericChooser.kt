@@ -34,8 +34,8 @@ fun OutlinedNumericChooser(
   min: Int = 0,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
-  decreaseIcon: AppIcon = Icons.Filled.Remove,
-  increaseIcon: AppIcon = Icons.Filled.Add,
+  decreaseIcon: AppIcon = Icons.RoundedFilled.Remove,
+  increaseIcon: AppIcon = Icons.RoundedFilled.Add,
   valueFormatter: ((Int) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
@@ -97,8 +97,8 @@ fun OutlinedNumericChooser(
   min: Float = 0f,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
-  decreaseIcon: AppIcon = Icons.Filled.Remove,
-  increaseIcon: AppIcon = Icons.Filled.Add,
+  decreaseIcon: AppIcon = Icons.RoundedFilled.Remove,
+  increaseIcon: AppIcon = Icons.RoundedFilled.Add,
   valueFormatter: ((Float) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }

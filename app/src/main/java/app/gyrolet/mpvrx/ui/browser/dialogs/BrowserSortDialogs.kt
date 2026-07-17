@@ -124,9 +124,9 @@ fun FolderSortDialog(
       FolderSortType.Size.displayName,
     ),
     icons = listOf(
-      Icons.Filled.Title,
-      Icons.Filled.CalendarToday,
-      Icons.Filled.SwapVert,
+      Icons.RoundedFilled.Title,
+      Icons.RoundedFilled.CalendarToday,
+      Icons.RoundedFilled.SwapVert,
     ),
     getLabelForType = { type, _ ->
       when (type) {
@@ -142,19 +142,19 @@ fun FolderSortDialog(
       options = listOf(
         ViewModeOption(
           label = "Folder",
-          icon = Icons.Filled.ViewModule,
+          icon = Icons.RoundedFilled.ViewModule,
           isSelected = folderViewMode == FolderViewMode.AlbumView,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) }
         ),
         ViewModeOption(
           label = "Tree",
-          icon = Icons.Filled.AccountTree,
+          icon = Icons.RoundedFilled.AccountTree,
           isSelected = folderViewMode == FolderViewMode.FileManager,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) }
         ),
         ViewModeOption(
           label = "Library",
-          icon = Icons.Filled.VideoLibrary,
+          icon = Icons.RoundedFilled.VideoLibrary,
           isSelected = folderViewMode == FolderViewMode.MediaLibrary,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) }
         ),
@@ -164,8 +164,8 @@ fun FolderSortDialog(
       label = "Layout",
       firstOptionLabel = "List",
       secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.Filled.ViewList,
-      secondOptionIcon = Icons.Filled.GridView,
+      firstOptionIcon = Icons.RoundedFilled.ViewList,
+      secondOptionIcon = Icons.RoundedFilled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
       onViewModeChange = { isFirstOption ->
         browserPreferences.mediaLayoutMode.set(
@@ -356,10 +356,10 @@ fun VideoSortDialog(
       ),
     icons =
       listOf(
-        Icons.Filled.Title,
-        Icons.Filled.AccessTime,
-        Icons.Filled.CalendarToday,
-        Icons.Filled.SwapVert,
+        Icons.RoundedFilled.Title,
+        Icons.RoundedFilled.AccessTime,
+        Icons.RoundedFilled.CalendarToday,
+        Icons.RoundedFilled.SwapVert,
       ),
     getLabelForType = { type, _ ->
       when (type) {
@@ -375,19 +375,19 @@ fun VideoSortDialog(
       options = listOf(
         ViewModeOption(
           label = "Folder",
-          icon = Icons.Filled.ViewModule,
+          icon = Icons.RoundedFilled.ViewModule,
           isSelected = folderViewMode == FolderViewMode.AlbumView,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
         ),
         ViewModeOption(
           label = "Tree",
-          icon = Icons.Filled.AccountTree,
+          icon = Icons.RoundedFilled.AccountTree,
           isSelected = folderViewMode == FolderViewMode.FileManager,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
         ),
         ViewModeOption(
           label = "Library",
-          icon = Icons.Filled.VideoLibrary,
+          icon = Icons.RoundedFilled.VideoLibrary,
           isSelected = folderViewMode == FolderViewMode.MediaLibrary,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
         ),
@@ -397,8 +397,8 @@ fun VideoSortDialog(
       label = "Layout",
       firstOptionLabel = "List",
       secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.Filled.ViewList,
-      secondOptionIcon = Icons.Filled.GridView,
+      firstOptionIcon = Icons.RoundedFilled.ViewList,
+      secondOptionIcon = Icons.RoundedFilled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
       onViewModeChange = { isFirstOption ->
         browserPreferences.mediaLayoutMode.set(
@@ -607,9 +607,9 @@ fun FileSystemSortDialog(
       FolderSortType.Size.displayName,
     ),
     icons = listOf(
-      Icons.Filled.Title,
-      Icons.Filled.CalendarToday,
-      Icons.Filled.SwapVert,
+      Icons.RoundedFilled.Title,
+      Icons.RoundedFilled.CalendarToday,
+      Icons.RoundedFilled.SwapVert,
     ),
     getLabelForType = { type, _ ->
       when (type) {
@@ -625,19 +625,19 @@ fun FileSystemSortDialog(
       options = listOf(
         ViewModeOption(
           label = "Folder",
-          icon = Icons.Filled.ViewModule,
+          icon = Icons.RoundedFilled.ViewModule,
           isSelected = folderViewMode == FolderViewMode.AlbumView,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) }
         ),
         ViewModeOption(
           label = "Tree",
-          icon = Icons.Filled.AccountTree,
+          icon = Icons.RoundedFilled.AccountTree,
           isSelected = folderViewMode == FolderViewMode.FileManager,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) }
         ),
         ViewModeOption(
           label = "Library",
-          icon = Icons.Filled.VideoLibrary,
+          icon = Icons.RoundedFilled.VideoLibrary,
           isSelected = folderViewMode == FolderViewMode.MediaLibrary,
           onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) }
         ),
@@ -647,8 +647,8 @@ fun FileSystemSortDialog(
       label = "Layout",
       firstOptionLabel = "List",
       secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.Filled.ViewList,
-      secondOptionIcon = Icons.Filled.GridView,
+      firstOptionIcon = Icons.RoundedFilled.ViewList,
+      secondOptionIcon = Icons.RoundedFilled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
       onViewModeChange = { isFirstOption ->
         browserPreferences.mediaLayoutMode.set(

@@ -145,7 +145,7 @@ fun SettingsSwitchItem(
         thumbContent = {
           if (isChecked) {
             Icon(
-              imageVector = Icons.Filled.Check,
+              imageVector = Icons.RoundedFilled.Check,
               contentDescription = null,
               modifier = Modifier.size(SwitchDefaults.IconSize),
               tint = MaterialTheme.colorScheme.onPrimaryContainer,

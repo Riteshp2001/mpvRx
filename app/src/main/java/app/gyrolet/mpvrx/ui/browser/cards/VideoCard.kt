@@ -244,7 +244,7 @@ fun VideoCard(
               )
             } ?: run {
               Icon(
-                if (video.isAudio) Icons.Default.Audiotrack else Icons.Filled.PlayArrow,
+                if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
                 contentDescription = "Play",
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.secondary,
@@ -252,7 +252,7 @@ fun VideoCard(
             }
           } else {
             Icon(
-              if (video.isAudio) Icons.Default.Audiotrack else Icons.Filled.PlayArrow,
+              if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
               contentDescription = "Play",
               modifier = Modifier.size(48.dp),
               tint = MaterialTheme.colorScheme.secondary,
@@ -522,7 +522,7 @@ fun VideoCard(
               )
             } ?: run {
               Icon(
-                if (video.isAudio) Icons.Default.Audiotrack else Icons.Filled.PlayArrow,
+                if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
                 contentDescription = "Play",
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.secondary,
@@ -530,7 +530,7 @@ fun VideoCard(
             }
           } else {
             Icon(
-              if (video.isAudio) Icons.Default.Audiotrack else Icons.Filled.PlayArrow,
+              if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
               contentDescription = "Play",
               modifier = Modifier.size(48.dp),
               tint = MaterialTheme.colorScheme.secondary,

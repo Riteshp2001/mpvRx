@@ -86,7 +86,7 @@ fun LuaScriptsPanel(
         )
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onDismissRequest) {
-          Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(32.dp))
+          Icon(Icons.RoundedFilled.Close, contentDescription = null, modifier = Modifier.size(32.dp))
         }
       }
     },

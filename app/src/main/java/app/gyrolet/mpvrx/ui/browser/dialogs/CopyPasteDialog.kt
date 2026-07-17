@@ -170,7 +170,7 @@ fun FileOperationProgressDialog(
           shape = MaterialTheme.shapes.extraLarge,
         ) {
           Icon(
-            imageVector = Icons.Default.Cancel,
+            imageVector = Icons.RoundedFilled.Cancel,
             contentDescription = "Cancel",
             modifier = Modifier.padding(end = 4.dp),
           )

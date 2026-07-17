@@ -106,14 +106,14 @@ fun NetworkConnectionCard(
         Row {
           IconButton(onClick = { onEdit(connection) }) {
             Icon(
-              Icons.Filled.Edit,
+              Icons.RoundedFilled.Edit,
               contentDescription = "Edit",
               tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
           IconButton(onClick = { onDelete(connection) }) {
             Icon(
-              Icons.Filled.Delete,
+              Icons.RoundedFilled.Delete,
               contentDescription = "Delete",
               tint = MaterialTheme.colorScheme.error,
             )
@@ -212,7 +212,7 @@ fun NetworkConnectionCard(
                 ),
               ) {
                 Icon(
-                  Icons.Filled.FolderOpen,
+                  Icons.RoundedFilled.FolderOpen,
                   contentDescription = null,
                   modifier = Modifier.padding(end = 8.dp),
                 )
@@ -227,7 +227,7 @@ fun NetworkConnectionCard(
                 ),
               ) {
                 Icon(
-                  Icons.Filled.LinkOff,
+                  Icons.RoundedFilled.LinkOff,
                   contentDescription = null,
                   modifier = Modifier.padding(end = 8.dp),
                 )
@@ -245,7 +245,7 @@ fun NetworkConnectionCard(
               ),
             ) {
               Icon(
-                Icons.Filled.Link,
+                Icons.RoundedFilled.Link,
                 contentDescription = null,
                 modifier = Modifier.padding(end = 8.dp),
               )

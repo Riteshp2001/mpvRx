@@ -186,7 +186,7 @@ object PlaylistScreen : Screen {
                   placeholder = { Text("Search playlists...") },
                   leadingIcon = {
                     Icon(
-                      imageVector = Icons.Filled.Search,
+                      imageVector = Icons.RoundedFilled.Search,
                       contentDescription = "Search",
                     )
                   },
@@ -198,7 +198,7 @@ object PlaylistScreen : Screen {
                       },
                     ) {
                       Icon(
-                        imageVector = Icons.Filled.Close,
+                        imageVector = Icons.RoundedFilled.Close,
                         contentDescription = "Cancel",
                       )
                     }
@@ -244,7 +244,7 @@ object PlaylistScreen : Screen {
           if (!selectionManager.isInSelectionMode && isFabVisible.value) {
             ExtendedFloatingActionButton(
               onClick = { showPlaylistActionSheet = true },
-              icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+              icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
               text = { Text("Create Playlist") },
               modifier = Modifier.padding(bottom = navigationBarHeight)
             )
@@ -260,7 +260,7 @@ object PlaylistScreen : Screen {
             contentAlignment = Alignment.Center,
           ) {
             EmptyState(
-              icon = Icons.Filled.Search,
+              icon = Icons.RoundedFilled.Search,
               title = "No playlists found",
               message = "Try a different search term",
             )
@@ -277,7 +277,7 @@ object PlaylistScreen : Screen {
               verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
               EmptyState(
-                icon = Icons.Outlined.PlaylistAdd,
+                icon = Icons.RoundedFilled.PlaylistAdd,
                 title = "No playlists yet",
                 message = "Create a playlist or add one from an m3u URL",
               )

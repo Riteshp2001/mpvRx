@@ -72,7 +72,7 @@ fun YtdlpPanel(
           fontWeight = FontWeight.Bold
         )
         IconButton(onClick = onDismissRequest) {
-          Icon(Icons.Default.Close, null, modifier = Modifier.size(24.dp))
+          Icon(Icons.RoundedFilled.Close, null, modifier = Modifier.size(24.dp))
         }
       }
     }
@@ -100,7 +100,7 @@ fun YtdlpPanel(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
           ) {
             Icon(
-              if (hasYtdlp) Icons.Filled.CheckCircle else Icons.Default.CloudDownload,
+              if (hasYtdlp) Icons.RoundedFilled.CheckCircle else Icons.RoundedFilled.CloudDownload,
               contentDescription = null,
               modifier = Modifier.size(20.dp),
               tint = if (hasYtdlp) MaterialTheme.colorScheme.onPrimaryContainer
@@ -158,7 +158,7 @@ fun YtdlpPanel(
                     },
                     label = { Text(label, style = MaterialTheme.typography.labelSmall) },
                     leadingIcon = if (ytdlQuality == level) {
-                      { Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp)) }
+                      { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(14.dp)) }
                     } else null,
                   )
                 }
@@ -222,7 +222,7 @@ fun YtdlpPanel(
                   },
                   label = { Text(codec.title, style = MaterialTheme.typography.labelSmall) },
                   leadingIcon = if (codecPreference == codec) {
-                    { Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp)) }
+                    { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(14.dp)) }
                   } else null,
                 )
               }
@@ -305,7 +305,7 @@ fun YtdlpPanel(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.weight(1f)
           ) {
-            Icon(Icons.Default.CloudDownload, null, modifier = Modifier.size(18.dp))
+            Icon(Icons.RoundedFilled.CloudDownload, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Install Core")
           }
@@ -323,7 +323,7 @@ fun YtdlpPanel(
             modifier = Modifier.weight(1f),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
           ) {
-            Icon(Icons.Default.Update, null, modifier = Modifier.size(18.dp))
+            Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Update Core")
           }

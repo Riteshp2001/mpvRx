@@ -154,7 +154,7 @@ object SubtitlesPreferencesScreen : Screen {
                 onClick = { backstack.popSafely() },
               ) {
                 Icon(
-                  Icons.Outlined.ArrowBack, 
+                  Icons.RoundedFilled.ArrowBack,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.secondary,
                 )
@@ -330,7 +330,7 @@ object SubtitlesPreferencesScreen : Screen {
                 },
                 icon = {
                   Icon(
-                    Icons.Default.Folder,
+                    Icons.RoundedFilled.Folder,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                   )
@@ -391,7 +391,7 @@ object SubtitlesPreferencesScreen : Screen {
                 },
                 icon = {
                   Icon(
-                    Icons.Default.Refresh,
+                    Icons.RoundedFilled.Refresh,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                   )
@@ -412,7 +412,7 @@ object SubtitlesPreferencesScreen : Screen {
                   },
                   icon = {
                     Icon(
-                      Icons.Default.Clear,
+                      Icons.RoundedFilled.Clear,
                       contentDescription = null,
                       tint = MaterialTheme.colorScheme.error,
                     )
@@ -546,7 +546,7 @@ object SubtitlesPreferencesScreen : Screen {
                           modifier = Modifier.size(24.dp)
                         ) {
                           Icon(
-                            imageVector = Icons.Default.Refresh,
+                            imageVector = Icons.RoundedFilled.Refresh,
                             contentDescription = "Refresh",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -753,7 +753,7 @@ object SubtitlesPreferencesScreen : Screen {
                                 
                                 if (!isAvailable) {
                                   Icon(
-                                    imageVector = Icons.Filled.Lock,
+                                    imageVector = Icons.RoundedFilled.Lock,
                                     contentDescription = "Restricted",
                                     tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(16.dp)
@@ -814,7 +814,7 @@ object SubtitlesPreferencesScreen : Screen {
                     fontWeight = FontWeight.Bold
                   )
                   Icon(
-                    imageVector = if (showAdvanced) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    imageVector = if (showAdvanced) Icons.RoundedFilled.KeyboardArrowUp else Icons.RoundedFilled.KeyboardArrowDown,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   )

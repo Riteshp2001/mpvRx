@@ -213,7 +213,7 @@ object AiIntegrationScreen : Screen {
             if (LocalShowSettingsBackArrow.current) {
               IconButton(onClick = { backstack.popSafely() }) {
                 Icon(
-                  Icons.Default.ArrowBack, 
+                  Icons.RoundedFilled.ArrowBack,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.secondary,
                 )
@@ -519,7 +519,7 @@ object AiIntegrationScreen : Screen {
                       ) {
                         val isSuccess = verifyResult!!.contains("successfully") || verifyResult!!.contains("ready")
                         Icon(
-                          imageVector = if (isSuccess) Icons.Default.Check else Icons.Default.Warning,
+                          imageVector = if (isSuccess) Icons.RoundedFilled.Check else Icons.RoundedFilled.Warning,
                           contentDescription = null,
                           tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                           modifier = Modifier.size(18.dp),
@@ -567,7 +567,7 @@ object AiIntegrationScreen : Screen {
                           )
                         } else {
                           Icon(
-                            imageVector = Icons.Default.Refresh,
+                            imageVector = Icons.RoundedFilled.Refresh,
                             contentDescription = "Refresh",
                             modifier = Modifier.size(18.dp),
                           )
@@ -625,7 +625,7 @@ object AiIntegrationScreen : Screen {
                             }
                           }
                           Icon(
-                            Icons.Default.ArrowDropDown,
+                            Icons.RoundedFilled.ArrowDropDown,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.outline,
                           )
@@ -718,9 +718,9 @@ object AiIntegrationScreen : Screen {
                               ) {
                                 Icon(
                                   imageVector = when {
-                                    isPositive -> Icons.Default.Check
-                                    isWarning -> Icons.Default.Warning
-                                    else -> Icons.Default.Close
+                                    isPositive -> Icons.RoundedFilled.Check
+                                    isWarning -> Icons.RoundedFilled.Warning
+                                    else -> Icons.RoundedFilled.Close
                                   },
                                   contentDescription = null,
                                   modifier = Modifier.size(16.dp),
@@ -1074,7 +1074,7 @@ private fun OfflineModelCard(
                 if (isDownloaded && !isDownloading) {
                     IconButton(onClick = onDelete) {
                         Icon(
-                            Icons.Default.Delete, 
+                            Icons.RoundedFilled.Delete,
                             contentDescription = "Delete", 
                             tint = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                         )
@@ -1162,7 +1162,7 @@ private fun OfflineModelCard(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.RoundedFilled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Download")
                     }
@@ -1187,7 +1187,7 @@ private fun OfflineModelCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.Default.Check, 
+                                Icons.RoundedFilled.Check,
                                 contentDescription = null, 
                                 modifier = Modifier.size(16.dp), 
                                 tint = MaterialTheme.colorScheme.onPrimary
@@ -1296,7 +1296,7 @@ private fun SttModelSelector(
       if (isLoadingStt) {
         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
       } else {
-        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
+        Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
       }
     }
   }
@@ -1373,7 +1373,7 @@ private fun AutoTranslateLanguageConfig(
                 modifier = Modifier.size(20.dp),
               ) {
                 Icon(
-                  Icons.Default.Close,
+                  Icons.RoundedFilled.Close,
                   contentDescription = "Remove $langName",
                   modifier = Modifier.size(14.dp),
                   tint = MaterialTheme.colorScheme.onPrimary,
@@ -1458,7 +1458,7 @@ private fun AutoTranslateLanguageConfig(
       ),
     ) {
       Icon(
-        imageVector = if (adding) Icons.Default.Check else Icons.Default.Add,
+        imageVector = if (adding) Icons.RoundedFilled.Check else Icons.RoundedFilled.Add,
         contentDescription = null,
         modifier = Modifier.size(18.dp),
       )

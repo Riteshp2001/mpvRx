@@ -143,10 +143,10 @@ object MainScreen : Screen {
           NavigationBarItem(
             icon = {
               when (tab) {
-                MainTab.HOME -> Icon(Icons.Filled.Home, contentDescription = "Home")
-                MainTab.RECENTS -> Icon(Icons.Filled.History, contentDescription = "Recents")
-                MainTab.PLAYLISTS -> Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists")
-                MainTab.NETWORK -> Icon(Icons.Filled.BringYourOwnIp, contentDescription = "Network")
+                MainTab.HOME -> Icon(Icons.RoundedFilled.Home, contentDescription = "Home")
+                MainTab.RECENTS -> Icon(Icons.RoundedFilled.History, contentDescription = "Recents")
+                MainTab.PLAYLISTS -> Icon(Icons.RoundedFilled.PlaylistPlay, contentDescription = "Playlists")
+                MainTab.NETWORK -> Icon(Icons.RoundedFilled.BringYourOwnIp, contentDescription = "Network")
               }
             },
             label = {
@@ -255,10 +255,10 @@ object MainScreen : Screen {
               NavigationBarItem(
                 icon = {
                   when (tab) {
-                    MainTab.HOME -> Icon(Icons.Filled.Home, contentDescription = "Home")
-                    MainTab.RECENTS -> Icon(Icons.Filled.History, contentDescription = "Recents")
-                    MainTab.PLAYLISTS -> Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists")
-                    MainTab.NETWORK -> Icon(Icons.Filled.BringYourOwnIp, contentDescription = "Network")
+                    MainTab.HOME -> Icon(Icons.RoundedFilled.Home, contentDescription = "Home")
+                    MainTab.RECENTS -> Icon(Icons.RoundedFilled.History, contentDescription = "Recents")
+                    MainTab.PLAYLISTS -> Icon(Icons.RoundedFilled.PlaylistPlay, contentDescription = "Playlists")
+                    MainTab.NETWORK -> Icon(Icons.RoundedFilled.BringYourOwnIp, contentDescription = "Network")
                   }
                 },
                 label = {

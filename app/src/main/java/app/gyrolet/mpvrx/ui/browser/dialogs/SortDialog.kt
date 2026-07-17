@@ -212,7 +212,7 @@ fun SortDialog(
                   style = MaterialTheme.typography.titleSmall,
                 )
                 Icon(
-                  imageVector = if (isFieldsExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                  imageVector = if (isFieldsExpanded) Icons.RoundedFilled.KeyboardArrowUp else Icons.RoundedFilled.KeyboardArrowDown,
                   contentDescription = if (isFieldsExpanded) "Collapse" else "Expand",
                   tint = MaterialTheme.colorScheme.onSurfaceVariant,
                   modifier = Modifier.size(20.dp)
@@ -356,7 +356,7 @@ private fun SortOrderSelector(
         ),
         icon = {
           Icon(
-            imageVector = if (index == 0) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+            imageVector = if (index == 0) Icons.RoundedFilled.KeyboardArrowUp else Icons.RoundedFilled.KeyboardArrowDown,
             contentDescription = null,
             modifier = Modifier.size(16.dp),
           )

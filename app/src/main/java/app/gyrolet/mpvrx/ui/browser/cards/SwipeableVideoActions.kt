@@ -99,7 +99,7 @@ fun SwipeableVideoActions(
     ) {
       SwipeVideoAction(
         label = if (isWatched) "Unwatch" else "Watched",
-        icon = if (isWatched) Icons.Filled.History else Icons.Filled.CheckCircle,
+        icon = if (isWatched) Icons.RoundedFilled.History else Icons.RoundedFilled.CheckCircle,
         background = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         width = actionWidth,
@@ -113,7 +113,7 @@ fun SwipeableVideoActions(
     ) {
       SwipeVideoAction(
         label = "New",
-        icon = Icons.Default.NewReleases,
+        icon = Icons.RoundedFilled.NewReleases,
         background = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         width = actionWidth,
@@ -121,7 +121,7 @@ fun SwipeableVideoActions(
       )
       SwipeVideoAction(
         label = "Rename",
-        icon = Icons.Filled.Edit,
+        icon = Icons.RoundedFilled.Edit,
         background = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         width = actionWidth,
@@ -129,7 +129,7 @@ fun SwipeableVideoActions(
       )
       SwipeVideoAction(
         label = "Delete",
-        icon = Icons.Filled.Delete,
+        icon = Icons.RoundedFilled.Delete,
         background = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         width = actionWidth,

@@ -41,7 +41,7 @@ fun AddTrackRow(
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
     Icon(
-      Icons.Default.Add,
+      Icons.RoundedFilled.Add,
       contentDescription = null,
       modifier = Modifier.size(24.dp),
     )

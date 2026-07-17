@@ -165,7 +165,7 @@ fun RenameDialog(
               Text("AI is thinking...")
             } else {
               Icon(
-                imageVector = Icons.Default.AutoAwesome,
+                imageVector = Icons.RoundedFilled.AutoAwesome,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
               )

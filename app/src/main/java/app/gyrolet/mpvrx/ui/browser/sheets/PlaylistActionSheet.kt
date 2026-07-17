@@ -102,7 +102,7 @@ fun PlaylistActionSheet(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Icon(
-            imageVector = Icons.Filled.PlaylistAdd,
+            imageVector = Icons.RoundedFilled.PlaylistAdd,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp),
@@ -139,7 +139,7 @@ fun PlaylistActionSheet(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Icon(
-            imageVector = Icons.Filled.Link,
+            imageVector = Icons.RoundedFilled.Link,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp),
@@ -328,7 +328,7 @@ fun PlaylistActionSheet(
               modifier = Modifier.fillMaxWidth()
             ) {
               Icon(
-                imageVector = Icons.Filled.FolderOpen,
+                imageVector = Icons.RoundedFilled.FolderOpen,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp)
               )

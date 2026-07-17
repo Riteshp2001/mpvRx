@@ -148,7 +148,7 @@ fun NetworkVideoCard(
           )
         } else {
           Icon(
-            Icons.Filled.PlayArrow,
+            Icons.RoundedFilled.PlayArrow,
             contentDescription = "Play",
             modifier = Modifier.size(48.dp),
             tint = MaterialTheme.colorScheme.secondary,

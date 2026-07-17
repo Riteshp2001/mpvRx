@@ -169,7 +169,7 @@ fun LuaRuntimeStatusCard(
           contentAlignment = Alignment.Center,
         ) {
           Icon(
-            imageVector = Icons.Default.Code,
+            imageVector = Icons.RoundedFilled.Code,
             contentDescription = null,
             tint =
               if (enabled && hasStorageLocation) {
@@ -253,7 +253,7 @@ fun LuaScriptsEmptyState(
           contentAlignment = Alignment.Center,
         ) {
           Icon(
-            imageVector = Icons.Default.Code,
+            imageVector = Icons.RoundedFilled.Code,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -337,7 +337,7 @@ fun LuaScriptToggleCard(
           contentAlignment = Alignment.Center,
         ) {
           Icon(
-            imageVector = Icons.Default.Code,
+            imageVector = Icons.RoundedFilled.Code,
             contentDescription = null,
             tint =
               if (active) {

@@ -129,7 +129,7 @@ object SettingsSearchScreen : Screen {
                     navigationIcon = {
                         IconButton(onClick = { backstack.popSafely() }) {
                             Icon(
-                                Icons.Outlined.ArrowBack,
+                                Icons.RoundedFilled.ArrowBack,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.secondary,
                             )
@@ -158,7 +158,7 @@ object SettingsSearchScreen : Screen {
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Outlined.Search,
+                            imageVector = Icons.RoundedFilled.Search,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.outline,
                         )
@@ -171,7 +171,7 @@ object SettingsSearchScreen : Screen {
                         ) {
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Clear,
+                                    imageVector = Icons.RoundedFilled.Clear,
                                     contentDescription = "Clear",
                                     tint = MaterialTheme.colorScheme.outline,
                                 )
@@ -219,7 +219,7 @@ object SettingsSearchScreen : Screen {
                                     )
                                     IconButton(onClick = { clearSearchHistory() }) {
                                         Icon(
-                                            imageVector = Icons.Default.Delete,
+                                            imageVector = Icons.RoundedFilled.Delete,
                                             contentDescription = "Clear history",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -271,7 +271,7 @@ object SettingsSearchScreen : Screen {
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Icon(
-                                    imageVector = Icons.Default.Search,
+                                    imageVector = Icons.RoundedFilled.Search,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -313,7 +313,7 @@ object SettingsSearchScreen : Screen {
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Settings,
+                                imageVector = Icons.RoundedFilled.Settings,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
                                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.52f),
@@ -401,7 +401,7 @@ private fun SearchResultItem(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Settings,
+                        imageVector = Icons.RoundedFilled.Settings,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(24.dp),

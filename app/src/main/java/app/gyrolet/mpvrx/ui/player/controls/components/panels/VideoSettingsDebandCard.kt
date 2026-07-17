@@ -50,7 +50,7 @@ fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
     isExpanded,
     title = {
       Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-        Icon(Icons.Default.Gradient, null)
+        Icon(Icons.RoundedFilled.Gradient, null)
         Text(stringResource(R.string.player_sheets_deband_title))
       }
     },
@@ -89,9 +89,9 @@ fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
               },
             ) {
               when (it) {
-                Debanding.None -> Icon(Icons.Default.NotInterested, null)
-                Debanding.CPU -> Icon(Icons.Default.Memory, null)
-                Debanding.GPU -> Icon(Icons.Default.DeveloperBoard, null)
+                Debanding.None -> Icon(Icons.RoundedFilled.NotInterested, null)
+                Debanding.CPU -> Icon(Icons.RoundedFilled.Memory, null)
+                Debanding.GPU -> Icon(Icons.RoundedFilled.DeveloperBoard, null)
               }
             }
           }
@@ -113,7 +113,7 @@ fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
               verticalAlignment = Alignment.CenterVertically,
             ) {
-              Icon(Icons.Default.ResetIso, null)
+              Icon(Icons.RoundedFilled.ResetIso, null)
               Text(stringResource(R.string.generic_reset))
             }
           }

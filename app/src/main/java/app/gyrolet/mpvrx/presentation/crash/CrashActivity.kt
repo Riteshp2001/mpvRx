@@ -292,7 +292,7 @@ class CrashActivity : ComponentActivity() {
                 )
               },
             ) {
-              Icon(Icons.Default.ContentCopy, null)
+              Icon(Icons.RoundedFilled.ContentCopy, null)
             }
           }
           OutlinedButton(
@@ -317,7 +317,7 @@ class CrashActivity : ComponentActivity() {
       ) {
         Spacer(Modifier.height(paddingValues.calculateTopPadding()))
         Icon(
-          Icons.Outlined.BugReport,
+          Icons.RoundedFilled.BugReport,
           null,
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.primary,
