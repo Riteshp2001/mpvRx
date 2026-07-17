@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
@@ -255,6 +256,60 @@ class VideoListViewModel(
       }
     _videosWithPlaybackInfo.value = videosWithInfo
   }
+
+  fun markWatched(video: Video) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val durationSeconds = (video.duration / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+      val existing = playbackStateRepository.getVideoDataByTitle(video.displayName)
+      playbackStateRepository.upsert(
+        (existing ?: emptyPlaybackState(video, durationSeconds)).copy(
+          // Keep resume-at-start behavior while the persistent watched flag records completion.
+          lastPosition = 0,
+          timeRemaining = 0,
+          hasBeenWatched = true,
+        ),
+      )
+      PlaybackStateEvents.notifyChanged(video.displayName)
+    }
+  }
+
+  fun markUnwatched(video: Video) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val durationSeconds = (video.duration / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+      val existing = playbackStateRepository.getVideoDataByTitle(video.displayName)
+      playbackStateRepository.upsert(
+        (existing ?: emptyPlaybackState(video, durationSeconds)).copy(
+          lastPosition = 0,
+          timeRemaining = durationSeconds,
+          hasBeenWatched = false,
+        ),
+      )
+      PlaybackStateEvents.notifyChanged(video.displayName)
+    }
+  }
+
+  fun markNew(video: Video) {
+    viewModelScope.launch(Dispatchers.IO) {
+      playbackStateRepository.deleteByTitle(video.displayName)
+      recentlyPlayedRepository.deleteByFilePath(video.path)
+      PlaybackStateEvents.notifyChanged(video.displayName)
+    }
+  }
+
+  private fun emptyPlaybackState(video: Video, durationSeconds: Int): PlaybackStateEntity =
+    PlaybackStateEntity(
+      mediaTitle = video.displayName,
+      lastPosition = 0,
+      playbackSpeed = 1.0,
+      sid = -1,
+      secondarySid = -1,
+      subDelay = 0,
+      subSpeed = 1.0,
+      aid = -1,
+      audioDelay = 0,
+      timeRemaining = durationSeconds,
+      hasBeenWatched = false,
+    )
 
   private fun triggerMediaScan() {
     try {

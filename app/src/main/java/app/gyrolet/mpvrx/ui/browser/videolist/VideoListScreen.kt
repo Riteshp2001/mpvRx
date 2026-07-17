@@ -84,6 +84,7 @@ import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
+import app.gyrolet.mpvrx.ui.browser.cards.SwipeableVideoActions
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
@@ -179,6 +180,8 @@ data class VideoListScreen(
     val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
     val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
     val compressorDialogOpen = rememberSaveable { mutableStateOf(false) }
+    var swipeRenameVideo by remember { mutableStateOf<Video?>(null) }
+    var swipeDeleteVideo by remember { mutableStateOf<Video?>(null) }
 
     // Copy/Move state
     val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
@@ -388,6 +391,12 @@ data class VideoListScreen(
             }
           },
           onVideoLongClick = { video -> selectionManager.handleLongClick(video) },
+          onToggleWatched = { video, isWatched ->
+            if (isWatched) viewModel.markUnwatched(video) else viewModel.markWatched(video)
+          },
+          onMarkNew = viewModel::markNew,
+          onRename = { video -> swipeRenameVideo = video },
+          onDelete = { video -> swipeDeleteVideo = video },
           isFabVisible = isFabVisible,
           modifier = Modifier.padding(padding),
           showFloatingBottomBar = showFloatingBottomBar,
@@ -448,6 +457,23 @@ data class VideoListScreen(
         itemNames = selectionManager.getSelectedItems().map { it.displayName },
       )
 
+      swipeDeleteVideo?.let { video ->
+        DeleteConfirmationDialog(
+          isOpen = true,
+          onDismiss = { swipeDeleteVideo = null },
+          onConfirm = {
+            swipeDeleteVideo = null
+            coroutineScope.launch {
+              viewModel.deleteVideos(listOf(video))
+              viewModel.refresh()
+            }
+          },
+          itemType = "video",
+          itemCount = 1,
+          itemNames = listOf(video.displayName),
+        )
+      }
+
       // Rename Dialogs
       if (renameDialogOpen.value) {
         if (selectionManager.isSingleSelection) {
@@ -472,6 +498,24 @@ data class VideoListScreen(
             selectedVideos = selectionManager.getSelectedItems(),
           )
         }
+      }
+
+      swipeRenameVideo?.let { video ->
+        val extension = video.displayName.substringAfterLast('.', "").takeIf { it.isNotBlank() }?.let { ".$it" }
+        RenameDialog(
+          isOpen = true,
+          onDismiss = { swipeRenameVideo = null },
+          onConfirm = { newName ->
+            swipeRenameVideo = null
+            coroutineScope.launch {
+              viewModel.renameVideo(video, newName)
+              viewModel.refresh()
+            }
+          },
+          currentName = video.displayName.substringBeforeLast('.'),
+          itemType = "file",
+          extension = extension,
+        )
       }
 
       // Folder Picker Dialog
@@ -610,6 +654,10 @@ internal fun VideoListContent(
   selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
   onVideoLongClick: (Video) -> Unit,
+  onToggleWatched: ((Video, Boolean) -> Unit)? = null,
+  onMarkNew: ((Video) -> Unit)? = null,
+  onRename: ((Video) -> Unit)? = null,
+  onDelete: ((Video) -> Unit)? = null,
   isFabVisible: androidx.compose.runtime.MutableState<Boolean>,
   modifier: Modifier = Modifier,
   showFloatingBottomBar: Boolean = false,
@@ -906,26 +954,36 @@ internal fun VideoListContent(
                   val videoWithInfo = videosWithInfo[index]
                   val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
-                  VideoCard(
-                    video = videoWithInfo.video,
-                    progressPercentage = videoWithInfo.progressPercentage,
-                    isRecentlyPlayed = isRecentlyPlayed,
-                    isSelected = selectionManager.isSelected(videoWithInfo.video),
-                    isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                  SwipeableVideoActions(
+                    itemKey = videoWithInfo.video.path,
+                    enabled = !selectionManager.isInSelectionMode && onToggleWatched != null,
                     isWatched = videoWithInfo.isWatched,
-                    onClick = { onVideoClick(videoWithInfo.video) },
-                    onLongClick = { onVideoLongClick(videoWithInfo.video) },
-                    onThumbClick = if (tapThumbnailToSelect) {
-                      { selectionManager.toggle(videoWithInfo.video) }
-                    } else {
-                      { onVideoClick(videoWithInfo.video) }
-                    },
-                    isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
-                    gridColumns = columns,
-                    showSubtitleIndicator = showSubtitleIndicator,
-                    allowThumbnailGeneration = false,
-                    uiConfig = videoCardUiConfig,
-                  )
+                    onToggleWatched = { onToggleWatched?.invoke(videoWithInfo.video, videoWithInfo.isWatched) },
+                    onMarkNew = { onMarkNew?.invoke(videoWithInfo.video) },
+                    onRename = { onRename?.invoke(videoWithInfo.video) },
+                    onDelete = { onDelete?.invoke(videoWithInfo.video) },
+                  ) {
+                    VideoCard(
+                      video = videoWithInfo.video,
+                      progressPercentage = videoWithInfo.progressPercentage,
+                      isRecentlyPlayed = isRecentlyPlayed,
+                      isSelected = selectionManager.isSelected(videoWithInfo.video),
+                      isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                      isWatched = videoWithInfo.isWatched,
+                      onClick = { onVideoClick(videoWithInfo.video) },
+                      onLongClick = { onVideoLongClick(videoWithInfo.video) },
+                      onThumbClick = if (tapThumbnailToSelect) {
+                        { selectionManager.toggle(videoWithInfo.video) }
+                      } else {
+                        { onVideoClick(videoWithInfo.video) }
+                      },
+                      isGridMode = true,
+                      gridColumns = columns,
+                      showSubtitleIndicator = showSubtitleIndicator,
+                      allowThumbnailGeneration = false,
+                      uiConfig = videoCardUiConfig,
+                    )
+                  }
                 }
               }
 
@@ -966,25 +1024,35 @@ internal fun VideoListContent(
                   val videoWithInfo = videosWithInfo[index]
                   val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
-                  VideoCard(
-                    video = videoWithInfo.video,
-                    progressPercentage = videoWithInfo.progressPercentage,
-                    isRecentlyPlayed = isRecentlyPlayed,
-                    isSelected = selectionManager.isSelected(videoWithInfo.video),
-                    isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                  SwipeableVideoActions(
+                    itemKey = videoWithInfo.video.path,
+                    enabled = !selectionManager.isInSelectionMode && onToggleWatched != null,
                     isWatched = videoWithInfo.isWatched,
-                    onClick = { onVideoClick(videoWithInfo.video) },
-                    onLongClick = { onVideoLongClick(videoWithInfo.video) },
-                    onThumbClick = if (tapThumbnailToSelect) {
-                      { selectionManager.toggle(videoWithInfo.video) }
-                    } else {
-                      { onVideoClick(videoWithInfo.video) }
-                    },
-                    isGridMode = false,
-                    showSubtitleIndicator = showSubtitleIndicator,
-                    allowThumbnailGeneration = false,
-                    uiConfig = videoCardUiConfig,
-                  )
+                    onToggleWatched = { onToggleWatched?.invoke(videoWithInfo.video, videoWithInfo.isWatched) },
+                    onMarkNew = { onMarkNew?.invoke(videoWithInfo.video) },
+                    onRename = { onRename?.invoke(videoWithInfo.video) },
+                    onDelete = { onDelete?.invoke(videoWithInfo.video) },
+                  ) {
+                    VideoCard(
+                      video = videoWithInfo.video,
+                      progressPercentage = videoWithInfo.progressPercentage,
+                      isRecentlyPlayed = isRecentlyPlayed,
+                      isSelected = selectionManager.isSelected(videoWithInfo.video),
+                      isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                      isWatched = videoWithInfo.isWatched,
+                      onClick = { onVideoClick(videoWithInfo.video) },
+                      onLongClick = { onVideoLongClick(videoWithInfo.video) },
+                      onThumbClick = if (tapThumbnailToSelect) {
+                        { selectionManager.toggle(videoWithInfo.video) }
+                      } else {
+                        { onVideoClick(videoWithInfo.video) }
+                      },
+                      isGridMode = false,
+                      showSubtitleIndicator = showSubtitleIndicator,
+                      allowThumbnailGeneration = false,
+                      uiConfig = videoCardUiConfig,
+                    )
+                  }
                 }
               }
 

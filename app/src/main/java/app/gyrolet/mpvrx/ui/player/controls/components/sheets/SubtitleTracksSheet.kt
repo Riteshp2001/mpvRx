@@ -26,6 +26,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.CircleShape
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AiProvider
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
@@ -56,6 +58,7 @@ fun SubtitlesSheet(
   tracks: ImmutableList<TrackNode>,
   onToggleSubtitle: (Int) -> Unit,
   isSubtitleSelected: (Int) -> Boolean,
+  subtitleSelectionIndicator: (Int) -> String?,
   onAddSubtitle: () -> Unit,
   onOpenSubtitleSettings: () -> Unit,
   onOpenSubtitleDelay: () -> Unit,
@@ -283,6 +286,7 @@ fun SubtitlesSheet(
               SubtitleTrackRow(
                 title = getTrackTitle(track),
                 isSelected = isSubtitleSelected(track.id),
+                selectionIndicator = subtitleSelectionIndicator(track.id),
                 isExternal = track.external == true,
                 onToggle = { onToggleSubtitle(track.id) },
                 onRemove = { onRemoveSubtitle(track.id) },
@@ -353,6 +357,7 @@ fun SubtitlesSheet(
 fun SubtitleTrackRow(
   title: String,
   isSelected: Boolean,
+  selectionIndicator: String?,
   isExternal: Boolean,
   onToggle: () -> Unit,
   onRemove: () -> Unit,
@@ -371,6 +376,21 @@ fun SubtitleTrackRow(
   ) {
     Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
     Text(title, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
+
+    if (selectionIndicator != null) {
+      Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+      ) {
+        Text(
+          text = selectionIndicator,
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = FontWeight.Bold,
+          modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+      }
+    }
     
     if (isCurrentlyTranslating) {
       androidx.compose.material3.CircularProgressIndicator(

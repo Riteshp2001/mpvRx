@@ -2735,6 +2735,16 @@ class PlayerViewModel(
     return (id == primarySid && primarySid > 0) || (id == secondarySid && secondarySid > 0)
   }
 
+  fun subtitleSelectionIndicator(id: Int): String? {
+    val primarySid = getTrackSelectionId("sid")
+    val secondarySid = getTrackSelectionId("secondary-sid")
+    return when {
+      primarySid > 0 && id == primarySid -> "P"
+      secondarySid > 0 && id == secondarySid -> "S"
+      else -> null
+    }
+  }
+
   private fun getFileNameFromUri(uri: Uri): String? =
     when (uri.scheme) {
       "content" ->

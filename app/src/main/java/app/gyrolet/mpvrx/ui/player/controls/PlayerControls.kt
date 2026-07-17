@@ -1659,6 +1659,7 @@ fun PlayerControls(
       onAddSubtitle = viewModel::addSubtitle,
       onToggleSubtitle = viewModel::toggleSubtitle,
       isSubtitleSelected = viewModel::isSubtitleSelected,
+      subtitleSelectionIndicator = viewModel::subtitleSelectionIndicator,
       onRemoveSubtitle = viewModel::removeSubtitle,
       audioTracks = audioTracks.toImmutableList(),
       onAddAudio = viewModel::addAudio,
