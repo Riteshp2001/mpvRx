@@ -391,10 +391,7 @@ data class VideoListScreen(
             }
           },
           onVideoLongClick = { video -> selectionManager.handleLongClick(video) },
-          onToggleWatched = { video, isWatched ->
-            if (isWatched) viewModel.markUnwatched(video) else viewModel.markWatched(video)
-          },
-          onMarkNew = viewModel::markNew,
+          onWatchedChange = viewModel::setWatched,
           onRename = { video -> swipeRenameVideo = video },
           onDelete = { video -> swipeDeleteVideo = video },
           isFabVisible = isFabVisible,
@@ -654,8 +651,7 @@ internal fun VideoListContent(
   selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
   onVideoLongClick: (Video) -> Unit,
-  onToggleWatched: ((Video, Boolean) -> Unit)? = null,
-  onMarkNew: ((Video) -> Unit)? = null,
+  onWatchedChange: ((Video, Boolean) -> Unit)? = null,
   onRename: ((Video) -> Unit)? = null,
   onDelete: ((Video) -> Unit)? = null,
   isFabVisible: androidx.compose.runtime.MutableState<Boolean>,
@@ -956,10 +952,9 @@ internal fun VideoListContent(
 
                   SwipeableVideoActions(
                     itemKey = videoWithInfo.video.path,
-                    enabled = !selectionManager.isInSelectionMode && onToggleWatched != null,
+                    enabled = !selectionManager.isInSelectionMode && onWatchedChange != null,
                     isWatched = videoWithInfo.isWatched,
-                    onToggleWatched = { onToggleWatched?.invoke(videoWithInfo.video, videoWithInfo.isWatched) },
-                    onMarkNew = { onMarkNew?.invoke(videoWithInfo.video) },
+                    onWatchedChange = { watched -> onWatchedChange?.invoke(videoWithInfo.video, watched) },
                     onRename = { onRename?.invoke(videoWithInfo.video) },
                     onDelete = { onDelete?.invoke(videoWithInfo.video) },
                   ) {
@@ -1026,10 +1021,9 @@ internal fun VideoListContent(
 
                   SwipeableVideoActions(
                     itemKey = videoWithInfo.video.path,
-                    enabled = !selectionManager.isInSelectionMode && onToggleWatched != null,
+                    enabled = !selectionManager.isInSelectionMode && onWatchedChange != null,
                     isWatched = videoWithInfo.isWatched,
-                    onToggleWatched = { onToggleWatched?.invoke(videoWithInfo.video, videoWithInfo.isWatched) },
-                    onMarkNew = { onMarkNew?.invoke(videoWithInfo.video) },
+                    onWatchedChange = { watched -> onWatchedChange?.invoke(videoWithInfo.video, watched) },
                     onRename = { onRename?.invoke(videoWithInfo.video) },
                     onDelete = { onDelete?.invoke(videoWithInfo.video) },
                   ) {

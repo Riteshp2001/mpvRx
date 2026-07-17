@@ -1,8 +1,6 @@
 package app.gyrolet.mpvrx.ui.browser.cards
 
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -23,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +34,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.theme.LocalMotionPolicy
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -45,33 +46,35 @@ fun SwipeableVideoActions(
   itemKey: String,
   enabled: Boolean,
   isWatched: Boolean,
-  onToggleWatched: () -> Unit,
-  onMarkNew: () -> Unit,
+  onWatchedChange: (Boolean) -> Unit,
   onRename: () -> Unit,
   onDelete: () -> Unit,
   content: @Composable () -> Unit,
 ) {
   val actionWidth = 76.dp
   val density = LocalDensity.current
-  val leftRevealPx = with(density) { (actionWidth * 3).toPx() }
+  val leftRevealPx = with(density) { (actionWidth * 2).toPx() }
   val rightDragLimitPx = with(density) { (actionWidth * 2).toPx() }
   val thresholdPx = with(density) { 56.dp.toPx() }
   val scope = rememberCoroutineScope()
+  val reduceMotion = LocalMotionPolicy.current.reduceMotion
+  val currentIsWatched by rememberUpdatedState(isWatched)
+  val currentOnWatchedChange by rememberUpdatedState(onWatchedChange)
   var offsetX by remember(itemKey) { mutableFloatStateOf(0f) }
   var settleJob by remember(itemKey) { androidx.compose.runtime.mutableStateOf<Job?>(null) }
 
   fun settle(target: Float, action: (() -> Unit)? = null) {
     settleJob?.cancel()
     action?.invoke()
+    if (reduceMotion) {
+      offsetX = target
+      return
+    }
     settleJob = scope.launch {
       animate(
         initialValue = offsetX,
         targetValue = target,
-        animationSpec =
-          spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-          ),
+        animationSpec = AppMotion.Spatial.StandardDefault,
       ) { value, _ -> offsetX = value }
     }
   }
@@ -99,7 +102,7 @@ fun SwipeableVideoActions(
     ) {
       SwipeVideoAction(
         label = if (isWatched) "Unwatch" else "Watched",
-        icon = if (isWatched) Icons.RoundedFilled.History else Icons.RoundedFilled.CheckCircle,
+        icon = if (isWatched) Icons.RoundedFilled.RemoveCircle else Icons.RoundedFilled.CheckCircle,
         background = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         width = actionWidth,
@@ -111,14 +114,6 @@ fun SwipeableVideoActions(
       modifier = Modifier.matchParentSize(),
       horizontalArrangement = Arrangement.End,
     ) {
-      SwipeVideoAction(
-        label = "New",
-        icon = Icons.RoundedFilled.NewReleases,
-        background = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        width = actionWidth,
-        onClick = { settle(0f, onMarkNew) },
-      )
       SwipeVideoAction(
         label = "Rename",
         icon = Icons.RoundedFilled.Edit,
@@ -154,7 +149,10 @@ fun SwipeableVideoActions(
                   },
                   onDragEnd = {
                     when {
-                      offsetX >= thresholdPx -> settle(0f, onToggleWatched)
+                      offsetX >= thresholdPx -> {
+                        val targetWatched = !currentIsWatched
+                        settle(0f) { currentOnWatchedChange(targetWatched) }
+                      }
                       offsetX <= -thresholdPx -> settle(-leftRevealPx)
                       else -> settle(0f)
                     }
