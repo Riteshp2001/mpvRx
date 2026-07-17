@@ -500,6 +500,31 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
   }
 }
 
+val MIGRATION_9_10 = object : Migration(9, 10) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    db.execSQL(
+      """
+      CREATE TABLE IF NOT EXISTS `directory_scan_index` (
+        `scanKey` TEXT NOT NULL,
+        `path` TEXT NOT NULL,
+        `rootPath` TEXT NOT NULL,
+        `fingerprint` TEXT NOT NULL,
+        `isNoMediaRoot` INTEGER NOT NULL,
+        `videoCount` INTEGER NOT NULL,
+        `totalSize` INTEGER NOT NULL,
+        `totalDuration` INTEGER NOT NULL,
+        `lastModified` INTEGER NOT NULL,
+        `hasSubfolders` INTEGER NOT NULL,
+        `lastScanned` INTEGER NOT NULL,
+        PRIMARY KEY(`scanKey`, `path`)
+      )
+      """.trimIndent(),
+    )
+    db.execSQL("CREATE INDEX IF NOT EXISTS `index_directory_scan_index_scanKey_rootPath` ON `directory_scan_index` (`scanKey`, `rootPath`)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS `index_directory_scan_index_scanKey_isNoMediaRoot` ON `directory_scan_index` (`scanKey`, `isNoMediaRoot`)")
+  }
+}
+
 
 val DatabaseModule =
   module {
@@ -515,7 +540,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvRxDatabase::class.java, "mpvrx.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
         .fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }

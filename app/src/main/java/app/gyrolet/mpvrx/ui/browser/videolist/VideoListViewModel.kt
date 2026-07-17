@@ -94,8 +94,6 @@ class VideoListViewModel(
     // Listen for global media library changes and refresh this list when they occur
     viewModelScope.launch(Dispatchers.IO) {
         MediaLibraryEvents.changes.collectLatest {
-          // Clear cache when media library changes
-          MediaFileRepository.clearCache()
           loadVideos()
         }
       }

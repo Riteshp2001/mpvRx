@@ -10,6 +10,7 @@ import app.gyrolet.mpvrx.domain.browser.PathComponent
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
+import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
@@ -23,6 +24,7 @@ import app.gyrolet.mpvrx.utils.storage.mediaPathKey
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
@@ -48,6 +50,7 @@ object MediaFileRepository : KoinComponent {
   private val appearancePreferences: AppearancePreferences by inject()
   private val browserPreferences: BrowserPreferences by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val database: MpvRxDatabase by inject()
 
   private fun currentScanOptions(includeAudioOverride: Boolean? = null): MediaScanOptions =
     MediaScanOptions(
@@ -81,6 +84,15 @@ object MediaFileRepository : KoinComponent {
     TreeViewScanner.clearCache()
   }
 
+  /** Invalidates only the album MediaStore snapshot, preserving tree and filesystem indexes. */
+  fun invalidateFolderCache() {
+    FolderViewScanner.clearCache()
+  }
+
+  fun invalidateTreeCache() {
+    TreeViewScanner.clearCache()
+  }
+
   // =============================================================================
   // FOLDER OPERATIONS (Album View)
   // =============================================================================
@@ -95,26 +107,52 @@ object MediaFileRepository : KoinComponent {
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
       try {
-        FolderViewScanner.getAllVideoFolders(
+        val mediaStoreFolders = FolderViewScanner.getAllVideoFolders(
           context,
           currentScanOptions(includeAudioOverride),
           forceFileSystemCheck,
         )
+        val indexedFolders =
+          FolderViewScanner.getIndexedNoMediaFolders(
+            currentScanOptions(includeAudioOverride),
+            database.directoryScanDao(),
+          )
+        (mediaStoreFolders + indexedFolders)
+          .distinctBy { it.path.lowercase(Locale.ROOT) }
+          .sortedBy { it.name.lowercase(Locale.getDefault()) }
       } catch (e: Exception) {
         Log.e(TAG, "Error scanning for video folders", e)
         emptyList()
       }
     }
 
-  /**
-   * Fast scan using MediaStore - same as getAllVideoFolders
-   * Kept for backward compatibility
-   */
+  /** Fast MediaStore-only phase. Hidden folders arrive through the incremental flow below. */
   suspend fun getAllVideoFoldersFast(
     context: Context,
     onProgress: ((Int) -> Unit)? = null,
     forceFileSystemCheck: Boolean = false,
-  ): List<VideoFolder> = getAllVideoFolders(context, forceFileSystemCheck)
+  ): List<VideoFolder> =
+    withContext(Dispatchers.IO) {
+      FolderViewScanner.getAllVideoFolders(
+        context = context,
+        options = currentScanOptions(),
+        forceFileSystemCheck = forceFileSystemCheck,
+      ).also { onProgress?.invoke(it.size) }
+    }
+
+  suspend fun getIndexedNoMediaFolders(): List<VideoFolder> =
+    FolderViewScanner.getIndexedNoMediaFolders(currentScanOptions(), database.directoryScanDao())
+
+  fun scanNoMediaFoldersIncrementally(
+    context: Context,
+    forceDiscovery: Boolean = false,
+  ): Flow<List<VideoFolder>> =
+    FolderViewScanner.scanNoMediaFoldersIncrementally(
+      context = context,
+      options = currentScanOptions(),
+      dao = database.directoryScanDao(),
+      forceDiscovery = forceDiscovery,
+    )
 
   /**
    * No-op enrichment - MediaStore already provides all metadata

@@ -148,8 +148,7 @@ class FileSystemBrowserViewModel(
     // Similar to Fossify's media scan completion listener
     viewModelScope.launch(Dispatchers.IO) {
         MediaLibraryEvents.changes.collectLatest {
-          // Clear cache when media library changes
-          MediaFileRepository.clearCache()
+          MediaFileRepository.invalidateTreeCache()
           loadCurrentDirectory()
         }
       }

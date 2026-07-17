@@ -1,13 +1,15 @@
 package app.gyrolet.mpvrx.utils.storage
 
 import android.content.Context
-import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
+import app.gyrolet.mpvrx.database.dao.DirectoryScanDao
+import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
@@ -21,11 +23,11 @@ import java.util.Locale
 object FolderViewScanner {
     private const val TAG = "FolderViewScanner"
     
-    // Smart cache with short TTL (10 seconds)
+    // MediaStore is already invalidated by library events; keep it warm between screen visits.
     private var cachedFolderList: List<VideoFolder>? = null
     private var cacheTimestamp: Long = 0
     private var cacheOptionsKey: String? = null
-    private const val CACHE_TTL_MS = 10_000L // 10 seconds for faster refresh
+    private const val CACHE_TTL_MS = 5 * 60_000L
     
     /**
      * Clear cache (call when media library changes)
@@ -91,9 +93,6 @@ object FolderViewScanner {
             scanAudioMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter, options)
         }
         
-        // Step 2: Scan filesystem for folders that MediaStore won't expose.
-        scanFileSystemRoots(context, allFolders, options, noMediaPathFilter, forceFileSystemCheck)
-        
         // Convert to VideoFolder list
         val result = allFolders.values.map { data ->
             VideoFolder(
@@ -114,6 +113,195 @@ object FolderViewScanner {
         
         result
     }
+
+    suspend fun getIndexedNoMediaFolders(
+        options: MediaScanOptions,
+        dao: DirectoryScanDao,
+    ): List<VideoFolder> = withContext(Dispatchers.IO) {
+        if (!options.includeNoMediaFolders) return@withContext emptyList()
+        dao.getEntries(options.cacheKey).mapNotNull(::toVideoFolder)
+            .sortedBy { it.name.lowercase(Locale.getDefault()) }
+    }
+
+    /**
+     * Scans only hidden MediaStore gaps. Cached folders are available separately and this flow
+     * emits small batches as filesystem results become available.
+     */
+    fun scanNoMediaFoldersIncrementally(
+        context: Context,
+        options: MediaScanOptions,
+        dao: DirectoryScanDao,
+        forceDiscovery: Boolean = false,
+    ): Flow<List<VideoFolder>> = flow {
+        if (!options.includeNoMediaFolders) return@flow
+
+        val scanKey = options.cacheKey
+        val cached = dao.getEntries(scanKey).associateBy { storagePathKey(it.path) }
+        val knownRoots = dao.getNoMediaRoots(scanKey).map(::File)
+        val roots = linkedMapOf<String, File>()
+        knownRoots.forEach { root -> storagePathKey(root.absolutePath)?.let { roots[it] = root } }
+
+        if (forceDiscovery || knownRoots.none { root -> File(root, ".nomedia").isFile }) {
+            discoverNoMediaRoots(context).forEach { root ->
+                storagePathKey(root.absolutePath)?.let { roots[it] = root }
+            }
+        }
+
+        for (root in roots.values) {
+            if (!root.exists() || !root.canRead() || !File(root, ".nomedia").isFile) {
+                dao.deleteRoot(scanKey, normalizeStoragePath(root.absolutePath) ?: root.absolutePath)
+                continue
+            }
+
+            val rootPath = normalizeStoragePath(root.absolutePath) ?: continue
+            val entries = mutableListOf<DirectoryScanEntity>()
+            val pending = mutableListOf<VideoFolder>()
+            scanIndexedDirectory(
+                directory = root,
+                rootPath = rootPath,
+                scanKey = scanKey,
+                options = options,
+                cached = cached,
+                isNoMediaRoot = true,
+                entries = entries,
+            ) { folder ->
+                pending += folder
+                if (pending.size >= EMIT_BATCH_SIZE) {
+                    emit(pending.toList())
+                    pending.clear()
+                }
+            }
+            if (pending.isNotEmpty()) emit(pending.toList())
+            val changedEntries = entries.filter { entry -> cached[storagePathKey(entry.path)] != entry }
+            dao.reconcileRoot(scanKey, rootPath, entries.map { it.path }, changedEntries)
+        }
+    }
+
+    private suspend fun scanIndexedDirectory(
+        directory: File,
+        rootPath: String,
+        scanKey: String,
+        options: MediaScanOptions,
+        cached: Map<String?, DirectoryScanEntity>,
+        isNoMediaRoot: Boolean,
+        entries: MutableList<DirectoryScanEntity>,
+        onFolder: suspend (VideoFolder) -> Unit,
+    ) {
+        val files = runCatching { directory.listFiles()?.toList().orEmpty() }.getOrElse { return }
+        val path = normalizeStoragePath(directory.absolutePath) ?: return
+        val fingerprint = directoryFingerprint(directory, files)
+        val previous = cached[storagePathKey(path)]
+        val subdirectories = files.filter { it.isDirectory && shouldVisitDuringNoMediaScan(it) }
+
+        val entity = if (previous != null && previous.fingerprint == fingerprint) {
+            previous.copy(
+                rootPath = rootPath,
+                isNoMediaRoot = isNoMediaRoot,
+            )
+        } else {
+            var count = 0
+            var size = 0L
+            var duration = 0L
+            var modified = 0L
+            for (file in files) {
+                if (!file.isFile || file.name.startsWith(".")) continue
+                val isAudio = options.includeAudio && FileTypeUtils.isAudioFile(file)
+                if (!isAudio && !FileTypeUtils.isVideoFile(file)) continue
+                val mediaDuration = if (isAudio) FileTypeUtils.getDurationMs(file) else 0L
+                if (isAudio && !options.includesAudioDuration(mediaDuration)) continue
+                count++
+                size += file.length()
+                duration += mediaDuration
+                modified = maxOf(modified, file.lastModified() / 1000)
+            }
+            DirectoryScanEntity(
+                scanKey = scanKey,
+                path = path,
+                rootPath = rootPath,
+                fingerprint = fingerprint,
+                isNoMediaRoot = isNoMediaRoot,
+                videoCount = count,
+                totalSize = size,
+                totalDuration = duration,
+                lastModified = modified,
+                hasSubfolders = subdirectories.isNotEmpty(),
+                lastScanned = System.currentTimeMillis(),
+            )
+        }
+
+        entries += entity
+        toVideoFolder(entity)?.let { onFolder(it) }
+        for (subdirectory in subdirectories) {
+            scanIndexedDirectory(
+                subdirectory, rootPath, scanKey, options, cached,
+                isNoMediaRoot = false, entries = entries, onFolder = onFolder,
+            )
+        }
+    }
+
+    private fun discoverNoMediaRoots(context: Context): List<File> {
+        val primary = Environment.getExternalStorageDirectory()
+        val searchRoots = linkedSetOf(primary)
+        searchRoots += getPrimaryStorageSupplementalScanRoots(primary)
+        StorageVolumeUtils.getExternalStorageVolumes(context).mapNotNullTo(searchRoots) { volume ->
+            StorageVolumeUtils.getVolumePath(volume)?.let(::File)
+        }
+        val found = mutableListOf<File>()
+        searchRoots.forEach { discoverNoMediaRoots(it, found, 0) }
+        return found.distinctBy { storagePathKey(it.absolutePath) }
+    }
+
+    private fun discoverNoMediaRoots(
+        directory: File,
+        found: MutableList<File>,
+        depth: Int,
+    ) {
+        if (depth >= MAX_DISCOVERY_DEPTH || !directory.isDirectory || !directory.canRead()) return
+        if (File(directory, ".nomedia").isFile) {
+            found += directory
+            return
+        }
+        runCatching { directory.listFiles() }.getOrNull().orEmpty()
+            .filter { it.isDirectory && shouldVisitDuringNoMediaScan(it) }
+            .forEach { discoverNoMediaRoots(it, found, depth + 1) }
+    }
+
+    private fun shouldVisitDuringNoMediaScan(directory: File): Boolean {
+        val name = directory.name.lowercase(Locale.ROOT)
+        return !name.startsWith(".") && name !in NO_MEDIA_SCAN_SKIP_FOLDERS && directory.canRead()
+    }
+
+    private fun directoryFingerprint(directory: File, files: List<File>): String {
+        var hash = 17L
+        hash = 31 * hash + directory.lastModified()
+        files.sortedBy { it.name.lowercase(Locale.ROOT) }.forEach { file ->
+            hash = 31 * hash + file.name.hashCode()
+            hash = 31 * hash + if (file.isDirectory) 1 else 0
+            hash = 31 * hash + file.length()
+            hash = 31 * hash + file.lastModified()
+        }
+        return hash.toString(16)
+    }
+
+    private fun toVideoFolder(entity: DirectoryScanEntity): VideoFolder? {
+        if (entity.videoCount <= 0) return null
+        return VideoFolder(
+            bucketId = entity.path,
+            name = leafStorageName(entity.path),
+            path = entity.path,
+            videoCount = entity.videoCount,
+            totalSize = entity.totalSize,
+            totalDuration = entity.totalDuration,
+            lastModified = entity.lastModified,
+        )
+    }
+
+    private const val EMIT_BATCH_SIZE = 8
+    private const val MAX_DISCOVERY_DEPTH = 20
+    private val NO_MEDIA_SCAN_SKIP_FOLDERS = setOf(
+        ".thumbnails", "thumbnails", "cache", ".cache", "tmp", "temp", "lost.dir",
+        "system", ".trash", "trash", "recycler",
+    )
     
     /**
      * Scan MediaStore for all videos and build folder map (immediate children only)

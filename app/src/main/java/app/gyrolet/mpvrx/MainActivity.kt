@@ -233,7 +233,6 @@ class MainActivity : ComponentActivity() {
       navigationBarStyle = synchronizedBarStyle,
     )
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      window.isStatusBarContrastEnforced = false
       window.isNavigationBarContrastEnforced = false
     }
     appliedEdgeToEdgeDarkMode = isDarkMode
