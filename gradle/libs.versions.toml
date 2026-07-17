@@ -25,7 +25,6 @@ googleMaterial = "1.13.0"
 androidxCore = "1.18.0"
 androidxPreference = "1.2.1"
 androidxConstraintLayout = "2.2.1"
-coil = "3.4.0"
 media3 = "1.10.0"
 soraEditor = "0.24.5"
 androidxMaterial3 = "1.5.0-alpha19"
@@ -74,9 +73,6 @@ google-material = { module = "com.google.android.material:material", version.ref
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidxPreference" }
 androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidxConstraintLayout" }
-coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
-coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
-coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 androidx-media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
 androidx-media3-effect = { module = "androidx.media3:media3-effect", version.ref = "media3" }
 androidx-media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "media3" }
@@ -113,7 +109,6 @@ reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reo
 
 [bundles]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel"]
-coil = ["coil", "coil-compose", "coil-network-okhttp"]
 compose-navigation3 = ["androidx-navigation3-runtime", "androidx-navigation3-ui"]
 
 [plugins]

@@ -203,7 +203,6 @@ dependencies {
   implementation(libs.androidx.compose.animation.graphics)
   implementation(libs.mediasession)
   implementation(libs.androidx.documentfile)
-  implementation(libs.bundles.coil)
 
   implementation(platform(libs.koin.bom))
   implementation(libs.bundles.koin)

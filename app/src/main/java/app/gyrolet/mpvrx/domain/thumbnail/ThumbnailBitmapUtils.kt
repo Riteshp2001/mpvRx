@@ -3,8 +3,8 @@ package app.gyrolet.mpvrx.domain.thumbnail
 import android.graphics.Bitmap
 import kotlin.math.abs
 
-internal const val MAX_THUMBNAIL_SIZE = 384
-internal const val THUMBNAIL_JPEG_QUALITY = 76
+internal const val MAX_THUMBNAIL_SIZE = 512
+internal const val THUMBNAIL_JPEG_QUALITY = 100
 
 internal fun calculateThumbnailSampleSize(
   width: Int,

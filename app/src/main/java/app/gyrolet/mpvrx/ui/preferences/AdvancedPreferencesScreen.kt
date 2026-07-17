@@ -641,8 +641,7 @@ object AdvancedPreferencesScreen : Screen {
                     listOf(
                       File(context.cacheDir, "thumbnails"),
                       File(context.filesDir, "thumbnails"),
-                      File(context.cacheDir, "image_cache"),
-                      File(context.cacheDir, "coil"),
+                      File(context.cacheDir, "remote_images"),
                     ).forEach { dir ->
                       if (dir.exists()) {
                         dir.walkTopDown().filter { it.isFile }.forEach { size += it.length() }

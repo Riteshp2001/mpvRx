@@ -723,13 +723,6 @@ private val OPEN_SOURCE_LIBRARIES = listOf(
     url = "https://square.github.io/okhttp/",
   ),
   OpenSourceLibrary(
-    name = "Coil 3",
-    artifact = "io.coil-kt.coil3",
-    description = "Async image loading for posters, thumbnails, and artwork.",
-    license = "Apache-2.0",
-    url = "https://coil-kt.github.io/coil/",
-  ),
-  OpenSourceLibrary(
     name = "kotlinx.serialization",
     artifact = "org.jetbrains.kotlinx:kotlinx-serialization-json",
     description = "JSON serialization for API payloads and internal models.",

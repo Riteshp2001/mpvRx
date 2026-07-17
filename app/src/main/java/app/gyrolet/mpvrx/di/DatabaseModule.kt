@@ -526,7 +526,7 @@ val DatabaseModule =
       RecentlyPlayedRepositoryImpl(get<MpvRxDatabase>().recentlyPlayedDao())
     }
 
-    single { ThumbnailRepository(androidContext(), get()) }
+    single { ThumbnailRepository(androidContext()) }
 
     single {
       app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository(

@@ -43,7 +43,7 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import coil3.compose.AsyncImage
+import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
@@ -195,8 +195,8 @@ fun M3UVideoCard(
             contentScale = ContentScale.Crop,
           )
         } else if (!logoUrl.isNullOrBlank()) {
-          AsyncImage(
-            model = logoUrl,
+          RemoteImage(
+            url = logoUrl,
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier

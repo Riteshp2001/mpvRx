@@ -20,6 +20,7 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import org.koin.core.context.GlobalContext
+import `is`.xyz.mpv.FastThumbnails
 
 @OptIn(KoinExperimentalAPI::class)
 class App : Application() {
@@ -46,6 +47,9 @@ class App : Application() {
     }
 
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
+
+    // Native libmpv thumbnail engine used by browser, folder, playlist, and network previews.
+    FastThumbnails.initialize(this)
 
     applicationScope.launch {
       runCatching {
