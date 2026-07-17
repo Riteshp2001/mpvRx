@@ -91,45 +91,47 @@ fun SwipeableVideoActions(
     modifier =
       Modifier
         .fillMaxWidth()
-        .clip(shape),
+        .clip(shape)
+        .background(MaterialTheme.colorScheme.surface),
   ) {
-    Box(
-      modifier =
-        Modifier
-          .matchParentSize()
-          .background(MaterialTheme.colorScheme.primaryContainer),
-      contentAlignment = Alignment.CenterStart,
-    ) {
-      SwipeVideoAction(
-        label = if (isWatched) "Unwatch" else "Watched",
-        icon = if (isWatched) Icons.RoundedFilled.RemoveCircle else Icons.RoundedFilled.CheckCircle,
-        background = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        width = actionWidth,
-        onClick = null,
-      )
+    if (offsetX > 0f) {
+      Box(
+        modifier = Modifier.matchParentSize(),
+        contentAlignment = Alignment.CenterStart,
+      ) {
+        SwipeVideoAction(
+          label = if (isWatched) "Unwatch" else "Watched",
+          icon = if (isWatched) Icons.RoundedFilled.RemoveCircle else Icons.RoundedFilled.CheckCircle,
+          background = MaterialTheme.colorScheme.primaryContainer,
+          contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          width = actionWidth,
+          onClick = null,
+        )
+      }
     }
 
-    Row(
-      modifier = Modifier.matchParentSize(),
-      horizontalArrangement = Arrangement.End,
-    ) {
-      SwipeVideoAction(
-        label = "Rename",
-        icon = Icons.RoundedFilled.Edit,
-        background = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        width = actionWidth,
-        onClick = { settle(0f, onRename) },
-      )
-      SwipeVideoAction(
-        label = "Delete",
-        icon = Icons.RoundedFilled.Delete,
-        background = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        width = actionWidth,
-        onClick = { settle(0f, onDelete) },
-      )
+    if (offsetX < 0f) {
+      Row(
+        modifier = Modifier.matchParentSize(),
+        horizontalArrangement = Arrangement.End,
+      ) {
+        SwipeVideoAction(
+          label = "Rename",
+          icon = Icons.RoundedFilled.Edit,
+          background = MaterialTheme.colorScheme.secondaryContainer,
+          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+          width = actionWidth,
+          onClick = { settle(0f, onRename) },
+        )
+        SwipeVideoAction(
+          label = "Delete",
+          icon = Icons.RoundedFilled.Delete,
+          background = MaterialTheme.colorScheme.errorContainer,
+          contentColor = MaterialTheme.colorScheme.onErrorContainer,
+          width = actionWidth,
+          onClick = { settle(0f, onDelete) },
+        )
+      }
     }
 
     Box(
