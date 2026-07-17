@@ -1,6 +1,7 @@
 package app.gyrolet.mpvrx.ui.browser.cards
 
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -53,8 +53,9 @@ fun SwipeableVideoActions(
 ) {
   val actionWidth = 76.dp
   val density = LocalDensity.current
-  val maxRevealPx = with(density) { (actionWidth * 2).toPx() }
-  val thresholdPx = with(density) { 44.dp.toPx() }
+  val leftRevealPx = with(density) { (actionWidth * 3).toPx() }
+  val rightDragLimitPx = with(density) { (actionWidth * 2).toPx() }
+  val thresholdPx = with(density) { 56.dp.toPx() }
   val scope = rememberCoroutineScope()
   var offsetX by remember(itemKey) { mutableFloatStateOf(0f) }
   var settleJob by remember(itemKey) { androidx.compose.runtime.mutableStateOf<Job?>(null) }
@@ -66,7 +67,11 @@ fun SwipeableVideoActions(
       animate(
         initialValue = offsetX,
         targetValue = target,
-        animationSpec = spring(),
+        animationSpec =
+          spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+          ),
       ) { value, _ -> offsetX = value }
     }
   }
@@ -85,18 +90,27 @@ fun SwipeableVideoActions(
         .fillMaxWidth()
         .clip(shape),
   ) {
-    Row(
-      modifier = Modifier.matchParentSize(),
-      horizontalArrangement = Arrangement.Start,
+    Box(
+      modifier =
+        Modifier
+          .matchParentSize()
+          .background(MaterialTheme.colorScheme.primaryContainer),
+      contentAlignment = Alignment.CenterStart,
     ) {
       SwipeVideoAction(
-        label = if (isWatched) "Unwatched" else "Watched",
+        label = if (isWatched) "Unwatch" else "Watched",
         icon = if (isWatched) Icons.Filled.History else Icons.Filled.CheckCircle,
         background = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         width = actionWidth,
-        onClick = { settle(0f, onToggleWatched) },
+        onClick = null,
       )
+    }
+
+    Row(
+      modifier = Modifier.matchParentSize(),
+      horizontalArrangement = Arrangement.End,
+    ) {
       SwipeVideoAction(
         label = "New",
         icon = Icons.Default.NewReleases,
@@ -105,12 +119,6 @@ fun SwipeableVideoActions(
         width = actionWidth,
         onClick = { settle(0f, onMarkNew) },
       )
-    }
-
-    Row(
-      modifier = Modifier.matchParentSize(),
-      horizontalArrangement = Arrangement.End,
-    ) {
       SwipeVideoAction(
         label = "Rename",
         icon = Icons.Filled.Edit,
@@ -137,21 +145,19 @@ fun SwipeableVideoActions(
           .background(MaterialTheme.colorScheme.surface)
           .then(
             if (enabled) {
-              Modifier.pointerInput(itemKey, maxRevealPx) {
+              Modifier.pointerInput(itemKey, leftRevealPx, rightDragLimitPx) {
                 detectHorizontalDragGestures(
                   onDragStart = { settleJob?.cancel() },
                   onHorizontalDrag = { change, dragAmount ->
                     change.consume()
-                    offsetX = (offsetX + dragAmount).coerceIn(-maxRevealPx, maxRevealPx)
+                    offsetX = (offsetX + dragAmount).coerceIn(-leftRevealPx, rightDragLimitPx)
                   },
                   onDragEnd = {
-                    val target =
-                      when {
-                        offsetX >= thresholdPx -> maxRevealPx
-                        offsetX <= -thresholdPx -> -maxRevealPx
-                        else -> 0f
-                      }
-                    settle(target)
+                    when {
+                      offsetX >= thresholdPx -> settle(0f, onToggleWatched)
+                      offsetX <= -thresholdPx -> settle(-leftRevealPx)
+                      else -> settle(0f)
+                    }
                   },
                   onDragCancel = { settle(0f) },
                 )
@@ -173,7 +179,7 @@ private fun SwipeVideoAction(
   background: Color,
   contentColor: Color,
   width: androidx.compose.ui.unit.Dp,
-  onClick: () -> Unit,
+  onClick: (() -> Unit)?,
 ) {
   Column(
     modifier =
@@ -181,7 +187,7 @@ private fun SwipeVideoAction(
         .width(width)
         .fillMaxHeight()
         .background(background)
-        .clickable(onClick = onClick)
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
         .padding(horizontal = 4.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
