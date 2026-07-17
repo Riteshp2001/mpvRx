@@ -6,8 +6,6 @@ import android.view.View
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -24,33 +22,35 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.ClipOp
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
+import kotlin.math.hypot
 import androidx.core.view.drawToBitmap
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import org.koin.compose.koinInject
-import kotlin.math.hypot
 
 // ============================================================================
 // Theme Transition Animation State & Components
@@ -71,7 +71,7 @@ class ThemeTransitionState {
     
     private var captureView: View? = null
     
-    fun setView(view: View) {
+    fun setView(view: View?) {
         captureView = view
     }
     
@@ -88,6 +88,7 @@ class ThemeTransitionState {
             try {
                 // Capture before setting isAnimating to ensure we get the current state
                 val bitmap = view.drawToBitmap()
+                animationProgress = Animatable(0f)
                 screenshotBitmap = bitmap
                 clickPosition = position
                 isAnimating = true
@@ -104,12 +105,19 @@ class ThemeTransitionState {
         screenshotBitmap = null
         clickPosition = Offset.Zero
         isAnimating = false
-        // Recycle after state is cleared
-        oldBitmap?.recycle()
+        // Let Compose detach the ImageBitmap before releasing its Android backing bitmap.
+        captureView?.postDelayed(
+            { oldBitmap?.takeUnless { it.isRecycled }?.recycle() },
+            BITMAP_RECYCLE_DELAY_MS,
+        )
     }
     
     suspend fun resetProgress() {
         animationProgress.snapTo(0f)
+    }
+
+    private companion object {
+        const val BITMAP_RECYCLE_DELAY_MS = 96L
     }
 }
 
@@ -124,72 +132,106 @@ fun rememberThemeTransitionState(): ThemeTransitionState {
 }
 
 /**
- * Overlay composable that handles the circular reveal animation.
- * Uses Shape-based clipping for smooth Telegram-like rendering.
+ * Reveals the new theme below a frozen frame of the old theme. The old frame is
+ * removed by a feathered radial alpha mask, which gives the transition the soft
+ * blur edge used by Telegram-style theme switches without blurring text or video.
  */
 @Composable
 private fun ThemeTransitionOverlay(
     state: ThemeTransitionState,
     content: @Composable () -> Unit
 ) {
-    // Animation disabled - just render content immediately
-    content()
-}
+    val view = LocalView.current
+    val reduceMotion = LocalMotionPolicy.current.reduceMotion
+    val featherPx = with(LocalDensity.current) { THEME_REVEAL_FEATHER.toPx() }
+    val bitmap = state.screenshotBitmap
+    val progress = state.animationProgress.value
 
-/**
- * Custom Shape that creates an inverse circular reveal effect.
- * The circle expands from center, and the shape clips TO THE AREA OUTSIDE the circle.
- */
-private class CircularRevealShape(
-    private val progress: Float,
-    private val center: Offset,
-    private val containerSize: Size,
-) : androidx.compose.ui.graphics.Shape {
-    override fun createOutline(
-        size: Size,
-        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
-        density: androidx.compose.ui.unit.Density,
-    ): androidx.compose.ui.graphics.Outline {
-        val actualCenter = if (center == Offset.Zero) {
-            Offset(size.width / 2f, size.height / 2f)
+    DisposableEffect(view, state) {
+        state.setView(view)
+        onDispose { state.setView(null) }
+    }
+
+    LaunchedEffect(state.isAnimating, bitmap, reduceMotion) {
+        if (!state.isAnimating || bitmap == null) return@LaunchedEffect
+
+        state.resetProgress()
+        // Give the newly selected Material color scheme one frame to settle below the snapshot.
+        withFrameNanos { }
+        if (reduceMotion) {
+            state.animationProgress.snapTo(1f)
         } else {
-            center
+            // Keep the frozen frame opaque while the new theme finishes its root recomposition.
+            kotlinx.coroutines.delay(THEME_CONTENT_SETTLE_DELAY_MS.toLong())
+            state.animationProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = THEME_REVEAL_DURATION_MS,
+                    easing = FastOutSlowInEasing,
+                ),
+            )
         }
-        
-        // Calculate the maximum radius needed to cover entire screen from center point
-        val maxRadius = longestDistanceToCorner(size, actualCenter) * 1.1f
-        val currentRadius = maxRadius * progress
-        
-        // Create a path that represents the area OUTSIDE the circle (inverse clip)
-        val path = android.graphics.Path().apply {
-            // Add the entire rectangle
-            addRect(0f, 0f, size.width, size.height, android.graphics.Path.Direction.CW)
-            // Subtract the circle (creates hole in the middle)
-            addCircle(actualCenter.x, actualCenter.y, currentRadius, android.graphics.Path.Direction.CCW)
-        }
-        
-        return androidx.compose.ui.graphics.Outline.Generic(
-            path.asComposePath()
-        )
+        state.finishTransition()
     }
-    
-    private fun longestDistanceToCorner(size: Size, center: Offset): Float {
-        val topLeft = hypot(center.x, center.y)
-        val topRight = hypot(size.width - center.x, center.y)
-        val bottomLeft = hypot(center.x, size.height - center.y)
-        val bottomRight = hypot(size.width - center.x, size.height - center.y)
-        return maxOf(topLeft, topRight, bottomLeft, bottomRight)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        content()
+
+        if (bitmap != null && state.isAnimating) {
+            val frozenFrame = remember(bitmap) { bitmap.asImageBitmap() }
+            Image(
+                bitmap = frozenFrame,
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithCache {
+                        val center = state.clickPosition.takeUnless { it == Offset.Zero }
+                            ?: Offset(size.width / 2f, size.height / 2f)
+                        val maxRadius = maxOf(
+                            hypot(center.x, center.y),
+                            hypot(size.width - center.x, center.y),
+                            hypot(center.x, size.height - center.y),
+                            hypot(size.width - center.x, size.height - center.y),
+                        )
+                        val revealRadius = (maxRadius + featherPx) * progress
+                        val maskRadius = (revealRadius + featherPx).coerceAtLeast(1f)
+                        val clearStop = ((revealRadius - featherPx) / maskRadius).coerceIn(0f, 1f)
+                        val softStop = (revealRadius / maskRadius).coerceIn(clearStop, 1f)
+                        val mask = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0f to Color.Transparent,
+                                clearStop to Color.Transparent,
+                                softStop to Color.Black.copy(alpha = 0.28f),
+                                1f to Color.Black,
+                            ),
+                            center = center,
+                            radius = maskRadius,
+                        )
+
+                        onDrawWithContent {
+                            drawContent()
+                            if (progress > 0f) {
+                                drawRect(brush = mask, blendMode = BlendMode.DstIn)
+                            }
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent().changes.forEach { it.consume() }
+                            }
+                        }
+                    },
+            )
+        }
     }
 }
 
-/**
- * Extension to convert Android Path to Compose Path
- */
-private fun android.graphics.Path.asComposePath(): androidx.compose.ui.graphics.Path {
-    val composePath = androidx.compose.ui.graphics.Path()
-    composePath.asAndroidPath().set(this)
-    return composePath
-}
+private const val THEME_CONTENT_SETTLE_DELAY_MS = 100
+private const val THEME_REVEAL_DURATION_MS = 650
+private val THEME_REVEAL_FEATHER = 30.dp
 
 @Composable
 private fun ThemeTransitionContent(content: @Composable () -> Unit) {
@@ -208,7 +250,10 @@ private fun ThemeTransitionContent(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MpvrxTheme(content: @Composable () -> Unit) {
+fun MpvrxTheme(
+    transitionState: ThemeTransitionState = rememberThemeTransitionState(),
+    content: @Composable () -> Unit,
+) {
     val preferences = koinInject<AppearancePreferences>()
     val darkMode by preferences.darkMode.collectAsState()
     val amoledMode by preferences.amoledMode.collectAsState()
@@ -240,7 +285,7 @@ fun MpvrxTheme(content: @Composable () -> Unit) {
                     )
                 }
                 useDarkTheme -> dynamicDarkColorScheme(context)
-                else -> dynamicLightColorScheme(context)
+                else -> dynamicLightColorScheme(context).withComfortableLightSurfaces()
             }
         }
         useDarkTheme && amoledMode -> appTheme.getAmoledColorScheme()
@@ -251,7 +296,7 @@ fun MpvrxTheme(content: @Composable () -> Unit) {
     // Provide theme transition state first, OUTSIDE MaterialExpressiveTheme
     CompositionLocalProvider(
       LocalSpacing provides Spacing(),
-      LocalThemeTransitionState provides rememberThemeTransitionState(),
+      LocalThemeTransitionState provides transitionState,
       LocalMotionPolicy provides rememberMotionPolicy(),
       LocalEmphasizedTypography provides AppEmphasizedTypography,
     ) {
@@ -265,6 +310,24 @@ fun MpvrxTheme(content: @Composable () -> Unit) {
         )
       }
     }
+}
+
+/** Keeps wallpaper-derived accents while replacing near-white full-screen surfaces. */
+private fun androidx.compose.material3.ColorScheme.withComfortableLightSurfaces(): androidx.compose.material3.ColorScheme {
+    val base = Color(0xFFF7F5F8)
+    fun tint(amount: Float) = androidx.compose.ui.graphics.lerp(base, primary, amount)
+
+    return copy(
+        background = tint(0.018f),
+        surface = tint(0.018f),
+        surfaceDim = tint(0.085f),
+        surfaceBright = Color(0xFFFBF9FC),
+        surfaceContainerLowest = Color(0xFFFBF9FC),
+        surfaceContainerLow = tint(0.030f),
+        surfaceContainer = tint(0.050f),
+        surfaceContainerHigh = tint(0.072f),
+        surfaceContainerHighest = tint(0.098f),
+    )
 }
 
 enum class DarkMode(

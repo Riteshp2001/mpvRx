@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
@@ -28,7 +29,7 @@ import app.gyrolet.mpvrx.ui.theme.AppTheme
 fun ThemePicker(
     currentTheme: AppTheme,
     isDarkMode: Boolean,
-    onThemeSelected: (AppTheme) -> Unit,
+    onThemeSelected: (AppTheme, Offset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -61,7 +62,7 @@ fun ThemePicker(
                     theme = theme,
                     isSelected = theme == currentTheme,
                     isDarkMode = isDarkMode,
-                    onClick = { onThemeSelected(theme) },
+                    onClick = { position -> onThemeSelected(theme, position) },
                 )
             }
         }

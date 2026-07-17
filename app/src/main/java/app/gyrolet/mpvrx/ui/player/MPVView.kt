@@ -278,8 +278,8 @@ class MPVView(
     return true
   }
 
-  override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, w: Int, h: Int) {
-    super.surfaceChanged(holder, format, w, h)
+  override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
+    super.surfaceChanged(holder, format, width, height)
     applyFrameRate()
   }
 

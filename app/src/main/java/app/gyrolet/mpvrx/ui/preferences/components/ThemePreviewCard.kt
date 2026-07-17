@@ -19,12 +19,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,9 +50,10 @@ fun ThemePreviewCard(
     theme: AppTheme,
     isSelected: Boolean,
     isDarkMode: Boolean,
-    onClick: () -> Unit,
+    onClick: (Offset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var cardOrigin by remember { mutableStateOf(Offset.Zero) }
     val colorScheme = if (isDarkMode) theme.getDarkColorScheme() else theme.getLightColorScheme()
     
     // Use the current MaterialTheme primary for selection to ensure visibility
@@ -60,9 +68,10 @@ fun ThemePreviewCard(
     Column(
         modifier = modifier
             .width(100.dp)
+            .onGloballyPositioned { cardOrigin = it.boundsInWindow().topLeft }
             .pointerInput(Unit) {
-                detectTapGestures {
-                    onClick()
+                detectTapGestures { localPosition ->
+                    onClick(cardOrigin + localPosition)
                 }
             },
         horizontalAlignment = Alignment.CenterHorizontally,

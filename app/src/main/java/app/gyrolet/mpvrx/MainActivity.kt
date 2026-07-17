@@ -1,6 +1,7 @@
 package app.gyrolet.mpvrx
 
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -31,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Modifier
@@ -52,6 +54,7 @@ import app.gyrolet.mpvrx.repository.NetworkLifecycleObserver
 import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.theme.rememberThemeTransitionState
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
@@ -59,6 +62,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 
@@ -164,8 +168,16 @@ class MainActivity : ComponentActivity() {
       val isDarkMode = remember(dark, isSystemInDarkTheme) {
         dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
       }
+      val themeTransitionState = rememberThemeTransitionState()
 
       LaunchedEffect(isDarkMode) {
+        if (themeTransitionState.isAnimating) {
+          snapshotFlow {
+            themeTransitionState.animationProgress.value to themeTransitionState.isAnimating
+          }.first { (progress, isAnimating) ->
+            !isAnimating || progress >= SYSTEM_BAR_THEME_SWITCH_PROGRESS
+          }
+        }
         applyEdgeToEdge(isDarkMode)
       }
 
@@ -184,7 +196,7 @@ class MainActivity : ComponentActivity() {
         }
       }
 
-      MpvrxTheme {
+      MpvrxTheme(transitionState = themeTransitionState) {
         Surface(modifier = Modifier.fillMaxSize()) {
           Navigator()
         }
@@ -212,13 +224,23 @@ class MainActivity : ComponentActivity() {
   private fun applyEdgeToEdge(isDarkMode: Boolean) {
     if (appliedEdgeToEdgeDarkMode == isDarkMode) return
 
+    val synchronizedBarStyle = SystemBarStyle.auto(
+      lightScrim = Color(0xFFF7F5F8).toArgb(),
+      darkScrim = Color(0xFF161217).toArgb(),
+    ) { isDarkMode }
     enableEdgeToEdge(
-      SystemBarStyle.auto(
-        lightScrim = Color.White.toArgb(),
-        darkScrim = Color.Transparent.toArgb(),
-      ) { isDarkMode },
+      statusBarStyle = synchronizedBarStyle,
+      navigationBarStyle = synchronizedBarStyle,
     )
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      window.isStatusBarContrastEnforced = false
+      window.isNavigationBarContrastEnforced = false
+    }
     appliedEdgeToEdgeDarkMode = isDarkMode
+  }
+
+  private companion object {
+    const val SYSTEM_BAR_THEME_SWITCH_PROGRESS = 0.55f
   }
 
   /**

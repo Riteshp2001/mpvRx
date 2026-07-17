@@ -11,7 +11,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -124,7 +131,7 @@ enum class PortraitPlaybackControlsPosition(val displayName: String) {
 fun MultiChoiceSegmentedButton(
   choices: ImmutableList<String>,
   selectedIndices: ImmutableList<Int>,
-  onClick: (Int) -> Unit,
+  onClick: (Int, Offset) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Row(
@@ -134,12 +141,14 @@ fun MultiChoiceSegmentedButton(
     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
   ) {
     choices.forEachIndexed { index, choice ->
+      var buttonCenter by remember(choice) { mutableStateOf(Offset.Zero) }
       ToggleButton(
         checked = selectedIndices.contains(index),
-        onCheckedChange = { onClick(index) },
+        onCheckedChange = { onClick(index, buttonCenter) },
         modifier = Modifier
           .weight(1f)
           .defaultMinSize(minHeight = MaterialTheme.spacing.extraLarge)
+          .onGloballyPositioned { buttonCenter = it.boundsInWindow().center }
           .semantics { role = Role.RadioButton },
         colors = ToggleButtonDefaults.toggleButtonColors(
           checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,

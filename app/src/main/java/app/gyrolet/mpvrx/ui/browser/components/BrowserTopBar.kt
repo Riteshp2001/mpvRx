@@ -157,7 +157,7 @@ private fun NormalTopBar(
       DarkMode.System -> if (darkTheme) {
         preferences.darkMode.set(DarkMode.Light)
       } else {
-        preferences.darkMode.set(DarkMode.System)
+        preferences.darkMode.set(DarkMode.Dark)
       }
       DarkMode.Light -> if (darkTheme) {
         preferences.darkMode.set(DarkMode.System)
@@ -199,6 +199,7 @@ private fun NormalTopBar(
               themeTransition?.startTransition(windowOffset)
               // Delay theme change to allow overlay to display first
               coroutineScope.launch {
+                delay(50)
                 toggleDarkMode()
               }
             },

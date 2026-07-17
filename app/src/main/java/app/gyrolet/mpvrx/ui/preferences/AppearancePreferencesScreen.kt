@@ -54,12 +54,14 @@ import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 import app.gyrolet.mpvrx.ui.preferences.components.ThemePicker
 import app.gyrolet.mpvrx.ui.theme.DarkMode
+import app.gyrolet.mpvrx.ui.theme.LocalThemeTransitionState
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -84,6 +86,7 @@ object AppearancePreferencesScreen : Screen {
         val backstack = LocalBackStack.current
         val scope = rememberCoroutineScope()
         val systemDarkTheme = isSystemInDarkTheme()
+        val themeTransition = LocalThemeTransitionState.current
 
         val darkMode by preferences.darkMode.collectAsState()
         val appTheme by preferences.appTheme.collectAsState()
@@ -220,7 +223,15 @@ object AppearancePreferencesScreen : Screen {
                                         MultiChoiceSegmentedButton(
                                             choices = DarkMode.entries.map { stringResource(it.titleRes) }.toImmutableList(),
                                             selectedIndices = persistentListOf(DarkMode.entries.indexOf(darkMode)),
-                                            onClick = { preferences.darkMode.set(DarkMode.entries[it]) },
+                                            onClick = { index, position ->
+                                                if (themeTransition?.isAnimating != true) {
+                                                    themeTransition?.startTransition(position)
+                                                    scope.launch {
+                                                        delay(50)
+                                                        preferences.darkMode.set(DarkMode.entries[index])
+                                                    }
+                                                }
+                                            },
                                         )
                                     }
 
@@ -230,7 +241,15 @@ object AppearancePreferencesScreen : Screen {
                                     ThemePicker(
                                         currentTheme = appTheme,
                                         isDarkMode = isDarkMode,
-                                        onThemeSelected = { preferences.appTheme.set(it) },
+                                        onThemeSelected = { theme, position ->
+                                            if (theme != appTheme && themeTransition?.isAnimating != true) {
+                                                themeTransition?.startTransition(position)
+                                                scope.launch {
+                                                    delay(50)
+                                                    preferences.appTheme.set(theme)
+                                                }
+                                            }
+                                        },
                                         modifier = Modifier.padding(vertical = 8.dp),
                                     )
 
@@ -239,7 +258,13 @@ object AppearancePreferencesScreen : Screen {
                                     SwitchPreference(
                                         value = amoledMode,
                                         onValueChange = { newValue ->
-                                            preferences.amoledMode.set(newValue)
+                                            if (themeTransition?.isAnimating != true) {
+                                                themeTransition?.startTransition(androidx.compose.ui.geometry.Offset.Zero)
+                                                scope.launch {
+                                                    delay(50)
+                                                    preferences.amoledMode.set(newValue)
+                                                }
+                                            }
                                         },
                                         title = { Text(text = stringResource(id = R.string.pref_appearance_amoled_mode_title)) },
                                         summary = {
