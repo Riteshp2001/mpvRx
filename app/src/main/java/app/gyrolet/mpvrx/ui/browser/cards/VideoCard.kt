@@ -198,9 +198,12 @@ fun VideoCard(
         // Update thumbnail when the repository emits that this key became ready (folder prefetch or any other source).
         LaunchedEffect(thumbnailKey) {
           thumbnailRepository.thumbnailReadyKeys
-            .filter { it == thumbnailKey }
+            .filter { key -> thumbnailRepository.isThumbnailKeyForVideo(key, video) }
             .collect {
-              thumbnail = thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx)
+              thumbnail =
+                withContext(Dispatchers.IO) {
+                  thumbnailRepository.getCachedThumbnail(video, thumbWidthPx, thumbHeightPx)
+                }
             }
         }
 
@@ -473,9 +476,12 @@ fun VideoCard(
         // Update thumbnail when the repository emits that this key became ready (folder prefetch or any other source).
         LaunchedEffect(thumbnailKey) {
           thumbnailRepository.thumbnailReadyKeys
-            .filter { it == thumbnailKey }
+            .filter { key -> thumbnailRepository.isThumbnailKeyForVideo(key, video) }
             .collect {
-              thumbnail = thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx)
+              thumbnail =
+                withContext(Dispatchers.IO) {
+                  thumbnailRepository.getCachedThumbnail(video, thumbWidthPx, thumbHeightPx)
+                }
             }
         }
 
