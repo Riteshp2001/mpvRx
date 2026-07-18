@@ -207,16 +207,17 @@ class CrashActivity : ComponentActivity() {
     }
 
     fun collectDeviceInfo(): String =
-      """
-      App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})
-      Android version: ${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})
-      Device brand: ${Build.BRAND}
-      Device manufacturer: ${Build.MANUFACTURER}
-      Device model: ${Build.MODEL} (${Build.DEVICE})
-      MPV version: ${Utils.VERSIONS.mpv}
-      ffmpeg version: ${Utils.VERSIONS.ffmpeg}
-      libplacebo version: ${Utils.VERSIONS.libPlacebo}
-      """.trimIndent()
+      buildString {
+        appendLine("App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})")
+        appendLine("Android version: ${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})")
+        appendLine("Device brand: ${Build.BRAND}")
+        appendLine("Device manufacturer: ${Build.MANUFACTURER}")
+        appendLine("Device model: ${Build.MODEL} (${Build.DEVICE})")
+        appendLine("Native build date: ${Utils.VERSIONS.buildDate}")
+        Utils.VERSIONS.dependencies.forEach { (name, version) ->
+          appendLine("$name version: $version")
+        }
+      }.trimEnd()
   }
 
   @Composable

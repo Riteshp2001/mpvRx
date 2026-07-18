@@ -1401,7 +1401,12 @@ fun StandardSeekbar(
                     .filter { it > 0f && it < size.width }
                     .map { x -> (x - chapterGapHalf) to (x + chapterGapHalf) }
                 
-                fun drawSegment(startX: Float, endX: Float, color: Color) {
+                fun drawSegment(
+                    startX: Float,
+                    endX: Float,
+                    color: Color,
+                    roundEverySegmentEdge: Boolean,
+                ) {
                     if (endX - startX < 0.5f) return
                     
                     val path = Path()
@@ -1413,7 +1418,7 @@ fun StandardSeekbar(
                         innerRadius = innerRadius,
                         thumbGapStart = thumbGapStart,
                         thumbGapEnd = thumbGapEnd,
-                        roundEverySegmentEdge = isThick,
+                        roundEverySegmentEdge = roundEverySegmentEdge,
                     )
                     val cornerRadiusLeft = CornerRadius(radii.left)
                     val cornerRadiusRight = CornerRadius(radii.right)
@@ -1437,7 +1442,8 @@ fun StandardSeekbar(
                     rangeStart: Float, 
                     rangeEnd: Float, 
                     gaps: List<Pair<Float, Float>>, 
-                    color: Color
+                    color: Color,
+                    roundEverySegmentEdge: Boolean = isThick,
                 ) {
                     if (rangeEnd <= rangeStart) return
                     val relevantGaps = gaps
@@ -1448,12 +1454,12 @@ fun StandardSeekbar(
                     for ((gStart, gEnd) in relevantGaps) {
                         val segmentEnd = gStart.coerceAtMost(rangeEnd)
                         if (segmentEnd > currentPos) {
-                            drawSegment(currentPos, segmentEnd, color)
+                            drawSegment(currentPos, segmentEnd, color, roundEverySegmentEdge)
                         }
                         currentPos = gEnd.coerceAtLeast(currentPos)
                     }
                     if (currentPos < rangeEnd) {
-                        drawSegment(currentPos, rangeEnd, color)
+                        drawSegment(currentPos, rangeEnd, color, roundEverySegmentEdge)
                     }
                 }
                 
@@ -1476,7 +1482,15 @@ fun StandardSeekbar(
                     // 2. Buffered range ahead of current position
                     val bufferRangeStart = maxOf(playedPx, thumbGapEnd)
                     if (bufferPx > bufferRangeStart) {
-                        drawRangeWithGaps(bufferRangeStart, bufferPx, chapterGaps, primaryColor.copy(alpha = 0.55f))
+                        // Keep the buffered-to-unbuffered transition flush. Rounded
+                        // internal ends expose the darker base track as a false end cap.
+                        drawRangeWithGaps(
+                            bufferRangeStart,
+                            bufferPx,
+                            chapterGaps,
+                            primaryColor.copy(alpha = 0.55f),
+                            roundEverySegmentEdge = false,
+                        )
                     }
                     
                     // 3. Played
