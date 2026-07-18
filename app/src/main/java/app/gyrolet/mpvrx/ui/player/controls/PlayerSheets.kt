@@ -261,13 +261,15 @@ fun PlayerSheets(
     }
 
     Sheets.More -> {
+      val anime4KUiState by viewModel.anime4KUiState.composeCollectAsState()
       MoreSheet(
         remainingTime = sleepTimerTimeRemaining,
         onStartTimer = onStartSleepTimer,
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
         onEnterLuaScriptsPanel = { onOpenPanel(Panels.LuaScripts) },
-        onAnime4KChanged = viewModel::restartHdrScreenOutputAndAmbientIfActive,
+        anime4KUiState = anime4KUiState,
+        onAnime4KModeSelected = viewModel::selectAnime4KMode,
       )
     }
 

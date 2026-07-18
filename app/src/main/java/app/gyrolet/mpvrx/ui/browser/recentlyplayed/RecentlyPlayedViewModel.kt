@@ -36,10 +36,6 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
   private val _recentItems = MutableStateFlow<List<RecentlyPlayedItem>>(emptyList())
   val recentItems: StateFlow<List<RecentlyPlayedItem>> = _recentItems.asStateFlow()
 
-  // Keep for backward compatibility
-  private val _recentVideos = MutableStateFlow<List<Video>>(emptyList())
-  val recentVideos: StateFlow<List<Video>> = _recentVideos.asStateFlow()
-
   private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -154,13 +150,9 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
       val sortedItems = items.sortedByDescending { it.timestamp }
       _recentItems.value = sortedItems
 
-      // Keep backward compatibility
-      val videos = sortedItems.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video }
-      _recentVideos.value = videos
     } catch (e: Exception) {
       Log.e("RecentlyPlayedViewModel", "Error loading recent videos", e)
       _recentItems.value = emptyList()
-      _recentVideos.value = emptyList()
     } finally {
       _isLoading.value = false
     }

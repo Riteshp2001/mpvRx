@@ -234,7 +234,7 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
-  implementation("com.llamatik:library:1.4.0")
+  implementation(libs.llamatik)
   implementation(libs.androidx.profileinstaller)
   implementation(libs.google.cast.framework)
   

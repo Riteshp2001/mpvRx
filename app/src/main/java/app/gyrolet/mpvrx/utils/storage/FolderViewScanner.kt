@@ -8,7 +8,6 @@ import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.database.dao.DirectoryScanDao
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.File

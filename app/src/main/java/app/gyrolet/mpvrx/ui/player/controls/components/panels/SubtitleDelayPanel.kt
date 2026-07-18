@@ -50,7 +50,6 @@ import app.gyrolet.mpvrx.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
-import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 @Composable

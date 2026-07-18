@@ -1,4 +1,4 @@
-package app.gyrolet.mpvrx.ui.browser.networkstreaming.proxy
+package app.gyrolet.mpvrx.data.network.proxy
 
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver

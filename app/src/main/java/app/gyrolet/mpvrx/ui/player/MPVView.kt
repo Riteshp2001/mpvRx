@@ -15,6 +15,10 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KShaderChain
+import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KStabilityOptions
+import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
+import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.ui.player.PlayerActivity.Companion.TAG
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager

@@ -10,7 +10,7 @@ import android.util.LruCache
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.preferences.ThumbnailMode
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.proxy.NetworkStreamingProxy
+import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import `is`.xyz.mpv.FastThumbnails
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred

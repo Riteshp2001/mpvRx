@@ -44,10 +44,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
-import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -60,11 +59,8 @@ fun AddToPlaylistDialog(
   onSuccess: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val repository = koinInject<PlaylistRepository>()
-  val playlistsFromDb by repository.observeAllPlaylists().collectAsState(initial = emptyList())
-  val playlists = remember(playlistsFromDb) {
-    playlistsFromDb.sortedBy { it.name.lowercase() }
-  }
+  val viewModel: AddToPlaylistViewModel = viewModel()
+  val playlistOptions by viewModel.playlistOptions.collectAsState()
   val scope = rememberCoroutineScope()
   var showCreateDialog by remember { mutableStateOf(false) }
   val context = LocalContext.current
@@ -76,11 +72,7 @@ fun AddToPlaylistDialog(
       onDismiss = { showCreateDialog = false },
       onConfirm = { name ->
         scope.launch {
-          val playlistId = repository.createPlaylist(name)
-          val items = videos.map { video ->
-            video.path to video.displayName
-          }
-          repository.addItemsToPlaylist(playlistId.toInt(), items)
+          viewModel.createAndAdd(name, videos)
           val message = if (videos.size == 1) {
             "Video added to \"$name\""
           } else {
@@ -140,7 +132,7 @@ fun AddToPlaylistDialog(
         }
 
         // Existing playlists
-        if (playlists.isNotEmpty()) {
+        if (playlistOptions.isNotEmpty()) {
           Text(
             text = "Existing Playlists",
             style = MaterialTheme.typography.labelLarge,
@@ -153,20 +145,17 @@ fun AddToPlaylistDialog(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 4.dp),
           ) {
-            items(playlists, key = { it.id }) { playlist ->
+            items(playlistOptions, key = { it.playlist.id }) { option ->
               PlaylistItemCard(
-                playlist = playlist,
-                repository = repository,
+                playlist = option.playlist,
+                itemCount = option.itemCount,
                 onClick = {
                   scope.launch {
-                    val items = videos.map { video ->
-                      video.path to video.displayName
-                    }
-                    repository.addItemsToPlaylist(playlist.id, items)
+                    viewModel.addToPlaylist(option.playlist.id, videos)
                     val message = if (videos.size == 1) {
-                      "Video added to \"${playlist.name}\""
+                      "Video added to \"${option.playlist.name}\""
                     } else {
-                      "${videos.size} videos added to \"${playlist.name}\""
+                      "${videos.size} videos added to \"${option.playlist.name}\""
                     }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                   }
@@ -212,11 +201,9 @@ fun AddToPlaylistDialog(
 @Composable
 private fun PlaylistItemCard(
   playlist: PlaylistEntity,
-  repository: PlaylistRepository,
+  itemCount: Int,
   onClick: () -> Unit,
 ) {
-  val itemCount by repository.observePlaylistItemCount(playlist.id).collectAsState(initial = 0)
-
   Card(
     modifier = Modifier
       .fillMaxWidth()

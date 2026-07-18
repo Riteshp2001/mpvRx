@@ -2,7 +2,7 @@ package app.gyrolet.mpvrx.utils.media
 
 import android.util.Log
 import app.gyrolet.mpvrx.repository.NetworkRepository
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.proxy.NetworkStreamingProxy
+import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

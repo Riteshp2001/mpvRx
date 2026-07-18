@@ -1,9 +1,9 @@
-package app.gyrolet.mpvrx.ui.browser.networkstreaming.proxy
+package app.gyrolet.mpvrx.data.network.proxy
 
 import android.util.Log
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.NetworkClient
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.NetworkClientFactory
+import app.gyrolet.mpvrx.data.network.client.NetworkClient
+import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2ShareAccess
@@ -304,15 +304,15 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
         }
 
         when (streamInfo.client) {
-          is app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.SmbClient -> {
+          is app.gyrolet.mpvrx.data.network.client.SmbClient -> {
             getFileSizeSMB(streamInfo)
           }
 
-          is app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.FtpClient -> {
+          is app.gyrolet.mpvrx.data.network.client.FtpClient -> {
             getFileSizeFTP(streamInfo)
           }
 
-          is app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.WebDavClient -> {
+          is app.gyrolet.mpvrx.data.network.client.WebDavClient -> {
             val webDavClient = streamInfo.client
             if (!webDavClient.isConnected()) {
               webDavClient.connect().getOrThrow()
@@ -326,7 +326,7 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
               streamInfo.client.connect().getOrThrow()
             }
             val ftpClient =
-              streamInfo.client as? app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.FtpClient
+              streamInfo.client as? app.gyrolet.mpvrx.data.network.client.FtpClient
             val sizeResult = ftpClient?.getFileSize(streamInfo.filePath)
             sizeResult?.getOrNull() ?: -1L
           }
