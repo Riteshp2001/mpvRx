@@ -42,6 +42,7 @@ class PlayerPreferences(
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
   val useThumbFastSeekPreview = preferenceStore.getBoolean("use_thumbfast_seek_preview", true)
   val showBufferedRange = preferenceStore.getBoolean("show_buffered_range", true)
+  val showChapterIndicators = preferenceStore.getBoolean("show_chapter_indicators", true)
 
   val brightnessGesture = preferenceStore.getBoolean("gestures_brightness", true)
   val volumeGesture = preferenceStore.getBoolean("volume_brightness", true)

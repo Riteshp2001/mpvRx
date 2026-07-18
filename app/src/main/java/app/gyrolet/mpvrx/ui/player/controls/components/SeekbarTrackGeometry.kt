@@ -1,42 +1,51 @@
 package app.gyrolet.mpvrx.ui.player.controls.components
 
-internal data class SeekbarSegmentCornerRadii(
-  val left: Float,
-  val right: Float,
+internal data class SeekbarTrackSegment(
+  val start: Float,
+  val end: Float,
 )
 
 /**
- * Resolves the independent radii for a track segment.
- *
- * Thick seekbars use pill-shaped chapter segments, while standard seekbars keep
- * chapter boundaries square and only round the track and thumb-gap boundaries.
+ * Splits a track around chapter boundaries and any extra visual gaps, merging
+ * overlapping gaps so every seekbar style gets identical chapter geometry.
  */
-internal fun seekbarSegmentCornerRadii(
-  startX: Float,
-  endX: Float,
+internal fun seekbarTrackSegments(
+  chapterStarts: List<Float>,
+  duration: Float,
   trackWidth: Float,
-  outerRadius: Float,
-  innerRadius: Float,
-  thumbGapStart: Float,
-  thumbGapEnd: Float,
-  roundEverySegmentEdge: Boolean,
-): SeekbarSegmentCornerRadii {
-  val tolerance = 0.5f
-  val isOuterLeft = startX <= tolerance
-  val isOuterRight = endX >= trackWidth - tolerance
-  val isThumbGapLeft = kotlin.math.abs(startX - thumbGapEnd) < tolerance
-  val isThumbGapRight = kotlin.math.abs(endX - thumbGapStart) < tolerance
+  chapterGapHalf: Float,
+  extraGaps: List<Pair<Float, Float>> = emptyList(),
+): List<SeekbarTrackSegment> {
+  if (trackWidth <= 0f) return emptyList()
 
-  return SeekbarSegmentCornerRadii(
-    left = when {
-      roundEverySegmentEdge || isOuterLeft -> outerRadius
-      isThumbGapLeft -> innerRadius
-      else -> 0f
-    },
-    right = when {
-      roundEverySegmentEdge || isOuterRight -> outerRadius
-      isThumbGapRight -> innerRadius
-      else -> 0f
-    },
-  )
+  val gaps = buildList {
+    if (duration > 0f) {
+      chapterStarts.forEach { chapterStart ->
+        if (!chapterStart.isFinite()) return@forEach
+        val center = (chapterStart / duration).coerceIn(0f, 1f) * trackWidth
+        if (center > chapterGapHalf && center < trackWidth - chapterGapHalf) {
+          add(center - chapterGapHalf to center + chapterGapHalf)
+        }
+      }
+    }
+    extraGaps.forEach { (start, end) ->
+      val safeStart = start.coerceIn(0f, trackWidth)
+      val safeEnd = end.coerceIn(0f, trackWidth)
+      if (safeEnd > safeStart) add(safeStart to safeEnd)
+    }
+  }.sortedBy(Pair<Float, Float>::first)
+
+  val segments = mutableListOf<SeekbarTrackSegment>()
+  var cursor = 0f
+  gaps.forEach { (gapStart, gapEnd) ->
+    if (gapStart > cursor) {
+      segments += SeekbarTrackSegment(cursor, gapStart)
+    }
+    cursor = maxOf(cursor, gapEnd)
+  }
+  if (cursor < trackWidth) {
+    segments += SeekbarTrackSegment(cursor, trackWidth)
+  }
+
+  return segments
 }

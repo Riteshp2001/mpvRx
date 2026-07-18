@@ -116,6 +116,8 @@
   <string name="pref_player_autoplay_after_screen_unlock_summary_disabled">إبقاء الفيديو متوقفاً مؤقتاً بعد فتح قفل الشاشة</string>
   <string name="pref_player_show_buffered_range_title">إظهار نطاق التخزين المؤقت على شريط التقديم</string>
   <string name="pref_player_show_buffered_range_summary">إظهار مدى التخزين المؤقت عبر الإنترنت أمام مؤشر التشغيل على شريط التقديم.</string>
+  <string name="pref_player_show_chapter_indicators_title">إظهار مؤشرات الفصول على شريط التقديم</string>
+  <string name="pref_player_show_chapter_indicators_summary">فصل الفصول بصرياً على امتداد شريط التقديم.</string>
   <string name="pref_show_navigation_bar_title">إظهار شريط التنقّل مع عناصر التحكم</string>
   <!-- Gesture Preferences Hardcoded -->
   <string name="pref_double_tap_seek_area_width_title">عرض منطقة النقر المزدوج للتقديم</string>

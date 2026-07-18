@@ -290,6 +290,21 @@ object PlayerPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              val showChapterIndicators by preferences.showChapterIndicators.collectAsState()
+              SwitchPreference(
+                value = showChapterIndicators,
+                onValueChange = preferences.showChapterIndicators::set,
+                title = { Text(stringResource(R.string.pref_player_show_chapter_indicators_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_player_show_chapter_indicators_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               val usePreciseSeeking by preferences.usePreciseSeeking.collectAsState()
               SwitchPreference(
                 value = usePreciseSeeking,

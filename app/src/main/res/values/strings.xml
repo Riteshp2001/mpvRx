@@ -116,6 +116,8 @@
   <string name="pref_player_autoplay_after_screen_unlock_summary_disabled">Keep video paused after the screen is unlocked</string>
   <string name="pref_player_show_buffered_range_title">Show buffered range on seek bar</string>
   <string name="pref_player_show_buffered_range_summary">Display the online buffer ahead of the playhead on the seek bar.</string>
+  <string name="pref_player_show_chapter_indicators_title">Show chapter indicators on seek bar</string>
+  <string name="pref_player_show_chapter_indicators_summary">Separate chapters visually along the seek bar.</string>
   <string name="pref_show_navigation_bar_title">Show navigation bar with controls</string>
   <!-- Gesture Preferences Hardcoded -->
   <string name="pref_double_tap_seek_area_width_title">Double Tap Seek Area Width</string>

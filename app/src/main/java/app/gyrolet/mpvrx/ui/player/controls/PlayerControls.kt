@@ -222,6 +222,7 @@ fun PlayerControls(
   val showDoubleTapOvals by playerPreferences.showDoubleTapOvals.collectAsState()
   val showSeekTime by playerPreferences.showSeekTimeWhileSeeking.collectAsState()
   val showBufferedRange by playerPreferences.showBufferedRange.collectAsState()
+  val showChapterIndicators by playerPreferences.showChapterIndicators.collectAsState()
   val useThumbFastSeekPreview by playerPreferences.useThumbFastSeekPreview.collectAsState()
   val safeAreaWindow by playerPreferences.safeAreaWindow.collectAsState()
   val safeAreaInsetModifier =
@@ -1344,7 +1345,9 @@ fun PlayerControls(
             }
           // Memoize the immutable copies so they are not reallocated on every position
           // tick (this scope recomposes ~20x/sec while scrubbing).
-          val chaptersImmutable = remember(chapters) { chapters.toImmutableList() }
+          val seekbarChapters = remember(chapters, showChapterIndicators) {
+            if (showChapterIndicators) chapters.toImmutableList() else persistentListOf()
+          }
           val skipSegmentsImmutable = remember(skipSegments) { skipSegments.toImmutableList() }
 
           SeekbarWithTimers(
@@ -1375,7 +1378,7 @@ fun PlayerControls(
               playerPreferences.invertDuration.set(!invertDuration)
             },
             positionTimerOnClick = {},
-            chapters = chaptersImmutable,
+            chapters = seekbarChapters,
             skipSegments = skipSegmentsImmutable,
             paused = paused ?: false,
             seekbarStyle = seekbarStyle,
