@@ -20,8 +20,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -94,15 +96,21 @@ fun PermissionDeniedState(
       modifier = Modifier.fillMaxSize(),
       color = MaterialTheme.colorScheme.background,
     ) {
-      Column(
-        modifier =
-          Modifier
-            .fillMaxSize()
-            .padding(32.dp) // Increased padding to prevent icon cutoff
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+      Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
       ) {
+        Column(
+          modifier =
+            Modifier
+              .widthIn(max = 560.dp)
+              .fillMaxWidth()
+              .fillMaxHeight()
+              .padding(32.dp) // Increased padding to prevent icon cutoff
+              .verticalScroll(rememberScrollState()),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.Center,
+        ) {
 
         // Animated Icon with Surface
         Surface(
@@ -228,6 +236,7 @@ fun PermissionDeniedState(
         }
 
         Spacer(modifier = Modifier.weight(1f))
+      }
       }
     }
   }
