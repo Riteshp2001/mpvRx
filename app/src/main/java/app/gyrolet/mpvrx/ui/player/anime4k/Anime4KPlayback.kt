@@ -1,8 +1,9 @@
-package app.gyrolet.mpvrx.ui.player
+package app.gyrolet.mpvrx.ui.player.anime4k
 
 import android.content.Context
 import android.util.Log
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.ui.player.ThermalMonitor
 import `is`.xyz.mpv.MPVLib
 
 internal data class Anime4KSelection(
@@ -52,7 +53,7 @@ internal fun selectRuntimeStableAnime4K(
     val headroom = ThermalMonitor.getHeadroom(context)
     if (ThermalMonitor.shouldThrottleAnime4K(headroom)) {
       Log.i(
-        "Anime4KShaderUtils",
+        "Anime4KPlayback",
         "Thermal headroom low (%.2f) — preemptively downgrading Anime4K to C/Fast".format(headroom),
       )
       return Anime4KSelection(

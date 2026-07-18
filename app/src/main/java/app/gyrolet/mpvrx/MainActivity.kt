@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx
 
+import androidx.compose.animation.core.Spring
+
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -12,7 +14,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -150,7 +151,7 @@ class MainActivity : ComponentActivity() {
 
     val networkStreamingEnabled = appearancePreferences.showNetworkTab.get()
     if (networkStreamingEnabled) {
-      lifecycle.addObserver(app.gyrolet.mpvrx.ui.browser.networkstreaming.proxy.ProxyLifecycleObserver())
+      lifecycle.addObserver(app.gyrolet.mpvrx.data.network.proxy.ProxyLifecycleObserver())
     }
     lifecycle.addObserver(NetworkLifecycleObserver(networkRepository))
 

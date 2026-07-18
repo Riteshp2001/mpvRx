@@ -3,7 +3,6 @@ package app.gyrolet.mpvrx.domain.anime4k
 import android.content.Context
 
 import java.io.File
-import java.io.FileOutputStream
 
 /**
  * Anime4K Manager
@@ -12,34 +11,7 @@ import java.io.FileOutputStream
 class Anime4KManager(private val context: Context) {
 
   companion object {
-    private const val SHADER_DIR = "shaders"
-    private val REQUIRED_SHADER_FILES = listOf(
-      "Anime4K_Clamp_Highlights.glsl",
-      "Anime4K_AutoDownscalePre_x2.glsl",
-      "Anime4K_Restore_CNN_S.glsl",
-      "Anime4K_Restore_CNN_M.glsl",
-      "Anime4K_Restore_CNN_L.glsl",
-      "Anime4K_Restore_CNN_Soft_S.glsl",
-      "Anime4K_Restore_CNN_Soft_M.glsl",
-      "Anime4K_Restore_CNN_Soft_L.glsl",
-      "Anime4K_Upscale_CNN_x2_S.glsl",
-      "Anime4K_Upscale_CNN_x2_M.glsl",
-      "Anime4K_Upscale_CNN_x2_L.glsl",
-      "Anime4K_Upscale_Denoise_CNN_x2_S.glsl",
-      "Anime4K_Upscale_Denoise_CNN_x2_M.glsl",
-      "Anime4K_Upscale_Denoise_CNN_x2_L.glsl",
-      "Anime4K_Darken_Fast.glsl",
-      "Anime4K_Darken_HQ.glsl",
-      "Anime4K_Darken_VeryFast.glsl",
-      "Anime4K_Thin_Fast.glsl",
-      "Anime4K_Thin_HQ.glsl",
-      "Anime4K_Thin_VeryFast.glsl",
-      "Anime4K_Deblur_DoG.glsl",
-      "Anime4K_Deblur_Original.glsl",
-      "Ani4Kv2_ArtCNN_C4F32_i2_CMP.glsl",
-
-    )
-    val BUILT_IN_SHADER_FILES: Set<String> = REQUIRED_SHADER_FILES.toSet()
+    val BUILT_IN_SHADER_FILES: Set<String> = Anime4KShaderCatalog.requiredFileSet
     val DEFAULT_QUALITY = Quality.BALANCED
   }
 
@@ -92,7 +64,7 @@ class Anime4KManager(private val context: Context) {
     
     return try {
       // Create shader directory
-      shaderDir = File(context.filesDir, SHADER_DIR)
+      shaderDir = File(context.filesDir, Anime4KShaderCatalog.INSTALL_DIRECTORY)
       if (!shaderDir!!.exists()) {
         val created = shaderDir!!.mkdirs()
         if (!created) {
@@ -102,21 +74,25 @@ class Anime4KManager(private val context: Context) {
 
       // List and copy all shader files from assets.
       // If any required file is missing/invalid, force-copy it.
-      val shaderFiles = context.assets.list(SHADER_DIR)?.filter { it.endsWith(".glsl") } ?: emptyList()
+      val shaderFiles = context.assets.list(Anime4KShaderCatalog.ASSET_DIRECTORY)
+        ?.filter { it.endsWith(".glsl") }
+        .orEmpty()
       for (fileName in shaderFiles) {
-        val forceCopy = fileName in REQUIRED_SHADER_FILES
+        val forceCopy = fileName in Anime4KShaderCatalog.requiredFileSet
         if (!copyShaderFromAssets(fileName, forceCopy = forceCopy)) {
           return false
         }
       }
 
-      val missingRequiredFiles = REQUIRED_SHADER_FILES.any { required ->
+      val missingRequiredFiles = Anime4KShaderCatalog.requiredFiles.any { required ->
         val file = File(shaderDir, required)
         !file.exists() || file.length() <= 0L
       }
       if (missingRequiredFiles) {
         return false
       }
+
+      removeLegacyFlatShaderCopies()
       
       isInitialized = true
       true
@@ -136,7 +112,7 @@ class Anime4KManager(private val context: Context) {
 
     try {
       // Read the original shader source code from assets
-      val originalContent = context.assets.open("$SHADER_DIR/$fileName").use { input ->
+      val originalContent = context.assets.open("${Anime4KShaderCatalog.ASSET_DIRECTORY}/$fileName").use { input ->
         input.bufferedReader().use { it.readText() }
       }
 
@@ -150,6 +126,13 @@ class Anime4KManager(private val context: Context) {
     } catch (e: Exception) {
       android.util.Log.e("Anime4KManager", "Failed to copy and optimize shader: $fileName", e)
       return false
+    }
+  }
+
+  private fun removeLegacyFlatShaderCopies() {
+    val legacyDirectory = File(context.filesDir, "shaders")
+    Anime4KShaderCatalog.requiredFiles.forEach { fileName ->
+      File(legacyDirectory, fileName).takeIf(File::isFile)?.delete()
     }
   }
 

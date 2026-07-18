@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.browser.playlist
 
+import androidx.compose.ui.focus.FocusRequester
+
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -44,7 +46,6 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,14 +55,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -86,7 +85,6 @@ object PlaylistScreen : Screen {
   @Composable
   override fun Content() {
     val context = LocalContext.current
-    val repository = koinInject<PlaylistRepository>()
     val browserPreferences = koinInject<BrowserPreferences>()
     val backStack = LocalBackStack.current
     val scope = rememberCoroutineScope()
@@ -313,7 +311,9 @@ object PlaylistScreen : Screen {
       PlaylistActionSheet(
         isOpen = showPlaylistActionSheet,
         onDismiss = { showPlaylistActionSheet = false },
-        repository = repository,
+        onCreatePlaylist = viewModel::createPlaylist,
+        onCreateM3UPlaylistFromFile = viewModel::createM3UPlaylistFromFile,
+        onCreateM3UPlaylist = viewModel::createM3UPlaylist,
         context = context,
       )
 
@@ -338,7 +338,7 @@ object PlaylistScreen : Screen {
                 onClick = {
                   if (playlistName.isNotBlank()) {
                     scope.launch {
-                      repository.updatePlaylist(selectedPlaylist.playlist.copy(name = playlistName.trim()))
+                      viewModel.updatePlaylist(selectedPlaylist.playlist.copy(name = playlistName.trim()))
                       showRenameDialog = false
                       selectionManager.clear()
                     }

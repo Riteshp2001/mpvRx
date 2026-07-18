@@ -1,4 +1,4 @@
-package app.gyrolet.mpvrx.ui.browser.networkstreaming.clients
+package app.gyrolet.mpvrx.data.network.client
 
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol

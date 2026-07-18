@@ -9,7 +9,7 @@ import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import android.util.Log
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.NetworkClientFactory
+import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -22,7 +22,7 @@ class NetworkStreamingProvider : ContentProvider() {
     // Cache for active connections
     private val connectionCache = mutableMapOf<Long, NetworkConnection>()
     private val clientCache =
-      mutableMapOf<Long, app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.NetworkClient>()
+      mutableMapOf<Long, app.gyrolet.mpvrx.data.network.client.NetworkClient>()
 
     fun getUri(context: android.content.Context, connectionId: Long, filePath: String): Uri {
       val authority = "${context.packageName}.networkstreaming"

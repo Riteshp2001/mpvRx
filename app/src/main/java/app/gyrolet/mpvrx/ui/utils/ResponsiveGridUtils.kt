@@ -1,9 +1,10 @@
 package app.gyrolet.mpvrx.ui.utils
 
+import androidx.compose.ui.unit.Dp
+
 import androidx.compose.runtime.Composable
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import org.koin.compose.koinInject
