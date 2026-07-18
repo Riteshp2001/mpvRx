@@ -1,6 +1,5 @@
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -74,7 +73,6 @@ import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.update.UpdateViewModel
-import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 
@@ -91,17 +89,6 @@ object AboutScreen : Screen {
     val versionName = packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName ?: BuildConfig.VERSION_NAME
     val buildType = BuildConfig.BUILD_TYPE
     val githubRepoUrl = stringResource(R.string.github_repo_url)
-    val playbackEngineInfo = remember {
-      listOf("Build date" to Utils.VERSIONS.buildDate) +
-        Utils.VERSIONS.dependencies.map { (name, version) -> name to version }
-    }
-    val systemStats = remember { collectSystemStats(context) }
-    val completeDeviceInfo = remember(systemStats) {
-      buildString {
-        appendLine(collectDeviceInfo())
-        systemStats.forEach { (label, value) -> appendLine("$label: $value") }
-      }.trimEnd()
-    }
 
     // Conditionally initialize update feature based on build config
     val updateViewModel: UpdateViewModel? = if (BuildConfig.ENABLE_UPDATE_FEATURE) {
@@ -293,6 +280,40 @@ object AboutScreen : Screen {
                 }
               }
 
+              Spacer(modifier = Modifier.height(20.dp))
+
+              Column(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                      SafeClipboard.copyPlainText(context, "mpvrx_device_info", collectDeviceInfo())
+                    },
+              ) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  modifier = Modifier.padding(bottom = 8.dp),
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.Info,
+                    contentDescription = "Device Info",
+                    modifier = Modifier.size(20.dp),
+                    tint = cs.onPrimaryContainer,
+                  )
+                  Spacer(modifier = Modifier.width(8.dp))
+                  Text(
+                    text = "Device Info",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = cs.onPrimaryContainer,
+                  )
+                }
+                Text(
+                  text = collectDeviceInfo(),
+                  style = MaterialTheme.typography.bodySmall,
+                  color = cs.onPrimaryContainer.copy(alpha = 0.85f),
+                )
+              }
             }
           }
         }
@@ -458,39 +479,11 @@ object AboutScreen : Screen {
           Spacer(Modifier.height(8.dp))
         }
 
-        // Native playback stack from the bundled mpvlib AAR.
-        PreferenceSectionHeader(title = "Playback Engine")
+        // System Stats Section
+        PreferenceSectionHeader(title = "System")
+
+        val systemStats = remember { collectSystemStats(context) }
         PreferenceCard {
-          InfoCardHeader(
-            icon = Icons.RoundedFilled.Memory,
-            title = "Native media stack",
-            subtitle = "Versions embedded in the bundled mpvlib AAR",
-            onCopy = {
-              SafeClipboard.copyPlainText(context, "mpvrx_device_info", completeDeviceInfo)
-            },
-          )
-          PreferenceDivider()
-          playbackEngineInfo.forEachIndexed { index, (label, value) ->
-            SystemStatRow(label = label, value = value)
-            if (index < playbackEngineInfo.lastIndex) PreferenceDivider()
-          }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Device and graphics capabilities.
-        PreferenceSectionHeader(title = "Device Info")
-
-        PreferenceCard {
-          InfoCardHeader(
-            icon = Icons.RoundedFilled.Info,
-            title = "Device details",
-            subtitle = "Hardware, Android, and graphics capabilities",
-            onCopy = {
-              SafeClipboard.copyPlainText(context, "mpvrx_device_info", completeDeviceInfo)
-            },
-          )
-          PreferenceDivider()
           systemStats.forEachIndexed { index, (label, value) ->
             SystemStatRow(label = label, value = value)
             if (index < systemStats.lastIndex) PreferenceDivider()
@@ -500,56 +493,6 @@ object AboutScreen : Screen {
         Spacer(Modifier.height(12.dp))
       }
     }
-  }
-}
-
-@Composable
-private fun InfoCardHeader(
-  icon: AppIcon,
-  title: String,
-  subtitle: String,
-  onCopy: () -> Unit,
-) {
-  Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .clickable(onClick = onCopy)
-        .padding(horizontal = 16.dp, vertical = 14.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Surface(
-      shape = RoundedCornerShape(14.dp),
-      color = MaterialTheme.colorScheme.secondaryContainer,
-    ) {
-      Icon(
-        imageVector = icon,
-        contentDescription = null,
-        modifier = Modifier.padding(10.dp).size(22.dp),
-        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-      )
-    }
-    Spacer(Modifier.width(12.dp))
-    Column(modifier = Modifier.weight(1f)) {
-      Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface,
-      )
-      Spacer(Modifier.height(2.dp))
-      Text(
-        text = subtitle,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    }
-    Icon(
-      imageVector = Icons.RoundedFilled.ContentCopy,
-      contentDescription = "Copy device info",
-      modifier = Modifier.size(20.dp),
-      tint = MaterialTheme.colorScheme.primary,
-    )
   }
 }
 
