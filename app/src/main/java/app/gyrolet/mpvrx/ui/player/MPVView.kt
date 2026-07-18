@@ -381,13 +381,12 @@ class MPVView(
     // Auto-detect font provider (system fonts, embedded fonts, etc.)
     MPVLib.setOptionString("sub-font-provider", "auto")
 
-    // Delay and speed for both primary and secondary
+    // Delay and speed for primary subtitles. Avoid unsupported secondary-sub-*
+    // startup options on Android builds where they are absent.
     val subDelay = (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString()
     val subSpeed = subtitlesPreferences.defaultSubSpeed.get().toString()
     MPVLib.setOptionString("sub-delay", subDelay)
     MPVLib.setOptionString("sub-speed", subSpeed)
-    MPVLib.setOptionString("secondary-sub-delay", subDelay)
-    MPVLib.setOptionString("secondary-sub-speed", subSpeed)
 
     val preferredFont = subtitlesPreferences.font.get()
     if (preferredFont.isNotBlank()) {
@@ -398,10 +397,8 @@ class MPVView(
     if (subtitlesPreferences.overrideAssSubs.get()) {
       MPVLib.setOptionString("sub-ass-override", "force")
       MPVLib.setOptionString("sub-ass-justify", "yes")
-      MPVLib.setOptionString("secondary-sub-ass-override", "force")
     } else {
       MPVLib.setOptionString("sub-ass-override", "no")
-      MPVLib.setOptionString("secondary-sub-ass-override", "no")
     }
 
     // Typography and styling for both primary and secondary
@@ -417,32 +414,28 @@ class MPVView(
     val borderStyle = subtitlesPreferences.borderStyle.get().value
     val shadowOffset = subtitlesPreferences.shadowOffset.get().toString()
     val subPos = clampSubtitlePosition(subtitlesPreferences.subPos.get())
-    val w = width.takeIf { it > 0 }?.toFloat() ?: context.resources.displayMetrics.widthPixels.toFloat()
-    val h = height.takeIf { it > 0 }?.toFloat() ?: context.resources.displayMetrics.heightPixels.toFloat()
-    val secondarySubPos = calculateSecondarySubtitlePosition(subPos, w, h)
     val subScale = subtitlesPreferences.subScale.get().toString()
 
     val scaleByWindow = if (subtitlesPreferences.scaleByWindow.get()) "yes" else "no"
     val blendMode = if (subtitlesPreferences.blendSubtitlesWithVideo.get() && playerPreferences.isAmbientEnabled.get()) "video" else "no"
     MPVLib.setOptionString("blend-subtitles", blendMode)
 
-    for ((prefix, pos) in listOf("sub-" to subPos.toString(), "secondary-sub-" to secondarySubPos.toString())) {
-      MPVLib.setOptionString("${prefix}font-size", fontSize)
-      MPVLib.setOptionString("${prefix}bold", bold)
-      MPVLib.setOptionString("${prefix}italic", italic)
-      MPVLib.setOptionString("${prefix}justify", justify)
-      MPVLib.setOptionString("${prefix}color", textColor)
-      MPVLib.setOptionString("${prefix}back-color", backgroundColor)
-      MPVLib.setOptionString("${prefix}border-color", borderColor)
-      MPVLib.setOptionString("${prefix}shadow-color", shadowColor)
-      MPVLib.setOptionString("${prefix}border-size", borderSize)
-      MPVLib.setOptionString("${prefix}border-style", borderStyle)
-      MPVLib.setOptionString("${prefix}shadow-offset", shadowOffset)
-      MPVLib.setOptionString("${prefix}scale", subScale)
-      MPVLib.setOptionString("${prefix}pos", pos)
-      MPVLib.setOptionString("${prefix}scale-by-window", scaleByWindow)
-      MPVLib.setOptionString("${prefix}use-margins", scaleByWindow)
-    }
+    val prefix = "sub-"
+    MPVLib.setOptionString("${prefix}font-size", fontSize)
+    MPVLib.setOptionString("${prefix}bold", bold)
+    MPVLib.setOptionString("${prefix}italic", italic)
+    MPVLib.setOptionString("${prefix}justify", justify)
+    MPVLib.setOptionString("${prefix}color", textColor)
+    MPVLib.setOptionString("${prefix}back-color", backgroundColor)
+    MPVLib.setOptionString("${prefix}border-color", borderColor)
+    MPVLib.setOptionString("${prefix}shadow-color", shadowColor)
+    MPVLib.setOptionString("${prefix}border-size", borderSize)
+    MPVLib.setOptionString("${prefix}border-style", borderStyle)
+    MPVLib.setOptionString("${prefix}shadow-offset", shadowOffset)
+    MPVLib.setOptionString("${prefix}scale", subScale)
+    MPVLib.setOptionString("${prefix}pos", subPos.toString())
+    MPVLib.setOptionString("${prefix}scale-by-window", scaleByWindow)
+    MPVLib.setOptionString("${prefix}use-margins", scaleByWindow)
 
   }
 

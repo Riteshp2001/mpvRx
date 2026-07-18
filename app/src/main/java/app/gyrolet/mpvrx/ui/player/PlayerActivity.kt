@@ -95,6 +95,7 @@ import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -114,6 +115,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.Executors
 
 private enum class BackgroundPlaybackStartResult {
   Started,
@@ -217,7 +219,7 @@ class PlayerActivity :
    * Track selector for automatic audio/subtitle selection
    */
   private val trackSelector: TrackSelector by lazy {
-    TrackSelector(audioPreferences, subtitlesPreferences)
+    TrackSelector(audioPreferences, subtitlesPreferences, mpvDispatcher)
   }
 
   // ==================== Views ====================
@@ -351,8 +353,12 @@ class PlayerActivity :
   private var lastBackgroundThumbnailKey: String? = null
   private var lastBackgroundThumbnail: Bitmap? = null
   private var currentPlayableUri: String? = null // Store current URI for notification re-entry
-  private val playbackRenderDispatcher = Dispatchers.Main
-  private val mediaLoadDispatcher = Dispatchers.Default.limitedParallelism(1)
+  private val mpvDispatcher =
+    Executors.newSingleThreadExecutor { runnable ->
+      Thread(runnable, "MPV-Control-Thread")
+    }.asCoroutineDispatcher()
+  private val playbackRenderDispatcher = mpvDispatcher
+  private val mediaLoadDispatcher = mpvDispatcher
 
   // ==================== Background Playback ====================
 
@@ -530,7 +536,6 @@ class PlayerActivity :
       releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
     }
     setupMPV()
-    viewModel.onMpvCoreInitialized()
     MediaPlaybackService.createNotificationChannel(this)
     setupAudio()
     setupBackPressHandler()
@@ -1047,6 +1052,7 @@ class PlayerActivity :
       }
 
       cleanupMPV(keepBackgroundPlaybackAlive)
+      mpvDispatcher.close()
       if (!keepBackgroundPlaybackAlive) {
         cleanupAudio()
       }
@@ -1526,16 +1532,23 @@ class PlayerActivity :
       }
     }
 
-    // NOW initialize MPV - it will find and load the scripts we just copied
-    initializePlayerWithRendererFallback()
-    runCatching { MPVLib.setThumbnailJavaVM(applicationContext) }
-    mpvInitialized = true
-    Log.d(TAG, "MPV initialized")
+    // NOW initialize MPV on the serialized MPV control thread. It will find and load
+    // the scripts we just copied without blocking the Android main/UI thread.
+    lifecycleScope.launch(mpvDispatcher) {
+      initializePlayerWithRendererFallback()
+      runCatching { MPVLib.setThumbnailJavaVM(applicationContext) }
+      mpvInitialized = true
+      Log.d(TAG, "MPV initialized")
 
-    // Add observer after initialization
-    MPVLib.addObserver(playerObserver)
+      // Add observer after initialization. All subsequent synchronous MPV startup
+      // commands are queued behind this job on the same dispatcher.
+      MPVLib.addObserver(playerObserver)
 
-    scheduleDeferredSubtitleFontsSync()
+      withContext(Dispatchers.Main) {
+        viewModel.onMpvCoreInitialized()
+        scheduleDeferredSubtitleFontsSync()
+      }
+    }
   }
 
   private fun initializePlayerWithRendererFallback() {
@@ -3002,7 +3015,7 @@ class PlayerActivity :
         if (playWhenFileLoaded) {
           playWhenFileLoaded = false
           requestAudioFocus()
-          MPVLib.setPropertyBoolean("pause", false)
+          lifecycleScope.launch(mpvDispatcher) { MPVLib.setPropertyBoolean("pause", false) }
         }
         viewModel.onVideoLoadCompleted()
         handleFileLoaded()
@@ -3075,9 +3088,11 @@ class PlayerActivity :
 
       // Apply default zoom only if there's no saved state
       if (!hasState) {
-        withContext(Dispatchers.Main) {
-          val zoomPreference = playerPreferences.defaultVideoZoom.get()
+        val zoomPreference = playerPreferences.defaultVideoZoom.get()
+        withContext(mpvDispatcher) {
           MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
+        }
+        withContext(Dispatchers.Main) {
           viewModel.setVideoZoom(zoomPreference)
         }
       }
@@ -3109,7 +3124,7 @@ class PlayerActivity :
       lifecycleScope.launch {
         kotlinx.coroutines.delay(100)
         if (mpvInitialized && !player.isExiting && !isFinishing) {
-          val aspect = player.getVideoOutAspect()
+          val aspect = withContext(mpvDispatcher) { player.getVideoOutAspect() }
           Log.d(TAG, "handleFileLoaded - Video mode, aspect after delay: $aspect")
           if (aspect != null && aspect > 0) {
             setOrientation()
@@ -3125,14 +3140,16 @@ class PlayerActivity :
       if (mpvInitialized && !player.isExiting && !isFinishing) setOrientation()
     }
 
-    applySubtitlePreferences()
-    applyVideoFilterPreferences()
-    viewModel.restoreSavedVideoAspect(showUpdate = false)
+    lifecycleScope.launch(mpvDispatcher) {
+      applySubtitlePreferences()
+      applyVideoFilterPreferences()
+      viewModel.restoreSavedVideoAspect(showUpdate = false)
 
-    if (shouldForceCurrentMediaTitle()) {
-      val preferredTitle = getPreferredCurrentTitle()
-      MPVLib.setPropertyString("force-media-title", preferredTitle)
-      viewModel.setMediaTitle(preferredTitle)
+      if (shouldForceCurrentMediaTitle()) {
+        val preferredTitle = getPreferredCurrentTitle()
+        MPVLib.setPropertyString("force-media-title", preferredTitle)
+        withContext(Dispatchers.Main) { viewModel.setMediaTitle(preferredTitle) }
+      }
     }
 
     viewModel.unpause()
@@ -3346,24 +3363,23 @@ class PlayerActivity :
 
     MPVLib.setPropertyString("blend-subtitles", blendMode)
 
-    for (prefix in listOf("sub-", "secondary-sub-")) {
-      MPVLib.setPropertyString("${prefix}font", font)
-      MPVLib.setPropertyInt("${prefix}font-size", fontSize)
-      MPVLib.setPropertyBoolean("${prefix}bold", bold)
-      MPVLib.setPropertyBoolean("${prefix}italic", italic)
-      MPVLib.setPropertyString("${prefix}justify", justify)
-      MPVLib.setPropertyString("${prefix}border-style", borderStyle)
-      MPVLib.setPropertyInt("${prefix}border-size", borderSize)
-      MPVLib.setPropertyInt("${prefix}outline-size", borderSize)
-      MPVLib.setPropertyInt("${prefix}shadow-offset", shadowOffset)
-      MPVLib.setPropertyString("${prefix}color", textColor)
-      MPVLib.setPropertyString("${prefix}border-color", borderColor)
-      MPVLib.setPropertyString("${prefix}back-color", backgroundColor)
-      MPVLib.setPropertyString("${prefix}shadow-color", shadowColor)
-      MPVLib.setPropertyString("${prefix}scale-by-window", scaleValue)
-      MPVLib.setPropertyString("${prefix}use-margins", scaleValue)
-      MPVLib.setPropertyFloat("${prefix}scale", subScale)
-    }
+    val prefix = "sub-"
+    MPVLib.setPropertyString("${prefix}font", font)
+    MPVLib.setPropertyInt("${prefix}font-size", fontSize)
+    MPVLib.setPropertyBoolean("${prefix}bold", bold)
+    MPVLib.setPropertyBoolean("${prefix}italic", italic)
+    MPVLib.setPropertyString("${prefix}justify", justify)
+    MPVLib.setPropertyString("${prefix}border-style", borderStyle)
+    MPVLib.setPropertyInt("${prefix}border-size", borderSize)
+    MPVLib.setPropertyInt("${prefix}outline-size", borderSize)
+    MPVLib.setPropertyInt("${prefix}shadow-offset", shadowOffset)
+    MPVLib.setPropertyString("${prefix}color", textColor)
+    MPVLib.setPropertyString("${prefix}border-color", borderColor)
+    MPVLib.setPropertyString("${prefix}back-color", backgroundColor)
+    MPVLib.setPropertyString("${prefix}shadow-color", shadowColor)
+    MPVLib.setPropertyString("${prefix}scale-by-window", scaleValue)
+    MPVLib.setPropertyString("${prefix}use-margins", scaleValue)
+    MPVLib.setPropertyFloat("${prefix}scale", subScale)
 
     applySubtitleLayout(
       primaryPosition = subtitlesPreferences.subPos.get(),

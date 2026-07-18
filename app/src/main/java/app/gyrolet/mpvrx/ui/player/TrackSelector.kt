@@ -4,6 +4,7 @@ import android.util.Log
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import `is`.xyz.mpv.MPVLib
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -51,6 +52,7 @@ import kotlinx.coroutines.withContext
 class TrackSelector(
   private val audioPreferences: AudioPreferences,
   private val subtitlesPreferences: SubtitlesPreferences,
+  private val mpvDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
   companion object {
     private const val TAG = "TrackSelector"
@@ -69,7 +71,7 @@ class TrackSelector(
     val image: Boolean
   )
 
-  suspend fun onFileLoaded(hasState: Boolean = false) = withContext(Dispatchers.Main) {
+  suspend fun onFileLoaded(hasState: Boolean = false) = withContext(mpvDispatcher) {
     var attempts = 0
     val maxAttempts = 20
     
