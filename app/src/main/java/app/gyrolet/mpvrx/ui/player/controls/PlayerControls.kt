@@ -1349,6 +1349,7 @@ fun PlayerControls(
 
           SeekbarWithTimers(
             position = displayedSeekbarPosition,
+            committedPosition = precisePosition,
             duration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f,
             onValueChange = {
               isSeeking = true

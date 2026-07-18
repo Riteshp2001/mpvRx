@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.utils.media
 
+import kotlinx.coroutines.flow.Flow
+
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -8,7 +10,6 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.File

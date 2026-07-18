@@ -49,7 +49,9 @@ import kotlinx.coroutines.launch
 fun PlaylistActionSheet(
   isOpen: Boolean,
   onDismiss: () -> Unit,
-  repository: app.gyrolet.mpvrx.database.repository.PlaylistRepository,
+  onCreatePlaylist: suspend (String) -> Long,
+  onCreateM3UPlaylistFromFile: suspend (Uri) -> Result<Long>,
+  onCreateM3UPlaylist: suspend (String, String?) -> Result<Long>,
   context: android.content.Context,
   modifier: Modifier = Modifier,
 ) {
@@ -206,7 +208,7 @@ fun PlaylistActionSheet(
                 if (playlistName.isNotBlank()) {
                   coroutineScope.launch {
                     try {
-                      repository.createPlaylist(playlistName.trim())
+                      onCreatePlaylist(playlistName.trim())
                       android.widget.Toast.makeText(
                         context,
                         "Playlist created successfully",
@@ -248,7 +250,7 @@ fun PlaylistActionSheet(
       uri?.let {
         isLoading = true
         coroutineScope.launch {
-          val result = repository.createM3UPlaylistFromFile(context, it)
+          val result = onCreateM3UPlaylistFromFile(it)
           result.onSuccess {
             android.widget.Toast.makeText(
               context,
@@ -366,7 +368,7 @@ fun PlaylistActionSheet(
                   isLoading = true
                   coroutineScope.launch {
                     val result =
-                      repository.createM3UPlaylist(
+                      onCreateM3UPlaylist(
                         playlistUrl.trim(),
                         playlistUserAgent.trim().takeIf { it.isNotEmpty() },
                       )

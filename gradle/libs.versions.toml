@@ -19,6 +19,7 @@ truetype-parser = "2.1.4"
 accompanist = "0.37.3"
 okhttp = "5.3.2"
 jsoup = "1.22.2"
+llamatik = "1.4.0"
 sardineAndroid = "0.9"
 reorderable = "3.1.0"
 googleMaterial = "1.13.0"
@@ -105,6 +106,7 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 curl-android = { module = "io.github.vvb2060.ndk:curl", version.ref = "curlAndroid" }
 google-cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "googleCast" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+llamatik = { module = "com.llamatik:library", version.ref = "llamatik" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
 [bundles]

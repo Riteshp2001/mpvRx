@@ -1,5 +1,6 @@
 package app.gyrolet.mpvrx.ui.browser.recentlyplayed
 
+
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -42,7 +43,6 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,7 +56,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
@@ -92,12 +91,10 @@ object RecentlyPlayedScreen : Screen {
   override fun Content() {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
-    val playlistRepository = koinInject<PlaylistRepository>()
     val viewModel: RecentlyPlayedViewModel =
       viewModel(factory = RecentlyPlayedViewModel.factory(context.applicationContext as android.app.Application))
 
     val recentItems by viewModel.recentItems.collectAsState()
-    val recentVideos by viewModel.recentVideos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     val deleteFilesCheckbox = rememberSaveable { mutableStateOf(false) }
@@ -336,7 +333,6 @@ object RecentlyPlayedScreen : Screen {
         else -> {
           RecentItemsContent(
             recentItems = recentItems,
-            playlistRepository = playlistRepository,
             selectionManager = selectionManager,
             onVideoClick = { video ->
               coroutineScope.launch {
@@ -430,7 +426,6 @@ object RecentlyPlayedScreen : Screen {
 @Composable
 private fun RecentItemsContent(
   recentItems: List<RecentlyPlayedItem>,
-  playlistRepository: PlaylistRepository,
   selectionManager: app.gyrolet.mpvrx.ui.browser.selection.SelectionManager<RecentlyPlayedItem, String>,
   onVideoClick: (Video) -> Unit,
   onPlaylistClick: suspend (RecentlyPlayedItem.PlaylistItem) -> Unit,

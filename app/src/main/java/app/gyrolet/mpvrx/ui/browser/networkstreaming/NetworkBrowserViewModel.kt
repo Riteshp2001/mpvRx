@@ -14,7 +14,7 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.repository.NetworkRepository
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.clients.NetworkClientFactory
+import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +43,9 @@ class NetworkBrowserViewModel(
   private val _files = MutableStateFlow<List<NetworkFile>>(emptyList())
   val files: StateFlow<List<NetworkFile>> = _files.asStateFlow()
 
+  private val _connection = MutableStateFlow<NetworkConnection?>(null)
+  val connection: StateFlow<NetworkConnection?> = _connection.asStateFlow()
+
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -63,6 +66,7 @@ class NetworkBrowserViewModel(
       try {
         val connection = repository.getConnectionById(connectionId)
           ?: throw Exception("Connection not found")
+        _connection.value = connection
 
         repository.listFiles(connection, currentPath)
           .onSuccess { fileList ->
@@ -240,7 +244,7 @@ class NetworkBrowserViewModel(
     useProxy: Boolean,
   ): Uri {
     return if (useProxy) {
-      val proxy = app.gyrolet.mpvrx.ui.browser.networkstreaming.proxy.NetworkStreamingProxy.getInstance()
+      val proxy = app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy.getInstance()
       val streamId = buildStableStreamId(file)
       val proxyUrl = proxy.registerStream(
         streamId = streamId,

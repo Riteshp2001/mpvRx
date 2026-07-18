@@ -18,8 +18,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -60,6 +58,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -70,8 +69,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,6 +83,9 @@ import app.gyrolet.mpvrx.ui.player.SkipSegmentType
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
+import dev.vivvvek.seeker.Seeker
+import dev.vivvvek.seeker.SeekerDefaults
+import dev.vivvvek.seeker.rememberSeekerState
 import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -105,17 +107,57 @@ private fun bufferedEndPx(
   trackWidth: Float,
   playedPx: Float,
 ): Float {
-  val bufferedUntil = bufferPosition ?: return playedPx
-  if (bufferedUntil <= 0f || duration <= 0f || trackWidth <= 0f || bufferedUntil.isNaN() || bufferedUntil.isInfinite()) {
+  if (duration <= 0f || trackWidth <= 0f) {
     return playedPx
   }
+  val playedPosition = (playedPx / trackWidth * duration).coerceIn(0f, duration)
+  val bufferedUntil = normalizedReadAheadValue(bufferPosition, playedPosition, duration)
   return (bufferedUntil / duration * trackWidth).coerceIn(playedPx, trackWidth)
+}
+
+/**
+ * Normalizes mpv's absolute `demuxer-cache-time` endpoint for both the visible
+ * buffered range and Seeker's read-ahead state. The indicator must never trail
+ * the committed playback position or extend beyond the media duration.
+ */
+private fun normalizedReadAheadValue(
+  bufferPosition: Float?,
+  playedPosition: Float,
+  duration: Float,
+): Float {
+  if (duration <= 0f) return 0f
+  val safePlayedPosition = playedPosition.takeIf { it.isFinite() }?.coerceIn(0f, duration) ?: 0f
+  val safeBufferPosition = bufferPosition
+    ?.takeIf { it.isFinite() && it > 0f }
+    ?: safePlayedPosition
+  return safeBufferPosition.coerceIn(safePlayedPosition, duration)
+}
+
+private fun normalizeSeekerSegments(
+  chapters: List<Segment>,
+  duration: Float,
+): List<Segment> {
+  if (duration <= 0f) return emptyList()
+
+  val validChapters = chapters
+    .asSequence()
+    .filter { chapter -> chapter.start.isFinite() && chapter.start in 0f..duration }
+    .sortedBy(Segment::start)
+    .distinctBy(Segment::start)
+    .toList()
+
+  return when {
+    validChapters.isEmpty() -> emptyList()
+    validChapters.first().start == 0f -> validChapters
+    else -> listOf(Segment.Unspecified) + validChapters
+  }
 }
 
 @Composable
 fun SeekbarWithTimers(
   position: Float,
   duration: Float,
+  committedPosition: Float = position,
   onValueChange: (Float) -> Unit,
   onValueChangeFinished: (Float) -> Unit,
   timersInverted: Pair<Boolean, Boolean>,
@@ -165,6 +207,7 @@ fun SeekbarWithTimers(
     ) {
       SeekbarContent(
         position = if (isUserInteracting) userPosition else animatedPosition.value,
+        committedPosition = committedPosition,
         duration = duration,
         chapters = chapters,
         skipSegments = skipSegments,
@@ -226,6 +269,7 @@ fun SeekbarWithTimers(
 
       SeekbarContent(
         position = if (isUserInteracting) userPosition else animatedPosition.value,
+        committedPosition = committedPosition,
         duration = duration,
         chapters = chapters,
         skipSegments = skipSegments,
@@ -261,6 +305,7 @@ fun SeekbarWithTimers(
 @Composable
 private fun SeekbarContent(
   position: Float,
+  committedPosition: Float,
   duration: Float,
   chapters: ImmutableList<Segment>,
   skipSegments: ImmutableList<SkipSegment>,
@@ -280,11 +325,29 @@ private fun SeekbarContent(
   modifier: Modifier = Modifier
 ) {
   val touchAreaHeight = if (isPortrait) 64.dp else 52.dp
+  val seekerState = rememberSeekerState()
+  val seekerInteractionSource = remember { MutableInteractionSource() }
+  val isSeekerPressed by seekerInteractionSource.collectIsPressedAsState()
+  val isSeekerDragged by seekerInteractionSource.collectIsDraggedAsState()
+  val isVisuallyInteracting = isUserInteracting || isSeekerPressed || isSeekerDragged
+  val safeDuration = duration.takeIf { it.isFinite() && it > 0f } ?: 0f
+  val seekerRange = 0f..safeDuration.coerceAtLeast(0.1f)
+  val safeCommittedPosition = committedPosition
+    .takeIf { it.isFinite() }
+    ?.coerceIn(seekerRange)
+    ?: seekerRange.start
+  val safeThumbPosition = position
+    .takeIf { it.isFinite() }
+    ?.coerceIn(seekerRange)
+    ?: safeCommittedPosition
+  val seekerSegments = remember(chapters, safeDuration) {
+    normalizeSeekerSegments(chapters, safeDuration)
+  }
   val overlayTrackHeight =
     when (seekbarStyle) {
       SeekbarStyle.Slim ->
         when {
-          isUserInteracting -> 15.dp
+          isVisuallyInteracting -> 15.dp
           paused -> 6.dp
           else -> 8.dp
         }
@@ -336,65 +399,6 @@ private fun SeekbarContent(
     modifier = modifier,
     contentAlignment = Alignment.Center,
   ) {
-      // Invisible expanded touch area
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(touchAreaHeight)
-          .pointerInput(Unit) {
-            detectTapGestures(
-              onTap = { offset ->
-                val newPosition = (offset.x / size.width) * duration
-                onUserInteractionChange(true)
-                val targetPos = newPosition.coerceIn(0f, duration)
-                latestInteractionPosition = targetPos
-                onUserPositionChange(targetPos)
-                onValueChange(targetPos)
-                scope.launch {
-                  animatedPosition.snapTo(targetPos)
-                  onUserInteractionChange(false)
-                  onValueChangeFinished(targetPos)
-                }
-              }
-            )
-          }
-          .pointerInput(Unit) {
-            detectDragGestures(
-              onDragStart = {
-                latestInteractionPosition = position.coerceIn(0f, duration)
-                onUserInteractionChange(true)
-              },
-              onDragEnd = {
-                val targetPos = latestInteractionPosition.coerceIn(0f, duration)
-                scope.launch {
-                  delay(50)
-                  animatedPosition.snapTo(targetPos)
-                  onUserPositionChange(targetPos)
-                  onValueChangeFinished(targetPos)
-                  onUserInteractionChange(false)
-                }
-              },
-              onDragCancel = {
-                val targetPos = latestInteractionPosition.coerceIn(0f, duration)
-                scope.launch {
-                  delay(50)
-                  animatedPosition.snapTo(targetPos)
-                  onUserPositionChange(targetPos)
-                  onValueChangeFinished(targetPos)
-                  onUserInteractionChange(false)
-                }
-              },
-            ) { change, _ ->
-              change.consume()
-              val newPosition = (change.position.x / size.width) * duration
-              val targetPos = newPosition.coerceIn(0f, duration)
-              latestInteractionPosition = targetPos
-              onUserPositionChange(targetPos)
-              onValueChange(targetPos)
-            }
-          }
-      )
-
       // Visual seekbar (smaller, centered)
       Box(
         modifier = Modifier
@@ -409,23 +413,9 @@ private fun SeekbarContent(
               duration = duration,
               chapters = chapters,
               isPaused = paused,
-              isScrubbing = isUserInteracting,
+              isScrubbing = isVisuallyInteracting,
               seekbarStyle = SeekbarStyle.Standard,
-              onSeek = { newPosition ->
-                onUserInteractionChange(true)
-                latestInteractionPosition = newPosition.coerceIn(0f, duration)
-                onUserPositionChange(newPosition)
-                onValueChange(newPosition)
-              },
-              onSeekFinished = {
-                val targetPos = latestInteractionPosition.coerceIn(0f, duration)
-                scope.launch {
-                  animatedPosition.snapTo(targetPos)
-                  onUserPositionChange(targetPos)
-                  onValueChangeFinished(targetPos)
-                  onUserInteractionChange(false)
-                }
-              },
+              interactionSource = seekerInteractionSource,
               loopStart = loopStart,
               loopEnd = loopEnd,
               bufferDuration = bufferDuration,
@@ -437,7 +427,7 @@ private fun SeekbarContent(
               duration = duration,
               chapters = chapters,
               isPaused = paused,
-              isScrubbing = isUserInteracting,
+              isScrubbing = isVisuallyInteracting,
               useWavySeekbar = true,
               seekbarStyle = SeekbarStyle.Wavy,
               onSeek = { }, // Touch handled by parent
@@ -453,23 +443,9 @@ private fun SeekbarContent(
               duration = duration,
               chapters = chapters,
               isPaused = paused,
-              isScrubbing = isUserInteracting,
+              isScrubbing = isVisuallyInteracting,
               seekbarStyle = SeekbarStyle.Thick,
-              onSeek = { newPosition ->
-                onUserInteractionChange(true)
-                latestInteractionPosition = newPosition.coerceIn(0f, duration)
-                onUserPositionChange(newPosition)
-                onValueChange(newPosition)
-              },
-              onSeekFinished = {
-                val targetPos = latestInteractionPosition.coerceIn(0f, duration)
-                scope.launch {
-                  animatedPosition.snapTo(targetPos)
-                  onUserPositionChange(targetPos)
-                  onValueChangeFinished(targetPos)
-                  onUserInteractionChange(false)
-                }
-              },
+              interactionSource = seekerInteractionSource,
               loopStart = loopStart,
               loopEnd = loopEnd,
               bufferDuration = bufferDuration,
@@ -481,7 +457,7 @@ private fun SeekbarContent(
               duration    = duration,
               chapters    = chapters,
               isPaused    = paused,
-              isScrubbing = isUserInteracting,
+              isScrubbing = isVisuallyInteracting,
               loopStart   = loopStart,
               loopEnd     = loopEnd,
               bufferDuration = bufferDuration,
@@ -525,6 +501,57 @@ private fun SeekbarContent(
           }
         }
       }
+
+      Seeker(
+        state = seekerState,
+        value = safeCommittedPosition,
+        thumbValue = safeThumbPosition,
+        range = seekerRange,
+        progressStartPosition = (safeCommittedPosition / seekerRange.endInclusive).coerceIn(0f, 1f),
+        readAheadValue = normalizedReadAheadValue(
+          bufferPosition = bufferDuration,
+          playedPosition = safeCommittedPosition,
+          duration = safeDuration,
+        ).coerceIn(seekerRange),
+        segments = seekerSegments,
+        enabled = safeDuration > 0f,
+        interactionSource = seekerInteractionSource,
+        colors = SeekerDefaults.seekerColors(
+          progressColor = MaterialTheme.colorScheme.primary,
+          trackColor = MaterialTheme.colorScheme.primary,
+          disabledProgressColor = MaterialTheme.colorScheme.primary,
+          disabledTrackColor = MaterialTheme.colorScheme.primary,
+          thumbColor = MaterialTheme.colorScheme.primary,
+          disabledThumbColor = MaterialTheme.colorScheme.primary,
+          readAheadColor = MaterialTheme.colorScheme.primary,
+        ),
+        dimensions = SeekerDefaults.seekerDimensions(
+          trackHeight = 0.dp,
+          progressHeight = 0.dp,
+          thumbRadius = 0.dp,
+          gap = 0.dp,
+        ),
+        onValueChange = { newPosition ->
+          val targetPosition = newPosition.coerceIn(0f, safeDuration)
+          onUserInteractionChange(true)
+          latestInteractionPosition = targetPosition
+          onUserPositionChange(targetPosition)
+          onValueChange(targetPosition)
+        },
+        onValueChangeFinished = {
+          val targetPosition = latestInteractionPosition.coerceIn(0f, safeDuration)
+          scope.launch {
+            animatedPosition.snapTo(targetPosition)
+            onUserPositionChange(targetPosition)
+            onValueChangeFinished(targetPosition)
+            onUserInteractionChange(false)
+          }
+        },
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(touchAreaHeight)
+          .graphicsLayer(alpha = 0f),
+      )
   }
 }
 
@@ -1269,15 +1296,15 @@ fun StandardSeekbar(
     isScrubbing: Boolean = false,
     useWavySeekbar: Boolean = false,
     seekbarStyle: SeekbarStyle = SeekbarStyle.Standard,
-    onSeek: (Float) -> Unit,
-    onSeekFinished: () -> Unit,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    onSeek: (Float) -> Unit = {},
+    onSeekFinished: () -> Unit = {},
     loopStart: Float? = null,
     loopEnd: Float? = null,
     bufferDuration: Float? = null,
     modifier: Modifier = Modifier,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isDragged by interactionSource.collectIsDraggedAsState()
     val isThumbInteracting = isPressed || isDragged || isScrubbing
@@ -1328,8 +1355,11 @@ fun StandardSeekbar(
         value = position,
         onValueChange = onSeek,
         onValueChangeFinished = onSeekFinished,
+        enabled = false,
         valueRange = 0f..duration.coerceAtLeast(0.1f),
-        modifier = modifier.fillMaxWidth(),
+        // Seeker is the sole input/semantics layer. This Slider only renders the
+        // existing custom visuals, avoiding duplicate gestures and accessibility nodes.
+        modifier = modifier.fillMaxWidth().clearAndSetSemantics { },
         interactionSource = interactionSource,
         track = { sliderState ->
             val disabledAlpha = 0.3f
@@ -1375,23 +1405,18 @@ fun StandardSeekbar(
                     if (endX - startX < 0.5f) return
                     
                     val path = Path()
-                    val isOuterLeft = startX <= 0.5f
-                    val isInnerLeft = kotlin.math.abs(startX - thumbGapEnd) < 0.5f
-                    
-                    val cornerRadiusLeft = when {
-                        isOuterLeft -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
-                        isInnerLeft -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
-                        else -> androidx.compose.ui.geometry.CornerRadius.Zero
-                    }
-
-                    val isOuterRight = endX >= size.width - 0.5f
-                    val isInnerRight = kotlin.math.abs(endX - thumbGapStart) < 0.5f
-
-                    val cornerRadiusRight = when {
-                        isOuterRight -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
-                        isInnerRight -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
-                        else -> androidx.compose.ui.geometry.CornerRadius.Zero
-                    }
+                    val radii = seekbarSegmentCornerRadii(
+                        startX = startX,
+                        endX = endX,
+                        trackWidth = size.width,
+                        outerRadius = outerRadius,
+                        innerRadius = innerRadius,
+                        thumbGapStart = thumbGapStart,
+                        thumbGapEnd = thumbGapEnd,
+                        roundEverySegmentEdge = isThick,
+                    )
+                    val cornerRadiusLeft = CornerRadius(radii.left)
+                    val cornerRadiusRight = CornerRadius(radii.right)
                     
                     path.addRoundRect(
                         androidx.compose.ui.geometry.RoundRect(

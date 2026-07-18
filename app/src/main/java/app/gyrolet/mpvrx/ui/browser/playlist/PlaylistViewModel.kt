@@ -150,5 +150,9 @@ class PlaylistViewModel(
   suspend fun deletePlaylist(playlist: PlaylistEntity) {
     repository.deletePlaylist(playlist)
   }
+
+  suspend fun updatePlaylist(playlist: PlaylistEntity) {
+    repository.updatePlaylist(playlist)
+  }
 }
 

@@ -22,6 +22,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
@@ -75,6 +76,11 @@ import app.gyrolet.mpvrx.ui.preferences.CustomButton
 import app.gyrolet.mpvrx.ui.preferences.CustomButtonScriptLanguage
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
+import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
+import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KShaderChain
+import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KStabilityOptions
+import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
+import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import java.io.File
 import java.security.MessageDigest
 import androidx.core.net.toUri
@@ -148,6 +154,7 @@ class PlayerViewModel(
   private val aiPreferences: app.gyrolet.mpvrx.preferences.AiPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
+  private val anime4kManager: Anime4KManager by inject()
   private val hdrToysManager: HdrToysManager by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
@@ -160,6 +167,41 @@ class PlayerViewModel(
   private val introMarkerCachePrefs by lazy {
     host.context.getSharedPreferences(INTRO_MARKER_CACHE_PREFS, Context.MODE_PRIVATE)
   }
+
+  private val initialAnime4KUiState
+    get() = Anime4KUiState(
+      isEnabled = decoderPreferences.enableAnime4K.get(),
+      selectedMode = decoderPreferences.anime4kMode.get(),
+      usesGpuNext = decoderPreferences.gpuNext.get(),
+      usesVulkan = decoderPreferences.useVulkan.get(),
+    )
+
+  private val anime4KPreferenceState = combine(
+    decoderPreferences.enableAnime4K.changes(),
+    decoderPreferences.anime4kMode.changes(),
+    decoderPreferences.gpuNext.changes(),
+    decoderPreferences.useVulkan.changes(),
+  ) { enabled, mode, gpuNext, useVulkan ->
+    Anime4KUiState(
+      isEnabled = enabled,
+      selectedMode = mode,
+      usesGpuNext = gpuNext,
+      usesVulkan = useVulkan,
+    )
+  }
+
+  val anime4KUiState = anime4KPreferenceState
+    .combine(MPVLib.propInt["video-params/w"]) { state, width ->
+      state.copy(videoWidth = width ?: 0)
+    }
+    .combine(MPVLib.propInt["video-params/h"]) { state, height ->
+      state.copy(videoHeight = height ?: 0)
+    }
+    .stateIn(
+      scope = viewModelScope,
+      started = SharingStarted.WhileSubscribed(5_000),
+      initialValue = initialAnime4KUiState,
+    )
 
   // HTTP bridge for Lua/JS scripts — executes curl_request payloads via native libcurl
   private val scriptCurlBridge = ScriptCurlBridge(scope = viewModelScope)
@@ -4229,6 +4271,47 @@ class PlayerViewModel(
   /** Re-applies the current HDR mode to a newly loaded video. */
   fun refreshHdrScreenOutputForCurrentVideo() {
     applyHdrScreenOutput(_hdrScreenMode.value)
+  }
+
+  fun selectAnime4KMode(mode: Anime4KManager.Mode) {
+    decoderPreferences.anime4kMode.set(mode.name)
+    viewModelScope.launch(Dispatchers.Default) {
+      runCatching {
+        val shouldRefreshShaderStack = if (mode == Anime4KManager.Mode.OFF) {
+          clearAnime4KShaders()
+          true
+        } else {
+          val selection = selectRuntimeStableAnime4K(
+            mode = mode,
+            quality = decoderPreferences.anime4kQuality.get(),
+            context = host.context,
+          )
+          if (selection.mode == Anime4KManager.Mode.OFF) {
+            clearAnime4KShaders()
+            true
+          } else {
+            anime4kManager.setPostFilters(
+              darken = decoderPreferences.anime4kDarken.get(),
+              thin = decoderPreferences.anime4kThin.get(),
+              deblur = decoderPreferences.anime4kDeblur.get(),
+            )
+            applyAnime4KShaderChain(anime4kManager, selection.mode, selection.quality).also { applied ->
+              if (applied) {
+                applyAnime4KStabilityOptions(
+                  useVulkan = MPVLib.getPropertyString("gpu-api") == "vulkan",
+                )
+              }
+            }
+          }
+        }
+
+        if (shouldRefreshShaderStack) {
+          restartHdrScreenOutputAndAmbientIfActive()
+        }
+      }.onFailure { error ->
+        Log.e(TAG, "Failed to apply Anime4K mode ${mode.name}", error)
+      }
+    }
   }
 
   /**

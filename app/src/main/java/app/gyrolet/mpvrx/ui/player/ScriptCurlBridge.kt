@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.player
 
+import kotlinx.serialization.json.JsonPrimitive
+
 import android.util.Log
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.CoroutineScope
@@ -11,7 +13,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.UUID
