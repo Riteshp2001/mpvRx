@@ -48,6 +48,7 @@ import app.gyrolet.mpvrx.ui.player.VideoOpenAnimation
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.preferences.MultiChoiceSegmentedButton
 import app.gyrolet.mpvrx.preferences.ThumbnailMode
+import app.gyrolet.mpvrx.preferences.ThumbnailQuality
 import app.gyrolet.mpvrx.preferences.TreeFlattenDepth
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
@@ -93,6 +94,7 @@ object AppearancePreferencesScreen : Screen {
         var pendingThumbnailMode by remember { mutableStateOf<ThumbnailMode?>(null) }
         var isThemeSectionExpanded by rememberSaveable { mutableStateOf(true) }
         val storedThumbnailMode by browserPreferences.thumbnailMode.collectAsState()
+        val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
         val thumbnailFramePosition by browserPreferences.thumbnailFramePosition.collectAsState()
         val dualPaneForTablet by browserPreferences.dualPaneForTablet.collectAsState()
         val treeFlattenDepth by browserPreferences.treeFlattenDepth.collectAsState()
@@ -491,6 +493,35 @@ object AppearancePreferencesScreen : Screen {
                                                 "${thumbnailMode.displayName} (${thumbnailFramePosition.roundToInt()}%)"
                                             else -> thumbnailMode.displayName
                                         },
+                                        color = MaterialTheme.colorScheme.outline,
+                                    )
+                                },
+                                enabled = showVideoThumbnails,
+                            )
+
+                            PreferenceDivider()
+
+                            ListPreference(
+                                value = thumbnailQuality,
+                                onValueChange = { newQuality ->
+                                    if (newQuality != thumbnailQuality) {
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) {
+                                                thumbnailRepository.clearThumbnailCache()
+                                            }
+                                            browserPreferences.thumbnailQuality.set(newQuality)
+                                        }
+                                    }
+                                },
+                                values = ThumbnailQuality.entries,
+                                valueToText = { AnnotatedString(it.displayName) },
+                                title = { Text(text = stringResource(id = R.string.pref_appearance_thumbnail_quality_title)) },
+                                summary = {
+                                    Text(
+                                        text = stringResource(
+                                            id = R.string.pref_appearance_thumbnail_quality_summary,
+                                            thumbnailQuality.maxSizePx,
+                                        ),
                                         color = MaterialTheme.colorScheme.outline,
                                     )
                                 },

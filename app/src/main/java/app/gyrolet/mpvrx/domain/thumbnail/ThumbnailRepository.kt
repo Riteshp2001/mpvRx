@@ -256,7 +256,7 @@ class ThumbnailRepository(
     video: Video,
     width: Int,
     height: Int,
-  ): String = "${videoBaseKey(video)}|$width|$height|${thumbnailModeKey()}"
+  ): String = "${videoBaseKey(video)}|$width|$height|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
   /**
    * Folder prefetch and a visible card may request different sizes for the same source.
@@ -267,9 +267,13 @@ class ThumbnailRepository(
     key: String,
     video: Video,
   ): Boolean =
-    key.startsWith("${videoBaseKey(video)}|") && key.endsWith("|${thumbnailModeKey()}")
+    key.startsWith("${videoBaseKey(video)}|") &&
+      key.endsWith("|${thumbnailModeKey()}|${thumbnailQualityKey()}")
 
-  fun diskCacheKey(video: Video): String = "video-thumb|${videoBaseKey(video)}|${thumbnailModeKey()}"
+  // Keep extraction-quality changes from reusing smaller legacy images that were
+  // cached without their requested dimensions in the key.
+  fun diskCacheKey(video: Video): String =
+    "video-thumb-v2|${videoBaseKey(video)}|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
   private fun videoBaseKey(video: Video): String {
     if (isNetworkUrl(video.path)) {
@@ -295,7 +299,7 @@ class ThumbnailRepository(
     heightPx: Int,
   ): Bitmap? {
     val mode = browserPreferences.thumbnailMode.get()
-    val dimension = maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(DISK_THUMBNAIL_SIZE)
+    val dimension = maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize())
 
     if (video.isAudio || mode == ThumbnailMode.Smart || mode == ThumbnailMode.EmbeddedThumbnail) {
       generateEmbeddedArtwork(video)?.let { return scaleBitmap(it, widthPx, heightPx) }
@@ -314,7 +318,7 @@ class ThumbnailRepository(
       val retriever = MediaMetadataRetriever()
       try {
         setLocalDataSource(retriever, video)
-        EmbeddedArtworkResolver.decodeEmbeddedArtwork(video.path, retriever)?.scaleToThumbnailMax(DISK_THUMBNAIL_SIZE)
+        EmbeddedArtworkResolver.decodeEmbeddedArtwork(video.path, retriever)?.scaleToThumbnailMax(thumbnailMaxSize())
       } finally {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) retriever.close() else retriever.release()
       }
@@ -421,7 +425,7 @@ class ThumbnailRepository(
       BitmapFactory.decodeFile(
         file.absolutePath,
         BitmapFactory.Options().apply {
-          inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, DISK_THUMBNAIL_SIZE)
+          inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, thumbnailMaxSize())
           inPreferredConfig = Bitmap.Config.RGB_565
         },
       )
@@ -661,8 +665,8 @@ class ThumbnailRepository(
       return@withContext null
     }
 
-    val memKey  = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}"
-    val diskKey = "video-thumb|$path|network|${thumbnailModeKey()}"
+    val memKey  = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}"
+    val diskKey = "video-thumb-v2|$path|network|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
     // Memory cache hit
     synchronized(memoryCache) { memoryCache.get(memKey) }?.let { return@withContext it }
@@ -716,8 +720,8 @@ class ThumbnailRepository(
       return null
     }
 
-    val memKey = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}"
-    val diskKey = "video-thumb|$path|network|${thumbnailModeKey()}"
+    val memKey = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}"
+    val diskKey = "video-thumb-v2|$path|network|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
     // Memory cache hit
     synchronized(memoryCache) { memoryCache.get(memKey) }?.let { return it }
@@ -789,7 +793,7 @@ class ThumbnailRepository(
 
   /** The memory-cache key used by [getThumbnailForNetworkPath]. */
   fun thumbnailKeyForNetworkPath(path: String, widthPx: Int, heightPx: Int): String =
-    "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}"
+    "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
   /**
    * Get a thumbnail for a folder using the first video in the folder.
@@ -823,7 +827,7 @@ class ThumbnailRepository(
     heightPx: Int,
   ): String {
     val md = MessageDigest.getInstance("MD5")
-    md.update("$widthPx|$heightPx|${thumbnailModeKey()}|".toByteArray())
+    md.update("$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}|".toByteArray())
     for (video in videos) {
       md.update(video.path.toByteArray())
       md.update("|".toByteArray())
@@ -838,9 +842,9 @@ class ThumbnailRepository(
   private fun thumbnailModeKey(): String =
     browserPreferences.thumbnailMode.get().thumbnailModeCacheKey(browserPreferences.thumbnailFramePosition.get())
 
-  private companion object {
-    const val DISK_THUMBNAIL_SIZE = 1024
-  }
+  private fun thumbnailQualityKey(): String = browserPreferences.thumbnailQuality.get().name
+
+  private fun thumbnailMaxSize(): Int = browserPreferences.thumbnailQuality.get().maxSizePx
 
   private suspend fun generateFastNetworkThumbnail(
     path: String,
@@ -850,7 +854,7 @@ class ThumbnailRepository(
     FastThumbnails.generateAsync(
       path,
       10.0,
-      maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(DISK_THUMBNAIL_SIZE),
+      maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize()),
       useHwDec = false,
     )
   }.getOrNull()
