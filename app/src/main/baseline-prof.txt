@@ -1,24 +1,50 @@
+HSPLapp/gyrolet/mpvrx/**;->**(**)**
+Lapp/gyrolet/mpvrx/**;
+
 # Jetpack Compose core classes
 Landroidx/compose/runtime/Composer;
+HSPLandroidx/compose/runtime/Composer;->**(**)**
 Landroidx/compose/runtime/ComposerImpl;
+HSPLandroidx/compose/runtime/ComposerImpl;->**(**)**
 Landroidx/compose/runtime/RecomposeScopeImpl;
+HSPLandroidx/compose/runtime/RecomposeScopeImpl;->**(**)**
 Landroidx/compose/runtime/snapshots/Snapshot;
+HSPLandroidx/compose/runtime/snapshots/Snapshot;->**(**)**
 Landroidx/compose/runtime/snapshots/SnapshotKt;
+HSPLandroidx/compose/runtime/snapshots/SnapshotKt;->**(**)**
 
 # Compose UI and layout rendering
 Landroidx/compose/ui/layout/LayoutNode;
+HSPLandroidx/compose/ui/layout/LayoutNode;->**(**)**
 Landroidx/compose/ui/node/LayoutNode;
+HSPLandroidx/compose/ui/node/LayoutNode;->**(**)**
 Landroidx/compose/ui/platform/AndroidComposeView;
+HSPLandroidx/compose/ui/platform/AndroidComposeView;->**(**)**
 Landroidx/compose/ui/platform/WrappedComposition;
+HSPLandroidx/compose/ui/platform/WrappedComposition;->**(**)**
 
 # List scrolling and animations
 Landroidx/compose/foundation/lazy/LazyListState;
+HSPLandroidx/compose/foundation/lazy/LazyListState;->**(**)**
 Landroidx/compose/foundation/lazy/layout/LazyLayoutState;
+HSPLandroidx/compose/foundation/lazy/layout/LazyLayoutState;->**(**)**
 Landroidx/compose/animation/core/Animatable;
+HSPLandroidx/compose/animation/core/Animatable;->**(**)**
 Landroidx/compose/animation/core/AnimationState;
+HSPLandroidx/compose/animation/core/AnimationState;->**(**)**
 
 # MPV player rendering and bridge
 Lis/xyz/mpv/MPVLib;
+HSPLis/xyz/mpv/MPVLib;->**(**)**
 Lis/xyz/mpv/BaseMPVView;
+HSPLis/xyz/mpv/BaseMPVView;->**(**)**
 Lapp/gyrolet/mpvrx/ui/player/MPVView;
+HSPLapp/gyrolet/mpvrx/ui/player/MPVView;->**(**)**
 Lapp/gyrolet/mpvrx/domain/anime4k/Anime4KManager;
+HSPLapp/gyrolet/mpvrx/domain/anime4k/Anime4KManager;->**(**)**
+
+# Ambient files
+Lapp/gyrolet/mpvrx/ui/player/Ambient**;
+HSPLapp/gyrolet/mpvrx/ui/player/Ambient**;->**(**)**
+Lapp/gyrolet/mpvrx/ui/player/controls/components/sheets/Ambient**;
+HSPLapp/gyrolet/mpvrx/ui/player/controls/components/sheets/Ambient**;->**(**)**
