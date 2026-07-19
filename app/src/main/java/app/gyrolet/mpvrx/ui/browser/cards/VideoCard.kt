@@ -94,6 +94,7 @@ fun VideoCard(
   overrideShowResolutionChip: Boolean? = null,
   useFolderNameStyle: Boolean = false,
   allowThumbnailGeneration: Boolean = true,
+  allowThumbnailLoading: Boolean = true,
   uiConfig: VideoCardUiConfig? = null,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -203,7 +204,8 @@ fun VideoCard(
         }
 
         // Update thumbnail when the repository emits that this key became ready (folder prefetch or any other source).
-        LaunchedEffect(thumbnailKey) {
+        LaunchedEffect(thumbnailKey, allowThumbnailLoading) {
+          if (!allowThumbnailLoading) return@LaunchedEffect
           thumbnailRepository.thumbnailReadyKeys
             .filter { key -> thumbnailRepository.isThumbnailKeyForVideo(key, video) }
             .collect {
@@ -215,8 +217,8 @@ fun VideoCard(
         }
 
         // Optional immediate generation (used on screens that don't run folder-wide sequential generation).
-        LaunchedEffect(thumbnailKey, allowThumbnailGeneration, showThumbnails) {
-          if (thumbnail == null && showThumbnails) {
+        LaunchedEffect(thumbnailKey, allowThumbnailGeneration, allowThumbnailLoading, showThumbnails) {
+          if (allowThumbnailLoading && thumbnail == null && showThumbnails) {
             thumbnail =
               withContext(Dispatchers.IO) {
                 if (allowThumbnailGeneration) {
@@ -481,7 +483,8 @@ fun VideoCard(
         }
 
         // Update thumbnail when the repository emits that this key became ready (folder prefetch or any other source).
-        LaunchedEffect(thumbnailKey) {
+        LaunchedEffect(thumbnailKey, allowThumbnailLoading) {
+          if (!allowThumbnailLoading) return@LaunchedEffect
           thumbnailRepository.thumbnailReadyKeys
             .filter { key -> thumbnailRepository.isThumbnailKeyForVideo(key, video) }
             .collect {
@@ -493,8 +496,8 @@ fun VideoCard(
         }
 
         // Optional immediate generation (used on screens that don't run folder-wide sequential generation).
-        LaunchedEffect(thumbnailKey, allowThumbnailGeneration, showThumbnails) {
-          if (thumbnail == null && showThumbnails) {
+        LaunchedEffect(thumbnailKey, allowThumbnailGeneration, allowThumbnailLoading, showThumbnails) {
+          if (allowThumbnailLoading && thumbnail == null && showThumbnails) {
             thumbnail =
               withContext(Dispatchers.IO) {
                 if (allowThumbnailGeneration) {

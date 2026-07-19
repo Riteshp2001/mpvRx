@@ -102,17 +102,33 @@ internal fun resolveDragTargetIndex(
   progress: Float,
   maxScrollIndex: Int,
   totalItemsCount: Int,
+  itemsPerLine: Int = 1,
 ): Int {
   if (totalItemsCount <= 1) return 0
 
   val clampedProgress = progress.coerceIn(0f, 1f)
   val lastIndex = totalItemsCount - 1
-  if (clampedProgress >= 1f) return lastIndex
+  val rawTarget =
+    if (clampedProgress >= 1f) {
+      lastIndex
+    } else {
+      (clampedProgress * maxScrollIndex.coerceAtLeast(1))
+        .toInt()
+        .coerceIn(0, lastIndex)
+    }
+  val safeItemsPerLine = itemsPerLine.coerceAtLeast(1)
 
-  return (clampedProgress * maxScrollIndex.coerceAtLeast(1))
-    .toInt()
-    .coerceIn(0, lastIndex)
+  return rawTarget - (rawTarget % safeItemsPerLine)
 }
+
+internal fun shouldDispatchDragTarget(
+  targetIndex: Int,
+  visibleIndex: Int,
+  lastDispatchedIndex: Int,
+): Boolean =
+  targetIndex >= 0 &&
+    targetIndex != visibleIndex &&
+    targetIndex != lastDispatchedIndex
 
 fun fastScrollGlyph(value: String?): String? {
   val leadingChar =

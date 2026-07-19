@@ -7,6 +7,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * Common helper functions for FAB visibility based on scroll state
@@ -55,26 +57,24 @@ object FabScrollHelper {
         }
         
         // Update FAB visibility based on list scroll direction
-        LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, justChangedStates.intValue) {
-            // Only process scroll events (not state changes) after a brief delay
-            // This prevents the FAB from hiding when switching tabs
-            if (justChangedStates.intValue > 0) {
-                // Update previous values without changing visibility
-                previousListIndex.intValue = listState.firstVisibleItemIndex
-                previousListScrollOffset.intValue = listState.firstVisibleItemScrollOffset
-                return@LaunchedEffect
-            }
-            
-            updateFabVisibility(
-                isFabVisible, 
-                listState.firstVisibleItemIndex,
-                listState.firstVisibleItemScrollOffset,
-                previousListIndex.intValue,
-                previousListScrollOffset.intValue
-            )
-            
-            previousListIndex.intValue = listState.firstVisibleItemIndex
-            previousListScrollOffset.intValue = listState.firstVisibleItemScrollOffset
+        LaunchedEffect(listState, justChangedStates.intValue) {
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                .distinctUntilChanged()
+                .collect { (currentIndex, currentOffset) ->
+                    // Ignore direction changes during a tab/state transition.
+                    if (justChangedStates.intValue == 0) {
+                        updateFabVisibility(
+                            isFabVisible,
+                            currentIndex,
+                            currentOffset,
+                            previousListIndex.intValue,
+                            previousListScrollOffset.intValue
+                        )
+                    }
+
+                    previousListIndex.intValue = currentIndex
+                    previousListScrollOffset.intValue = currentOffset
+                }
         }
         
         // Reset the state change counter after a short delay
@@ -87,25 +87,23 @@ object FabScrollHelper {
         
         // Update FAB visibility based on grid scroll direction (if grid state is provided)
         if (gridState != null) {
-            LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset, justChangedStates.intValue) {
-                // Skip processing during tab changes
-                if (justChangedStates.intValue > 0) {
-                    // Update previous values without changing visibility
-                    previousGridIndex.intValue = gridState.firstVisibleItemIndex
-                    previousGridScrollOffset.intValue = gridState.firstVisibleItemScrollOffset
-                    return@LaunchedEffect
-                }
-                
-                updateFabVisibility(
-                    isFabVisible,
-                    gridState.firstVisibleItemIndex,
-                    gridState.firstVisibleItemScrollOffset,
-                    previousGridIndex.intValue,
-                    previousGridScrollOffset.intValue
-                )
-                
-                previousGridIndex.intValue = gridState.firstVisibleItemIndex
-                previousGridScrollOffset.intValue = gridState.firstVisibleItemScrollOffset
+            LaunchedEffect(gridState, justChangedStates.intValue) {
+                snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+                    .distinctUntilChanged()
+                    .collect { (currentIndex, currentOffset) ->
+                        if (justChangedStates.intValue == 0) {
+                            updateFabVisibility(
+                                isFabVisible,
+                                currentIndex,
+                                currentOffset,
+                                previousGridIndex.intValue,
+                                previousGridScrollOffset.intValue
+                            )
+                        }
+
+                        previousGridIndex.intValue = currentIndex
+                        previousGridScrollOffset.intValue = currentOffset
+                    }
             }
         }
         

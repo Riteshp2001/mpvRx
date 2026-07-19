@@ -252,6 +252,11 @@ class ThumbnailRepository(
     }
   }
 
+  fun cancelFolderThumbnailGeneration(folderId: String) {
+    folderJobs.remove(folderId)?.cancel()
+    folderStates.remove(folderId)
+  }
+
   fun thumbnailKey(
     video: Video,
     width: Int,
