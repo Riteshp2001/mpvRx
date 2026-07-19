@@ -93,6 +93,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val isBalanced = when (ambientMode) {
         AmbientVisualMode.GLOW -> matchesGlowPreset(
@@ -117,6 +118,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val isHQ = when (ambientMode) {
         AmbientVisualMode.GLOW -> matchesGlowPreset(
@@ -141,6 +143,7 @@ fun AmbientSheet(
             vignetteStrength = vignetteStrength,
             opacity = opacity,
         )
+        AmbientVisualMode.YOUTUBE -> false
     }
     val configuration = LocalConfiguration.current
     val customMaxHeight = if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
@@ -184,16 +187,19 @@ fun AmbientSheet(
                 ExpressivePresetButton(
                     label = "Fast",
                     selected = isFast,
+                    enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                     onClick = { viewModel.applyAmbientProfileFast() },
                 )
                 ExpressivePresetButton(
                     label = "Balanced",
                     selected = isBalanced,
+                    enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                     onClick = { viewModel.applyAmbientProfileBalanced() },
                 )
                 ExpressivePresetButton(
                     label = "HQ",
                     selected = isHQ,
+                    enabled = ambientMode != AmbientVisualMode.YOUTUBE,
                     onClick = { viewModel.applyAmbientProfileHighQuality() },
                 )
             }
@@ -431,6 +437,11 @@ fun AmbientSheet(
                     selected = ambientMode == AmbientVisualMode.FRAME_EXTEND,
                     onClick = { viewModel.updateAmbientVisualMode(AmbientVisualMode.FRAME_EXTEND) },
                 )
+                AmbientModeButton(
+                    label = AmbientVisualMode.YOUTUBE.label,
+                    selected = ambientMode == AmbientVisualMode.YOUTUBE,
+                    onClick = { viewModel.updateAmbientVisualMode(AmbientVisualMode.YOUTUBE) },
+                )
             }
 
             if (ambientMode == AmbientVisualMode.FRAME_EXTEND) {
@@ -556,6 +567,7 @@ fun AmbientSheet(
 private fun RowScope.ExpressivePresetButton(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val targetScale = if (selected) 1.02f else 1.0f
@@ -567,6 +579,7 @@ private fun RowScope.ExpressivePresetButton(
 
     FilledTonalButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier
             .weight(1f)
             .graphicsLayer(scaleX = scale, scaleY = scale),
