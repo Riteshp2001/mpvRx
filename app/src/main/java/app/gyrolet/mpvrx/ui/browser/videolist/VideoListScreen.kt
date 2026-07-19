@@ -974,6 +974,8 @@ internal fun VideoListContent(
                       },
                       isGridMode = true,
                       gridColumns = columns,
+                      thumbnailWidthPx = thumbWidthPx,
+                      thumbnailHeightPx = thumbHeightPx,
                       showSubtitleIndicator = showSubtitleIndicator,
                       allowThumbnailGeneration = false,
                       uiConfig = videoCardUiConfig,

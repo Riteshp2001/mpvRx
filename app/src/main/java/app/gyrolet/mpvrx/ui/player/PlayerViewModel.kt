@@ -43,6 +43,7 @@ import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.ParsedMediaInfo
 import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -3761,6 +3762,12 @@ class PlayerViewModel(
         uri
       }
       val path = resolvedUri.toString()
+      val isAudio =
+        path
+          .substringBefore('?')
+          .substringBefore('#')
+          .substringAfterLast('.', "")
+          .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS
       val isCurrentlyPlaying = index == activity.playlistIndex
 
       // Try to get from cache first (synchronized access)
@@ -3777,6 +3784,7 @@ class PlayerViewModel(
         isWatched = isCurrentlyPlaying && currentProgress >= 95f,
         duration = durationStr,
         resolution = resolutionStr,
+        isAudio = isAudio,
       )
     }
   }

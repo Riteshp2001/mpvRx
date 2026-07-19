@@ -87,6 +87,8 @@ fun VideoCard(
   onThumbClick: () -> Unit = {},
   isGridMode: Boolean = false,
   gridColumns: Int = 1,
+  thumbnailWidthPx: Int? = null,
+  thumbnailHeightPx: Int? = null,
   showSubtitleIndicator: Boolean = true,
   overrideShowSizeChip: Boolean? = null,
   overrideShowResolutionChip: Boolean? = null,
@@ -114,6 +116,7 @@ fun VideoCard(
   val maxLines = if (resolvedUiConfig.unlimitedNameLines) Int.MAX_VALUE else 2
 
   val showThumbnails = resolvedUiConfig.showThumbnails
+  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val showFramerateInResolution = resolvedUiConfig.showFramerateInResolution
   val showProgressBar = resolvedUiConfig.showProgressBar
   val showDateChip = resolvedUiConfig.showDateChip
@@ -181,18 +184,22 @@ fun VideoCard(
           horizontalAlignment = horizontalAlignment,
         ) {
         val thumbnailRepository = koinInject<ThumbnailRepository>()
-        val thumbWidthDp = 160.dp
         val aspect = if (video.isAudio) 1f else 16f / 9f
-        val thumbWidthPx = with(LocalDensity.current) { thumbWidthDp.roundToPx() }
-        val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
+        // Screens that know their grid-cell dimensions pass them here. This is
+        // essential for a one-column grid, whose full-width artwork used to be
+        // rendered from a fixed 160 dp thumbnail.
+        val defaultThumbWidthPx = with(LocalDensity.current) { 160.dp.roundToPx() }
+        val resolvedThumbWidthPx = thumbnailWidthPx?.takeIf { it > 0 } ?: defaultThumbWidthPx
+        val resolvedThumbHeightPx = thumbnailHeightPx?.takeIf { it > 0 }
+          ?: (resolvedThumbWidthPx / aspect).roundToInt()
 
         val thumbnailKey =
-          remember(video.id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx) {
-            thumbnailRepository.thumbnailKey(video, thumbWidthPx, thumbHeightPx)
+          remember(video.id, video.dateModified, video.size, resolvedThumbWidthPx, resolvedThumbHeightPx, thumbnailQuality) {
+            thumbnailRepository.thumbnailKey(video, resolvedThumbWidthPx, resolvedThumbHeightPx)
           }
 
         var thumbnail by remember(thumbnailKey) {
-          mutableStateOf(thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx))
+          mutableStateOf(thumbnailRepository.getThumbnailFromMemory(video, resolvedThumbWidthPx, resolvedThumbHeightPx))
         }
 
         // Update thumbnail when the repository emits that this key became ready (folder prefetch or any other source).
@@ -202,7 +209,7 @@ fun VideoCard(
             .collect {
               thumbnail =
                 withContext(Dispatchers.IO) {
-                  thumbnailRepository.getCachedThumbnail(video, thumbWidthPx, thumbHeightPx)
+                  thumbnailRepository.getCachedThumbnail(video, resolvedThumbWidthPx, resolvedThumbHeightPx)
                 }
             }
         }
@@ -213,9 +220,9 @@ fun VideoCard(
             thumbnail =
               withContext(Dispatchers.IO) {
                 if (allowThumbnailGeneration) {
-                  thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+                  thumbnailRepository.getThumbnail(video, resolvedThumbWidthPx, resolvedThumbHeightPx)
                 } else {
-                  thumbnailRepository.getCachedThumbnail(video, thumbWidthPx, thumbHeightPx)
+                  thumbnailRepository.getCachedThumbnail(video, resolvedThumbWidthPx, resolvedThumbHeightPx)
                 }
               }
           }
@@ -464,7 +471,7 @@ fun VideoCard(
         // Load thumbnail with optimized state management
         // Key includes video identity to prevent reloading same thumbnail
         val thumbnailKey =
-          remember(video.id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx) {
+          remember(video.id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx, thumbnailQuality) {
             thumbnailRepository.thumbnailKey(video, thumbWidthPx, thumbHeightPx)
           }
 

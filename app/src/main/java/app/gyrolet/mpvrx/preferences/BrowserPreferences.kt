@@ -48,6 +48,7 @@ class BrowserPreferences(
   // Visibility preferences for video card chips
   val showVideoThumbnails = preferenceStore.getBoolean("show_video_thumbnails", true)
   val thumbnailMode = preferenceStore.getEnum("thumbnail_mode", ThumbnailMode.Smart)
+  val thumbnailQuality = preferenceStore.getEnum("thumbnail_quality", ThumbnailQuality.High)
   val thumbnailFramePosition = preferenceStore.getFloat("thumbnail_frame_position", 33f)
   val showSizeChip = preferenceStore.getBoolean("show_size_chip", true)
   // Metadata-dependent chips (disabled by default for better performance)
@@ -211,6 +212,15 @@ enum class ThumbnailMode {
         FrameAtPosition -> "Frame position"
         EmbeddedThumbnail -> "Embedded thumbnail"
       }
+}
+
+enum class ThumbnailQuality(
+  val maxSizePx: Int,
+  val displayName: String,
+) {
+  Balanced(720, "Balanced (720p)"),
+  High(1080, "High (1080p)"),
+  Ultra(1440, "Ultra (1440p)"),
 }
 
 internal class CoercedPreference(

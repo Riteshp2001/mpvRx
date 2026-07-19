@@ -90,6 +90,13 @@ object SearchablePreferences {
                 screen = AppearancePreferencesScreen,
             ))
             add(SearchablePreference(
+                titleRes = R.string.pref_appearance_thumbnail_quality_title,
+                summaryRes = R.string.pref_appearance_thumbnail_quality_summary,
+                keywords = listOf("thumbnail", "quality", "resolution", "720p", "1080p", "1440p", "storage"),
+                category = "Appearance",
+                screen = AppearancePreferencesScreen,
+            ))
+            add(SearchablePreference(
                 titleRes = R.string.pref_gesture_tap_thumbnail_to_select_title,
                 summaryRes = R.string.pref_gesture_tap_thumbnail_to_select_summary,
                 keywords = listOf("thumbnail", "selection", "select", "tap", "gesture"),

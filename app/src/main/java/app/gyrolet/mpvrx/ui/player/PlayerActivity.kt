@@ -852,10 +852,13 @@ class PlayerActivity :
     binding.controls.setContent {
       MpvrxTheme {
         val isAudioOnly by viewModel.isAudioOnly.collectAsState()
+        val hasAlbumArt by viewModel.hasAlbumArt.collectAsState()
         val audioBlobEnabled by audioPreferences.audioBlobEnabled.collectAsState()
         val paused by MPVLib.propBoolean["pause"].collectAsState()
         Box(modifier = Modifier.fillMaxSize()) {
-          if (isAudioOnly && isCurrentMediaKnownAudio() && audioBlobEnabled) {
+          // Audio-only tracks without artwork otherwise leave the player area blank.
+          // Keep the visualizer enabled by default for that fallback state.
+          if (isAudioOnly && !hasAlbumArt && audioBlobEnabled) {
             BlobOverlay(isPlaying = paused == false)
           }
           PlayerControls(

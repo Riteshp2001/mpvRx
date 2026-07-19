@@ -74,6 +74,7 @@ data class PlaylistItem(
   val path: String = "", // Video path for thumbnail loading
   val duration: String = "", // Duration in formatted string (e.g., "10:30")
   val resolution: String = "", // Resolution (e.g., "1920x1080")
+  val isAudio: Boolean = false,
 )
 
 @Composable
@@ -97,7 +98,7 @@ private fun PlaylistThumbnail(
       sizeFormatted = "",
       dateModified = 0L,
       dateAdded = 0L,
-      mimeType = "video/*",
+      mimeType = if (item.isAudio) "audio/*" else "video/*",
       bucketId = "",
       bucketDisplayName = "",
       width = 0,
@@ -386,7 +387,7 @@ fun PlaylistTrackListItem(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = Icons.RoundedFilled.Videocam,
+          imageVector = if (item.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.Videocam,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
           modifier = Modifier.size(24.dp),
@@ -482,7 +483,7 @@ fun PlaylistTrackListItem(
                 color = if (item.isPlaying) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
-          } else {
+          } else if (!item.isAudio) {
             LoadingChip(width = 60.dp)
           }
         }
@@ -557,7 +558,7 @@ fun PlaylistTrackGridItem(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = Icons.RoundedFilled.Videocam,
+          imageVector = if (item.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.Videocam,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
           modifier = Modifier.size(32.dp),
@@ -684,7 +685,7 @@ fun PlaylistTrackGridItem(
                 color = if (item.isPlaying) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
-          } else {
+          } else if (!item.isAudio) {
             LoadingChip(width = 60.dp)
           }
 
