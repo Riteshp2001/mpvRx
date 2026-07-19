@@ -36,6 +36,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.editor.MpvHelpScreen
 import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
+import app.gyrolet.mpvrx.ui.player.MpvConfigSanitizer
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.coroutines.Dispatchers
@@ -93,7 +94,9 @@ data class ConfigEditorScreen(
           val tree       = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
           val configFile = tree?.findFile(fileName)
           if (configFile != null && configFile.exists()) {
-            context.contentResolver.openInputStream(configFile.uri)?.copyTo(tempFile.outputStream())
+            context.contentResolver.openInputStream(configFile.uri)?.use { input ->
+              tempFile.outputStream().use { output -> input.copyTo(output) }
+            }
             val content = tempFile.readLines().joinToString("\n")
             withContext(Dispatchers.Main) { configText = content }
           }
@@ -105,11 +108,15 @@ data class ConfigEditorScreen(
     fun saveConfig() {
       scope.launch(Dispatchers.IO) {
         try {
+          val validation =
+            if (configType == ConfigType.MPV_CONF) MpvConfigSanitizer.sanitize(configText)
+            else MpvConfigSanitizer.Result(configText, emptyList())
+          val contentToSave = validation.content
           when (configType) {
-            ConfigType.MPV_CONF   -> preferences.mpvConf.set(configText)
-            ConfigType.INPUT_CONF -> preferences.inputConf.set(configText)
+            ConfigType.MPV_CONF   -> preferences.mpvConf.set(contentToSave)
+            ConfigType.INPUT_CONF -> preferences.inputConf.set(contentToSave)
           }
-          File(context.filesDir, fileName).writeText(configText)
+          File(context.filesDir, fileName).writeText(contentToSave)
 
           if (mpvConfStorageLocation.isNotBlank()) {
             val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
@@ -128,14 +135,18 @@ data class ConfigEditorScreen(
               return@launch
             }
             context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
-              out.write(configText.toByteArray())
+              out.write(contentToSave.toByteArray())
               out.flush()
             }
           }
 
           withContext(Dispatchers.Main) {
+            configText = contentToSave
             hasUnsavedChanges = false
-            Toast.makeText(context, "$fileName saved", Toast.LENGTH_SHORT).show()
+            val message =
+              if (validation.warnings.isEmpty()) "$fileName saved"
+              else "$fileName saved; ${validation.warnings.size} incompatible option(s) disabled"
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             backStack.popSafely()
           }
         } catch (e: Exception) {
@@ -178,6 +189,24 @@ data class ConfigEditorScreen(
           }
         },
         actions = {
+          if (configType == ConfigType.MPV_CONF) {
+            IconButton(
+              onClick = {
+                val sanitized = MpvConfigSanitizer.sanitize(configText)
+                configText = sanitized.content
+                hasUnsavedChanges = hasUnsavedChanges || sanitized.warnings.isNotEmpty()
+                val message =
+                  if (sanitized.warnings.isEmpty()) "No known incompatible options found"
+                  else "Disabled ${sanitized.warnings.size} incompatible option(s)"
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+              },
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Clear,
+                contentDescription = "Reset incompatible configuration",
+              )
+            }
+          }
           IconButton(
             onClick = {
               backStack.add(MpvHelpScreen())
