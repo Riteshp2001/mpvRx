@@ -30,6 +30,8 @@ import `is`.xyz.mpv.MPVLib
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.reflect.KProperty
+import android.os.SystemClock
+import android.app.ActivityManager
 
 class MPVView(
   context: Context,
@@ -46,10 +48,14 @@ class MPVView(
   private val hdrToysManager: HdrToysManager by inject()
 
   var isExiting = false
+  var sessionId: Long = 0L
   var forceOpenGlFallback = false
   var isSurfaceReady = false
     private set
   var onSurfaceReady: (() -> Unit)? = null
+  private var activeVo = "gpu"
+  private var lastRequestedFrameRate = 0f
+  private var lastFrameRateRequestAt = 0L
 
   private data class RenderBackendSelection(
     val vo: String,
@@ -127,6 +133,7 @@ class MPVView(
     val backend = selectRenderBackend()
     val useVulkan = backend.gpuApi == "vulkan"
     val hwdecMode = preferredHwdecMode()
+    activeVo = backend.vo
     setVo(backend.vo)
     MPVLib.setOptionString("gpu-api", backend.gpuApi)
     MPVLib.setOptionString("gpu-context", backend.gpuContext)
@@ -147,6 +154,13 @@ class MPVView(
       hwdecMode,
     )
     MPVLib.setOptionString("hwdec-codecs", "all")
+
+    val memoryClassMb =
+      (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).memoryClass
+    val forwardCacheMb = (memoryClassMb / 8).coerceIn(32, 128)
+    val backwardCacheMb = (memoryClassMb / 32).coerceIn(8, 32)
+    MPVLib.setOptionString("demuxer-max-bytes", "${forwardCacheMb}MiB")
+    MPVLib.setOptionString("demuxer-max-back-bytes", "${backwardCacheMb}MiB")
 
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
@@ -241,8 +255,10 @@ class MPVView(
     val cutoutInsets = resolvedInsets?.getInsets(WindowInsetsCompat.Type.displayCutout())
     val horizontalMargin = maxOf(cutoutInsets?.left ?: 0, cutoutInsets?.right ?: 0).coerceAtLeast(16)
     val verticalMargin = (cutoutInsets?.top ?: 0).coerceAtLeast(16)
-    MPVLib.setOptionString("osd-margin-x", horizontalMargin.toString())
-    MPVLib.setOptionString("osd-margin-y", verticalMargin.toString())
+    MpvSessionCoordinator.execute(sessionId, "osd_safe_area") {
+      MPVLib.setOptionString("osd-margin-x", horizontalMargin.toString())
+      MPVLib.setOptionString("osd-margin-y", verticalMargin.toString())
+    }
   }
 
   @Suppress("ReturnCount", "DEPRECATION")
@@ -277,22 +293,31 @@ class MPVView(
 
     val action = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
     mod.add(mapped)
-    MPVLib.command(action, mod.joinToString("+"))
+    MpvSessionCoordinator.execute(sessionId, "key:$action") {
+      MPVLib.commandResult(action, mod.joinToString("+"))
+    }
 
     return true
   }
 
   override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
-    super.surfaceChanged(holder, format, width, height)
-    applyFrameRate()
+    MpvSessionCoordinator.execute(sessionId, "surface_changed") {
+      MPVLib.setPropertyStringResult("android-surface-size", "${width}x$height")
+    }
+    applyFrameRate(lastRequestedFrameRate.toDouble())
   }
 
   override fun surfaceCreated(holder: android.view.SurfaceHolder) {
-    super.surfaceCreated(holder)
     isSurfaceReady = true
-    applyFrameRate()
+    val surface = holder.surface
+    MpvSessionCoordinator.execute(sessionId, "surface_created") {
+      MPVLib.attachSurface(surface)
+      MPVLib.setOptionString("force-window", "yes")
+      MPVLib.setPropertyStringResult("vo", activeVo)
+    }
+    applyFrameRate(lastRequestedFrameRate.toDouble())
     post {
-      if (isSurfaceReady && holder.surface.isValid) {
+      if (isSurfaceReady && surface.isValid && MpvSessionCoordinator.acceptsCallbacks(sessionId)) {
         onSurfaceReady?.invoke()
       }
     }
@@ -300,23 +325,51 @@ class MPVView(
 
   override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {
     isSurfaceReady = false
-    super.surfaceDestroyed(holder)
+    clearFrameRate()
+    MpvSessionCoordinator.execute(sessionId, "surface_destroyed") {
+      MPVLib.setPropertyStringResult("vo", "null")
+      MPVLib.setPropertyStringResult("force-window", "no")
+      MPVLib.detachSurface()
+    }
   }
 
-  private fun applyFrameRate() {
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-      val fps = MPVLib.getPropertyDouble("container-fps") ?: 0.0
-      if (fps > 0.0 && holder?.surface?.isValid == true) {
-        try {
-          holder.surface.setFrameRate(
-            fps.toFloat(),
-            android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE
-          )
-        } catch (e: Exception) {
-          Log.e(TAG, "Failed to set frame rate on surface", e)
-        }
+  fun applyFrameRate(fps: Double) {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R ||
+      !fps.isFinite() ||
+      fps <= 0.0
+    ) return
+    val requested = fps.toFloat()
+    val now = SystemClock.elapsedRealtime()
+    if (kotlin.math.abs(requested - lastRequestedFrameRate) < 0.01f &&
+      now - lastFrameRateRequestAt < FRAME_RATE_DEBOUNCE_MS
+    ) return
+    val surface = holder?.surface ?: return
+    if (!surface.isValid) return
+    try {
+      surface.setFrameRate(requested, android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+      lastRequestedFrameRate = requested
+      lastFrameRateRequestAt = now
+    } catch (error: IllegalArgumentException) {
+      Log.w(TAG, "Rejected invalid frame rate: $requested", error)
+    } catch (error: IllegalStateException) {
+      Log.w(TAG, "Surface became invalid while requesting frame rate", error)
+    }
+  }
+
+  fun clearFrameRate() {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return
+    val surface = holder?.surface ?: return
+    if (surface.isValid) {
+      runCatching {
+        surface.setFrameRate(0f, android.view.Surface.FRAME_RATE_COMPATIBILITY_DEFAULT)
       }
     }
+    lastRequestedFrameRate = 0f
+    lastFrameRateRequestAt = 0L
+  }
+
+  fun useLegacyGpuForSession() {
+    activeVo = "gpu"
   }
 
   private val observedProps =
@@ -621,5 +674,9 @@ class MPVView(
           "gpu-next and Vulkan disabled: use gpu/opengl"
         },
     )
+  }
+
+  companion object {
+    private const val FRAME_RATE_DEBOUNCE_MS = 1_000L
   }
 }
