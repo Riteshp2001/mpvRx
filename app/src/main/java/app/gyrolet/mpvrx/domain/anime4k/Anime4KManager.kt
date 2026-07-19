@@ -13,6 +13,22 @@ class Anime4KManager(private val context: Context) {
   companion object {
     val BUILT_IN_SHADER_FILES: Set<String> = Anime4KShaderCatalog.requiredFileSet
     val DEFAULT_QUALITY = Quality.BALANCED
+
+    // GLSL tokens that require FP32 (highp) float precision. Passes containing any
+    // of these (FSR EASU/RCAS) are excluded from the FP16/mediump optimization.
+    private val FP32_MARKERS = listOf(
+      "floatBitsToUint",
+      "uintBitsToFloat",
+      "floatBitsToInt",
+      "intBitsToFloat",
+      "bitfieldExtract",
+      "bitfieldInsert",
+      "FsrEasu",
+      "FsrRcas",
+      "APrxLoRcpF1",
+      "APrxLoRsqF1",
+      "APrxMedRcpF1",
+    )
   }
 
   // Shader quality levels
@@ -138,8 +154,24 @@ class Anime4KManager(private val context: Context) {
 
   /**
    * Dynamically optimizes GLSL shader code for mobile GPUs:
-   * 1. Injects 'precision mediump float;' to force ultra-fast FP16 mode.
+   * 1. Injects a per-pass float precision qualifier (default) AND explicitly rewrites
+   *    all vec4/mat4/vec2/vec3/float variable declarations to use mediump (or highp
+   *    for passes that require FP32). This dual approach is required because many
+   *    mobile GPU drivers (especially Qualcomm Adreno) will silently promote a
+   *    default mediump back to highp when the compiler detects mat4 multiplications
+   *    with many float literals — ignoring the default precision header entirely.
+   *    Explicit qualifiers on each declaration cannot be overridden by the driver.
    * 2. Eliminates redundant texture fetches in C.R.E.L.U. shader passes.
+   *
+   * FP16 safety: CNN convolutions and edge/blur filters tolerate FP16 well and gain
+   * a large speed-up. However, FSR (EASU/RCAS) relies on raw bit manipulation
+   * (floatBitsToUint/uintBitsToFloat) and fast reciprocal/rsqrt bit tricks that
+   * produce garbage under FP16. Those passes must stay highp. Integers are always
+   * kept highp (mediump int is too narrow for the bit tricks and texel indices).
+   *
+   * ArtCNN shaders already manage their own precision via
+   * GL_EXT_shader_explicit_arithmetic_types_float16 — the injected qualifiers are
+   * redundant but harmless for those passes.
    */
   private fun optimizeShaderContent(fileName: String, content: String): String {
     if (!fileName.endsWith(".glsl")) return content
@@ -148,8 +180,10 @@ class Anime4KManager(private val context: Context) {
     val newLines = mutableListOf<String>()
     var inHeader = false
     var precisionInjectedForBlock = false
+    var currentPassNeedsHighp = false
 
-    for (line in lines) {
+    for (i in lines.indices) {
+      val line = lines[i]
       val trimmed = line.trim()
       if (trimmed.startsWith("//!")) {
         if (!inHeader) {
@@ -161,18 +195,77 @@ class Anime4KManager(private val context: Context) {
         if (inHeader) {
           inHeader = false
           if (!precisionInjectedForBlock && trimmed.isNotEmpty() && !trimmed.startsWith("//")) {
-            // Force mobile GPU to compile all operations using efficient FP16 precision
-            newLines.add("precision mediump float;")
+            currentPassNeedsHighp = passNeedsHighpFloat(lines, i)
+            val floatPrecision = if (currentPassNeedsHighp) "highp" else "mediump"
+            // 1. Default precision header (catches anything we miss below)
+            newLines.add("precision $floatPrecision float;")
+            newLines.add("precision highp int;")
             precisionInjectedForBlock = true
           }
         }
-        newLines.add(line)
+        // 2. Explicitly qualify every float-type variable declaration in the body.
+        // This is what actually enforces FP16 on drivers that ignore the default.
+        val rewritten = if (precisionInjectedForBlock && !trimmed.startsWith("//!")) {
+          rewriteLineWithExplicitPrecision(line, if (currentPassNeedsHighp) "highp" else "mediump")
+        } else {
+          line
+        }
+        newLines.add(rewritten)
       }
     }
     val withPrecision = newLines.joinToString("\n")
 
     // Optimize redundant texture fetches inside C.R.E.L.U. convolution passes
     return optimizeCreluPasses(withPrecision)
+  }
+
+  /**
+   * Rewrites unqualified float-type declarations in a single GLSL line to use
+   * an explicit precision qualifier. Only modifies actual variable declarations —
+   * skips comments, already-qualified types, function signatures, and #defines.
+   *
+   * Examples (with precision = "mediump"):
+   *   `vec4 result = ...`     → `mediump vec4 result = ...`
+   *   `mat4(-0.09, ...)       → `mediump mat4(-0.09, ...)`  (local declaration inside body)
+   *   `float g = 0.0;`        → `mediump float g = 0.0;`
+   *   `mediump vec4 x = ...`  → unchanged (already qualified)
+   *   `highp vec4 x = ...`    → unchanged (already qualified)
+   *   `vec4 hook() {`         → unchanged (function return type, not a variable)
+   *   `// vec4 comment`       → unchanged (comment)
+   *   `#define go_0(...)`     → unchanged (macro)
+   */
+  private fun rewriteLineWithExplicitPrecision(line: String, precision: String): String {
+    val trimmed = line.trim()
+
+    // Skip blank lines, comments, preprocessor directives
+    if (trimmed.isEmpty() || trimmed.startsWith("//") || trimmed.startsWith("#")) return line
+
+    // Skip lines that already have an explicit precision qualifier
+    if (trimmed.startsWith("mediump ") || trimmed.startsWith("highp ") || trimmed.startsWith("lowp ")) return line
+
+    // Types to qualify. Order matters: check longer names first (vec4 before vec).
+    val floatTypes = listOf("mat4", "mat3", "mat2", "vec4", "vec3", "vec2", "float")
+
+    val leading = line.length - line.trimStart().length
+    val indent = line.take(leading)
+    val rest = trimmed
+
+    for (type in floatTypes) {
+      // Match `type` followed by a space or `(` — a variable declaration or constructor.
+      // Do NOT match function signatures like `vec4 hook()` (contains no `=` on same line
+      // and is followed by `(`+identifier+`)` pattern); those are return types.
+      if (rest.startsWith("$type ") || rest.startsWith("$type(")) {
+        // Exclude function definitions: `vec4 identifier(` without `=` before `(`
+        val afterType = rest.removePrefix(type).trimStart()
+        val isFunctionDef = afterType.contains("(") &&
+          !afterType.substringBefore("(").contains("=") &&
+          afterType.first() != '('  // constructor call starts with `(`
+        if (isFunctionDef) return line
+
+        return "$indent$precision $rest"
+      }
+    }
+    return line
   }
 
   private fun optimizeCreluPasses(content: String): String {
@@ -235,7 +328,32 @@ class Anime4KManager(private val context: Context) {
       "max(-t_${x}_${y}, 0.0)"
     }
 
+    // Defensive: mapCoord() emits "unknown" for any offset outside {-1,0,1}.
+    // If that ever happens (a future shader with a larger kernel), the rewrite
+    // would reference an undeclared texel like `t_unknown_0` and fail to
+    // compile, causing mpv to drop the whole shader. Bail to the original pass
+    // in that case so correctness never depends on the kernel being 3x3.
+    if (optimized.contains("_unknown")) {
+      return pass
+    }
+
     return optimized
+  }
+
+  /**
+   * Returns true if the pass body starting at [bodyStart] contains FP32-sensitive
+   * operations (FSR bit tricks) that must not be compiled as FP16/mediump.
+   */
+  private fun passNeedsHighpFloat(lines: List<String>, bodyStart: Int): Boolean {
+    var j = bodyStart
+    while (j < lines.size && !lines[j].trim().startsWith("//!")) {
+      val body = lines[j]
+      if (FP32_MARKERS.any { body.contains(it) }) {
+        return true
+      }
+      j++
+    }
+    return false
   }
 
   private fun mapCoord(c: String): String {
