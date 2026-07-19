@@ -2,7 +2,7 @@
   <img src="fastlane\metadata\android\en-US\images\icon.png" width="250" height="250" />
 </p>
 
-<h1 align="center">MpvRx</h1>
+<h1 align="center">mpvRx</h1>
 
 <p align="center">
   <b>Feature-rich, Efficient Powerful Android video player based on libmpv.</b>
@@ -65,7 +65,7 @@
 
 ## Features
 
-MpvRx pushes the mpv-android experience further with deep customization, thermal-aware performance, and unique quality-of-life features. Here's what sets it apart:
+mpvRx pushes the mpv-android experience further with deep customization, thermal-aware performance, and unique quality-of-life features. Here's what sets it apart:
 
 <details close>
 <summary><b>🎨 Theme & Visual System</b></summary>
@@ -294,7 +294,7 @@ First Pro Tip Keep Mpv Conf empty if you are newbie
 
 **My POV:** mpv's default config with `profile=fast` and the `gpu` backend plays video with negligible battery impact — often **less** than OEM players because mpv doesn't have a billion proprietary DRM modules, analytics SDKs, and ad frameworks burning CPU in the background. The next time your battery drops more than 20-25% watching a 2-hour movie, don't blame mpv. Blame the 14 shaders you blindly copy-pasted.
 
-_Just a Pro tip if your battery consumption stays within 200 mAh and belwo 0.9W ( See Page 6 of MpvRx - video player More Settings -> Page6) useage than ur Mpv Conf are Proper for Video watching thats what i have experimented and telling rest all i don't know About in detail technicality's if anyone wanna tell me In depth guide then keep it to yourself i dont wanna listen_
+_Just a Pro tip if your battery consumption stays within 200 mAh and belwo 0.9W ( See Page 6 of mpvRx - video player More Settings -> Page6) useage than ur Mpv Conf are Proper for Video watching thats what i have experimented and telling rest all i don't know About in detail technicality's if anyone wanna tell me In depth guide then keep it to yourself i dont wanna listen_
 
 ---
 
@@ -350,7 +350,7 @@ report it in the [Issues](https://github.com/Riteshp2001/mpvRx/issues).
 
 ## Support
 
-If you find MpvRx useful and would like to support its development, consider buying me a coffee! Your support keeps the project alive and helps push new features.
+If you find mpvRx useful and would like to support its development, consider buying me a coffee! Your support keeps the project alive and helps push new features.
 
 <div align="center">
 

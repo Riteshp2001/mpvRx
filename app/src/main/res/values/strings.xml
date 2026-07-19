@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name" translatable="false">MpvRx</string>
+  <string name="app_name" translatable="false">mpvRx</string>
   <string name="generic_reset">Reset</string>
   <string name="generic_share">Share</string>
   <string name="generic_confirm">Confirm</string>
@@ -17,7 +17,7 @@
   <string name="pref_appearance_amoled_mode_title">AMOLED Black Mode</string>
   <string name="pref_appearance_amoled_mode_summary">Use pure black background for dark themes</string>
   <string name="pref_appearance_system_font_title">Use system font</string>
-  <string name="pref_appearance_system_font_summary">Use the Android system typeface across MpvRx instead of Google Sans Flex</string>
+  <string name="pref_appearance_system_font_summary">Use the Android system typeface across mpvRx instead of Google Sans Flex</string>
   <string name="pref_appearance_material_you_title">Material You</string>
   <string name="pref_appearance_material_you_summary">Enable dynamic colors</string>
   <string name="pref_appearance_material_you_summary_disabled">Only available on Android 12 and above</string>
@@ -475,7 +475,7 @@
   <string name="notification_playing">Playing</string>
   <string name="notification_chapter_counter">Chapter %1$d of %2$d</string>
   <string name="notification_permission_denied">Notification permission is required for background playback controls.</string>
-  <string name="notification_permission_disabled">Notifications are disabled for MpvRx. Enable them to show playback controls.</string>
+  <string name="notification_permission_disabled">Notifications are disabled for mpvRx. Enable them to show playback controls.</string>
   <string name="pref_advanced_notification_style">Notification style</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Use precise seeking</string>

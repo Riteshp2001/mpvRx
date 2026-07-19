@@ -32,7 +32,7 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class)
-abstract class MpvRxDatabase : RoomDatabase() {
+abstract class mpvRxDatabase : RoomDatabase() {
   abstract fun videoDataDao(): PlaybackStateDao
 
   abstract fun recentlyPlayedDao(): RecentlyPlayedDao

@@ -163,12 +163,12 @@ fun PermissionDeniedState(
             Text(
               text = if (isPlayStoreBuild) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                  "MpvRx requires \"Photos and videos\" permission to access and play your video files stored on your device."
+                  "mpvRx requires \"Photos and videos\" permission to access and play your video files stored on your device."
                 } else {
-                  "MpvRx requires \"Storage\" permission to access and play your media files stored on your device."
+                  "mpvRx requires \"Storage\" permission to access and play your media files stored on your device."
                 }
               } else {
-                "MpvRx requires \"All file access\" permission to discover media and subtitles on your device due to a change in security policy in Android 11 and later versions."
+                "mpvRx requires \"All file access\" permission to discover media and subtitles on your device due to a change in security policy in Android 11 and later versions."
               },
               style = MaterialTheme.typography.bodyLarge,
               color = MaterialTheme.colorScheme.onSurface,
@@ -273,7 +273,7 @@ fun PermissionDeniedState(
           if (isPlayStoreBuild) {
             // Play Store build explanation
             Text(
-              text = "MpvRx needs access to your video files to provide its core functionality as a media player.",
+              text = "mpvRx needs access to your video files to provide its core functionality as a media player.",
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -303,7 +303,7 @@ fun PermissionDeniedState(
           } else {
             // Standard build explanation
             Text(
-              text = "MpvRx has always required storage access permission as it's essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.",
+              text = "mpvRx has always required storage access permission as it's essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.",
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -322,7 +322,7 @@ fun PermissionDeniedState(
           }
 
           Text(
-            text = "MpvRx is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:",
+            text = "mpvRx is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )

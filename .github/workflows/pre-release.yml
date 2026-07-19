@@ -137,7 +137,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
-          name: "MpvRx ${{ env.VERSION_TAG }}"
+          name: "mpvRx ${{ env.VERSION_TAG }}"
           body_path: pre-release-notes.md
           generate_release_notes: true
           files: |

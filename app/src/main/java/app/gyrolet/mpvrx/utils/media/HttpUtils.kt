@@ -49,7 +49,7 @@ object HttpUtils {
       connection.requestMethod = "HEAD"
       connection.connectTimeout = CONNECTION_TIMEOUT
       connection.readTimeout = READ_TIMEOUT
-      connection.setRequestProperty("User-Agent", "MpvRx/1.0")
+      connection.setRequestProperty("User-Agent", "mpvRx/1.0")
       connection.instanceFollowRedirects = true
       connection.connect()
 

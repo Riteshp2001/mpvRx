@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.toArgb
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchMode
-import app.gyrolet.mpvrx.repository.subtitlehub.MpvRxSubtitleHubSources
+import app.gyrolet.mpvrx.repository.subtitlehub.mpvRxSubtitleHubSources
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.SubtitlesBorderStyle
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -49,7 +49,7 @@ class SubtitlesPreferences(
   val subdlLanguages = preferenceStore.getStringSet("subdl_languages", setOf("en"))
   val subtitleSearchLanguages = subdlLanguages
   val onlineSubtitleSearchMode = preferenceStore.getOnlineSubtitleSearchMode()
-  val subtitleHubSources = preferenceStore.getStringSet("subtitle_hub_sources", MpvRxSubtitleHubSources.DEFAULT)
+  val subtitleHubSources = preferenceStore.getStringSet("subtitle_hub_sources", mpvRxSubtitleHubSources.DEFAULT)
   
   val wyzieSources = preferenceStore.getStringSet("wyzie_sources", setOf("all"))
   val wyzieFormats = preferenceStore.getStringSet("wyzie_formats", setOf("srt", "ass"))

@@ -630,7 +630,7 @@ class ThumbnailRepository(
   private fun networkVideoHeaders(): Map<String, String> =
     mapOf(
       // Some servers refuse requests without a UA. MediaMetadataRetriever handles the rest.
-      "User-Agent" to "Mozilla/5.0 (Android) MpvRx",
+      "User-Agent" to "Mozilla/5.0 (Android) mpvRx",
       "Accept" to "*/*",
     )
 
