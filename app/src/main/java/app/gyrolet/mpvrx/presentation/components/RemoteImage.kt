@@ -79,7 +79,7 @@ private object RemoteImageLoader {
     val host = runCatching { java.net.URI(url).host }.getOrNull()
     val request = Request.Builder()
       .url(url)
-      .header("User-Agent", "Mozilla/5.0 (Android) MpvRx")
+      .header("User-Agent", "Mozilla/5.0 (Android) mpvRx")
       .apply { if (!host.isNullOrBlank()) header("Referer", "https://$host") }
       .build()
 

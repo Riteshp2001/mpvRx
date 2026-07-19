@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Xml
 import app.gyrolet.mpvrx.BuildConfig
-import app.gyrolet.mpvrx.database.MpvRxDatabase
+import app.gyrolet.mpvrx.database.mpvRxDatabase
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
@@ -22,10 +22,10 @@ import java.util.Locale
 class SettingsManager(
   private val context: Context,
   private val preferenceStore: PreferenceStore,
-  private val database: MpvRxDatabase,
+  private val database: mpvRxDatabase,
 ) {
   companion object {
-    private const val TAG_ROOT = "MpvRxSettings"
+    private const val TAG_ROOT = "mpvRxSettings"
     private const val TAG_PREFERENCES = "preferences"
     private const val TAG_PREFERENCE = "preference"
     private const val TAG_DATABASE = "database"

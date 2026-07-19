@@ -1,6 +1,6 @@
 package app.gyrolet.mpvrx.repository.subtitlehub
 
-object MpvRxSubtitleHubSources {
+object mpvRxSubtitleHubSources {
   val ALL =
     linkedMapOf(
       "all" to "All verified SubtitleHub sources",

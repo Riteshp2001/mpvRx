@@ -5,7 +5,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 /**
- * MpvRx expressive shape scale following Material 3 Expressive guidelines.
+ * mpvRx expressive shape scale following Material 3 Expressive guidelines.
  * 8-level scale from 4dp (chips) to 48dp (high-emphasis expressive containers).
  */
 val AppShapes =

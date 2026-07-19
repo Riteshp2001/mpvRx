@@ -10,7 +10,7 @@ import app.gyrolet.mpvrx.domain.browser.PathComponent
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
-import app.gyrolet.mpvrx.database.MpvRxDatabase
+import app.gyrolet.mpvrx.database.mpvRxDatabase
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
@@ -50,7 +50,7 @@ object MediaFileRepository : KoinComponent {
   private val appearancePreferences: AppearancePreferences by inject()
   private val browserPreferences: BrowserPreferences by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
-  private val database: MpvRxDatabase by inject()
+  private val database: mpvRxDatabase by inject()
 
   private fun currentScanOptions(includeAudioOverride: Boolean? = null): MediaScanOptions =
     MediaScanOptions(

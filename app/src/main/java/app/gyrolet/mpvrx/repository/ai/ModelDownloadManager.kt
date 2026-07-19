@@ -74,7 +74,7 @@ class ModelDownloadManager(
           val resumeBytes = tmpFile.takeIf { it.exists() }?.length()?.takeIf { it > 0L } ?: 0L
           val request = Request.Builder()
             .url(hfUrl)
-            .header("User-Agent", "MpvRx/1.0")
+            .header("User-Agent", "mpvRx/1.0")
             .apply {
               if (resumeBytes > 0L) {
                 header("Range", "bytes=$resumeBytes-")

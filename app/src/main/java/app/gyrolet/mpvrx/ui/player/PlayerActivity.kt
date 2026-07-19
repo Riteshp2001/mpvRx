@@ -5287,7 +5287,7 @@ class PlayerActivity :
         connection.connectTimeout = 15000
         connection.readTimeout = 15000
         connection.requestMethod = "GET"
-        connection.setRequestProperty("User-Agent", "MpvRx/1.0")
+        connection.setRequestProperty("User-Agent", "mpvRx/1.0")
         val responseCode = connection.responseCode
         if (responseCode == HttpURLConnection.HTTP_OK) {
           val text = BufferedReader(InputStreamReader(connection.inputStream, "UTF-8")).use { reader ->

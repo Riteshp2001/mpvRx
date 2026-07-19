@@ -45,7 +45,7 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import android.os.Build
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.database.MpvRxDatabase
+import app.gyrolet.mpvrx.database.mpvRxDatabase
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
@@ -525,7 +525,7 @@ object AdvancedPreferencesScreen : Screen {
           item {
             PreferenceCard {
               var isConfirmDialogShown by remember { mutableStateOf(false) }
-              val mpvrxDatabase = koinInject<MpvRxDatabase>()
+              val mpvrxDatabase = koinInject<mpvRxDatabase>()
               val enableRecentlyPlayed by preferences.enableRecentlyPlayed.collectAsState()
               var recentlyPlayedCount by remember { mutableStateOf(0) }
 

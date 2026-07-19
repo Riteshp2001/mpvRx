@@ -6,7 +6,7 @@ import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.repository.IntroDbRepository
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleFileStore
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
-import app.gyrolet.mpvrx.repository.subtitlehub.MpvRxSubtitleHubRepository
+import app.gyrolet.mpvrx.repository.subtitlehub.mpvRxSubtitleHubRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.repository.ai.AiClient
 import app.gyrolet.mpvrx.repository.ai.AiService
@@ -44,8 +44,8 @@ val domainModule = module {
     single { HdrToysManager(androidContext()) }
     single { OnlineSubtitleFileStore(androidContext(), get()) }
     single { WyzieSearchRepository(androidContext(), get(), get(), get(), get()) }
-    single { MpvRxSubtitleHubRepository(get(), get(), get(), get()) }
-    single { OnlineSubtitleOrchestrator(get<WyzieSearchRepository>(), get<MpvRxSubtitleHubRepository>()) }
+    single { mpvRxSubtitleHubRepository(get(), get(), get(), get()) }
+    single { OnlineSubtitleOrchestrator(get<WyzieSearchRepository>(), get<mpvRxSubtitleHubRepository>()) }
     single { IntroDbRepository(get(), get()) }
     single { OpenCodeClient(get(), get()) }
     single { GroqClient(get(), get()) }

@@ -33,7 +33,7 @@ import org.jsoup.nodes.Element
 import java.net.URL
 import java.net.URLEncoder
 
-class MpvRxSubtitleHubRepository(
+class mpvRxSubtitleHubRepository(
   private val client: OkHttpClient,
   private val json: Json,
   private val preferences: SubtitlesPreferences,
@@ -55,7 +55,7 @@ class MpvRxSubtitleHubRepository(
         val selectedSources =
           SubtitleHubSearchMatcher.sourcesFor(
             request = request,
-            selectedSources = MpvRxSubtitleHubSources.resolveSelected(preferences.subtitleHubSources.get()),
+            selectedSources = mpvRxSubtitleHubSources.resolveSelected(preferences.subtitleHubSources.get()),
           )
         val results = coroutineScope {
           val completedSources = Channel<List<OnlineSubtitle>>(selectedSources.size)
@@ -90,7 +90,7 @@ class MpvRxSubtitleHubRepository(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e(TAG, "MpvRx SubtitleHub search failed", e)
+        Log.e(TAG, "mpvRx SubtitleHub search failed", e)
         Result.failure(e)
       }
     }
@@ -125,7 +125,7 @@ class MpvRxSubtitleHubRepository(
           Result.success(fileStore.save(response.body.bytes(), subtitle, mediaTitle))
         }
       } catch (e: Exception) {
-        Log.e(TAG, "MpvRx SubtitleHub download failed", e)
+        Log.e(TAG, "mpvRx SubtitleHub download failed", e)
         Result.failure(e)
       }
     }
@@ -953,9 +953,9 @@ class MpvRxSubtitleHubRepository(
     }
 
   private companion object {
-    const val TAG = "MpvRxSubtitleHub"
+    const val TAG = "mpvRxSubtitleHub"
     const val USER_AGENT =
-      "Mozilla/5.0 (Linux; Android 14; MpvRx) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
+      "Mozilla/5.0 (Linux; Android 14; mpvRx) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
     const val SUBTITLECAT_BASE_URL = "https://www.subtitlecat.com/"
     const val MOVIESUBTITLES_ORG_BASE_URL = "https://www.moviesubtitles.org/"
     const val MOVIESUBTITLESRT_BASE_URL = "https://moviesubtitlesrt.com/"

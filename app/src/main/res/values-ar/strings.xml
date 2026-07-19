@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name" translatable="false">MpvRx</string>
+  <string name="app_name" translatable="false">mpvRx</string>
   <string name="generic_reset">إعادة ضبط</string>
   <string name="generic_share">مشاركة</string>
   <string name="generic_confirm">تأكيد</string>
@@ -17,7 +17,7 @@
   <string name="pref_appearance_amoled_mode_title">وضع الأسود AMOLED</string>
   <string name="pref_appearance_amoled_mode_summary">استخدام خلفية سوداء نقية للسمات الداكنة</string>
   <string name="pref_appearance_system_font_title">استخدام خط النظام</string>
-  <string name="pref_appearance_system_font_summary">استخدام خط نظام أندرويد في كامل MpvRx بدلاً من Google Sans Flex</string>
+  <string name="pref_appearance_system_font_summary">استخدام خط نظام أندرويد في كامل mpvRx بدلاً من Google Sans Flex</string>
   <string name="pref_appearance_material_you_title">Material You</string>
   <string name="pref_appearance_material_you_summary">تفعيل الألوان الديناميكية</string>
   <string name="pref_appearance_material_you_summary_disabled">متوفر فقط على أندرويد 12 والإصدارات الأحدث</string>
@@ -474,7 +474,7 @@
   <string name="notification_playing">قيد التشغيل</string>
   <string name="notification_chapter_counter">الفصل %1$d من %2$d</string>
   <string name="notification_permission_denied">إذن الإشعارات مطلوب لعناصر تحكم التشغيل في الخلفية.</string>
-  <string name="notification_permission_disabled">الإشعارات معطّلة لتطبيق MpvRx. فعّلها لإظهار عناصر تحكم التشغيل.</string>
+  <string name="notification_permission_disabled">الإشعارات معطّلة لتطبيق mpvRx. فعّلها لإظهار عناصر تحكم التشغيل.</string>
   <string name="pref_advanced_notification_style">نمط الإشعار</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">استخدام التقديم الدقيق</string>

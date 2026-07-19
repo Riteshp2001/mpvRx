@@ -197,7 +197,7 @@ object AboutScreen : Screen {
 
                 Column(modifier = Modifier.weight(1f)) {
                   Text(
-                    text = "MpvRx",
+                    text = "mpvRx",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = cs.onPrimaryContainer,
@@ -341,7 +341,7 @@ object AboutScreen : Screen {
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "If you enjoy MpvRx, consider supporting its development. Every bit helps!",
+                    text = "If you enjoy mpvRx, consider supporting its development. Every bit helps!",
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                 )
@@ -619,7 +619,7 @@ object LibrariesScreen : Screen {
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         Text(
-          text = "Core open source dependencies used by MpvRx.",
+          text = "Core open source dependencies used by mpvRx.",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

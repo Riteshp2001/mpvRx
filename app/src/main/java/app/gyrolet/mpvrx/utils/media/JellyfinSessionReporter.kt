@@ -141,7 +141,7 @@ class JellyfinSessionReporter(
       connection.doOutput = true
       connection.setRequestProperty("Content-Type", "application/json")
       connection.setRequestProperty("X-Emby-Token", apiKey)
-      connection.setRequestProperty("User-Agent", "MpvRx/1.0")
+      connection.setRequestProperty("User-Agent", "mpvRx/1.0")
 
       OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
         writer.write(jsonBody)

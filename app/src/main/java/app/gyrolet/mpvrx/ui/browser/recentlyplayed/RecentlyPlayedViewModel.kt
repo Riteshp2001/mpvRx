@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import app.gyrolet.mpvrx.database.MpvRxDatabase
+import app.gyrolet.mpvrx.database.mpvRxDatabase
 import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
@@ -42,7 +42,7 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
   init {
     // Observe recently played changes and update automatically
     viewModelScope.launch {
-      val db = org.koin.java.KoinJavaComponent.get<MpvRxDatabase>(MpvRxDatabase::class.java)
+      val db = org.koin.java.KoinJavaComponent.get<mpvRxDatabase>(mpvRxDatabase::class.java)
 
       // Combine both flows - entities and playlists
       kotlinx.coroutines.flow.combine(

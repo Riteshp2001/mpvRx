@@ -44,7 +44,7 @@ sealed class M3UParseResult {
 object M3UParser {
   private const val TAG = "M3UParser"
   private const val TIMEOUT_MS = 30_000 // 30s — generous for slow WebDAV/SMB servers
-  private const val DEFAULT_USER_AGENT = "MpvRx/1.0"
+  private const val DEFAULT_USER_AGENT = "mpvRx/1.0"
 
   private const val EXTINF_PREFIX = "#EXTINF:"
   private const val KODIPROP_PREFIX = "#KODIPROP:"
