@@ -1,4 +1,7 @@
 <resources>
+  <string name="pref_appearance_thumbnail_quality_title">جودة الصورة المصغرة</string>
+  <string name="pref_appearance_thumbnail_quality_summary">الحد الأقصى لدقة الصورة المصغرة: %1$d بكسل. تستخدم الجودة الأعلى مساحة تخزين أكبر وقد يستغرق إنشاؤها وقتًا أطول.</string>
+  <string name="player_sheets_off">إيقاف</string>
   <string name="app_name" translatable="false">mpvRx</string>
   <string name="generic_reset">إعادة ضبط</string>
   <string name="generic_share">مشاركة</string>

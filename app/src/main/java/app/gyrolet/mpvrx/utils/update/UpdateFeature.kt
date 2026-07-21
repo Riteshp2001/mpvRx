@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.utils.update
 
+import app.gyrolet.mpvrx.R
+import androidx.compose.ui.res.stringResource
+
 import kotlinx.coroutines.flow.Flow
 
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -469,8 +472,8 @@ fun UpdateDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "Downloading...", style = MaterialTheme.typography.bodySmall)
-                        Text(text = "${progress.toInt()}%", style = MaterialTheme.typography.bodySmall)
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_downloading), style = MaterialTheme.typography.bodySmall)
+                        Text(text = stringResource(R.string.update_progress_percent, progress.toInt()), style = MaterialTheme.typography.bodySmall)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(
@@ -485,7 +488,7 @@ fun UpdateDialog(
         confirmButton = {
             if (!isDownloading) {
                 Button(onClick = onAction) {
-                    Text(if (actionLabel == "Install") "Install" else "Download")
+                    Text(if (actionLabel == "Install") stringResource(R.string.ui_install) else stringResource(R.string.ui_download))
                 }
             }
         },
@@ -494,11 +497,11 @@ fun UpdateDialog(
                 Row {
                     if (actionLabel != "Install") {
                         TextButton(onClick = onIgnore) {
-                            Text("Ignore")
+                            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ignore))
                         }
                     }
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
                     }
                 }
             }

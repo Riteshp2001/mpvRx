@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.player.controls
 
+import app.gyrolet.mpvrx.R
+
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -486,7 +488,7 @@ fun GestureHandler(
                   haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                   originalSubtitlePosition = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
                   lastSubtitlePosition = originalSubtitlePosition
-                  viewModel.playerUpdate.update { PlayerUpdates.ShowText("Drag up/down to move subtitles") }
+                  viewModel.playerUpdate.update { PlayerUpdates.ShowText(context.getString(R.string.player_move_subtitles_hint)) }
                 } else if (paused == false && multipleSpeedGesture > 0f) {
                   longPressTriggered = true
                   isLongPressing = true
@@ -1091,7 +1093,7 @@ fun GestureHandler(
                     MPVLib.command("sub-seek", direction)
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     viewModel.playerUpdate.update {
-                      PlayerUpdates.ShowText(if (isForward) "Next Dialog" else "Prev Dialog")
+                      PlayerUpdates.ShowText(context.getString(if (isForward) R.string.player_next_dialog else R.string.player_previous_dialog))
                     }
                     change.consume()
                   }

@@ -165,8 +165,8 @@ sealed class PlayerUpdates {
  * Sharpness uses MPV's 'sharpen' property which ranges from -5 (blur) to 5 (sharp).
  */
 enum class FilterPreset(
-  val displayName: String,
-  val description: String,
+  @StringRes val displayNameRes: Int,
+  @StringRes val descriptionRes: Int,
   val brightness: Int,
   val saturation: Int,
   val contrast: Int,
@@ -175,8 +175,8 @@ enum class FilterPreset(
   val sharpness: Int,
 ) {
   NONE(
-    displayName = "None",
-    description = "Default settings with no adjustments",
+    displayNameRes = R.string.filter_preset_none,
+    descriptionRes = R.string.filter_preset_default_settings_with_no_adjustments,
     brightness = 0,
     saturation = 0,
     contrast = 0,
@@ -185,8 +185,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   VIVID(
-    displayName = "Vivid",
-    description = "Enhanced colors with crisp details",
+    displayNameRes = R.string.filter_preset_vivid,
+    descriptionRes = R.string.filter_preset_enhanced_colors_with_crisp_details,
     brightness = 5,
     saturation = 25,
     contrast = 15,
@@ -195,8 +195,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   WARM_TONE(
-    displayName = "Warm Tone",
-    description = "Warmer colors with golden tint",
+    displayNameRes = R.string.filter_preset_warm_tone,
+    descriptionRes = R.string.filter_preset_warmer_colors_with_golden_tint,
     brightness = 5,
     saturation = 10,
     contrast = 5,
@@ -205,8 +205,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   COOL_TONE(
-    displayName = "Cool Tone",
-    description = "Cooler colors with blue tint",
+    displayNameRes = R.string.filter_preset_cool_tone,
+    descriptionRes = R.string.filter_preset_cooler_colors_with_blue_tint,
     brightness = 0,
     saturation = 5,
     contrast = 10,
@@ -215,8 +215,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   SOFT_PASTEL(
-    displayName = "Soft Pastel",
-    description = "Soft, muted colors with gentle look",
+    displayNameRes = R.string.filter_preset_soft_pastel,
+    descriptionRes = R.string.filter_preset_soft_muted_colors_with_gentle_look,
     brightness = 10,
     saturation = -15,
     contrast = -10,
@@ -225,8 +225,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   CINEMATIC(
-    displayName = "Cinematic",
-    description = "Film-like color grading with depth",
+    displayNameRes = R.string.filter_preset_cinematic,
+    descriptionRes = R.string.filter_preset_film_like_color_grading_with_depth,
     brightness = -5,
     saturation = -10,
     contrast = 20,
@@ -235,8 +235,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   DRAMATIC(
-    displayName = "Dramatic",
-    description = "High contrast dramatic look",
+    displayNameRes = R.string.filter_preset_dramatic,
+    descriptionRes = R.string.filter_preset_high_contrast_dramatic_look,
     brightness = -10,
     saturation = 15,
     contrast = 30,
@@ -245,8 +245,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   NIGHT_MODE(
-    displayName = "Night Mode",
-    description = "Reduced brightness for dark environments",
+    displayNameRes = R.string.filter_preset_night_mode,
+    descriptionRes = R.string.filter_preset_reduced_brightness_for_dark_environments,
     brightness = -20,
     saturation = -5,
     contrast = 5,
@@ -255,8 +255,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   NOSTALGIC(
-    displayName = "Nostalgic",
-    description = "Vintage film look with soft focus",
+    displayNameRes = R.string.filter_preset_nostalgic,
+    descriptionRes = R.string.filter_preset_vintage_film_look_with_soft_focus,
     brightness = 5,
     saturation = -20,
     contrast = 10,
@@ -265,8 +265,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   GHIBLI_STYLE(
-    displayName = "Ghibli Style",
-    description = "Soft, dreamy anime colors",
+    displayNameRes = R.string.filter_preset_ghibli_style,
+    descriptionRes = R.string.filter_preset_soft_dreamy_anime_colors,
     brightness = 8,
     saturation = 15,
     contrast = -5,
@@ -275,8 +275,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   NEON_POP(
-    displayName = "Neon Pop",
-    description = "Vibrant neon-like colors with edge",
+    displayNameRes = R.string.filter_preset_neon_pop,
+    descriptionRes = R.string.filter_preset_vibrant_neon_like_colors_with_edge,
     brightness = 5,
     saturation = 40,
     contrast = 20,
@@ -285,8 +285,8 @@ enum class FilterPreset(
     sharpness = 0,
   ),
   DEEP_BLACK(
-    displayName = "Deep Black",
-    description = "Enhanced blacks for OLED displays",
+    displayNameRes = R.string.filter_preset_deep_black,
+    descriptionRes = R.string.filter_preset_enhanced_blacks_for_oled_displays,
     brightness = -15,
     saturation = 5,
     contrast = 25,

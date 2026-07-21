@@ -292,12 +292,12 @@ fun MediaLibraryContent() {
               expanded = false,
               onExpandedChange = { },
                placeholder = {
-                 Text(if (mediaType == MediaLibraryType.Audio) "Search audio..." else "Search videos...")
+                Text(if (mediaType == MediaLibraryType.Audio) androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_audio) else androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_videos))
                },
               leadingIcon = {
                 Icon(
                   imageVector = Icons.RoundedFilled.Search,
-                  contentDescription = "Search",
+                  contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.settings_search_title),
                 )
               },
               trailingIcon = {
@@ -309,7 +309,7 @@ fun MediaLibraryContent() {
                 ) {
                   Icon(
                     imageVector = Icons.RoundedFilled.Close,
-                    contentDescription = "Cancel",
+                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
                   )
                 }
               },
@@ -324,7 +324,7 @@ fun MediaLibraryContent() {
         ) { }
       } else {
         BrowserTopBar(
-          title = "Media Library",
+          title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_media_library_section),
           isInSelectionMode = selectionManager.isInSelectionMode,
           selectedCount = selectionManager.selectedCount,
           totalCount = filteredVideosWithInfo.size,
@@ -374,7 +374,7 @@ fun MediaLibraryContent() {
           positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
            tooltip = {
              PlainTooltip {
-               Text(if (mediaType == MediaLibraryType.Audio) "Play recent or first audio" else "Play recent or first video")
+              Text(if (mediaType == MediaLibraryType.Audio) androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_audio) else androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_video))
              }
            },
           state = rememberTooltipState(),
@@ -402,7 +402,7 @@ fun MediaLibraryContent() {
               }
             },
           ) {
-            Icon(Icons.RoundedFilled.PlayArrow, contentDescription = "Play recently played or first video")
+            Icon(Icons.RoundedFilled.PlayArrow, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_recently_played_or_first_video))
           }
         }
       }
@@ -452,7 +452,7 @@ fun MediaLibraryContent() {
             ) {
               EmptyState(
                 icon = Icons.RoundedFilled.Search,
-                title = if (mediaType == MediaLibraryType.Audio) "No audio found" else "No videos found",
+                title = if (mediaType == MediaLibraryType.Audio) androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_audio_found) else androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_found),
                 message = "Try a different search term",
               )
             }

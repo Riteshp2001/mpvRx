@@ -241,11 +241,9 @@ object PlayerPreferencesScreen : Screen {
                     android.util.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
                   }
                 },
-                title = { Text("Show Media Info in chooser") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_media_info_in_chooser)) },
                 summary = {
-                  Text(
-                    "Show Media Info in system \"Open with\" / " +
-                    "sharing menus to analyze files from other apps.",
+                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_media_info_in_system)),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -432,7 +430,7 @@ object PlayerPreferencesScreen : Screen {
                           value = value,
                           onValueChange = onValueChange,
                           modifier = Modifier.fillMaxWidth(),
-                          placeholder = { Text("e.g. intro, opening, op") },
+                          placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_e_g_intro_opening_op)) },
                           singleLine = true,
                         )
                       }
@@ -477,7 +475,7 @@ object PlayerPreferencesScreen : Screen {
                           value = value,
                           onValueChange = onValueChange,
                           modifier = Modifier.fillMaxWidth(),
-                          placeholder = { Text("e.g. outro, ending, ed") },
+                          placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_e_g_outro_ending_ed)) },
                           singleLine = true,
                         )
                       }
@@ -598,7 +596,7 @@ object PlayerPreferencesScreen : Screen {
           }
 
           // ── Screenshots ─────────────────────────────────────────────────
-          item { PreferenceSectionHeader(title = "Screenshots") }
+          item { PreferenceSectionHeader(title = stringResource(R.string.pref_screenshots_section)) }
           item {
             PreferenceCard {
               val screenshotFormat by preferences.screenshotFormat.collectAsState()
@@ -607,7 +605,7 @@ object PlayerPreferencesScreen : Screen {
                 onValueChange = preferences.screenshotFormat::set,
                 values = ScreenshotFormat.entries,
                 valueToText = { AnnotatedString(it.title) },
-                title = { Text("Image format") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_image_format)) },
                 summary = { Text("${screenshotFormat.title} .${screenshotFormat.extension}", color = MaterialTheme.colorScheme.outline) },
               )
 
@@ -617,14 +615,14 @@ object PlayerPreferencesScreen : Screen {
               SwitchPreference(
                 value = includeSubtitles,
                 onValueChange = preferences.includeSubtitlesInSnapshot::set,
-                title = { Text("Include subtitles in screenshots") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_include_subtitles_in_screenshots)) },
               )
 
               PreferenceDivider()
 
               val screenshotTemplate by preferences.screenshotTemplate.collectAsState()
               Preference(
-                title = { Text("Filename template") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_filename_template)) },
                 summary = { Text(screenshotTemplate, color = MaterialTheme.colorScheme.outline) },
                 onClick = {
                   templateDraft = screenshotTemplate
@@ -638,7 +636,7 @@ object PlayerPreferencesScreen : Screen {
               SliderPreference(
                 value = screenshotQuality.toFloat(),
                 onValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
-                title = { Text("JPEG/WebP quality") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_jpeg_webp_quality)) },
                 valueRange = 1f..100f,
                 summary = { Text("$screenshotQuality", color = MaterialTheme.colorScheme.outline) },
                 onSliderValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
@@ -651,7 +649,7 @@ object PlayerPreferencesScreen : Screen {
               SliderPreference(
                 value = pngCompression.toFloat(),
                 onValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
-                title = { Text("PNG compression") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_png_compression)) },
                 valueRange = 0f..9f,
                 summary = { Text("$pngCompression", color = MaterialTheme.colorScheme.outline) },
                 onSliderValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
@@ -665,8 +663,8 @@ object PlayerPreferencesScreen : Screen {
                 SwitchPreference(
                   value = webpLossless,
                   onValueChange = preferences.screenshotWebpLossless::set,
-                  title = { Text("WebP lossless") },
-                  summary = { Text("Uses mpv native lossless output; Android fallback uses lossless on Android 11+.", color = MaterialTheme.colorScheme.outline) },
+                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_webp_lossless)) },
+                  summary = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_uses_mpv_native_lossless_output_android_fallback_uses_lossless_o), color = MaterialTheme.colorScheme.outline) },
                 )
               }
             }
@@ -801,17 +799,16 @@ object PlayerPreferencesScreen : Screen {
     if (showTemplateDialog) {
       AlertDialog(
         onDismissRequest = { showTemplateDialog = false },
-        title = { Text("Filename template") },
+        title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_filename_template)) },
         text = {
           Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
               value = templateDraft,
               onValueChange = { templateDraft = it },
-              label = { Text("Template") },
+              label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_template)) },
               modifier = Modifier.fillMaxWidth()
             )
-            Text(
-              text = "Use placeholders to customize the screenshot filename:\n" +
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_use_placeholders_to_customize_the_screenshot_filename_n) +
                   "• %f — Video title or filename\n" +
                   "• %p — Playback position (seconds)\n" +
                   "• %Y, %m, %d — Year, Month, Day\n" +
@@ -829,12 +826,12 @@ object PlayerPreferencesScreen : Screen {
               showTemplateDialog = false
             },
           ) {
-            Text("Save")
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_save))
           }
         },
         dismissButton = {
           TextButton(onClick = { showTemplateDialog = false }) {
-            Text("Cancel")
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
           }
         },
       )

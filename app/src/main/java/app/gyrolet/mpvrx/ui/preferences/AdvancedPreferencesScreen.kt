@@ -95,8 +95,9 @@ object AdvancedPreferencesScreen : Screen {
     var exportStats by remember { mutableStateOf<SettingsManager.ExportStats?>(null) }
     val playbackHistoryClearedMessage = stringResource(R.string.pref_advanced_cleared_playback_history)
     val fontsCacheClearedMessage = stringResource(R.string.pref_advanced_cleared_fonts_cache)
-    val exportFailedMessage = stringResource(R.string.pref_export_failed, "Unknown error")
-    val importFailedMessage = stringResource(R.string.pref_import_failed, "Unknown error")
+    val unknownError = stringResource(R.string.generic_unknown_error)
+    val exportFailedMessage = stringResource(R.string.pref_export_failed, unknownError)
+    val importFailedMessage = stringResource(R.string.pref_import_failed, unknownError)
 
     // Export settings launcher
     val exportLauncher =
@@ -113,7 +114,7 @@ object AdvancedPreferencesScreen : Screen {
               onFailure = { error ->
                 Toast.makeText(
                   context,
-                  context.getString(R.string.pref_export_failed, error.message ?: "Unknown error"),
+                  context.getString(R.string.pref_export_failed, error.message ?: context.getString(R.string.generic_unknown_error)),
                   Toast.LENGTH_LONG,
                 ).show()
               },
@@ -137,7 +138,7 @@ object AdvancedPreferencesScreen : Screen {
               onFailure = { error ->
                 Toast.makeText(
                   context,
-                  context.getString(R.string.pref_import_failed, error.message ?: "Unknown error"),
+                  context.getString(R.string.pref_import_failed, error.message ?: context.getString(R.string.generic_unknown_error)),
                   Toast.LENGTH_LONG,
                 ).show()
               },
@@ -500,10 +501,9 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
-                title = { Text("yt-dlp Manager") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_yt_dlp_manager)) },
                 summary = {
-                  Text(
-                    "Install and update yt-dlp for streaming support",
+                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_install_and_update_yt_dlp_for_streaming_support),
                     color = MaterialTheme.colorScheme.outline
                   )
                 },
@@ -741,7 +741,7 @@ object AdvancedPreferencesScreen : Screen {
                       }.onFailure { error ->
                         withContext(Dispatchers.Main) {
                           isClearThumbsConfirmShown = false
-                          Toast.makeText(context, context.getString(R.string.pref_failed_to_clear, error.message ?: "Unknown error"), Toast.LENGTH_LONG).show()
+                          Toast.makeText(context, context.getString(R.string.pref_failed_to_clear, error.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
                         }
                       }
                     }

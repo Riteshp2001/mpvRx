@@ -255,7 +255,7 @@ private fun NormalTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.Search,
-            contentDescription = "Search",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.settings_search_title),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -281,7 +281,7 @@ private fun NormalTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.Settings,
-            contentDescription = "Settings",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_settings),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -403,7 +403,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.PlayArrow,
-            contentDescription = "Play",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.primary,
           )
@@ -417,7 +417,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.PushPin,
-            contentDescription = "Pin folders",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_pin_folders),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -432,7 +432,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.PlaylistAdd,
-            contentDescription = "Add to Playlist",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_to_playlist),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -503,7 +503,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.ContentCopy,
-            contentDescription = "Copy path",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_copy_path),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )

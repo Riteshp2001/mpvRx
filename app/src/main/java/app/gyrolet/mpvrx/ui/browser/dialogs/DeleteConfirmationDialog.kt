@@ -155,8 +155,7 @@ fun DeleteConfirmationDialog(
           modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
-        Text(
-          text = "Delete",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.delete),
           fontWeight = FontWeight.Bold,
         )
       }
@@ -172,7 +171,7 @@ fun DeleteConfirmationDialog(
           modifier = Modifier.size(16.dp),
         )
         Spacer(modifier = Modifier.width(4.dp))
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,

@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
+
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -80,8 +83,7 @@ fun LuaScriptsPanel(
             .padding(horizontal = MaterialTheme.spacing.medium)
             .padding(top = MaterialTheme.spacing.small),
       ) {
-        Text(
-          text = "Scripts (Lua / JS)",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_section_scripts),
           style = MaterialTheme.typography.titleLarge,
         )
         Spacer(Modifier.weight(1f))
@@ -112,13 +114,13 @@ fun LuaScriptsPanel(
         }
         mpvConfStorageLocation.isBlank() -> {
           LuaScriptsEmptyState(
-            title = "No MPV folder selected",
+            title = stringResource(R.string.lua_no_mpv_folder),
             summary = "Choose an MPV config folder in Advanced settings, then open this panel again to manage scripts.",
           )
         }
         catalog.availableScripts.isEmpty() -> {
           LuaScriptsEmptyState(
-            title = "No scripts found",
+            title = stringResource(R.string.lua_no_scripts_found),
             summary = "Put your .lua or .js files inside the MPV scripts folder to manage them here.",
           )
         }

@@ -107,14 +107,14 @@ fun NetworkConnectionCard(
           IconButton(onClick = { onEdit(connection) }) {
             Icon(
               Icons.RoundedFilled.Edit,
-              contentDescription = "Edit",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_edit),
               tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
           IconButton(onClick = { onDelete(connection) }) {
             Icon(
               Icons.RoundedFilled.Delete,
-              contentDescription = "Delete",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.delete),
               tint = MaterialTheme.colorScheme.error,
             )
           }
@@ -163,8 +163,7 @@ fun NetworkConnectionCard(
             onAutoConnectChange(connection, checked)
           },
         )
-        Text(
-          text = "Connect automatically on app launch",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_connect_automatically_on_app_launch),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -192,8 +191,7 @@ fun NetworkConnectionCard(
                   strokeWidth = 2.dp,
                   color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 )
-                Text(
-                  "Connecting",
+                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_connecting),
                   color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 )
               }
@@ -216,7 +214,7 @@ fun NetworkConnectionCard(
                   contentDescription = null,
                   modifier = Modifier.padding(end = 8.dp),
                 )
-                Text("Browse")
+                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_browse))
               }
 
               FilledTonalButton(
@@ -231,7 +229,7 @@ fun NetworkConnectionCard(
                   contentDescription = null,
                   modifier = Modifier.padding(end = 8.dp),
                 )
-                Text("Disconnect")
+                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_disconnect))
               }
             }
           }
@@ -249,7 +247,7 @@ fun NetworkConnectionCard(
                 contentDescription = null,
                 modifier = Modifier.padding(end = 8.dp),
               )
-              Text("Connect")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_connect))
             }
           }
         }

@@ -166,7 +166,7 @@ object FoldersPreferencesScreen : Screen {
         if (!selectionState.isInSelectionMode) {
 
           // ── Media Library ─────────────────────────────────────────────
-          PreferenceSectionHeader(title = "Media Library")
+          PreferenceSectionHeader(title = stringResource(R.string.pref_media_library_section))
 
           NoMediaPreferenceCard(
             includeNoMediaFolders = includeNoMediaFolders,
@@ -180,7 +180,7 @@ object FoldersPreferencesScreen : Screen {
           Spacer(modifier = Modifier.height(16.dp))
 
           // ── Hidden Folders ────────────────────────────────────────────
-          PreferenceSectionHeader(title = "Hidden Folders")
+          PreferenceSectionHeader(title = stringResource(R.string.pref_hidden_folders_section))
 
           Text(
             text = stringResource(R.string.pref_folders_summary),
@@ -517,8 +517,7 @@ internal fun StorageRootPickerCard(
         modifier = Modifier.size(24.dp),
       )
       Column(modifier = Modifier.weight(1f)) {
-        Text(
-          text = "Base Storage Folder",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_base_storage_folder),
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.Bold,
         )
@@ -538,7 +537,7 @@ internal fun StorageRootPickerCard(
         IconButton(onClick = onClearClick) {
           Icon(
             imageVector = Icons.RoundedFilled.Clear,
-            contentDescription = "Clear",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_clear_content_desc),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }

@@ -51,7 +51,7 @@ fun CastPlayerButton(
         factory = { context ->
           MediaRouteButton(context).apply {
             setBackgroundColor(Color.TRANSPARENT)
-            contentDescription = "Cast"
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_cast)
             CastButtonFactory.setUpMediaRouteButton(context.applicationContext, this)
             setRemoteIndicatorDrawable(ColorDrawable(Color.TRANSPARENT))
           }

@@ -157,13 +157,13 @@ fun SubtitlesSheet(
         showLanguagePicker = null
         langSearch = ""
       },
-      title = { Text("Translate to...") },
+      title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_translate_to)) },
       text = {
         Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
           OutlinedTextField(
             value = langSearch,
             onValueChange = { langSearch = it },
-            placeholder = { Text("Search language…") },
+            placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_language)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.medium,
@@ -183,7 +183,7 @@ fun SubtitlesSheet(
               )
             }
             if (languagesToShow.isEmpty()) {
-              item { Text("No languages found", color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(MaterialTheme.spacing.medium)) }
+              item { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_languages_found), color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(MaterialTheme.spacing.medium)) }
             }
           }
         }
@@ -193,7 +193,7 @@ fun SubtitlesSheet(
           showLanguagePicker = null
           langSearch = ""
         }) {
-          Text("Cancel")
+          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
         }
       }
     )
@@ -249,7 +249,7 @@ fun SubtitlesSheet(
             ) {
               Icon(
                 imageVector = Icons.RoundedFilled.Close,
-                contentDescription = "Cancel translation",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_cancel_translation),
                 modifier = Modifier.size(20.dp),
               )
             }
@@ -401,7 +401,7 @@ fun SubtitleTrackRow(
     
     if (isExternal) {
       if (translationEnabled) {
-        IconButton(onClick = onTranslate) { Icon(Icons.RoundedFilled.Translate, contentDescription = "Translate") }
+        IconButton(onClick = onTranslate) { Icon(Icons.RoundedFilled.Translate, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_translate)) }
       }
       IconButton(onClick = onRemove) { Icon(Icons.RoundedFilled.Delete, contentDescription = null) }
     }

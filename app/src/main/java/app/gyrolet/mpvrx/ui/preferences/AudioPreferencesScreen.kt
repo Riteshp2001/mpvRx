@@ -98,10 +98,9 @@ object AudioPreferencesScreen : Screen {
                     browserPreferences.mediaLibraryType.set(MediaLibraryType.Video)
                   }
                 },
-                title = { Text("Include audio files") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_include_audio_files)) },
                 summary = {
-                  Text(
-                    "Show audio files in the browser",
+                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_audio_files_in_the_browser),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -113,7 +112,7 @@ object AudioPreferencesScreen : Screen {
                 SliderPreference(
                   value = minimumAudioDurationSeconds.toFloat(),
                   onValueChange = { browserPreferences.minimumAudioDurationSeconds.set(it.toInt()) },
-                  title = { Text("Minimum audio duration") },
+                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_minimum_audio_duration)) },
                   valueRange = 0f..120f,
                   valueSteps = 24,
                   summary = {
@@ -137,10 +136,9 @@ object AudioPreferencesScreen : Screen {
               SwitchPreference(
                 value = audioBlobEnabled,
                 onValueChange = { preferences.audioBlobEnabled.set(it) },
-                title = { Text("Audio blob visualizer") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_audio_blob_visualizer)) },
                 summary = {
-                  Text(
-                    "Show OpenGL blob visualizer when playing audio",
+                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_opengl_blob_visualizer_when_playing_audio),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -218,8 +216,7 @@ object AudioPreferencesScreen : Screen {
                 onValueChange = { preferences.backgroundPlayback.set(it) },
                 title = { Text(stringResource(R.string.background_playback_title)) },
                 summary = {
-                  Text(
-                    "Keep audio and video playing when leaving the player or locking the screen",
+                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_keep_audio_and_video_playing_when_leaving_the_player_or_locking),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

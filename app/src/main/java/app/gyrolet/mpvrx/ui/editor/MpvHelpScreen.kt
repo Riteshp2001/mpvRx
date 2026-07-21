@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.editor
 
+import app.gyrolet.mpvrx.R
+
 import androidx.compose.ui.focus.FocusRequester
 
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -126,7 +128,7 @@ data class MpvHelpScreen(
                 HelpEntryKind.JS_API -> entry.signature.substringBefore("(") + "()"
             }
             SafeClipboard.copyPlainText(context, "mpv_help", text, showToast = false)
-            Toast.makeText(context, "Copied: $text", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_copied_value, text), Toast.LENGTH_SHORT).show()
         }
 
         LaunchedEffect(Unit) {
@@ -137,8 +139,7 @@ data class MpvHelpScreen(
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(
-                            text = "mpv Documentation",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_mpv_documentation),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -169,8 +170,7 @@ data class MpvHelpScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .focusRequester(focusRequester),
                     placeholder = {
-                        Text(
-                            text = "Search commands, options, properties...",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_commands_options_properties),
                             color = MaterialTheme.colorScheme.outline,
                         )
                     },
@@ -190,7 +190,7 @@ data class MpvHelpScreen(
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
                                     imageVector = Icons.RoundedFilled.Clear,
-                                    contentDescription = "Clear",
+                                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_clear_content_desc),
                                     tint = MaterialTheme.colorScheme.outline,
                                 )
                             }
@@ -220,7 +220,7 @@ data class MpvHelpScreen(
                     FilterChip(
                         selected = selectedKind == null,
                         onClick = { selectedKind = null },
-                        label = { Text("All") },
+                        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_all_sources)) },
                         colors = filterChipColors(),
                     )
                     HelpEntryKind.entries.forEach { kind ->
@@ -250,8 +250,7 @@ data class MpvHelpScreen(
                                 tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No results found",
+                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_results_found),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.outline,
                             )
@@ -346,8 +345,7 @@ private fun HelpEntryCard(entry: HelpEntry, onClick: () -> Unit) {
                         shape = RoundedCornerShape(4.dp),
                         color = colors.error.copy(alpha = 0.12f),
                     ) {
-                        Text(
-                            text = "No Android",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_android),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = colors.error,

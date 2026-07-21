@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.browser.filesystem
 
+import app.gyrolet.mpvrx.R
+
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.Dp
 
@@ -495,7 +497,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 leadingIcon = {
                   Icon(
                     imageVector = Icons.RoundedFilled.Search,
-                    contentDescription = "Search",
+                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.settings_search_title),
                   )
                 },
                 trailingIcon = {
@@ -507,7 +509,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                   ) {
                     Icon(
                       imageVector = Icons.RoundedFilled.Close,
-                      contentDescription = "Cancel",
+                      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
                     )
                   }
                 },
@@ -618,7 +620,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                     TooltipAnchorPosition.Above
                   }
                 ),
-                tooltip = { PlainTooltip { Text("Toggle menu") } },
+                tooltip = { PlainTooltip { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_toggle_menu)) } },
                 state = rememberTooltipState(),
               ) {
                 ToggleFloatingActionButton(
@@ -650,7 +652,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 filePicker.launch(arrayOf("video/*"))
               },
               icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
-              text = { Text(text = "Open File") },
+              text = { Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_open_file)) },
             )
 
             FloatingActionButtonMenuItem(
@@ -665,7 +667,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 }
               },
               icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
-              text = { Text(text = "Recently Played") },
+              text = { Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_advanced_enable_recently_played_title)) },
             )
 
             FloatingActionButtonMenuItem(
@@ -674,7 +676,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 showLinkDialog.value = true
               },
               icon = { Icon(Icons.RoundedFilled.Link, contentDescription = null) },
-              text = { Text(text = "Open Link") },
+              text = { Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_open_link)) },
             )
           }
         }
@@ -1253,7 +1255,7 @@ private fun FileSystemBrowserContent(
       ) {
         EmptyState(
           icon = Icons.RoundedFilled.Folder,
-          title = "Error loading directory",
+          title = stringResource(R.string.ui_error_loading_directory),
           message = error,
         )
       }
@@ -1266,7 +1268,7 @@ private fun FileSystemBrowserContent(
       ) {
         EmptyState(
           icon = Icons.RoundedFilled.FolderOpen,
-          title = "Empty folder",
+          title = stringResource(R.string.ui_empty_folder),
           message = "This folder contains no videos or subfolders",
         )
       }
@@ -1664,7 +1666,7 @@ private fun FileSystemSearchContent(
         ) {
           EmptyState(
             icon = Icons.RoundedFilled.Search,
-            title = "No results found",
+            title = stringResource(R.string.ui_no_results_found),
             message = "No files or folders match \"$searchQuery\"",
           )
         }

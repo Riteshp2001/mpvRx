@@ -253,8 +253,7 @@ fun PlaylistSheet(
             modifier = Modifier.weight(1f)
           ) {
             if (currentItem != null) {
-              Text(
-                text = "Now Playing",
+              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_now_playing),
                 style = MaterialTheme.typography.titleSmall.copy(
                   fontWeight = FontWeight.Bold,
                   color = accentColor,
@@ -396,7 +395,7 @@ fun PlaylistTrackListItem(
           PlaylistThumbnail(
             item = item,
             thumbnailRepository = thumbnailRepository,
-            contentDescription = "Thumbnail",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
@@ -496,8 +495,7 @@ fun PlaylistTrackListItem(
             color = accentColor.copy(alpha = 0.15f),
             shape = RoundedCornerShape(16.dp),
           ) {
-            Text(
-              text = "Playing",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.notification_playing),
               modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
               style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
@@ -567,7 +565,7 @@ fun PlaylistTrackGridItem(
           PlaylistThumbnail(
             item = item,
             thumbnailRepository = thumbnailRepository,
-            contentDescription = "Thumbnail",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
@@ -694,8 +692,7 @@ fun PlaylistTrackGridItem(
               color = accentColor.copy(alpha = 0.15f),
               shape = RoundedCornerShape(4.dp),
             ) {
-              Text(
-                text = "Playing",
+              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.notification_playing),
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.labelSmall.copy(
                   fontSize = 10.sp,

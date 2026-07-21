@@ -223,7 +223,7 @@ object DecoderPreferencesScreen : Screen {
                   }
                 },
                 enabled = isVulkanSupported,
-                title = { Text(stringResource(R.string.pref_decoder_vulkan_title) + " (Experimental)") },
+                title = { Text(stringResource(R.string.pref_decoder_vulkan_experimental_title)) },
                 summary = {
                   Text(
                     stringResource(
@@ -290,8 +290,7 @@ object DecoderPreferencesScreen : Screen {
                       stringResource(R.string.pref_anime4k_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
-                    Text(
-                      text = "github.com/bloc97/Anime4K",
+                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_anime4k_link),
                       color = MaterialTheme.colorScheme.primary,
                       style = MaterialTheme.typography.bodySmall,
                       textDecoration = TextDecoration.Underline,
@@ -320,8 +319,7 @@ object DecoderPreferencesScreen : Screen {
                   horizontalArrangement = Arrangement.SpaceBetween,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Text(
-                    text = "Anime4K Shaders Options",
+                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_anime4k_shaders_options),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,

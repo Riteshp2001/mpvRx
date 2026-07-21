@@ -187,7 +187,7 @@ fun PlaybackSpeedSheet(
                         modifier = buttonModifier
                     ) {
                        Icon(Icons.RoundedFilled.Remove, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
-                       Text("Remove")
+                       Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_remove))
                     }
                 }
             } else {
@@ -197,7 +197,7 @@ fun PlaybackSpeedSheet(
                     modifier = buttonModifier
                 ) {
                   Icon(Icons.RoundedFilled.Add, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
-                  Text("Add")
+                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add))
                 }
             }
       }

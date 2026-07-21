@@ -80,7 +80,7 @@ fun NetworkFolderCard(
       ) {
         Icon(
           Icons.RoundedFilled.Folder,
-          contentDescription = "Folder",
+          contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.secondary,
         )

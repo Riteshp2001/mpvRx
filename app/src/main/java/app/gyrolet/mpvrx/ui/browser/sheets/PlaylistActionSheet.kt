@@ -77,8 +77,7 @@ fun PlaylistActionSheet(
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       // Title
-      Text(
-        text = "Playlist Options",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playlist_options),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurface,
@@ -110,13 +109,11 @@ fun PlaylistActionSheet(
             modifier = Modifier.size(24.dp),
           )
           Column(modifier = Modifier.weight(1f)) {
-            Text(
-              text = "Create Empty Playlist",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_create_empty),
               style = MaterialTheme.typography.bodyLarge,
               fontWeight = FontWeight.Medium,
             )
-            Text(
-              text = "Create a new blank playlist",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_a_new_blank_playlist),
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -147,13 +144,11 @@ fun PlaylistActionSheet(
             modifier = Modifier.size(24.dp),
           )
           Column(modifier = Modifier.weight(1f)) {
-            Text(
-              text = "Add M3U Playlist from URL",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_m3u_playlist_from_url),
               style = MaterialTheme.typography.bodyLarge,
               fontWeight = FontWeight.Medium,
             )
-            Text(
-              text = "Import a playlist from a web URL",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_import_a_playlist_from_a_web_url),
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -181,14 +176,13 @@ fun PlaylistActionSheet(
           modifier = Modifier.padding(24.dp),
           verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-          Text(
-            text = "Create Playlist",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_playlist),
             style = MaterialTheme.typography.headlineSmall,
           )
           OutlinedTextField(
             value = playlistName,
             onValueChange = { playlistName = it },
-            label = { Text("Playlist Name") },
+            label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playlist_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
           )
@@ -200,7 +194,7 @@ fun PlaylistActionSheet(
               onClick = { showCreateDialog = false },
               shape = MaterialTheme.shapes.extraLarge,
             ) {
-              Text("Cancel")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -211,7 +205,7 @@ fun PlaylistActionSheet(
                       onCreatePlaylist(playlistName.trim())
                       android.widget.Toast.makeText(
                         context,
-                        "Playlist created successfully",
+                        context.getString(app.gyrolet.mpvrx.R.string.ui_playlist_created_successfully),
                         android.widget.Toast.LENGTH_SHORT
                       ).show()
                       showCreateDialog = false
@@ -228,7 +222,7 @@ fun PlaylistActionSheet(
               enabled = playlistName.isNotBlank(),
               shape = MaterialTheme.shapes.extraLarge,
             ) {
-              Text("Create")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create))
             }
           }
         }
@@ -254,7 +248,7 @@ fun PlaylistActionSheet(
           result.onSuccess {
             android.widget.Toast.makeText(
               context,
-              "M3U Playlist added successfully",
+              context.getString(app.gyrolet.mpvrx.R.string.playlist_add_success),
               android.widget.Toast.LENGTH_SHORT
             ).show()
           }.onFailure { error ->
@@ -281,8 +275,7 @@ fun PlaylistActionSheet(
           modifier = Modifier.padding(24.dp),
           verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-          Text(
-            text = "Add M3U Playlist",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_add_m3u_title),
             style = MaterialTheme.typography.headlineSmall,
           )
 
@@ -290,7 +283,7 @@ fun PlaylistActionSheet(
             OutlinedTextField(
               value = playlistUrl,
               onValueChange = { playlistUrl = it },
-              label = { Text("Playlist URL") },
+              label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_url_label)) },
               singleLine = false,
               maxLines = 3,
               modifier = Modifier.fillMaxWidth(),
@@ -300,7 +293,7 @@ fun PlaylistActionSheet(
             OutlinedTextField(
               value = playlistUserAgent,
               onValueChange = { playlistUserAgent = it },
-              label = { Text("Custom User-Agent (optional)") },
+              label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_custom_user_agent_optional)) },
               singleLine = true,
               modifier = Modifier.fillMaxWidth(),
               enabled = !isLoading
@@ -313,8 +306,7 @@ fun PlaylistActionSheet(
               horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
               androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-              Text(
-                text = "OR",
+              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_or),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
               )
@@ -335,7 +327,7 @@ fun PlaylistActionSheet(
                 modifier = Modifier.size(20.dp)
               )
               Spacer(modifier = Modifier.width(8.dp))
-              Text("Choose Local M3U File")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_choose_local_m3u_file))
             }
 
             if (isLoading) {
@@ -359,7 +351,7 @@ fun PlaylistActionSheet(
               enabled = !isLoading,
               shape = MaterialTheme.shapes.extraLarge,
             ) {
-              Text("Cancel")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -375,7 +367,7 @@ fun PlaylistActionSheet(
                     result.onSuccess {
                       android.widget.Toast.makeText(
                         context,
-                        "M3U Playlist added successfully",
+                        context.getString(app.gyrolet.mpvrx.R.string.playlist_add_success),
                         android.widget.Toast.LENGTH_SHORT
                       ).show()
                     }.onFailure { error ->
@@ -393,7 +385,7 @@ fun PlaylistActionSheet(
               enabled = playlistUrl.isNotBlank() && !isLoading,
               shape = MaterialTheme.shapes.extraLarge,
             ) {
-              Text("Add from URL")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_from_url))
             }
           }
         }

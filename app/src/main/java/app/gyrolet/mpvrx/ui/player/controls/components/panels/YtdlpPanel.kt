@@ -66,8 +66,7 @@ fun YtdlpPanel(
           .padding(horizontal = MaterialTheme.spacing.medium)
           .padding(top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.extraSmall),
       ) {
-        Text(
-          text = "yt-dlp Manager",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_yt_dlp_manager),
           style = MaterialTheme.typography.titleLarge,
           fontWeight = FontWeight.Bold
         )
@@ -131,8 +130,7 @@ fun YtdlpPanel(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
           ) {
-            Text(
-              text = "Quick Quality Selection",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_quick_quality_selection),
               style = MaterialTheme.typography.bodyMedium,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -194,8 +192,7 @@ fun YtdlpPanel(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
           ) {
-            Text(
-              text = "Codec Preset",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_codec_preset),
               style = MaterialTheme.typography.bodyMedium,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -244,8 +241,7 @@ fun YtdlpPanel(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
           ) {
-            Text(
-              text = "Quick Subtitle Config",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_quick_subtitle_config),
               style = MaterialTheme.typography.bodyMedium,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -259,8 +255,8 @@ fun YtdlpPanel(
               horizontalArrangement = Arrangement.SpaceBetween
             ) {
               Column(modifier = Modifier.weight(1f)) {
-                Text("Download Subtitles", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                Text("Fetch subs from stream sources", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_download_subtitles), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_fetch_subs_from_stream_sources), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
               }
               Switch(
                 checked = writeSubs,
@@ -277,8 +273,8 @@ fun YtdlpPanel(
               horizontalArrangement = Arrangement.SpaceBetween
             ) {
               Column(modifier = Modifier.weight(1f)) {
-                Text("Auto-Generated Captions", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                Text("Include auto-captions/transcripts", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_generated_captions), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_include_auto_captions_transcripts), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
               }
               Switch(
                 checked = writeAutoSubs,
@@ -307,7 +303,7 @@ fun YtdlpPanel(
           ) {
             Icon(Icons.RoundedFilled.CloudDownload, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Install Core")
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_install_core))
           }
 
           OutlinedButton(
@@ -325,7 +321,7 @@ fun YtdlpPanel(
           ) {
             Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Update Core")
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_update_core))
           }
       }
     }

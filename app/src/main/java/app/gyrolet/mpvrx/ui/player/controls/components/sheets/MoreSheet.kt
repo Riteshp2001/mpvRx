@@ -244,8 +244,7 @@ fun MoreSheet(
         )
         
         if (anime4KUiState.isHighResolution) {
-            Text(
-                text = "Not available for 4K/8K video",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_not_available_for_4k_8k_video),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(bottom = 4.dp)
@@ -334,8 +333,7 @@ fun TimePickerDialog(
             horizontalAlignment = Alignment.Start,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                "Quick Presets",
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_quick_presets),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -351,7 +349,7 @@ fun TimePickerDialog(
                             onTimeSelect(minutes * 60)
                             onDismissRequest()
                         },
-                        label = { Text("${minutes}m") },
+                        label = { Text(stringResource(R.string.generic_minutes_short, minutes)) },
                         leadingIcon = null,
                     )
                 }
@@ -412,7 +410,7 @@ fun SectionHeaderWithInfo(
     IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
       Icon(
         imageVector = Icons.RoundedFilled.Info,
-        contentDescription = "Info",
+        contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.info),
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(16.dp)
       )

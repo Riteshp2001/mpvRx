@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.browser.selection
 
+import app.gyrolet.mpvrx.R
+
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -128,12 +130,12 @@ class SelectionManager<T, ID>(
       runCatching {
         val (deleted, failed) = onDeleteItems(selected, deleteFiles)
         if (deleted > 0) {
-          Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_deleted_successfully), Toast.LENGTH_SHORT).show()
         } else if (failed > 0) {
-          Toast.makeText(context, "Failed to delete", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_failed_to_delete), Toast.LENGTH_SHORT).show()
         }
       }.onFailure {
-        Toast.makeText(context, "Failed to delete: ${it.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.toast_failed_to_delete_reason, it.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_SHORT).show()
       }
       clear()
       onOperationComplete()
@@ -152,12 +154,12 @@ class SelectionManager<T, ID>(
       runCatching {
         val result = onRenameItem(item, newName)
         result.onSuccess {
-          Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_renamed_successfully), Toast.LENGTH_SHORT).show()
         }.onFailure { error ->
-          Toast.makeText(context, "Failed to rename: ${error.message}", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, context.getString(R.string.toast_failed_to_rename_reason, error.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_SHORT).show()
         }
       }.onFailure {
-        Toast.makeText(context, "Failed to rename: ${it.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.toast_failed_to_rename_reason, it.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_SHORT).show()
       }
       clear()
       onOperationComplete()
@@ -186,10 +188,10 @@ class SelectionManager<T, ID>(
         }
       }
       if (successCount > 0) {
-        Toast.makeText(context, "Renamed $successCount items", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.resources.getQuantityString(R.plurals.toast_renamed_items, successCount, successCount), Toast.LENGTH_SHORT).show()
       }
       if (failureCount > 0) {
-        Toast.makeText(context, "Failed to rename $failureCount items", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.resources.getQuantityString(R.plurals.toast_failed_to_rename_items, failureCount, failureCount), Toast.LENGTH_SHORT).show()
       }
       clear()
       onOperationComplete()

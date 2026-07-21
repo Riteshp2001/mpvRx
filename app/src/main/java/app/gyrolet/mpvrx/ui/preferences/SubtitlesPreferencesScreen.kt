@@ -547,7 +547,7 @@ object SubtitlesPreferencesScreen : Screen {
                         ) {
                           Icon(
                             imageVector = Icons.RoundedFilled.Refresh,
-                            contentDescription = "Refresh",
+                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_refresh),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.primary
                           )
@@ -568,7 +568,7 @@ object SubtitlesPreferencesScreen : Screen {
                         ) {
                           SuggestionChip(
                             onClick = {},
-                            label = { Text("API Key: $keyType") },
+                            label = { Text(stringResource(R.string.pref_api_key_type, keyType)) },
                             colors = SuggestionChipDefaults.suggestionChipColors(
                               containerColor = badgeColor,
                               labelColor = badgeTextColor
@@ -627,8 +627,7 @@ object SubtitlesPreferencesScreen : Screen {
                           // Free Sources Group
                           if (freeItems.isNotEmpty()) {
                             item {
-                              Text(
-                                text = "Free Sources",
+                              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_free_sources),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(vertical = 8.dp)
@@ -686,8 +685,7 @@ object SubtitlesPreferencesScreen : Screen {
                           // Paid Sources Group
                           if (paidItems.isNotEmpty()) {
                             item {
-                              Text(
-                                text = "Paid Sources",
+                              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_paid_sources),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(vertical = 8.dp)
@@ -743,8 +741,7 @@ object SubtitlesPreferencesScreen : Screen {
                                     }
                                   }
                                   if (!isAvailable) {
-                                    Text(
-                                      text = "Restricted (Requires Paid API Key)",
+                                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_restricted_requires_paid_api_key),
                                       style = MaterialTheme.typography.bodySmall,
                                       color = MaterialTheme.colorScheme.error
                                     )
@@ -754,7 +751,7 @@ object SubtitlesPreferencesScreen : Screen {
                                 if (!isAvailable) {
                                   Icon(
                                     imageVector = Icons.RoundedFilled.Lock,
-                                    contentDescription = "Restricted",
+                                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_restricted),
                                     tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(16.dp)
                                   )
@@ -919,7 +916,7 @@ object SubtitlesPreferencesScreen : Screen {
                             }
                           }.onFailure { e ->
                             withContext(Dispatchers.Main) {
-                              android.widget.Toast.makeText(context, context.getString(R.string.pref_subtitle_search_error, e.message ?: "Unknown error"), android.widget.Toast.LENGTH_SHORT).show()
+                              android.widget.Toast.makeText(context, context.getString(R.string.pref_subtitle_search_error, e.message ?: context.getString(R.string.generic_unknown_error)), android.widget.Toast.LENGTH_SHORT).show()
                             }
                           }
                         }

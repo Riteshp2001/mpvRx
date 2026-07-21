@@ -105,8 +105,8 @@ private fun PreviewExpandableCard() {
 
   ExpandableCard(
     isExpanded,
-    title = { Text("Hello World") },
-    content = { Text("SPOjao;sjd") },
+    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_preferences)) },
+    content = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_appearance_summary)) },
     onExpand = { isExpanded = it },
   )
 }

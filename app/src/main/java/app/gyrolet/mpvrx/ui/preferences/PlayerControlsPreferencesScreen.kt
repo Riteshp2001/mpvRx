@@ -254,7 +254,7 @@ object PlayerControlsPreferencesScreen : Screen {
                 onValueChange = { appearancePrefs.portraitPlaybackControlsPosition.set(it) },
                 values = PortraitPlaybackControlsPosition.entries,
                 valueToText = { AnnotatedString(it.displayName) },
-                title = { Text("Portrait playback buttons") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_portrait_playback_buttons)) },
                 summary = { Text(portraitPlaybackControlsPosition.displayName) },
               )
 
@@ -314,7 +314,7 @@ object PlayerControlsPreferencesScreen : Screen {
                 onValueChange = { playerPrefs.clockFormat.set(it) },
                 values = PlayerClockFormat.entries,
                 valueToText = { AnnotatedString(it.displayName) },
-                title = { Text("Time + Network clock") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_time_network_clock)) },
                 summary = { Text(clockFormat.displayName) },
               )
             }

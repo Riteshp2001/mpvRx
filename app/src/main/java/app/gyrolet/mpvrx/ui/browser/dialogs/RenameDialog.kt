@@ -111,7 +111,7 @@ fun RenameDialog(
             Modifier
               .fillMaxWidth()
               .focusRequester(focusRequester),
-          label = { Text("New name", fontWeight = FontWeight.Medium) },
+          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_new_name), fontWeight = FontWeight.Medium) },
           singleLine = false,
           maxLines = 5,
           isError = isError.value,
@@ -163,7 +163,7 @@ fun RenameDialog(
                 strokeWidth = 2.dp,
               )
               Spacer(modifier = Modifier.width(8.dp))
-              Text("AI is thinking...")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ai_is_thinking))
             } else {
               Icon(
                 imageVector = Icons.RoundedFilled.AutoAwesome,
@@ -171,7 +171,7 @@ fun RenameDialog(
                 modifier = Modifier.size(18.dp),
               )
               Spacer(modifier = Modifier.width(8.dp))
-              Text("AI Rename", fontWeight = FontWeight.Medium)
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ai_rename), fontWeight = FontWeight.Medium)
             }
           }
         }
@@ -187,8 +187,7 @@ fun RenameDialog(
           ),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text(
-          text = "Rename",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.rename),
           fontWeight = FontWeight.Bold,
         )
       }
@@ -198,7 +197,7 @@ fun RenameDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
