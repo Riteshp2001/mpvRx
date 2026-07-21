@@ -276,6 +276,12 @@
   <string name="pref_audio_volume_boost_cap">音量增强上限</string>
   <string name="pref_advanced">高级</string>
   <string name="pref_advanced_summary">配置位置、mpv.conf</string>
+  <string name="pref_section_app_language">应用语言</string>
+  <string name="pref_app_language_title">语言</string>
+  <string name="pref_app_language_system_default">跟随系统</string>
+  <string name="pref_app_language_restart_title">需要重启</string>
+  <string name="pref_app_language_restart_message">重启 mpvRx 以应用新语言。</string>
+  <string name="pref_app_language_restart_now">立即重启</string>
   <string name="pref_advanced_mpv_conf_storage_location">选择配置存储位置</string>
   <string name="pref_advanced_mpv_conf">编辑 mpv.conf</string>
   <string name="pref_advanced_input_conf">编辑 input.conf</string>
@@ -1430,4 +1436,19 @@
   <string name="filter_preset_soft_dreamy_anime_colors">柔和梦幻的动漫色彩</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">鲜艳锐利的霓虹色彩</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">为 OLED 显示屏增强黑色表现</string>
+  <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_open">打开 Syncplay</string>
+  <string name="syncplay_connected_as">已以 %1$s 身份连接到房间 %2$s</string>
+  <string name="syncplay_users_in_room">房间中的用户：</string>
+  <string name="syncplay_disconnect">断开连接</string>
+  <string name="syncplay_server_host">服务器地址</string>
+  <string name="syncplay_port">端口</string>
+  <string name="syncplay_username">用户名</string>
+  <string name="syncplay_room_name">房间名称</string>
+  <string name="syncplay_password_optional">密码（可选）</string>
+  <string name="syncplay_error">错误：%1$s</string>
+  <string name="syncplay_connection_failed">连接失败</string>
+  <string name="syncplay_connect">连接</string>
+  <string name="syncplay_connecting">正在连接…</string>
+  <string name="syncplay_player_status">Syncplay：%1$s（%2$d 位用户）</string>
 </resources>

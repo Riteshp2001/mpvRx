@@ -11,6 +11,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -120,7 +121,7 @@ private fun screenNavTransition(
 /**
  * Main entry point for the application
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
   private val playerPreferences by inject<PlayerPreferences>()
   private val networkRepository by inject<NetworkRepository>()

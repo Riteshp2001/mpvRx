@@ -665,7 +665,7 @@ internal fun VideoListContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
-  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+  val mediaLayoutMode by browserPreferences.folderViewVideoLayoutMode.collectAsState()
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val bottomPadding = if (showFloatingBottomBar) {

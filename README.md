@@ -219,6 +219,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | **"NEW" Badges** | Configurable threshold for new video indicators |
 | **Grid/List Layout** | Per-orientation column count settings |
 | **Multi-Protocol Network** | Built-in SMB, FTP, and WebDAV clients |
+| **Syncplay Rooms** | Join a Syncplay server room to synchronize pause, resume, seeking, and playback position with other viewers |
 | **Responsive & Dual-Pane Layouts** | Automatic grid sizing plus optional folder/settings dual-pane views on tablets |
 | **Audio Library Mode** | MediaStore and filesystem audio browsing with square artwork, metadata titles, and mixed sibling playlists |
 | **Safer Folder Deletion** | Media-only folder deletion by default, with an explicit option to delete every contained file |

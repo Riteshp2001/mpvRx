@@ -276,6 +276,12 @@ Suivant : NEXT</string>
   <string name="pref_audio_volume_boost_cap">Limite d’amplification du volume</string>
   <string name="pref_advanced">Avancé</string>
   <string name="pref_advanced_summary">Emplacement de configuration, mpv.conf</string>
+  <string name="pref_section_app_language">Langue de l’application</string>
+  <string name="pref_app_language_title">Langue</string>
+  <string name="pref_app_language_system_default">Langue du système</string>
+  <string name="pref_app_language_restart_title">Redémarrage requis</string>
+  <string name="pref_app_language_restart_message">Redémarrez mpvRx pour appliquer la nouvelle langue.</string>
+  <string name="pref_app_language_restart_now">Redémarrer maintenant</string>
   <string name="pref_advanced_mpv_conf_storage_location">Choisir l’emplacement de stockage de la configuration</string>
   <string name="pref_advanced_mpv_conf">Modifier mpv.conf</string>
   <string name="pref_advanced_input_conf">Modifier input.conf</string>
@@ -1430,4 +1436,19 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="filter_preset_soft_dreamy_anime_colors">Couleurs d’anime douces et oniriques</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Couleurs néon éclatantes et tranchées</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Noirs renforcés pour les écrans OLED</string>
+  <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_open">Ouvrir Syncplay</string>
+  <string name="syncplay_connected_as">Connecté en tant que %1$s dans le salon %2$s</string>
+  <string name="syncplay_users_in_room">Utilisateurs dans le salon :</string>
+  <string name="syncplay_disconnect">Se déconnecter</string>
+  <string name="syncplay_server_host">Serveur</string>
+  <string name="syncplay_port">Port</string>
+  <string name="syncplay_username">Nom d’utilisateur</string>
+  <string name="syncplay_room_name">Nom du salon</string>
+  <string name="syncplay_password_optional">Mot de passe (facultatif)</string>
+  <string name="syncplay_error">Erreur : %1$s</string>
+  <string name="syncplay_connection_failed">Échec de la connexion</string>
+  <string name="syncplay_connect">Se connecter</string>
+  <string name="syncplay_connecting">Connexion…</string>
+  <string name="syncplay_player_status">Syncplay : %1$s (%2$d utilisateurs)</string>
 </resources>

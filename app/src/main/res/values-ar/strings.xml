@@ -276,6 +276,12 @@
   <string name="pref_audio_volume_boost_cap">حد تعزيز مستوى الصوت</string>
   <string name="pref_advanced">متقدم</string>
   <string name="pref_advanced_summary">موقع الإعداد، mpv.conf</string>
+  <string name="pref_section_app_language">لغة التطبيق</string>
+  <string name="pref_app_language_title">اللغة</string>
+  <string name="pref_app_language_system_default">إعداد النظام الافتراضي</string>
+  <string name="pref_app_language_restart_title">إعادة التشغيل مطلوبة</string>
+  <string name="pref_app_language_restart_message">أعد تشغيل mpvRx لتطبيق اللغة الجديدة.</string>
+  <string name="pref_app_language_restart_now">إعادة التشغيل الآن</string>
   <string name="pref_advanced_mpv_conf_storage_location">اختيار موقع تخزين الإعدادات</string>
   <string name="pref_advanced_mpv_conf">تحرير mpv.conf</string>
   <string name="pref_advanced_input_conf">تحرير input.conf</string>
@@ -1430,4 +1436,19 @@
   <string name="filter_preset_soft_dreamy_anime_colors">ألوان أنمي ناعمة وحالمة</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">ألوان نيون زاهية وحادّة</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">درجات سوداء محسّنة لشاشات OLED</string>
+  <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_open">فتح Syncplay</string>
+  <string name="syncplay_connected_as">متصل باسم %1$s في الغرفة %2$s</string>
+  <string name="syncplay_users_in_room">المستخدمون في الغرفة:</string>
+  <string name="syncplay_disconnect">قطع الاتصال</string>
+  <string name="syncplay_server_host">عنوان الخادم</string>
+  <string name="syncplay_port">المنفذ</string>
+  <string name="syncplay_username">اسم المستخدم</string>
+  <string name="syncplay_room_name">اسم الغرفة</string>
+  <string name="syncplay_password_optional">كلمة المرور (اختيارية)</string>
+  <string name="syncplay_error">خطأ: %1$s</string>
+  <string name="syncplay_connection_failed">فشل الاتصال</string>
+  <string name="syncplay_connect">اتصال</string>
+  <string name="syncplay_connecting">جارٍ الاتصال…</string>
+  <string name="syncplay_player_status">Syncplay: %1$s (%2$d مستخدمين)</string>
 </resources>

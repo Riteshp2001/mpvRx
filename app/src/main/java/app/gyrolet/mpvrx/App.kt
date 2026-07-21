@@ -21,8 +21,6 @@ import android.content.ComponentName
 import android.content.pm.PackageManager
 import org.koin.core.context.GlobalContext
 import `is`.xyz.mpv.FastThumbnails
-import android.os.StrictMode
-import app.gyrolet.mpvrx.ui.player.PlayerDiagnostics
 
 @OptIn(KoinExperimentalAPI::class)
 class App : Application() {
@@ -36,17 +34,6 @@ class App : Application() {
 
   override fun onCreate() {
     super.onCreate()
-
-    if (BuildConfig.DEBUG) {
-      StrictMode.setVmPolicy(
-        StrictMode.VmPolicy.Builder()
-          .detectLeakedClosableObjects()
-          .detectLeakedRegistrationObjects()
-          .penaltyLog()
-          .build(),
-      )
-      PlayerDiagnostics.startMainThreadWatchdog()
-    }
 
     // Initialize Koin
     startKoin {

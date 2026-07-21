@@ -533,7 +533,8 @@ fun MediaLibraryContent() {
         sortType = videoSortType,
         sortOrder = videoSortOrder,
         onSortTypeChange = { browserPreferences.videoSortType.set(it) },
-        onSortOrderChange = { browserPreferences.videoSortOrder.set(it) }
+        onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
+        isFolderView = false,
       )
     }
 

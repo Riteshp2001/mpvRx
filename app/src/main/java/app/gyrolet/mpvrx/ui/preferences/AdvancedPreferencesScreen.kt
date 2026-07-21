@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -42,7 +43,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.util.fastJoinToString
 import androidx.core.net.toUri
+import androidx.core.os.LocaleListCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.appcompat.app.AppCompatDelegate
 import android.os.Build
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.mpvRxDatabase
@@ -73,9 +76,42 @@ import me.zhanghai.compose.preference.TwoTargetIconButtonPreference
 import org.koin.compose.koinInject
 import java.io.File
 import java.text.DecimalFormat
+import java.util.Locale
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.outputStream
 import kotlin.io.path.readLines
+
+private enum class AppLanguage(val languageTag: String) {
+  SystemDefault(""),
+  English("en"),
+  Arabic("ar"),
+  German("de"),
+  Spanish("es"),
+  French("fr"),
+  Japanese("ja"),
+  PortugueseBrazil("pt-BR"),
+  Russian("ru"),
+  SimplifiedChinese("zh-CN"),
+  ;
+
+  fun displayName(context: android.content.Context): String {
+    if (this == SystemDefault) return context.getString(R.string.pref_app_language_system_default)
+    val locale = Locale.forLanguageTag(languageTag)
+    return locale.getDisplayName(locale)
+  }
+
+  companion object {
+    fun fromLanguageTag(languageTag: String): AppLanguage {
+      if (languageTag.isBlank()) return SystemDefault
+      return entries.firstOrNull { it.languageTag.equals(languageTag, ignoreCase = true) }
+        ?: entries.firstOrNull {
+          it != SystemDefault &&
+            Locale.forLanguageTag(it.languageTag).language == Locale.forLanguageTag(languageTag).language
+        }
+        ?: SystemDefault
+    }
+  }
+}
 
 @Serializable
 object AdvancedPreferencesScreen : Screen {
@@ -93,6 +129,14 @@ object AdvancedPreferencesScreen : Screen {
     var showExportDialog by remember { mutableStateOf(false) }
     var importStats by remember { mutableStateOf<SettingsManager.ImportStats?>(null) }
     var exportStats by remember { mutableStateOf<SettingsManager.ExportStats?>(null) }
+    var pendingAppLanguage by remember { mutableStateOf<AppLanguage?>(null) }
+    val configuration = LocalConfiguration.current
+    val currentAppLanguage =
+      remember(configuration) {
+        AppLanguage.fromLanguageTag(
+          AppCompatDelegate.getApplicationLocales().get(0)?.toLanguageTag().orEmpty(),
+        )
+      }
     val playbackHistoryClearedMessage = stringResource(R.string.pref_advanced_cleared_playback_history)
     val fontsCacheClearedMessage = stringResource(R.string.pref_advanced_cleared_fonts_cache)
     val unknownError = stringResource(R.string.generic_unknown_error)
@@ -219,6 +263,35 @@ object AdvancedPreferencesScreen : Screen {
       )
     }
 
+    pendingAppLanguage?.let { language ->
+      AlertDialog(
+        onDismissRequest = { pendingAppLanguage = null },
+        title = { Text(stringResource(R.string.pref_app_language_restart_title)) },
+        text = { Text(stringResource(R.string.pref_app_language_restart_message)) },
+        dismissButton = {
+          TextButton(onClick = { pendingAppLanguage = null }) {
+            Text(stringResource(R.string.generic_cancel))
+          }
+        },
+        confirmButton = {
+          TextButton(
+            onClick = {
+              pendingAppLanguage = null
+              val locales =
+                if (language == AppLanguage.SystemDefault) {
+                  LocaleListCompat.getEmptyLocaleList()
+                } else {
+                  LocaleListCompat.forLanguageTags(language.languageTag)
+                }
+              AppCompatDelegate.setApplicationLocales(locales)
+            },
+          ) {
+            Text(stringResource(R.string.pref_app_language_restart_now))
+          }
+        },
+      )
+    }
+
     Scaffold(
       topBar = {
         TopAppBar(
@@ -251,6 +324,31 @@ object AdvancedPreferencesScreen : Screen {
             .fillMaxSize()
             .padding(padding),
         ) {
+          // App Language Section
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_section_app_language))
+          }
+
+          item {
+            PreferenceCard {
+              ListPreference(
+                value = currentAppLanguage,
+                onValueChange = { language ->
+                  if (language != currentAppLanguage) pendingAppLanguage = language
+                },
+                values = AppLanguage.entries,
+                valueToText = { AnnotatedString(it.displayName(context)) },
+                title = { Text(stringResource(R.string.pref_app_language_title)) },
+                summary = {
+                  Text(
+                    text = currentAppLanguage.displayName(context),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+            }
+          }
+
           // Backup & Restore Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_backup_restore))

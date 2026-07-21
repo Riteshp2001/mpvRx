@@ -176,7 +176,7 @@ object FolderListScreen : Screen {
     val foldersWereDeleted by viewModel.foldersWereDeleted.collectAsState()
 
     // Preferences
-    val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+    val mediaLayoutMode by browserPreferences.folderViewFolderLayoutMode.collectAsState()
     val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()

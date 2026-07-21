@@ -171,6 +171,33 @@ object NetworkStreamingScreen : Screen {
             )
           }
 
+          // Syncplay
+          item {
+            Spacer(modifier = Modifier.height(24.dp))
+            var showSyncplaySheet by remember { mutableStateOf(false) }
+
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text(
+                text = stringResource(R.string.syncplay_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(vertical = 8.dp),
+              )
+              Button(onClick = { showSyncplaySheet = true }) {
+                Text(stringResource(R.string.syncplay_open))
+              }
+            }
+
+            if (showSyncplaySheet) {
+              SyncplaySheet(onDismiss = { showSyncplaySheet = false })
+            }
+          }
+
           // Section 2: Local Network header
           item {
             Spacer(modifier = Modifier.height(24.dp))

@@ -276,6 +276,12 @@
   <string name="pref_audio_volume_boost_cap">Предел усиления громкости</string>
   <string name="pref_advanced">Расширенные</string>
   <string name="pref_advanced_summary">Расположение конфигурации, mpv.conf</string>
+  <string name="pref_section_app_language">Язык приложения</string>
+  <string name="pref_app_language_title">Язык</string>
+  <string name="pref_app_language_system_default">Как в системе</string>
+  <string name="pref_app_language_restart_title">Требуется перезапуск</string>
+  <string name="pref_app_language_restart_message">Перезапустите mpvRx, чтобы применить новый язык.</string>
+  <string name="pref_app_language_restart_now">Перезапустить сейчас</string>
   <string name="pref_advanced_mpv_conf_storage_location">Выбрать место хранения конфигурации</string>
   <string name="pref_advanced_mpv_conf">Изменить mpv.conf</string>
   <string name="pref_advanced_input_conf">Изменить input.conf</string>
@@ -1430,4 +1436,19 @@
   <string name="filter_preset_soft_dreamy_anime_colors">Мягкие мечтательные цвета аниме</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Яркие неоновые цвета с выразительными гранями</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Улучшенный чёрный для OLED-дисплеев</string>
+  <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_open">Открыть Syncplay</string>
+  <string name="syncplay_connected_as">Подключено как %1$s к комнате %2$s</string>
+  <string name="syncplay_users_in_room">Пользователи в комнате:</string>
+  <string name="syncplay_disconnect">Отключиться</string>
+  <string name="syncplay_server_host">Сервер</string>
+  <string name="syncplay_port">Порт</string>
+  <string name="syncplay_username">Имя пользователя</string>
+  <string name="syncplay_room_name">Название комнаты</string>
+  <string name="syncplay_password_optional">Пароль (необязательно)</string>
+  <string name="syncplay_error">Ошибка: %1$s</string>
+  <string name="syncplay_connection_failed">Не удалось подключиться</string>
+  <string name="syncplay_connect">Подключиться</string>
+  <string name="syncplay_connecting">Подключение…</string>
+  <string name="syncplay_player_status">Syncplay: %1$s (%2$d пользователей)</string>
 </resources>

@@ -2,6 +2,53 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## 1.5.0-preview.5 — Preview Release
+
+### Syncplay
+- **Synchronized room playback**: Added Syncplay server, room, username, and optional password controls to Network Streaming.
+- **Live player integration**: Local pause, resume, seek, file, and playback-position changes are shared with the room, while remote room updates are applied to mpv.
+- **Protocol compatibility fixes**: Added the legacy and real protocol version handshake fields, MD5 server-password handling, latency compensation, user-list updates, and `ignoringOnTheFly` feedback suppression.
+- **Localized interface**: Extracted all Syncplay UI text into Android resources and translated it for Arabic, German, Spanish, French, Japanese, Brazilian Portuguese, Russian, and Simplified Chinese.
+
+### Google Cast
+- **Native Cast control**: Added the standard stateful Google Cast button to portrait and landscape player controls, including a one-time layout migration for existing users.
+- **Local and remote media handoff**: Receiver-accessible HTTP(S) streams are loaded directly; Android-local `file://` and `content://` media use a tokenized temporary LAN server with byte-range seeking and CORS support.
+- **Playback continuity**: The sender transfers title, play state, duration, and current position, pauses local playback after a successful receiver load, and restores local playback at the receiver position when casting ends.
+- **Complete sender controls**: Added Cast SDK expanded controls, notification/lock-screen integration, reconnection support, and receiver volume controls.
+- **Receiver compatibility guardrail**: Casting uses Google's Default Media Receiver, so containers and codecs unsupported by the selected TV/Chromecast are not transcoded automatically.
+
+### Playback Lifecycle & Background Playback
+- **One background playback switch**: Audio preferences and the player background button now control the same persistent setting for both audio and video.
+- **Reliable screen lock and unlock handling**: Playback now follows the selected background policy across screen-off, lock-screen, unlock, and resume transitions without losing the prior play state.
+- **PiP lifecycle coordination**: Picture-in-picture transitions, PiP dismissal, screen locking while in PiP, and activity teardown now share one lifecycle policy instead of competing playback paths.
+- **Persistent task-removal playback**: Swiping the app out of Recents no longer kills an active foreground playback session, so background audio continues until explicitly stopped.
+- **Foreground service cleanup**: Disabling background playback immediately pauses playback and stops its foreground service and notification.
+- **Preference migration**: Existing users who enabled the legacy audio-only screen-lock option are migrated to the unified background playback setting.
+
+### Subtitle Search
+- **Results appear as they arrive**: Online subtitle results are merged into the list as each selected SubHub source or Wyzie completes instead of waiting for every request.
+- **Race-free repeat searches**: Starting another subtitle search cancels the previous request and clears stale results before streaming the new matches.
+
+### Playback Engine
+- **Updated bundled mpvlib**: Refreshed the packaged `mpvlib.aar` used by all preview APK variants.
+
+### Media Library & Audio Browsing
+- **Preference-aware media switch**: The Video/Audio selector appears only when audio browsing is enabled, remembers the selected library type, and resets to Video when audio browsing is disabled.
+- **Complete audio playlists**: Audio launches now populate the active playlist so previous and next controls update and navigate correctly.
+- **Square audio artwork**: Audio thumbnails use a square presentation in both grid and list cards while video thumbnails remain 16:9.
+- **Audio-safe editing**: Video compression actions are hidden for audio selections and guarded from opening with audio files.
+
+### Player Polish
+- **Rounded streaming cache indicator**: Buffered seekbar progress is clipped to the same pill-shaped ends as the normal seek track.
+- **Smoother natural visualizer**: Higher-rate spectrum capture, tuned frequency envelopes, frame-time-aware interpolation, and responsive beat decay make the audio blob react fluidly without harsh jumps.
+
+### AI Providers & Smart Tools
+- **Current provider protocols**: OpenAI, Anthropic, Groq, OpenRouter, Together, and OpenCode Zen requests now follow their current API shapes; OpenCode models are routed through Responses, Messages, Gemini, or Chat Completions as required.
+- **Resilient response parsing**: Text, multipart content, reasoning blocks, citations, provider errors, and both object- and array-based model lists are parsed without relying on one rigid response schema.
+- **Thinking-model rename fixes**: AI rename and subtitle-title output now discard reasoning and code fences, accept structured JSON fields, preserve extensions, and reject empty or unsafe names.
+- **Provider-specific model memory**: Each provider keeps its own selected model and cached model list, preventing stale selections when switching services.
+- **Correct speech endpoints**: Groq and OpenAI use supported transcription models, while OpenRouter speech requests use its current base64 JSON audio format.
+
 ## 1.5.0-preview.4 — Preview Release
 
 ### Google Cast

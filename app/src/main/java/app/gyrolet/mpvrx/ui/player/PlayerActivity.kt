@@ -24,7 +24,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
-import android.os.SystemClock
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
@@ -115,26 +114,12 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.atomic.AtomicLong
 
 private enum class BackgroundPlaybackStartResult {
   Started,
   PendingPermission,
   Blocked,
 }
-
-private enum class PlaybackCompatibilityFallback {
-  LEGACY_GPU,
-  MEDIACODEC_COPY,
-  SOFTWARE_DECODING,
-}
-
-private data class PlaybackWatchdogSnapshot(
-  val position: Double?,
-  val paused: Boolean,
-  val buffering: Boolean,
-  val seeking: Boolean,
-)
 
 /**
  * Main player activity that handles video playback using the MPV library.
@@ -174,9 +159,7 @@ class PlayerActivity :
   /**
    * Observer for MPV events.
    */
-  private lateinit var playerObserver: PlayerObserver
-  private val activityInstanceId = nextActivityInstanceId.incrementAndGet()
-  @Volatile private var playerSessionId = 0L
+  private val playerObserver by lazy { PlayerObserver(this) }
 
   // ==================== Dependency Injection ====================
 
@@ -348,10 +331,7 @@ class PlayerActivity :
   private var lastVid = -1 // Track video track for background playback optimization
   private var isInBackgroundPlayback = false // Track if we are currently in background playback mode
   private var screenStateReceiverRegistered = false
-  @Volatile private var mpvInitialized = false // Track MPV initialization state
-  private var compatibilityFallbackIndex = 0
-  private var lastVideoAspect: Double? = null
-  @Volatile private var pendingConfigWarnings: List<String> = emptyList()
+  private var mpvInitialized = false // Track MPV initialization state
   private var savePlaybackStateJob: Job? = null // Track ongoing save job
   private var wasPlayingBeforePause = false // Track if video was playing before pause
   private var resumeAfterUnlockJob: Job? = null
@@ -365,7 +345,6 @@ class PlayerActivity :
   private var intentSubtitleJob: Job? = null
   private var mediaLoadJob: Job? = null
   private var eofAdvanceJob: Job? = null
-  private var playbackWatchdogJob: Job? = null
   @Volatile private var isAdvancingAtEof = false
   @Volatile private var playWhenFileLoaded = false
   private var pendingVideoParamRefreshRequiresShaderReload = false
@@ -522,13 +501,9 @@ class PlayerActivity :
 
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
           // Lower volume temporarily
-          MpvSessionCoordinator.execute(playerSessionId, "audio_duck") {
-            MPVLib.command("multiply", "volume", "0.5")
-          }
+          MPVLib.command("multiply", "volume", "0.5")
           restoreAudioFocus = {
-            MpvSessionCoordinator.execute(playerSessionId, "audio_unduck") {
-              MPVLib.command("multiply", "volume", "2")
-            }
+            MPVLib.command("multiply", "volume", "2")
           }
         }
 
@@ -554,9 +529,12 @@ class PlayerActivity :
     if (!isNotificationReentry) {
       releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
     }
-    setupMPV(reuseDetachedSession = isNotificationReentry)
+    setupMPV()
+    viewModel.onMpvCoreInitialized()
     MediaPlaybackService.createNotificationChannel(this)
+    setupAudio()
     setupBackPressHandler()
+    setupPlayerControls()
     setupPipHelper()
     setupMediaSession()
     // Note: screenStateReceiver is now registered in onStart() and
@@ -883,9 +861,12 @@ class PlayerActivity :
           if (isAudioOnly && !hasAlbumArt && audioBlobEnabled) {
             BlobOverlay(isPlaying = paused == false)
           }
-            PlayerControls(
-              viewModel = viewModel,
-            onBackPress = ::handleBackPress,
+          PlayerControls(
+            viewModel = viewModel,
+            onBackPress = {
+              isUserFinishing = true
+              finish()
+            },
             modifier = Modifier,
           )
         }
@@ -1068,7 +1049,7 @@ class PlayerActivity :
         mediaPlaybackService = null
       }
 
-      closePlayerAsync("activity_destroyed", keepBackgroundPlaybackAlive)
+      cleanupMPV(keepBackgroundPlaybackAlive)
       if (!keepBackgroundPlaybackAlive) {
         cleanupAudio()
       }
@@ -1081,52 +1062,46 @@ class PlayerActivity :
     super.onDestroy()
   }
 
-  private fun closePlayerAsync(reason: String, keepBackgroundPlaybackAlive: Boolean = false) {
-    val sessionId = playerSessionId
-    if (sessionId == 0L) return
+  private fun cleanupMPV(keepBackgroundPlaybackAlive: Boolean) {
+    if (!mpvInitialized) return
+
     player.isExiting = true
     mpvInitialized = false
-    player.onSurfaceReady = null
-    // Prevent SurfaceView destruction from invoking libmpv on the main thread.
-    runCatching { player.holder.removeCallback(player) }
     intentSubtitleJob?.cancel()
     videoParamRefreshJob?.cancel()
     backgroundServiceSyncJob?.cancel()
     deferredFontSyncJob?.cancel()
-    mediaLoadJob?.cancel()
-    eofAdvanceJob?.cancel()
-    playbackWatchdogJob?.cancel()
-    viewModel.onMpvCoreStopping()
 
-    if (::playerObserver.isInitialized) {
-      runCatching { MPVLib.removeObserver(playerObserver) }
-        .onFailure { e -> Log.e(TAG, "Error removing MPV observer", e) }
-      runCatching { MPVLib.removeLogObserver(playerObserver) }
-        .onFailure { e -> Log.e(TAG, "Error removing MPV log observer", e) }
-    }
+    runCatching { MPVLib.removeObserver(playerObserver) }
+      .onFailure { e -> Log.e(TAG, "Error removing MPV observer", e) }
 
     if (!keepBackgroundPlaybackAlive) {
       endBackgroundPlayback()
     }
 
-    MpvSessionCoordinator.closeAsync(
-      sessionId = sessionId,
-      reason = reason,
-      keepNativeSession = keepBackgroundPlaybackAlive,
-      operation = {
-        if (!keepBackgroundPlaybackAlive) {
-          MPVLib.detachSurface()
-          requestMpvQuitAndDrain()
-          player.destroy()
-        } else {
-          MPVLib.setPropertyString("vo", "null")
-          MPVLib.detachSurface()
-        }
-      },
-      onClosed = {
-        PlayerDiagnostics.logMemory(applicationContext, sessionId, "teardown_complete")
-      },
-    )
+    if (keepBackgroundPlaybackAlive || !isFinishing) return
+
+    // Destroy MPV only when background playback is not being kept alive.
+    runCatching {
+      if (isReady) {
+        MPVLib.setPropertyBoolean("pause", true)
+        MPVLib.command("quit")
+      }
+    }.onFailure { e ->
+      Log.e(TAG, "Error quitting MPV", e)
+    }
+    destroyMpvAfterCommandDrain("player cleanup")
+  }
+
+  private fun destroyMpvAfterCommandDrain(reason: String) {
+    // mpv's quit command is asynchronous. Destroying the core immediately can abort
+    // inside libmpv's dispatch queue while stream/subtitle work is still unwinding.
+    android.os.SystemClock.sleep(MPV_DESTROY_DRAIN_DELAY_MS)
+    runCatching {
+      MPVLib.destroy()
+    }.onFailure { e ->
+      Log.e(TAG, "Error destroying MPV after $reason", e)
+    }
   }
 
   override fun abandonAudioFocus() {
@@ -1208,7 +1183,6 @@ class PlayerActivity :
 
   override fun finish() {
     runCatching {
-      saveVideoPlaybackState(fileName, immediate = true)
       // Don't restore UI during normal finish to prevent flickering
       // System will handle UI restoration automatically
       isReady = false
@@ -1522,22 +1496,13 @@ class PlayerActivity :
     }.onFailure { e ->
       Log.e(TAG, "Error stopping detached playback service", e)
     }
-    MpvSessionCoordinator.releaseDetachedSession {
-      requestMpvQuitAndDrain()
-      player.destroy()
+    runCatching {
+      MPVLib.setPropertyBoolean("pause", true)
+      MPVLib.command("quit")
+    }.onFailure { e ->
+      Log.e(TAG, "Error quitting detached MPV session", e)
     }
-  }
-
-  /**
-   * Gives libmpv's asynchronous quit command time to release cache and render work before destroy.
-   * This runs on MpvSessionCoordinator's dedicated player thread, never the main thread.
-   */
-  private fun requestMpvQuitAndDrain() {
-    runCatching { MPVLib.setPropertyBoolean("pause", true) }
-      .onFailure { error -> Log.w(TAG, "Unable to pause mpv before shutdown", error) }
-    runCatching { MPVLib.command("quit") }
-      .onFailure { error -> Log.w(TAG, "Unable to request mpv shutdown", error) }
-    SystemClock.sleep(MPV_QUIT_DRAIN_DELAY_MS)
+    destroyMpvAfterCommandDrain("detached background session")
   }
 
   private fun isNotificationReentryIntent(intent: Intent?): Boolean =
@@ -1547,57 +1512,33 @@ class PlayerActivity :
    * Initializes the MPV player with the necessary paths and observers.
    * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
-  private fun setupMPV(reuseDetachedSession: Boolean) {
-    val sessionId = MpvSessionCoordinator.begin(activityInstanceId)
-    playerSessionId = sessionId
-    player.sessionId = sessionId
-    playerObserver = PlayerObserver(this, sessionId)
+  private fun setupMPV() {
+    // Prepare config and user MPV assets before initializing MPV.
+    runCatching {
+      syncBundledAssetsIfNeeded()
+      syncFromUserMpvDirectory()
+      sanitizeInternalFontsDirectory()
+      Log.d(TAG, "MPV config and assets prepared successfully")
+    }.onFailure { e ->
+      Log.e(TAG, "Error copying MPV config and assets", e)
+    }
+
     player.onSurfaceReady = {
-      if (acceptsPlayerCallback(sessionId) &&
-        !isDeviceScreenOffOrLocked() &&
-        (isInBackgroundPlayback || lastVid > 0)
-      ) {
+      if (!isDeviceScreenOffOrLocked() && (isInBackgroundPlayback || lastVid > 0)) {
         enableVideoAfterBackground()
       }
     }
-    MpvSessionCoordinator.initialize(
-      sessionId = sessionId,
-      operation = {
-        if (reuseDetachedSession) {
-          player.holder.addCallback(player)
-          Log.i(TAG, "session=$sessionId adopted detached background MPV core")
-        } else {
-          syncBundledAssetsIfNeeded()
-          syncFromUserMpvDirectory()
-          sanitizeInternalMpvConfig()
-          sanitizeInternalFontsDirectory()
-          Log.d(TAG, "MPV config and assets prepared successfully")
-          initializePlayerWithRendererFallback()
-          runCatching { MPVLib.setThumbnailJavaVM(applicationContext) }
-        }
-        MPVLib.addObserver(playerObserver)
-        MPVLib.addLogObserver(playerObserver)
-      },
-      onReady = onReady@{
-        if (!MpvSessionCoordinator.isCurrent(sessionId) || isDestroyed) return@onReady
-        mpvInitialized = true
-        Log.i(TAG, "session=$sessionId activity=$activityInstanceId state=READY thread=${Thread.currentThread().name}")
-        viewModel.onMpvCoreInitialized()
-        setupAudio()
-        setupPlayerControls()
-        scheduleDeferredSubtitleFontsSync()
-        startPlaybackWatchdog()
-        PlayerDiagnostics.logMemory(applicationContext, sessionId, "startup")
-        if (pendingConfigWarnings.isNotEmpty()) {
-          viewModel.showToast("Incompatible mpv.conf options were disabled. Review the config editor.")
-        }
-      },
-      onFailure = { error ->
-        Log.e(TAG, "session=$sessionId activity=$activityInstanceId MPV initialization failed", error)
-        viewModel.showToast(getString(R.string.toast_playback_load_failed))
-        if (!isFinishing) finish()
-      },
-    )
+
+    // NOW initialize MPV - it will find and load the scripts we just copied
+    initializePlayerWithRendererFallback()
+    runCatching { MPVLib.setThumbnailJavaVM(applicationContext) }
+    mpvInitialized = true
+    Log.d(TAG, "MPV initialized")
+
+    // Add observer after initialization
+    MPVLib.addObserver(playerObserver)
+
+    scheduleDeferredSubtitleFontsSync()
   }
 
   private fun initializePlayerWithRendererFallback() {
@@ -2612,14 +2553,13 @@ class PlayerActivity :
       ?: playlistEntity?.userAgent?.takeIf { it.isNotBlank() }
 
   private fun applyHttpHeaders(userAgent: String?, headers: Map<String, String>) {
+    MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
+
     val headersString =
       headers.entries.joinToString(",") { (key, value) ->
         "${key}: ${value.replace(",", "\\,")}"
       }
-    MpvSessionCoordinator.execute(playerSessionId, "http_headers") {
-      MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
-      MPVLib.setPropertyString("http-header-fields", headersString)
-    }
+    MPVLib.setPropertyString("http-header-fields", headersString)
 
     if (userAgent != null || headers.isNotEmpty()) {
       Log.d(TAG, "Applied HTTP headers (ua=${userAgent != null}, count=${headers.size})")
@@ -2803,7 +2743,6 @@ class PlayerActivity :
    * @param isPaused true if playback is paused, false if playing
    */
   private fun handlePauseStateChange(isPaused: Boolean) {
-    MpvSessionCoordinator.markPlaying(playerSessionId, isPaused)
     if (isPaused) {
       // Only clear keep-screen-on if the preference is NOT enabled
       if (!playerPreferences.keepScreenOnWhenPaused.get()) {
@@ -2970,17 +2909,20 @@ class PlayerActivity :
       "video-params/aspect" -> {
         // Safety check: don't access MPV during cleanup
         if (!mpvInitialized || player.isExiting || isFinishing) return
-        lastVideoAspect = value.takeIf { it.isFinite() && it > 0.0 }
         scheduleVideoParamRefresh(reloadShaders = false)
       }
       "container-fps" -> {
         if (!mpvInitialized || player.isExiting || isFinishing) return
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R &&
-          value.isFinite() &&
-          value > 0.0
-        ) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && value > 0.0) {
           try {
-            player.applyFrameRate(value)
+            val surface = player.holder?.surface
+            if (surface != null && surface.isValid) {
+              surface.setFrameRate(
+                value.toFloat(),
+                android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE
+              )
+              android.util.Log.i(TAG, "Set display refresh rate to ${value}Hz")
+            }
           } catch (e: Exception) {
             android.util.Log.e(TAG, "Failed to set frame rate", e)
           }
@@ -3008,16 +2950,17 @@ class PlayerActivity :
         delay(100)
         if (!mpvInitialized || player.isExiting || isFinishing) return@launch
 
-        val aspect = MpvSessionCoordinator.query(playerSessionId, "video_aspect") {
-          player.getVideoOutAspect()
-        }
-        lastVideoAspect = aspect
+        val aspect =
+          withContext(playbackRenderDispatcher) {
+            player.getVideoOutAspect()
+          }
         Log.d(TAG, "Coalesced video params refresh, aspect: $aspect")
         pipHelper.updatePictureInPictureParams()
 
-        val aspectOverride = MpvSessionCoordinator.query(playerSessionId, "video_aspect_override") {
-          MPVLib.getPropertyDouble("video-aspect-override") ?: -1.0
-        } ?: -1.0
+        val aspectOverride =
+          withContext(playbackRenderDispatcher) {
+            MPVLib.getPropertyDouble("video-aspect-override") ?: -1.0
+          }
         if (playerPreferences.orientation.get() == PlayerOrientation.Video &&
           aspect != null &&
           aspectOverride <= 0.0
@@ -3059,7 +3002,6 @@ class PlayerActivity :
         eofAdvanceJob = null
         isAdvancingAtEof = false
         isReady = true
-        MpvSessionCoordinator.markPlaying(playerSessionId, paused = false)
         if (playWhenFileLoaded) {
           playWhenFileLoaded = false
           requestAudioFocus()
@@ -3067,11 +3009,11 @@ class PlayerActivity :
         }
         viewModel.onVideoLoadCompleted()
         handleFileLoaded()
-        logPlaybackPipelineAsync()
       }
 
       MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
         isAdvancingAtEof = false
+        player.isExiting = false
         if (!isReady) {
           isReady = true
         }
@@ -3170,10 +3112,7 @@ class PlayerActivity :
       lifecycleScope.launch {
         kotlinx.coroutines.delay(100)
         if (mpvInitialized && !player.isExiting && !isFinishing) {
-          val aspect = MpvSessionCoordinator.query(playerSessionId, "delayed_video_aspect") {
-            player.getVideoOutAspect()
-          }
-          lastVideoAspect = aspect
+          val aspect = player.getVideoOutAspect()
           Log.d(TAG, "handleFileLoaded - Video mode, aspect after delay: $aspect")
           if (aspect != null && aspect > 0) {
             setOrientation()
@@ -3460,14 +3399,7 @@ class PlayerActivity :
     return "#$a$r$g$b".uppercase()
   }
 
-  internal fun acceptsPlayerCallback(sessionId: Long): Boolean =
-    sessionId == playerSessionId &&
-      mpvInitialized &&
-      !player.isExiting &&
-      !isDestroyed &&
-      MpvSessionCoordinator.acceptsCallbacks(sessionId)
-
-  private fun canIssueMpvCommands(): Boolean = acceptsPlayerCallback(playerSessionId)
+  private fun canIssueMpvCommands(): Boolean = mpvInitialized && !player.isExiting && !isDestroyed
 
   /**
    * Saves the current playback state to the database.
@@ -3482,39 +3414,40 @@ class PlayerActivity :
     mediaTitle: String,
     immediate: Boolean = false,
   ) {
-    if (mediaIdentifier.isBlank() || !canIssueMpvCommands() || !isReady) return
+    val snapshot = capturePlaybackStateSnapshot(mediaTitle) ?: return
+
+    // Cancel any previous pending save operation
     savePlaybackStateJob?.cancel()
-    savePlaybackStateJob =
-      MpvSessionCoordinator.execute(
-        playerSessionId,
-        "capture_playback_state",
-        drainDuringStop = true,
-      ) {
-        val snapshot = capturePlaybackStateSnapshot(mediaTitle) ?: return@execute
-        val saveBlock: suspend kotlinx.coroutines.CoroutineScope.() -> Unit = {
-          runCatching {
-            if (!immediate) delay(250)
-            val oldState = playbackStateRepository.getVideoDataByTitle(snapshot.mediaIdentifier)
-            Log.d(TAG, "Saving playback state for: ${snapshot.mediaTitle} (identifier: ${snapshot.mediaIdentifier})")
-            val playbackState =
-              PlaybackStatePersistence.buildEntity(
-                oldState = oldState,
-                snapshot = snapshot,
-                savePositionOnQuit = playerPreferences.savePositionOnQuit.get(),
-                watchedThreshold = browserPreferences.watchedThreshold.get(),
-              )
-            playbackStateRepository.upsert(playbackState)
-            PlaybackStateEvents.notifyChanged(snapshot.mediaIdentifier)
-          }.onFailure { error ->
-            Log.e(TAG, "Error saving playback state", error)
-          }
+
+    val saveBlock: suspend kotlinx.coroutines.CoroutineScope.() -> Unit = {
+      runCatching {
+        if (!immediate) {
+          delay(250)
         }
-        if (immediate) {
-          kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO + kotlinx.coroutines.NonCancellable, block = saveBlock)
-        } else {
-          lifecycleScope.launch(Dispatchers.IO, block = saveBlock)
-        }
+
+        val oldState = playbackStateRepository.getVideoDataByTitle(snapshot.mediaIdentifier)
+        Log.d(TAG, "Saving playback state for: ${snapshot.mediaTitle} (identifier: ${snapshot.mediaIdentifier})")
+
+        val playbackState =
+          PlaybackStatePersistence.buildEntity(
+            oldState = oldState,
+            snapshot = snapshot,
+            savePositionOnQuit = playerPreferences.savePositionOnQuit.get(),
+            watchedThreshold = browserPreferences.watchedThreshold.get(),
+          )
+        playbackStateRepository.upsert(playbackState)
+        PlaybackStateEvents.notifyChanged(snapshot.mediaIdentifier)
+      }.onFailure { e ->
+        Log.e(TAG, "Error saving playback state", e)
       }
+    }
+
+    if (immediate) {
+      kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO + kotlinx.coroutines.NonCancellable, block = saveBlock)
+    } else {
+      // Launch new save job and track it
+      savePlaybackStateJob = lifecycleScope.launch(Dispatchers.IO, block = saveBlock)
+    }
   }
 
   private fun startJellyfinProgressLoop() {
@@ -3541,9 +3474,7 @@ class PlayerActivity :
   }
 
   private fun capturePlaybackStateSnapshot(mediaTitle: String): PlaybackStateSnapshot? {
-    if (mediaIdentifier.isBlank() ||
-      MpvSessionCoordinator.state(playerSessionId) in setOf(MpvSessionState.RELEASED, MpvSessionState.FAILED)
-    ) return null
+    if (mediaIdentifier.isBlank()) return null
 
     return PlaybackStateSnapshot(
       mediaIdentifier = mediaIdentifier,
@@ -3958,8 +3889,6 @@ class PlayerActivity :
     disableVideoOnFallback: Boolean = false,
   ) {
     mediaLoadJob?.cancel()
-    compatibilityFallbackIndex = 0
-    lastVideoAspect = null
     playWhenFileLoaded = true
     mediaLoadJob = lifecycleScope.launch(mediaLoadDispatcher) {
       try {
@@ -3971,15 +3900,8 @@ class PlayerActivity :
 
         withContext(Dispatchers.Main) { requestAudioFocus() }
         val videoMode = if (disableVideoOnFallback) "no" else "auto"
-        val queued =
-          MpvSessionCoordinator.execute(playerSessionId, "loadfile") {
-            MpvSessionCoordinator.markLoading(playerSessionId)
-            MPVLib.command("loadfile", playableUri, "replace", "-1", "vid=$videoMode,pause=no")
-            MPVLib.setPropertyBoolean("pause", false)
-          }
-        if (queued == null) {
-          throw IllegalStateException("MPV session is not accepting media loads")
-        }
+        MPVLib.command("loadfile", playableUri, "replace", "-1", "vid=$videoMode,pause=no")
+        MPVLib.setPropertyBoolean("pause", false)
       } catch (error: CancellationException) {
         throw error
       } catch (error: Exception) {
@@ -3989,147 +3911,6 @@ class PlayerActivity :
         viewModel.onVideoLoadCompleted()
         viewModel.showToast(getString(R.string.toast_playback_load_failed))
       }
-    }
-  }
-
-  private fun sanitizeInternalMpvConfig() {
-    val config = File(filesDir, "mpv.conf")
-    if (!config.isFile) return
-    val original = config.readText()
-    val result = MpvConfigSanitizer.sanitize(original)
-    pendingConfigWarnings = result.warnings
-    if (result.content != original) {
-      config.writeText(result.content)
-    }
-    result.warnings.forEach { warning ->
-      Log.w(TAG, "mpv.conf $warning")
-    }
-  }
-
-  internal fun onImageReaderFailure(sessionId: Long, failures: Int, detail: String) {
-    if (!acceptsPlayerCallback(sessionId)) return
-    val fallback = PlaybackCompatibilityFallback.entries.getOrNull(compatibilityFallbackIndex)
-    if (fallback == null) {
-      Log.e(
-        TAG,
-        "session=$sessionId imageReaderFailures=$failures recovery=exhausted detail=$detail " +
-          "device=${Build.MANUFACTURER}/${Build.MODEL} api=${Build.VERSION.SDK_INT}",
-      )
-      return
-    }
-
-    val playableUri = currentPlayableUri ?: return
-    val positionSeconds = (viewModel.pos ?: 0).coerceAtLeast(0)
-    val surface = player.holder?.surface?.takeIf { it.isValid }
-    compatibilityFallbackIndex++
-    isReady = false
-    viewModel.onVideoLoadStarted()
-    val fallbackLabel =
-      when (fallback) {
-        PlaybackCompatibilityFallback.LEGACY_GPU -> "legacy gpu renderer"
-        PlaybackCompatibilityFallback.MEDIACODEC_COPY -> "MediaCodec copy decoding"
-        PlaybackCompatibilityFallback.SOFTWARE_DECODING -> "software decoding"
-      }
-    if (fallback == PlaybackCompatibilityFallback.LEGACY_GPU) {
-      player.useLegacyGpuForSession()
-    }
-    Log.e(
-      TAG,
-      "session=$sessionId imageReaderFailures=$failures recovery=$fallback " +
-        "device=${Build.MANUFACTURER}/${Build.MODEL} api=${Build.VERSION.SDK_INT} " +
-        "${PlayerDiagnostics.surfaceSummary(surface)} detail=$detail",
-    )
-    PlayerDiagnostics.logMemory(applicationContext, sessionId, "fallback_$fallback")
-    viewModel.showToast("Playback compatibility fallback applied: $fallbackLabel")
-
-    MpvSessionCoordinator.execute(sessionId, "compatibility_fallback:$fallback", timeoutMs = 10_000L) {
-      MPVLib.command("stop")
-      when (fallback) {
-        PlaybackCompatibilityFallback.LEGACY_GPU -> {
-          MPVLib.setPropertyString("vo", "gpu")
-          MPVLib.setPropertyString("gpu-api", "opengl")
-        }
-        PlaybackCompatibilityFallback.MEDIACODEC_COPY -> {
-          MPVLib.setPropertyString("hwdec", "mediacodec-copy")
-        }
-        PlaybackCompatibilityFallback.SOFTWARE_DECODING -> {
-          MPVLib.setPropertyString("hwdec", "no")
-        }
-      }
-      if (surface?.isValid == true) {
-        MPVLib.detachSurface()
-        MPVLib.attachSurface(surface)
-      }
-      MpvSessionCoordinator.markLoading(sessionId)
-      val options = "start=$positionSeconds,pause=no"
-      MPVLib.command("loadfile", playableUri, "replace", "-1", options)
-    }
-  }
-
-  private fun startPlaybackWatchdog() {
-    playbackWatchdogJob?.cancel()
-    playbackWatchdogJob = lifecycleScope.launch {
-      var lastPosition = Double.NaN
-      var lastProgressAt = android.os.SystemClock.elapsedRealtime()
-      var reported = false
-      while (isActive) {
-        delay(2_000L)
-        val snapshot = MpvSessionCoordinator.query(playerSessionId, "playback_watchdog") {
-          PlaybackWatchdogSnapshot(
-            position = MPVLib.getPropertyDouble("time-pos"),
-            paused = MPVLib.getPropertyBoolean("pause") == true,
-            buffering = MPVLib.getPropertyBoolean("paused-for-cache") == true,
-            seeking = MPVLib.getPropertyBoolean("seeking") == true,
-          )
-        } ?: continue
-        val position = snapshot.position
-        if (!isReady || snapshot.paused || snapshot.buffering || snapshot.seeking || position == null) {
-          lastPosition = position ?: Double.NaN
-          lastProgressAt = android.os.SystemClock.elapsedRealtime()
-          reported = false
-          continue
-        }
-        if (!lastPosition.isFinite() || kotlin.math.abs(position - lastPosition) >= 0.05) {
-          lastPosition = position
-          lastProgressAt = android.os.SystemClock.elapsedRealtime()
-          reported = false
-          continue
-        }
-        val stalledMs = android.os.SystemClock.elapsedRealtime() - lastProgressAt
-        if (!reported && stalledMs >= FRAME_STALL_WARNING_MS) {
-          reported = true
-          Log.e(
-            TAG,
-            "watchdog=no_playback_progress session=$playerSessionId activity=$activityInstanceId " +
-              "state=${MpvSessionCoordinator.state(playerSessionId)} stalledMs=$stalledMs " +
-              PlayerDiagnostics.surfaceSummary(player.holder?.surface),
-          )
-          PlayerDiagnostics.logMemory(applicationContext, playerSessionId, "frame_stall")
-        }
-      }
-    }
-  }
-
-  private fun logPlaybackPipelineAsync() {
-    val sessionId = playerSessionId
-    lifecycleScope.launch {
-      val details = MpvSessionCoordinator.query(sessionId, "pipeline_diagnostics") {
-        "renderer=${MPVLib.getPropertyString("current-vo") ?: MPVLib.getPropertyString("vo")} " +
-          "gpuApi=${MPVLib.getPropertyString("gpu-api")} " +
-          "hwdec=${MPVLib.getPropertyString("hwdec-current")} " +
-          "videoCodec=${MPVLib.getPropertyString("video-codec")} " +
-          "decoder=${MPVLib.getPropertyString("video-dec-params/codec")} " +
-          "size=${MPVLib.getPropertyInt("video-params/w")}x${MPVLib.getPropertyInt("video-params/h")} " +
-          "bitDepth=${MPVLib.getPropertyInt("video-params/component-bits")} " +
-          "hdr=${MPVLib.getPropertyString("video-params/color-trc")}"
-      } ?: return@launch
-      Log.i(
-        TAG,
-        "session=$sessionId activity=$activityInstanceId state=${MpvSessionCoordinator.state(sessionId)} " +
-          "thread=${Thread.currentThread().name} nativeHandle=session-owned " +
-          "device=${Build.MANUFACTURER}/${Build.MODEL} api=${Build.VERSION.SDK_INT} " +
-          "${PlayerDiagnostics.surfaceSummary(player.holder?.surface)} $details",
-      )
     }
   }
 
@@ -4255,7 +4036,7 @@ class PlayerActivity :
         PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
         PlayerOrientation.Video -> {
           // For video orientation, check if aspect is available
-          val aspect = lastVideoAspect
+          val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
           Log.d(TAG, "setOrientation - Video mode: aspect=$aspect")
           if (aspect == null || aspect <= 0.0) {
             // Aspect not available yet - wait for video-params/aspect update
@@ -5602,9 +5383,9 @@ class PlayerActivity :
    * Disables video decoding to save battery when moving to background playback.
    */
   private fun disableVideoForBackground() {
-    if (!mpvInitialized || !isReady || fileName.isBlank()) return
+    if (!isReady || fileName.isBlank()) return
 
-    val currentVid = MPVLib.getPropertyString("vid")?.toIntOrNull() ?: -1
+    val currentVid = MPVLib.getPropertyInt("vid") ?: -1
     if (currentVid > 0) {
       lastVid = currentVid
       MPVLib.setPropertyString("vid", "no")
@@ -5617,7 +5398,6 @@ class PlayerActivity :
    * Restores video decoding when returning from background playback.
    */
   private fun enableVideoAfterBackground() {
-    if (!mpvInitialized) return
     if ((isInBackgroundPlayback || lastVid > 0) && !player.isSurfaceReady) {
       Log.d(TAG, "Deferring video restoration until the playback surface is ready")
       return
@@ -5628,15 +5408,13 @@ class PlayerActivity :
       Log.d(TAG, "Restoring video after background playback (vid: $lastVid)")
       MPVLib.setPropertyInt("vid", lastVid)
       lastVid = -1
-    } else if ((MPVLib.getPropertyString("vid")?.toIntOrNull() ?: -1) <= 0) {
+    } else if ((MPVLib.getPropertyInt("vid") ?: -1) <= 0) {
       Log.d(TAG, "Restoring video after background playback with auto track selection")
       MPVLib.setPropertyString("vid", "auto")
     }
   }
 
   companion object {
-    private val nextActivityInstanceId = AtomicLong()
-
     /**
      * Intent action used to return playback result data to the calling activity.
      */
@@ -5662,8 +5440,10 @@ class PlayerActivity :
      */
     private const val MILLISECONDS_TO_SECONDS = 1000
 
-    private const val FRAME_STALL_WARNING_MS = 8_000L
-    private const val MPV_QUIT_DRAIN_DELAY_MS = 250L
+    /**
+     * Lets mpv drain asynchronous quit/HTTPS stream work before destroying the native core.
+     */
+    private const val MPV_DESTROY_DRAIN_DELAY_MS = 200L
 
     /**
      * Factor to divide subtitle and audio delays to convert from ms to seconds.

@@ -276,6 +276,12 @@ Siguiente: NEXT</string>
   <string name="pref_audio_volume_boost_cap">Límite de amplificación de volumen</string>
   <string name="pref_advanced">Avanzado</string>
   <string name="pref_advanced_summary">Ubicación de configuración, mpv.conf</string>
+  <string name="pref_section_app_language">Idioma de la aplicación</string>
+  <string name="pref_app_language_title">Idioma</string>
+  <string name="pref_app_language_system_default">Predeterminado del sistema</string>
+  <string name="pref_app_language_restart_title">Es necesario reiniciar</string>
+  <string name="pref_app_language_restart_message">Reinicia mpvRx para aplicar el nuevo idioma.</string>
+  <string name="pref_app_language_restart_now">Reiniciar ahora</string>
   <string name="pref_advanced_mpv_conf_storage_location">Elegir ubicación de almacenamiento de configuración</string>
   <string name="pref_advanced_mpv_conf">Editar mpv.conf</string>
   <string name="pref_advanced_input_conf">Editar input.conf</string>
@@ -1430,4 +1436,19 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="filter_preset_soft_dreamy_anime_colors">Colores de anime suaves y de ensueño</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Colores vibrantes tipo neón con carácter</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Negros mejorados para pantallas OLED</string>
+  <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_open">Abrir Syncplay</string>
+  <string name="syncplay_connected_as">Conectado como %1$s en la sala %2$s</string>
+  <string name="syncplay_users_in_room">Usuarios en la sala:</string>
+  <string name="syncplay_disconnect">Desconectar</string>
+  <string name="syncplay_server_host">Servidor</string>
+  <string name="syncplay_port">Puerto</string>
+  <string name="syncplay_username">Nombre de usuario</string>
+  <string name="syncplay_room_name">Nombre de la sala</string>
+  <string name="syncplay_password_optional">Contraseña (opcional)</string>
+  <string name="syncplay_error">Error: %1$s</string>
+  <string name="syncplay_connection_failed">Error de conexión</string>
+  <string name="syncplay_connect">Conectar</string>
+  <string name="syncplay_connecting">Conectando…</string>
+  <string name="syncplay_player_status">Syncplay: %1$s (%2$d usuarios)</string>
 </resources>
