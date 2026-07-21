@@ -243,7 +243,8 @@ object PlayerPreferencesScreen : Screen {
                 },
                 title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_media_info_in_chooser)) },
                 summary = {
-                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_media_info_in_system)),
+                  Text(
+                    androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_media_info_in_system),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

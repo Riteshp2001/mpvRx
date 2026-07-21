@@ -1749,6 +1749,10 @@ private fun CustomStatsPageSixOverlay(
   val context = LocalContext.current.applicationContext
   val isHdrOutputEnabled by viewModel.isHdrScreenOutputEnabled.collectAsState()
   val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
+  val hdrOutputText = stringResource(
+    R.string.hdr_mode_output_diagnostic,
+    stringResource(hdrScreenMode.shortTitleRes),
+  )
   val stats by produceState(
     initialValue =
       CustomStatsSnapshot(
@@ -1770,7 +1774,7 @@ private fun CustomStatsPageSixOverlay(
         tempRiseText = "+0.0°C",
       ),
     isHdrOutputEnabled,
-    hdrScreenMode,
+    hdrOutputText,
   ) {
     var lastCpuMs   = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(0L)
     var lastTimeMs  = android.os.SystemClock.elapsedRealtime()
@@ -1877,7 +1881,7 @@ private fun CustomStatsPageSixOverlay(
 
           val sourceLabel = if (isHdrSource) "HDR Source" else "SDR Source"
           val outputLabel = if (isHdrOutputEnabled) {
-            stringResource(R.string.hdr_mode_output_diagnostic, stringResource(hdrScreenMode.shortTitleRes))
+            hdrOutputText
           } else {
             "SDR Output"
           }

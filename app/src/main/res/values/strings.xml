@@ -1178,7 +1178,7 @@
   <string name="ui_mpvrx_needs_access_to_your_video_files_to_provide_its_core_funct">mpvRx needs access to your video files to provide its core functionality as a media player.</string>
   <string name="ui_the_permission_is_used_exclusively_for">The permission is used exclusively for:</string>
   <string name="ui_discovering_and_displaying_your_video_files_n_playing_media_cont">• Discovering and displaying your video files\n• Playing media content\n• Loading subtitle files</string>
-  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">mpvRx has always required storage access permission as it&apos;s essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.</string>
+  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">mpvRx has always required storage access permission as it\'s essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.</string>
   <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">However, due to a change in security policy, apps built for Android 11 and above now require additional permission to continue accessing the same.</string>
   <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">Please know that this permission is only used for the auto-discovery of media/subtitle files on your device and will not allow us to access the private data files stored by other apps in any way.</string>
   <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">mpvRx is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:</string>
@@ -1291,9 +1291,9 @@
   <string name="ui_help">Help</string>
   <string name="ui_no_storage_location_set">No storage location set</string>
   <string name="ui_failed_to_create_file">Failed to create file</string>
-  <string name="ui_long_press_to_reorder_items_tap_the_icon_to_remove_them">Long press to reorder items. Tap the &apos;-&apos; icon to remove them.</string>
+  <string name="ui_long_press_to_reorder_items_tap_the_icon_to_remove_them">Long press to reorder items. Tap the \'-\' icon to remove them.</string>
   <string name="ui_drop_zone_is_empty">Drop zone is empty</string>
-  <string name="ui_tap_buttons_from_the_available_palette_below">Tap buttons from the &apos;Available Palette&apos; below</string>
+  <string name="ui_tap_buttons_from_the_available_palette_below">Tap buttons from the \'Available Palette\' below</string>
   <string name="ui_all_available_buttons_are_in_use">All available buttons are in use.</string>
   <string name="ui_icons_legend">Icons Legend</string>
   <string name="ui_what_is_each_icon_for">What is each icon for?</string>

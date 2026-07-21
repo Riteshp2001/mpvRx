@@ -31,7 +31,6 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.reflect.KProperty
 import android.os.SystemClock
-import android.app.ActivityManager
 
 class MPVView(
   context: Context,
@@ -154,13 +153,6 @@ class MPVView(
       hwdecMode,
     )
     MPVLib.setOptionString("hwdec-codecs", "all")
-
-    val memoryClassMb =
-      (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).memoryClass
-    val forwardCacheMb = (memoryClassMb / 8).coerceIn(32, 128)
-    val backwardCacheMb = (memoryClassMb / 32).coerceIn(8, 32)
-    MPVLib.setOptionString("demuxer-max-bytes", "${forwardCacheMb}MiB")
-    MPVLib.setOptionString("demuxer-max-back-bytes", "${backwardCacheMb}MiB")
 
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
@@ -294,7 +286,7 @@ class MPVView(
     val action = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
     mod.add(mapped)
     MpvSessionCoordinator.execute(sessionId, "key:$action") {
-      MPVLib.commandResult(action, mod.joinToString("+"))
+      MPVLib.command(action, mod.joinToString("+"))
     }
 
     return true
@@ -302,7 +294,7 @@ class MPVView(
 
   override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
     MpvSessionCoordinator.execute(sessionId, "surface_changed") {
-      MPVLib.setPropertyStringResult("android-surface-size", "${width}x$height")
+      MPVLib.setPropertyString("android-surface-size", "${width}x$height")
     }
     applyFrameRate(lastRequestedFrameRate.toDouble())
   }
@@ -313,7 +305,7 @@ class MPVView(
     MpvSessionCoordinator.execute(sessionId, "surface_created") {
       MPVLib.attachSurface(surface)
       MPVLib.setOptionString("force-window", "yes")
-      MPVLib.setPropertyStringResult("vo", activeVo)
+      MPVLib.setPropertyString("vo", activeVo)
     }
     applyFrameRate(lastRequestedFrameRate.toDouble())
     post {
@@ -327,8 +319,8 @@ class MPVView(
     isSurfaceReady = false
     clearFrameRate()
     MpvSessionCoordinator.execute(sessionId, "surface_destroyed") {
-      MPVLib.setPropertyStringResult("vo", "null")
-      MPVLib.setPropertyStringResult("force-window", "no")
+      MPVLib.setPropertyString("vo", "null")
+      MPVLib.setPropertyString("force-window", "no")
       MPVLib.detachSurface()
     }
   }

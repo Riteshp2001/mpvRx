@@ -285,6 +285,7 @@ private fun StreamLinkSection(
 ) {
   val context = LocalContext.current
   val keyboardController = LocalSoftwareKeyboardController.current
+  val playStreamContentDescription = stringResource(R.string.ui_play_stream)
   var linkUrl by rememberSaveable { mutableStateOf("") }
 
   fun pasteFromClipboard() {
@@ -392,7 +393,7 @@ private fun StreamLinkSection(
             containerColor = MaterialTheme.colorScheme.primary,
           ),
           modifier = Modifier.semantics {
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_stream)
+            contentDescription = playStreamContentDescription
           },
         ) {
           Icon(
