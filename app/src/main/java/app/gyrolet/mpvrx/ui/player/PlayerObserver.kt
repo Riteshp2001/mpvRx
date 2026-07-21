@@ -2,59 +2,52 @@ package app.gyrolet.mpvrx.ui.player
 
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
+import java.util.concurrent.atomic.AtomicInteger
 
 class PlayerObserver(
   private val activity: PlayerActivity,
-) : MPVLib.EventObserver {
-  private fun shouldBypassUiThread(property: String): Boolean =
-    property == "video-params/aspect" ||
-      property == "video-params/w" ||
-      property == "video-params/h" ||
-      property == "container-fps"
+  private val sessionId: Long,
+) : MPVLib.EventObserver,
+  MPVLib.LogObserver {
+  private val consecutiveImageReaderFailures = AtomicInteger()
+
+  private fun dispatch(block: () -> Unit) {
+    if (!activity.acceptsPlayerCallback(sessionId)) return
+    activity.runOnUiThread {
+      if (activity.acceptsPlayerCallback(sessionId)) block()
+    }
+  }
 
   override fun eventProperty(property: String) {
-    if (activity.player.isExiting) return
-    activity.runOnUiThread { activity.onObserverEvent(property) }
+    dispatch { activity.onObserverEvent(property) }
   }
 
   override fun eventProperty(
     property: String,
     value: Long,
   ) {
-    if (activity.player.isExiting) return
-    if (shouldBypassUiThread(property)) {
-      activity.onObserverEvent(property, value)
-    } else {
-      activity.runOnUiThread { activity.onObserverEvent(property, value) }
-    }
+    dispatch { activity.onObserverEvent(property, value) }
   }
 
   override fun eventProperty(
     property: String,
     value: Boolean,
   ) {
-    if (activity.player.isExiting) return
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    dispatch { activity.onObserverEvent(property, value) }
   }
 
   override fun eventProperty(
     property: String,
     value: String,
   ) {
-    if (activity.player.isExiting) return
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    dispatch { activity.onObserverEvent(property, value) }
   }
 
   override fun eventProperty(
     property: String,
     value: Double,
   ) {
-    if (activity.player.isExiting) return
-    if (shouldBypassUiThread(property)) {
-      activity.onObserverEvent(property, value)
-    } else {
-      activity.runOnUiThread { activity.onObserverEvent(property, value) }
-    }
+    dispatch { activity.onObserverEvent(property, value) }
   }
 
   @Suppress("EmptyFunctionBlock")
@@ -62,13 +55,35 @@ class PlayerObserver(
     property: String,
     value: MPVNode,
   ) {
-    if (activity.player.isExiting) return
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    dispatch { activity.onObserverEvent(property, value) }
   }
 
   override fun event(eventId: Int, data: MPVNode) {
-    if (activity.player.isExiting) return
-    activity.runOnUiThread { activity.event(eventId) }
+    dispatch {
+      if (eventId == MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED ||
+        eventId == MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART
+      ) {
+        consecutiveImageReaderFailures.set(0)
+      }
+      activity.event(eventId)
+    }
+  }
+
+  override fun logMessage(prefix: String, level: Int, text: String) {
+    if (!activity.acceptsPlayerCallback(sessionId)) return
+    if (!prefix.contains("aimagereader", ignoreCase = true) ||
+      !text.contains("acquireLatestImage failed", ignoreCase = true)
+    ) {
+      return
+    }
+    val failures = consecutiveImageReaderFailures.incrementAndGet()
+    if (failures == IMAGE_READER_FAILURE_THRESHOLD) {
+      dispatch { activity.onImageReaderFailure(sessionId, failures, text.trim()) }
+    }
+  }
+
+  companion object {
+    private const val IMAGE_READER_FAILURE_THRESHOLD = 3
   }
 }
 

@@ -362,7 +362,9 @@ object AdvancedPreferencesScreen : Screen {
                     val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
                     val mpvConfFile = tree?.findFile("mpv.conf")
                     if (mpvConfFile != null && mpvConfFile.exists()) {
-                      context.contentResolver.openInputStream(mpvConfFile.uri)?.copyTo(tempFile.outputStream())
+                      context.contentResolver.openInputStream(mpvConfFile.uri)?.use { input ->
+                        tempFile.outputStream().use { output -> input.copyTo(output) }
+                      }
                       val content = tempFile.readLines().fastJoinToString("\n")
                       preferences.mpvConf.set(content)
                       File(context.filesDir, "mpv.conf").writeText(content)
@@ -381,7 +383,9 @@ object AdvancedPreferencesScreen : Screen {
                     val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
                     val inputConfFile = tree?.findFile("input.conf")
                     if (inputConfFile != null && inputConfFile.exists()) {
-                      context.contentResolver.openInputStream(inputConfFile.uri)?.copyTo(tempFile.outputStream())
+                      context.contentResolver.openInputStream(inputConfFile.uri)?.use { input ->
+                        tempFile.outputStream().use { output -> input.copyTo(output) }
+                      }
                       val content = tempFile.readLines().fastJoinToString("\n")
                       preferences.inputConf.set(content)
                       File(context.filesDir, "input.conf").writeText(content)

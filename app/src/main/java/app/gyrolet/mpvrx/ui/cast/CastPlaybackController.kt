@@ -32,6 +32,8 @@ class CastPlaybackController(
 ) {
   private var castContext: CastContext? = null
   private var released = false
+  private var startRequested = false
+  private var listenerRegistered = false
   private var localWasPlaying = false
   private var lastRemotePositionMs = 0L
   private var remoteWasPlaying = false
@@ -90,6 +92,8 @@ class CastPlaybackController(
     }
 
   fun start() {
+    if (startRequested) return
+    startRequested = true
     released = false
     try {
       CastContext
@@ -98,7 +102,10 @@ class CastPlaybackController(
           if (released) return@addOnSuccessListener
 
           castContext = context
-          context.sessionManager.addSessionManagerListener(sessionListener, CastSession::class.java)
+          if (!listenerRegistered) {
+            context.sessionManager.addSessionManagerListener(sessionListener, CastSession::class.java)
+            listenerRegistered = true
+          }
           context.sessionManager.currentCastSession
             ?.takeIf { it.isConnected }
             ?.let { session -> sessionListener.onSessionResumed(session, false) }
@@ -112,9 +119,13 @@ class CastPlaybackController(
 
   fun release() {
     released = true
+    startRequested = false
     val context = castContext
     castContext = null
-    context?.sessionManager?.removeSessionManagerListener(sessionListener, CastSession::class.java)
+    if (listenerRegistered) {
+      context?.sessionManager?.removeSessionManagerListener(sessionListener, CastSession::class.java)
+      listenerRegistered = false
+    }
     if (context?.sessionManager?.currentCastSession?.isConnected != true) {
       CastMediaServer.stop()
     }

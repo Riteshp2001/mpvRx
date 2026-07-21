@@ -49,6 +49,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -62,6 +63,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -169,6 +172,15 @@ class PlayerViewModel(
     host.context.getSharedPreferences(INTRO_MARKER_CACHE_PREFS, Context.MODE_PRIVATE)
   }
 
+  private val _isMpvCoreReady = MutableStateFlow(false)
+  private var mpvStateCollectorsJob: Job? = null
+
+  @OptIn(ExperimentalCoroutinesApi::class)
+  private fun <T> afterMpvReady(source: () -> Flow<T?>): Flow<T?> =
+    _isMpvCoreReady.flatMapLatest { ready ->
+      if (ready) source() else flowOf(null)
+    }
+
   private val initialAnime4KUiState
     get() = Anime4KUiState(
       isEnabled = decoderPreferences.enableAnime4K.get(),
@@ -192,10 +204,10 @@ class PlayerViewModel(
   }
 
   val anime4KUiState = anime4KPreferenceState
-    .combine(MPVLib.propInt["video-params/w"]) { state, width ->
+    .combine(afterMpvReady { MPVLib.propInt["video-params/w"] }) { state, width ->
       state.copy(videoWidth = width ?: 0)
     }
-    .combine(MPVLib.propInt["video-params/h"]) { state, height ->
+    .combine(afterMpvReady { MPVLib.propInt["video-params/h"] }) { state, height ->
       state.copy(videoHeight = height ?: 0)
     }
     .stateIn(
@@ -456,9 +468,6 @@ class PlayerViewModel(
   private val _volumeBoostCap = MutableStateFlow<Int?>(null)
   private val volumeBoostCap: Int? get() = _volumeBoostCap.value
 
-  private val _isMpvCoreReady = MutableStateFlow(false)
-  private var mpvStateCollectorsJob: Job? = null
-
   // High-precision position and duration for smooth seekbar
   private val _precisePosition = MutableStateFlow(0f)
   val precisePosition = _precisePosition.asStateFlow()
@@ -468,35 +477,35 @@ class PlayerViewModel(
 
   // These MPV-backed state flows must be initialized before any init block collects them.
   val subtitleTracks: StateFlow<List<TrackNode>> =
-    MPVLib.propNode["track-list"]
+    afterMpvReady { MPVLib.propNode["track-list"] }
       .map { node ->
         node?.toObject<List<TrackNode>>(json)?.filter { it.isSubtitle }?.toImmutableList()
           ?: persistentListOf()
       }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
   val audioTracks: StateFlow<List<TrackNode>> =
-    MPVLib.propNode["track-list"]
+    afterMpvReady { MPVLib.propNode["track-list"] }
       .map { node ->
         node?.toObject<List<TrackNode>>(json)?.filter { it.isAudio }?.toImmutableList()
           ?: persistentListOf()
       }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
   val isAudioOnly: StateFlow<Boolean> =
-    MPVLib.propNode["track-list"]
+    afterMpvReady { MPVLib.propNode["track-list"] }
       .map { node ->
         val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
         tracks.any { it.isAudio } && tracks.none { it.isVideo && !it.isAlbumArtwork }
       }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val hasAlbumArt: StateFlow<Boolean> =
-    MPVLib.propNode["track-list"]
+    afterMpvReady { MPVLib.propNode["track-list"] }
       .map { node ->
         val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
         tracks.any { it.isAlbumArtwork }
       }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val chapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
-    MPVLib.propNode["chapter-list"]
+    afterMpvReady { MPVLib.propNode["chapter-list"] }
       .map { node ->
         node?.toObject<List<ChapterNode>>(json)?.map { it.toSegment() }?.toImmutableList()
           ?: persistentListOf()
@@ -890,6 +899,7 @@ class PlayerViewModel(
     // Observe volume boost cap changes to enforce limits dynamically (in PiP)
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.volumeBoostCap.changes().collect { cap ->
+        if (!_isMpvCoreReady.value) return@collect
         val maxVol = 100 + cap
         runCatching {
           MPVLib.setPropertyString("volume-max", maxVol.toString())
@@ -958,6 +968,22 @@ class PlayerViewModel(
     isMpvReadyForCustomButtons = true
     reloadCustomButtonsScript("mpv_core_initialized")
     startAndroidSystemInfoBridge()
+  }
+
+  fun onMpvCoreStopping() {
+    _isMpvCoreReady.value = false
+    isMpvReadyForCustomButtons = false
+    mpvStateCollectorsJob?.cancel()
+    mpvStateCollectorsJob = null
+    androidSystemInfoBridgeJob?.cancel()
+    androidSystemInfoBridgeJob = null
+    customButtonsSetupJob?.cancel()
+    _paused.value = null
+    _pos.value = null
+    _duration.value = null
+    _volumeBoostCap.value = null
+    _precisePosition.value = 0f
+    _preciseDuration.value = 0f
   }
 
   private fun startMpvStateCollectors() {
@@ -2806,7 +2832,9 @@ class PlayerViewModel(
   // ==================== Playback Control ====================
 
   fun pauseUnpause() {
+    if (!_isMpvCoreReady.value) return
     viewModelScope.launch(Dispatchers.IO) {
+      if (!_isMpvCoreReady.value) return@launch
       val isPaused = MPVLib.getPropertyBoolean("pause") ?: false
       if (isPaused) {
         // We are about to unpause, so request focus
@@ -2821,14 +2849,18 @@ class PlayerViewModel(
   }
 
   fun pause() {
+    if (!_isMpvCoreReady.value) return
     viewModelScope.launch(Dispatchers.IO) {
+      if (!_isMpvCoreReady.value) return@launch
       MPVLib.setPropertyBoolean("pause", true)
       withContext(Dispatchers.Main) { host.abandonAudioFocus() }
     }
   }
 
   fun unpause() {
+    if (!_isMpvCoreReady.value) return
     viewModelScope.launch(Dispatchers.IO) {
+      if (!_isMpvCoreReady.value) return@launch
       withContext(Dispatchers.Main) { host.requestAudioFocus() }
       MPVLib.setPropertyBoolean("pause", false)
     }
