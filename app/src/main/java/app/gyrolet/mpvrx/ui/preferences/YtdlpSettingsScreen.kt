@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.preferences
 
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -14,7 +17,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
@@ -105,15 +107,14 @@ object YtdlpSettingsScreen : Screen {
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(
-                            text = "yt-dlp Streaming",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_yt_dlp_streaming),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                     },
                     navigationIcon = {
                         IconButton(onClick = { backStack.popSafely() }) {
-                            Icon(Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.RoundedFilled.ArrowBack, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.back))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -158,8 +159,7 @@ object YtdlpSettingsScreen : Screen {
                         }
                         
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "yt-dlp Core Engine",
+                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_yt_dlp_core_engine),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -191,21 +191,19 @@ object YtdlpSettingsScreen : Screen {
                     }
                 }
 
-                PreferenceSectionHeader(title = "Engine Installer")
+                PreferenceSectionHeader(title = stringResource(R.string.ytdlp_engine_installer))
 
                 PreferenceCard {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "Manage yt-dlp Environment",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_manage_yt_dlp_environment),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Text(
-                            text = "Download the latest wrapper modules and compile python-friendly native binaries inside local sandboxed folders.",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_download_the_latest_wrapper_modules_and_compile_python_friendly),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -232,7 +230,7 @@ object YtdlpSettingsScreen : Screen {
                             ) {
                                 Icon(Icons.RoundedFilled.Download, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Install Core")
+                                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_install_core))
                             }
 
                             OutlinedButton(
@@ -253,7 +251,7 @@ object YtdlpSettingsScreen : Screen {
                             ) {
                                 Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Update Core")
+                                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_update_core))
                             }
                         }
 
@@ -277,20 +275,19 @@ object YtdlpSettingsScreen : Screen {
                         ) {
                             Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Update to Nightly Build")
+                            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_update_to_nightly_build))
                         }
                     }
                 }
 
-                PreferenceSectionHeader(title = "Quality & Format")
+                PreferenceSectionHeader(title = stringResource(R.string.ytdlp_quality_format))
 
                 PreferenceCard {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                     ) {
-                        Text(
-                            text = "Streaming Quality",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_streaming_quality),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -323,7 +320,7 @@ object YtdlpSettingsScreen : Screen {
                         PreferenceDivider()
 
                         OptionDropdown(
-                            title = "Video Codec",
+                            title = stringResource(R.string.ytdlp_video_codec),
                             value = codecPreference,
                             values = YtdlCodecPreference.entries,
                             valueLabel = { it.title },
@@ -356,7 +353,7 @@ object YtdlpSettingsScreen : Screen {
                         }
 
                         OptionDropdown(
-                            title = "HDR Preference",
+                            title = stringResource(R.string.ytdlp_hdr_preference),
                             value = hdrPreference,
                             values = YtdlHdrPreference.entries,
                             valueLabel = { it.title },
@@ -367,7 +364,7 @@ object YtdlpSettingsScreen : Screen {
                         )
 
                         OptionDropdown(
-                            title = "Container",
+                            title = stringResource(R.string.ytdlp_container),
                             value = containerPreference,
                             values = YtdlContainerPreference.entries,
                             valueLabel = { it.title },
@@ -378,7 +375,7 @@ object YtdlpSettingsScreen : Screen {
                         )
 
                         OptionDropdown(
-                            title = "Audio Preference",
+                            title = stringResource(R.string.ytdlp_audio_preference),
                             value = audioPreference,
                             values = YtdlAudioPreference.entries,
                             valueLabel = { it.title },
@@ -389,7 +386,7 @@ object YtdlpSettingsScreen : Screen {
                         )
 
                         OptionDropdown(
-                            title = "Audio Quality",
+                            title = stringResource(R.string.ytdlp_audio_quality),
                             value = audioQuality,
                             values = YtdlAudioQuality.entries,
                             valueLabel = { it.title },
@@ -399,8 +396,7 @@ object YtdlpSettingsScreen : Screen {
                             },
                         )
 
-                        Text(
-                            text = "Bitrate caps apply when yt-dlp reports audio bitrate metadata.",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_bitrate_caps_apply_when_yt_dlp_reports_audio_bitrate_metadata),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -422,8 +418,7 @@ object YtdlpSettingsScreen : Screen {
                                     .fillMaxWidth()
                                     .padding(16.dp)
                             ) {
-                                Text(
-                                    text = "Generated Format String",
+                                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_generated_format_string),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -442,7 +437,7 @@ object YtdlpSettingsScreen : Screen {
                     }
                 }
 
-                PreferenceSectionHeader(title = "Subtitles & Language")
+                PreferenceSectionHeader(title = stringResource(R.string.ytdlp_subtitles_language))
 
                 PreferenceCard {
                     Column(
@@ -452,8 +447,8 @@ object YtdlpSettingsScreen : Screen {
                         SwitchPreference(
                             value = writeSubs,
                             onValueChange = { ytdlPreferences.writeSubs.set(it) },
-                            title = { Text("Download Media Subtitles", fontWeight = FontWeight.Medium) },
-                            summary = { Text("Automatically extract and load physical subtitle tracks from supported URLs.") }
+                            title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_download_media_subtitles), fontWeight = FontWeight.Medium) },
+                            summary = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_automatically_extract_and_load_physical_subtitle_tracks_from_sup)) }
                         )
 
                         PreferenceDivider()
@@ -461,8 +456,8 @@ object YtdlpSettingsScreen : Screen {
                         SwitchPreference(
                             value = writeAutoSubs,
                             onValueChange = { ytdlPreferences.writeAutoSubs.set(it) },
-                            title = { Text("Include Auto-Generated Subtitles", fontWeight = FontWeight.Medium) },
-                            summary = { Text("Fetch auto-caption tracks (e.g. YouTube Speech-to-Text) when regular subs are absent.") }
+                            title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_include_auto_generated_subtitles), fontWeight = FontWeight.Medium) },
+                            summary = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_fetch_auto_caption_tracks_e_g_youtube_speech_to_text_when_regula)) }
                         )
 
                         PreferenceDivider()
@@ -473,17 +468,17 @@ object YtdlpSettingsScreen : Screen {
                                 subtitleLanguagesText = it
                                 ytdlPreferences.subtitleLanguages.set(it)
                             },
-                            label = { Text("Subtitle Languages") },
-                            placeholder = { Text("all or en.*,ja") },
+                            label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_subtitles_search_languages)) },
+                            placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_all_or_en_ja)) },
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
-                            supportingText = { Text("Overrides app subtitle languages only for yt-dlp downloads.") }
+                            supportingText = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_overrides_app_subtitle_languages_only_for_yt_dlp_downloads)) }
                         )
                     }
                 }
 
-                PreferenceSectionHeader(title = "Advanced Networking")
+                PreferenceSectionHeader(title = stringResource(R.string.ytdlp_advanced_networking))
 
                 PreferenceCard {
                     Column(
@@ -499,14 +494,12 @@ object YtdlpSettingsScreen : Screen {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Advanced Configurations",
+                                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_advanced_configurations),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    text = "Custom HTTP agent, proxy, extractor args, SponsorBlock, and raw options",
+                                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_custom_http_agent_proxy_extractor_args_sponsorblock_and_raw_opti),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -534,12 +527,12 @@ object YtdlpSettingsScreen : Screen {
                                         formatSortText = it
                                         ytdlPreferences.formatSort.set(it)
                                     },
-                                    label = { Text("Format Sort") },
-                                    placeholder = { Text("res,fps,hdr:12,vcodec:vp9.2") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_format_sort)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_res_fps_hdr_12_vcodec_vp9_2)) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth(),
-                                    supportingText = { Text("Passed to yt-dlp as format-sort for advanced ranking.") }
+                                    supportingText = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_passed_to_yt_dlp_as_format_sort_for_advanced_ranking)) }
                                 )
 
                                 PreferenceDivider()
@@ -550,8 +543,8 @@ object YtdlpSettingsScreen : Screen {
                                         mergeOutputFormatText = it
                                         ytdlPreferences.mergeOutputFormat.set(it)
                                     },
-                                    label = { Text("Merge Output Format") },
-                                    placeholder = { Text("mp4, mkv, webm") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_merge_output_format)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_mp4_mkv_webm)) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth(),
@@ -565,8 +558,8 @@ object YtdlpSettingsScreen : Screen {
                                         userAgentText = it
                                         ytdlPreferences.customUserAgent.set(it)
                                     },
-                                    label = { Text("Custom User-Agent Override") },
-                                    placeholder = { Text("Mozilla/5.0 ...") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_custom_user_agent_override)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_mozilla_5_0)) },
                                     singleLine = false,
                                     maxLines = 3,
                                     shape = RoundedCornerShape(12.dp),
@@ -576,7 +569,7 @@ object YtdlpSettingsScreen : Screen {
                                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                                     ),
                                     supportingText = {
-                                        Text("Leave blank to use default browser User-Agent. Helps bypass anti-bot scrapers.")
+                                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_leave_blank_to_use_default_browser_user_agent_helps_bypass_anti))
                                     }
                                 )
 
@@ -588,7 +581,7 @@ object YtdlpSettingsScreen : Screen {
                                         refererText = it
                                         ytdlPreferences.referer.set(it)
                                     },
-                                    label = { Text("Referer") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_referer)) },
                                     placeholder = { Text("https://www.youtube.com/") },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
@@ -601,8 +594,8 @@ object YtdlpSettingsScreen : Screen {
                                         cookiesFileText = it
                                         ytdlPreferences.cookiesFile.set(it)
                                     },
-                                    label = { Text("Cookies File") },
-                                    placeholder = { Text("/storage/emulated/0/Download/cookies.txt") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_cookies_file)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_storage_emulated_0_download_cookies_txt)) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth(),
@@ -614,8 +607,8 @@ object YtdlpSettingsScreen : Screen {
                                         proxyText = it
                                         ytdlPreferences.proxy.set(it)
                                     },
-                                    label = { Text("Proxy") },
-                                    placeholder = { Text("socks5://127.0.0.1:1080") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_proxy)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_socks5_127_0_0_1_1080)) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth(),
@@ -627,8 +620,8 @@ object YtdlpSettingsScreen : Screen {
                                         extractorArgsText = it
                                         ytdlPreferences.extractorArgs.set(it)
                                     },
-                                    label = { Text("Extractor Args") },
-                                    placeholder = { Text("youtube:player_client=android,web") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_extractor_args)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_youtube_player_client_android_web)) },
                                     singleLine = false,
                                     maxLines = 2,
                                     shape = RoundedCornerShape(12.dp),
@@ -636,7 +629,7 @@ object YtdlpSettingsScreen : Screen {
                                 )
 
                                 OptionDropdown(
-                                    title = "Playlist Behavior",
+                                    title = stringResource(R.string.ytdlp_playlist_behavior),
                                     value = playlistMode,
                                     values = YtdlPlaylistMode.entries,
                                     valueLabel = { it.title },
@@ -646,15 +639,15 @@ object YtdlpSettingsScreen : Screen {
                                 SwitchPreference(
                                     value = geoBypass,
                                     onValueChange = { ytdlPreferences.geoBypass.set(it) },
-                                    title = { Text("Geo Bypass", fontWeight = FontWeight.Medium) },
-                                    summary = { Text("Ask yt-dlp to use its extractor-level region bypass logic.") }
+                                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_geo_bypass), fontWeight = FontWeight.Medium) },
+                                    summary = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ask_yt_dlp_to_use_its_extractor_level_region_bypass_logic)) }
                                 )
 
                                 SwitchPreference(
                                     value = liveFromStart,
                                     onValueChange = { ytdlPreferences.liveFromStart.set(it) },
-                                    title = { Text("Live From Start", fontWeight = FontWeight.Medium) },
-                                    summary = { Text("Start live streams from the beginning when the extractor supports it.") }
+                                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_live_from_start), fontWeight = FontWeight.Medium) },
+                                    summary = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_start_live_streams_from_the_beginning_when_the_extractor_support)) }
                                 )
 
                                 OutlinedTextField(
@@ -663,8 +656,8 @@ object YtdlpSettingsScreen : Screen {
                                         sponsorBlockMarkText = it
                                         ytdlPreferences.sponsorBlockMark.set(it)
                                     },
-                                    label = { Text("SponsorBlock Mark") },
-                                    placeholder = { Text("sponsor,selfpromo") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_sponsorblock_mark)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_sponsor_selfpromo)) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth(),
@@ -676,8 +669,8 @@ object YtdlpSettingsScreen : Screen {
                                         sponsorBlockRemoveText = it
                                         ytdlPreferences.sponsorBlockRemove.set(it)
                                     },
-                                    label = { Text("SponsorBlock Remove") },
-                                    placeholder = { Text("sponsor") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_sponsorblock_remove)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_sponsor)) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth(),
@@ -691,8 +684,8 @@ object YtdlpSettingsScreen : Screen {
                                         rawOptionsText = it
                                         ytdlPreferences.customRawOptions.set(it)
                                     },
-                                    label = { Text("Raw yt-dlp Options") },
-                                    placeholder = { Text("extractor-args=\"youtube:player_client=android,web\"\ngeo-bypass=") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_raw_yt_dlp_options)) },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_extractor_args_2)) },
                                     singleLine = false,
                                     maxLines = 6,
                                     shape = RoundedCornerShape(12.dp),
@@ -702,7 +695,7 @@ object YtdlpSettingsScreen : Screen {
                                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                                     ),
                                     supportingText = {
-                                        Text("Anything not exposed above. Separate options with new lines or commas; quote values that contain commas.")
+                                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_anything_not_exposed_above_separate_options_with_new_lines_or_co))
                                     }
                                 )
                             }

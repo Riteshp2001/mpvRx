@@ -33,9 +33,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AiProvider
@@ -165,8 +167,7 @@ fun BulkAiRenameDialog(
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
-          !canUseAi -> Text(
-            "AI Rename is disabled. Enable it in Settings → AI Integration.",
+          !canUseAi -> Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ai_rename_is_disabled_enable_it_in_settings_ai_integration),
             color = MaterialTheme.colorScheme.error,
           )
 
@@ -234,7 +235,7 @@ fun BulkAiRenameDialog(
                       modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 48.dp),
-                      label = { Text("New name") },
+                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_new_name)) },
                       suffix = { item.extension?.let { Text(it, color = MaterialTheme.colorScheme.outline) } },
                       singleLine = true,
                       keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -268,7 +269,7 @@ fun BulkAiRenameDialog(
           ) {
             Icon(imageVector = Icons.RoundedFilled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Generate Previews", fontWeight = FontWeight.Bold)
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_generate_previews), fontWeight = FontWeight.Bold)
           }
 
         RenamePhase.GENERATING -> {}
@@ -283,7 +284,7 @@ fun BulkAiRenameDialog(
           ) {
             Icon(imageVector = app.gyrolet.mpvrx.ui.icons.Icons.RoundedFilled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Rename $checkedCount File(s)", fontWeight = FontWeight.Bold)
+            Text(androidx.compose.ui.res.pluralStringResource(R.plurals.rename_files_action, checkedCount, checkedCount), fontWeight = FontWeight.Bold)
           }
         }
       }
@@ -297,7 +298,7 @@ fun BulkAiRenameDialog(
         enabled = phase != RenamePhase.GENERATING,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text(if (phase == RenamePhase.PREVIEW) "Back" else "Cancel", fontWeight = FontWeight.Medium)
+        Text(if (phase == RenamePhase.PREVIEW) stringResource(R.string.back) else stringResource(R.string.generic_cancel), fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,

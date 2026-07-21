@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.preferences
 
+import androidx.annotation.StringRes
+
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -101,7 +103,7 @@ object AboutScreen : Screen {
     // Show toast when no update is available after manual check (only if update feature is enabled)
     LaunchedEffect(updateState) {
         if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null && updateState is UpdateViewModel.UpdateState.NoUpdate) {
-            Toast.makeText(context, "Already using latest version", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_already_using_latest_version), Toast.LENGTH_SHORT).show()
             updateViewModel.dismissNoUpdate()
         }
     }
@@ -196,8 +198,7 @@ object AboutScreen : Screen {
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(
-                    text = "mpvRx",
+                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.app_name),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = cs.onPrimaryContainer,
@@ -213,8 +214,7 @@ object AboutScreen : Screen {
                     shape = RoundedCornerShape(12.dp),
                     color = cs.primary.copy(alpha = 0.16f),
                   ) {
-                    Text(
-                      text = "By Ritesh Pandit",
+                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_by_ritesh_pandit),
                       modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                       style = MaterialTheme.typography.titleSmall,
                       fontWeight = FontWeight.SemiBold,
@@ -272,8 +272,7 @@ object AboutScreen : Screen {
                       contentColor = btnContent,
                     ),
                 ) {
-                  Text(
-                    text = "GitHub",
+                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_github),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                   )
@@ -296,13 +295,12 @@ object AboutScreen : Screen {
                 ) {
                   Icon(
                     imageVector = Icons.RoundedFilled.Info,
-                    contentDescription = "Device Info",
+                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_device_info),
                     modifier = Modifier.size(20.dp),
                     tint = cs.onPrimaryContainer,
                   )
                   Spacer(modifier = Modifier.width(8.dp))
-                  Text(
-                    text = "Device Info",
+                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_device_info),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = cs.onPrimaryContainer,
@@ -321,7 +319,7 @@ object AboutScreen : Screen {
         Spacer(Modifier.height(8.dp))
 
         // Support / Donation Section
-        PreferenceSectionHeader(title = "Support")
+        PreferenceSectionHeader(title = stringResource(R.string.pref_section_support))
         PreferenceCard {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -332,16 +330,14 @@ object AboutScreen : Screen {
                         tint = cs.error,
                     )
                     Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = "Buy Me a Coffee",
+                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_buy_me_a_coffee),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = cs.onSurface,
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "If you enjoy mpvRx, consider supporting its development. Every bit helps!",
+                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_if_you_enjoy_mpvrx_consider_supporting_its_development_every_bit),
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                 )
@@ -361,21 +357,19 @@ object AboutScreen : Screen {
                                     text = "panditritesh2001@okhdfcbank",
                                     showToast = false,
                                 )
-                                Toast.makeText(context, "UPI ID copied!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_upi_id_copied), Toast.LENGTH_SHORT).show()
                             }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "UPI ID",
+                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_upi_id),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = cs.outline,
                             )
                             Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = "panditritesh2001@okhdfcbank",
+                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_panditritesh2001_okhdfcbank),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Medium,
                                 color = cs.onSurface,
@@ -383,7 +377,7 @@ object AboutScreen : Screen {
                         }
                         Icon(
                             imageVector = Icons.RoundedFilled.ContentCopy,
-                            contentDescription = "Copy UPI ID",
+                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_copy_upi_id),
                             modifier = Modifier.size(20.dp),
                             tint = cs.primary,
                         )
@@ -399,7 +393,7 @@ object AboutScreen : Screen {
                             )
                             context.startActivity(upiIntent)
                         } catch (_: Exception) {
-                            Toast.makeText(context, "No UPI app found", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_no_upi_app_found), Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -412,7 +406,7 @@ object AboutScreen : Screen {
                 ) {
                     Icon(Icons.RoundedFilled.MonetizationOn, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Send Love", fontWeight = FontWeight.SemiBold)
+                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_send_love), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -421,7 +415,7 @@ object AboutScreen : Screen {
 
         // Updates Section (only show if update feature is enabled)
         if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null) {
-          PreferenceSectionHeader(title = "Updates")
+          PreferenceSectionHeader(title = stringResource(R.string.pref_section_updates))
           PreferenceCard {
                 val isAutoUpdateEnabled by updateViewModel.isAutoUpdateEnabled.collectAsState()
                 Column {
@@ -436,15 +430,13 @@ object AboutScreen : Screen {
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(
-                                text = "Auto Check for Updates",
+                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_check_for_updates),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = cs.onSurface
                             )
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Check on startup",
+                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_check_on_startup),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = cs.outline
                             )
@@ -470,7 +462,7 @@ object AboutScreen : Screen {
                         ) {
                              Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
                              Spacer(Modifier.width(8.dp))
-                             Text("Check for Updates Now", fontWeight = FontWeight.SemiBold)
+                             Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_check_for_updates_now), fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -480,7 +472,7 @@ object AboutScreen : Screen {
         }
 
         // System Stats Section
-        PreferenceSectionHeader(title = "System")
+        PreferenceSectionHeader(title = stringResource(R.string.pref_section_system))
 
         val systemStats = remember { collectSystemStats(context) }
         PreferenceCard {
@@ -618,8 +610,7 @@ object LibrariesScreen : Screen {
           .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        Text(
-          text = "Core open source dependencies used by mpvRx.",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_core_open_source_dependencies_used_by_mpvrx),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -654,7 +645,7 @@ object LibrariesScreen : Screen {
                 color = MaterialTheme.colorScheme.primary,
               )
               Text(
-                text = library.description,
+                text = stringResource(library.descriptionRes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
@@ -674,7 +665,7 @@ object LibrariesScreen : Screen {
 private data class OpenSourceLibrary(
   val name: String,
   val artifact: String,
-  val description: String,
+  @StringRes val descriptionRes: Int,
   val license: String,
   val url: String,
 )
@@ -683,252 +674,252 @@ private val OPEN_SOURCE_LIBRARIES = listOf(
   OpenSourceLibrary(
     name = "Jetpack Compose",
     artifact = "androidx.compose",
-    description = "Declarative UI toolkit used across the app interface.",
+    descriptionRes = R.string.oss_jetpack_compose_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/compose",
   ),
   OpenSourceLibrary(
     name = "Material 3",
     artifact = "androidx.compose.material3:material3",
-    description = "Compose Material components and theming.",
+    descriptionRes = R.string.oss_material_3_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/compose-material3",
   ),
   OpenSourceLibrary(
     name = "Navigation 3",
     artifact = "androidx.navigation3:navigation3-runtime",
-    description = "Navigation model used for app screens and flows.",
+    descriptionRes = R.string.oss_navigation_3_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/navigation3",
   ),
   OpenSourceLibrary(
     name = "Koin",
     artifact = "io.insert-koin",
-    description = "Dependency injection for repositories, preferences, and view models.",
+    descriptionRes = R.string.oss_koin_description,
     license = "Apache-2.0",
     url = "https://insert-koin.io/",
   ),
   OpenSourceLibrary(
     name = "Room",
     artifact = "androidx.room",
-    description = "Local database layer for playback state and cached metadata.",
+    descriptionRes = R.string.oss_room_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/room",
   ),
   OpenSourceLibrary(
     name = "OkHttp",
     artifact = "com.squareup.okhttp3:okhttp",
-    description = "HTTP client for subtitle search and other network requests.",
+    descriptionRes = R.string.oss_okhttp_description,
     license = "Apache-2.0",
     url = "https://square.github.io/okhttp/",
   ),
   OpenSourceLibrary(
     name = "kotlinx.serialization",
     artifact = "org.jetbrains.kotlinx:kotlinx-serialization-json",
-    description = "JSON serialization for API payloads and internal models.",
+    descriptionRes = R.string.oss_kotlinx_serialization_description,
     license = "Apache-2.0",
     url = "https://github.com/Kotlin/kotlinx.serialization",
   ),
   OpenSourceLibrary(
     name = "Accompanist Permissions",
     artifact = "com.google.accompanist:accompanist-permissions",
-    description = "Compose helpers for Android runtime permission flows.",
+    descriptionRes = R.string.oss_accompanist_permissions_description,
     license = "Apache-2.0",
     url = "https://github.com/google/accompanist",
   ),
   OpenSourceLibrary(
     name = "MediaInfo Android",
     artifact = "com.github.marlboro-advance:mediainfoAndroid",
-    description = "Media inspection for codecs, subtitles, and technical metadata.",
+    descriptionRes = R.string.oss_mediainfo_android_description,
     license = "Open source",
     url = "https://github.com/marlboro-advance/mediainfoAndroid",
   ),
   OpenSourceLibrary(
     name = "SMBJ",
     artifact = "com.hierynomus:smbj",
-    description = "SMB/CIFS client support for network shares.",
+    descriptionRes = R.string.oss_smbj_description,
     license = "Apache-2.0",
     url = "https://github.com/hierynomus/smbj",
   ),
   OpenSourceLibrary(
     name = "Commons Net",
     artifact = "commons-net:commons-net",
-    description = "FTP and related network protocol support.",
+    descriptionRes = R.string.oss_commons_net_description,
     license = "Apache-2.0",
     url = "https://commons.apache.org/proper/commons-net/",
   ),
   OpenSourceLibrary(
     name = "Sardine Android",
     artifact = "com.github.thegrizzlylabs:sardine-android",
-    description = "WebDAV client support for remote file access.",
+    descriptionRes = R.string.oss_sardine_android_description,
     license = "Apache-2.0",
     url = "https://github.com/thegrizzlylabs/sardine-android",
   ),
   OpenSourceLibrary(
     name = "NanoHTTPD",
     artifact = "org.nanohttpd:nanohttpd",
-    description = "Embedded HTTP server components used by local streaming features.",
+    descriptionRes = R.string.oss_nanohttpd_description,
     license = "BSD-3-Clause",
     url = "https://github.com/NanoHttpd/nanohttpd",
   ),
   OpenSourceLibrary(
     name = "FSAF",
     artifact = "com.github.K1rakishou:Fuck-Storage-Access-Framework",
-    description = "Storage Access Framework helpers for file and tree operations.",
+    descriptionRes = R.string.oss_fsaf_description,
     license = "Apache-2.0",
     url = "https://github.com/K1rakishou/Fuck-Storage-Access-Framework",
   ),
   OpenSourceLibrary(
     name = "TrueType Parser",
     artifact = "io.github.yubyf:truetypeparser-light",
-    description = "Reads font metadata for subtitle font handling.",
+    descriptionRes = R.string.oss_truetype_parser_description,
     license = "Apache-2.0",
     url = "https://github.com/yubyf/truetypeparser",
   ),
   OpenSourceLibrary(
     name = "Compose Preference",
     artifact = "me.zhanghai.compose.preference:preference",
-    description = "Preference UI components used across settings screens.",
+    descriptionRes = R.string.oss_compose_preference_description,
     license = "Apache-2.0",
     url = "https://github.com/zhanghai/ComposePreference",
   ),
   OpenSourceLibrary(
     name = "LazyColumnScrollbar",
     artifact = "com.github.nanihadesuka:LazyColumnScrollbar",
-    description = "Scrollbar component for long Compose lists.",
+    descriptionRes = R.string.oss_lazycolumnscrollbar_description,
     license = "Apache-2.0",
     url = "https://github.com/Nanihadesuka/LazyColumnScrollbar",
   ),
   OpenSourceLibrary(
     name = "Reorderable",
     artifact = "sh.calvin.reorderable:reorderable",
-    description = "Drag-and-drop list reordering for Compose surfaces.",
+    descriptionRes = R.string.oss_reorderable_description,
     license = "Apache-2.0",
     url = "https://github.com/Calvin-LL/Reorderable",
   ),
   OpenSourceLibrary(
     name = "Seeker",
     artifact = "com.github.abdallahmehiz:seeker",
-    description = "A customizable seekbar component for Jetpack Compose.",
+    descriptionRes = R.string.oss_seeker_description,
     license = "Apache-2.0",
     url = "https://github.com/abdallahmehiz/seeker",
   ),
   OpenSourceLibrary(
     name = "Sora Editor",
     artifact = "io.github.rosemoe:editor",
-    description = "A powerful, efficient code editor for Android with TextMate highlighting.",
+    descriptionRes = R.string.oss_sora_editor_description,
     license = "LGPL-2.1",
     url = "https://github.com/Rosemoe/sora-editor",
   ),
   OpenSourceLibrary(
     name = "Media3",
     artifact = "androidx.media3",
-    description = "Android media libraries for advanced playback and effects.",
+    descriptionRes = R.string.oss_media3_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/media3",
   ),
   OpenSourceLibrary(
     name = "Jsoup",
     artifact = "org.jsoup:jsoup",
-    description = "Java HTML Parser for web scraping and document extraction.",
+    descriptionRes = R.string.oss_jsoup_description,
     license = "MIT",
     url = "https://jsoup.org/",
   ),
   OpenSourceLibrary(
     name = "Llamatik",
     artifact = "com.llamatik:library",
-    description = "Local LLM inference bridge for running AI models on Android.",
+    descriptionRes = R.string.oss_llamatik_description,
     license = "Apache-2.0",
     url = "https://github.com/ferranpons/llamatik",
   ),
   OpenSourceLibrary(
     name = "AndroidX Core KTX",
     artifact = "androidx.core:core-ktx",
-    description = "Core Kotlin extensions for Android framework APIs.",
+    descriptionRes = R.string.oss_androidx_core_ktx_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/core",
   ),
   OpenSourceLibrary(
     name = "AndroidX Appcompat",
     artifact = "androidx.appcompat:appcompat",
-    description = "Backward-compatible versions of Android framework APIs.",
+    descriptionRes = R.string.oss_androidx_appcompat_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/appcompat",
   ),
   OpenSourceLibrary(
     name = "AndroidX ConstraintLayout",
     artifact = "androidx.constraintlayout:constraintlayout",
-    description = "Flexible layout manager for Android interfaces.",
+    descriptionRes = R.string.oss_androidx_constraintlayout_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/constraintlayout",
   ),
   OpenSourceLibrary(
     name = "AndroidX DocumentFile",
     artifact = "androidx.documentfile:documentfile",
-    description = "Abstraction layer for document storage access.",
+    descriptionRes = R.string.oss_androidx_documentfile_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/documentfile",
   ),
   OpenSourceLibrary(
     name = "AndroidX Media",
     artifact = "androidx.media:media",
-    description = "Android media session and playback APIs.",
+    descriptionRes = R.string.oss_androidx_media_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/media",
   ),
   OpenSourceLibrary(
     name = "AndroidX Preference",
     artifact = "androidx.preference:preference-ktx",
-    description = "UI and storage for app preference screens.",
+    descriptionRes = R.string.oss_androidx_preference_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/preference",
   ),
   OpenSourceLibrary(
     name = "AndroidX Profile Installer",
     artifact = "androidx.profileinstaller:profileinstaller",
-    description = "Prefetches classes and methods for faster app startup.",
+    descriptionRes = R.string.oss_androidx_profile_installer_description,
     license = "Apache-2.0",
     url = "https://developer.android.com/jetpack/androidx/releases/profileinstaller",
   ),
   OpenSourceLibrary(
     name = "Google Material",
     artifact = "com.google.android.material:material",
-    description = "Material Design components and theming library.",
+    descriptionRes = R.string.oss_google_material_description,
     license = "Apache-2.0",
     url = "https://material.io/develop/android",
   ),
   OpenSourceLibrary(
     name = "Google Cast",
     artifact = "com.google.android.gms:play-services-cast-framework",
-    description = "Chromecast framework for media casting.",
+    descriptionRes = R.string.oss_google_cast_description,
     license = "Apache-2.0",
     url = "https://developers.google.com/cast",
   ),
   OpenSourceLibrary(
     name = "Material Symbols",
     artifact = "com.composables:icons-material-symbols",
-    description = "Material Symbols icon set for Compose.",
+    descriptionRes = R.string.oss_material_symbols_description,
     license = "Apache-2.0",
     url = "https://github.com/compose-icons/compose-icons",
   ),
   OpenSourceLibrary(
     name = "Kotlinx Immutable Collections",
     artifact = "org.jetbrains.kotlinx:kotlinx-collections-immutable",
-    description = "Immutable collection interfaces for Kotlin.",
+    descriptionRes = R.string.oss_kotlinx_immutable_collections_description,
     license = "Apache-2.0",
     url = "https://github.com/Kotlin/kotlinx.collections.immutable",
   ),
   OpenSourceLibrary(
     name = "Curl Android",
     artifact = "io.github.vvb2060.ndk:curl",
-    description = "libcurl static library for Android NDK.",
+    descriptionRes = R.string.oss_curl_android_description,
     license = "curl",
     url = "https://github.com/vvb2060/curl-android",
   ),
   OpenSourceLibrary(
     name = "Desugar JDK Libs",
     artifact = "com.android.tools:desugar_jdk_libs",
-    description = "Java 8+ API desugaring for older Android versions.",
+    descriptionRes = R.string.oss_desugar_jdk_libs_description,
     license = "Apache-2.0",
     url = "https://github.com/google/desugar_jdk_libs",
   ),

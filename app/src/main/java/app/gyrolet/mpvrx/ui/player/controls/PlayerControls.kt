@@ -1143,7 +1143,7 @@ fun PlayerControls(
                   ) {
                     Icon(
                       imageVector = Icons.RoundedFilled.SkipPrevious,
-                      contentDescription = "Previous",
+                      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_gesture_media_previous),
                       tint =
                         if (viewModel.hasPrevious()) {
                           if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
@@ -1240,7 +1240,7 @@ fun PlayerControls(
                   ) {
                     Icon(
                       imageVector = Icons.RoundedFilled.SkipNext,
-                      contentDescription = "Next",
+                      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_gesture_media_next),
                       tint =
                         if (viewModel.hasNext()) {
                           if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
@@ -1749,6 +1749,10 @@ private fun CustomStatsPageSixOverlay(
   val context = LocalContext.current.applicationContext
   val isHdrOutputEnabled by viewModel.isHdrScreenOutputEnabled.collectAsState()
   val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
+  val hdrOutputText = stringResource(
+    R.string.hdr_mode_output_diagnostic,
+    stringResource(hdrScreenMode.shortTitleRes),
+  )
   val stats by produceState(
     initialValue =
       CustomStatsSnapshot(
@@ -1770,7 +1774,7 @@ private fun CustomStatsPageSixOverlay(
         tempRiseText = "+0.0°C",
       ),
     isHdrOutputEnabled,
-    hdrScreenMode,
+    hdrOutputText,
   ) {
     var lastCpuMs   = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(0L)
     var lastTimeMs  = android.os.SystemClock.elapsedRealtime()
@@ -1877,7 +1881,7 @@ private fun CustomStatsPageSixOverlay(
 
           val sourceLabel = if (isHdrSource) "HDR Source" else "SDR Source"
           val outputLabel = if (isHdrOutputEnabled) {
-            "HDR - ${hdrScreenMode.shortTitle} Mode Output"
+            hdrOutputText
           } else {
             "SDR Output"
           }
@@ -1922,19 +1926,19 @@ private fun CustomStatsPageSixOverlay(
     val labelStyle = baseStyle.copy(fontWeight = FontWeight.Bold)
     val valueStyle = baseStyle
 
-    OutlinedText("--- PLAYBACK & DECODER ---", style = headerStyle)
+    OutlinedText(stringResource(R.string.diagnostics_playback_decoder_header), style = headerStyle)
     OutlinedLabeled("File", stats.fileName, labelStyle, valueStyle)
     OutlinedLabeled("Decoder & VO", "${stats.renderContext} | ${stats.video} | Eff: ${stats.decoderEfficiencyText}", labelStyle, valueStyle)
     OutlinedLabeled("Audio", "${stats.audio} | HDR: ${stats.hdrActive}", labelStyle, valueStyle)
 
     Spacer(modifier = Modifier.height(2.dp))
-    OutlinedText("--- POWER & THERMALS ---", style = headerStyle)
+    OutlinedText(stringResource(R.string.diagnostics_power_thermals_header), style = headerStyle)
     OutlinedLabeled("Battery", "${stats.batteryPercentText} | ${stats.batteryWattsText} | Rate: ${stats.batteryRateText}", labelStyle, valueStyle)
     OutlinedLabeled("Temp", "${stats.batteryTempText} (Peak: ${stats.peakTempText} | Rise: ${stats.tempRiseText})", labelStyle, valueStyle)
     OutlinedLabeled("Thermal", stats.thermalStateText, labelStyle, valueStyle)
 
     Spacer(modifier = Modifier.height(2.dp))
-    OutlinedText("--- SESSION ---", style = headerStyle)
+    OutlinedText(stringResource(R.string.diagnostics_session_header), style = headerStyle)
     OutlinedLabeled("Active", stats.sessionPlayTimeText, labelStyle, valueStyle)
 
     LinearProgressIndicator(

@@ -367,14 +367,14 @@
             android:name=".ui.mediainfo.MediaInfoActivity"
             android:exported="true"
             android:theme="@style/Theme.mpvrx"
-            android:label="Media Info" />
+            android:label="@string/ui_media_info" />
 
         <activity-alias
             android:name=".ui.mediainfo.MediaInfoActivityAlias"
             android:targetActivity=".ui.mediainfo.MediaInfoActivity"
             android:exported="true"
             android:enabled="true"
-            android:label="Media Info">
+            android:label="@string/ui_media_info">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

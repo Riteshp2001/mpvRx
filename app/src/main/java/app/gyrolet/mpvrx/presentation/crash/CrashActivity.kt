@@ -345,8 +345,7 @@ class CrashActivity : ComponentActivity() {
           style = MaterialTheme.typography.headlineSmall,
         )
         LogsContainer(exceptionString)
-        Text(
-          "Logcat:",
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_logcat),
           style = MaterialTheme.typography.headlineSmall,
         )
         LogsContainer(logcat)

@@ -146,7 +146,7 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
          step = 0.1f,
          min = Float.NEGATIVE_INFINITY,
          max = Float.POSITIVE_INFINITY,
-         suffix = { Text("s") },
+         suffix = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_s)) },
          increaseIcon = Icons.RoundedFilled.Add,
          decreaseIcon = Icons.RoundedFilled.Remove,
          valueFormatter = { "%.1f".format(it) }

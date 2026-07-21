@@ -113,8 +113,7 @@ fun FolderPickerDialog(
     onDismissRequest = onDismiss,
     title = {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-          text = "Select Folder",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_select_folder),
           style = MaterialTheme.typography.headlineMedium,
           fontWeight = FontWeight.Bold,
         )
@@ -128,8 +127,7 @@ fun FolderPickerDialog(
           modifier = Modifier.padding(top = 4.dp),
         )
         if (isSameAsSource) {
-          Text(
-            text = "Cannot select the same folder",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_cannot_select_the_same_folder),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.error,
@@ -164,7 +162,7 @@ fun FolderPickerDialog(
             ) {
               Icon(
                 imageVector = Icons.RoundedFilled.ArrowBack,
-                contentDescription = "Go back",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_go_back),
               )
             }
           }
@@ -183,7 +181,7 @@ fun FolderPickerDialog(
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.Home,
-              contentDescription = "Go to internal storage",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_go_to_internal_storage),
             )
           }
 
@@ -200,7 +198,7 @@ fun FolderPickerDialog(
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.CreateNewFolder,
-              contentDescription = "Create folder",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_folder),
             )
           }
         }
@@ -229,8 +227,7 @@ fun FolderPickerDialog(
             
             if (storageVolumes.isEmpty()) {
               item {
-                Text(
-                  text = "No storage devices found",
+                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_storage_devices_found),
                   style = MaterialTheme.typography.bodyLarge,
                   fontWeight = FontWeight.Medium,
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -249,8 +246,7 @@ fun FolderPickerDialog(
 
             if (folders.isEmpty()) {
               item {
-                Text(
-                  text = "No subfolders",
+                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_subfolders),
                   style = MaterialTheme.typography.bodyLarge,
                   fontWeight = FontWeight.Medium,
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -272,7 +268,7 @@ fun FolderPickerDialog(
           ),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Select", fontWeight = FontWeight.Bold)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_select), fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
@@ -280,7 +276,7 @@ fun FolderPickerDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
@@ -390,8 +386,7 @@ private fun CreateFolderDialog(
   AlertDialog(
     onDismissRequest = onDismiss,
     title = {
-      Text(
-        "Create New Folder",
+      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_new_folder),
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
       )
@@ -404,7 +399,7 @@ private fun CreateFolderDialog(
             folderName = it
             error = null
           },
-          label = { Text("Folder name", fontWeight = FontWeight.Medium) },
+          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_folder_name), fontWeight = FontWeight.Medium) },
           singleLine = true,
           isError = error != null,
           modifier = Modifier.fillMaxWidth(),
@@ -456,7 +451,7 @@ private fun CreateFolderDialog(
           ),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Create", fontWeight = FontWeight.Bold)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create), fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
@@ -464,7 +459,7 @@ private fun CreateFolderDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,

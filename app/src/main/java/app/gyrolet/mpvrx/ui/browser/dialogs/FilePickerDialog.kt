@@ -177,8 +177,7 @@ fun FilePickerDialog(
                 // Portrait: title/path stacked on top, nav buttons centered below
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                   Column(modifier = Modifier.fillMaxWidth()) {
-                      Text(
-                        text = "Select Subtitle",
+                      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_select_subtitle),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                       )
@@ -215,8 +214,7 @@ fun FilePickerDialog(
                       verticalAlignment = Alignment.CenterVertically
                   ) {
                       Column(modifier = Modifier.weight(1f)) {
-                          Text(
-                            text = "Select Subtitle",
+                          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_select_subtitle),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                           )
@@ -272,7 +270,7 @@ fun FilePickerDialog(
                     }
                     if (storageVolumes.isEmpty()) {
                       item {
-                         Text("No storage devices found", modifier = Modifier.padding(16.dp))
+                         Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_storage_devices_found), modifier = Modifier.padding(16.dp))
                       }
                     }
                   } else {
@@ -292,7 +290,7 @@ fun FilePickerDialog(
                     }
                     if (folders.isEmpty() && files.isEmpty()) {
                       item {
-                         Text("No folders or supported files", modifier = Modifier.padding(16.dp))
+                         Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_folders_or_supported_files), modifier = Modifier.padding(16.dp))
                       }
                     }
                   }
@@ -309,7 +307,7 @@ fun FilePickerDialog(
                     shape = MaterialTheme.shapes.extraLarge,
                     // Reduced padding for the button itself if needed, or rely on Row padding
                   ) {
-                    Text("Cancel", fontWeight = FontWeight.Medium)
+                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
                   }
               }
           }

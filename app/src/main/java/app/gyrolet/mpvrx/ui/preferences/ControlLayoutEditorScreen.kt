@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.preferences
 
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -155,8 +158,8 @@ data class ControlLayoutEditorScreen(
 
     if (showResetDialog) {
       ConfirmDialog(
-        title = "Reset to default?",
-        subtitle = "This will reset the controls in this region to their default configuration.",
+        title = stringResource(R.string.controls_reset_default_title),
+        subtitle = stringResource(R.string.controls_reset_default_summary),
         onConfirm = {
           prefToEdit.delete()
           selectedButtons = prefToEdit
@@ -184,12 +187,12 @@ data class ControlLayoutEditorScreen(
           title = { Text(text = title) },
           navigationIcon = {
             IconButton(onClick = { backstack.popSafely() }) {
-              AppSymbolIcon(Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
+              AppSymbolIcon(Icons.RoundedFilled.ArrowBack, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.back))
             }
           },
           actions = {
             IconButton(onClick = { showResetDialog = true }) {
-              AppSymbolIcon(Icons.RoundedFilled.Refresh, contentDescription = "Reset to default")
+              AppSymbolIcon(Icons.RoundedFilled.Refresh, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_layout_reset_default))
             }
           },
         )
@@ -224,8 +227,7 @@ data class ControlLayoutEditorScreen(
         ) {
             // --- 1. Header & Active Selected Zone ---
             item(span = { GridItemSpan(maxLineSpan) }) {
-              androidx.compose.material3.Text(
-                      text = "Long press to reorder items. Tap the '-' icon to remove them.",
+              androidx.compose.material3.Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_long_press_to_reorder_items_tap_the_icon_to_remove_them),
                       style = MaterialTheme.typography.bodySmall,
                       color = MaterialTheme.colorScheme.onSurfaceVariant,
                       modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
@@ -259,14 +261,12 @@ data class ControlLayoutEditorScreen(
                                      .padding(bottom = 8.dp),
                                  tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                              )
-                             androidx.compose.material3.Text(
-                                  text = "Drop zone is empty",
+                             androidx.compose.material3.Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_drop_zone_is_empty),
                                   style = MaterialTheme.typography.bodyMedium,
                                   fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                                   color = MaterialTheme.colorScheme.onSurfaceVariant,
                              )
-                             androidx.compose.material3.Text(
-                                  text = "Tap buttons from the 'Available Palette' below",
+                             androidx.compose.material3.Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_tap_buttons_from_the_available_palette_below),
                                   style = MaterialTheme.typography.labelSmall,
                                   color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                              )
@@ -359,8 +359,7 @@ data class ControlLayoutEditorScreen(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                androidx.compose.material3.Text(
-                                    text = "All available buttons are in use.",
+                                androidx.compose.material3.Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_all_available_buttons_are_in_use),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -404,14 +403,12 @@ private fun IconsLegend() {
         ) {
             // Header
             androidx.compose.foundation.layout.Column {
-                Text(
-                    text = "Icons Legend",
+                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_icons_legend),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    text = "What is each icon for?",
+                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_what_is_each_icon_for),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

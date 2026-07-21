@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.browser.dialogs
 
+import app.gyrolet.mpvrx.R
+import androidx.compose.ui.res.stringResource
+
 import android.app.Application
 import android.content.ClipData
 import android.content.Intent
@@ -255,7 +258,7 @@ fun VideoCompressorOverlay(
 
           CompressorScreenState.ERROR -> {
             CompressorIssueSurface(
-              title = "Compression failed",
+              title = stringResource(R.string.compressor_failed),
               message = state.error ?: "Unknown error",
               actionLabel = "Try again",
               onClose = ::closeOverlay,
@@ -326,7 +329,7 @@ private fun shareCompressedVideo(
       }
     context.startActivity(Intent.createChooser(intent, "Share compressed video"))
   }.onFailure {
-    Toast.makeText(context, "Cannot share video: ${it.message}", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, context.getString(R.string.toast_cannot_share_video, it.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_SHORT).show()
   }
 }
 
@@ -363,7 +366,7 @@ private fun CompressorConfigSurface(
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         androidx.compose.material3.CircularProgressIndicator()
-        Text("Loading video info")
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_loading_video_info))
       }
     }
     return
@@ -374,20 +377,19 @@ private fun CompressorConfigSurface(
       CenterAlignedTopAppBar(
         modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
         title = {
-          Text(
-            text = "Compressor",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_compressor),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
           )
         },
         navigationIcon = {
           IconButton(onClick = onClose) {
-            Icon(Icons.RoundedFilled.Close, contentDescription = "Close")
+            Icon(Icons.RoundedFilled.Close, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_close))
           }
         },
         actions = {
           IconButton(onClick = onShowInfo) {
-            Icon(Icons.RoundedFilled.Info, contentDescription = "Info")
+            Icon(Icons.RoundedFilled.Info, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.info))
           }
         },
       )
@@ -530,7 +532,7 @@ private fun CompressorDestinationCard(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        Text("Save to", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_save_to), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         if (state.isBatch) {
           Text(
             "${state.queueSize} videos selected",
@@ -547,12 +549,12 @@ private fun CompressorDestinationCard(
         FilterChip(
           selected = state.saveMode == VideoCompressorSaveMode.CURRENT_FOLDER,
           onClick = { onSetSaveMode(VideoCompressorSaveMode.CURRENT_FOLDER) },
-          label = { Text("Current folder") },
+          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_current_folder)) },
         )
         FilterChip(
           selected = state.saveMode == VideoCompressorSaveMode.MOVIES_COMPRESSOR,
           onClick = { onSetSaveMode(VideoCompressorSaveMode.MOVIES_COMPRESSOR) },
-          label = { Text("Movies/Compressor") },
+          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_movies_compressor)) },
         )
       }
 
@@ -597,7 +599,7 @@ private fun CompressorBottomBar(
             .height(56.dp),
         shape = AppShapeScale.largeIncreased,
       ) {
-        Text(if (isBatch) "Start Batch Compression" else "Start Compression")
+        Text(if (isBatch) androidx.compose.ui.res.stringResource(R.string.compressor_start_batch) else androidx.compose.ui.res.stringResource(R.string.compressor_start))
       }
     }
   }
@@ -655,8 +657,7 @@ private fun CompressorInfoCard(state: VideoCompressorUiState) {
         modifier = Modifier.weight(1f),
         horizontalAlignment = Alignment.End,
       ) {
-        Text(
-          text = "Estimated",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_estimated),
           style = MaterialTheme.typography.labelMedium,
           color = MaterialTheme.colorScheme.primary,
         )
@@ -722,7 +723,7 @@ private fun CompressorPresetsTab(
         .padding(horizontal = 20.dp, vertical = 20.dp),
     verticalArrangement = Arrangement.spacedBy(20.dp),
   ) {
-    Text("Change Video Quality", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_change_video_quality), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
     val presets =
       listOf(
@@ -783,7 +784,7 @@ private fun CompressorPresetsTab(
       ).filter { it.first < (state.originalSize.toFloat() / (1024f * 1024f)) }
 
     if (sizePresets.isNotEmpty()) {
-      Text("Target Size Presets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_target_size_presets), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
       FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -833,9 +834,9 @@ private fun CompressorVideoTab(
         .padding(horizontal = 20.dp, vertical = 20.dp),
     verticalArrangement = Arrangement.spacedBy(18.dp),
   ) {
-    Text("Advanced Options", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_advanced_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
-    Text("Target Size", style = MaterialTheme.typography.labelLarge)
+    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_target_size), style = MaterialTheme.typography.labelLarge)
     Text(
       text = String.format(Locale.US, "%.1f MB", sliderValue),
       style = MaterialTheme.typography.labelMedium,
@@ -850,7 +851,7 @@ private fun CompressorVideoTab(
       valueRange = 0.1f..maxOf(10f, state.targetSizeMb, (state.originalSize.toFloat() / (1024f * 1024f))),
     )
 
-    Text("Encoding", style = MaterialTheme.typography.labelLarge)
+    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_encoding), style = MaterialTheme.typography.labelLarge)
     Row(
       modifier = Modifier.horizontalScroll(rememberScrollState()),
       horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -859,24 +860,24 @@ private fun CompressorVideoTab(
         FilterChip(
           selected = state.videoCodec == androidx.media3.common.MimeTypes.VIDEO_AV1,
           onClick = { onSetVideoCodec(androidx.media3.common.MimeTypes.VIDEO_AV1) },
-          label = { Text("AV1") },
+          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_av1)) },
         )
       }
       if (state.supportedCodecs.contains(androidx.media3.common.MimeTypes.VIDEO_H265)) {
         FilterChip(
           selected = state.videoCodec == androidx.media3.common.MimeTypes.VIDEO_H265,
           onClick = { onSetVideoCodec(androidx.media3.common.MimeTypes.VIDEO_H265) },
-          label = { Text("H.265") },
+          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_h_265)) },
         )
       }
       FilterChip(
         selected = state.videoCodec == androidx.media3.common.MimeTypes.VIDEO_H264,
         onClick = { onSetVideoCodec(androidx.media3.common.MimeTypes.VIDEO_H264) },
-        label = { Text("H.264") },
+        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_h_264)) },
       )
     }
 
-    Text("Resolution", style = MaterialTheme.typography.labelLarge)
+    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_resolution), style = MaterialTheme.typography.labelLarge)
     val originalShortSide = minOf(state.originalWidth, state.originalHeight)
     val currentShortSide =
       if (state.originalHeight > state.originalWidth && state.targetResolutionHeight > 0 && state.originalHeight > 0) {
@@ -907,7 +908,7 @@ private fun CompressorVideoTab(
       }
     }
 
-    Text("Framerate", style = MaterialTheme.typography.labelLarge)
+    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_framerate), style = MaterialTheme.typography.labelLarge)
     Row(
       modifier = Modifier.horizontalScroll(rememberScrollState()),
       horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -915,23 +916,23 @@ private fun CompressorVideoTab(
       FilterChip(
         selected = state.targetFps == 0,
         onClick = { onSetFps(0) },
-        label = { Text("Original - ${state.originalFps.toInt()}") },
+        label = { Text(androidx.compose.ui.res.stringResource(R.string.compressor_original_fps, state.originalFps.toInt())) },
       )
       FilterChip(
         selected = state.targetFps == 60,
         enabled = state.originalFps >= 50f,
         onClick = { onSetFps(60) },
-        label = { Text("60fps") },
+        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_60fps)) },
       )
       FilterChip(
         selected = state.targetFps == 30,
         onClick = { onSetFps(30) },
-        label = { Text("30fps") },
+        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_30fps)) },
       )
       FilterChip(
         selected = state.targetFps == 24,
         onClick = { onSetFps(24) },
-        label = { Text("24fps") },
+        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_24fps)) },
       )
     }
   }
@@ -951,20 +952,20 @@ private fun CompressorAudioTab(
         .padding(horizontal = 20.dp, vertical = 20.dp),
     verticalArrangement = Arrangement.spacedBy(18.dp),
   ) {
-    Text("Audio Options", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_audio_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
     Row(
       modifier = Modifier.fillMaxWidth(),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-      Text("Remove audio", style = MaterialTheme.typography.bodyLarge)
+      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_remove_audio), style = MaterialTheme.typography.bodyLarge)
       Switch(checked = state.removeAudio, onCheckedChange = { onToggleRemoveAudio() })
     }
 
     AnimatedVisibility(visible = !state.removeAudio) {
       Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Text("Audio Bitrate", style = MaterialTheme.typography.labelLarge)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_audio_bitrate), style = MaterialTheme.typography.labelLarge)
         Row(
           modifier = Modifier.horizontalScroll(rememberScrollState()),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1056,7 +1057,7 @@ private fun CompressorProgressSurface(
           modifier = Modifier.padding(20.dp),
           verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-          Text("COMPRESSING VIDEO", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_compressing_video), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
           Text(
             text =
               if (state.isBatch) {
@@ -1116,7 +1117,7 @@ private fun CompressorProgressSurface(
           ),
         shape = AppShapeScale.largeIncreased,
       ) {
-        Text("Cancel")
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
       }
     }
   }
@@ -1140,10 +1141,10 @@ private fun CompressorResultSurface(
     topBar = {
       CenterAlignedTopAppBar(
         modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
-        title = { Text("Compressor", fontWeight = FontWeight.Bold) },
+        title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_compressor), fontWeight = FontWeight.Bold) },
         navigationIcon = {
           IconButton(onClick = onClose) {
-            Icon(Icons.RoundedFilled.Close, contentDescription = "Close")
+            Icon(Icons.RoundedFilled.Close, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_close))
           }
         },
       )
@@ -1193,7 +1194,7 @@ private fun CompressorResultSurface(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           if (reduction > 0) {
-            Text("-$reduction%", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.compressor_reduction_percent, reduction), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
           }
         }
 
@@ -1205,7 +1206,7 @@ private fun CompressorResultSurface(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            Text("Saved to", fontWeight = FontWeight.SemiBold)
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_saved_to), fontWeight = FontWeight.SemiBold)
             Text(
               state.destinationDisplayPath.ifBlank { "Unknown destination" },
               style = MaterialTheme.typography.bodyMedium,
@@ -1223,7 +1224,7 @@ private fun CompressorResultSurface(
               modifier = Modifier.padding(16.dp),
               verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-              Text("Warnings", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_warnings), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
               state.warnings.forEach {
                 Text(it, color = MaterialTheme.colorScheme.onErrorContainer)
               }
@@ -1243,20 +1244,20 @@ private fun CompressorResultSurface(
             ) {
               Icon(Icons.RoundedFilled.Share, contentDescription = null)
               Spacer(modifier = Modifier.width(8.dp))
-              Text("Share")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_share))
             }
             FilledTonalButton(
               onClick = onSave,
               modifier = Modifier.weight(1f),
               shape = AppShapeScale.largeIncreased,
             ) {
-              Text("Save copy")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_save_copy))
             }
           }
         }
 
         TextButton(onClick = onClose) {
-          Text("Back to list")
+          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_back_to_list))
         }
       }
     }
@@ -1276,10 +1277,10 @@ private fun CompressorIssueSurface(
     topBar = {
       CenterAlignedTopAppBar(
         modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
-        title = { Text("Compressor", fontWeight = FontWeight.Bold) },
+        title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_compressor), fontWeight = FontWeight.Bold) },
         navigationIcon = {
           IconButton(onClick = onClose) {
-            Icon(Icons.RoundedFilled.Close, contentDescription = "Close")
+            Icon(Icons.RoundedFilled.Close, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_close))
           }
         },
       )
@@ -1323,7 +1324,7 @@ private fun CompressorIssueSurface(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
           ) {
             OutlinedButton(onClick = onClose, modifier = Modifier.weight(1f)) {
-              Text("Close")
+              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_close))
             }
             Button(onClick = onAction, modifier = Modifier.weight(1f)) {
               Text(actionLabel)
@@ -1349,8 +1350,8 @@ private fun CompressorInfoDialog(
     onDismissRequest = onDismiss,
     title = {
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Device and App Info", style = MaterialTheme.typography.titleLarge)
-        Text("Compressor v${state.appInfoVersion}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_device_and_app_info), style = MaterialTheme.typography.titleLarge)
+        Text(androidx.compose.ui.res.stringResource(R.string.compressor_version, state.appInfoVersion), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     },
     text = {
@@ -1358,15 +1359,15 @@ private fun CompressorInfoDialog(
         modifier = Modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
       ) {
-        Text("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
-        Text("Android: ${Build.VERSION.RELEASE}")
+        Text(androidx.compose.ui.res.stringResource(R.string.compressor_device, Build.MANUFACTURER, Build.MODEL))
+        Text(androidx.compose.ui.res.stringResource(R.string.compressor_android_version, Build.VERSION.RELEASE))
         HorizontalDivider()
         Row(
           modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-          Text("Show bitrate")
+          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_bitrate))
           Switch(checked = state.showBitrate, onCheckedChange = { onToggleShowBitrate() })
         }
         if (state.showBitrate) {
@@ -1375,7 +1376,7 @@ private fun CompressorInfoDialog(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
           ) {
-            Text("Use Mbps")
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_use_mbps))
             Switch(checked = state.useMbps, onCheckedChange = { onToggleBitrateUnit() })
           }
         }
@@ -1384,11 +1385,11 @@ private fun CompressorInfoDialog(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-          Text("Preserve metadata")
+          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_preserve_metadata))
           Switch(checked = state.preserveMetadata, onCheckedChange = { onTogglePreserveMetadata() })
         }
         HorizontalDivider()
-        Text("Supported Codecs", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_supported_codecs), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         state.supportedCodecs.forEach {
           Text("- ${it.substringAfter("/")}", style = MaterialTheme.typography.bodySmall)
         }
@@ -1396,13 +1397,13 @@ private fun CompressorInfoDialog(
     },
     confirmButton = {
       Row {
-        TextButton(onClick = onShare) { Text("Share") }
-        TextButton(onClick = onCopy) { Text("Copy") }
+        TextButton(onClick = onShare) { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_share)) }
+        TextButton(onClick = onCopy) { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_copy)) }
       }
     },
     dismissButton = {
       TextButton(onClick = onDismiss) {
-        Text("Close")
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_close))
       }
     },
   )

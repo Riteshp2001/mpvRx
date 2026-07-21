@@ -142,14 +142,14 @@ fun NetworkVideoCard(
         if (thumbnail != null) {
           Image(
             bitmap = thumbnail!!.asImageBitmap(),
-            contentDescription = "Thumbnail",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
         } else {
           Icon(
             Icons.RoundedFilled.PlayArrow,
-            contentDescription = "Play",
+            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
             modifier = Modifier.size(48.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )

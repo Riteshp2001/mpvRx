@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.preferences
 
+import app.gyrolet.mpvrx.R
+import androidx.compose.ui.res.stringResource
+
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -120,7 +123,7 @@ data class LuaScriptEditorScreen(
     
     fun saveScript() {
       if (fileName.isBlank()) {
-        Toast.makeText(context, "Please enter a file name", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_please_enter_a_file_name), Toast.LENGTH_SHORT).show()
         return
       }
       
@@ -130,7 +133,7 @@ data class LuaScriptEditorScreen(
         try {
           if (mpvConfStorageLocation.isBlank()) {
             withContext(Dispatchers.Main) {
-              Toast.makeText(context, "No storage location set", Toast.LENGTH_LONG).show()
+              Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_no_storage_location_set), Toast.LENGTH_LONG).show()
             }
             return@launch
           }
@@ -138,7 +141,7 @@ data class LuaScriptEditorScreen(
           val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
           if (tree == null) {
             withContext(Dispatchers.Main) {
-              Toast.makeText(context, "No storage location set", Toast.LENGTH_LONG).show()
+              Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_no_storage_location_set), Toast.LENGTH_LONG).show()
             }
             return@launch
           }
@@ -158,7 +161,7 @@ data class LuaScriptEditorScreen(
           val scriptFile = existing ?: scriptsDir.createFile("text/plain", finalFileName)?.also { it.renameTo(finalFileName) }
           val uri = scriptFile?.uri ?: run {
             withContext(Dispatchers.Main) {
-              Toast.makeText(context, "Failed to create file", Toast.LENGTH_LONG).show()
+              Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_failed_to_create_file), Toast.LENGTH_LONG).show()
             }
             return@launch
           }
@@ -168,19 +171,19 @@ data class LuaScriptEditorScreen(
             out.flush()
           } ?: run {
             withContext(Dispatchers.Main) {
-              Toast.makeText(context, "Failed to open output stream", Toast.LENGTH_LONG).show()
+              Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_failed_to_open_output_stream), Toast.LENGTH_LONG).show()
             }
             return@launch
           }
           
           withContext(Dispatchers.Main) {
             hasUnsavedChanges = false
-            Toast.makeText(context, "$finalFileName saved successfully", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_file_saved, finalFileName), Toast.LENGTH_SHORT).show()
             backStack.popSafely()
           }
         } catch (e: Exception) {
           withContext(Dispatchers.Main) {
-            Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.toast_failed_to_save_reason, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
           }
         }
       }
@@ -188,7 +191,7 @@ data class LuaScriptEditorScreen(
     
     fun shareScript() {
       if (isNewScript) {
-        Toast.makeText(context, "Save the script first before sharing", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_save_the_script_first_before_sharing), Toast.LENGTH_SHORT).show()
         return
       }
       
@@ -268,7 +271,7 @@ data class LuaScriptEditorScreen(
                   }
                   
                   withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "$scriptName deleted", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_file_deleted, scriptName), Toast.LENGTH_SHORT).show()
                     backStack.popSafely()
                   }
                 }
@@ -307,8 +310,7 @@ data class LuaScriptEditorScreen(
               decorationBox = { innerTextField ->
                 Box {
                   if (fileName.isEmpty()) {
-                    Text(
-                      text = "Script name",
+                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_script_name),
                       style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -345,8 +347,7 @@ data class LuaScriptEditorScreen(
               )
             }
             if (hasUnsavedChanges) {
-              Text(
-                text = "Unsaved changes",
+              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_unsaved_changes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary,
               )
@@ -357,7 +358,7 @@ data class LuaScriptEditorScreen(
           IconButton(onClick = { backStack.popSafely() }) {
             Icon(
               Icons.RoundedFilled.ArrowBack,
-              contentDescription = "Back",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.back),
               tint = MaterialTheme.colorScheme.secondary,
             )
           }
@@ -373,7 +374,7 @@ data class LuaScriptEditorScreen(
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.Info,
-              contentDescription = "Help",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_help),
             )
           }
 
@@ -392,7 +393,7 @@ data class LuaScriptEditorScreen(
             ) {
               Icon(
                 Icons.RoundedFilled.Share,
-                contentDescription = "Share",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_share),
               )
             }
           }
@@ -412,7 +413,7 @@ data class LuaScriptEditorScreen(
             ) {
               Icon(
                 Icons.RoundedFilled.Delete,
-                contentDescription = "Delete",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.delete),
               )
             }
           }
@@ -442,7 +443,7 @@ data class LuaScriptEditorScreen(
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.Check,
-              contentDescription = "Save",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_save),
             )
           }
         },
@@ -470,8 +471,8 @@ data class LuaScriptEditorScreen(
     // Delete confirmation dialog
     if (showDeleteDialog) {
       ConfirmDialog(
-        title = "Delete Script?",
-        subtitle = "Are you sure you want to delete \"${scriptName ?: fileName}\"? This action cannot be undone.",
+        title = stringResource(R.string.lua_delete_script_title),
+        subtitle = stringResource(R.string.lua_delete_script_message, scriptName ?: fileName),
         onConfirm = {
           deleteScript()
           showDeleteDialog = false

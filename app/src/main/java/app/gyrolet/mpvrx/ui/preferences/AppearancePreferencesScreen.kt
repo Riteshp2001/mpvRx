@@ -403,11 +403,10 @@ object AppearancePreferencesScreen : Screen {
                                 value = dualPaneForTablet,
                                 onValueChange = { browserPreferences.dualPaneForTablet.set(it) },
                                 title = {
-                                    Text(text = "Dual Pane View")
+                                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_dual_pane_view))
                                 },
                                 summary = {
-                                    Text(
-                                        text = "Enable dual pane layout on tablets in folder view",
+                                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_enable_dual_pane_layout_on_tablets_in_folder_view),
                                         color = MaterialTheme.colorScheme.outline,
                                     )
                                 }
@@ -441,7 +440,7 @@ object AppearancePreferencesScreen : Screen {
                             SwitchPreference(
                                 value = deleteFolderAllContents,
                                 onValueChange = { browserPreferences.deleteFolderAllContents.set(it) },
-                                title = { Text("Delete folder + all contents") },
+                                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_delete_folder_all_contents)) },
                                 summary = {
                                     Text(
                                         text = if (deleteFolderAllContents) "Deletes entire folder (all files)"

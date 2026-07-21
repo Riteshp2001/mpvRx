@@ -56,7 +56,7 @@ fun ModelSearchDialog(
         value = searchQuery,
         onValueChange = { searchQuery = it },
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Search models...") },
+        placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_models)) },
         singleLine = true,
         colors = TextFieldDefaults.colors(
           focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -100,7 +100,7 @@ fun ModelSearchDialog(
     },
     confirmButton = {
       TextButton(onClick = onDismiss) {
-        Text("Cancel")
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
       }
     },
   )
@@ -157,8 +157,7 @@ fun FreeTag() {
     shape = RoundedCornerShape(6.dp),
     color = MaterialTheme.colorScheme.primary,
   ) {
-    Text(
-      text = "FREE",
+    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_player_orientation_free),
       modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
       color = MaterialTheme.colorScheme.onPrimary,
       style = MaterialTheme.typography.labelSmall,

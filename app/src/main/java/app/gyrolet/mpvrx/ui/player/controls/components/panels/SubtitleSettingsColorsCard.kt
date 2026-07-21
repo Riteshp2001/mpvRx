@@ -302,8 +302,7 @@ fun AssOverrideWarningBanner(
             },
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)
           ) {
-            Text(
-              text = "Enable ASS Override",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_enable_ass_override),
               style = MaterialTheme.typography.labelMedium,
               color = MaterialTheme.colorScheme.error
             )

@@ -202,8 +202,7 @@ object AiIntegrationScreen : Screen {
       topBar = {
         TopAppBar(
           title = {
-            Text(
-              text = "AI Integration",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_section_ai_title),
               style = MaterialTheme.typography.headlineSmall,
               fontWeight = FontWeight.ExtraBold,
               color = MaterialTheme.colorScheme.primary,
@@ -229,14 +228,14 @@ object AiIntegrationScreen : Screen {
             .fillMaxSize()
             .padding(padding),
         ) {
-          item { PreferenceSectionHeader(title = "AI Features") }
+          item { PreferenceSectionHeader(title = stringResource(R.string.pref_ai_features_section)) }
 
           item {
             PreferenceCard {
               SwitchPreference(
                 value = enabled,
                 onValueChange = { preferences.enabled.set(it) },
-                title = { Text("Enable AI Features") },
+                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_enabled_title)) },
                 summary = {
                   Text(
                     if (enabled) "AI features are active" else "AI features are disabled",
@@ -248,7 +247,7 @@ object AiIntegrationScreen : Screen {
           }
 
           if (enabled) {
-            item { PreferenceSectionHeader(title = "Provider") }
+            item { PreferenceSectionHeader(title = stringResource(R.string.pref_ai_provider_section)) }
 
             item {
               PreferenceCard {
@@ -260,7 +259,7 @@ object AiIntegrationScreen : Screen {
                   },
                   values = providers,
                   valueToText = { androidx.compose.ui.text.AnnotatedString(it.displayName) },
-                  title = { Text("AI Provider") },
+                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_provider_title)) },
                   summary = {
                     Text(provider.displayName, color = MaterialTheme.colorScheme.outline)
                   },
@@ -269,7 +268,7 @@ object AiIntegrationScreen : Screen {
             }
 
             if (provider == AiProvider.LOCAL) {
-              item { PreferenceSectionHeader(title = "Hugging Face Setup") }
+              item { PreferenceSectionHeader(title = stringResource(R.string.pref_hf_setup_section)) }
               
               item {
                 PreferenceCard {
@@ -277,22 +276,22 @@ object AiIntegrationScreen : Screen {
                     value = huggingfaceToken,
                     onValueChange = preferences.huggingfaceToken::set,
                     textToValue = { it.trim() },
-                    title = { Text("Hugging Face Token") },
+                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_title)) },
                     summary = {
                       if (huggingfaceToken.isBlank()) {
-                        Text("Required for gated models. Get one from huggingface.co/settings/tokens", color = MaterialTheme.colorScheme.error)
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_summary_error), color = MaterialTheme.colorScheme.error)
                       } else {
-                        Text("Token saved on device", color = MaterialTheme.colorScheme.outline)
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_summary_saved), color = MaterialTheme.colorScheme.outline)
                       }
                     },
                     textField = { value, onValueChange, _ ->
                       Column {
-                        Text("Paste your Hugging Face token")
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_dialog_text))
                         TextField(
                           value = value,
                           onValueChange = onValueChange,
                           modifier = Modifier.fillMaxWidth(),
-                          placeholder = { Text("hf_...") },
+                          placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_hf)) },
                           singleLine = true,
                           visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
                         )
@@ -302,7 +301,7 @@ object AiIntegrationScreen : Screen {
                 }
               }
 
-              item { PreferenceSectionHeader(title = "Offline Models") }
+              item { PreferenceSectionHeader(title = stringResource(R.string.pref_offline_models_section)) }
 
               item {
                 Column(
@@ -311,13 +310,11 @@ object AiIntegrationScreen : Screen {
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                   verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                  Text(
-                    text = "Speed-first model picker",
+                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_model_picker_header),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                   )
-                  Text(
-                    text = "Models are ranked by how fast they feel after loading, RAM pressure, and subtitle translation quality.",
+                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_model_picker_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                   )
@@ -374,23 +371,23 @@ object AiIntegrationScreen : Screen {
                               aiService.downloadLocalModel(model.id)
                                   .onSuccess {
                                       downloadProgress = DownloadProgress(isComplete = true)
-                                      Toast.makeText(context, "Model downloaded successfully", Toast.LENGTH_SHORT).show()
+                                      Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.pref_model_download_success), Toast.LENGTH_SHORT).show()
                                   }
                                   .onFailure { e ->
                                       downloadProgress = DownloadProgress(error = e.message)
-                                      Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                      Toast.makeText(context, context.getString(R.string.pref_model_download_failed, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
                                   }
                               isDownloading = false
                           }
                       },
                       onDelete = {
                           if (aiService.deleteLocalModel(model.id)) {
-                              Toast.makeText(context, "Model deleted", Toast.LENGTH_SHORT).show()
+                              Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.pref_model_deleted), Toast.LENGTH_SHORT).show()
                           }
                       },
                       onSelect = {
                           preferences.localModelId.set(model.id)
-                          Toast.makeText(context, "Using ${model.displayName}", Toast.LENGTH_SHORT).show()
+                          Toast.makeText(context, context.getString(R.string.pref_model_using, model.displayName), Toast.LENGTH_SHORT).show()
                       },
                       onBenchmark = {
                           benchmarkingModelId = model.id
@@ -398,10 +395,10 @@ object AiIntegrationScreen : Screen {
                               aiService.benchmarkLocalModel(model.id)
                                   .onSuccess {
                                       benchmarks = aiService.getLocalModelBenchmarks()
-                                      Toast.makeText(context, "Benchmark saved: ${it.speedLabel}", Toast.LENGTH_SHORT).show()
+                                      Toast.makeText(context, context.getString(R.string.pref_benchmark_saved, it.speedLabel), Toast.LENGTH_SHORT).show()
                                   }
                                   .onFailure { e ->
-                                      Toast.makeText(context, "Benchmark failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                      Toast.makeText(context, context.getString(R.string.pref_benchmark_failed, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
                                   }
                               benchmarkingModelId = null
                           }
@@ -424,7 +421,7 @@ object AiIntegrationScreen : Screen {
               }
 
               if (apiKeyInfo != null) {
-                item { PreferenceSectionHeader(title = "API Configuration") }
+                item { PreferenceSectionHeader(title = stringResource(R.string.pref_api_config_section)) }
 
                 item {
                   PreferenceCard {
@@ -437,12 +434,12 @@ object AiIntegrationScreen : Screen {
                         if (apiKeyInfo.apiKey.isBlank()) {
                           Text(apiKeyInfo.hint, color = MaterialTheme.colorScheme.error)
                         } else {
-                          Text("API key saved on device", color = MaterialTheme.colorScheme.outline)
+                          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_api_key_saved), color = MaterialTheme.colorScheme.outline)
                         }
                       },
                       textField = { value, onValueChange, _ ->
                         Column {
-                          Text("Paste your ${apiKeyInfo.title}")
+                          Text(stringResource(R.string.pref_paste_api_key, apiKeyInfo.title))
                           TextField(
                             value = value,
                             onValueChange = onValueChange,
@@ -472,7 +469,7 @@ object AiIntegrationScreen : Screen {
                         ),
                         shape = MaterialTheme.shapes.extraLarge,
                       ) {
-                        Text(if (showApiKey) "Hide Key" else "Show Key")
+                        Text(if (showApiKey) stringResource(R.string.pref_hide_key) else stringResource(R.string.pref_show_key))
                       }
 
                       Button(
@@ -505,7 +502,7 @@ object AiIntegrationScreen : Screen {
                             color = MaterialTheme.colorScheme.onPrimary,
                           )
                         } else {
-                          Text("Verify Key")
+                          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_verify_key))
                         }
                       }
                     }
@@ -535,7 +532,7 @@ object AiIntegrationScreen : Screen {
                   }
                 }
 
-                item { PreferenceSectionHeader(title = "Model") }
+                item { PreferenceSectionHeader(title = stringResource(R.string.pref_model_section)) }
 
                 item {
                   PreferenceCard {
@@ -546,8 +543,7 @@ object AiIntegrationScreen : Screen {
                       verticalAlignment = Alignment.CenterVertically,
                       horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                      Text(
-                        text = "Available Models",
+                      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_available_models_header),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                       )
@@ -568,12 +564,12 @@ object AiIntegrationScreen : Screen {
                         } else {
                           Icon(
                             imageVector = Icons.RoundedFilled.Refresh,
-                            contentDescription = "Refresh",
+                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_refresh),
                             modifier = Modifier.size(18.dp),
                           )
                         }
                         Spacer(modifier = Modifier.size(4.dp))
-                        Text("Fetch Models")
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_fetch_models))
                       }
                     }
 
@@ -604,8 +600,7 @@ object AiIntegrationScreen : Screen {
                           modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         ) {
                           Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                              text = "Model",
+                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_model_section),
                               style = MaterialTheme.typography.labelLarge,
                               fontWeight = FontWeight.Bold,
                             )
@@ -657,8 +652,7 @@ object AiIntegrationScreen : Screen {
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                       verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                      Text(
-                        text = "Verify Model",
+                      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_verify_model_header),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                       )
@@ -691,7 +685,7 @@ object AiIntegrationScreen : Screen {
                           )
                           Spacer(Modifier.width(8.dp))
                         }
-                        Text("Check Model Access")
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_check_model_access))
                       }
 
                       if (verifyModelResult != null) {
@@ -745,17 +739,16 @@ object AiIntegrationScreen : Screen {
               }
             }
 
-            item { PreferenceSectionHeader(title = "Features") }
+            item { PreferenceSectionHeader(title = stringResource(R.string.pref_ai_features_subsection)) }
 
             item {
               PreferenceCard {
                 SwitchPreference(
                   value = renameWithAi,
                   onValueChange = { preferences.renameWithAi.set(it) },
-                  title = { Text("AI-Powered Rename") },
+                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_rename_title)) },
                   summary = {
-                    Text(
-                      "Use AI to generate clean filenames for bulk rename operations",
+                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_rename_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
@@ -766,10 +759,9 @@ object AiIntegrationScreen : Screen {
                 SwitchPreference(
                   value = subtitleFormatWithAi,
                   onValueChange = { preferences.subtitleFormatWithAi.set(it) },
-                  title = { Text("AI Search") },
+                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_search_title)) },
                   summary = {
-                    Text(
-                      "Auto-format video titles for Wyzie/SubHub subtitle search",
+                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_search_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
@@ -778,7 +770,7 @@ object AiIntegrationScreen : Screen {
             }
 
             if (provider != AiProvider.LOCAL) {
-              item { PreferenceSectionHeader(title = "Speech-to-Text [Extreme Experimental]") }
+              item { PreferenceSectionHeader(title = stringResource(R.string.pref_stt_section)) }
 
               item {
                 PreferenceCard {
@@ -789,10 +781,9 @@ object AiIntegrationScreen : Screen {
                   SwitchPreference(
                     value = realtimeSubsEnabled,
                     onValueChange = { preferences.realtimeSubsEnabled.set(it) },
-                    title = { Text("Real-time Subtitle Generation") },
+                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_title)) },
                     summary = {
-                      Text(
-                        "Generate subtitles from audio while playing video",
+                      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_summary),
                         color = MaterialTheme.colorScheme.outline,
                       )
                     },
@@ -805,7 +796,7 @@ object AiIntegrationScreen : Screen {
                     onValueChange = { preferences.subtitleGenerationOutputFormat.set(it) },
                     values = listOf("srt", "vtt"),
                     valueToText = { androidx.compose.ui.text.AnnotatedString(it.uppercase()) },
-                    title = { Text("Default Output Format") },
+                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_output_format_title)) },
                     summary = {
                       Text(
                         subtitleGenerationOutputFormat.uppercase(),
@@ -824,10 +815,9 @@ object AiIntegrationScreen : Screen {
                     },
                     values = sttProviders,
                     valueToText = { androidx.compose.ui.text.AnnotatedString(it.displayName) },
-                    title = { Text("Speech-to-Text Provider") },
+                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_provider_title)) },
                     summary = {
-                      Text(
-                        "Used for both real-time streaming and batch subtitle generation",
+                      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_provider_summary),
                         color = MaterialTheme.colorScheme.outline,
                       )
                     },
@@ -861,7 +851,7 @@ object AiIntegrationScreen : Screen {
                         }
                       )
                     },
-                    title = { Text("Audio Language") },
+                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_audio_language_title)) },
                     summary = {
                       Text(
                         if (sttLanguage.isBlank()) "Auto-detect speech language" else sttLanguage.uppercase(),
@@ -874,7 +864,7 @@ object AiIntegrationScreen : Screen {
             }
 
             if (provider != AiProvider.LOCAL) {
-              item { PreferenceSectionHeader(title = "Subtitle Translation") }
+              item { PreferenceSectionHeader(title = stringResource(R.string.pref_translation_section)) }
 
               item {
                 PreferenceCard {
@@ -886,10 +876,9 @@ object AiIntegrationScreen : Screen {
                         showSubtitleTranslationWarning = true
                       }
                     },
-                    title = { Text("Enable Translation") },
+                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_enable_translation_title)) },
                     summary = {
-                      Text(
-                        "Translate external subtitles using AI",
+                      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_enable_translation_summary),
                         color = MaterialTheme.colorScheme.outline,
                       )
                     },
@@ -905,14 +894,14 @@ object AiIntegrationScreen : Screen {
               }
             }
 
-            item { PreferenceSectionHeader(title = "Custom Prompt") }
+            item { PreferenceSectionHeader(title = stringResource(R.string.pref_custom_prompt_section)) }
 
             item {
               PreferenceCard {
                 SwitchPreference(
                   value = customPromptEnabled,
                   onValueChange = { preferences.customPromptEnabled.set(it) },
-                  title = { Text("Override Default Instructions") },
+                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_override_instructions_title)) },
                   summary = {
                     Text(
                       if (customPromptEnabled) "Custom prompt will be used instead of built-in instructions"
@@ -931,14 +920,12 @@ object AiIntegrationScreen : Screen {
                       .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                   ) {
-                    Text(
-                      text = "Custom Prompts",
+                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_prompts_header),
                       style = MaterialTheme.typography.labelLarge,
                       fontWeight = FontWeight.Bold,
                     )
 
-                    Text(
-                      text = "Leave a field blank to use the built-in instruction for that task. If you have an older global prompt saved, it will be used as a fallback.",
+                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_prompts_description),
                       style = MaterialTheme.typography.bodySmall,
                       color = MaterialTheme.colorScheme.outline,
                     )
@@ -949,8 +936,8 @@ object AiIntegrationScreen : Screen {
                       modifier = Modifier
                         .fillMaxWidth()
                         .height(140.dp),
-                      label = { Text("Custom rename prompt") },
-                      placeholder = { Text("Instructions for AI file renaming...") },
+                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_rename_prompt_label)) },
+                      placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_instructions_for_ai_file_renaming)) },
                       maxLines = 6,
                     )
 
@@ -960,8 +947,8 @@ object AiIntegrationScreen : Screen {
                       modifier = Modifier
                         .fillMaxWidth()
                         .height(140.dp),
-                      label = { Text("Custom subtitle translation prompt") },
-                      placeholder = { Text("Instructions for AI subtitle translation...") },
+                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_translation_prompt_label)) },
+                      placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_instructions_for_ai_subtitle_translation)) },
                       maxLines = 6,
                     )
 
@@ -971,14 +958,13 @@ object AiIntegrationScreen : Screen {
                       modifier = Modifier
                         .fillMaxWidth()
                         .height(140.dp),
-                      label = { Text("Custom subtitle formatting prompt") },
-                      placeholder = { Text("Instructions for formatting subtitle search queries...") },
+                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_format_prompt_label)) },
+                      placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_instructions_for_formatting_subtitle_search_queries)) },
                       maxLines = 6,
                     )
 
                     if (customPrompt.isNotBlank()) {
-                      Text(
-                        text = "Legacy global prompt saved. It will be used whenever a task-specific prompt is empty.",
+                      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_legacy_prompt_info),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                       )
@@ -997,10 +983,9 @@ object AiIntegrationScreen : Screen {
           showSubtitleTranslationWarning = false
           preferences.subtitleTranslationFirstTime.set(false)
         },
-        title = { Text("Subtitle Translation") },
+        title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_translation_section)) },
         text = {
-          Text(
-            "Subtitle translation can be a bit messy. " +
+          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_subtitle_translation_can_be_a_bit_messy) +
             "For best results, use better models and don't rant that subs aren't working properly."
           )
         },
@@ -1009,7 +994,7 @@ object AiIntegrationScreen : Screen {
             showSubtitleTranslationWarning = false
             preferences.subtitleTranslationFirstTime.set(false)
           }) {
-            Text("Got it")
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.got_it))
           }
         }
       )
@@ -1075,7 +1060,7 @@ private fun OfflineModelCard(
                     IconButton(onClick = onDelete) {
                         Icon(
                             Icons.RoundedFilled.Delete,
-                            contentDescription = "Delete", 
+                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.delete),
                             tint = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                         )
                     }
@@ -1151,7 +1136,7 @@ private fun OfflineModelCard(
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(6.dp))
                         }
-                        Text(if (benchmark == null) "Benchmark" else "Re-test")
+                        Text(if (benchmark == null) stringResource(R.string.pref_benchmark) else stringResource(R.string.pref_retest))
                     }
                 }
                 if (!isDownloaded && !isDownloading) {
@@ -1164,7 +1149,7 @@ private fun OfflineModelCard(
                     ) {
                         Icon(Icons.RoundedFilled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Download")
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_download))
                     }
                 } else if (isDownloaded && !isSelected && !isDownloading) {
                     Button(
@@ -1175,7 +1160,7 @@ private fun OfflineModelCard(
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     ) {
-                        Text("Use Model")
+                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_use_model))
                     }
                 } else if (isSelected && isDownloaded && !isDownloading) {
                     Surface(
@@ -1193,8 +1178,7 @@ private fun OfflineModelCard(
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                "Active", 
+                            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_active),
                                 style = MaterialTheme.typography.labelLarge, 
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold
@@ -1263,7 +1247,7 @@ private fun SttModelSelector(
               showDialog = true
             }
             .onFailure { e ->
-              Toast.makeText(context, "Failed to load models: ${e.message}", Toast.LENGTH_SHORT).show()
+              Toast.makeText(context, context.getString(R.string.toast_failed_to_load_models, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_SHORT).show()
             }
           isLoadingStt = false
         }
@@ -1280,8 +1264,7 @@ private fun SttModelSelector(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
       Column(modifier = Modifier.weight(1f)) {
-        Text(
-          text = "Real-time Model",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_real_time_model),
           style = MaterialTheme.typography.labelLarge,
           fontWeight = FontWeight.Bold,
         )
@@ -1326,20 +1309,17 @@ private fun AutoTranslateLanguageConfig(
       .padding(16.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Text(
-      text = "Auto-Translate Target Languages",
+    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_translate_target_languages),
       style = MaterialTheme.typography.labelLarge,
       fontWeight = FontWeight.Bold,
     )
-    Text(
-      text = "When translating subtitles, if 1 language is configured it translates directly. If 2+ are configured, a picker appears.",
+    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_when_translating_subtitles_if_1_language_is_configured_it_transl),
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.outline,
     )
 
     if (selectedCodes.isEmpty()) {
-      Text(
-        text = "No target languages configured",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_target_languages_configured),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
       )
@@ -1392,7 +1372,7 @@ private fun AutoTranslateLanguageConfig(
         value = addingSearch,
         onValueChange = { addingSearch = it },
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Search languages...") },
+        placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_languages)) },
         singleLine = true,
         shape = RoundedCornerShape(12.dp),
       )
@@ -1463,7 +1443,7 @@ private fun AutoTranslateLanguageConfig(
         modifier = Modifier.size(18.dp),
       )
       Spacer(modifier = Modifier.width(6.dp))
-      Text(if (adding) "Done" else "Add Language")
+      Text(if (adding) stringResource(R.string.ui_done) else stringResource(R.string.pref_add_language))
     }
   }
 }

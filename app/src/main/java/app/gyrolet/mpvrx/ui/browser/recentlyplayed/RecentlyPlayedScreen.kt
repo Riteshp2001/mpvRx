@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.browser.recentlyplayed
 
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
+
 
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -185,7 +188,7 @@ object RecentlyPlayedScreen : Screen {
     Scaffold(
         topBar = {
           BrowserTopBar(
-            title = "Recently Played",
+            title = stringResource(R.string.pref_advanced_enable_recently_played_title),
             isInSelectionMode = selectionManager.isInSelectionMode,
             selectedCount = selectionManager.selectedCount,
             totalCount = recentItems.size,
@@ -219,7 +222,7 @@ object RecentlyPlayedScreen : Screen {
                   TooltipAnchorPosition.Above
                 }
               ),
-              tooltip = { PlainTooltip { Text("Toggle menu") } },
+              tooltip = { PlainTooltip { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_toggle_menu)) } },
               state = rememberTooltipState(),
             ) {
               ToggleFloatingActionButton(
@@ -251,7 +254,7 @@ object RecentlyPlayedScreen : Screen {
               filePicker.launch(arrayOf("video/*"))
             },
             icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
-            text = { Text(text = "Open File") },
+            text = { Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_open_file)) },
           )
 
           FloatingActionButtonMenuItem(
@@ -271,7 +274,7 @@ object RecentlyPlayedScreen : Screen {
               }
             },
             icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
-            text = { Text(text = "Recently Played") },
+            text = { Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_advanced_enable_recently_played_title)) },
           )
 
           FloatingActionButtonMenuItem(
@@ -280,7 +283,7 @@ object RecentlyPlayedScreen : Screen {
               showLinkDialog.value = true
             },
             icon = { Icon(Icons.RoundedFilled.Link, contentDescription = null) },
-            text = { Text(text = "Open Link") },
+            text = { Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_open_link)) },
           )
         }
       },
@@ -295,7 +298,7 @@ object RecentlyPlayedScreen : Screen {
           ) {
             EmptyState(
               icon = Icons.RoundedFilled.History,
-              title = "Recently Played is disabled",
+              title = stringResource(R.string.ui_recently_played_disabled),
               message = "Enable it in Advanced Settings to track your playback history",
             )
           }
@@ -324,7 +327,7 @@ object RecentlyPlayedScreen : Screen {
           ) {
             EmptyState(
               icon = Icons.RoundedFilled.History,
-              title = "No recently played videos",
+              title = stringResource(R.string.ui_no_recently_played_videos),
               message = "Videos you play will appear here",
             )
           }
@@ -341,7 +344,7 @@ object RecentlyPlayedScreen : Screen {
                   // Always play individual videos without creating a playlist.
                   MediaUtils.playFile(playableVideo, context, "recently_played")
                 } else {
-                  Toast.makeText(context, "Recent file no longer exists", Toast.LENGTH_SHORT).show()
+                  Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_recent_file_no_longer_exists), Toast.LENGTH_SHORT).show()
                 }
               }
             },
@@ -394,8 +397,7 @@ object RecentlyPlayedScreen : Screen {
                   deleteFilesCheckbox.value = it
                 },
               )
-              androidx.compose.material3.Text(
-                text = "Also delete original file(s)",
+              androidx.compose.material3.Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_also_delete_original_file_s),
                 modifier = Modifier.padding(start = 8.dp),
                 style = MaterialTheme.typography.bodyMedium,
               )

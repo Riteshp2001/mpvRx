@@ -158,7 +158,7 @@ fun FolderCard(
     ) {
       Icon(
         imageVector = Icons.RoundedFilled.PushPin,
-        contentDescription = "Pinned folder",
+        contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_pinned_folder),
         modifier =
           Modifier
             .padding(horizontal = 6.dp, vertical = 4.dp)
@@ -265,7 +265,7 @@ fun FolderCard(
             } else {
               Icon(
                 customIcon ?: Icons.RoundedFilled.Folder,
-                contentDescription = "Folder",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
                 modifier = Modifier.size(56.dp),
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -373,7 +373,7 @@ fun FolderCard(
             } else {
               Icon(
                 customIcon ?: Icons.RoundedFilled.Folder,
-                contentDescription = "Folder",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.secondary,
               )

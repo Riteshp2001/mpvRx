@@ -140,7 +140,7 @@ fun OnlineSubtitleSearchSheet(
       fun formatWithAi() {
         val input = if (searchQuery.isNotBlank()) searchQuery else mediaInfo.title
         if (input.isBlank()) {
-          Toast.makeText(context, "Search query is empty", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_search_query_is_empty), Toast.LENGTH_SHORT).show()
           return
         }
         scope.launch {
@@ -152,7 +152,7 @@ fun OnlineSubtitleSearchSheet(
               keyboardController?.hide()
             }
             .onFailure { e ->
-              Toast.makeText(context, "AI format failed: ${e.message}", Toast.LENGTH_SHORT).show()
+              Toast.makeText(context, context.getString(R.string.toast_ai_format_failed, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_SHORT).show()
             }
           isAiFormatting = false
         }
@@ -399,7 +399,7 @@ fun OnlineSubtitleRow(
             if (subtitle.isHashMatch) {
                 Icon(
                     imageVector = Icons.RoundedFilled.Check,
-                    contentDescription = "Verified Sync",
+                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_verified_sync),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp)
                 )
@@ -512,8 +512,7 @@ fun OnlineSubtitleRow(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
-                        Text(
-                            text = "SYNC",
+                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_sync),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
@@ -537,7 +536,7 @@ fun OnlineSubtitleRow(
             ) {
                 Icon(
                     imageVector = Icons.RoundedFilled.Download,
-                    contentDescription = "Download",
+                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_download),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -584,7 +583,7 @@ private fun SubdlEpisodeDropdown(
         ) {
             episodes.forEach { episode ->
                 DropdownMenuItem(
-                    text = { Text("Episode $episode") },
+                    text = { Text(androidx.compose.ui.res.stringResource(R.string.online_subtitle_episode, episode)) },
                     onClick = {
                         onEpisodeSelected(episode)
                         expanded = false

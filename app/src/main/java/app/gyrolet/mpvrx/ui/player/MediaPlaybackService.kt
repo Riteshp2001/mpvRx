@@ -338,7 +338,7 @@ class MediaPlaybackService :
 
   private fun updateMediaSession() {
     try {
-      val title = mediaTitle.ifBlank { "Unknown Video" }
+      val title = mediaTitle.ifBlank { getString(R.string.player_unknown_video) }
       val duration = (mediaDurationSeconds * 1000).toLong().coerceAtLeast(0L)
 
       val metadataBuilder =

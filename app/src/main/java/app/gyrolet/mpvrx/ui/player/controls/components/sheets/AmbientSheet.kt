@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
+
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
@@ -165,8 +168,7 @@ fun AmbientSheet(
         ) {
 
             // ── Title ────────────────────────────────────────────────────────
-            Text(
-                text = "Ambience Mode",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ambience_mode),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -212,7 +214,7 @@ fun AmbientSheet(
             // ── Section: Glow ────────────────────────────────────────────────
             var glowExpanded by remember { mutableStateOf(true) }
             SectionHeader(
-                title = "Glow",
+                title = stringResource(R.string.ambient_glow),
                 isExpanded = glowExpanded,
                 onClick = { glowExpanded = !glowExpanded },
             )
@@ -305,7 +307,7 @@ fun AmbientSheet(
             // ── Section: Color ───────────────────────────────────────────────
             var colorExpanded by remember { mutableStateOf(true) }
             SectionHeader(
-                title = "Color",
+                title = stringResource(R.string.ambient_color),
                 isExpanded = colorExpanded,
                 onClick = { colorExpanded = !colorExpanded },
             )
@@ -363,7 +365,7 @@ fun AmbientSheet(
             // ── Section: Compositing ─────────────────────────────────────────
             var compositingExpanded by remember { mutableStateOf(true) }
             SectionHeader(
-                title = "Compositing",
+                title = stringResource(R.string.ambient_compositing),
                 isExpanded = compositingExpanded,
                 onClick = { compositingExpanded = !compositingExpanded },
             )
@@ -419,7 +421,7 @@ fun AmbientSheet(
             )
 
             // ── Section: Visual Style ────────────────────────────────────────
-            SectionHeader(title = "Visual Style")
+            SectionHeader(title = stringResource(R.string.ambient_visual_style))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -452,7 +454,7 @@ fun AmbientSheet(
 
                 var frameExtendExpanded by remember { mutableStateOf(true) }
                 SectionHeader(
-                    title = "Frame Extend",
+                    title = stringResource(R.string.ambient_frame_extend),
                     isExpanded = frameExtendExpanded,
                     onClick = { frameExtendExpanded = !frameExtendExpanded },
                 )

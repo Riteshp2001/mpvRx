@@ -91,8 +91,7 @@ fun AddToPlaylistDialog(
   AlertDialog(
     onDismissRequest = onDismiss,
     title = {
-      Text(
-        text = "Add to Playlist",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_to_playlist),
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
       )
@@ -125,16 +124,14 @@ fun AddToPlaylistDialog(
             modifier = Modifier.size(20.dp),
           )
           Spacer(modifier = Modifier.width(8.dp))
-          Text(
-            text = "Create New Playlist",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_new_playlist),
             fontWeight = FontWeight.Medium,
           )
         }
 
         // Existing playlists
         if (playlistOptions.isNotEmpty()) {
-          Text(
-            text = "Existing Playlists",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_existing_playlists),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -180,7 +177,7 @@ fun AddToPlaylistDialog(
         ),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Done", fontWeight = FontWeight.Bold)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_done), fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
@@ -188,7 +185,7 @@ fun AddToPlaylistDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
@@ -269,14 +266,12 @@ private fun EmptyPlaylistsMessage() {
         modifier = Modifier.size(48.dp),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
       )
-      Text(
-        text = "No playlists yet",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_playlists_yet),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
-      Text(
-        text = "Create your first playlist above",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_your_first_playlist_above),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -294,8 +289,7 @@ private fun CreatePlaylistDialog(
   AlertDialog(
     onDismissRequest = onDismiss,
     title = {
-      Text(
-        text = "Create New Playlist",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_new_playlist),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
       )
@@ -304,7 +298,7 @@ private fun CreatePlaylistDialog(
       OutlinedTextField(
         value = playlistName,
         onValueChange = { playlistName = it },
-        label = { Text("Playlist Name") },
+        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playlist_name)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -320,7 +314,7 @@ private fun CreatePlaylistDialog(
         enabled = playlistName.isNotBlank(),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Create", fontWeight = FontWeight.Bold)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create), fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
@@ -328,7 +322,7 @@ private fun CreatePlaylistDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,

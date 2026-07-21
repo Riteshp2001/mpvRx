@@ -29,6 +29,7 @@ fun CastPlayerButton(
   hideBackground: Boolean,
   buttonSize: Dp,
 ) {
+  val castContentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_cast)
   Surface(
     shape = CircleShape,
     color =
@@ -51,7 +52,7 @@ fun CastPlayerButton(
         factory = { context ->
           MediaRouteButton(context).apply {
             setBackgroundColor(Color.TRANSPARENT)
-            contentDescription = "Cast"
+            contentDescription = castContentDescription
             CastButtonFactory.setUpMediaRouteButton(context.applicationContext, this)
             setRemoteIndicatorDrawable(ColorDrawable(Color.TRANSPARENT))
           }

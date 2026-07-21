@@ -74,7 +74,7 @@ fun <T> OptionsDialog(
     confirmButton = {},
     dismissButton = {
       TextButton(onClick = onDismiss) {
-        Text(text = "Cancel")
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
       }
     },
     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

@@ -137,8 +137,7 @@ fun PermissionDeniedState(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Title
-        Text(
-          text = "Storage Access Required",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_storage_access_required),
           style = MaterialTheme.typography.headlineMedium,
           fontWeight = FontWeight.Bold,
           textAlign = TextAlign.Center,
@@ -209,8 +208,7 @@ fun PermissionDeniedState(
               .height(56.dp),
           shape = AppShapeScale.large,
         ) {
-          Text(
-            text = "ALLOW ACCESS",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_allow_access),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
           )
@@ -228,8 +226,7 @@ fun PermissionDeniedState(
             modifier = Modifier.size(18.dp),
           )
           Spacer(modifier = Modifier.width(6.dp))
-          Text(
-            text = "Why do I see this?",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_why_do_i_see_this),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
           )
@@ -256,8 +253,7 @@ fun PermissionDeniedState(
         )
       },
       title = {
-        Text(
-          text = "Why this permission is needed",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_why_this_permission_is_needed),
           style = MaterialTheme.typography.headlineSmall,
           fontWeight = FontWeight.Bold,
         )
@@ -272,8 +268,7 @@ fun PermissionDeniedState(
         ) {
           if (isPlayStoreBuild) {
             // Play Store build explanation
-            Text(
-              text = "mpvRx needs access to your video files to provide its core functionality as a media player.",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_mpvrx_needs_access_to_your_video_files_to_provide_its_core_funct),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -288,41 +283,35 @@ fun PermissionDeniedState(
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Text(
-              text = "The permission is used exclusively for:",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_the_permission_is_used_exclusively_for),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               fontWeight = FontWeight.Medium,
             )
 
-            Text(
-              text = "• Discovering and displaying your video files\n• Playing media content\n• Loading subtitle files",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_discovering_and_displaying_your_video_files_n_playing_media_cont),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           } else {
             // Standard build explanation
-            Text(
-              text = "mpvRx has always required storage access permission as it's essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Text(
-              text = "However, due to a change in security policy, apps built for Android 11 and above now require additional permission to continue accessing the same.",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_however_due_to_a_change_in_security_policy_apps_built_for_androi),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Text(
-              text = "Please know that this permission is only used for the auto-discovery of media/subtitle files on your device and will not allow us to access the private data files stored by other apps in any way.",
+            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_please_know_that_this_permission_is_only_used_for_the_auto_disco),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
 
-          Text(
-            text = "mpvRx is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -363,8 +352,7 @@ fun PermissionDeniedState(
             },
           )
 
-          Text(
-            text = "Be rest assured, your privacy is our utmost priority, and we neither access your files for other purposes nor transfer or store them to our servers. They remain safe on your device.",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium,

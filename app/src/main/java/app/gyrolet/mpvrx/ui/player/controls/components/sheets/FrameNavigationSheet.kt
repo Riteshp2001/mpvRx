@@ -189,7 +189,7 @@ fun FrameNavigationSheet(
                   Toast.LENGTH_SHORT,
                 ).show()
             }.onFailure { error ->
-              Toast.makeText(context, "Failed to save snapshot: ${error.message}", Toast.LENGTH_LONG).show()
+              Toast.makeText(context, context.getString(R.string.toast_failed_to_save_snapshot, error.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
             }
           } finally {
             isSnapshotLoading = false
@@ -438,8 +438,7 @@ private fun FrameInfoDisplay(
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-        text = "Frame: ",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_frame),
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
         color = MaterialTheme.colorScheme.tertiary,
       )
@@ -458,8 +457,7 @@ private fun FrameInfoDisplay(
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-        text = "Timestamp: ",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_timestamp),
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
         color = MaterialTheme.colorScheme.tertiary,
       )

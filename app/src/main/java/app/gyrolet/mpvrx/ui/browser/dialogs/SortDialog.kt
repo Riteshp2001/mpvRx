@@ -207,8 +207,7 @@ fun SortDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
-                Text(
-                  text = "Fields",
+                Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_fields),
                   style = MaterialTheme.typography.titleSmall,
                 )
                 Icon(
@@ -248,7 +247,7 @@ fun SortDialog(
     },
     confirmButton = {
       TextButton(onClick = onDismiss) {
-        Text(text = "Done")
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_done))
       }
     },
     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -400,8 +399,7 @@ private fun GridColumnsNextSection(
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Text(
-            text = "Folder Grid",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_folder_grid),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -435,8 +433,7 @@ private fun GridColumnsNextSection(
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Text(
-            text = "Video Grid",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_video_grid),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )

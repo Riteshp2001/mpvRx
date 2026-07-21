@@ -1,5 +1,7 @@
 package app.gyrolet.mpvrx.ui.player
 
+import androidx.annotation.StringRes
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.hdr.HdrToysProfile
 import `is`.xyz.mpv.MPVLib
 
@@ -16,38 +18,38 @@ import `is`.xyz.mpv.MPVLib
  * [defaultEnabledMode].  The HDR panel only exposes [selectableModes].
  */
 enum class HdrScreenMode(
-  val title: String,
-  val shortTitle: String,
-  val description: String,
+  @StringRes val titleRes: Int,
+  @StringRes val shortTitleRes: Int,
+  @StringRes val descriptionRes: Int,
   val hdrToysProfile: HdrToysProfile? = null,
 ) {
   OFF(
-    title = "Off",
-    shortTitle = "Off",
-    description = "Normal SDR output",
+    titleRes = R.string.hdr_mode_off,
+    shortTitleRes = R.string.hdr_mode_off,
+    descriptionRes = R.string.hdr_mode_off_description,
   ),
   BT_2100_PQ(
-    title = "BT.2100 PQ",
-    shortTitle = "PQ",
-    description = "HDR10-style PQ with Astra tone mapping and Bottosson gamut mapping",
+    titleRes = R.string.hdr_mode_bt2100_pq,
+    shortTitleRes = R.string.hdr_mode_pq_short,
+    descriptionRes = R.string.hdr_mode_bt2100_pq_description,
     hdrToysProfile = HdrToysProfile.BT_2100_PQ,
   ),
   BT_2100_HLG(
-    title = "BT.2100 HLG",
-    shortTitle = "HLG",
-    description = "HLG HDR through the hdr-toys Astra and Bottosson shader chain",
+    titleRes = R.string.hdr_mode_bt2100_hlg,
+    shortTitleRes = R.string.hdr_mode_hlg_short,
+    descriptionRes = R.string.hdr_mode_bt2100_hlg_description,
     hdrToysProfile = HdrToysProfile.BT_2100_HLG,
   ),
   BT_2020(
-    title = "BT.2020",
-    shortTitle = "BT.2020",
-    description = "BT.2020 / BT.1886 conversion using hdr-toys gamut mapping",
+    titleRes = R.string.hdr_mode_bt2020,
+    shortTitleRes = R.string.hdr_mode_bt2020,
+    descriptionRes = R.string.hdr_mode_bt2020_description,
     hdrToysProfile = HdrToysProfile.BT_2020,
   ),
   LINEAR(
-    title = "Linear HDR",
-    shortTitle = "Linear",
-    description = "High-quality mpv HDR output without hdr-toys shaders",
+    titleRes = R.string.hdr_mode_linear,
+    shortTitleRes = R.string.hdr_mode_linear_short,
+    descriptionRes = R.string.hdr_mode_linear_description,
   );
 
   companion object {

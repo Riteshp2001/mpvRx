@@ -522,11 +522,11 @@ class PlayerActivity :
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
           // Lower volume temporarily
           MpvSessionCoordinator.execute(playerSessionId, "audio_duck") {
-            MPVLib.commandResult("multiply", "volume", "0.5")
+            MPVLib.command("multiply", "volume", "0.5")
           }
           restoreAudioFocus = {
             MpvSessionCoordinator.execute(playerSessionId, "audio_unduck") {
-              MPVLib.commandResult("multiply", "volume", "2")
+              MPVLib.command("multiply", "volume", "2")
             }
           }
         }
@@ -1116,12 +1116,12 @@ class PlayerActivity :
         if (!keepBackgroundPlaybackAlive) {
           MPVLib.detachSurface()
           if (isReady) {
-            MPVLib.setPropertyBooleanResult("pause", true)
-            MPVLib.commandResult("quit")
+            MPVLib.setPropertyBoolean("pause", true)
+            MPVLib.command("quit")
           }
           player.destroy()
         } else {
-          MPVLib.setPropertyStringResult("vo", "null")
+          MPVLib.setPropertyString("vo", "null")
           MPVLib.detachSurface()
         }
       },
@@ -1525,8 +1525,8 @@ class PlayerActivity :
       Log.e(TAG, "Error stopping detached playback service", e)
     }
     MpvSessionCoordinator.releaseDetachedSession {
-      MPVLib.setPropertyBooleanResult("pause", true)
-      MPVLib.commandResult("quit")
+      MPVLib.setPropertyBoolean("pause", true)
+      MPVLib.command("quit")
       player.destroy()
     }
   }
@@ -2608,8 +2608,8 @@ class PlayerActivity :
         "${key}: ${value.replace(",", "\\,")}"
       }
     MpvSessionCoordinator.execute(playerSessionId, "http_headers") {
-      MPVLib.setPropertyStringResult("user-agent", userAgent.orEmpty())
-      MPVLib.setPropertyStringResult("http-header-fields", headersString)
+      MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
+      MPVLib.setPropertyString("http-header-fields", headersString)
     }
 
     if (userAgent != null || headers.isNotEmpty()) {
@@ -3965,11 +3965,8 @@ class PlayerActivity :
         val queued =
           MpvSessionCoordinator.execute(playerSessionId, "loadfile") {
             MpvSessionCoordinator.markLoading(playerSessionId)
-            val loadResult = MPVLib.commandResult("loadfile", playableUri, "replace", "-1", "vid=$videoMode,pause=no")
-            val pauseResult = MPVLib.setPropertyBooleanResult("pause", false)
-            if (loadResult < 0 || pauseResult < 0) {
-              Log.e(TAG, "session=$playerSessionId loadfileResult=$loadResult pauseResult=$pauseResult")
-            }
+            MPVLib.command("loadfile", playableUri, "replace", "-1", "vid=$videoMode,pause=no")
+            MPVLib.setPropertyBoolean("pause", false)
           }
         if (queued == null) {
           throw IllegalStateException("MPV session is not accepting media loads")
@@ -4037,28 +4034,26 @@ class PlayerActivity :
     viewModel.showToast("Playback compatibility fallback applied: $fallbackLabel")
 
     MpvSessionCoordinator.execute(sessionId, "compatibility_fallback:$fallback", timeoutMs = 10_000L) {
-      MPVLib.commandResult("stop")
+      MPVLib.command("stop")
       when (fallback) {
         PlaybackCompatibilityFallback.LEGACY_GPU -> {
-          MPVLib.setPropertyStringResult("vo", "gpu")
-          MPVLib.setPropertyStringResult("gpu-api", "opengl")
+          MPVLib.setPropertyString("vo", "gpu")
+          MPVLib.setPropertyString("gpu-api", "opengl")
         }
         PlaybackCompatibilityFallback.MEDIACODEC_COPY -> {
-          MPVLib.setPropertyStringResult("hwdec", "mediacodec-copy")
+          MPVLib.setPropertyString("hwdec", "mediacodec-copy")
         }
         PlaybackCompatibilityFallback.SOFTWARE_DECODING -> {
-          MPVLib.setPropertyStringResult("hwdec", "no")
+          MPVLib.setPropertyString("hwdec", "no")
         }
       }
       if (surface?.isValid == true) {
-        MPVLib.replaceSurface(surface)
+        MPVLib.detachSurface()
+        MPVLib.attachSurface(surface)
       }
       MpvSessionCoordinator.markLoading(sessionId)
       val options = "start=$positionSeconds,pause=no"
-      val result = MPVLib.commandResult("loadfile", playableUri, "replace", "-1", options)
-      if (result < 0) {
-        Log.e(TAG, "session=$sessionId recovery=$fallback loadfileResult=$result")
-      }
+      MPVLib.command("loadfile", playableUri, "replace", "-1", options)
     }
   }
 
@@ -5011,7 +5006,7 @@ class PlayerActivity :
 
   private fun syncBackgroundPlaybackService(updateThumbnail: Boolean) {
     val service = mediaPlaybackService ?: return
-    val title = getPreferredCurrentTitle().ifBlank { fileName.ifBlank { "Unknown Video" } }
+    val title = getPreferredCurrentTitle().ifBlank { fileName.ifBlank { getString(R.string.player_unknown_video) } }
     val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
     val thumbnailKey = buildBackgroundThumbnailKey()
     val cachedThumbnail =

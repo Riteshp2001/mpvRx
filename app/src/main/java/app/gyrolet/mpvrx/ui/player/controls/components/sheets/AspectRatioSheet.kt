@@ -72,8 +72,7 @@ fun AspectRatioSheet(
           .verticalScroll(rememberScrollState())
           .padding(vertical = MaterialTheme.spacing.medium),
     ) {
-      Text(
-        text = "Aspect Ratio",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_aspect_ratio),
         style = MaterialTheme.typography.headlineSmall,
         modifier =
           Modifier
@@ -82,8 +81,7 @@ fun AspectRatioSheet(
       )
 
       // Preset ratios
-      Text(
-        text = "Presets",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_presets),
         style = MaterialTheme.typography.titleSmall,
         modifier =
           Modifier
@@ -108,8 +106,7 @@ fun AspectRatioSheet(
 
       // Custom ratios
       if (customRatios.isNotEmpty()) {
-        Text(
-          text = "Custom",
+        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_gesture_double_tap_custom),
           style = MaterialTheme.typography.titleSmall,
           modifier =
             Modifier
@@ -165,8 +162,7 @@ private fun AddCustomRatioRow(
         .fillMaxWidth()
         .padding(horizontal = MaterialTheme.spacing.medium),
   ) {
-    Text(
-      text = "Add Custom Ratio (e.g. 16:9)",
+    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_custom_ratio_e_g_16_9),
       style = MaterialTheme.typography.titleSmall,
       modifier = Modifier.padding(bottom = MaterialTheme.spacing.small),
     )
@@ -183,7 +179,7 @@ private fun AddCustomRatioRow(
           widthText = it.filter { char -> char.isDigit() || char == '.' }
           errorMessage = null
         },
-        label = { Text("Width") },
+        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_width)) },
         isError = errorMessage != null,
         keyboardOptions =
           KeyboardOptions(
@@ -209,7 +205,7 @@ private fun AddCustomRatioRow(
           heightText = it.filter { char -> char.isDigit() || char == '.' }
           errorMessage = null
         },
-        label = { Text("Height") },
+        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_height)) },
         isError = errorMessage != null,
         keyboardOptions =
           KeyboardOptions(
@@ -248,7 +244,7 @@ private fun AddCustomRatioRow(
           }
         },
       ) {
-        Icon(Icons.RoundedFilled.Add, contentDescription = "Add")
+        Icon(Icons.RoundedFilled.Add, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add))
       }
     }
 

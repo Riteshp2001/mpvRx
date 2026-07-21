@@ -1,5 +1,8 @@
 package app.gyrolet.mpvrx.ui.browser.dialogs
 
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -107,7 +110,7 @@ fun FolderSortDialog(
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = if (isAlbumView) "Sort & View Options" else "View Options",
+    title = if (isAlbumView) stringResource(R.string.sort_view_options) else stringResource(R.string.ui_view_options),
     sortType = sortType.displayName,
     onSortTypeChange = { typeName ->
       FolderSortType.entries
@@ -338,7 +341,7 @@ fun VideoSortDialog(
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = "Sort & View Options",
+    title = stringResource(R.string.sort_view_options),
     sortType = sortType.displayName,
     onSortTypeChange = { typeName ->
       VideoSortType.entries.find { it.displayName == typeName }?.let(onSortTypeChange)
@@ -587,7 +590,7 @@ fun FileSystemSortDialog(
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = "Sort & View Options",
+    title = stringResource(R.string.sort_view_options),
     sortType = folderSortType.displayName,
     onSortTypeChange = { typeName ->
       FolderSortType.entries.find { it.displayName == typeName }?.let {

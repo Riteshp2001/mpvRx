@@ -99,8 +99,7 @@ fun PlayLinkSheet(
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       // Title
-      Text(
-        text = "Play Link",
+      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_link),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurface,
@@ -117,7 +116,7 @@ fun PlayLinkSheet(
             isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
           },
           modifier = Modifier.fillMaxWidth(),
-          label = { Text("Enter URL") },
+          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_enter_url)) },
           placeholder = { Text("https://example.com/video.mp4") },
           singleLine = true,
           isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
@@ -129,8 +128,7 @@ fun PlayLinkSheet(
         )
 
         if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
-          Text(
-            text = "Unsupported URL protocol",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_unsupported_url_protocol),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
@@ -144,8 +142,7 @@ fun PlayLinkSheet(
         horizontalArrangement = Arrangement.End,
       ) {
         TextButton(onClick = handleDismiss) {
-          Text(
-            text = "Cancel",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
             fontWeight = FontWeight.Medium,
           )
         }
@@ -158,8 +155,7 @@ fun PlayLinkSheet(
               containerColor = MaterialTheme.colorScheme.primary,
             ),
         ) {
-          Text(
-            text = "Play",
+          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
             fontWeight = FontWeight.SemiBold,
           )
         }
@@ -175,13 +171,13 @@ private fun ValidationIcon(isValid: Boolean) {
   if (isValid) {
     Icon(
       Icons.RoundedFilled.Check,
-      contentDescription = "Valid URL",
+      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_valid_url),
       tint = MaterialTheme.colorScheme.primary,
     )
   } else {
     Icon(
       Icons.RoundedFilled.Close,
-      contentDescription = "Invalid URL",
+      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_invalid_url),
       tint = MaterialTheme.colorScheme.error,
     )
   }

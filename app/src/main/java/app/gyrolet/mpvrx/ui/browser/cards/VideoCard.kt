@@ -247,14 +247,14 @@ fun VideoCard(
             thumbnail?.let {
               Image(
                 bitmap = it.asImageBitmap(),
-                contentDescription = "Thumbnail",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
               )
             } ?: run {
               Icon(
                 if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
-                contentDescription = "Play",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -262,7 +262,7 @@ fun VideoCard(
           } else {
             Icon(
               if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
-              contentDescription = "Play",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
               modifier = Modifier.size(48.dp),
               tint = MaterialTheme.colorScheme.secondary,
             )
@@ -526,14 +526,14 @@ fun VideoCard(
             thumbnail?.let {
               Image(
                 bitmap = it.asImageBitmap(),
-                contentDescription = "Thumbnail",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
               )
             } ?: run {
               Icon(
                 if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
-                contentDescription = "Play",
+                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -541,7 +541,7 @@ fun VideoCard(
           } else {
             Icon(
               if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
-              contentDescription = "Play",
+              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
               modifier = Modifier.size(48.dp),
               tint = MaterialTheme.colorScheme.secondary,
             )
