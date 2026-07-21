@@ -24,6 +24,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
@@ -1115,10 +1116,7 @@ class PlayerActivity :
       operation = {
         if (!keepBackgroundPlaybackAlive) {
           MPVLib.detachSurface()
-          if (isReady) {
-            MPVLib.setPropertyBoolean("pause", true)
-            MPVLib.command("quit")
-          }
+          requestMpvQuitAndDrain()
           player.destroy()
         } else {
           MPVLib.setPropertyString("vo", "null")
@@ -1525,10 +1523,21 @@ class PlayerActivity :
       Log.e(TAG, "Error stopping detached playback service", e)
     }
     MpvSessionCoordinator.releaseDetachedSession {
-      MPVLib.setPropertyBoolean("pause", true)
-      MPVLib.command("quit")
+      requestMpvQuitAndDrain()
       player.destroy()
     }
+  }
+
+  /**
+   * Gives libmpv's asynchronous quit command time to release cache and render work before destroy.
+   * This runs on MpvSessionCoordinator's dedicated player thread, never the main thread.
+   */
+  private fun requestMpvQuitAndDrain() {
+    runCatching { MPVLib.setPropertyBoolean("pause", true) }
+      .onFailure { error -> Log.w(TAG, "Unable to pause mpv before shutdown", error) }
+    runCatching { MPVLib.command("quit") }
+      .onFailure { error -> Log.w(TAG, "Unable to request mpv shutdown", error) }
+    SystemClock.sleep(MPV_QUIT_DRAIN_DELAY_MS)
   }
 
   private fun isNotificationReentryIntent(intent: Intent?): Boolean =
@@ -5654,6 +5663,7 @@ class PlayerActivity :
     private const val MILLISECONDS_TO_SECONDS = 1000
 
     private const val FRAME_STALL_WARNING_MS = 8_000L
+    private const val MPV_QUIT_DRAIN_DELAY_MS = 250L
 
     /**
      * Factor to divide subtitle and audio delays to convert from ms to seconds.

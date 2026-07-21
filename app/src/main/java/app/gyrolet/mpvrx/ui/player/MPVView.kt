@@ -31,7 +31,6 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.reflect.KProperty
 import android.os.SystemClock
-import android.app.ActivityManager
 
 class MPVView(
   context: Context,
@@ -154,13 +153,6 @@ class MPVView(
       hwdecMode,
     )
     MPVLib.setOptionString("hwdec-codecs", "all")
-
-    val memoryClassMb =
-      (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).memoryClass
-    val forwardCacheMb = (memoryClassMb / 8).coerceIn(32, 128)
-    val backwardCacheMb = (memoryClassMb / 32).coerceIn(8, 32)
-    MPVLib.setOptionString("demuxer-max-bytes", "${forwardCacheMb}MiB")
-    MPVLib.setOptionString("demuxer-max-back-bytes", "${backwardCacheMb}MiB")
 
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
