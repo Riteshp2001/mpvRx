@@ -266,6 +266,12 @@ Próximo: NEXT</string>
   <string name="pref_audio_pitch_correction_summary">Evita que o áudio fique agudo em velocidades maiores e grave em velocidades menores</string>
   <string name="pref_audio_volume_normalization_title">Normalização de volume</string>
   <string name="pref_audio_volume_normalization_summary">Ajustar automaticamente o volume para manter níveis de sonoridade consistentes</string>
+  <string name="pref_music_visualizer_title">Visualizador de música</string>
+  <string name="pref_music_visualizer_summary">Mostrar um visualizador que reage ao áudio durante a reprodução de música</string>
+  <string name="pref_audio_visualizer_style_title">Estilo do visualizador</string>
+  <string name="pref_audio_visualizer_style_blob">Blob</string>
+  <string name="pref_audio_visualizer_style_galaxy">Galáxia</string>
+  <string name="pref_audio_visualizer_galaxy_credit">Inspirado por Zain Raza no CodePen</string>
   <string name="pref_audio_channels">Canais de áudio</string>
   <string name="pref_audio_channels_auto">Automático</string>
   <string name="pref_audio_channels_auto_safe">Automático seguro</string>

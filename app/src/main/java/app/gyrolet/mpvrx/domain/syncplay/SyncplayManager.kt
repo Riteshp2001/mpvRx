@@ -1,5 +1,6 @@
 package app.gyrolet.mpvrx.domain.syncplay
 
+import android.content.Context
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import kotlinx.coroutines.CoroutineScope
@@ -23,8 +24,9 @@ data class SyncplayState(
     val connectionFailed: Boolean = false,
 )
 
-class SyncplayManager {
+class SyncplayManager(context: Context) {
     private val client = SyncplayClient()
+    private val credentialsStore = SyncplayCredentialsStore(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     private val _state = MutableStateFlow(SyncplayState())
@@ -38,6 +40,8 @@ class SyncplayManager {
     private var pingJob: Job? = null
     private var listenJob: Job? = null
     private var messageCollectorJob: Job? = null
+    private var backgroundDisconnectJob: Job? = null
+    private var sessionGeneration = 0L
     private var loggedIn = false
     private var lastLocalPlaybackState = SyncplayPlaybackState(position = 0.0, paused = true)
     private var lastLocalFile: SyncplayFile? = null
@@ -48,11 +52,30 @@ class SyncplayManager {
     private var clientIgnoringOnTheFly = 0
     private var serverIgnoringOnTheFly = 0
 
+    val savedCredentials: SyncplayCredentials
+        get() = credentialsStore.load()
+
     fun connect(host: String, port: Int, username: String, room: String, password: String?) {
         if (_state.value.isConnecting) return
+        val credentials = SyncplayCredentials(
+            host = host,
+            port = port,
+            username = username,
+            room = room,
+            password = password.orEmpty(),
+        )
+        if (!credentials.isValid) return
+        credentialsStore.save(credentials)
+        credentialsStore.reconnectRequested = true
+        connect(credentials)
+    }
+
+    private fun connect(credentials: SyncplayCredentials) {
+        val (host, port, username, room, password) = credentials
         _state.value = SyncplayState(isConnecting = true, room = room, username = username)
         scope.launch {
             stopSession()
+            val connectionGeneration = sessionGeneration
 
             val success = client.connect(host, port)
             if (!success) {
@@ -67,9 +90,11 @@ class SyncplayManager {
             }
             listenJob = scope.launch {
                 client.listen()
-                loggedIn = false
-                pingJob?.cancel()
-                _state.value = _state.value.copy(isConnected = false)
+                if (sessionGeneration == connectionGeneration) {
+                    loggedIn = false
+                    pingJob?.cancel()
+                    _state.value = _state.value.copy(isConnected = false)
+                }
             }
 
             client.sendMessage(
@@ -117,7 +142,44 @@ class SyncplayManager {
     }
 
     fun disconnect() {
+        credentialsStore.reconnectRequested = false
+        backgroundDisconnectJob?.cancel()
+        backgroundDisconnectJob = null
         disconnect(error = null)
+    }
+
+    fun onAppBackgrounded() {
+        backgroundDisconnectJob?.cancel()
+        if (!credentialsStore.reconnectRequested ||
+            (!_state.value.isConnected && !_state.value.isConnecting)
+        ) {
+            return
+        }
+
+        backgroundDisconnectJob = scope.launch {
+            delay(BACKGROUND_GRACE_PERIOD_MS)
+            stopSession()
+            _state.value = _state.value.copy(
+                isConnected = false,
+                isConnecting = false,
+                users = emptyList(),
+                error = null,
+                connectionFailed = false,
+            )
+        }
+    }
+
+    fun onAppForegrounded() {
+        backgroundDisconnectJob?.cancel()
+        backgroundDisconnectJob = null
+        val credentials = credentialsStore.load()
+        if (credentialsStore.reconnectRequested &&
+            !_state.value.isConnected &&
+            !_state.value.isConnecting &&
+            credentials.isValid
+        ) {
+            connect(credentials)
+        }
     }
 
     private fun handleMessage(message: SyncplayMessage) {
@@ -195,6 +257,7 @@ class SyncplayManager {
     }
 
     private fun stopSession() {
+        sessionGeneration += 1
         loggedIn = false
         pingJob?.cancel()
         listenJob?.cancel()
@@ -344,5 +407,6 @@ class SyncplayManager {
     private companion object {
         const val SYNCPLAY_LEGACY_VERSION = "1.2.255"
         const val SYNCPLAY_PROTOCOL_VERSION = "1.2.7"
+        const val BACKGROUND_GRACE_PERIOD_MS = 15_000L
     }
 }

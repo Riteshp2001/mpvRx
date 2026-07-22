@@ -83,10 +83,11 @@ class MediaLibraryViewModel(
     val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
     val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
     val watchedThreshold = browserPreferences.watchedThreshold.get()
+    val playbackByTitle = playbackStates.associateBy { it.mediaTitle }
 
     val videosWithInfo =
       videos.map { video ->
-        val playbackState = playbackStates.find { it.mediaTitle == video.displayName }
+        val playbackState = playbackByTitle[video.displayName]
 
         val progress = if (playbackState != null && video.duration > 0) {
           val durationSeconds = video.duration / 1000

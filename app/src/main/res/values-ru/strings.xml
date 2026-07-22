@@ -266,6 +266,12 @@
   <string name="pref_audio_pitch_correction_summary">Не позволяет звуку становиться выше при ускорении и ниже при замедлении</string>
   <string name="pref_audio_volume_normalization_title">Нормализация громкости</string>
   <string name="pref_audio_volume_normalization_summary">Автоматически регулировать громкость для поддержания равномерного уровня</string>
+  <string name="pref_music_visualizer_title">Музыкальный визуализатор</string>
+  <string name="pref_music_visualizer_summary">Показывать реагирующую на звук визуализацию при воспроизведении музыки</string>
+  <string name="pref_audio_visualizer_style_title">Стиль визуализатора</string>
+  <string name="pref_audio_visualizer_style_blob">Блоб</string>
+  <string name="pref_audio_visualizer_style_galaxy">Галактика</string>
+  <string name="pref_audio_visualizer_galaxy_credit">Вдохновлено работой Zain Raza на CodePen</string>
   <string name="pref_audio_channels">Аудиоканалы</string>
   <string name="pref_audio_channels_auto">Авто</string>
   <string name="pref_audio_channels_auto_safe">Безопасный авто</string>

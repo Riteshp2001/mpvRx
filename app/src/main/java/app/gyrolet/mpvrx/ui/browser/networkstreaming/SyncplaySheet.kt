@@ -20,12 +20,13 @@ fun SyncplaySheet(
     syncplayManager: SyncplayManager = koinInject()
 ) {
     val state by syncplayManager.state.collectAsState()
+    val savedCredentials = remember(syncplayManager) { syncplayManager.savedCredentials }
 
-    var host by remember { mutableStateOf("syncplay.pl") }
-    var port by remember { mutableStateOf("8999") }
-    var username by remember { mutableStateOf("MpvRxUser") }
-    var room by remember { mutableStateOf("TestRoom") }
-    var password by remember { mutableStateOf("") }
+    var host by remember { mutableStateOf(savedCredentials.host) }
+    var port by remember { mutableStateOf(savedCredentials.port.toString()) }
+    var username by remember { mutableStateOf(savedCredentials.username) }
+    var room by remember { mutableStateOf(savedCredentials.room) }
+    var password by remember { mutableStateOf(savedCredentials.password) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

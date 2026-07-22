@@ -73,7 +73,18 @@ class MediaPlaybackService :
     @Volatile
     private var isServiceRunning = false
 
+    @Volatile
+    private var activeInstance: MediaPlaybackService? = null
+
     fun isRunning(): Boolean = isServiceRunning
+
+    /** Releases every service-owned MPV access before an Activity destroys the global core. */
+    internal fun prepareForMpvShutdown() {
+      activeInstance?.let { service ->
+        runCatching { service.releaseMpvAccessBeforeShutdown() }
+          .onFailure { error -> Log.e(TAG, "Error preparing service for MPV shutdown", error) }
+      }
+    }
 
     fun createNotificationChannel(context: Context) {
       val channel =
@@ -122,6 +133,7 @@ class MediaPlaybackService :
   private val notificationDispatcher = Dispatchers.Default.limitedParallelism(1)
   private val serviceScope = CoroutineScope(SupervisorJob() + notificationDispatcher)
   private var playbackStateSaveJob: Job? = null
+  private var mpvAccessReleased = false
 
   inner class MediaPlaybackBinder : Binder() {
     fun getService() = this@MediaPlaybackService
@@ -131,7 +143,9 @@ class MediaPlaybackService :
     super.onCreate()
     Log.d(TAG, "Service created")
 
+    activeInstance = this
     isServiceRunning = true
+    mpvAccessReleased = false
 
     // Ensure notification channel exists before starting foreground service
     createNotificationChannel(this)
@@ -408,6 +422,13 @@ class MediaPlaybackService :
         mediaUri?.let { putExtra("uri", it) }
         putExtra("title", mediaTitle)
         putExtra("media_identifier", mediaIdentifier)
+        putExtra(
+          "position",
+          (currentPositionSeconds * 1000.0)
+            .toLong()
+            .coerceIn(0L, Int.MAX_VALUE.toLong())
+            .toInt(),
+        )
         putExtra("launch_source", "notification")
         putExtra("internal_launch", true)
         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -838,18 +859,37 @@ class MediaPlaybackService :
       }
     }.getOrDefault(fallback)
 
+  /**
+   * Snapshots playback and unregisters callbacks while libmpv is still alive. This method is
+   * idempotent because Activity teardown can prepare the service before stopService() later
+   * delivers Service.onDestroy().
+   */
+  private fun releaseMpvAccessBeforeShutdown() {
+    if (mpvAccessReleased) return
+    mpvAccessReleased = true
+
+    runCatching { serviceScope.cancel() }
+      .onFailure { error -> Log.e(TAG, "Error canceling playback service work", error) }
+    runCatching { savePlaybackStateBlocking() }
+      .onFailure { error -> Log.e(TAG, "Error saving playback state before MPV shutdown", error) }
+    runCatching { MPVLib.removeObserver(this) }
+      .onFailure { error -> Log.e(TAG, "Error removing MPV observer", error) }
+    if (::mediaSession.isInitialized) {
+      runCatching {
+        mediaSession.setCallback(null)
+        mediaSession.isActive = false
+      }.onFailure { error ->
+        Log.e(TAG, "Error disabling MediaSession callbacks", error)
+      }
+    }
+  }
+
   override fun onDestroy() {
     try {
       Log.d(TAG, "Service destroyed")
 
+      releaseMpvAccessBeforeShutdown()
       isServiceRunning = false
-      savePlaybackStateBlocking()
-
-      try {
-        MPVLib.removeObserver(this)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error removing MPV observer", e)
-      }
 
       try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -878,12 +918,16 @@ class MediaPlaybackService :
 
       thumbnail = null
       lastPaletteThumbnail = null
-      serviceScope.cancel()
 
       Log.d(TAG, "Service cleanup completed")
-      super.onDestroy()
     } catch (e: Exception) {
       Log.e(TAG, "Error in onDestroy", e)
+    } finally {
+      isServiceRunning = false
+      if (activeInstance === this) activeInstance = null
+      // If the Activity was destroyed after handing this service the live process-global core,
+      // the service is its final owner and must serialize native destruction before disappearing.
+      MpvTeardownCoordinator.destroyDetachedCoreAsync("detached playback service shutdown")
       super.onDestroy()
     }
   }

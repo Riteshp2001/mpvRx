@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,9 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -64,7 +62,6 @@ import app.gyrolet.mpvrx.ui.browser.dialogs.EditConnectionSheet
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.serialization.Serializable
-import org.koin.compose.koinInject
 
 @Serializable
 object NetworkStreamingScreen : Screen {
@@ -77,40 +74,19 @@ object NetworkStreamingScreen : Screen {
       viewModel(factory = NetworkStreamingViewModel.factory(context.applicationContext as android.app.Application))
     val connections by viewModel.connections.collectAsState()
     val connectionStatuses by viewModel.connectionStatuses.collectAsState()
-    val browserPreferences = koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>()
     var showAddSheet by remember { mutableStateOf(false) }
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
     val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
 
-    // LazyList state for scroll tracking
-    val listState = LazyListState()
-
-    // Track scroll direction to show/hide FAB
-    var previousFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
-    var previousFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
-    
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-    
-    val isFabVisible by remember {
-      derivedStateOf {
-        val currentIndex = listState.firstVisibleItemIndex
-        val currentOffset = listState.firstVisibleItemScrollOffset
-
-        // Show FAB when at the top
-        if (currentIndex == 0 && currentOffset == 0) {
-          true
-        } else {
-          // Show when scrolling up, hide when scrolling down
-          val isScrollingUp = currentIndex < previousFirstVisibleItemIndex ||
-            (currentIndex == previousFirstVisibleItemIndex && currentOffset < previousFirstVisibleItemScrollOffset)
-
-          previousFirstVisibleItemIndex = currentIndex
-          previousFirstVisibleItemScrollOffset = currentOffset
-
-          isScrollingUp
-        }
-      }
-    }
+    val listState = rememberLazyListState()
+    val isFabVisible = remember { mutableStateOf(true) }
+    app.gyrolet.mpvrx.ui.browser.fab.FabScrollHelper.trackScrollForFabVisibility(
+      listState = listState,
+      gridState = null,
+      isFabVisible = isFabVisible,
+      expanded = false,
+      onExpandedChange = {},
+    )
 
     Scaffold(
         topBar = {
@@ -140,7 +116,7 @@ object NetworkStreamingScreen : Screen {
       },
       floatingActionButton = {
         val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
-        if (isFabVisible) {
+        if (isFabVisible.value) {
           ExtendedFloatingActionButton(
             onClick = { showAddSheet = true },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },

@@ -17,6 +17,9 @@ class AudioSpectrumAnalyzer(
     private var smoothTreble = 0f
     private var smoothCentroid = 0.35f
     private var energyFloor = 0.04f
+    private var bassPeak = 0.16f
+    private var midPeak = 0.13f
+    private var treblePeak = 0.10f
     private var beatEnvelope = 0f
     private var previousBass = 0f
     private var beatCooldownFrames = 0
@@ -59,7 +62,9 @@ class AudioSpectrumAnalyzer(
             instance.enabled = true
             visualizer = instance
             pendingInstance = null
-            features.active = true
+            // A successfully enabled Visualizer can still stop delivering callbacks when the
+            // platform swaps AudioTrack sessions. The overlay watches this timestamp and retries.
+            features.markCaptureStarted()
         }.onFailure {
             features.active = false
             runCatching { pendingInstance?.release() }
@@ -89,6 +94,9 @@ class AudioSpectrumAnalyzer(
         previousBass = 0f
         beatCooldownFrames = 0
         energyFloor = 0.04f
+        bassPeak = 0.16f
+        midPeak = 0.13f
+        treblePeak = 0.10f
     }
 
     private fun processFft(fft: ByteArray, sampleRateHz: Float) {
@@ -137,9 +145,18 @@ class AudioSpectrumAnalyzer(
             k++
         }
 
-        val bass = normalizeBand(bassSum, bassCount, 1.55f)
-        val mid = normalizeBand(midSum, midCount, 1.85f)
-        val treble = normalizeBand(trebleSum, trebleCount, 2.2f)
+        val rawBass = normalizeBand(bassSum, bassCount, 1.55f)
+        val rawMid = normalizeBand(midSum, midCount, 1.85f)
+        val rawTreble = normalizeBand(trebleSum, trebleCount, 2.2f)
+
+        // Android devices expose very different FFT levels. A slowly decaying per-band peak keeps
+        // quiet masters visibly reactive without making loud tracks sit permanently at 100%.
+        bassPeak = max(0.16f, max(rawBass, bassPeak * 0.994f))
+        midPeak = max(0.13f, max(rawMid, midPeak * 0.994f))
+        treblePeak = max(0.10f, max(rawTreble, treblePeak * 0.994f))
+        val bass = normalizeAgainstPeak(rawBass, bassPeak, 0.010f)
+        val mid = normalizeAgainstPeak(rawMid, midPeak, 0.008f)
+        val treble = normalizeAgainstPeak(rawTreble, treblePeak, 0.006f)
         val energy = clamp01(bass * 0.50f + mid * 0.34f + treble * 0.16f)
         val centroidHz = if (magnitudeSum > 0.0001f) weightedFrequency / magnitudeSum else 1_000f
         val centroid = clamp01((centroidHz - 120f) / 9_000f)
@@ -161,7 +178,7 @@ class AudioSpectrumAnalyzer(
                 bassRise > max(0.028f, energyFloor * 0.16f) &&
                 smoothBass > smoothMid * 0.82f
         if (beatDetected) beatCooldownFrames = 5
-        beatEnvelope = if (beatDetected) 0.62f else beatEnvelope * 0.74f
+        beatEnvelope = if (beatDetected) 1f else beatEnvelope * 0.72f
         previousBass = smoothBass
 
         features.bass = smoothBass
@@ -170,12 +187,17 @@ class AudioSpectrumAnalyzer(
         features.energy = smoothEnergy
         features.centroid = smoothCentroid
         features.beat = beatEnvelope
-        features.active = true
+        features.markCaptureReceived()
     }
 
     private fun normalizeBand(sum: Float, count: Int, gain: Float): Float {
         if (count <= 0) return 0f
         return clamp01((sum / count.toFloat()) * gain)
+    }
+
+    private fun normalizeAgainstPeak(value: Float, peak: Float, noiseFloor: Float): Float {
+        val usablePeak = max(noiseFloor + 0.001f, peak * 0.92f)
+        return clamp01((value - noiseFloor) / (usablePeak - noiseFloor))
     }
 
     private fun envelope(current: Float, target: Float, attack: Float, release: Float): Float {

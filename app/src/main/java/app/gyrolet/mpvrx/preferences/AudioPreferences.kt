@@ -16,6 +16,7 @@ class AudioPreferences(
   val backgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val audioBlobEnabled = preferenceStore.getBoolean("audio_blob_enabled", true)
+  val audioVisualizerStyle = preferenceStore.getEnum("audio_visualizer_style", AudioVisualizerStyle.Blob)
 
   init {
     // Consolidate the old audio-only screen-lock switch into the single global setting.
@@ -23,6 +24,13 @@ class AudioPreferences(
     if (legacyScreenLockPlayback.get()) backgroundPlayback.set(true)
     if (legacyScreenLockPlayback.isSet()) legacyScreenLockPlayback.delete()
   }
+}
+
+enum class AudioVisualizerStyle(
+  @StringRes val title: Int,
+) {
+  Blob(R.string.pref_audio_visualizer_style_blob),
+  Galaxy(R.string.pref_audio_visualizer_style_galaxy),
 }
 
 enum class AudioChannels(

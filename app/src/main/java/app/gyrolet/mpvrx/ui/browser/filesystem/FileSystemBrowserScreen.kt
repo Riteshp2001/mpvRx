@@ -66,11 +66,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
@@ -118,6 +118,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -1602,35 +1604,51 @@ private fun FileSystemSearchContent(
 
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val isGridMode = mediaLayoutMode == app.gyrolet.mpvrx.preferences.MediaLayoutMode.GRID
-
-  // Track scroll for FAB visibility in search mode with proper scroll direction detection
-  val previousIndex = remember { mutableIntStateOf(0) }
-  val previousOffset = remember { mutableIntStateOf(0) }
-
-  val firstVisibleItemIndex = if (isGridMode) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
-  val firstVisibleItemScrollOffset = if (isGridMode) gridState.firstVisibleItemScrollOffset else listState.firstVisibleItemScrollOffset
-  
-  LaunchedEffect(firstVisibleItemIndex, firstVisibleItemScrollOffset) {
-    val currentIndex = firstVisibleItemIndex
-    val currentOffset = firstVisibleItemScrollOffset
-    
-    // Show FAB when at the top
-    if (currentIndex == 0 && currentOffset == 0) {
-      isFabVisible.value = true
-    } else {
-      // Calculate if scrolling down or up
-      val isScrollingDown = if (currentIndex != previousIndex.value) {
-        currentIndex > previousIndex.value
-      } else {
-        currentOffset > previousOffset.value
-      }
-      
-      // Hide when scrolling down, show when scrolling up
-      isFabVisible.value = !isScrollingDown
+  val searchFolders =
+    remember(searchResults) {
+      searchResults.filterIsInstance<FileSystemItem.Folder>().distinctBy { it.path }
     }
-    
-    previousIndex.value = currentIndex
-    previousOffset.value = currentOffset
+  val searchVideos =
+    remember(searchResults) {
+      searchResults.filterIsInstance<FileSystemItem.VideoFile>().distinctBy { it.video.id }
+    }
+  val scrollbarLabels =
+    remember(searchFolders, searchVideos) {
+      buildList<String?> {
+        searchFolders.forEach { add(it.name) }
+        searchVideos.forEach { add(it.video.displayName) }
+      }
+    }
+
+  // Keep high-frequency scroll reads out of composition in large search result sets.
+  LaunchedEffect(isGridMode, listState, gridState) {
+    var previousIndex = if (isGridMode) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
+    var previousOffset =
+      if (isGridMode) gridState.firstVisibleItemScrollOffset else listState.firstVisibleItemScrollOffset
+
+    snapshotFlow {
+      if (isGridMode) {
+        gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
+      } else {
+        listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+      }
+    }
+      .distinctUntilChanged()
+      .collect { (currentIndex, currentOffset) ->
+        if (currentIndex == 0 && currentOffset == 0) {
+          isFabVisible.value = true
+        } else {
+          val isScrollingDown =
+            if (currentIndex != previousIndex) {
+              currentIndex > previousIndex
+            } else {
+              currentOffset > previousOffset
+            }
+          isFabVisible.value = !isScrollingDown
+        }
+        previousIndex = currentIndex
+        previousOffset = currentOffset
+      }
   }
 
   Box(modifier = modifier.fillMaxSize()) {
@@ -1696,14 +1714,10 @@ private fun FileSystemSearchContent(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
               ) {
-                // Separate folders and videos for proper ordering and deduplicate
-                val folders = searchResults.filterIsInstance<FileSystemItem.Folder>().distinctBy { it.path }
-                val videos = searchResults.filterIsInstance<FileSystemItem.VideoFile>().distinctBy { it.video.id }
-
                 // Folders first
                 items(
-                  items = folders,
-                  key = { "search_folder_${it.path}_${it.hashCode()}" },
+                  items = searchFolders,
+                  key = { "search_folder_${it.path}" },
                   span = { GridItemSpan(spansInfo.folderSpan) }
                 ) { folder ->
                   val folderModel = app.gyrolet.mpvrx.domain.media.model.VideoFolder(
@@ -1730,8 +1744,8 @@ private fun FileSystemSearchContent(
 
                 // Videos second
                 items(
-                  items = videos,
-                  key = { "search_video_${it.video.id}_${it.video.path}_${it.hashCode()}" },
+                  items = searchVideos,
+                  key = { "search_video_${it.video.id}_${it.video.path}" },
                   span = { GridItemSpan(spansInfo.videoSpan) }
                 ) { videoFile ->
                   VideoCard(
@@ -1753,15 +1767,7 @@ private fun FileSystemSearchContent(
                 }
               }
 
-              if (searchResults.size > 20) {
-                val scrollbarLabels =
-                  remember(searchResults) {
-                    buildList<String?> {
-                      searchResults.filterIsInstance<FileSystemItem.Folder>().forEach { add(it.name) }
-                      searchResults.filterIsInstance<FileSystemItem.VideoFile>().forEach { add(it.video.displayName) }
-                    }
-                  }
-
+              if (scrollbarLabels.size > 20) {
                 ExpressiveScrollBar(
                   gridState = gridState,
                   dragLabelProvider = { index ->
@@ -1786,14 +1792,10 @@ private fun FileSystemSearchContent(
                 bottom = navigationBarHeight
               ),
             ) {
-              // Separate folders and videos for proper ordering and deduplicate
-              val folders = searchResults.filterIsInstance<FileSystemItem.Folder>().distinctBy { it.path }
-              val videos = searchResults.filterIsInstance<FileSystemItem.VideoFile>().distinctBy { it.video.id }
-              
               // Folders first
               items(
-                items = folders,
-                key = { "search_folder_${it.path}_${it.hashCode()}" },
+                items = searchFolders,
+                key = { "search_folder_${it.path}" },
               ) { folder ->
                 val folderModel = app.gyrolet.mpvrx.domain.media.model.VideoFolder(
                   bucketId = folder.path,
@@ -1819,8 +1821,8 @@ private fun FileSystemSearchContent(
               
               // Videos second
               items(
-                items = videos,
-                key = { "search_video_${it.video.id}_${it.video.path}_${it.hashCode()}" },
+                items = searchVideos,
+                key = { "search_video_${it.video.id}_${it.video.path}" },
               ) { videoFile ->
                 VideoCard(
                   video = videoFile.video,
@@ -1841,15 +1843,7 @@ private fun FileSystemSearchContent(
               }
             }
             
-            if (searchResults.size > 20) {
-              val scrollbarLabels =
-                remember(searchResults) {
-                  buildList<String?> {
-                    searchResults.filterIsInstance<FileSystemItem.Folder>().forEach { add(it.name) }
-                    searchResults.filterIsInstance<FileSystemItem.VideoFile>().forEach { add(it.video.displayName) }
-                  }
-                }
-
+            if (scrollbarLabels.size > 20) {
               ExpressiveScrollBar(
                 listState = listState,
                 dragLabelProvider = { index ->

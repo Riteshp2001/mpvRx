@@ -990,6 +990,24 @@ class PlayerViewModel(
     startAndroidSystemInfoBridge()
   }
 
+  /** Stops every ViewModel path that can read or write libmpv during native teardown. */
+  fun onMpvCoreStopping() {
+    _isMpvCoreReady.value = false
+    isMpvReadyForCustomButtons = false
+    runCatching { syncplayManager.clearPlayerBindings() }
+    mpvStateCollectorsJob?.cancel()
+    mpvStateCollectorsJob = null
+    androidSystemInfoBridgeJob?.cancel()
+    androidSystemInfoBridgeJob = null
+    customButtonsSetupJob?.cancel()
+    _paused.value = null
+    _pos.value = null
+    _duration.value = null
+    _volumeBoostCap.value = null
+    _precisePosition.value = 0f
+    _preciseDuration.value = 0f
+  }
+
   private fun startMpvStateCollectors() {
     if (mpvStateCollectorsJob?.isActive == true) return
     mpvStateCollectorsJob =

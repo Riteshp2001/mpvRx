@@ -1,5 +1,6 @@
 package app.gyrolet.mpvrx.domain.thumbnail
 
+import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -13,12 +14,17 @@ import app.gyrolet.mpvrx.preferences.ThumbnailMode
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import `is`.xyz.mpv.FastThumbnails
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -26,10 +32,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import org.koin.java.KoinJavaComponent
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 import kotlin.math.max
 import kotlin.math.roundToInt
 import java.util.concurrent.ConcurrentHashMap
@@ -51,12 +62,15 @@ class ThumbnailRepository(
   private val memoryCache: LruCache<String, Bitmap>
   private val localDiskDir = File(context.filesDir, "thumbnails/local").apply { mkdirs() }
   private val networkDiskDir = File(context.filesDir, "thumbnails/network").apply { mkdirs() }
+  private val diskCacheLock = ReentrantReadWriteLock()
   private val ongoingOperations = ConcurrentHashMap<String, Deferred<Bitmap?>>()
+  private val diskVideoBaseKeyCache = ConcurrentHashMap<String, String>()
   private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val maxConcurrentFolders = 3
-  private val generationSemaphore = Semaphore(1)
+  private val localGenerationParallelism = resolveLocalGenerationParallelism()
+  private val localGenerationSemaphore = Semaphore(localGenerationParallelism)
+  private val networkGenerationSemaphore = Semaphore(1)
   private val maxFolderBatchSize = 48
-  private val generationFrameDelayMs = 12L
 
   private data class FolderState(
     val signature: String,
@@ -105,38 +119,49 @@ class ThumbnailRepository(
 
       ongoingOperations[key]?.let { return@withContext it.await() }
 
-      val deferred =
-        async {
-          try {
-            getCachedThumbnail(video, widthPx, heightPx)?.let { cached ->
-              synchronized(memoryCache) {
-                memoryCache.put(key, cached)
-              }
-              _thumbnailReadyKeys.tryEmit(key)
-              return@async cached
+      val candidate =
+        async(start = CoroutineStart.LAZY) {
+          getCachedThumbnail(video, widthPx, heightPx)?.let { cached ->
+            synchronized(memoryCache) {
+              memoryCache.put(key, cached)
             }
+            _thumbnailReadyKeys.tryEmit(key)
+            return@async cached
+          }
 
-            val bitmap = generationSemaphore.withPermit {
-              when {
-                isHttpUrl(video.path) -> getOrCreateNetworkVideoThumbnail(video, widthPx, heightPx)
-                isNetworkUrl(video.path) -> null
-                else -> generateLocalThumbnail(video, widthPx, heightPx)
-              }
+          val bitmap =
+            when {
+              isHttpUrl(video.path) ->
+                networkGenerationSemaphore.withPermit {
+                  getOrCreateNetworkVideoThumbnail(video, widthPx, heightPx)
+                }
+              isNetworkUrl(video.path) -> null
+              else ->
+                localGenerationSemaphore.withPermit {
+                  generateLocalThumbnail(video, widthPx, heightPx)
+                }
             } ?: return@async null
 
-            synchronized(memoryCache) {
-              memoryCache.put(key, bitmap)
-            }
-            writeBitmapToDisk(diskCacheKey(video), bitmap, isNetworkUrl(video.path))
-            _thumbnailReadyKeys.tryEmit(key)
-            bitmap
-          } finally {
-            ongoingOperations.remove(key)
+          currentCoroutineContext().ensureActive()
+          synchronized(memoryCache) {
+            memoryCache.put(key, bitmap)
           }
+          writeBitmapToDisk(diskCacheKey(video), bitmap, isNetworkUrl(video.path))
+          _thumbnailReadyKeys.tryEmit(key)
+          bitmap
         }
 
-      ongoingOperations[key] = deferred
-      deferred.await()
+      val operation =
+        ongoingOperations.putIfAbsent(key, candidate)?.also {
+          candidate.cancel()
+        } ?: candidate.also { owned ->
+          owned.invokeOnCompletion {
+            ongoingOperations.remove(key, owned)
+          }
+          owned.start()
+        }
+
+      operation.await()
     }
 
   suspend fun getCachedThumbnail(
@@ -182,17 +207,21 @@ class ThumbnailRepository(
     folderJobs.values.forEach { it.cancel() }
     folderJobs.clear()
     folderStates.clear()
+    ongoingOperations.values.forEach { it.cancel() }
     ongoingOperations.clear()
+    diskVideoBaseKeyCache.clear()
     networkThumbnailFailed.clear()
 
     synchronized(memoryCache) {
       memoryCache.evictAll()
     }
 
-    runCatching { File(context.cacheDir, "thumbnails").deleteRecursively() }
-    runCatching { File(context.filesDir, "thumbnails").deleteRecursively() }
-    localDiskDir.mkdirs()
-    networkDiskDir.mkdirs()
+    diskCacheLock.write {
+      runCatching { File(context.cacheDir, "thumbnails").deleteRecursively() }
+      runCatching { File(context.filesDir, "thumbnails").deleteRecursively() }
+      localDiskDir.mkdirs()
+      networkDiskDir.mkdirs()
+    }
   }
 
   fun startFolderThumbnailGeneration(
@@ -201,12 +230,15 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ) {
+    val videoSequence = videos.asSequence()
     val filteredVideos =
-      if (appearancePreferences.showNetworkThumbnails.get()) {
-        videos
-      } else {
-        videos.filterNot { isNetworkUrl(it.path) }
-      }.take(maxFolderBatchSize)
+      (if (appearancePreferences.showNetworkThumbnails.get()) {
+         videoSequence
+       } else {
+         videoSequence.filterNot { isNetworkUrl(it.path) }
+       })
+        .take(maxFolderBatchSize)
+        .toList()
 
     if (filteredVideos.isEmpty()) {
       return
@@ -224,8 +256,6 @@ class ThumbnailRepository(
 
     val signature = folderSignature(filteredVideos, widthPx, heightPx)
     val existingState = folderStates[folderId]
-    val shouldRestart = existingState == null || existingState.signature != signature
-
     val state =
       folderStates.compute(folderId) { _, existing ->
         if (existing == null || existing.signature != signature) {
@@ -235,18 +265,32 @@ class ThumbnailRepository(
         }
       }!!
 
-    // Only cancel and restart if the signature changed (video list changed)
-    // Otherwise, let the existing job continue to avoid overhead
+    val existingJob = folderJobs[folderId]
+    val shouldRestart =
+      existingState == null ||
+        existingState.signature != signature ||
+        (existingJob?.isActive != true && state.nextIndex < filteredVideos.size)
+
+    // Keep an active matching batch, but resume one that was cancelled before completing.
     if (shouldRestart) {
       folderJobs.remove(folderId)?.cancel()
       folderJobs[folderId] =
         repositoryScope.launch {
           var i = state.nextIndex
           while (i < filteredVideos.size) {
-            getThumbnail(filteredVideos[i], widthPx, heightPx)
-            i++
+            val batchEnd = (i + localGenerationParallelism).coerceAtMost(filteredVideos.size)
+            coroutineScope {
+              (i until batchEnd)
+                .map { index ->
+                  async {
+                    getThumbnail(filteredVideos[index], widthPx, heightPx)
+                  }
+                }
+                .awaitAll()
+            }
+            i = batchEnd
             state.nextIndex = i
-            delay(generationFrameDelayMs)
+            yield()
           }
         }
     }
@@ -278,13 +322,23 @@ class ThumbnailRepository(
   // Keep extraction-quality changes from reusing smaller legacy images that were
   // cached without their requested dimensions in the key.
   fun diskCacheKey(video: Video): String =
-    "video-thumb-v2|${videoBaseKey(video)}|${thumbnailModeKey()}|${thumbnailQualityKey()}"
+    "video-thumb-v2|${diskVideoBaseKey(video)}|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
   private fun videoBaseKey(video: Video): String {
     if (isNetworkUrl(video.path)) {
       val base = video.path.ifBlank { video.uri.toString() }
       return "$base|network"
     }
+
+    val source = video.path.ifBlank { video.uri.toString() }
+    return "$source|${video.size}|${video.dateModified}|${video.duration}"
+  }
+
+  /** Sidecar artwork probing is disk I/O, so keep it out of keys evaluated during composition. */
+  private fun diskVideoBaseKey(video: Video): String {
+    val baseKey = videoBaseKey(video)
+    if (isNetworkUrl(video.path)) return baseKey
+    diskVideoBaseKeyCache[baseKey]?.let { return it }
 
     val artworkSignature =
       EmbeddedArtworkCandidates.forVideoPath(video.path)
@@ -293,9 +347,8 @@ class ThumbnailRepository(
         .firstOrNull { it.isFile && it.canRead() }
         ?.let { artwork -> "|art:${artwork.name}:${artwork.length()}:${artwork.lastModified()}" }
         .orEmpty()
-
-    val source = video.path.ifBlank { video.uri.toString() }
-    return "$source|${video.size}|${video.dateModified}|${video.duration}$artworkSignature"
+    val resolvedKey = "$baseKey$artworkSignature"
+    return diskVideoBaseKeyCache.putIfAbsent(baseKey, resolvedKey) ?: resolvedKey
   }
 
   private suspend fun generateLocalThumbnail(
@@ -353,14 +406,20 @@ class ThumbnailRepository(
 
     var lastSolidBitmap: Bitmap? = null
     for (position in positions) {
-      val bitmap = runCatching {
-        FastThumbnails.generateAsync(
-          video.path,
-          position,
-          dimension,
-          useHwDec = false,
-        )
-      }.getOrNull() ?: continue
+      val bitmap =
+        try {
+          FastThumbnails.generateAsync(
+            video.path,
+            position,
+            dimension,
+            useHwDec = false,
+          )
+        } catch (cancellation: CancellationException) {
+          lastSolidBitmap?.takeUnless { it.isRecycled }?.recycle()
+          throw cancellation
+        } catch (_: Exception) {
+          continue
+        } ?: continue
 
       if (mode == ThumbnailMode.Smart && isMostlySolidThumbnail(bitmap)) {
         lastSolidBitmap?.takeUnless { it.isRecycled }?.recycle()
@@ -376,9 +435,15 @@ class ThumbnailRepository(
   }
 
   private suspend fun rotateNativeThumbnail(video: Video, bitmap: Bitmap): Bitmap {
-    val rotation = runCatching {
-      app.gyrolet.mpvrx.utils.media.MediaInfoOps.getRotation(context, video.uri, video.displayName)
-    }.getOrDefault(0)
+    val rotation =
+      try {
+        app.gyrolet.mpvrx.utils.media.MediaInfoOps.getRotation(context, video.uri, video.displayName)
+      } catch (cancellation: CancellationException) {
+        bitmap.takeUnless { it.isRecycled }?.recycle()
+        throw cancellation
+      } catch (_: Exception) {
+        0
+      }
     if (rotation == 0) return bitmap
 
     val rotated = Bitmap.createBitmap(
@@ -420,28 +485,42 @@ class ThumbnailRepository(
     }
   }
 
-  private fun readBitmapFromDisk(key: String, network: Boolean): Bitmap? {
-    val file = File(if (network) networkDiskDir else localDiskDir, keyToFileName(key))
-    if (!file.isFile) return null
+  private fun readBitmapFromDisk(key: String, network: Boolean): Bitmap? =
+    diskCacheLock.read {
+      val file = File(if (network) networkDiskDir else localDiskDir, keyToFileName(key))
+      if (!file.isFile) return@read null
 
-    return runCatching {
-      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-      BitmapFactory.decodeFile(file.absolutePath, bounds)
-      BitmapFactory.decodeFile(
-        file.absolutePath,
-        BitmapFactory.Options().apply {
-          inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, thumbnailMaxSize())
-          inPreferredConfig = Bitmap.Config.RGB_565
-        },
-      )
-    }.getOrNull()
-  }
+      runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        BitmapFactory.decodeFile(
+          file.absolutePath,
+          BitmapFactory.Options().apply {
+            inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, thumbnailMaxSize())
+            inPreferredConfig = Bitmap.Config.RGB_565
+          },
+        )
+      }.getOrNull()
+    }
 
   private fun writeBitmapToDisk(key: String, bitmap: Bitmap, network: Boolean) {
     val file = File(if (network) networkDiskDir else localDiskDir, keyToFileName(key))
-    runCatching {
-      FileOutputStream(file).use { output ->
-        bitmap.compress(Bitmap.CompressFormat.JPEG, THUMBNAIL_JPEG_QUALITY, output)
+    val encoded =
+      runCatching {
+        ByteArrayOutputStream().use { buffer ->
+          if (bitmap.compress(Bitmap.CompressFormat.JPEG, THUMBNAIL_JPEG_QUALITY, buffer)) {
+            buffer.toByteArray()
+          } else {
+            null
+          }
+        }
+      }.getOrNull() ?: return
+
+    diskCacheLock.write {
+      runCatching {
+        FileOutputStream(file).use { output ->
+          output.write(encoded)
+        }
       }
     }
   }
@@ -497,10 +576,6 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? {
-    readBitmapFromDisk(diskCacheKey(video), network = true)?.let { bitmap ->
-      return scaleBitmap(bitmap, widthPx, heightPx)
-    }
-
     val strategy =
       browserPreferences.thumbnailMode.get().toThumbnailStrategy(
         browserPreferences.thumbnailFramePosition.get(),
@@ -513,8 +588,6 @@ class ThumbnailRepository(
         targetWidth = widthPx.takeIf { it > 0 },
         targetHeight = heightPx.takeIf { it > 0 },
       ) ?: generateFastNetworkThumbnail(video.path, widthPx, heightPx) ?: return null
-
-    writeBitmapToDisk(diskCacheKey(video), rotated, network = true)
 
     return scaleBitmap(rotated, widthPx, heightPx)
   }
@@ -689,7 +762,7 @@ class ThumbnailRepository(
       )
 
     // Extract directly via MediaMetadataRetriever HTTP streaming (efficient — only seeks header bytes)
-    val bitmap = generationSemaphore.withPermit {
+    val bitmap = networkGenerationSemaphore.withPermit {
       (extractNetworkVideoFrame(
         url = path,
         strategy = strategy,
@@ -743,7 +816,7 @@ class ThumbnailRepository(
         browserPreferences.thumbnailFramePosition.get(),
       )
 
-    val bitmap = generationSemaphore.withPermit {
+    val bitmap = networkGenerationSemaphore.withPermit {
       (if (connection != null) {
           extractNetworkVideoFrameViaProxy(path, connection, strategy, widthPx, heightPx)
         } else {
@@ -789,6 +862,8 @@ class ThumbnailRepository(
         targetWidth = targetWidth.takeIf { it > 0 },
         targetHeight = targetHeight.takeIf { it > 0 },
       ) ?: generateFastNetworkThumbnail(localUrl, targetWidth, targetHeight)
+    } catch (cancellation: CancellationException) {
+      throw cancellation
     } catch (_: Exception) {
       null
     } finally {
@@ -851,18 +926,34 @@ class ThumbnailRepository(
 
   private fun thumbnailMaxSize(): Int = browserPreferences.thumbnailQuality.get().maxSizePx
 
+  private fun resolveLocalGenerationParallelism(): Int {
+    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+    val processorCount = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+    return when {
+      activityManager?.isLowRamDevice == true || processorCount <= 2 -> 1
+      processorCount <= 4 -> 2
+      processorCount <= 6 -> 3
+      else -> 4
+    }
+  }
+
   private suspend fun generateFastNetworkThumbnail(
     path: String,
     widthPx: Int,
     heightPx: Int,
-  ): Bitmap? = runCatching {
-    FastThumbnails.generateAsync(
-      path,
-      10.0,
-      maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize()),
-      useHwDec = false,
-    )
-  }.getOrNull()
+  ): Bitmap? =
+    try {
+      FastThumbnails.generateAsync(
+        path,
+        10.0,
+        maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize()),
+        useHwDec = false,
+      )
+    } catch (cancellation: CancellationException) {
+      throw cancellation
+    } catch (_: Exception) {
+      null
+    }
 }
 
 

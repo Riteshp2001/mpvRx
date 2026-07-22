@@ -81,5 +81,5 @@ val domainModule = module {
             get<Json>()
         )
     }
-    single { app.gyrolet.mpvrx.domain.syncplay.SyncplayManager() }
+    single { app.gyrolet.mpvrx.domain.syncplay.SyncplayManager(androidContext()) }
 }

@@ -53,6 +53,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import app.gyrolet.mpvrx.R
@@ -77,8 +78,13 @@ import app.gyrolet.mpvrx.ui.cast.CastMediaSnapshot
 import app.gyrolet.mpvrx.ui.cast.CastPlaybackController
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControls
+import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
 import app.gyrolet.mpvrx.ui.player.visualizer.BlobOverlay
+import app.gyrolet.mpvrx.ui.player.visualizer.GalaxyOverlay
+import app.gyrolet.mpvrx.ui.player.visualizer.VisualizerPalette
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
+import app.gyrolet.mpvrx.ui.theme.AppTheme
+import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.HttpUtils
@@ -524,18 +530,23 @@ class PlayerActivity :
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
     setupSystemBarsAutoHide()
+    setupPipHelper()
 
-    val isNotificationReentry = isNotificationReentryIntent(intent)
-    if (!isNotificationReentry) {
-      releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
+    // A detached background-audio session still owns the process-global mpv core.
+    // Tear it down before every fresh Activity instance, including notification re-entry,
+    // then restore the media from the notification intent below.
+    releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
+    if (!setupMPV()) {
+      isUserFinishing = true
+      Toast.makeText(this, R.string.toast_playback_load_failed, Toast.LENGTH_LONG).show()
+      finish()
+      return
     }
-    setupMPV()
     viewModel.onMpvCoreInitialized()
     MediaPlaybackService.createNotificationChannel(this)
     setupAudio()
     setupBackPressHandler()
     setupPlayerControls()
-    setupPipHelper()
     setupMediaSession()
     // Note: screenStateReceiver is now registered in onStart() and
     // unregistered in onStop(), matching the noisyReceiver pattern.
@@ -610,27 +621,21 @@ class PlayerActivity :
       }
 
       currentPlayableUri = playableUri
-      if (isNotificationReentry) {
-        isReady = true
-        viewModel.onVideoLoadCompleted()
-        endBackgroundPlayback()
+      isReady = false
+      viewModel.onVideoLoadStarted()
+      val originalUri = extractUriFromIntent(intent)
+      val shouldExpandM3u = M3uPlaybackPolicy.shouldExpandInApp(
+        playableUri = playableUri,
+        originalUri = originalUri?.toString(),
+        fileName = fileName,
+        mimeType = intent.type,
+        hasExistingPlaylist = playlist.isNotEmpty(),
+        hasPlaylistId = playlistId != null,
+      )
+      if (shouldExpandM3u) {
+        startMediaLoad(playableUri, originalUri?.toString(), expandM3u = true)
       } else {
-        isReady = false
-        viewModel.onVideoLoadStarted()
-        val originalUri = extractUriFromIntent(intent)
-        val shouldExpandM3u = M3uPlaybackPolicy.shouldExpandInApp(
-          playableUri = playableUri,
-          originalUri = originalUri?.toString(),
-          fileName = fileName,
-          mimeType = intent.type,
-          hasExistingPlaylist = playlist.isNotEmpty(),
-          hasPlaylistId = playlistId != null,
-        )
-        if (shouldExpandM3u) {
-          startMediaLoad(playableUri, originalUri?.toString(), expandM3u = true)
-        } else {
-          startMediaLoad(playableUri)
-        }
+        startMediaLoad(playableUri)
       }
     }
     setupCastPlayback()
@@ -852,21 +857,30 @@ class PlayerActivity :
     binding.controls.setContent {
       MpvrxTheme {
         val isAudioOnly by viewModel.isAudioOnly.collectAsState()
-        val hasAlbumArt by viewModel.hasAlbumArt.collectAsState()
         val audioBlobEnabled by audioPreferences.audioBlobEnabled.collectAsState()
+        val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
         val paused by MPVLib.propBoolean["pause"].collectAsState()
+        val appTheme by appearancePreferences.appTheme.collectAsState()
+        val darkMode by appearancePreferences.darkMode.collectAsState()
+        val amoledMode by appearancePreferences.amoledMode.collectAsState()
+        val useDarkTheme = when (darkMode) {
+          DarkMode.Dark -> true
+          DarkMode.Light -> false
+          DarkMode.System -> isSystemInDarkTheme()
+        }
+        val palette = appTheme.toVisualizerPalette(useDarkTheme, amoledMode)
         Box(modifier = Modifier.fillMaxSize()) {
-          // Audio-only tracks without artwork otherwise leave the player area blank.
-          // Keep the visualizer enabled by default for that fallback state.
-          if (isAudioOnly && !hasAlbumArt && audioBlobEnabled) {
-            BlobOverlay(isPlaying = paused == false)
+          // This setting is explicit: when enabled, visualize every audio-only track,
+          // including files that also have embedded artwork.
+          if (isAudioOnly && audioBlobEnabled) {
+            when (audioVisualizerStyle) {
+              AudioVisualizerStyle.Galaxy -> GalaxyOverlay(isPlaying = paused == false, palette = palette)
+              AudioVisualizerStyle.Blob -> BlobOverlay(isPlaying = paused == false, palette = palette)
+            }
           }
           PlayerControls(
             viewModel = viewModel,
-            onBackPress = {
-              isUserFinishing = true
-              finish()
-            },
+            onBackPress = ::handleBackPress,
             modifier = Modifier,
           )
         }
@@ -1049,7 +1063,6 @@ class PlayerActivity :
         mediaPlaybackService = null
       }
 
-      cleanupMPV(keepBackgroundPlaybackAlive)
       if (!keepBackgroundPlaybackAlive) {
         cleanupAudio()
       }
@@ -1060,6 +1073,11 @@ class PlayerActivity :
     }
 
     super.onDestroy()
+
+    // The core remains alive throughout Android/ViewModel/window cleanup. Only after super returns
+    // do we detach the renderer and enqueue native destruction on the dedicated worker.
+    runCatching { cleanupMPV(keepBackgroundPlaybackAlive) }
+      .onFailure { e -> Log.e(TAG, "Error during MPV teardown", e) }
   }
 
   private fun cleanupMPV(keepBackgroundPlaybackAlive: Boolean) {
@@ -1067,41 +1085,38 @@ class PlayerActivity :
 
     player.isExiting = true
     mpvInitialized = false
+    player.onSurfaceReady = null
     intentSubtitleJob?.cancel()
     videoParamRefreshJob?.cancel()
     backgroundServiceSyncJob?.cancel()
     deferredFontSyncJob?.cancel()
+    mediaLoadJob?.cancel()
+    eofAdvanceJob?.cancel()
+    resumeAfterUnlockJob?.cancel()
+    viewModel.onMpvCoreStopping()
 
     runCatching { MPVLib.removeObserver(playerObserver) }
       .onFailure { e -> Log.e(TAG, "Error removing MPV observer", e) }
 
     if (!keepBackgroundPlaybackAlive) {
+      MediaPlaybackService.prepareForMpvShutdown()
       endBackgroundPlayback()
     }
 
-    if (keepBackgroundPlaybackAlive || !isFinishing) return
-
-    // Destroy MPV only when background playback is not being kept alive.
-    runCatching {
-      if (isReady) {
-        MPVLib.setPropertyBoolean("pause", true)
-        MPVLib.command("quit")
-      }
-    }.onFailure { e ->
-      Log.e(TAG, "Error quitting MPV", e)
+    if (keepBackgroundPlaybackAlive) {
+      MpvTeardownCoordinator.handoffToDetachedService()
+      return
     }
+
+    // SurfaceView teardown is delivered after Activity.onDestroy(). Remove the callback now so it
+    // cannot call detachSurface() after the worker has already freed libmpv's renderer state.
+    runCatching { player.holder.removeCallback(player) }
+      .onFailure { e -> Log.e(TAG, "Error removing MPV surface callback", e) }
     destroyMpvAfterCommandDrain("player cleanup")
   }
 
   private fun destroyMpvAfterCommandDrain(reason: String) {
-    // mpv's quit command is asynchronous. Destroying the core immediately can abort
-    // inside libmpv's dispatch queue while stream/subtitle work is still unwinding.
-    android.os.SystemClock.sleep(MPV_DESTROY_DRAIN_DELAY_MS)
-    runCatching {
-      MPVLib.destroy()
-    }.onFailure { e ->
-      Log.e(TAG, "Error destroying MPV after $reason", e)
-    }
+    MpvTeardownCoordinator.destroyActivityCoreAsync(reason)
   }
 
   override fun abandonAudioFocus() {
@@ -1149,6 +1164,11 @@ class PlayerActivity :
   }
 
   override fun onPause() {
+    if (!mpvInitialized) {
+      super.onPause()
+      return
+    }
+
     runCatching {
       val isInPip = isInPictureInPictureMode
       val shouldPause =
@@ -1227,6 +1247,7 @@ class PlayerActivity :
   override fun onStop() {
     runCatching {
       pipHelper.onStop()
+      if (!mpvInitialized) return@runCatching
 
       if (noisyReceiverRegistered) {
         unregisterReceiver(noisyReceiver)
@@ -1307,6 +1328,7 @@ class PlayerActivity :
 
   override fun onStart() {
     super.onStart()
+    if (!mpvInitialized) return
 
     runCatching {
       setupWindowFlags()
@@ -1488,31 +1510,36 @@ class PlayerActivity :
   }
 
   private fun releaseDetachedBackgroundPlaybackBeforeFreshLaunch() {
-    if (!MediaPlaybackService.isRunning()) return
+    if (MediaPlaybackService.isRunning()) {
+      Log.d(TAG, "Stopping detached background playback before fresh player launch")
+      MediaPlaybackService.prepareForMpvShutdown()
+      runCatching {
+        stopService(Intent(this, MediaPlaybackService::class.java))
+      }.onFailure { e ->
+        Log.e(TAG, "Error stopping detached playback service", e)
+      }
+    }
 
-    Log.d(TAG, "Stopping detached background playback before fresh player launch")
-    runCatching {
-      stopService(Intent(this, MediaPlaybackService::class.java))
-    }.onFailure { e ->
-      Log.e(TAG, "Error stopping detached playback service", e)
-    }
-    runCatching {
-      MPVLib.setPropertyBoolean("pause", true)
-      MPVLib.command("quit")
-    }.onFailure { e ->
-      Log.e(TAG, "Error quitting detached MPV session", e)
-    }
-    destroyMpvAfterCommandDrain("detached background session")
+    // The service can already have stopped itself while still leaving its native core alive.
+    // Claim any tracked core here regardless of the service's Android lifecycle flag.
+    MpvTeardownCoordinator.destroyAnyCoreAsync("stale core before fresh player launch")
   }
-
-  private fun isNotificationReentryIntent(intent: Intent?): Boolean =
-    intent?.action == MediaPlaybackService.ACTION_OPEN_PLAYER && MediaPlaybackService.isRunning()
 
   /**
    * Initializes the MPV player with the necessary paths and observers.
    * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
-  private fun setupMPV() {
+  private fun setupMPV(): Boolean {
+    // libmpv owns one process-global core. A quick reopen must wait for the previous Activity's
+    // worker teardown rather than racing initialize() against destroy().
+    if (!MpvTeardownCoordinator.awaitIdle(MPV_TEARDOWN_WAIT_TIMEOUT_MS)) {
+      Log.e(TAG, "Aborting player startup because the previous MPV core is still closing")
+      player.isExiting = true
+      player.onSurfaceReady = null
+      runCatching { player.holder.removeCallback(player) }
+      return false
+    }
+
     // Prepare config and user MPV assets before initializing MPV.
     runCatching {
       syncBundledAssetsIfNeeded()
@@ -1532,6 +1559,7 @@ class PlayerActivity :
     // NOW initialize MPV - it will find and load the scripts we just copied
     initializePlayerWithRendererFallback()
     runCatching { MPVLib.setThumbnailJavaVM(applicationContext) }
+    MpvTeardownCoordinator.markActivityCoreInitialized()
     mpvInitialized = true
     Log.d(TAG, "MPV initialized")
 
@@ -1539,6 +1567,7 @@ class PlayerActivity :
     MPVLib.addObserver(playerObserver)
 
     scheduleDeferredSubtitleFontsSync()
+    return true
   }
 
   private fun initializePlayerWithRendererFallback() {
@@ -1557,6 +1586,9 @@ class PlayerActivity :
       player.initialize(filesDir.path, cacheDir.path)
     }.getOrElse { error ->
       Log.e(TAG, "Failed to initialize MPV", error)
+      // Native destroy is idempotent and also clears a core created before a partial init failure.
+      runCatching { MPVLib.destroy() }
+        .onFailure { destroyError -> Log.e(TAG, "Failed to clean up partial MPV init", destroyError) }
       throw error
     }
   }
@@ -2178,6 +2210,7 @@ class PlayerActivity :
 
   override fun onResume() {
     super.onResume()
+    if (!mpvInitialized) return
     if (!isDeviceScreenOffOrLocked()) enableVideoAfterBackground()
     updateVolume()
     resumePlaybackAfterScreenUnlockIfNeeded()
@@ -5440,10 +5473,8 @@ class PlayerActivity :
      */
     private const val MILLISECONDS_TO_SECONDS = 1000
 
-    /**
-     * Lets mpv drain asynchronous quit/HTTPS stream work before destroying the native core.
-     */
-    private const val MPV_DESTROY_DRAIN_DELAY_MS = 200L
+    /** Maximum UI-thread wait when a player is reopened during process-global native teardown. */
+    private const val MPV_TEARDOWN_WAIT_TIMEOUT_MS = 2_000L
 
     /**
      * Factor to divide subtitle and audio delays to convert from ms to seconds.

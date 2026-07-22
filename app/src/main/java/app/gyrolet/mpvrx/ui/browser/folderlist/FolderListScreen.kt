@@ -1060,6 +1060,12 @@ private fun GridContent(
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
 ) {
+  val newCountByBucketId =
+    remember(foldersWithNewCount) {
+      foldersWithNewCount.associate { it.folder.bucketId to it.newVideoCount }
+    }
+  val recentlyPlayedParent = remember(recentlyPlayedFilePath) { recentlyPlayedFilePath?.let(::File)?.parent }
+
   BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     val browserPreferences = org.koin.compose.koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>()
     val manualGridColumnsEnabled by browserPreferences.manualGridColumnsEnabled.collectAsState()
@@ -1099,14 +1105,8 @@ private fun GridContent(
     ) {
       items(count = folders.size, key = { index -> folders[index].bucketId }) { index ->
         val folder = folders[index]
-        val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
-          val file = File(filePath)
-          file.parent == folder.path
-        } ?: false
-
-        val newCount = foldersWithNewCount
-          .find { it.folder.bucketId == folder.bucketId }
-          ?.newVideoCount ?: 0
+        val isRecentlyPlayed = recentlyPlayedParent == folder.path
+        val newCount = newCountByBucketId[folder.bucketId] ?: 0
 
         val isActive = isDualPaneActive && folder.bucketId == selectedFolderBucketId
 
@@ -1174,6 +1174,11 @@ private fun ListContent(
   val browserPreferences = org.koin.compose.koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>()
   val dualPaneForTablet by browserPreferences.dualPaneForTablet.collectAsState()
   val isDualPaneActive = isTablet && dualPaneForTablet
+  val newCountByBucketId =
+    remember(foldersWithNewCount) {
+      foldersWithNewCount.associate { it.folder.bucketId to it.newVideoCount }
+    }
+  val recentlyPlayedParent = remember(recentlyPlayedFilePath) { recentlyPlayedFilePath?.let(::File)?.parent }
 
   Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -1185,15 +1190,9 @@ private fun ListContent(
         bottom = navigationBarHeight
       ),
     ) {
-      items(folders) { folder ->
-        val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
-          val file = File(filePath)
-          file.parent == folder.path
-        } ?: false
-
-        val newCount = foldersWithNewCount
-          .find { it.folder.bucketId == folder.bucketId }
-          ?.newVideoCount ?: 0
+      items(folders, key = { it.bucketId }) { folder ->
+        val isRecentlyPlayed = recentlyPlayedParent == folder.path
+        val newCount = newCountByBucketId[folder.bucketId] ?: 0
 
         val isActive = isDualPaneActive && folder.bucketId == selectedFolderBucketId
 

@@ -266,6 +266,12 @@
   <string name="pref_audio_pitch_correction_summary">高速再生時に音が高く、低速再生時に低くなるのを防ぎます</string>
   <string name="pref_audio_volume_normalization_title">音量の正規化</string>
   <string name="pref_audio_volume_normalization_summary">一定の音量を保つように音量を自動調整します</string>
+  <string name="pref_music_visualizer_title">ミュージックビジュアライザー</string>
+  <string name="pref_music_visualizer_summary">音楽の再生中に音声に反応するビジュアライザーを表示します</string>
+  <string name="pref_audio_visualizer_style_title">ビジュアライザーのスタイル</string>
+  <string name="pref_audio_visualizer_style_blob">ブロブ</string>
+  <string name="pref_audio_visualizer_style_galaxy">ギャラクシー</string>
+  <string name="pref_audio_visualizer_galaxy_credit">CodePenのZain Razaに着想を得ています</string>
   <string name="pref_audio_channels">音声チャンネル</string>
   <string name="pref_audio_channels_auto">自動</string>
   <string name="pref_audio_channels_auto_safe">安全な自動設定</string>

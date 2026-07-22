@@ -266,6 +266,12 @@ Siguiente: NEXT</string>
   <string name="pref_audio_pitch_correction_summary">Evita que el audio suene más agudo a velocidades altas y más grave a velocidades bajas</string>
   <string name="pref_audio_volume_normalization_title">Normalización de volumen</string>
   <string name="pref_audio_volume_normalization_summary">Ajustar automáticamente el volumen para mantener niveles de sonoridad uniformes</string>
+  <string name="pref_music_visualizer_title">Visualizador de música</string>
+  <string name="pref_music_visualizer_summary">Mostrar un visualizador que reacciona al audio al reproducir música</string>
+  <string name="pref_audio_visualizer_style_title">Estilo del visualizador</string>
+  <string name="pref_audio_visualizer_style_blob">Blob</string>
+  <string name="pref_audio_visualizer_style_galaxy">Galaxia</string>
+  <string name="pref_audio_visualizer_galaxy_credit">Inspirado en Zain Raza en CodePen</string>
   <string name="pref_audio_channels">Canales de audio</string>
   <string name="pref_audio_channels_auto">Automático</string>
   <string name="pref_audio_channels_auto_safe">Automático seguro</string>

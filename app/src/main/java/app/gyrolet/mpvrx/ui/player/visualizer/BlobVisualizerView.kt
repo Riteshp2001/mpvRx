@@ -4,11 +4,14 @@ import android.content.Context
 import android.opengl.GLSurfaceView
 import android.view.MotionEvent
 
-class BlobVisualizerView(
+internal class BlobVisualizerView(
     context: Context,
     features: AudioFeatures = AudioFeatures(),
-) : GLSurfaceView(context) {
-    private val blobRenderer = BlobRenderer(context.applicationContext, features)
+    palette: VisualizerPalette,
+    reducedMotion: Boolean = false,
+) : GLSurfaceView(context), PaletteConsumer {
+    private val blobRenderer =
+        BlobRenderer(context.applicationContext, features, palette, reducedMotion)
 
     private var previousX = 0f
     private var previousY = 0f
@@ -63,6 +66,14 @@ class BlobVisualizerView(
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    override fun updatePalette(value: VisualizerPalette) {
+        blobRenderer.updatePalette(value)
+    }
+
+    fun setReducedMotion(value: Boolean) {
+        blobRenderer.setReducedMotion(value)
     }
 
     private fun spacing(event: MotionEvent): Float {

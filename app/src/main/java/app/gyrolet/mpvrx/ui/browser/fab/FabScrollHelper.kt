@@ -5,10 +5,12 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
 /**
  * Common helper functions for FAB visibility based on scroll state
@@ -25,101 +27,78 @@ object FabScrollHelper {
         expanded: Boolean,
         onExpandedChange: (Boolean) -> Unit
     ) {
-        // Track scroll position to determine direction (for list state)
-        val previousListIndex = remember { mutableIntStateOf(0) }
-        val previousListScrollOffset = remember { mutableIntStateOf(0) }
-        
-        // Track scroll position to determine direction (for grid state)
-        val previousGridIndex = remember { mutableIntStateOf(0) }
-        val previousGridScrollOffset = remember { mutableIntStateOf(0) }
-        
-        // Remember if we've just seen a change in states/tabs
-        val justChangedStates = remember { mutableIntStateOf(0) }
-        
-        // When the listState object reference changes (tab switch), ensure FAB is visible
+        val latestExpanded = rememberUpdatedState(expanded)
+        val latestOnExpandedChange = rememberUpdatedState(onExpandedChange)
+
+        // Read rapidly changing positions inside snapshotFlow. Using them as LaunchedEffect keys
+        // recomposed this helper and restarted a coroutine for every scroll pixel.
         LaunchedEffect(listState) {
-            // Make FAB visible when switching tabs
             isFabVisible.value = true
-            
-            // Mark that we just changed states
-            justChangedStates.intValue++
-        }
-        
-        if (gridState != null) {
-            // When the gridState object reference changes (tab switch), ensure FAB is visible
-            LaunchedEffect(gridState) {
-                // Make FAB visible when switching tabs
-                isFabVisible.value = true
-                
-                // Mark that we just changed states
-                justChangedStates.intValue++
+            delay(STATE_CHANGE_GRACE_PERIOD_MS)
+
+            var previousIndex = listState.firstVisibleItemIndex
+            var previousOffset = listState.firstVisibleItemScrollOffset
+            snapshotFlow {
+                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
             }
-        }
-        
-        // Update FAB visibility based on list scroll direction
-        LaunchedEffect(listState, justChangedStates.intValue) {
-            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
                 .collect { (currentIndex, currentOffset) ->
-                    // Ignore direction changes during a tab/state transition.
-                    if (justChangedStates.intValue == 0) {
+                    updateFabVisibility(
+                        isFabVisible,
+                        currentIndex,
+                        currentOffset,
+                        previousIndex,
+                        previousOffset,
+                    )
+                    previousIndex = currentIndex
+                    previousOffset = currentOffset
+                }
+        }
+
+        if (gridState != null) {
+            LaunchedEffect(gridState) {
+                isFabVisible.value = true
+                delay(STATE_CHANGE_GRACE_PERIOD_MS)
+
+                var previousIndex = gridState.firstVisibleItemIndex
+                var previousOffset = gridState.firstVisibleItemScrollOffset
+                snapshotFlow {
+                    gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
+                }
+                    .distinctUntilChanged()
+                    .collect { (currentIndex, currentOffset) ->
                         updateFabVisibility(
                             isFabVisible,
                             currentIndex,
                             currentOffset,
-                            previousListIndex.intValue,
-                            previousListScrollOffset.intValue
+                            previousIndex,
+                            previousOffset,
                         )
+                        previousIndex = currentIndex
+                        previousOffset = currentOffset
                     }
+            }
+        }
 
-                    previousListIndex.intValue = currentIndex
-                    previousListScrollOffset.intValue = currentOffset
+        // Auto-collapse menu when list scrolling
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.isScrollInProgress }
+                .distinctUntilChanged()
+                .filter { it }
+                .collect {
+                    if (latestExpanded.value) latestOnExpandedChange.value(false)
                 }
         }
-        
-        // Reset the state change counter after a short delay
-        LaunchedEffect(justChangedStates.intValue) {
-            if (justChangedStates.intValue > 0) {
-                kotlinx.coroutines.delay(300) // Wait for tab switch animations
-                justChangedStates.intValue = 0
-            }
-        }
-        
-        // Update FAB visibility based on grid scroll direction (if grid state is provided)
-        if (gridState != null) {
-            LaunchedEffect(gridState, justChangedStates.intValue) {
-                snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
-                    .distinctUntilChanged()
-                    .collect { (currentIndex, currentOffset) ->
-                        if (justChangedStates.intValue == 0) {
-                            updateFabVisibility(
-                                isFabVisible,
-                                currentIndex,
-                                currentOffset,
-                                previousGridIndex.intValue,
-                                previousGridScrollOffset.intValue
-                            )
-                        }
 
-                        previousGridIndex.intValue = currentIndex
-                        previousGridScrollOffset.intValue = currentOffset
-                    }
-            }
-        }
-        
-        // Auto-collapse menu when list scrolling
-        LaunchedEffect(listState.isScrollInProgress) {
-            if (expanded && listState.isScrollInProgress) {
-                onExpandedChange(false)
-            }
-        }
-        
         // Auto-collapse menu when grid scrolling
         gridState?.let { grid ->
-            LaunchedEffect(grid.isScrollInProgress) {
-                if (expanded && grid.isScrollInProgress) {
-                    onExpandedChange(false)
-                }
+            LaunchedEffect(grid) {
+                snapshotFlow { grid.isScrollInProgress }
+                    .distinctUntilChanged()
+                    .filter { it }
+                    .collect {
+                        if (latestExpanded.value) latestOnExpandedChange.value(false)
+                    }
             }
         }
     }
@@ -149,5 +128,7 @@ object FabScrollHelper {
             isFabVisible.value = !isScrollingDown
         }
     }
+
+    private const val STATE_CHANGE_GRACE_PERIOD_MS = 300L
 }
 

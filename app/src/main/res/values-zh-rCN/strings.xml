@@ -266,6 +266,12 @@
   <string name="pref_audio_pitch_correction_summary">防止快速播放时音调变高、慢速播放时音调变低</string>
   <string name="pref_audio_volume_normalization_title">音量标准化</string>
   <string name="pref_audio_volume_normalization_summary">自动调整音量以保持一致的响度</string>
+  <string name="pref_music_visualizer_title">音乐可视化</string>
+  <string name="pref_music_visualizer_summary">播放音乐时显示随音频变化的可视化效果</string>
+  <string name="pref_audio_visualizer_style_title">可视化样式</string>
+  <string name="pref_audio_visualizer_style_blob">流体</string>
+  <string name="pref_audio_visualizer_style_galaxy">星系</string>
+  <string name="pref_audio_visualizer_galaxy_credit">灵感来自 CodePen 上的 Zain Raza</string>
   <string name="pref_audio_channels">音频声道</string>
   <string name="pref_audio_channels_auto">自动</string>
   <string name="pref_audio_channels_auto_safe">安全自动</string>

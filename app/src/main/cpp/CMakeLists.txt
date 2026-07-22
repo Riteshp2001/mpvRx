@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project("mpvrx_native" C CXX)
 
+# Android 16 compatibility for libmpv's raw clone-based subprocess path.
+add_library(android_compat SHARED android_compat.c)
+target_link_libraries(android_compat log dl)
+
 # YTDLP execution wrapper for SDK 29+ bypass
 add_executable(ytdl_wrapper ytdl_wrapper.c)
 set_target_properties(ytdl_wrapper PROPERTIES OUTPUT_NAME "ytdl")

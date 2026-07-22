@@ -8,13 +8,14 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
-import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 
 internal class BlobRenderer(
     private val context: Context,
-    private val sourceAudio: AudioFeatures
+    private val sourceAudio: AudioFeatures,
+    initialPalette: VisualizerPalette,
+    reducedMotion: Boolean,
 ) : GLSurfaceView.Renderer {
 
     private val audio = AudioFeatures()
@@ -59,6 +60,8 @@ internal class BlobRenderer(
     private var uCompositeBloomStrength = -1
     @Suppress("LocalVariableName")
     private var uCompositeExposure = -1
+    @Suppress("LocalVariableName")
+    private var uCompositeBackground = -1
 
     private var meshVao = 0
     private var meshVbo = 0
@@ -83,10 +86,16 @@ internal class BlobRenderer(
     private val viewModel = FloatArray(16)
     private val mvp = FloatArray(16)
 
-    private val rgb = FloatArray(3) { 1f }
-    private var smoothR = 0.75f
-    private var smoothG = 0.25f
-    private var smoothB = 1.0f
+    @Volatile private var palette = initialPalette
+    @Volatile private var reducedMotionEnabled = reducedMotion
+    private var appliedPalette: VisualizerPalette? = null
+    private var backgroundRgb = initialPalette.backgroundRgb()
+    private var primaryRgb = initialPalette.primaryRgb()
+    private var secondaryRgb = initialPalette.secondaryRgb()
+    private var tertiaryRgb = initialPalette.tertiaryRgb()
+    private var smoothR = primaryRgb[0]
+    private var smoothG = primaryRgb[1]
+    private var smoothB = primaryRgb[2]
 
     @Volatile private var targetYaw = 0f
     @Volatile private var targetPitch = 0f
@@ -101,6 +110,14 @@ internal class BlobRenderer(
     }
 
     fun getPinchScale(): Float = pinchScale
+
+    fun updatePalette(value: VisualizerPalette) {
+        palette = value
+    }
+
+    fun setReducedMotion(value: Boolean) {
+        reducedMotionEnabled = value
+    }
 
     private var startNanos = 0L
     private var previousFrameNanos = 0L
@@ -164,13 +181,15 @@ internal class BlobRenderer(
         previousFrameNanos = now
         frameTimeEmaMs += (frameMs.coerceAtMost(50f) - frameTimeEmaMs) * 0.025f
         updateSmoothedAudio(frameMs / 1_000f)
+        updatePaletteIfNeeded()
 
         if (targetsDirty) recreateTargets()
         updateAdaptiveQuality()
-        updateMatrices(time)
-        updateColor(time)
+        val visualTime = if (reducedMotionEnabled) 0f else time
+        updateMatrices(visualTime)
+        updateColor(visualTime)
 
-        renderBlob(time)
+        renderBlob(visualTime)
         extractBrightPass()
         blurBloom(horizontal = true)
         blurBloom(horizontal = false)
@@ -277,24 +296,32 @@ internal class BlobRenderer(
 
         Matrix.setIdentityM(model, 0)
         val idleRotation = time * (4.5f + audio.mid * 5f)
-        Matrix.rotateM(model, 0, yaw + idleRotation, 0f, 1f, 0f)
-        Matrix.rotateM(model, 0, pitch + time * 1.7f, 1f, 0f, 0f)
-        val scale = pinchScale * (0.88f + audio.bass * 0.035f + audio.beat * 0.025f)
+        Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else yaw + idleRotation, 0f, 1f, 0f)
+        Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else pitch + time * 1.7f, 1f, 0f, 0f)
+        val reactiveScale =
+            if (reducedMotionEnabled) {
+                0.94f + audio.energy * 0.025f
+            } else {
+                0.84f + audio.energy * 0.10f + audio.bass * 0.085f + audio.beat * 0.055f
+            }
+        val scale = pinchScale * reactiveScale
         Matrix.scaleM(model, 0, scale, scale, scale)
         Matrix.multiplyMM(viewModel, 0, view, 0, model, 0)
         Matrix.multiplyMM(mvp, 0, projection, 0, viewModel, 0)
     }
 
     private fun updateColor(time: Float) {
-        val reactiveHue = fract(0.73f + audio.centroid * 0.54f + time * 0.018f + audio.beat * 0.08f)
-        val saturation = (0.52f + audio.treble * 0.16f).coerceIn(0f, 1f)
-        val value = (0.52f + audio.energy * 0.12f).coerceIn(0f, 1f)
-        hsvToRgb(reactiveHue, saturation, value, rgb)
+        val drift = if (reducedMotionEnabled) 0f else (kotlin.math.sin(time * 0.24f) + 1f) * 0.08f
+        val spectralMix = (audio.centroid * 0.72f + audio.treble * 0.18f + drift).coerceIn(0f, 1f)
+        val beatMix = (audio.beat * 0.68f).coerceIn(0f, 1f)
+        val targetR = lerp(lerp(primaryRgb[0], secondaryRgb[0], spectralMix), tertiaryRgb[0], beatMix)
+        val targetG = lerp(lerp(primaryRgb[1], secondaryRgb[1], spectralMix), tertiaryRgb[1], beatMix)
+        val targetB = lerp(lerp(primaryRgb[2], secondaryRgb[2], spectralMix), tertiaryRgb[2], beatMix)
 
-        val colorSpeed = 0.035f + audio.energy * 0.06f + audio.beat * 0.10f
-        smoothR += (rgb[0] - smoothR) * colorSpeed
-        smoothG += (rgb[1] - smoothG) * colorSpeed
-        smoothB += (rgb[2] - smoothB) * colorSpeed
+        val colorSpeed = 0.055f + audio.energy * 0.08f + audio.beat * 0.12f
+        smoothR += (targetR - smoothR) * colorSpeed
+        smoothG += (targetG - smoothG) * colorSpeed
+        smoothB += (targetB - smoothB) * colorSpeed
     }
 
     @Suppress("LocalVariableName")
@@ -368,6 +395,12 @@ internal class BlobRenderer(
             0.34f + audio.energy * 0.24f + audio.beat * 0.12f
         )
         GLES30.glUniform1f(uCompositeExposure, 0.82f)
+        GLES30.glUniform3f(
+            uCompositeBackground,
+            backgroundRgb[0],
+            backgroundRgb[1],
+            backgroundRgb[2],
+        )
         drawQuad()
     }
 
@@ -473,26 +506,25 @@ internal class BlobRenderer(
         uCompositeBloom = GLES30.glGetUniformLocation(compositeProgram, "uBloom")
         uCompositeBloomStrength = GLES30.glGetUniformLocation(compositeProgram, "uBloomStrength")
         uCompositeExposure = GLES30.glGetUniformLocation(compositeProgram, "uExposure")
+        uCompositeBackground = GLES30.glGetUniformLocation(compositeProgram, "uBackground")
     }
 
-    private fun fract(value: Float): Float = value - floor(value)
-
-    private fun hsvToRgb(h: Float, s: Float, v: Float, out: FloatArray) {
-        val scaled = h * 6f
-        val sector = floor(scaled).toInt()
-        val fraction = scaled - floor(scaled)
-        val p = v * (1f - s)
-        val q = v * (1f - fraction * s)
-        val t = v * (1f - (1f - fraction) * s)
-        when (sector % 6) {
-            0 -> { out[0] = v; out[1] = t; out[2] = p }
-            1 -> { out[0] = q; out[1] = v; out[2] = p }
-            2 -> { out[0] = p; out[1] = v; out[2] = t }
-            3 -> { out[0] = p; out[1] = q; out[2] = v }
-            4 -> { out[0] = t; out[1] = p; out[2] = v }
-            else -> { out[0] = v; out[1] = p; out[2] = q }
+    private fun updatePaletteIfNeeded() {
+        val next = palette
+        if (next == appliedPalette) return
+        backgroundRgb = next.backgroundRgb()
+        primaryRgb = next.primaryRgb()
+        secondaryRgb = next.secondaryRgb()
+        tertiaryRgb = next.tertiaryRgb()
+        if (appliedPalette == null) {
+            smoothR = primaryRgb[0]
+            smoothG = primaryRgb[1]
+            smoothB = primaryRgb[2]
         }
+        appliedPalette = next
     }
+
+    private fun lerp(start: Float, end: Float, amount: Float): Float = start + (end - start) * amount
 
     private data class RenderTarget(
         val fbo: Int,

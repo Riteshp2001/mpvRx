@@ -644,6 +644,13 @@ object SearchablePreferences {
                 screen = AudioPreferencesScreen,
             ))
             add(SearchablePreference(
+                titleRes = R.string.pref_music_visualizer_title,
+                summaryRes = R.string.pref_music_visualizer_summary,
+                keywords = listOf("music", "audio", "visualizer", "visualiser", "reactive", "blob", "galaxy", "spectrum", "codepen", "zain raza"),
+                category = "Audio",
+                screen = AudioPreferencesScreen,
+            ))
+            add(SearchablePreference(
                 titleRes = R.string.pref_preferred_languages,
                 keywords = listOf("language", "preferred", "subtitle", "audio", "locale", "code"),
                 category = "Audio",

@@ -26,10 +26,40 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.sin
 
 @Composable
-fun BlobOverlay(
+internal fun BlobOverlay(
     modifier: Modifier = Modifier,
     isPlaying: Boolean = false,
-) {
+    palette: VisualizerPalette,
+) = VisualizerOverlay(
+    modifier = modifier,
+    isPlaying = isPlaying,
+    palette = palette,
+    factory = { ctx, features, p -> BlobVisualizerView(ctx, features, p) },
+)
+
+@Composable
+internal fun GalaxyOverlay(
+    modifier: Modifier = Modifier,
+    isPlaying: Boolean = false,
+    palette: VisualizerPalette,
+) = VisualizerOverlay(
+    modifier = modifier,
+    isPlaying = isPlaying,
+    palette = palette,
+    factory = { ctx, features, p -> GalaxyVisualizerView(ctx, features, p) },
+)
+
+internal interface PaletteConsumer {
+    fun updatePalette(value: VisualizerPalette)
+}
+
+@Composable
+private fun <T> VisualizerOverlay(
+    modifier: Modifier = Modifier,
+    isPlaying: Boolean = false,
+    palette: VisualizerPalette,
+    factory: (android.content.Context, AudioFeatures, VisualizerPalette) -> T,
+) where T : GLSurfaceView, T : PaletteConsumer {
     val context = LocalContext.current
     val features = remember { AudioFeatures() }
     val scope = rememberCoroutineScope()
@@ -100,7 +130,7 @@ fun BlobOverlay(
 
     AndroidView(
         factory = { ctx ->
-            BlobVisualizerView(ctx, features).apply {
+            factory(ctx, features, palette).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
@@ -110,6 +140,7 @@ fun BlobOverlay(
         modifier = modifier,
         update = { view ->
             view.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+            view.updatePalette(palette)
         },
     )
 }

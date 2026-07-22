@@ -5,7 +5,9 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.ui.player.visualizer.VisualizerPalette
 
 /**
  * App themes inspired by Aniyomi design
@@ -449,6 +451,19 @@ enum class AppTheme(
       surfaceContainer = primaryDark.copy(alpha = 0.08f).compositeOver(backgroundDark),
       surfaceContainerHigh = primaryDark.copy(alpha = 0.12f).compositeOver(backgroundDark),
       surfaceContainerHighest = primaryDark.copy(alpha = 0.16f).compositeOver(backgroundDark),
+    )
+  }
+
+  internal fun toVisualizerPalette(
+    useDarkTheme: Boolean,
+    amoledMode: Boolean = false,
+  ): VisualizerPalette {
+    val bg = if (amoledMode && useDarkTheme) Color.Black else if (useDarkTheme) backgroundDark else backgroundLight
+    return VisualizerPalette(
+      background = bg.toArgb(),
+      primary = (if (useDarkTheme) primaryDark else primaryLight).toArgb(),
+      secondary = (if (useDarkTheme) secondaryDark else secondaryLight).toArgb(),
+      tertiary = (if (useDarkTheme) tertiaryDark else tertiaryLight).toArgb(),
     )
   }
 

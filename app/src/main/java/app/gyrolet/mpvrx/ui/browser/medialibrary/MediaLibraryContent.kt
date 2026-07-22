@@ -113,6 +113,7 @@ fun MediaLibraryContent() {
 
   val videoSortType by browserPreferences.videoSortType.collectAsState()
   val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val includeAudioBrowser by browserPreferences.includeAudioBrowser.collectAsState()
   val savedMediaType by browserPreferences.mediaLibraryType.collectAsState()
   val playlistMode by playerPreferences.playlistMode.collectAsState()
@@ -478,6 +479,7 @@ fun MediaLibraryContent() {
               isFabVisible = isFabVisible,
               modifier = Modifier.fillMaxSize(),
               showFloatingBottomBar = showFloatingBottomBar,
+              mediaLayoutMode = mediaLayoutMode,
             )
           }
         }

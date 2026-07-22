@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import kotlin.math.abs
 
 internal const val MAX_THUMBNAIL_SIZE = 512
-internal const val THUMBNAIL_JPEG_QUALITY = 100
+internal const val THUMBNAIL_JPEG_QUALITY = 90
 
 internal fun calculateThumbnailSampleSize(
   width: Int,
