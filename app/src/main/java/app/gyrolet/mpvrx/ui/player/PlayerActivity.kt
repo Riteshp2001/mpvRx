@@ -55,7 +55,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.combine
+import kotlin.math.pow
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistItemEntity
@@ -547,6 +551,7 @@ class PlayerActivity :
     setupAudio()
     setupBackPressHandler()
     setupPlayerControls()
+    setupVideoTransformObserver()
     setupMediaSession()
     // Note: screenStateReceiver is now registered in onStart() and
     // unregistered in onStop(), matching the noisyReceiver pattern.
@@ -883,6 +888,26 @@ class PlayerActivity :
             onBackPress = ::handleBackPress,
             modifier = Modifier,
           )
+        }
+      }
+    }
+  }
+
+  private fun setupVideoTransformObserver() {
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        combine(
+          viewModel.videoZoom,
+          viewModel.videoPanX,
+          viewModel.videoPanY,
+        ) { zoom, panX, panY ->
+          Triple(zoom, panX, panY)
+        }.collect { (zoom, panX, panY) ->
+          val scale = 2f.pow(zoom)
+          binding.player.scaleX = scale
+          binding.player.scaleY = scale
+          binding.player.translationX = panX
+          binding.player.translationY = panY
         }
       }
     }

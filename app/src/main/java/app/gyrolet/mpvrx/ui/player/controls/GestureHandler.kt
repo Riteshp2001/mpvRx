@@ -835,54 +835,22 @@ fun GestureHandler(
       .pointerInput(pinchToZoomGesture, pinchToZoomSubtitles, panAndZoomEnabled, areControlsLocked, isVerticalGestureActive) {
         if (!pinchToZoomGesture || areControlsLocked || isVerticalGestureActive) return@pointerInput
 
-        // Helper: get video display dimensions at 1x (how mpv fits the video to screen)
-        fun videoDisplaySize(): Pair<Float, Float> {
-          val sw = size.width.toFloat()
-          val sh = size.height.toFloat()
-          val va = MPVLib.getPropertyDouble("video-params/aspect")?.toFloat() ?: (sw / sh)
-          val sa = sw / sh
-          return if (va >= sa) Pair(sw, sw / va) else Pair(sh * va, sh)
-        }
-
-        // Helper: apply pan with EMA smoothing and bounds clamping
-        fun applyPan(
-          dx: Float, dy: Float, scale: Float,
-          smoothState: FloatArray, // [smoothX, smoothY, initialized]
-          smoothFactor: Float = 0.5f,
-        ) {
-          val sw = size.width.toFloat()
-          val sh = size.height.toFloat()
-          if (sw <= 0 || sh <= 0) return
-          val (bw, bh) = videoDisplaySize()
-          // 1 finger pixel = 1 video pixel
-          val curX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
-          val curY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
-          val targetX = curX + dx / (bw * scale)
-          val targetY = curY + dy / (bh * scale)
-          // Initialize smoothing on first call
-          if (smoothState[2] == 0f) { smoothState[0] = targetX; smoothState[1] = targetY; smoothState[2] = 1f }
-          smoothState[0] += (targetX - smoothState[0]) * smoothFactor
-          smoothState[1] += (targetY - smoothState[1]) * smoothFactor
-          // Bounds: video edge can't go past screen edge
-          val maxPan = ((scale - 1f) / (2f * scale)).coerceAtLeast(0f)
-          viewModel.setVideoPan(
-            smoothState[0].coerceIn(-maxPan, maxPan),
-            smoothState[1].coerceIn(-maxPan, maxPan),
-          )
-        }
-
         awaitEachGesture {
           var zoom = 0f
           var gestureStarted = false
           var prevDist = 0f
           var prevMidX = 0f
           var prevMidY = 0f
-          val panSmooth = floatArrayOf(0f, 0f, 0f) // smoothX, smoothY, initialized
 
           var isSubZoomMode = false
           var initialSubScale = 1.0f
           var initialDist = 1.0f
           var lastCalculatedSubScale = 1.0f
+
+          var currentPanX = 0f
+          var currentPanY = 0f
+          var sw = 0f
+          var sh = 0f
 
           awaitFirstDown(requireUnconsumed = false)
 
@@ -905,11 +873,17 @@ fun GestureHandler(
                 prevMidX = midX
                 prevMidY = midY
 
+                sw = size.width.toFloat()
+                sh = size.height.toFloat()
+
+                currentPanX = viewModel.videoPanX.value
+                currentPanY = viewModel.videoPanY.value
+
                 val hasActiveSub = getTrackSelectionId("sid") > 0 || getTrackSelectionId("secondary-sid") > 0
                 val subPos = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
-                val subtitleScreenY = getSubtitleScreenY(subPos, size.width.toFloat(), size.height.toFloat())
-                val isCenterPinchX = midX in (size.width * 0.2f)..(size.width * 0.8f)
-                val (lowerBound, upperBound) = getSubtitleHitboxBounds(size.width.toFloat(), size.height.toFloat())
+                val subtitleScreenY = getSubtitleScreenY(subPos, sw, sh)
+                val isCenterPinchX = midX in (sw * 0.2f)..(sw * 0.8f)
+                val (lowerBound, upperBound) = getSubtitleHitboxBounds(sw, sh)
                 val isSubtitlePinch = isCenterPinchX && (subtitleScreenY - midY) in lowerBound..upperBound
 
                 if (pinchToZoomSubtitles && hasActiveSub && isSubtitlePinch) {
@@ -919,7 +893,7 @@ fun GestureHandler(
                   lastCalculatedSubScale = initialSubScale
                 } else {
                   isSubZoomMode = false
-                  zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
+                  zoom = viewModel.videoZoom.value
                 }
               } else {
                 if (isSubZoomMode) {
@@ -940,15 +914,26 @@ fun GestureHandler(
                     viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
                   }
 
-                  if (gestureStarted) {
-                    // Per-frame zoom: small delta from previous distance → naturally smooth
-                    val zoomDelta = ln((dist / prevDist).toDouble()).toFloat() * 1.2f
+                  if (gestureStarted && prevDist > 0f) {
+                    // Per-frame zoom: ratio of current distance to previous distance
+                    val zoomRatio = dist / prevDist
+                    val zoomDelta = ln(zoomRatio.toDouble()).toFloat() * 1.2f
                     zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
                     viewModel.setVideoZoom(zoom)
 
                     // Simultaneous pan while pinching
-                    if (panAndZoomEnabled) {
-                      applyPan(midX - prevMidX, midY - prevMidY, 2f.pow(zoom), panSmooth)
+                    if (panAndZoomEnabled && sw > 0f && sh > 0f) {
+                      val scale = 2f.pow(zoom)
+                      val extraWidth = (scale - 1f) * sw
+                      val extraHeight = (scale - 1f) * sh
+                      val maxX = (extraWidth / 2f).coerceAtLeast(0f)
+                      val maxY = (extraHeight / 2f).coerceAtLeast(0f)
+
+                      val panDx = midX - prevMidX
+                      val panDy = midY - prevMidY
+                      currentPanX = (currentPanX + panDx).coerceIn(-maxX, maxX)
+                      currentPanY = (currentPanY + panDy).coerceIn(-maxY, maxY)
+                      viewModel.setVideoPan(currentPanX, currentPanY)
                     }
                   }
                 }
@@ -977,21 +962,21 @@ fun GestureHandler(
 
         awaitEachGesture {
           val down = awaitFirstDown(requireUnconsumed = false)
+          val sw = size.width.toFloat()
+          val sh = size.height.toFloat()
+          if (sw <= 0f || sh <= 0f) return@awaitEachGesture
+
+          var zoom = viewModel.videoZoom.value
+          if (zoom <= 0f) return@awaitEachGesture
+
+          var currentPanX = viewModel.videoPanX.value
+          var currentPanY = viewModel.videoPanY.value
+
           var panning = false
           var prevX = down.position.x
           var prevY = down.position.y
           val startX = prevX
           val startY = prevY
-          val panSmooth = floatArrayOf(0f, 0f, 0f)
-
-          // Helper: get video display dimensions at 1x
-          fun videoDisplaySize(): Pair<Float, Float> {
-            val sw = size.width.toFloat()
-            val sh = size.height.toFloat()
-            val va = MPVLib.getPropertyDouble("video-params/aspect")?.toFloat() ?: (sw / sh)
-            val sa = sw / sh
-            return if (va >= sa) Pair(sw, sw / va) else Pair(sh * va, sh)
-          }
 
           do {
             val event = awaitPointerEvent()
@@ -999,39 +984,33 @@ fun GestureHandler(
 
             if (pressed.size == 1) {
               val change = pressed[0]
-              val zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
-              if (zoom <= 0f) { continue }
-
               val pos = change.position
 
               // Activate after 20px drag threshold
               if (!panning) {
-                val d = sqrt((pos.x - startX).let { it * it } + (pos.y - startY).let { it * it })
-                if (d > 20f) { panning = true; prevX = pos.x; prevY = pos.y }
-              }
-
-              if (panning) {
-                val sw = size.width.toFloat()
-                val sh = size.height.toFloat()
-                if (sw > 0 && sh > 0) {
-                  val scale = 2f.pow(zoom)
-                  val (bw, bh) = videoDisplaySize()
-                  val curX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
-                  val curY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
-                  val targetX = curX + (pos.x - prevX) / (bw * scale)
-                  val targetY = curY + (pos.y - prevY) / (bh * scale)
-                  // Initialize smoothing on first pan frame
-                  if (panSmooth[2] == 0f) { panSmooth[0] = targetX; panSmooth[1] = targetY; panSmooth[2] = 1f }
-                  panSmooth[0] += (targetX - panSmooth[0]) * 0.5f
-                  panSmooth[1] += (targetY - panSmooth[1]) * 0.5f
-                  val maxPan = ((scale - 1f) / (2f * scale)).coerceAtLeast(0f)
-                  viewModel.setVideoPan(
-                    panSmooth[0].coerceIn(-maxPan, maxPan),
-                    panSmooth[1].coerceIn(-maxPan, maxPan),
-                  )
+                val dx = pos.x - startX
+                val dy = pos.y - startY
+                if (dx * dx + dy * dy > 400f) { // 20px squared
+                  panning = true
                   prevX = pos.x
                   prevY = pos.y
                 }
+              }
+
+              if (panning) {
+                val scale = 2f.pow(zoom)
+                val extraWidth = (scale - 1f) * sw
+                val extraHeight = (scale - 1f) * sh
+                val maxX = (extraWidth / 2f).coerceAtLeast(0f)
+                val maxY = (extraHeight / 2f).coerceAtLeast(0f)
+                val deltaX = pos.x - prevX
+                val deltaY = pos.y - prevY
+
+                currentPanX = (currentPanX + deltaX).coerceIn(-maxX, maxX)
+                currentPanY = (currentPanY + deltaY).coerceIn(-maxY, maxY)
+                viewModel.setVideoPan(currentPanX, currentPanY)
+                prevX = pos.x
+                prevY = pos.y
                 change.consume()
               }
             } else if (pressed.size > 1) {
