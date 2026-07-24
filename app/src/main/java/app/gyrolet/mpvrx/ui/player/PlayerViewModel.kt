@@ -4341,13 +4341,6 @@ class PlayerViewModel(
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
     val pipelineReady = isHdrScreenOutputAvailable(mode)
-    if (mode != HdrScreenMode.OFF && !pipelineReady) {
-      val message = if (mode == HdrScreenMode.LINEAR) "Linear HDR needs GPU Next + Vulkan"
-                    else "HDR Screen output needs GPU Next"
-      playerUpdate.value = PlayerUpdates.ShowText(message)
-      applyHdrScreenOutput(HdrScreenMode.OFF)
-      return
-    }
 
     _hdrScreenMode.value = mode
     _isHdrScreenOutputEnabled.value = pipelineReady && mode != HdrScreenMode.OFF
@@ -4358,12 +4351,7 @@ class PlayerViewModel(
   }
 
   private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean {
-    val needsVulkan = mode == HdrScreenMode.LINEAR
-    return if (needsVulkan) {
-      decoderPreferences.useVulkan.get() && decoderPreferences.gpuNext.get()
-    } else {
-      decoderPreferences.gpuNext.get()
-    }
+    return true
   }
 
   private fun initialHdrScreenMode(): HdrScreenMode {
