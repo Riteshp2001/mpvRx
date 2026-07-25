@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
@@ -85,10 +86,12 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.util.Locale
 
+import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
+
 @Composable
 private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? {
   val context = LocalContext.current
-  var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+  var bitmap by remember(pathOrUri) { mutableStateOf<Bitmap?>(null) }
   LaunchedEffect(pathOrUri) {
     if (pathOrUri.isNullOrBlank()) {
       bitmap = null
@@ -107,11 +110,9 @@ private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? {
         } else {
           retriever.setDataSource(context, Uri.parse(pathOrUri))
         }
-        val art = retriever.embeddedPicture
+        val art = EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever)
         retriever.release()
-        if (art != null) {
-          BitmapFactory.decodeByteArray(art, 0, art.size)
-        } else null
+        art
       }.onSuccess { loadedBitmap ->
         bitmap = loadedBitmap
       }.onFailure {
@@ -141,6 +142,26 @@ fun AudioPlayerControls(
   val currentPath by MPVLib.propString["path"].collectAsState()
   val currentStreamFilename by MPVLib.propString["stream-open-filename"].collectAsState()
   val mediaPath = currentPath?.takeIf { it.isNotBlank() } ?: currentStreamFilename
+
+  val audioCodec by MPVLib.propString["audio-codec-name"].collectAsState()
+  val sampleRate by MPVLib.propInt["audio-params/samplerate"].collectAsState()
+
+  val isLosslessCodecOrExt = remember(audioCodec, mediaPath) {
+    val codec = audioCodec?.lowercase().orEmpty()
+    val ext = mediaPath?.substringBefore('?')?.substringBefore('#')?.substringAfterLast('.', "")?.lowercase().orEmpty()
+    codec.contains("flac") ||
+      codec.contains("alac") ||
+      codec.contains("pcm") ||
+      codec.contains("wavpack") ||
+      codec.contains("ape") ||
+      codec.contains("dsd") ||
+      codec.contains("tak") ||
+      ext in setOf("flac", "wav", "aiff", "aif", "alac", "ape", "dsf", "dff")
+  }
+
+  val isHiRes = remember(sampleRate, isLosslessCodecOrExt) {
+    isLosslessCodecOrExt && (sampleRate ?: 0) >= 88200
+  }
 
   val albumArtBitmap = rememberAudioAlbumArt(mediaPath)
 
@@ -340,15 +361,42 @@ fun AudioPlayerControls(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
       ) {
-        val titleText = lastValidTitle
-        Text(
-          text = titleText,
-          style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-          color = Color.White,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
-        )
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          val titleText = lastValidTitle
+          Text(
+            text = titleText,
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+              .weight(1f, fill = false)
+              .basicMarquee(iterations = Int.MAX_VALUE)
+          )
+
+          if (isLosslessCodecOrExt) {
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = Color.White.copy(alpha = 0.15f),
+              border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
+            ) {
+              Text(
+                text = if (isHiRes) "HI-RES LOSSLESS" else "LOSSLESS",
+                style = MaterialTheme.typography.labelSmall.copy(
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 9.sp,
+                  letterSpacing = 0.8.sp
+                ),
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+              )
+            }
+          }
+        }
         Spacer(modifier = Modifier.height(4.dp))
         val playlistInfo = viewModel.getPlaylistInfo()
         Text(
@@ -505,48 +553,91 @@ fun AudioPlayerControls(
 
       Spacer(modifier = Modifier.height(24.dp))
 
-      // 4. Bottom Action Pill Bar (Shuffle, Repeat, Visualizer Toggle, Audio Delay/Equalizer)
+      // 4. Bottom Action Row (Equalizer on Left, Center Pill Bar, Playlist on Right)
       Row(
-        modifier = Modifier
-          .clip(RoundedCornerShape(50))
-          .background(Color.White.copy(alpha = 0.12f))
-          .padding(horizontal = 12.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.SpaceBetween
       ) {
+        // Bottom Left: Equalizer Button
         IconButton(
-          onClick = viewModel::toggleShuffle,
-          enabled = playlistModeEnabled
+          onClick = { onOpenSheet(Sheets.Equalizer) },
+          modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.12f))
+            .size(48.dp)
         ) {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
-              imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
-              contentDescription = null,
-              tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+              imageVector = Icons.RoundedFilled.Equalizer,
+              contentDescription = "Equalizer",
+              tint = Color.White.copy(alpha = 0.85f),
+              modifier = Modifier.size(24.dp)
             )
           }
         }
 
-        IconButton(onClick = viewModel::cycleRepeatMode) {
-          Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Icon(
-              imageVector = when (repeatMode) {
-                RepeatMode.OFF -> Icons.RoundedFilled.Repeat
-                RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
-                RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
-              },
-              contentDescription = null,
-              tint = if (repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
-            )
+        // Center Pill Bar (Shuffle, Repeat, Visualizer)
+        Row(
+          modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.12f))
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          IconButton(
+            onClick = viewModel::toggleShuffle,
+            enabled = playlistModeEnabled
+          ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+              Icon(
+                imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
+                contentDescription = null,
+                tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+              )
+            }
+          }
+
+          IconButton(onClick = viewModel::cycleRepeatMode) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+              Icon(
+                imageVector = when (repeatMode) {
+                  RepeatMode.OFF -> Icons.RoundedFilled.Repeat
+                  RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
+                  RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
+                },
+                contentDescription = null,
+                tint = if (repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+              )
+            }
+          }
+
+          IconButton(onClick = viewModel::toggleAudioVisualizer) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+              Icon(
+                imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
+                contentDescription = null,
+                tint = if (showVisualizer) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+              )
+            }
           }
         }
 
-        IconButton(onClick = viewModel::toggleAudioVisualizer) {
+        // Bottom Right: Playlist Button
+        IconButton(
+          onClick = { onOpenSheet(Sheets.Playlist) },
+          modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.12f))
+            .size(48.dp)
+        ) {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
-              imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
-              contentDescription = null,
-              tint = if (showVisualizer) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+              imageVector = Icons.RoundedFilled.QueueMusic,
+              contentDescription = "Playlist",
+              tint = Color.White.copy(alpha = 0.85f),
+              modifier = Modifier.size(24.dp)
             )
           }
         }

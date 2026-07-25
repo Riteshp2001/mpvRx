@@ -45,6 +45,10 @@ import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.ParsedMediaInfo
 import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MAX_DB
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MIN_DB
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerPreset
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerState
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
@@ -523,6 +527,54 @@ class PlayerViewModel(
   // Audio player UI state
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
   val showVisualizerInAudioPlayer = MutableStateFlow(false)
+  val equalizerState = MutableStateFlow(EqualizerState())
+
+  fun setEqualizerEnabled(enabled: Boolean) {
+    equalizerState.value = equalizerState.value.copy(isEnabled = enabled)
+    applyEqualizerMpvFilters()
+  }
+
+  fun applyEqualizerPreset(preset: EqualizerPreset) {
+    if (preset == EqualizerPreset.CUSTOM) return
+    equalizerState.value = equalizerState.value.copy(
+      currentPreset = preset,
+      bandGains = preset.gains
+    )
+    applyEqualizerMpvFilters()
+  }
+
+  fun setEqualizerBandGain(index: Int, gainDb: Int) {
+    val currentGains = equalizerState.value.bandGains.toMutableList()
+    if (index in currentGains.indices) {
+      currentGains[index] = gainDb.coerceIn(EQ_MIN_DB, EQ_MAX_DB)
+      equalizerState.value = equalizerState.value.copy(
+        currentPreset = EqualizerPreset.CUSTOM,
+        bandGains = currentGains
+      )
+      applyEqualizerMpvFilters()
+    }
+  }
+
+  fun setEqualizerVolumeBoost(db: Int) {
+    equalizerState.value = equalizerState.value.copy(volumeBoostDb = db.coerceIn(0, 10))
+    applyEqualizerMpvFilters()
+  }
+
+  private fun applyEqualizerMpvFilters() {
+    val state = equalizerState.value
+    if (!state.isEnabled) {
+      MPVLib.command("af", "set", "")
+      return
+    }
+    val (g1, g2, g3, g4, g5) = state.bandGains
+    val filterList = mutableListOf<String>()
+    filterList.add("equalizer=g1=$g1:g2=$g2:g3=$g3:g4=$g4:g5=$g5")
+    if (state.volumeBoostDb > 0) {
+      filterList.add("volume=volume=${state.volumeBoostDb}dB")
+    }
+    val afString = filterList.joinToString(",")
+    MPVLib.command("af", "set", afString)
+  }
 
   fun updateAlbumArtBounds(rect: android.graphics.Rect?) {
     albumArtBounds.value = rect

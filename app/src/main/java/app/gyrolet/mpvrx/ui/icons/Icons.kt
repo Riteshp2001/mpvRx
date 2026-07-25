@@ -70,6 +70,7 @@ object Icons {
     val DriveFolderUpload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_folder_upload) }
     val Edit by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Edit) }
     val EditOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Edit_off) }
+    val Equalizer by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Equalizer) }
     val ExpandLess by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Expand_less) }
     val ExpandMore by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Expand_more) }
     val FastForward by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fast_forward) }
@@ -256,6 +257,7 @@ object Icons {
     val DriveFolderUpload get() = Shared.DriveFolderUpload
     val Edit get() = Shared.Edit
     val EditOff get() = Shared.EditOff
+    val Equalizer get() = Shared.Equalizer
     val ExpandLess get() = Shared.ExpandLess
     val ExpandMore get() = Shared.ExpandMore
     val FastForward get() = Shared.FastForward
