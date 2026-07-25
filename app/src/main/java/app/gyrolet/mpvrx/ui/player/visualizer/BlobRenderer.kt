@@ -516,6 +516,7 @@ internal class BlobRenderer(
         primaryRgb = next.primaryRgb()
         secondaryRgb = next.secondaryRgb()
         tertiaryRgb = next.tertiaryRgb()
+        GLES30.glClearColor(0f, 0f, 0f, 0f)
         if (appliedPalette == null) {
             smoothR = primaryRgb[0]
             smoothG = primaryRgb[1]

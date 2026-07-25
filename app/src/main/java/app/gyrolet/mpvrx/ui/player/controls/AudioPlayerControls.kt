@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -175,10 +176,17 @@ fun AudioPlayerControls(
 
   val albumArtBitmap = rememberAudioAlbumArt(mediaPath)
 
-  var lastValidTitle by remember { mutableStateOf(mediaTitle?.takeIf { it.isNotBlank() } ?: "Audio Track") }
+  fun String.stripAudioExtension(): String {
+    val dotIndex = lastIndexOf('.')
+    if (dotIndex <= 0) return this
+    val ext = substring(dotIndex + 1)
+    return if (ext.length in 2..5 && ext.none { it.isWhitespace() }) substring(0, dotIndex) else this
+  }
+
+  var lastValidTitle by remember { mutableStateOf(mediaTitle?.takeIf { it.isNotBlank() }?.stripAudioExtension() ?: "Audio Track") }
   LaunchedEffect(mediaTitle) {
     if (!mediaTitle.isNullOrBlank()) {
-      lastValidTitle = mediaTitle
+      lastValidTitle = mediaTitle.stripAudioExtension()
     }
   }
 
@@ -193,8 +201,8 @@ fun AudioPlayerControls(
     DarkMode.Light -> false
     DarkMode.System -> isSystemInDarkTheme()
   }
-  val palette = remember(appTheme, useDarkTheme) {
-    appTheme.toVisualizerPalette(useDarkTheme = true, amoledMode = true)
+  val palette = remember(appTheme, useDarkTheme, amoledMode) {
+    appTheme.toVisualizerPalette(useDarkTheme = useDarkTheme, amoledMode = amoledMode)
   }
 
   val isPlaying = paused == false
@@ -225,7 +233,7 @@ fun AudioPlayerControls(
       .background(MaterialTheme.colorScheme.surface)
       .statusBarsPadding()
       .navigationBarsPadding()
-      .padding(horizontal = 24.dp, vertical = 16.dp)
+      .padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 16.dp)
   ) {
     Column(
       modifier = Modifier.fillMaxSize(),
@@ -235,7 +243,6 @@ fun AudioPlayerControls(
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(top = 8.dp)
       ) {
         IconButton(
           onClick = onBackPress,
@@ -300,7 +307,8 @@ fun AudioPlayerControls(
       BoxWithConstraints(
         modifier = Modifier
           .weight(1f)
-          .fillMaxWidth(),
+          .fillMaxWidth()
+          .clipToBounds(),
         contentAlignment = Alignment.Center
       ) {
         val maxW = maxWidth
@@ -316,12 +324,6 @@ fun AudioPlayerControls(
           modifier = Modifier.fillMaxSize(),
         ) { isVisualizerActive ->
           if (isVisualizerActive) {
-            // Themed background layer — adapts to any theme, sits behind the GL surface
-            Box(
-              modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
-            )
             // Dynamic, larger visualizer scaling dynamically according to screen size
             Box(
               modifier = Modifier

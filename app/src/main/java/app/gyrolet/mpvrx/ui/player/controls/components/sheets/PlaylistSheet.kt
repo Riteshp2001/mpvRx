@@ -299,7 +299,8 @@ fun PlaylistSheet(
           // Vertical list mode (original implementation)
           LazyColumn(
             state = lazyListState,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 16.dp),
           ) {
             items(playlist, key = { it.uri.toString() }) { item ->
               PlaylistTrackListItem(

@@ -272,7 +272,7 @@ internal class GalaxyRenderer(
         tertiaryR = Color.red(palette.tertiary) / 255f
         tertiaryG = Color.green(palette.tertiary) / 255f
         tertiaryB = Color.blue(palette.tertiary) / 255f
-        GLES30.glClearColor(backgroundR, backgroundG, backgroundB, 0f)
+        GLES30.glClearColor(0f, 0f, 0f, 0f)
     }
 
     private fun updateAdaptiveDrawCount() {
