@@ -1,15 +1,13 @@
 package app.gyrolet.mpvrx.ui.browser
 
-import androidx.compose.animation.core.Spring
-
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,21 +18,28 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.theme.AppShapeScale
-import app.gyrolet.mpvrx.preferences.AppearancePreferences
-import app.gyrolet.mpvrx.preferences.PlayerPreferences
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
-import org.koin.compose.koinInject
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -44,21 +49,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
 import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistScreen
 import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
-
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
 
 @Serializable
 object MainScreen : Screen {
-  private enum class MainTab {
+  internal enum class MainTab {
     HOME,
     RECENTS,
     PLAYLISTS,
@@ -137,34 +157,12 @@ object MainScreen : Screen {
     }
 
     val mainNavBar = @Composable { modifier: Modifier ->
-      NavigationBar(
-        modifier = modifier.clip(AppShapeScale.extraLargeIncreased)
-      ) {
-        visibleTabs.forEach { tab ->
-          NavigationBarItem(
-            icon = {
-              when (tab) {
-                MainTab.HOME -> Icon(Icons.RoundedFilled.Home, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_home))
-                MainTab.RECENTS -> Icon(Icons.RoundedFilled.History, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_recents))
-                MainTab.PLAYLISTS -> Icon(Icons.RoundedFilled.PlaylistPlay, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playlists))
-                MainTab.NETWORK -> Icon(Icons.RoundedFilled.BringYourOwnIp, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_network))
-              }
-            },
-            label = {
-              Text(
-                when (tab) {
-                  MainTab.HOME -> "Home"
-                  MainTab.RECENTS -> "Recents"
-                  MainTab.PLAYLISTS -> "Playlists"
-                  MainTab.NETWORK -> "Network"
-                }
-              )
-            },
-            selected = selectedTab == tab,
-            onClick = { selectedTab = tab },
-          )
-        }
-      }
+      TelegramPillNavigationBar(
+        visibleTabs = visibleTabs,
+        selectedTab = selectedTab,
+        onTabSelected = { selectedTab = it },
+        modifier = modifier
+      )
     }
     
     LaunchedEffect(selectedTab) {
@@ -182,7 +180,18 @@ object MainScreen : Screen {
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    val targetNavBarWidth = if (isDualPaneFolderSelected) screenWidth * 0.4f else screenWidth
+    val targetNavBarWidth = (screenWidth - 64.dp).coerceAtMost(320.dp)
+
+    val targetOffsetFraction = if (isDualPaneFolderSelected) 0.2f else 0.5f
+
+    val animatedOffsetFraction by animateFloatAsState(
+      targetValue = targetOffsetFraction,
+      animationSpec = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow
+      ),
+      label = "nav_bar_position"
+    )
 
     val navBarWidth by animateDpAsState(
       targetValue = targetNavBarWidth,
@@ -198,7 +207,7 @@ object MainScreen : Screen {
       modifier = Modifier.fillMaxSize(),
     ) { paddingValues ->
       Box(modifier = Modifier.fillMaxSize()) {
-        val fabBottomPadding = 80.dp
+        val fabBottomPadding = 88.dp
 
         AnimatedContent(
           targetState = selectedTab,
@@ -245,36 +254,192 @@ object MainScreen : Screen {
             ),
             targetOffsetY = { fullHeight -> fullHeight }
           ),
-          modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart)
+          modifier = Modifier
+            .fillMaxWidth()
+            .align(Alignment.BottomStart)
+            .navigationBarsPadding()
+            .padding(bottom = 12.dp)
         ) {
-          NavigationBar(
-            modifier = Modifier
-              .width(navBarWidth)
-              .clip(AppShapeScale.extraLargeIncreased)
-          ) {
-            visibleTabs.forEach { tab ->
-              NavigationBarItem(
-                icon = {
-                  when (tab) {
-                    MainTab.HOME -> Icon(Icons.RoundedFilled.Home, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_home))
-                    MainTab.RECENTS -> Icon(Icons.RoundedFilled.History, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_recents))
-                    MainTab.PLAYLISTS -> Icon(Icons.RoundedFilled.PlaylistPlay, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playlists))
-                    MainTab.NETWORK -> Icon(Icons.RoundedFilled.BringYourOwnIp, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_network))
-                  }
-                },
-                label = {
-                  Text(
-                    when (tab) {
-                      MainTab.HOME -> "Home"
-                      MainTab.RECENTS -> "Recents"
-                      MainTab.PLAYLISTS -> "Playlists"
-                      MainTab.NETWORK -> "Network"
-                    }
-                  )
-                },
-                selected = selectedTab == tab,
-                onClick = { selectedTab = tab },
+          BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val containerWidth = maxWidth
+            val targetCenter = containerWidth * animatedOffsetFraction
+            val leftPadding = (targetCenter - (navBarWidth / 2)).coerceAtLeast(0.dp)
+
+            Box(
+              modifier = Modifier
+                .padding(start = leftPadding)
+                .width(navBarWidth),
+              contentAlignment = Alignment.Center
+            ) {
+              TelegramPillNavigationBar(
+                visibleTabs = visibleTabs,
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it },
+                modifier = Modifier.fillMaxWidth()
               )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun TelegramPillNavigationBar(
+  visibleTabs: List<MainScreen.MainTab>,
+  selectedTab: MainScreen.MainTab,
+  onTabSelected: (MainScreen.MainTab) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val selectedIndex = remember(selectedTab, visibleTabs) {
+    visibleTabs.indexOf(selectedTab).coerceAtLeast(0)
+  }
+
+  val smoothSpring = remember {
+    spring<Float>(
+      dampingRatio = 0.82f,
+      stiffness = 300f
+    )
+  }
+
+  val animatedIndex by animateFloatAsState(
+    targetValue = selectedIndex.toFloat(),
+    animationSpec = smoothSpring,
+    label = "pill_slide"
+  )
+
+  val density = LocalDensity.current
+
+  BoxWithConstraints(modifier = modifier) {
+    val totalWidth = maxWidth
+    val count = visibleTabs.size.coerceAtLeast(1)
+    val horizontalPadding = 6.dp
+    val availableWidth = totalWidth - (horizontalPadding * 2)
+    val itemWidth = availableWidth / count
+    val itemWidthPx = with(density) { itemWidth.toPx() }
+
+    Surface(
+      modifier = Modifier.fillMaxWidth(),
+      shape = CircleShape,
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      tonalElevation = 6.dp,
+      shadowElevation = 8.dp,
+      border = BorderStroke(
+        width = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+      )
+    ) {
+      Box(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = horizontalPadding, vertical = 6.dp)
+      ) {
+        // Hardware accelerated sliding active pill background
+        if (visibleTabs.isNotEmpty()) {
+          Box(
+            modifier = Modifier
+              .width(itemWidth)
+              .height(56.dp)
+              .graphicsLayer {
+                translationX = itemWidthPx * animatedIndex
+              }
+              .clip(CircleShape)
+              .background(MaterialTheme.colorScheme.primaryContainer)
+          )
+        }
+
+        // Tab Items Layer
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceEvenly,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          visibleTabs.forEach { tab ->
+            val selected = selectedTab == tab
+
+            val contentColor by animateColorAsState(
+              targetValue = if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
+              animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+              label = "pill_fg"
+            )
+
+            val iconScale by animateFloatAsState(
+              targetValue = if (selected) 1.10f else 1.0f,
+              animationSpec = smoothSpring,
+              label = "icon_scale"
+            )
+
+            Box(
+              modifier = Modifier
+                .weight(1f)
+                .height(56.dp)
+                .clip(CircleShape)
+                .clickable(
+                  interactionSource = remember { MutableInteractionSource() },
+                  indication = null,
+                  onClick = { onTabSelected(tab) }
+                ),
+              contentAlignment = Alignment.Center
+            ) {
+              Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+              ) {
+                Box(
+                  modifier = Modifier.graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                  },
+                  contentAlignment = Alignment.Center
+                ) {
+                  when (tab) {
+                    MainScreen.MainTab.HOME -> Icon(
+                      Icons.RoundedFilled.Home,
+                      contentDescription = stringResource(R.string.ui_home),
+                      tint = contentColor,
+                      modifier = Modifier.size(22.dp)
+                    )
+                    MainScreen.MainTab.RECENTS -> Icon(
+                      Icons.RoundedFilled.History,
+                      contentDescription = stringResource(R.string.ui_recents),
+                      tint = contentColor,
+                      modifier = Modifier.size(22.dp)
+                    )
+                    MainScreen.MainTab.PLAYLISTS -> Icon(
+                      Icons.RoundedFilled.PlaylistPlay,
+                      contentDescription = stringResource(R.string.ui_playlists),
+                      tint = contentColor,
+                      modifier = Modifier.size(22.dp)
+                    )
+                    MainScreen.MainTab.NETWORK -> Icon(
+                      Icons.RoundedFilled.BringYourOwnIp,
+                      contentDescription = stringResource(R.string.ui_network),
+                      tint = contentColor,
+                      modifier = Modifier.size(22.dp)
+                    )
+                  }
+                }
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                  text = when (tab) {
+                    MainScreen.MainTab.HOME -> "Home"
+                    MainScreen.MainTab.RECENTS -> "Recents"
+                    MainScreen.MainTab.PLAYLISTS -> "Playlists"
+                    MainScreen.MainTab.NETWORK -> "Network"
+                  },
+                  style = MaterialTheme.typography.labelSmall,
+                  fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                  color = contentColor,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                  textAlign = TextAlign.Center
+                )
+              }
             }
           }
         }
@@ -341,6 +506,3 @@ fun buildNavTransition(
     }
   }
 }
-
-
-
