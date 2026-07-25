@@ -367,13 +367,23 @@ fun PlayerSheets(
 
       // Observe playlist updates
       val playlist by viewModel.playlistItems.collectAsState()
+      val isAudioOnly by viewModel.isAudioOnly.collectAsState()
       val playerPreferences = koinInject<app.gyrolet.mpvrx.preferences.PlayerPreferences>()
       val isPlaylistSwipeActive by viewModel.isPlaylistSwipeActive.collectAsState()
       val playlistSwipeOffset by viewModel.playlistSwipeOffset.collectAsState()
 
-      if (playlist.isNotEmpty()) {
-        val playlistImmutable = playlist.toImmutableList()
-        val totalCount = viewModel.getPlaylistTotalCount()
+      val filteredPlaylist = remember(playlist, isAudioOnly) {
+        if (isAudioOnly) {
+          val audioOnly = playlist.filter { it.isAudio || isAudioOnly }
+          audioOnly.ifEmpty { playlist }
+        } else {
+          playlist
+        }
+      }
+
+      if (filteredPlaylist.isNotEmpty()) {
+        val playlistImmutable = filteredPlaylist.toImmutableList()
+        val totalCount = filteredPlaylist.size
         val isM3U = viewModel.isPlaylistM3U()
         PlaylistSheet(
           playlist = playlistImmutable,
@@ -386,6 +396,7 @@ fun PlayerSheets(
           playerPreferences = playerPreferences,
           isSwipeActive = isPlaylistSwipeActive,
           swipeOffset = playlistSwipeOffset,
+          isAudioOnly = isAudioOnly,
         )
       }
     }

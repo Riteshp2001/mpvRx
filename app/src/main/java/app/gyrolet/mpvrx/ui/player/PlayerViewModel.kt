@@ -486,11 +486,25 @@ class PlayerViewModel(
       }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
   val isAudioOnly: StateFlow<Boolean> =
-    MPVLib.propNode["track-list"]
-      .map { node ->
-        val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
-        tracks.any { it.isAudio } && tracks.none { it.isVideo && !it.isAlbumArtwork }
-      }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    combine(
+      MPVLib.propNode["track-list"],
+      MPVLib.propString["path"],
+      MPVLib.propString["stream-open-filename"],
+    ) { node, path, streamPath ->
+      val currentPath = path?.takeIf { it.isNotBlank() } ?: streamPath
+      val isFileAudioExt = currentPath?.let { p ->
+        val ext = p.substringBefore('?').substringBefore('#').substringAfterLast('.', "").lowercase()
+        ext in FileTypeUtils.AUDIO_EXTENSIONS
+      } ?: false
+
+      val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
+      if (tracks.isEmpty()) {
+        isFileAudioExt
+      } else {
+        (tracks.any { it.isAudio } && tracks.none { it.isVideo && !it.isAlbumArtwork }) ||
+          (isFileAudioExt && tracks.none { it.isVideo && !it.isAlbumArtwork })
+      }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val hasAlbumArt: StateFlow<Boolean> =
     MPVLib.propNode["track-list"]
@@ -505,6 +519,18 @@ class PlayerViewModel(
         node?.toObject<List<ChapterNode>>(json)?.map { it.toSegment() }?.toImmutableList()
           ?: persistentListOf()
       }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
+
+  // Audio player UI state
+  val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
+  val showVisualizerInAudioPlayer = MutableStateFlow(false)
+
+  fun updateAlbumArtBounds(rect: android.graphics.Rect?) {
+    albumArtBounds.value = rect
+  }
+
+  fun toggleAudioVisualizer() {
+    showVisualizerInAudioPlayer.value = !showVisualizerInAudioPlayer.value
+  }
 
   // Audio state
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -3885,7 +3911,10 @@ class PlayerViewModel(
           .substringBefore('?')
           .substringBefore('#')
           .substringAfterLast('.', "")
-          .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS
+          .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS ||
+          resolvedUri.toString().lowercase().contains("audio") ||
+          uri.toString().lowercase().contains("audio") ||
+          isAudioOnly.value
       val isCurrentlyPlaying = index == activity.playlistIndex
 
       // Try to get from cache first (synchronized access)
