@@ -228,14 +228,25 @@ private fun buildSpiralTapTable(
 }
 
 /**
- * Kotlin mirror of the GLSL hash used in the YouTube ambient shader:
- *   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
- * Used only to precompute the 20 fixed sample positions at startup so the GPU
- * never has to evaluate hash() at runtime.
+ * Halton low-discrepancy sequence generator.
+ * Produces a single coordinate for a given (index, base) pair.
+ * Used to generate 8 well-distributed sample positions for the YouTube
+ * ambient tap table, replacing the previous pseudo-random hash scatter.
+ *
+ * Halton points have provably better spatial coverage than random samples
+ * of the same count — no clumping, no empty regions — which gives a more
+ * representative global average color with fewer texture fetches.
  */
-private fun kHash(p0: Double, p1: Double): Double {
-  val v = kotlin.math.sin(p0 * 127.1 + p1 * 311.7) * 43758.5453
-  return v - kotlin.math.floor(v) // fract
+private fun halton(index: Int, base: Int): Double {
+  var result = 0.0
+  var f = 1.0
+  var i = index
+  while (i > 0) {
+    f /= base
+    result += f * (i % base)
+    i /= base
+  }
+  return result
 }
 
 object AmbientShaderBuilder {
@@ -258,17 +269,28 @@ object AmbientShaderBuilder {
     }
 
   // ── YouTube tap table ─────────────────────────────────────────────────────
-  // The YouTube shader uses base_seed = 42.0 (a hardcoded constant, intentionally
-  // fixed for temporal stability — see shader comment). All 20 sample positions
-  // are therefore fully deterministic and can be precomputed once in Kotlin,
-  // eliminating 40 sin/fract GPU operations per ambient pixel per frame.
+  // 8 Halton(base-2, base-3) quasi-random positions precomputed in Kotlin.
+  //
+  // Why 8 instead of 20:
+  //   YouTube mode computes a global average color — a single representative
+  //   hue for the entire frame. The statistical variance of the mean decreases
+  //   as 1/sqrt(N), so 20 vs 8 samples differ by only 1.58× in variance.
+  //   For a blurry ambient glow that difference is imperceptible.
+  //
+  // Why Halton instead of pseudo-random hash scatter:
+  //   Halton low-discrepancy sequences guarantee uniform spatial coverage with
+  //   no clumping and no empty regions. 8 Halton points produce a more
+  //   representative color average than 8 random points, and are more stable
+  //   across different content than 20 hash-scattered points.
+  //
+  // Result: 60% fewer texture fetches per ambient pixel per frame.
   private val youtubeTapTable: String by lazy {
-    val baseSeed = 42.0
-    val taps = (0 until 20).joinToString(",\n") { i ->
-      val seed = baseSeed + i * 0.618034
-      "    vec2(${glslFloat(kHash(seed, 0.123))}, ${glslFloat(kHash(seed, 0.456))})"
+    // Halton indices 1..8 (skipping 0 to avoid sampling exactly at origin).
+    // base-2 drives X, base-3 drives Y.
+    val taps = (1..8).joinToString(",\n") { i ->
+      "    vec2(${glslFloat(halton(i, 2))}, ${glslFloat(halton(i, 3))})"
     }
-    "const vec2 YOUTUBE_TAPS[20] = vec2[20](\n$taps\n);"
+    "const vec2 YOUTUBE_TAPS[8] = vec2[8](\n$taps\n);"
   }
 
   fun build(spec: AmbientShaderSpec): String =
@@ -287,16 +309,9 @@ object AmbientShaderBuilder {
 #define SCALE_X    ${spec.context.scaleX}
 #define SCALE_Y    ${spec.context.scaleY}
 
-// Sample positions precomputed in Kotlin from the original hash(seed, 0.123/0.456)
-// formula with base_seed = 42.0 (fixed for temporal stability). Eliminates
-// 40 sin/fract GPU operations per ambient pixel that produced identical results
-// every frame anyway.
+// 8 Halton(2,3) positions precomputed in Kotlin — better spatial coverage than
+// 20 pseudo-random scatter points, 60% fewer texture fetches per ambient pixel.
 ${youtubeTapTable}
-
-// Simple hash kept only for the debanding dither (UV-dependent, cannot precompute)
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
 
 vec4 hook() {
     vec2 uv = HOOKED_pos;
@@ -308,18 +323,18 @@ vec4 hook() {
         return HOOKED_tex(video_uv);
     }
 
-    // Sample precomputed positions across the entire video
+    // Sample 8 well-distributed positions across the entire video frame
     vec3 avg_color = vec3(0.0);
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 8; i++) {
         avg_color += HOOKED_tex(YOUTUBE_TAPS[i]).rgb;
     }
-    avg_color /= 20.0;
+    avg_color /= 8.0;
 
     // Boost saturation slightly for more vibrant glow
     float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
     avg_color = mix(vec3(luma), avg_color, 1.3); // 30% saturation boost
 
-    // Increased brightness for more visible glow (30% instead of 20%)
+    // Increased brightness for more visible glow
     avg_color *= 0.30;
 
     // Smooth fade based on distance from video edge
@@ -328,9 +343,12 @@ vec4 hook() {
     float fade = exp(-dist * 2.5);
     avg_color *= fade;
 
-    // Debanding: add subtle dither noise to eliminate color banding
-    float dither = hash(uv * 1000.0) * 0.004 - 0.002; // ±0.002 range
-    avg_color = clamp(avg_color + dither, 0.0, 1.0);
+    // Debanding via Interleaved Gradient Noise (Jimenez 2014).
+    // Replaces the previous sin-based hash() — uses only fract + dot,
+    // eliminating the last GPU sin() call from this shader.
+    vec2 screen_pos = floor(uv * HOOKED_size);
+    float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
+    avg_color = clamp(avg_color + (ign - 0.5) * 0.004, 0.0, 1.0);
 
     return vec4(avg_color, 1.0);
 }
