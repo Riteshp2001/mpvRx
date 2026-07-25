@@ -708,11 +708,16 @@ class PlayerViewModel(
   private var ambientShaderSeq = 0
   private var ambientShaderFile: java.io.File? = null
   /**
-   * Caches the last compiled GLSL shader source. When [updateAmbientStretch] is called
-   * but every parameter is identical to the previously compiled shader, the expensive
-   * file-write + MPV shader-reload cycle is skipped entirely.
+   * Caches the [AmbientShaderSpec] that was last compiled into a GLSL file.
+   * When [updateAmbientStretch] is called but every parameter is identical to
+   * the previously compiled spec, the expensive string-build + file-write +
+   * MPV shader-reload cycle is skipped entirely.
+   *
+   * Using the spec data class (instead of the raw GLSL String) as the cache
+   * key avoids allocating the multi-KB shader string and running
+   * buildSpiralTapTable trig math before the early-return guard fires.
    */
-  private var lastCompiledShaderCode: String? = null
+  private var lastCompiledSpec: AmbientShaderSpec? = null
   /**
    * Latest device thermal headroom reading ([0f] = at thermal limit, [1f] = cool).
    * Sampled every 10 s by the thermal-monitor coroutine and used to cap the ambient
@@ -855,9 +860,9 @@ class PlayerViewModel(
           if (kotlin.math.abs(newHeadroom - thermalHeadroom) > 0.08f) {
             thermalHeadroom = newHeadroom
             if (_isAmbientEnabled.value) {
-              // Invalidate the shader cache so the new budget cap is applied on the
+              // Invalidate the spec cache so the new budget cap is applied on the
               // next scheduled ambient update.
-              lastCompiledShaderCode = null
+              lastCompiledSpec = null
               scheduleAmbientUpdate()
             }
             Log.d(TAG, "Thermal headroom updated: %.2f".format(newHeadroom))
@@ -4473,7 +4478,7 @@ class PlayerViewModel(
     ambientShaderFile = null
     // Reset the shader cache and scale tracking so a subsequent enable always
     // compiles a fresh shader and recalculates the correct video-scale offsets.
-    lastCompiledShaderCode = null
+    lastCompiledSpec = null
     lastAmbientScaleX = -1.0
     lastAmbientScaleY = -1.0
     runCatching {
@@ -4518,7 +4523,7 @@ class PlayerViewModel(
     ambientShaderFile = null
     lastAmbientScaleX = -1.0         // Force scale recalculation
     lastAmbientScaleY = -1.0
-    lastCompiledShaderCode = null    // Invalidate cache — the old file is gone, must recompile
+    lastCompiledSpec = null    // Invalidate cache — the old file is gone, must recompile
     // Small delay to let Anime4K shaders settle
     ambientDebounceJob?.cancel()
     ambientDebounceJob = viewModelScope.launch(renderPrepDispatcher) {
@@ -4813,8 +4818,7 @@ class PlayerViewModel(
       val curve   = _ambientFadeCurve.value
       val opacity = _ambientOpacity.value
 
-      // ── Generate GLSL shader ───────────────────────────────────────────────
-      val shaderCode = buildAmbientShader(
+      val spec = buildAmbientSpec(
         sx = sx, sy = sy,
         blurSamples = samples, maxRadius = radius,
         glowIntensity = glow, satBoost = sat,
@@ -4823,19 +4827,20 @@ class PlayerViewModel(
         fadeCurve = curve, opacity = opacity,
       )
 
-      // ── Shader parameter cache ─────────────────────────────────────────────
-      // If every baked-in #define is identical to the last compiled shader AND the
-      // shader file still exists on disk, skip the remove+write+reload cycle.
-      // This prevents redundant GPU shader recompilation on no-op refreshes (e.g.
-      // orientation callbacks that fire with unchanged video dimensions, or thermal
-      // monitor ticks that don't change the effective sample budget).
-      if (shaderCode == lastCompiledShaderCode && ambientShaderFile?.exists() == true) {
+      // ── Shader parameter cache ──────────────────────────────────────────────────────
+      // Compare the AmbientShaderSpec data class (cheap equality) before building
+      // the GLSL string. This avoids allocating the multi-KB shader string and
+      // running buildSpiralTapTable trig math on no-op refreshes (e.g. thermal
+      // monitor ticks that don't change the effective sample budget, orientation
+      // callbacks that fire with unchanged video dimensions).
+      if (spec == lastCompiledSpec && ambientShaderFile?.exists() == true) {
         return
       }
-      lastCompiledShaderCode = shaderCode
+      lastCompiledSpec = spec
 
       // Each reload gets a unique filename so MPV never reuses a cached
       // compiled shader — incrementing seq guarantees a fresh compile every time.
+      val shaderCode = AmbientShaderBuilder.build(spec)
       val newFile = File(host.context.cacheDir, "ambient_${++ambientShaderSeq}.glsl")
       newFile.writeText(shaderCode)
       ambientShaderFile?.let { oldFile ->
@@ -4850,21 +4855,19 @@ class PlayerViewModel(
   }
 
   /**
-   * Builds the True Ambient GLSL shader string with all parameters baked in
-   * as `#define` constants. The shader:
-   *   1. Detects the video region using aspect-ratio correction (SCALE_X/Y).
-   *   2. For interior pixels — returns the original (unscaled) video pixel.
-   *   3. For ambient pixels — samples the nearest video-edge with a
-   *      Fibonacci-spiral blur kernel and composites the glowing result.
+   * Builds an [AmbientShaderSpec] from the current ambient parameter values.
+   * The spec is a lightweight data class that captures all shader inputs;
+   * [AmbientShaderBuilder.build] converts it to a GLSL string only when the
+   * spec has actually changed from the last compiled version.
    */
-  private fun buildAmbientShader(
+  private fun buildAmbientSpec(
     sx: Double, sy: Double,
     blurSamples: Int, maxRadius: Float,
     glowIntensity: Float, satBoost: Float,
     ditherNoise: Float, bezelDepth: Float,
     vignetteStrength: Float, warmth: Float,
     fadeCurve: Float, opacity: Float,
-  ): String {
+  ): AmbientShaderSpec {
     val context = AmbientRenderContext(scaleX = sx, scaleY = sy)
     val shared =
       AmbientSharedShaderConfig(
@@ -4873,37 +4876,34 @@ class PlayerViewModel(
         opacity = opacity,
       )
 
-    val spec: AmbientShaderSpec =
-      when (_ambientVisualMode.value) {
-        AmbientVisualMode.GLOW ->
-          AmbientGlowShaderSpec(
-            context = context,
-            shared = shared,
-            blurSamples = blurSamples,
-            maxRadius = maxRadius,
-            glowIntensity = glowIntensity,
-            satBoost = satBoost,
-            warmth = warmth,
-            fadeCurve = fadeCurve,
-          )
-        AmbientVisualMode.FRAME_EXTEND ->
-          AmbientFrameExtendShaderSpec(
-            context = context,
-            shared = shared,
-            sampleBudget = blurSamples,
-            extendStrength = _frameExtendStrength.value,
-            detailProtection = _frameExtendDetailProtection.value,
-            glowMix = _frameExtendGlowMix.value,
-            ditherNoise = ditherNoise,
-          )
-        AmbientVisualMode.YOUTUBE ->
-          AmbientYouTubeShaderSpec(
-            context = context,
-            shared = shared,
-          )
-      }
-
-    return AmbientShaderBuilder.build(spec)
+    return when (_ambientVisualMode.value) {
+      AmbientVisualMode.GLOW ->
+        AmbientGlowShaderSpec(
+          context = context,
+          shared = shared,
+          blurSamples = blurSamples,
+          maxRadius = maxRadius,
+          glowIntensity = glowIntensity,
+          satBoost = satBoost,
+          warmth = warmth,
+          fadeCurve = fadeCurve,
+        )
+      AmbientVisualMode.FRAME_EXTEND ->
+        AmbientFrameExtendShaderSpec(
+          context = context,
+          shared = shared,
+          sampleBudget = blurSamples,
+          extendStrength = _frameExtendStrength.value,
+          detailProtection = _frameExtendDetailProtection.value,
+          glowMix = _frameExtendGlowMix.value,
+          ditherNoise = ditherNoise,
+        )
+      AmbientVisualMode.YOUTUBE ->
+        AmbientYouTubeShaderSpec(
+          context = context,
+          shared = shared,
+        )
+    }
   }
 
   // ==================== Utility ====================
