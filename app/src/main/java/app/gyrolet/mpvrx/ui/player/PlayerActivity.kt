@@ -4267,12 +4267,20 @@ class PlayerActivity :
       }
 
       KeyEvent.KEYCODE_VOLUME_UP -> {
+        if (viewModel.isAudioOnly.value) {
+          viewModel.changeVolumeBy(1, showUi = true)
+          return true
+        }
         viewModel.changeVolumeBy(1)
         viewModel.displayVolumeSlider()
         return true
       }
 
       KeyEvent.KEYCODE_VOLUME_DOWN -> {
+        if (viewModel.isAudioOnly.value) {
+          viewModel.changeVolumeBy(-1, showUi = true)
+          return true
+        }
         viewModel.changeVolumeBy(-1)
         viewModel.displayVolumeSlider()
         return true

@@ -217,7 +217,7 @@ fun AudioPlayerControls(
       modifier = Modifier.fillMaxSize(),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      // 1. Top Header Bar (Close on left, NOW PLAYING center, Playlist on top-right)
+      // 1. Top Header Bar (Close on left, NOW PLAYING center, Info on top-right)
       Box(
         modifier = Modifier
           .fillMaxWidth()
@@ -248,16 +248,35 @@ fun AudioPlayerControls(
           verticalAlignment = Alignment.CenterVertically
         ) {
           IconButton(
-            onClick = { onOpenSheet(Sheets.Playlist) },
-            enabled = playlistModeEnabled
+            onClick = { onOpenSheet(Sheets.AudioProperties) }
           ) {
             Icon(
-              imageVector = Icons.RoundedFilled.QueueMusic,
-              contentDescription = stringResource(R.string.ui_playlist),
-              tint = if (playlistModeEnabled) Color.White else Color.White.copy(alpha = 0.4f),
+              imageVector = Icons.RoundedFilled.Info,
+              contentDescription = stringResource(R.string.player_sheets_more_title),
+              tint = Color.White,
               modifier = Modifier.size(28.dp)
             )
           }
+        }
+      }
+
+      if (isLosslessCodecOrExt) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Surface(
+          shape = RoundedCornerShape(4.dp),
+          color = Color.White.copy(alpha = 0.15f),
+          border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
+        ) {
+          Text(
+            text = if (isHiRes) "HI-RES LOSSLESS" else "LOSSLESS",
+            style = MaterialTheme.typography.labelSmall.copy(
+              fontWeight = FontWeight.Bold,
+              fontSize = 8.5.sp,
+              letterSpacing = 0.8.sp
+            ),
+            color = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+          )
         }
       }
 
@@ -357,46 +376,20 @@ fun AudioPlayerControls(
       Spacer(modifier = Modifier.height(16.dp))
 
       // Track Title & Metadata
+      // Track Title & Metadata
       Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
       ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.fillMaxWidth()
-        ) {
-          val titleText = lastValidTitle
-          Text(
-            text = titleText,
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-              .weight(1f, fill = false)
-              .basicMarquee(iterations = Int.MAX_VALUE)
-          )
-
-          if (isLosslessCodecOrExt) {
-            Surface(
-              shape = RoundedCornerShape(4.dp),
-              color = Color.White.copy(alpha = 0.15f),
-              border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
-            ) {
-              Text(
-                text = if (isHiRes) "HI-RES LOSSLESS" else "LOSSLESS",
-                style = MaterialTheme.typography.labelSmall.copy(
-                  fontWeight = FontWeight.Bold,
-                  fontSize = 9.sp,
-                  letterSpacing = 0.8.sp
-                ),
-                color = Color.White.copy(alpha = 0.9f),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-              )
-            }
-          }
-        }
+        val titleText = lastValidTitle
+        Text(
+          text = titleText,
+          style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+          color = Color.White,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+        )
         Spacer(modifier = Modifier.height(4.dp))
         val playlistInfo = viewModel.getPlaylistInfo()
         Text(
@@ -408,7 +401,7 @@ fun AudioPlayerControls(
         )
       }
 
-      Spacer(modifier = Modifier.height(20.dp))
+      Spacer(modifier = Modifier.height(16.dp))
 
       // 3. Audio Transport Controls (Seekbar + Progress Timers)
       var sliderValue by remember(currentPosSec) { mutableFloatStateOf(currentPosSec) }
@@ -467,8 +460,9 @@ fun AudioPlayerControls(
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp),
+            .padding(top = 0.dp),
           horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(
             text = formatSec(currentPosSec.toLong()),
