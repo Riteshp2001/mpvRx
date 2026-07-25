@@ -70,6 +70,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -77,7 +78,11 @@ import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.RepeatMode
 import app.gyrolet.mpvrx.ui.player.Sheets
+import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.visualizer.BlobOverlay
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import org.koin.compose.koinInject
 import app.gyrolet.mpvrx.ui.player.visualizer.GalaxyOverlay
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import `is`.xyz.mpv.MPVLib
@@ -195,6 +200,15 @@ fun AudioPlayerControls(
   val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
   val showVisualizer by viewModel.showVisualizerInAudioPlayer.collectAsState()
+
+  val playerPreferences = koinInject<PlayerPreferences>()
+  val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
+  val invertDuration by playerPreferences.invertDuration.collectAsState()
+  val showChapterIndicators by playerPreferences.showChapterIndicators.collectAsState()
+  val chapters by viewModel.chapters.collectAsState()
+  val seekbarChapters = remember(chapters, showChapterIndicators) {
+    if (showChapterIndicators) chapters.toImmutableList() else persistentListOf()
+  }
 
   Box(
     modifier = modifier
@@ -403,79 +417,29 @@ fun AudioPlayerControls(
 
       Spacer(modifier = Modifier.height(16.dp))
 
-      // 3. Audio Transport Controls (Seekbar + Progress Timers)
-      var sliderValue by remember(currentPosSec) { mutableFloatStateOf(currentPosSec) }
-      var isDragging by remember { mutableStateOf(false) }
-
-      Column(modifier = Modifier.fillMaxWidth()) {
-        Slider(
-          value = if (isDragging) sliderValue else currentPosSec,
-          onValueChange = { value ->
-            sliderValue = value
-            isDragging = true
-          },
-          onValueChangeFinished = {
-            viewModel.seekTo(sliderValue.toInt())
-            isDragging = false
-          },
-          valueRange = 0f..currentDurSec.coerceAtLeast(1f),
-          modifier = Modifier.fillMaxWidth(),
-          colors = SliderDefaults.colors(
-            thumbColor = Color.White,
-            activeTrackColor = Color.White,
-            inactiveTrackColor = Color.White.copy(alpha = 0.3f),
-          ),
-          thumb = {
-            Box(modifier = Modifier.size(16.dp).background(Color.White, CircleShape))
-          },
-          track = { sliderState ->
-            Canvas(modifier = Modifier.fillMaxWidth().height(3.dp)) {
-              val thumbRadiusPx = 8.dp.toPx()
-              val trackStart = thumbRadiusPx
-              val trackEnd = size.width - thumbRadiusPx
-              val trackRange = trackEnd - trackStart
-              val h = size.height
-              val cornerR = CornerRadius(h / 2f, h / 2f)
-              val rangeSpan = (sliderState.valueRange.endInclusive - sliderState.valueRange.start).coerceAtLeast(1f)
-              val progress = (sliderState.value - sliderState.valueRange.start) / rangeSpan
-              val thumbCenterX = trackStart + progress * trackRange
-
-              drawRoundRect(
-                color = Color.White.copy(alpha = 0.2f),
-                topLeft = Offset(trackStart, 0f),
-                size = Size(trackRange, h),
-                cornerRadius = cornerR,
-              )
-
-              drawRoundRect(
-                color = Color.White,
-                topLeft = Offset(trackStart, 0f),
-                size = Size((thumbCenterX - trackStart).coerceAtLeast(0f), h),
-                cornerRadius = cornerR,
-              )
-            }
-          }
-        )
-
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 0.dp),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Text(
-            text = formatSec(currentPosSec.toLong()),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.7f),
-          )
-          Text(
-            text = formatSec(currentDurSec.toLong()),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.7f),
-          )
-        }
-      }
+      // 3. Audio Transport Controls (Video player seekbar component & style)
+      SeekbarWithTimers(
+        position = currentPosSec,
+        committedPosition = currentPosSec,
+        duration = currentDurSec.coerceAtLeast(1f),
+        onValueChange = { value ->
+          viewModel.seekTo(value.toInt(), fast = true)
+        },
+        onValueChangeFinished = { targetPosition ->
+          viewModel.seekTo(targetPosition.toInt(), fast = false)
+        },
+        timersInverted = Pair(false, invertDuration),
+        durationTimerOnCLick = {
+          playerPreferences.invertDuration.set(!invertDuration)
+        },
+        positionTimerOnClick = {},
+        chapters = seekbarChapters,
+        skipSegments = persistentListOf(),
+        paused = paused ?: false,
+        seekbarStyle = seekbarStyle,
+        isPortrait = true,
+        modifier = Modifier.fillMaxWidth()
+      )
 
       Spacer(modifier = Modifier.height(16.dp))
 
