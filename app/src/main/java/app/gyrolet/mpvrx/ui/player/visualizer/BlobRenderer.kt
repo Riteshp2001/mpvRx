@@ -130,7 +130,7 @@ internal class BlobRenderer(
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        GLES30.glClearColor(0f, 0f, 0f, 1f)
+        GLES30.glClearColor(0f, 0f, 0f, 0f)
         GLES30.glDisable(GLES30.GL_CULL_FACE)
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
 
@@ -300,9 +300,9 @@ internal class BlobRenderer(
         Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else pitch + time * 1.7f, 1f, 0f, 0f)
         val reactiveScale =
             if (reducedMotionEnabled) {
-                0.94f + audio.energy * 0.025f
+                1.05f + audio.energy * 0.025f
             } else {
-                0.84f + audio.energy * 0.10f + audio.bass * 0.085f + audio.beat * 0.055f
+                1.00f + audio.energy * 0.12f + audio.bass * 0.09f + audio.beat * 0.06f
             }
         val scale = pinchScale * reactiveScale
         Matrix.scaleM(model, 0, scale, scale, scale)

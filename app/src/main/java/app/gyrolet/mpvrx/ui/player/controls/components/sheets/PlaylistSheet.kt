@@ -205,7 +205,10 @@ fun PlaylistSheet(
   }
 
   val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-  val sheetWidth = if (isListMode) {
+  val isEdgeToEdge = isAudioOnly
+  val sheetWidth = if (isEdgeToEdge) {
+    screenWidth
+  } else if (isListMode) {
     if (LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
       640.dp
     } else {
@@ -218,8 +221,8 @@ fun PlaylistSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = Modifier.fillMaxWidth(),
-    customMaxWidth = sheetWidth,
-    customMaxHeight = if (isPortrait) LocalConfiguration.current.screenHeightDp.dp * 0.5f else null,
+    customMaxWidth = if (isEdgeToEdge) screenWidth else sheetWidth,
+    customMaxHeight = if (isEdgeToEdge) LocalConfiguration.current.screenHeightDp.dp * 0.95f else (if (isPortrait) LocalConfiguration.current.screenHeightDp.dp * 0.5f else null),
     isSwipeActive = isSwipeActive,
     swipeOffset = swipeOffset,
   ) {
@@ -227,8 +230,8 @@ fun PlaylistSheet(
       modifier = Modifier.fillMaxWidth(),
       color = Color.Transparent,
       shape = RoundedCornerShape(
-        topStart = 16.dp,
-        topEnd = 16.dp,
+        topStart = if (isEdgeToEdge) 24.dp else 16.dp,
+        topEnd = if (isEdgeToEdge) 24.dp else 16.dp,
         bottomStart = 0.dp,
         bottomEnd = 0.dp
       ),

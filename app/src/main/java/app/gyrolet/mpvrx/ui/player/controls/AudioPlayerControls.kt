@@ -18,6 +18,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -78,6 +79,10 @@ import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.RepeatMode
 import app.gyrolet.mpvrx.ui.player.Sheets
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.clickable
+import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.visualizer.BlobOverlay
 import kotlinx.collections.immutable.persistentListOf
@@ -201,6 +206,10 @@ fun AudioPlayerControls(
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
   val showVisualizer by viewModel.showVisualizerInAudioPlayer.collectAsState()
 
+  val abLoop by viewModel.abLoopState.collectAsState()
+  val abLoopA = abLoop.a
+  val abLoopB = abLoop.b
+
   val playerPreferences = koinInject<PlayerPreferences>()
   val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
   val invertDuration by playerPreferences.invertDuration.collectAsState()
@@ -213,16 +222,7 @@ fun AudioPlayerControls(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(
-        Brush.verticalGradient(
-          colorStops = arrayOf(
-            0.0f to Color.Black.copy(alpha = 0.85f),
-            0.3f to Color.Black.copy(alpha = 0.40f),
-            0.7f to Color.Black.copy(alpha = 0.60f),
-            1.0f to Color.Black.copy(alpha = 0.95f),
-          )
-        )
-      )
+      .background(MaterialTheme.colorScheme.surface)
       .statusBarsPadding()
       .navigationBarsPadding()
       .padding(horizontal = 24.dp, vertical = 16.dp)
@@ -244,7 +244,7 @@ fun AudioPlayerControls(
           Icon(
             imageVector = Icons.RoundedFilled.ExpandMore,
             contentDescription = stringResource(R.string.ui_close),
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(32.dp)
           )
         }
@@ -252,7 +252,7 @@ fun AudioPlayerControls(
         Text(
           text = stringResource(R.string.ui_now_playing),
           style = MaterialTheme.typography.labelSmall,
-          color = Color.White.copy(alpha = 0.7f),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
           letterSpacing = 2.sp,
           modifier = Modifier.align(Alignment.Center)
         )
@@ -267,7 +267,7 @@ fun AudioPlayerControls(
             Icon(
               imageVector = Icons.RoundedFilled.Info,
               contentDescription = stringResource(R.string.player_sheets_more_title),
-              tint = Color.White,
+              tint = MaterialTheme.colorScheme.onSurface,
               modifier = Modifier.size(28.dp)
             )
           }
@@ -278,8 +278,8 @@ fun AudioPlayerControls(
         Spacer(modifier = Modifier.height(4.dp))
         Surface(
           shape = RoundedCornerShape(4.dp),
-          color = Color.White.copy(alpha = 0.15f),
-          border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.3f)),
+          color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+          border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         ) {
           Text(
             text = if (isHiRes) "HI-RES LOSSLESS" else "LOSSLESS",
@@ -288,7 +288,7 @@ fun AudioPlayerControls(
               fontSize = 8.5.sp,
               letterSpacing = 0.8.sp
             ),
-            color = Color.White.copy(alpha = 0.9f),
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
           )
         }
@@ -296,13 +296,19 @@ fun AudioPlayerControls(
 
       Spacer(modifier = Modifier.height(16.dp))
 
-      // 2. Center View (Album Art Box OR Visualizer Overlay)
-      Box(
+      // 2. Center View (Album Art Box OR Dynamic Visualizer Overlay)
+      BoxWithConstraints(
         modifier = Modifier
           .weight(1f)
           .fillMaxWidth(),
         contentAlignment = Alignment.Center
       ) {
+        val maxW = maxWidth
+        val maxH = maxHeight
+        val visualizerScale = remember(maxW, maxH) {
+          (maxH / maxW.coerceAtLeast(1.dp)).coerceIn(1.20f, 1.50f)
+        }
+
         AnimatedContent(
           targetState = showVisualizer,
           transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
@@ -310,9 +316,20 @@ fun AudioPlayerControls(
           modifier = Modifier.fillMaxSize(),
         ) { isVisualizerActive ->
           if (isVisualizerActive) {
-            // ONLY the visualizer shows, NO album art box, border, or container!
+            // Themed background layer — adapts to any theme, sits behind the GL surface
             Box(
-              modifier = Modifier.fillMaxSize(),
+              modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface),
+            )
+            // Dynamic, larger visualizer scaling dynamically according to screen size
+            Box(
+              modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                  scaleX = visualizerScale
+                  scaleY = visualizerScale
+                },
               contentAlignment = Alignment.Center
             ) {
               when (audioVisualizerStyle) {
@@ -341,11 +358,11 @@ fun AudioPlayerControls(
                   .shadow(
                     elevation = 24.dp,
                     shape = coverShape,
-                    spotColor = Color.Black
+                    spotColor = MaterialTheme.colorScheme.scrim
                   )
                   .clip(coverShape),
                 shape = coverShape,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.surfaceContainer,
               ) {
                 Crossfade(
                   targetState = albumArtBitmap,
@@ -390,7 +407,6 @@ fun AudioPlayerControls(
       Spacer(modifier = Modifier.height(16.dp))
 
       // Track Title & Metadata
-      // Track Title & Metadata
       Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
@@ -399,20 +415,120 @@ fun AudioPlayerControls(
         Text(
           text = titleText,
           style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-          color = Color.White,
+          color = MaterialTheme.colorScheme.onSurface,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
           modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
         )
         Spacer(modifier = Modifier.height(4.dp))
         val playlistInfo = viewModel.getPlaylistInfo()
-        Text(
-          text = if (playlistInfo != null) "Track $playlistInfo" else "Audio Media",
-          style = MaterialTheme.typography.titleMedium,
-          color = Color.White.copy(alpha = 0.7f),
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis
-        )
+        val trackText = if (playlistInfo != null) "Track $playlistInfo" else "Audio Media"
+
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          Text(
+            text = trackText,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+          )
+
+          Text(
+            text = "|",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+          )
+
+          // A-B Loop Control from video player
+          AnimatedContent(
+            targetState = abLoop.isExpanded,
+            transitionSpec = {
+              (fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(250)))
+                .togetherWith(fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(250)))
+            },
+            label = "AudioABLoopExpand",
+          ) { expanded ->
+            if (expanded) {
+              Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Surface(
+                  shape = CircleShape,
+                  color = if (abLoopA != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                  modifier = Modifier
+                    .height(30.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = { viewModel.setLoopA() }),
+                ) {
+                  Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
+                    Text(
+                      text = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
+                      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                      color = if (abLoopA != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                  }
+                }
+
+                Surface(
+                  shape = CircleShape,
+                  color = MaterialTheme.colorScheme.surfaceVariant,
+                  modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = {
+                      viewModel.clearABLoop()
+                      viewModel.toggleABLoopExpanded()
+                    }),
+                ) {
+                  Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                      imageVector = Icons.RoundedFilled.Close,
+                      contentDescription = "Clear A-B Loop",
+                      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                      modifier = Modifier.size(16.dp),
+                    )
+                  }
+                }
+
+                Surface(
+                  shape = CircleShape,
+                  color = if (abLoopB != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                  modifier = Modifier
+                    .height(30.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = { viewModel.setLoopB() }),
+                ) {
+                  Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
+                    Text(
+                      text = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
+                      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                      color = if (abLoopB != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                  }
+                }
+              }
+            } else {
+              Surface(
+                shape = CircleShape,
+                color = Color.Transparent,
+                modifier = Modifier
+                  .clip(CircleShape)
+                  .clickable(onClick = viewModel::toggleABLoopExpanded)
+              ) {
+                AbLoopIcon(
+                  modifier = Modifier.size(30.dp),
+                  tint = if (abLoopA != null || abLoopB != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                  isASet = abLoopA != null,
+                  isBSet = abLoopB != null,
+                )
+              }
+            }
+          }
+        }
       }
 
       Spacer(modifier = Modifier.height(16.dp))
@@ -437,7 +553,10 @@ fun AudioPlayerControls(
         skipSegments = persistentListOf(),
         paused = paused ?: false,
         seekbarStyle = seekbarStyle,
+        loopStart = abLoopA?.toFloat(),
+        loopEnd = abLoopB?.toFloat(),
         isPortrait = true,
+        applyHorizontalPadding = false,
         modifier = Modifier.fillMaxWidth()
       )
 
@@ -456,7 +575,7 @@ fun AudioPlayerControls(
           Icon(
             imageVector = Icons.RoundedFilled.SkipPrevious,
             contentDescription = null,
-            tint = if (playlistModeEnabled) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.35f),
+            tint = if (playlistModeEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             modifier = Modifier.size(28.dp)
           )
         }
@@ -465,7 +584,7 @@ fun AudioPlayerControls(
           Icon(
             imageVector = Icons.RoundedFilled.FastRewind,
             contentDescription = null,
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(34.dp)
           )
         }
@@ -473,7 +592,7 @@ fun AudioPlayerControls(
         Surface(
           onClick = { viewModel.pauseUnpause() },
           shape = CircleShape,
-          color = Color.White,
+          color = MaterialTheme.colorScheme.primary,
           modifier = Modifier.size(76.dp),
           shadowElevation = 8.dp,
         ) {
@@ -481,7 +600,7 @@ fun AudioPlayerControls(
             Icon(
               imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
               contentDescription = null,
-              tint = Color.Black,
+              tint = MaterialTheme.colorScheme.onPrimary,
               modifier = Modifier.size(38.dp)
             )
           }
@@ -491,7 +610,7 @@ fun AudioPlayerControls(
           Icon(
             imageVector = Icons.RoundedFilled.FastForward,
             contentDescription = null,
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(34.dp)
           )
         }
@@ -503,7 +622,7 @@ fun AudioPlayerControls(
           Icon(
             imageVector = Icons.RoundedFilled.SkipNext,
             contentDescription = null,
-            tint = if (playlistModeEnabled) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.35f),
+            tint = if (playlistModeEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             modifier = Modifier.size(28.dp)
           )
         }
@@ -522,14 +641,14 @@ fun AudioPlayerControls(
           onClick = { onOpenSheet(Sheets.Equalizer) },
           modifier = Modifier
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f))
             .size(48.dp)
         ) {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
               imageVector = Icons.RoundedFilled.Equalizer,
               contentDescription = "Equalizer",
-              tint = Color.White.copy(alpha = 0.85f),
+              tint = MaterialTheme.colorScheme.onSurface,
               modifier = Modifier.size(24.dp)
             )
           }
@@ -539,7 +658,7 @@ fun AudioPlayerControls(
         Row(
           modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f))
             .padding(horizontal = 12.dp, vertical = 4.dp),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -552,7 +671,7 @@ fun AudioPlayerControls(
               Icon(
                 imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
                 contentDescription = null,
-                tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+                tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
               )
             }
           }
@@ -566,7 +685,7 @@ fun AudioPlayerControls(
                   RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
                 },
                 contentDescription = null,
-                tint = if (repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+                tint = if (repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
               )
             }
           }
@@ -576,7 +695,7 @@ fun AudioPlayerControls(
               Icon(
                 imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
                 contentDescription = null,
-                tint = if (showVisualizer) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f)
+                tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
               )
             }
           }
@@ -587,14 +706,14 @@ fun AudioPlayerControls(
           onClick = { onOpenSheet(Sheets.Playlist) },
           modifier = Modifier
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f))
             .size(48.dp)
         ) {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
               imageVector = Icons.RoundedFilled.QueueMusic,
               contentDescription = "Playlist",
-              tint = Color.White.copy(alpha = 0.85f),
+              tint = MaterialTheme.colorScheme.onSurface,
               modifier = Modifier.size(24.dp)
             )
           }
