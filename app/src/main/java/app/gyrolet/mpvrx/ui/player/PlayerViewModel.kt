@@ -3123,29 +3123,33 @@ class PlayerViewModel(
 
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    try {
-      if (playerPreferences.showSystemStatusBar.get()) {
-        host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
-        host.windowInsetsController.isAppearanceLightStatusBars = false
+    if (!isAudioOnly.value) {
+      try {
+        if (playerPreferences.showSystemStatusBar.get()) {
+          host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+          host.windowInsetsController.isAppearanceLightStatusBars = false
+        }
+        if (playerPreferences.showSystemNavigationBar.get()) {
+          host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+        }
+      } catch (e: Exception) {
+        // Defensive: InsetsController animation can crash under FD pressure
+        // (e.g. during high-res HEVC playback on certain devices)
+        Log.e(TAG, "Failed to show system bars", e)
       }
-      if (playerPreferences.showSystemNavigationBar.get()) {
-        host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
-      }
-    } catch (e: Exception) {
-      // Defensive: InsetsController animation can crash under FD pressure
-      // (e.g. during high-res HEVC playback on certain devices)
-      Log.e(TAG, "Failed to show system bars", e)
     }
     _controlsShown.value = true
     controlsVisibleForPolling = true
   }
 
   fun hideControls() {
-    try {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to hide system bars", e)
+    if (!isAudioOnly.value) {
+      try {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to hide system bars", e)
+      }
     }
     _controlsShown.value = false
     _seekBarShown.value = false
@@ -3154,11 +3158,13 @@ class PlayerViewModel(
   }
 
   fun autoHideControls() {
-    try {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to hide system bars", e)
+    if (!isAudioOnly.value) {
+      try {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to hide system bars", e)
+      }
     }
     _controlsShown.value = false
     _seekBarShown.value = true
