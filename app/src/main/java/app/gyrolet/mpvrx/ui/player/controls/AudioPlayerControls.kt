@@ -72,6 +72,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.layout.ContentScale
@@ -369,11 +370,6 @@ fun AudioPlayerControls(
         modifier = visualizerModifier.clipToBounds(),
         contentAlignment = Alignment.Center
       ) {
-        val maxW = maxWidth
-        val maxH = maxHeight
-        val visualizerScale = remember(maxW, maxH) {
-          (maxH / maxW.coerceAtLeast(1.dp)).coerceIn(1.20f, 1.50f)
-        }
 
         AnimatedContent(
           targetState = showVisualizer,
@@ -383,12 +379,7 @@ fun AudioPlayerControls(
         ) { isVisualizerActive ->
           if (isVisualizerActive) {
             Box(
-              modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                  scaleX = visualizerScale
-                  scaleY = visualizerScale
-                },
+              modifier = Modifier.fillMaxSize(),
               contentAlignment = Alignment.Center
             ) {
               when (audioVisualizerStyle) {

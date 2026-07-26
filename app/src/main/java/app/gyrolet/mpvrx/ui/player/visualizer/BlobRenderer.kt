@@ -386,6 +386,7 @@ internal class BlobRenderer(
     private fun compositeToScreen() {
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
         GLES30.glViewport(0, 0, surfaceWidth, surfaceHeight)
+        GLES30.glClearColor(0f, 0f, 0f, 0f)
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
         GLES30.glUseProgram(compositeProgram)
         bindTexture(0, sceneTarget.texture, uCompositeScene)
