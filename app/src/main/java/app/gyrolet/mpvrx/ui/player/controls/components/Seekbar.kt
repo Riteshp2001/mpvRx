@@ -236,6 +236,7 @@ fun SeekbarWithTimers(
   loopEnd: Float? = null,
   bufferDuration: Float? = null,
   isPortrait: Boolean = false,
+  applyHorizontalPadding: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val clickEvent = LocalPlayerButtonsClickEvent.current
@@ -267,7 +268,7 @@ fun SeekbarWithTimers(
     Column(
       modifier = modifier
         .fillMaxWidth()
-        .padding(horizontal = MaterialTheme.spacing.large),
+        .then(if (applyHorizontalPadding) Modifier.padding(horizontal = MaterialTheme.spacing.large) else Modifier),
       verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
       SeekbarContent(

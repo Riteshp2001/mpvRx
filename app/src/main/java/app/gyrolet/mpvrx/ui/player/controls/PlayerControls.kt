@@ -297,6 +297,83 @@ fun PlayerControls(
     }
   }
 
+  val isAudioOnly by viewModel.isAudioOnly.collectAsState()
+  if (isAudioOnly) {
+    val rawMediaTitle by MPVLib.propString["media-title"].collectAsState()
+    val activity = LocalActivity.current as? PlayerActivity
+    val mediaTitle = remember(rawMediaTitle, activity) {
+      rawMediaTitle?.takeIf { it.isNotBlank() } ?: activity?.getTitleForControls()
+    }
+
+    val sheetShown by viewModel.sheetShown.collectAsState()
+    val subtitles by viewModel.subtitleTracks.collectAsState(persistentListOf())
+    val audioTracks by viewModel.audioTracks.collectAsState(persistentListOf())
+    val sleepTimerTimeRemaining by viewModel.remainingTime.collectAsState()
+    val speedPresets by playerPreferences.speedPresets.collectAsState()
+    val sortedSpeedPresets = remember(speedPresets) { speedPresets.map { it.toFloat() }.sorted() }
+
+    Box(modifier = modifier.fillMaxSize()) {
+      AudioPlayerControls(
+        viewModel = viewModel,
+        mediaTitle = mediaTitle,
+        onBackPress = onBackPress,
+        onOpenSheet = onOpenSheet,
+        onOpenPanel = onOpenPanel,
+      )
+
+      PlayerSheets(
+        viewModel = viewModel,
+        sheetShown = sheetShown,
+        subtitles = subtitles.toImmutableList(),
+        onAddSubtitle = viewModel::addSubtitle,
+        onToggleSubtitle = viewModel::toggleSubtitle,
+        isSubtitleSelected = viewModel::isSubtitleSelected,
+        subtitleSelectionIndicator = viewModel::subtitleSelectionIndicator,
+        onRemoveSubtitle = viewModel::removeSubtitle,
+        audioTracks = audioTracks.toImmutableList(),
+        onAddAudio = viewModel::addAudio,
+        onSelectAudio = {
+          if (getTrackSelectionId("aid") == it.id) {
+            setTrackSelectionId("aid", null)
+          } else {
+            setTrackSelectionId("aid", it.id)
+          }
+        },
+        chapter = chapters.getOrNull(currentChapter ?: 0),
+        chapters = chapters.toImmutableList(),
+        onSeekToChapter = {
+          MPVLib.setPropertyInt("chapter", it)
+          viewModel.unpause()
+        },
+        decoder = decoder,
+        onUpdateDecoder = { MPVLib.setPropertyString("hwdec", it.value) },
+        speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
+        onSpeedChange = { MPVLib.setPropertyFloat("speed", it.toFixed(2)) },
+        onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
+        onAddSpeedPreset = { playerPreferences.speedPresets += it.toFixed(2).toString() },
+        onRemoveSpeedPreset = { playerPreferences.speedPresets -= it.toFixed(2).toString() },
+        onResetSpeedPresets = playerPreferences.speedPresets::delete,
+        speedPresets = sortedSpeedPresets,
+        onResetDefaultSpeed = {
+          MPVLib.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
+        },
+        sleepTimerTimeRemaining = sleepTimerTimeRemaining,
+        onStartSleepTimer = viewModel::startTimer,
+        onOpenPanel = onOpenPanel,
+        onShowSheet = onOpenSheet,
+        onDismissRequest = { onOpenSheet(Sheets.None) },
+      )
+
+      val panel by viewModel.panelShown.collectAsState()
+      PlayerPanels(
+        panelShown = panel,
+        viewModel = viewModel,
+        onDismissRequest = { onOpenPanel(Panels.None) },
+      )
+    }
+    return
+  }
+
   val topRightControlsPref by appearancePreferences.topRightControls.collectAsState()
   val bottomRightControlsPref by appearancePreferences.bottomRightControls.collectAsState()
   val bottomLeftControlsPref by appearancePreferences.bottomLeftControls.collectAsState()
@@ -328,8 +405,9 @@ fun PlayerControls(
     resetControlsTimestamp,
     areControlsLocked,
     isUnlockSliderDragging,
+    isAudioOnly,
   ) {
-    if (controlsShown && paused == false && !isSeeking && !isUnlockSliderDragging) {
+    if (!isAudioOnly && controlsShown && paused == false && !isSeeking && !isUnlockSliderDragging) {
       // Use 2 second delay when controls are locked, otherwise use user preference
       val delayTime = if (areControlsLocked) 2000L else playerTimeToDisappear.toLong()
       delay(delayTime)
