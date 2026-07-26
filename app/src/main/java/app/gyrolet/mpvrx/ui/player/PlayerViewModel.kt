@@ -509,7 +509,7 @@ class PlayerViewModel(
         (tracks.any { it.isAudio } && tracks.none { it.isVideo && !it.isAlbumArtwork }) ||
           (isFileAudioExt && tracks.none { it.isVideo && !it.isAlbumArtwork })
       }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, host.isCurrentMediaKnownAudio())
 
   val hasAlbumArt: StateFlow<Boolean> =
     MPVLib.propNode["track-list"]

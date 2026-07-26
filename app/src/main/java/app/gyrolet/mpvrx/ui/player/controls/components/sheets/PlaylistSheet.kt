@@ -296,13 +296,14 @@ fun PlaylistSheet(
 
         // Conditional rendering based on view mode
         if (isListMode) {
-          // Vertical list mode (original implementation)
+          // Vertical list mode
           LazyColumn(
             state = lazyListState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 16.dp),
           ) {
-            items(playlist, key = { it.uri.toString() }) { item ->
+            items(playlist.size, key = { index -> playlist[index].uri.toString() }) { index ->
+              val item = playlist[index]
               PlaylistTrackListItem(
                 item = item,
                 thumbnailRepository = thumbnailRepository,
