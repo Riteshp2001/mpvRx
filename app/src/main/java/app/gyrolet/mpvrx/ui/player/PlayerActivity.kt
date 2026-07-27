@@ -4613,7 +4613,9 @@ class PlayerActivity :
     val enabled = !audioPreferences.backgroundPlayback.get()
     audioPreferences.backgroundPlayback.set(enabled)
 
-    if (!enabled) {
+    if (enabled) {
+      ensureNotificationAccessForPlayback(allowUserPrompt = true)
+    } else {
       pendingBackgroundTransition = false
       isBackgroundPlaybackSessionActive = false
       endBackgroundPlayback()
