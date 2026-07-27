@@ -5,6 +5,13 @@ import android.net.Uri
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,6 +64,10 @@ object AudioPreferencesScreen : Screen {
     val backstack = LocalBackStack.current
     val preferences = koinInject<AudioPreferences>()
     val browserPreferences = koinInject<BrowserPreferences>()
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+      contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+
 
     Scaffold(
       topBar = {
@@ -257,7 +268,14 @@ object AudioPreferencesScreen : Screen {
               val backgroundPlayback by preferences.backgroundPlayback.collectAsState()
               SwitchPreference(
                 value = backgroundPlayback,
-                onValueChange = { preferences.backgroundPlayback.set(it) },
+                onValueChange = { enabled ->
+                  preferences.backgroundPlayback.set(enabled)
+                  if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                  }
+                },
                 title = { Text(stringResource(R.string.background_playback_title)) },
                 summary = {
                   Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_keep_audio_and_video_playing_when_leaving_the_player_or_locking),
