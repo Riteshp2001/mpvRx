@@ -295,6 +295,8 @@ fun AudioPlayerControls(
   val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
   val showVisualizer by viewModel.showVisualizerInAudioPlayer.collectAsState()
+  val sheetShown by viewModel.sheetShown.collectAsState()
+  val isSheetOpen = sheetShown != Sheets.None
 
   val abLoop by viewModel.abLoopState.collectAsState()
   val abLoopA = abLoop.a
@@ -399,11 +401,13 @@ fun AudioPlayerControls(
                 AudioVisualizerStyle.Galaxy -> GalaxyOverlay(
                   isPlaying = isPlaying,
                   palette = palette,
+                  isSheetOpen = isSheetOpen,
                   modifier = Modifier.fillMaxSize()
                 )
                 AudioVisualizerStyle.Blob -> BlobOverlay(
                   isPlaying = isPlaying,
                   palette = palette,
+                  isSheetOpen = isSheetOpen,
                   modifier = Modifier.fillMaxSize()
                 )
               }
