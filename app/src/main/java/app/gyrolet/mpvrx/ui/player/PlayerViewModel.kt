@@ -2221,10 +2221,12 @@ class PlayerViewModel(
       skipSegmentsSnapshot.firstOrNull { segment ->
         positionSeconds in segment.startSeconds..segment.endSeconds && (segment.endSeconds - positionSeconds) >= 1.0
       }
-    runCatching {
+    val showChip = activeSegment != null && (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
+    if (_currentSkippableSegment.value != activeSegment) {
       _currentSkippableSegment.value = activeSegment
-      _showSkipChipAuto.value =
-        activeSegment != null && (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
+    }
+    if (_showSkipChipAuto.value != showChip) {
+      _showSkipChipAuto.value = showChip
     }
 
     if (paused == true || activeSegment == null) return

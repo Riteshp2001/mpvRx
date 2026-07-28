@@ -493,12 +493,7 @@ fun PlayerControls(
               .fillMaxSize()
               .onSizeChanged { controlsLayoutHeightPx = it.height }
               .background(
-                Brush.verticalGradient(
-                  Pair(0f, Color.Black),
-                  Pair(.4f, Color.Transparent),
-                  Pair(.6f, Color.Transparent),
-                  Pair(1f, Color.Black),
-                ),
+                FullScreenScrimBrush,
                 alpha = transparentOverlay,
               )
               .then(safeAreaInsetModifier)
@@ -1168,12 +1163,7 @@ fun PlayerControls(
             }
 
             else -> {
-              val buttonShadow =
-                Brush.radialGradient(
-                  0.0f to Color.Black.copy(alpha = 0.3f),
-                  0.7f to Color.Transparent,
-                  1.0f to Color.Transparent,
-                )
+              val buttonShadow = PlaySkipButtonShadowBrush
 
               val hasPlaylistControls =
                 playlistMode && (playlistItems.size > 1 || viewModel.getPlaylistTotalCount() > 1)
@@ -2095,4 +2085,17 @@ private fun OutlinedLabeled(
     )
   }
 }
+
+private val FullScreenScrimBrush = Brush.verticalGradient(
+  Pair(0f, Color.Black),
+  Pair(.4f, Color.Transparent),
+  Pair(.6f, Color.Transparent),
+  Pair(1f, Color.Black),
+)
+
+private val PlaySkipButtonShadowBrush = Brush.radialGradient(
+  0.0f to Color.Black.copy(alpha = 0.3f),
+  0.7f to Color.Transparent,
+  1.0f to Color.Transparent,
+)
 
