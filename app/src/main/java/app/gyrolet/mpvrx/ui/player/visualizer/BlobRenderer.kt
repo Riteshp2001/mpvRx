@@ -103,10 +103,10 @@ internal class BlobRenderer(
     private var pitch = 0f
 
     @Volatile private var pinchScale = 1f
-    private var zoomDistance = 8.6f
+    private var zoomDistance = 7.0f
 
     fun setPinchScale(scale: Float) {
-        pinchScale = scale.coerceIn(0.60f, 1.15f)
+        pinchScale = scale.coerceIn(0.60f, 1.30f)
     }
 
     fun getPinchScale(): Float = pinchScale
@@ -300,9 +300,9 @@ internal class BlobRenderer(
         Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else pitch + time * 1.7f, 1f, 0f, 0f)
         val reactiveScale =
             if (reducedMotionEnabled) {
-                1.05f + audio.energy * 0.025f
+                1.20f + audio.energy * 0.025f
             } else {
-                1.00f + audio.energy * 0.12f + audio.bass * 0.09f + audio.beat * 0.06f
+                1.15f + audio.energy * 0.12f + audio.bass * 0.09f + audio.beat * 0.06f
             }
         val scale = pinchScale * reactiveScale
         Matrix.scaleM(model, 0, scale, scale, scale)
