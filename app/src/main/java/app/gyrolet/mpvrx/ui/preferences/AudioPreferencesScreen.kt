@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
+import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
@@ -198,6 +199,22 @@ object AudioPreferencesScreen : Screen {
                   },
                 )
               }
+
+              PreferenceDivider()
+              val audioOrientation by preferences.audioOrientation.collectAsState()
+              ListPreference(
+                value = audioOrientation,
+                onValueChange = { preferences.audioOrientation.set(it) },
+                values = AudioPlayerOrientation.entries,
+                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                title = { Text(stringResource(R.string.pref_audio_orientation_title)) },
+                summary = {
+                  Text(
+                    stringResource(audioOrientation.titleRes),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
 
               PreferenceDivider()
               val preferredLanguages by preferences.preferredLanguages.collectAsState()

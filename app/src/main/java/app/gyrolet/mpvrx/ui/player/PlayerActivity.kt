@@ -72,6 +72,7 @@ import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -685,6 +686,14 @@ class PlayerActivity :
           }
         } else {
           viewModel.showToast("Scripts disabled. Reopen the video if a script stays active.")
+        }
+      }
+    }
+
+    lifecycleScope.launch {
+      audioPreferences.audioOrientation.changes().drop(1).collect {
+        if (isKnownAudioLaunch(intent) || viewModel.isAudioOnly.value) {
+          setOrientation()
         }
       }
     }
@@ -4144,14 +4153,10 @@ class PlayerActivity :
    */
   private fun setOrientation() {
     if (isKnownAudioLaunch(intent) || viewModel.isAudioOnly.value) {
-      val audioOrient = when (playerPreferences.orientation.get()) {
-        PlayerOrientation.Video, PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        PlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        PlayerOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-        PlayerOrientation.SensorPortrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-        PlayerOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        PlayerOrientation.ReverseLandscape -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-        PlayerOrientation.SensorLandscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+      val audioOrient = when (audioPreferences.audioOrientation.get()) {
+        AudioPlayerOrientation.Auto -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        AudioPlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        AudioPlayerOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
       }
       requestedOrientation = audioOrient
       return

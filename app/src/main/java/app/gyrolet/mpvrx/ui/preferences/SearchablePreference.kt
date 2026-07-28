@@ -651,6 +651,12 @@ object SearchablePreferences {
                 screen = AudioPreferencesScreen,
             ))
             add(SearchablePreference(
+                titleRes = R.string.pref_audio_orientation_title,
+                keywords = listOf("audio", "music", "orientation", "portrait", "landscape", "auto", "rotate"),
+                category = "Audio",
+                screen = AudioPreferencesScreen,
+            ))
+            add(SearchablePreference(
                 titleRes = R.string.pref_preferred_languages,
                 keywords = listOf("language", "preferred", "subtitle", "audio", "locale", "code"),
                 category = "Audio",

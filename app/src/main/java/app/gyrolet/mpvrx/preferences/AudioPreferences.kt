@@ -17,6 +17,7 @@ class AudioPreferences(
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val audioBlobEnabled = preferenceStore.getBoolean("audio_blob_enabled", true)
   val audioVisualizerStyle = preferenceStore.getEnum("audio_visualizer_style", AudioVisualizerStyle.Blob)
+  val audioOrientation = preferenceStore.getEnum("audio_player_orientation", AudioPlayerOrientation.Auto)
 
   init {
     // Consolidate the old audio-only screen-lock switch into the single global setting.
@@ -24,6 +25,14 @@ class AudioPreferences(
     if (legacyScreenLockPlayback.get()) backgroundPlayback.set(true)
     if (legacyScreenLockPlayback.isSet()) legacyScreenLockPlayback.delete()
   }
+}
+
+enum class AudioPlayerOrientation(
+  @StringRes val titleRes: Int,
+) {
+  Auto(R.string.pref_audio_channels_auto),
+  Portrait(R.string.pref_player_orientation_portrait),
+  Landscape(R.string.pref_player_orientation_landscape),
 }
 
 enum class AudioVisualizerStyle(
@@ -44,4 +53,5 @@ enum class AudioChannels(
   Stereo(R.string.pref_audio_channels_stereo, "audio-channels", "stereo"),
   ReverseStereo(R.string.pref_audio_channels_stereo_reversed, "af", "pan=[stereo|c0=c1|c1=c0]"),
 }
+
 
