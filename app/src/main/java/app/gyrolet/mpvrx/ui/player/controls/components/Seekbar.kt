@@ -237,6 +237,7 @@ fun SeekbarWithTimers(
   bufferDuration: Float? = null,
   isPortrait: Boolean = false,
   applyHorizontalPadding: Boolean = true,
+  timerTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
   modifier: Modifier = Modifier,
 ) {
   val clickEvent = LocalPlayerButtonsClickEvent.current
@@ -301,6 +302,7 @@ fun SeekbarWithTimers(
         VideoTimer(
           value = if (isUserInteracting) userPosition else position,
           isInverted = timersInverted.first,
+          textColor = timerTextColor,
           onClick = {
             clickEvent()
             positionTimerOnClick()
@@ -310,6 +312,7 @@ fun SeekbarWithTimers(
         VideoTimer(
           value = if (timersInverted.second) position - duration else duration,
           isInverted = timersInverted.second,
+          textColor = timerTextColor,
           onClick = {
             clickEvent()
             durationTimerOnCLick()
@@ -326,6 +329,7 @@ fun SeekbarWithTimers(
       VideoTimer(
         value = if (isUserInteracting) userPosition else position,
         isInverted = timersInverted.first,
+        textColor = timerTextColor,
         onClick = {
           clickEvent()
           positionTimerOnClick()
@@ -358,6 +362,7 @@ fun SeekbarWithTimers(
       VideoTimer(
         value = if (timersInverted.second) position - duration else duration,
         isInverted = timersInverted.second,
+        textColor = timerTextColor,
         onClick = {
           clickEvent()
           durationTimerOnCLick()
@@ -1283,6 +1288,7 @@ fun VideoTimer(
   value: Float,
   isInverted: Boolean,
   modifier: Modifier = Modifier,
+  textColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
   onClick: () -> Unit = {},
 ) {
   val interactionSource = remember { MutableInteractionSource() }
@@ -1297,7 +1303,7 @@ fun VideoTimer(
         .padding(horizontal = 4.dp)
         .wrapContentHeight(Alignment.CenterVertically),
     text = Utils.prettyTime(value.toInt(), isInverted),
-    color = Color.White,
+    color = textColor,
     textAlign = TextAlign.Center,
     style = MaterialTheme.typography.labelSmall
   )
