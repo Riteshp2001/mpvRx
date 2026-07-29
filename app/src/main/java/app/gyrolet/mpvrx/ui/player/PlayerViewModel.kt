@@ -42,9 +42,14 @@ import app.gyrolet.mpvrx.repository.ai.SubtitleGenerationService
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
+import app.gyrolet.mpvrx.utils.media.AudioEqualizerManager
 import app.gyrolet.mpvrx.utils.media.ParsedMediaInfo
 import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MAX_DB
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MIN_DB
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerPreset
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerState
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
@@ -486,11 +491,25 @@ class PlayerViewModel(
       }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
   val isAudioOnly: StateFlow<Boolean> =
-    MPVLib.propNode["track-list"]
-      .map { node ->
-        val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
-        tracks.any { it.isAudio } && tracks.none { it.isVideo && !it.isAlbumArtwork }
-      }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    combine(
+      MPVLib.propNode["track-list"],
+      MPVLib.propString["path"],
+      MPVLib.propString["stream-open-filename"],
+    ) { node, path, streamPath ->
+      val currentPath = path?.takeIf { it.isNotBlank() } ?: streamPath
+      val isFileAudioExt = currentPath?.let { p ->
+        val ext = p.substringBefore('?').substringBefore('#').substringAfterLast('.', "").lowercase()
+        ext in FileTypeUtils.AUDIO_EXTENSIONS
+      } ?: false
+
+      val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
+      if (tracks.isEmpty()) {
+        isFileAudioExt
+      } else {
+        (tracks.any { it.isAudio } && tracks.none { it.isVideo && !it.isAlbumArtwork }) ||
+          (isFileAudioExt && tracks.none { it.isVideo && !it.isAlbumArtwork })
+      }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, host.isCurrentMediaKnownAudio())
 
   val hasAlbumArt: StateFlow<Boolean> =
     MPVLib.propNode["track-list"]
@@ -505,6 +524,165 @@ class PlayerViewModel(
         node?.toObject<List<ChapterNode>>(json)?.map { it.toSegment() }?.toImmutableList()
           ?: persistentListOf()
       }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
+
+  // Audio player UI state
+  val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
+  val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.audioBlobEnabled.get())
+  val equalizerState = MutableStateFlow(EqualizerState())
+  private val audioEqualizerManager = AudioEqualizerManager()
+  private var equalizerMpvDebounceJob: Job? = null
+
+  fun setEqualizerEnabled(enabled: Boolean) {
+    equalizerState.value = equalizerState.value.copy(isEnabled = enabled)
+    applyEqualizerMpvFilters(immediate = true)
+  }
+
+  fun applyEqualizerPreset(preset: EqualizerPreset) {
+    if (preset == EqualizerPreset.CUSTOM) return
+    equalizerState.value = equalizerState.value.copy(
+      currentPreset = preset,
+      bandGains = preset.gains
+    )
+    applyEqualizerMpvFilters(immediate = true)
+  }
+
+  fun setEqualizerBandGain(index: Int, gainDb: Int) {
+    val currentGains = equalizerState.value.bandGains.toMutableList()
+    if (index in currentGains.indices && currentGains[index] != gainDb) {
+      currentGains[index] = gainDb.coerceIn(EQ_MIN_DB, EQ_MAX_DB)
+      equalizerState.value = equalizerState.value.copy(
+        currentPreset = EqualizerPreset.CUSTOM,
+        bandGains = currentGains
+      )
+      applyEqualizerMpvFilters(immediate = false)
+    }
+  }
+
+  fun setEqualizerVolumeBoost(db: Int) {
+    if (equalizerState.value.volumeBoostDb != db) {
+      equalizerState.value = equalizerState.value.copy(volumeBoostDb = db.coerceIn(0, 10))
+      applyEqualizerMpvFilters(immediate = false)
+    }
+  }
+
+  fun applyEqualizerMpvFilters(immediate: Boolean = false) {
+    val state = equalizerState.value
+
+    // 1. Hardware Android AudioFx (Equalizer & LoudnessEnhancer matching AFinity)
+    audioEqualizerManager.updateState(
+      enabled = state.isEnabled,
+      bandGains = state.bandGains,
+      volumeBoostDb = state.volumeBoostDb
+    )
+
+    // 2. MPV Audio Filter Fallback
+    // Changing MPV "af" filter property during playback causes MPV to recreate audio filter graph.
+    // Debouncing while dragging prevents audio stutter/breaking.
+    equalizerMpvDebounceJob?.cancel()
+    if (immediate) {
+      updateMpvAfProperty(state)
+    } else {
+      equalizerMpvDebounceJob = viewModelScope.launch(Dispatchers.Default) {
+        delay(150)
+        updateMpvAfProperty(state)
+      }
+    }
+  }
+
+  private fun updateMpvAfProperty(state: EqualizerState) {
+    if (!state.isEnabled) {
+      MPVLib.setPropertyString("af", "")
+      return
+    }
+    val freqs = listOf(60, 230, 910, 3600, 14000)
+    val filterList = mutableListOf<String>()
+
+    // Apply pre-amp attenuation for positive gains to prevent clipping distortion
+    val maxGain = state.bandGains.maxOrNull() ?: 0
+    if (maxGain > 0) {
+      filterList.add("volume=volume=${-maxGain}dB")
+    }
+
+    for (i in 0 until 5) {
+      val gain = state.bandGains.getOrElse(i) { 0 }
+      if (gain != 0) {
+        filterList.add("equalizer=f=${freqs[i]}:width_type=o:width=1.5:g=$gain")
+      }
+    }
+    if (state.volumeBoostDb > 0) {
+      filterList.add("volume=volume=${state.volumeBoostDb}dB")
+    }
+    val afString = filterList.joinToString(",")
+    MPVLib.setPropertyString("af", afString)
+  }
+
+  fun updateAlbumArtBounds(rect: android.graphics.Rect?) {
+    albumArtBounds.value = rect
+  }
+
+  fun toggleAudioVisualizer() {
+    val newValue = !showVisualizerInAudioPlayer.value
+    showVisualizerInAudioPlayer.value = newValue
+    audioPreferences.audioBlobEnabled.set(newValue)
+  }
+
+  fun getAudioPropertiesData(): List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem> {
+    val title = currentMediaTitle.takeIf { it.isNotBlank() }
+      ?: MPVLib.getPropertyString("metadata/by-key/Title")
+      ?: MPVLib.getPropertyString("media-title")
+      ?: "Unknown Title"
+
+    val artist = MPVLib.getPropertyString("metadata/by-key/Artist")
+      ?: MPVLib.getPropertyString("metadata/by-key/ARTIST")
+      ?: MPVLib.getPropertyString("metadata/by-key/album_artist")
+      ?: "Unknown Artist"
+
+    val album = MPVLib.getPropertyString("metadata/by-key/Album")
+      ?: MPVLib.getPropertyString("metadata/by-key/ALBUM")
+      ?: "Unknown Album"
+
+    val codec = MPVLib.getPropertyString("audio-codec-name")?.uppercase() ?: "Unknown"
+    val samplerateInt = MPVLib.getPropertyInt("audio-params/samplerate") ?: 0
+    val sampleRateStr = if (samplerateInt > 0) String.format(java.util.Locale.US, "%.1f kHz", samplerateInt / 1000f) else "Unknown"
+
+    val channelsInt = MPVLib.getPropertyInt("audio-params/channel-count") ?: 0
+    val channelsStr = when (channelsInt) {
+      1 -> "Mono (1.0)"
+      2 -> "Stereo (2.0)"
+      6 -> "5.1 Surround"
+      8 -> "7.1 Surround"
+      else -> if (channelsInt > 0) "$channelsInt Channels" else "Unknown"
+    }
+
+    val bitrateInt = MPVLib.getPropertyInt("audio-bitrate") ?: 0
+    val bitrateStr = if (bitrateInt > 0) "${bitrateInt / 1000} kbps" else "Variable / Unknown"
+
+    val path = MPVLib.getPropertyString("path") ?: MPVLib.getPropertyString("stream-open-filename") ?: ""
+    val fileSizeStr = if (path.isNotBlank() && !path.startsWith("content://") && !path.startsWith("http")) {
+      runCatching {
+        val bytes = java.io.File(path.removePrefix("file://")).length()
+        if (bytes > 0) String.format(java.util.Locale.US, "%.2f MB", bytes / (1024f * 1024f)) else ""
+      }.getOrDefault("")
+    } else ""
+
+    val formatExt = path.substringBefore('?').substringBefore('#').substringAfterLast('.', "").uppercase()
+
+    return buildList {
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Title", title))
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Artist", artist))
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Album", album))
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Format / Codec", if (formatExt.isNotBlank()) "$formatExt ($codec)" else codec))
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Sample Rate", sampleRateStr))
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Bitrate", bitrateStr))
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Channels", channelsStr))
+      if (fileSizeStr.isNotBlank()) {
+        add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("File Size", fileSizeStr))
+      }
+      if (path.isNotBlank()) {
+        add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("File Location", path))
+      }
+    }
+  }
 
   // Audio state
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -1099,6 +1277,7 @@ class PlayerViewModel(
       }
     }
     syncplayManager.updateFileInfo(currentSyncplayFileInfo())
+    applyEqualizerMpvFilters()
   }
 
   private fun currentSyncplayPlaybackState(): SyncplayPlaybackState =
@@ -2951,29 +3130,33 @@ class PlayerViewModel(
 
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    try {
-      if (playerPreferences.showSystemStatusBar.get()) {
-        host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
-        host.windowInsetsController.isAppearanceLightStatusBars = false
+    if (!isAudioOnly.value) {
+      try {
+        if (playerPreferences.showSystemStatusBar.get()) {
+          host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+          host.windowInsetsController.isAppearanceLightStatusBars = false
+        }
+        if (playerPreferences.showSystemNavigationBar.get()) {
+          host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+        }
+      } catch (e: Exception) {
+        // Defensive: InsetsController animation can crash under FD pressure
+        // (e.g. during high-res HEVC playback on certain devices)
+        Log.e(TAG, "Failed to show system bars", e)
       }
-      if (playerPreferences.showSystemNavigationBar.get()) {
-        host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
-      }
-    } catch (e: Exception) {
-      // Defensive: InsetsController animation can crash under FD pressure
-      // (e.g. during high-res HEVC playback on certain devices)
-      Log.e(TAG, "Failed to show system bars", e)
     }
     _controlsShown.value = true
     controlsVisibleForPolling = true
   }
 
   fun hideControls() {
-    try {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to hide system bars", e)
+    if (!isAudioOnly.value) {
+      try {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to hide system bars", e)
+      }
     }
     _controlsShown.value = false
     _seekBarShown.value = false
@@ -2982,11 +3165,13 @@ class PlayerViewModel(
   }
 
   fun autoHideControls() {
-    try {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to hide system bars", e)
+    if (!isAudioOnly.value) {
+      try {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to hide system bars", e)
+      }
     }
     _controlsShown.value = false
     _seekBarShown.value = true
@@ -3373,7 +3558,7 @@ class PlayerViewModel(
     brightnessSliderTimestamp.value = System.currentTimeMillis()
   }
 
-  fun changeVolumeBy(change: Int) {
+  fun changeVolumeBy(change: Int, showUi: Boolean = false) {
     val currentSystemVolume = syncCurrentSystemVolume()
     val mpvVolume = MPVLib.getPropertyInt("volume") ?: 100
     val absoluteMaxVolume = volumeBoostCap ?: (audioPreferences.volumeBoostCap.get() + 100)
@@ -3384,7 +3569,7 @@ class PlayerViewModel(
 
     if (absoluteMaxVolume > 100 && currentSystemVolume == maxVolume) {
       if (mpvVolume == 100 && change < 0) {
-        changeVolumeTo(currentSystemVolume + change)
+        changeVolumeTo(currentSystemVolume + change, showUi)
       }
       val finalMPVVolume = (mpvVolume + change).coerceAtLeast(100)
       if (finalMPVVolume in 100..absoluteMaxVolume) {
@@ -3392,13 +3577,14 @@ class PlayerViewModel(
       }
     }
 
-    changeVolumeTo(currentSystemVolume + change)
+    changeVolumeTo(currentSystemVolume + change, showUi)
   }
 
   fun changeVolumePercentTo(volumePercent: Int) {
     val newPercent = volumePercent.coerceIn(0, 100)
     val newVolume = percentToSystemVolume(newPercent)
-    host.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+    val flags = if (isAudioOnly.value) AudioManager.FLAG_SHOW_UI else 0
+    host.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, flags)
     currentVolume.value = syncCurrentSystemVolume()
     currentVolumePercent.value = newPercent
 
@@ -3410,9 +3596,10 @@ class PlayerViewModel(
     }
   }
 
-  fun changeVolumeTo(volume: Int) {
+  fun changeVolumeTo(volume: Int, showUi: Boolean = false) {
     val newVolume = volume.coerceIn(0..maxVolume)
-    host.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+    val flags = if (showUi || isAudioOnly.value) AudioManager.FLAG_SHOW_UI else 0
+    host.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, flags)
     currentVolume.value = syncCurrentSystemVolume()
 
     if (currentVolume.value < maxVolume) {
@@ -3892,7 +4079,10 @@ class PlayerViewModel(
           .substringBefore('?')
           .substringBefore('#')
           .substringAfterLast('.', "")
-          .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS
+          .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS ||
+          resolvedUri.toString().lowercase().contains("audio") ||
+          uri.toString().lowercase().contains("audio") ||
+          isAudioOnly.value
       val isCurrentlyPlaying = index == activity.playlistIndex
 
       // Try to get from cache first (synchronized access)
@@ -4944,6 +5134,7 @@ class PlayerViewModel(
     runCatching { metadataCache.evictAll() }
 
     runCatching { syncplayManager.clearPlayerBindings() }
+    runCatching { audioEqualizerManager.release() }
 
     super.onCleared()
   }

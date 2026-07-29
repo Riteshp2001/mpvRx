@@ -13,6 +13,7 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Outline
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -29,6 +30,8 @@ import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.view.animation.PathInterpolator
 import android.widget.Toast
@@ -509,6 +512,7 @@ class PlayerActivity :
     setupBackPressHandler()
     setupPlayerControls()
     setupVideoTransformObserver()
+    setupAudioPlayerViewObserver()
     setupMediaSession()
     // Note: screenStateReceiver is now registered in onStart() and
     // unregistered in onStop(), matching the noisyReceiver pattern.
@@ -818,28 +822,7 @@ class PlayerActivity :
   private fun setupPlayerControls() {
     binding.controls.setContent {
       MpvrxTheme {
-        val isAudioOnly by viewModel.isAudioOnly.collectAsState()
-        val audioBlobEnabled by audioPreferences.audioBlobEnabled.collectAsState()
-        val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
-        val paused by MPVLib.propBoolean["pause"].collectAsState()
-        val appTheme by appearancePreferences.appTheme.collectAsState()
-        val darkMode by appearancePreferences.darkMode.collectAsState()
-        val amoledMode by appearancePreferences.amoledMode.collectAsState()
-        val useDarkTheme = when (darkMode) {
-          DarkMode.Dark -> true
-          DarkMode.Light -> false
-          DarkMode.System -> isSystemInDarkTheme()
-        }
-        val palette = appTheme.toVisualizerPalette(useDarkTheme, amoledMode)
         Box(modifier = Modifier.fillMaxSize()) {
-          // This setting is explicit: when enabled, visualize every audio-only track,
-          // including files that also have embedded artwork.
-          if (isAudioOnly && audioBlobEnabled) {
-            when (audioVisualizerStyle) {
-              AudioVisualizerStyle.Galaxy -> GalaxyOverlay(isPlaying = paused == false, palette = palette)
-              AudioVisualizerStyle.Blob -> BlobOverlay(isPlaying = paused == false, palette = palette)
-            }
-          }
           PlayerControls(
             viewModel = viewModel,
             onBackPress = ::handleBackPress,
@@ -865,6 +848,46 @@ class PlayerActivity :
           binding.player.scaleY = scale
           binding.player.translationX = panX
           binding.player.translationY = panY
+        }
+      }
+    }
+  }
+
+  private fun setupAudioPlayerViewObserver() {
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewModel.isAudioOnly.collect { isAudioOnly ->
+          if (isAudioOnly) {
+            viewModel.showControls()
+            binding.player.visibility = View.INVISIBLE
+            try {
+              WindowCompat.setDecorFitsSystemWindows(window, false)
+              window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+              binding.root.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+              window.statusBarColor = android.graphics.Color.TRANSPARENT
+              window.navigationBarColor = android.graphics.Color.TRANSPARENT
+              windowInsetsController.apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+                show(WindowInsetsCompat.Type.statusBars())
+                show(WindowInsetsCompat.Type.navigationBars())
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+              }
+            } catch (e: Exception) {
+              Log.e(TAG, "Failed to show system bars for audio playback", e)
+            }
+          } else {
+            val lp = binding.player.layoutParams as ViewGroup.MarginLayoutParams
+            if (lp.width != ViewGroup.LayoutParams.MATCH_PARENT || lp.height != ViewGroup.LayoutParams.MATCH_PARENT || lp.leftMargin != 0 || lp.topMargin != 0) {
+              lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+              lp.height = ViewGroup.LayoutParams.MATCH_PARENT
+              lp.leftMargin = 0
+              lp.topMargin = 0
+              binding.player.layoutParams = lp
+            }
+            binding.player.clipToOutline = false
+            binding.player.visibility = View.VISIBLE
+          }
         }
       }
     }
@@ -1388,6 +1411,20 @@ class PlayerActivity :
   }
 
   private fun handleSystemBarsVisibility(insets: WindowInsetsCompat) {
+    if (viewModel.isAudioOnly.value) {
+      cancelSystemBarsAutoHide()
+      try {
+        windowInsetsController.apply {
+          systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+          show(WindowInsetsCompat.Type.statusBars())
+          show(WindowInsetsCompat.Type.navigationBars())
+          isAppearanceLightStatusBars = false
+          isAppearanceLightNavigationBars = false
+        }
+      } catch (_: Exception) {}
+      return
+    }
+
     val systemBarsVisible =
       insets.isVisible(WindowInsetsCompat.Type.statusBars()) ||
         insets.isVisible(WindowInsetsCompat.Type.navigationBars())
@@ -1401,6 +1438,7 @@ class PlayerActivity :
 
   private fun shouldAutoHideSystemBars(): Boolean =
     !isInPictureInPictureMode &&
+      !viewModel.isAudioOnly.value &&
       !viewModel.controlsShown.value &&
       viewModel.sheetShown.value == Sheets.None &&
       viewModel.panelShown.value == Panels.None
@@ -1429,6 +1467,25 @@ class PlayerActivity :
   @Suppress("DEPRECATION")
   private fun hideSystemBarsForPlayback() {
     cancelSystemBarsAutoHide()
+    if (viewModel.isAudioOnly.value) {
+      try {
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        binding.root.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        windowInsetsController.apply {
+          systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+          show(WindowInsetsCompat.Type.statusBars())
+          show(WindowInsetsCompat.Type.navigationBars())
+          isAppearanceLightStatusBars = false
+          isAppearanceLightNavigationBars = false
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to show system bars for audio playback", e)
+      }
+      return
+    }
     try {
       windowInsetsController.apply {
         hide(WindowInsetsCompat.Type.statusBars())
@@ -4044,7 +4101,16 @@ class PlayerActivity :
    */
   private fun setOrientation() {
     if (isKnownAudioLaunch(intent) || viewModel.isAudioOnly.value) {
-      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+      val audioOrient = when (playerPreferences.orientation.get()) {
+        PlayerOrientation.Video, PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        PlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        PlayerOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+        PlayerOrientation.SensorPortrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        PlayerOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        PlayerOrientation.ReverseLandscape -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+        PlayerOrientation.SensorLandscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+      }
+      requestedOrientation = audioOrient
       return
     }
     val orientationPref = playerPreferences.orientation.get()
@@ -4170,12 +4236,20 @@ class PlayerActivity :
       }
 
       KeyEvent.KEYCODE_VOLUME_UP -> {
+        if (viewModel.isAudioOnly.value) {
+          viewModel.changeVolumeBy(1, showUi = true)
+          return true
+        }
         viewModel.changeVolumeBy(1)
         viewModel.displayVolumeSlider()
         return true
       }
 
       KeyEvent.KEYCODE_VOLUME_DOWN -> {
+        if (viewModel.isAudioOnly.value) {
+          viewModel.changeVolumeBy(-1, showUi = true)
+          return true
+        }
         viewModel.changeVolumeBy(-1)
         viewModel.displayVolumeSlider()
         return true
@@ -4500,7 +4574,9 @@ class PlayerActivity :
     val enabled = !audioPreferences.backgroundPlayback.get()
     audioPreferences.backgroundPlayback.set(enabled)
 
-    if (!enabled) {
+    if (enabled) {
+      ensureNotificationAccessForPlayback(allowUserPrompt = true)
+    } else {
       pendingBackgroundTransition = false
       isBackgroundPlaybackSessionActive = false
       endBackgroundPlayback()

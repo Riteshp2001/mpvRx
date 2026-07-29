@@ -103,6 +103,8 @@ enum class Sheets {
   Playlist,
   AmbientConfig,
   FrameNavigation,
+  Equalizer,
+  AudioProperties,
 }
 
 enum class Panels {

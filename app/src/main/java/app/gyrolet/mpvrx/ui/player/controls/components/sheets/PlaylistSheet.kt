@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -115,15 +116,18 @@ private fun PlaylistThumbnail(
       resolution = item.resolution,
     )
   }
-  val thumbnailKey = remember(video) {
-    thumbnailRepository.thumbnailKey(video, PLAYLIST_THUMBNAIL_WIDTH, PLAYLIST_THUMBNAIL_HEIGHT)
+  val (thumbWidth, thumbHeight) = remember(item.isAudio) {
+    if (item.isAudio) 512 to 512 else PLAYLIST_THUMBNAIL_WIDTH to PLAYLIST_THUMBNAIL_HEIGHT
+  }
+  val thumbnailKey = remember(video, thumbWidth, thumbHeight) {
+    thumbnailRepository.thumbnailKey(video, thumbWidth, thumbHeight)
   }
   var bitmap by remember(thumbnailKey) {
     mutableStateOf(
       thumbnailRepository.getThumbnailFromMemory(
         video,
-        PLAYLIST_THUMBNAIL_WIDTH,
-        PLAYLIST_THUMBNAIL_HEIGHT,
+        thumbWidth,
+        thumbHeight,
       ),
     )
   }
@@ -133,8 +137,8 @@ private fun PlaylistThumbnail(
       bitmap = withContext(Dispatchers.IO) {
         thumbnailRepository.getThumbnail(
           video,
-          PLAYLIST_THUMBNAIL_WIDTH,
-          PLAYLIST_THUMBNAIL_HEIGHT,
+          thumbWidth,
+          thumbHeight,
         )
       }
     }
@@ -172,6 +176,7 @@ fun PlaylistSheet(
   playerPreferences: app.gyrolet.mpvrx.preferences.PlayerPreferences,
   isSwipeActive: Boolean = false,
   swipeOffset: Float = 0f,
+  isAudioOnly: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
   val configuration = LocalConfiguration.current
@@ -315,7 +320,8 @@ fun PlaylistSheet(
 
           LazyColumn(
             state = lazyListState,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 16.dp),
           ) {
             items(playlist.size, key = { index -> playlist[index].uri.toString() }) { index ->
               val item = playlist[index]
@@ -327,6 +333,7 @@ fun PlaylistSheet(
                     onClick = { onItemClick(item) },
                     skipThumbnail = false,
                     accentColor = accentColor,
+                    isAudioOnly = isAudioOnly,
                     dragHandle = {
                       DragHandle(scope = this, isDragging = isDragging)
                     }
@@ -338,7 +345,8 @@ fun PlaylistSheet(
                   thumbnailRepository = thumbnailRepository,
                   onClick = { onItemClick(item) },
                   skipThumbnail = false,
-                  accentColor = accentColor
+                  accentColor = accentColor,
+                  isAudioOnly = isAudioOnly,
                 )
               }
             }
@@ -361,6 +369,7 @@ fun PlaylistSheet(
                   onItemClick(item)
                 },
                 skipThumbnail = false,
+                isAudioOnly = isAudioOnly,
               )
             }
           }
@@ -413,13 +422,19 @@ fun PlaylistTrackListItem(
   onClick: () -> Unit,
   skipThumbnail: Boolean = false,
   accentColor: Color,
+  isAudioOnly: Boolean = false,
   modifier: Modifier = Modifier,
   dragHandle: @Composable () -> Unit = {},
 ) {
+  val isAudioItem = item.isAudio || isAudioOnly
+  val effectiveItem = remember(item, isAudioItem) {
+    if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
+  }
+
   // Use theme colors dynamically
   val accentSecondary = MaterialTheme.colorScheme.tertiary
 
-  val borderModifier = if (item.isPlaying) {
+  val borderModifier = if (effectiveItem.isPlaying) {
     Modifier.border(
       width = 2.dp,
       brush = Brush.linearGradient(listOf(accentColor, accentSecondary)),
@@ -439,7 +454,7 @@ fun PlaylistTrackListItem(
       .clip(RoundedCornerShape(12.dp))
       .then(borderModifier)
       .clickable(onClick = onClick),
-    color = if (item.isPlaying) {
+    color = if (effectiveItem.isPlaying) {
       MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
     } else {
       Color.Transparent
@@ -456,21 +471,26 @@ fun PlaylistTrackListItem(
       // Thumbnail with simple background, episode number, and progress
       Box(
         modifier = Modifier
-          .width(100.dp)
-          .height(56.dp)
+          .then(
+            if (isAudioItem) {
+              Modifier.size(56.dp)
+            } else {
+              Modifier.width(100.dp).height(56.dp)
+            }
+          )
           .clip(RoundedCornerShape(8.dp))
           .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = if (item.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.Videocam,
+          imageVector = if (isAudioItem) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.Videocam,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
           modifier = Modifier.size(24.dp),
         )
         if (!skipThumbnail) {
           PlaylistThumbnail(
-            item = item,
+            item = effectiveItem,
             thumbnailRepository = thumbnailRepository,
             contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
             modifier = Modifier.matchParentSize(),
@@ -595,13 +615,19 @@ fun PlaylistTrackGridItem(
   thumbnailRepository: ThumbnailRepository,
   onClick: () -> Unit,
   skipThumbnail: Boolean = false,
+  isAudioOnly: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
+  val isAudioItem = item.isAudio || isAudioOnly
+  val effectiveItem = remember(item, isAudioItem) {
+    if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
+  }
+
   // Use theme colors dynamically
   val accentColor = MaterialTheme.colorScheme.primary
   val accentSecondary = MaterialTheme.colorScheme.tertiary
 
-  val borderModifier = if (item.isPlaying) {
+  val borderModifier = if (effectiveItem.isPlaying) {
     Modifier.border(
       width = 2.dp,
       brush = Brush.linearGradient(listOf(accentColor, accentSecondary)),
@@ -625,24 +651,30 @@ fun PlaylistTrackGridItem(
       modifier = Modifier.padding(MaterialTheme.spacing.smaller),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
-      // Thumbnail with 16:9 aspect ratio
+      // Thumbnail with 1:1 aspect ratio for audio, fixed height for video
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .height(112.dp)
+          .then(
+            if (isAudioItem) {
+              Modifier.aspectRatio(1f)
+            } else {
+              Modifier.height(112.dp)
+            }
+          )
           .clip(RoundedCornerShape(8.dp))
           .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = if (item.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.Videocam,
+          imageVector = if (isAudioItem) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.Videocam,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
           modifier = Modifier.size(32.dp),
         )
         if (!skipThumbnail) {
           PlaylistThumbnail(
-            item = item,
+            item = effectiveItem,
             thumbnailRepository = thumbnailRepository,
             contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
             modifier = Modifier.matchParentSize(),

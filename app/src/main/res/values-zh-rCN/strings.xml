@@ -271,6 +271,7 @@
   <string name="pref_audio_visualizer_style_title">可视化样式</string>
   <string name="pref_audio_visualizer_style_blob">流体</string>
   <string name="pref_audio_visualizer_style_galaxy">星系</string>
+  <string name="pref_audio_visualizer_style_cuboid">长方体</string>
   <string name="pref_audio_visualizer_galaxy_credit">灵感来自 CodePen 上的 Zain Raza</string>
   <string name="pref_audio_channels">音频声道</string>
   <string name="pref_audio_channels_auto">自动</string>
