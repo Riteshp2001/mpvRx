@@ -843,7 +843,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           selectedVideos.singleOrNull()?.isAudio == false && selectedFolders.isEmpty(),
         showRename = selectionManager.isSingleSelection,
         showAddToPlaylist = !BuildConfig.ENABLE_UPDATE_FEATURE && onlyVideosSelected,
-        modifier = Modifier.padding(bottom = if (app.gyrolet.mpvrx.ui.browser.NavigationBarState.shouldHideNavigationBar) 0.dp else navigationBarHeight)
+        modifier = Modifier.padding(bottom = 0.dp)
       )
     }
 

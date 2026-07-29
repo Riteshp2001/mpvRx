@@ -19,6 +19,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -169,6 +170,14 @@ object PlaylistScreen : Screen {
       }
     }
 
+    // Synchronize NavigationBarState when selection mode changes
+    SideEffect {
+      app.gyrolet.mpvrx.ui.browser.NavigationBarState.updateSelectionState(
+        inSelectionMode = selectionManager.isInSelectionMode,
+        onlyVideos = true,
+      )
+    }
+
     // Track scroll for FAB visibility
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     app.gyrolet.mpvrx.ui.browser.fab.FabScrollHelper.trackScrollForFabVisibility(
@@ -254,7 +263,7 @@ object PlaylistScreen : Screen {
               onClick = { showPlaylistActionSheet = true },
               icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
               text = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_playlist)) },
-              modifier = Modifier.padding(bottom = navigationBarHeight)
+              modifier = Modifier.padding(bottom = (navigationBarHeight - 16.dp).coerceAtLeast(0.dp))
             )
           }
         }
@@ -431,7 +440,6 @@ object PlaylistScreen : Screen {
         BoxWithConstraints(
           modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = navigationBarHeight)
         ) {
           val configuration = androidx.compose.ui.platform.LocalConfiguration.current
           val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -453,6 +461,7 @@ object PlaylistScreen : Screen {
             contentPadding = PaddingValues(
               start = 8.dp,
               end = 8.dp,
+              bottom = if (isInSelectionMode) 88.dp else navigationBarHeight,
             ),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -481,7 +490,7 @@ object PlaylistScreen : Screen {
               },
               modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 4.dp)
+                .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
                 .graphicsLayer { alpha = scrollbarAlpha },
             )
           }
@@ -492,7 +501,6 @@ object PlaylistScreen : Screen {
         Box(
           modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = navigationBarHeight)
         ) {
           LazyColumn(
             state = listState,
@@ -500,6 +508,7 @@ object PlaylistScreen : Screen {
             contentPadding = PaddingValues(
               start = 8.dp,
               end = 8.dp,
+              bottom = if (isInSelectionMode) 88.dp else navigationBarHeight,
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp),
           ) {
@@ -523,7 +532,7 @@ object PlaylistScreen : Screen {
               },
               modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 4.dp)
+                .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
                 .graphicsLayer { alpha = scrollbarAlpha },
             )
           }

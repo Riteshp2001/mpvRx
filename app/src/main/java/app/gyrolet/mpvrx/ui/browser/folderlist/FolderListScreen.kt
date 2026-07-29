@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.key
+import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -376,8 +377,8 @@ object FolderListScreen : Screen {
       )
     }
 
-    // Update NavigationBarState when selection mode changes
-    LaunchedEffect(selectionManager.isInSelectionMode) {
+    // Update NavigationBarState synchronously when selection mode changes
+    SideEffect {
       navBarState.updateSelectionState(
         inSelectionMode = selectionManager.isInSelectionMode,
         onlyVideos = true,
@@ -774,7 +775,7 @@ object FolderListScreen : Screen {
               showAddToPlaylist = false,
               modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (navBarState.shouldHideNavigationBar) 0.dp else navigationBarHeight),
+                .padding(bottom = 0.dp),
             )
           }
         }
