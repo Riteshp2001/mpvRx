@@ -412,8 +412,7 @@ fun AudioPlayerControls(
                   modifier = Modifier.fillMaxSize()
                 )
                 AudioVisualizerStyle.Cuboid -> CuboidOverlay(
-                  isPlaying = isPlaying,
-                  isSheetOpen = isSheetOpen,
+                  palette = palette,
                   modifier = Modifier.fillMaxSize()
                 )
               }

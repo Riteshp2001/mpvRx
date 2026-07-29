@@ -11,7 +11,6 @@ import android.media.audiofx.Visualizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -130,7 +129,7 @@ internal fun CuboidOverlay(
                 .pointerInput(Unit) {
                     var longPressJob: kotlinx.coroutines.Job? = null
                     var touchStartPos: Offset? = null
-                    var pointerId = -1L
+                    var pointerId: androidx.compose.ui.input.pointer.PointerId? = null
                     var pointerCount = 0
 
                     awaitPointerEventScope {
@@ -168,8 +167,7 @@ internal fun CuboidOverlay(
                                 }
 
                                 PointerEventType.Move -> {
-                                    val primary = changes.find { it.id == pointerId }
-                                        ?: changes.firstOrNull() ?: continue
+                                    val primary = changes.firstOrNull { pointerId == null || it.id == pointerId } ?: continue
                                     val sx = engineW.toFloat() / size.width
                                     val sy = engineH.toFloat() / size.height
                                     engine.mousePos.x = primary.position.x * sx
@@ -191,9 +189,9 @@ internal fun CuboidOverlay(
                                 PointerEventType.Release -> {
                                     if (changes.size >= 1) {
                                         val releasedIds = changes.map { it.id }.toSet()
-                                        if (pointerId in releasedIds) {
+                                        if (pointerId != null && pointerId in releasedIds) {
                                             pointerCount = 0
-                                            pointerId = -1L
+                                            pointerId = null
                                             longPressJob?.cancel()
                                             longPressJob = null
                                             engine.mouseDown = false
