@@ -20,8 +20,8 @@ android {
     applicationId = "app.gyrolet.mpvrx"
     minSdk = 26
     targetSdk = 36
-    versionCode = 153
-    versionName = "1.5.0-preview.5"
+    versionCode = 200
+    versionName = "2.0.0"
 
     vectorDrawables {
       useSupportLibrary = true
