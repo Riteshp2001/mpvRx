@@ -12,12 +12,12 @@ class mpvRxCastOptionsProvider : OptionsProvider {
   override fun getCastOptions(context: Context): CastOptions {
     val notificationOptions =
       NotificationOptions.Builder()
-        .setTargetActivityClassName(CastExpandedControlsActivity::class.java.name)
+        .setTargetActivityClassName(CastRemoteControllerActivity::class.java.name)
         .build()
     val mediaOptions =
       CastMediaOptions.Builder()
         .setNotificationOptions(notificationOptions)
-        .setExpandedControllerActivityClassName(CastExpandedControlsActivity::class.java.name)
+        .setExpandedControllerActivityClassName(CastRemoteControllerActivity::class.java.name)
         .build()
 
     return CastOptions.Builder()

@@ -9,9 +9,22 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
+import com.google.android.gms.cast.MediaSeekOptions
+import com.google.android.gms.cast.MediaStatus
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
+import com.google.android.gms.cast.framework.media.RemoteMediaClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class CastMediaSnapshot(
   val source: Uri,
@@ -22,7 +35,6 @@ data class CastMediaSnapshot(
   val isPlaying: Boolean,
 )
 
-/** Transfers the active mpv item to the Default Media Receiver and back. */
 class CastPlaybackController(
   private val activity: AppCompatActivity,
   private val currentMedia: () -> CastMediaSnapshot?,
@@ -30,26 +42,41 @@ class CastPlaybackController(
   private val restoreLocal: (positionMs: Long, play: Boolean) -> Unit,
   private val notifyUser: (String) -> Unit,
 ) {
+  init {
+    instance = this
+  }
+
+  private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+  private val _castState = MutableStateFlow(CastSessionState())
+  val castState: StateFlow<CastSessionState> = _castState.asStateFlow()
+
   private var castContext: CastContext? = null
+  private var castSession: CastSession? = null
+  private var remoteMediaClient: RemoteMediaClient? = null
   private var released = false
   private var localWasPlaying = false
   private var lastRemotePositionMs = 0L
   private var remoteWasPlaying = false
   private var capturedRemoteEndState = false
   private var transferredByThisController = false
+  private var positionPollingJob: Job? = null
+  private var volumeDebounceJob: Job? = null
 
   private val sessionListener =
     object : SessionManagerListener<CastSession> {
       override fun onSessionStarted(session: CastSession, sessionId: String) {
+        onSessionReady(session)
         loadCurrentMedia(session)
       }
 
       override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
+        onSessionReady(session)
         val remote = session.remoteMediaClient
         if (remote?.mediaInfo != null) {
           transferredByThisController = true
           localWasPlaying = currentMedia()?.isPlaying == true
           pauseLocal()
+          startPositionPolling()
         } else {
           loadCurrentMedia(session)
         }
@@ -65,6 +92,7 @@ class CastPlaybackController(
 
       override fun onSessionEnded(session: CastSession, error: Int) {
         CastMediaServer.stop()
+        stopPositionPolling()
         if (transferredByThisController) {
           restoreLocal(
             lastRemotePositionMs,
@@ -73,6 +101,9 @@ class CastPlaybackController(
         }
         capturedRemoteEndState = false
         transferredByThisController = false
+        remoteMediaClient = null
+        castSession = null
+        _castState.value = CastSessionState()
       }
 
       override fun onSessionStartFailed(session: CastSession, error: Int) {
@@ -89,6 +120,27 @@ class CastPlaybackController(
       override fun onSessionSuspended(session: CastSession, reason: Int) = Unit
     }
 
+  private val remoteMediaClientCallback =
+    object : RemoteMediaClient.Callback() {
+      override fun onStatusUpdated() {
+        updatePositionFromRemote()
+      }
+    }
+
+  private fun onSessionReady(session: CastSession) {
+    castSession = session
+    remoteMediaClient = session.remoteMediaClient
+    remoteMediaClient?.registerCallback(remoteMediaClientCallback)
+    _castState.update {
+      it.copy(
+        isConnected = true,
+        deviceName = session.castDevice?.friendlyName,
+        volume = session.volume,
+        isMuted = session.isMute,
+      )
+    }
+  }
+
   fun start() {
     released = false
     try {
@@ -96,7 +148,6 @@ class CastPlaybackController(
         .getSharedInstance(activity.applicationContext, ContextCompat.getMainExecutor(activity))
         .addOnSuccessListener { context ->
           if (released) return@addOnSuccessListener
-
           castContext = context
           context.sessionManager.addSessionManagerListener(sessionListener, CastSession::class.java)
           context.sessionManager.currentCastSession
@@ -112,12 +163,72 @@ class CastPlaybackController(
 
   fun release() {
     released = true
+    stopPositionPolling()
+    volumeDebounceJob?.cancel()
     val context = castContext
     castContext = null
+    remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
+    remoteMediaClient = null
+    castSession = null
     context?.sessionManager?.removeSessionManagerListener(sessionListener, CastSession::class.java)
     if (context?.sessionManager?.currentCastSession?.isConnected != true) {
       CastMediaServer.stop()
     }
+  }
+
+  fun play() {
+    remoteMediaClient?.play()?.setResultCallback { result ->
+      if (!result.status.isSuccess) {
+        Log.w(TAG, "Cast play failed: ${result.status.statusCode}")
+      }
+    }
+  }
+
+  fun pause() {
+    remoteMediaClient?.pause()?.setResultCallback { result ->
+      if (!result.status.isSuccess) {
+        Log.w(TAG, "Cast pause failed: ${result.status.statusCode}")
+      }
+    }
+  }
+
+  fun seekTo(positionMs: Long) {
+    remoteMediaClient?.seek(
+      MediaSeekOptions.Builder().setPosition(positionMs.coerceAtLeast(0L)).build()
+    )
+  }
+
+  fun setVolume(volume: Double) {
+    volumeDebounceJob?.cancel()
+    volumeDebounceJob = scope.launch {
+      delay(300)
+      try {
+        castSession?.volume = volume.coerceIn(0.0, 1.0)
+        _castState.update { it.copy(volume = volume.coerceIn(0.0, 1.0)) }
+      } catch (e: Exception) {
+        Log.w(TAG, "Failed to set cast volume", e)
+      }
+    }
+  }
+
+  fun setPlaybackSpeed(speed: Float) {
+    remoteMediaClient?.setPlaybackRate(speed.toDouble())
+    _castState.update { it.copy(playbackSpeed = speed) }
+  }
+
+  fun disconnect() {
+    scope.launch {
+      try {
+        stopPositionPolling()
+        castContext?.sessionManager?.endCurrentSession(true)
+      } catch (e: Exception) {
+        Log.w(TAG, "Error disconnecting cast", e)
+      }
+    }
+  }
+
+  fun openRemoteController() {
+    activity.startActivity(Intent(activity, CastRemoteControllerActivity::class.java))
   }
 
   private fun loadCurrentMedia(session: CastSession) {
@@ -173,13 +284,72 @@ class CastPlaybackController(
           remoteWasPlaying = snapshot.isPlaying
           capturedRemoteEndState = false
           transferredByThisController = true
+          _castState.update {
+            it.copy(
+              title = snapshot.title,
+              duration = snapshot.durationMs.coerceAtLeast(0L),
+              currentPosition = snapshot.positionMs.coerceAtLeast(0L),
+            )
+          }
           pauseLocal()
-          activity.startActivity(Intent(activity, CastExpandedControlsActivity::class.java))
+          startPositionPolling()
+          openRemoteController()
         } else {
           CastMediaServer.stop()
           notifyUser(result.status.statusMessage ?: "Unable to play this media on the Cast device")
         }
       }
+    }
+  }
+
+  private fun startPositionPolling() {
+    stopPositionPolling()
+    positionPollingJob = scope.launch {
+      while (true) {
+        delay(1_000)
+        updatePositionFromRemote()
+      }
+    }
+  }
+
+  private fun stopPositionPolling() {
+    positionPollingJob?.cancel()
+    positionPollingJob = null
+  }
+
+  private fun updatePositionFromRemote() {
+    try {
+      val client = remoteMediaClient ?: return
+      val position = client.approximateStreamPosition
+      if (position >= 0) {
+        _castState.update { it.copy(currentPosition = position) }
+      }
+
+      val mediaStatus = client.mediaStatus
+      if (mediaStatus != null) {
+        val isPlaying = mediaStatus.playerState == MediaStatus.PLAYER_STATE_PLAYING
+        val isPaused = mediaStatus.playerState == MediaStatus.PLAYER_STATE_PAUSED
+        val isBuffering = mediaStatus.playerState == MediaStatus.PLAYER_STATE_BUFFERING
+        val duration = mediaStatus.mediaInfo?.streamDuration ?: 0L
+
+        _castState.update {
+          it.copy(
+            isPlaying = isPlaying,
+            isPaused = isPaused,
+            isBuffering = isBuffering,
+            duration = if (duration > 0) duration else it.duration,
+          )
+        }
+      }
+
+      val session = castSession
+      if (session != null) {
+        _castState.update {
+          it.copy(volume = session.volume, isMuted = session.isMute)
+        }
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "Error polling cast position", e)
     }
   }
 
@@ -208,7 +378,10 @@ class CastPlaybackController(
     return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase()) ?: "video/mp4"
   }
 
-  private companion object {
+  companion object {
     const val TAG = "CastPlaybackController"
+
+    @Volatile
+    var instance: CastPlaybackController? = null
   }
 }

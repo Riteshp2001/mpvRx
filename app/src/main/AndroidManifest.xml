@@ -367,6 +367,11 @@
         </activity>
 
         <activity
+            android:name=".ui.cast.CastRemoteControllerActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.mpvrx" />
+        <activity
             android:name=".ui.cast.CastExpandedControlsActivity"
             android:exported="false"
             android:launchMode="singleTask"
