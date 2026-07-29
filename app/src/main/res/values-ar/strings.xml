@@ -262,6 +262,7 @@
   <string name="toast_subtitles_cleared">تم مسح الترجمات المنزلة</string>
   <string name="pref_audio">الصوت</string>
   <string name="pref_audio_summary">اللغات المفضلة وقنوات الصوت وتصحيح النغمة</string>
+  <string name="pref_audio_orientation_title">اتجاه مشغل الصوت</string>
   <string name="pref_audio_pitch_correction_title">تفعيل تصحيح نغمة الصوت</string>
   <string name="pref_audio_pitch_correction_summary">يمنع ارتفاع نغمة الصوت عند السرعات العالية وانخفاضها عند السرعات البطيئة</string>
   <string name="pref_audio_volume_normalization_title">توحيد مستوى الصوت</string>

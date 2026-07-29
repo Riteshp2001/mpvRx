@@ -262,6 +262,7 @@
   <string name="toast_subtitles_cleared">字幕のダウンロードを消去しました</string>
   <string name="pref_audio">音声</string>
   <string name="pref_audio_summary">優先言語、音声チャンネル、ピッチ補正</string>
+  <string name="pref_audio_orientation_title">オーディオプレーヤーの向き</string>
   <string name="pref_audio_pitch_correction_title">音声ピッチ補正を有効にする</string>
   <string name="pref_audio_pitch_correction_summary">高速再生時に音が高く、低速再生時に低くなるのを防ぎます</string>
   <string name="pref_audio_volume_normalization_title">音量の正規化</string>

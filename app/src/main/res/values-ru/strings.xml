@@ -262,6 +262,7 @@
   <string name="toast_subtitles_cleared">Загруженные субтитры удалены</string>
   <string name="pref_audio">Аудио</string>
   <string name="pref_audio_summary">Предпочитаемые языки, аудиоканалы и коррекция высоты тона</string>
+  <string name="pref_audio_orientation_title">Ориентация аудиоплеера</string>
   <string name="pref_audio_pitch_correction_title">Включить коррекцию высоты тона</string>
   <string name="pref_audio_pitch_correction_summary">Не позволяет звуку становиться выше при ускорении и ниже при замедлении</string>
   <string name="pref_audio_volume_normalization_title">Нормализация громкости</string>

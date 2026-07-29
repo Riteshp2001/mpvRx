@@ -262,6 +262,7 @@
   <string name="toast_subtitles_cleared">已清除字幕下载内容</string>
   <string name="pref_audio">音频</string>
   <string name="pref_audio_summary">首选语言、音频声道、音调校正</string>
+  <string name="pref_audio_orientation_title">音频播放器方向</string>
   <string name="pref_audio_pitch_correction_title">启用音频音调校正</string>
   <string name="pref_audio_pitch_correction_summary">防止快速播放时音调变高、慢速播放时音调变低</string>
   <string name="pref_audio_volume_normalization_title">音量标准化</string>
