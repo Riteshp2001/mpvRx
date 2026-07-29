@@ -8,7 +8,6 @@
 package app.gyrolet.mpvrx.ui.browser
 
 import android.annotation.SuppressLint
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.animateColorAsState
@@ -30,6 +29,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -54,7 +55,9 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +81,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -162,11 +166,38 @@ object MainScreen : Screen {
         }
       }
 
+    val scope = rememberCoroutineScope()
+
+    val pagerState = rememberPagerState(
+      initialPage = visibleTabs.indexOf(selectedTab).coerceAtLeast(0),
+      pageCount = { visibleTabs.size },
+    )
+
+    // Sync pager → selectedTab when user swipes
+    LaunchedEffect(pagerState) {
+      snapshotFlow { pagerState.settledPage }
+        .collect { page ->
+          if (page in visibleTabs.indices) {
+            selectedTab = visibleTabs[page]
+          }
+        }
+    }
+
+    val onTabSelected: (MainScreen.MainTab) -> Unit = { tab ->
+      scope.launch {
+        val page = visibleTabs.indexOf(tab)
+        if (page >= 0) {
+          pagerState.animateScrollToPage(page)
+        }
+      }
+      selectedTab = tab
+    }
+
     val mainNavBar = @Composable { modifier: Modifier ->
       TelegramPillNavigationBar(
         visibleTabs = visibleTabs,
         selectedTab = selectedTab,
-        onTabSelected = { selectedTab = it },
+        onTabSelected = onTabSelected,
         modifier = modifier,
       )
     }
@@ -176,11 +207,15 @@ object MainScreen : Screen {
       persistentSelectedTab = selectedTab
     }
 
-    LaunchedEffect(visibleTabs) {
+LaunchedEffect(visibleTabs) {
       if (visibleTabs.isEmpty()) {
         selectedTab = MainTab.HOME
       } else if (!visibleTabs.contains(selectedTab)) {
         selectedTab = visibleTabs.first()
+      }
+      val page = visibleTabs.indexOf(selectedTab)
+      if (page >= 0) {
+        pagerState.scrollToPage(page)
       }
     }
 
@@ -217,30 +252,29 @@ object MainScreen : Screen {
       Box(modifier = Modifier.fillMaxSize()) {
         val fabBottomPadding = 88.dp
 
-        AnimatedContent(
-          targetState = selectedTab,
-          transitionSpec = {
-            val initialIndex = visibleTabs.indexOf(initialState)
-            val targetIndex = visibleTabs.indexOf(targetState)
-            buildNavTransition(
-              forward = targetIndex >= initialIndex,
-              style = navAnimStyle,
-              speed = animSpeed,
-              density = density,
-            )
-          },
-          label = "tab_animation",
-        ) { targetTab ->
+        if (visibleTabs.isEmpty()) {
           CompositionLocalProvider(
             LocalNavigationBarHeight provides fabBottomPadding,
             LocalMainNavigationBar provides mainNavBar,
           ) {
-            val effectiveTab = if (visibleTabs.isEmpty()) MainTab.HOME else targetTab
-            when (effectiveTab) {
-              MainTab.HOME -> FolderListScreen.Content()
-              MainTab.RECENTS -> RecentlyPlayedScreen.Content()
-              MainTab.PLAYLISTS -> PlaylistScreen.Content()
-              MainTab.NETWORK -> NetworkStreamingScreen.Content()
+            FolderListScreen.Content()
+          }
+        } else {
+          HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+          ) { page ->
+            CompositionLocalProvider(
+              LocalNavigationBarHeight provides fabBottomPadding,
+              LocalMainNavigationBar provides mainNavBar,
+            ) {
+              val tab = visibleTabs[page]
+              when (tab) {
+                MainTab.HOME -> FolderListScreen.Content()
+                MainTab.RECENTS -> RecentlyPlayedScreen.Content()
+                MainTab.PLAYLISTS -> PlaylistScreen.Content()
+                MainTab.NETWORK -> NetworkStreamingScreen.Content()
+              }
             }
           }
         }
@@ -288,7 +322,7 @@ object MainScreen : Screen {
               TelegramPillNavigationBar(
                 visibleTabs = visibleTabs,
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
+                onTabSelected = onTabSelected,
                 modifier = Modifier.fillMaxWidth(),
               )
             }
