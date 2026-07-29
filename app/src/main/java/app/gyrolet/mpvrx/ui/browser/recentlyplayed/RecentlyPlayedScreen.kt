@@ -21,6 +21,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -157,6 +158,14 @@ object RecentlyPlayedScreen : Screen {
       )
 
     // Handle back button during selection mode or FAB menu expanded
+    // Synchronize NavigationBarState when selection mode changes
+    SideEffect {
+      app.gyrolet.mpvrx.ui.browser.NavigationBarState.updateSelectionState(
+        inSelectionMode = selectionManager.isInSelectionMode,
+        onlyVideos = true,
+      )
+    }
+
     BackHandler(enabled = selectionManager.isInSelectionMode || isFabExpanded.value) {
       when {
         isFabExpanded.value -> isFabExpanded.value = false
@@ -568,7 +577,6 @@ private fun RecentItemsContent(
       BoxWithConstraints(
         modifier = Modifier
           .fillMaxSize()
-          .padding(bottom = navigationBarHeight)
       ) {
         val spansInfo = calculateResponsiveGridSpans(
           maxWidth = maxWidth,
@@ -581,7 +589,7 @@ private fun RecentItemsContent(
           contentPadding = PaddingValues(
             start = 8.dp,
             end = 8.dp,
-            bottom = if (isInSelectionMode) 88.dp else 16.dp
+            bottom = if (isInSelectionMode) 88.dp else navigationBarHeight
           ),
           horizontalArrangement = Arrangement.spacedBy(4.dp),
           verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -694,7 +702,7 @@ private fun RecentItemsContent(
             },
             modifier = Modifier
               .align(Alignment.CenterEnd)
-              .padding(end = 4.dp)
+              .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
               .graphicsLayer { alpha = scrollbarAlpha },
           )
         }
@@ -704,7 +712,6 @@ private fun RecentItemsContent(
       Box(
         modifier = Modifier
           .fillMaxSize()
-          .padding(bottom = navigationBarHeight)
       ) {
         LazyColumn(
           state = listState,
@@ -712,7 +719,7 @@ private fun RecentItemsContent(
           contentPadding = PaddingValues(
             start = 8.dp,
             end = 8.dp,
-            bottom = if (isInSelectionMode) 88.dp else 16.dp
+            bottom = if (isInSelectionMode) 88.dp else navigationBarHeight
           ),
         ) {
           items(
@@ -814,7 +821,7 @@ private fun RecentItemsContent(
             },
             modifier = Modifier
               .align(Alignment.CenterEnd)
-              .padding(end = 4.dp)
+              .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
               .graphicsLayer { alpha = scrollbarAlpha },
           )
         }

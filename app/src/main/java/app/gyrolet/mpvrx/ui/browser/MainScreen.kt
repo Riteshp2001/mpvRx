@@ -252,15 +252,15 @@ object MainScreen : Screen {
               dampingRatio = AppMotion.Spatial.ExpressiveDp.dampingRatio,
               stiffness = AppMotion.Spatial.ExpressiveDp.stiffness,
             ),
-            initialOffsetY = { fullHeight -> fullHeight }
-          ),
+            initialOffsetY = { fullHeight -> fullHeight * 2 }
+          ) + fadeIn(),
           exit = slideOutVertically(
             animationSpec = spring(
-              dampingRatio = AppMotion.Spatial.StandardDp.dampingRatio,
-              stiffness = AppMotion.Spatial.StandardDp.stiffness,
+              dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+              stiffness = androidx.compose.animation.core.Spring.StiffnessMedium,
             ),
-            targetOffsetY = { fullHeight -> fullHeight }
-          ),
+            targetOffsetY = { fullHeight -> fullHeight * 2 }
+          ) + fadeOut(),
           modifier = Modifier
             .fillMaxWidth()
             .align(Alignment.BottomStart)

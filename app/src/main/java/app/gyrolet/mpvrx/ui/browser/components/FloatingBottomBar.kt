@@ -71,8 +71,20 @@ fun BrowserBottomBar(
   AnimatedVisibility(
     visible = isSelectionMode,
     modifier = modifier,
-    enter = fadeIn(),
-    exit = fadeOut(),
+    enter = androidx.compose.animation.slideInVertically(
+      animationSpec = androidx.compose.animation.core.spring(
+        dampingRatio = app.gyrolet.mpvrx.ui.theme.AppMotion.Spatial.ExpressiveDp.dampingRatio,
+        stiffness = app.gyrolet.mpvrx.ui.theme.AppMotion.Spatial.ExpressiveDp.stiffness,
+      ),
+      initialOffsetY = { fullHeight -> fullHeight * 2 }
+    ) + fadeIn(),
+    exit = androidx.compose.animation.slideOutVertically(
+      animationSpec = androidx.compose.animation.core.spring(
+        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+        stiffness = androidx.compose.animation.core.Spring.StiffnessMedium,
+      ),
+      targetOffsetY = { fullHeight -> fullHeight * 2 }
+    ) + fadeOut(),
   ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
       val availableWidth = maxWidth

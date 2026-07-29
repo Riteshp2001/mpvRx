@@ -21,6 +21,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
+import androidx.compose.runtime.SideEffect
 import app.gyrolet.mpvrx.utils.media.OpenDocumentTreeContract
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -262,8 +263,8 @@ data class VideoListScreen(
       }
     }
 
-    // Update NavigationBarState when selection mode changes
-    LaunchedEffect(selectionManager.isInSelectionMode) {
+    // Update NavigationBarState synchronously when selection mode changes
+    SideEffect {
       navBarState.updateSelectionState(
         inSelectionMode = selectionManager.isInSelectionMode,
         onlyVideos = true,
@@ -441,7 +442,7 @@ data class VideoListScreen(
             showRename = selectionManager.selectedCount > 0,
             modifier = Modifier
               .align(Alignment.BottomCenter)
-              .padding(bottom = if (navBarState.shouldHideNavigationBar) 0.dp else navigationBarHeight)
+              .padding(bottom = 0.dp)
           )
         }
       }
@@ -677,9 +678,11 @@ internal fun VideoListContent(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
+  val density = LocalDensity.current
+  val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
   val bottomPadding = if (showFloatingBottomBar) {
     if (isTablet) 108.dp else 88.dp
-  } else 16.dp
+  } else navigationBarHeight
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
@@ -697,8 +700,6 @@ internal fun VideoListContent(
   val manualGridColumnsEnabled by browserPreferences.manualGridColumnsEnabled.collectAsState()
   val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
   val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
-  val density = LocalDensity.current
-  val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
   val aspect = 16f / 9f
 
   val videoCardUiConfig =
@@ -921,8 +922,7 @@ internal fun VideoListContent(
             Box(
               modifier =
                 Modifier
-                  .fillMaxSize()
-                  .padding(bottom = if (selectionManager.isInSelectionMode) 0.dp else navigationBarHeight),
+                  .fillMaxSize(),
             ) {
               LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
@@ -988,7 +988,7 @@ internal fun VideoListContent(
                   modifier =
                     Modifier
                       .align(Alignment.CenterEnd)
-                      .padding(vertical = 6.dp)
+                      .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
                       .graphicsLayer { alpha = scrollbarAlpha },
                 )
               }
@@ -997,8 +997,7 @@ internal fun VideoListContent(
             Box(
               modifier =
                 Modifier
-                  .fillMaxSize()
-                  .padding(bottom = if (selectionManager.isInSelectionMode) 0.dp else navigationBarHeight),
+                  .fillMaxSize(),
             ) {
               LazyColumn(
                 state = listState,
@@ -1058,7 +1057,7 @@ internal fun VideoListContent(
                   modifier =
                     Modifier
                       .align(Alignment.CenterEnd)
-                      .padding(vertical = 6.dp)
+                      .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
                       .graphicsLayer { alpha = scrollbarAlpha },
                 )
               }

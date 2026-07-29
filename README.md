@@ -395,6 +395,7 @@ git push origin v1.3.1-preview.1
 - [Next Player](https://github.com/anilbeesetti/nextplayer)
 - [Gramophone](https://github.com/FoedusProgramme/Gramophone)
 - [hdr-toys](https://github.com/natural-harmonia-gropius/hdr-toys)
+- [AFinity](https://github.com/MakD/AFinity)
 - [**SunnyVishnu3**](https://github.com/SunnyVishnu3) for the `yt-dlp` native integration and SDK 29+ bypass logic.
 
 ---
