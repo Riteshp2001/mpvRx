@@ -45,9 +45,10 @@ fun RemoteImage(
 
   LaunchedEffect(url) {
     if (bitmap == null) {
-      bitmap = withContext(Dispatchers.IO) {
-        RemoteImageLoader.load(context, client, url)
-      }
+      bitmap =
+        withContext(Dispatchers.IO) {
+          RemoteImageLoader.load(context, client, url)
+        }
     }
   }
 
@@ -65,15 +66,23 @@ fun RemoteImage(
 private object RemoteImageLoader {
   private const val MAX_IMAGE_DIMENSION = 1024
   private const val CACHE_DIRECTORY = "remote_images"
-  private val memoryCache = object : LruCache<String, Bitmap>(
-    ((Runtime.getRuntime().maxMemory() / 1024L) / 32L).toInt(),
-  ) {
-    override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
-  }
+  private val memoryCache =
+    object : LruCache<String, Bitmap>(
+      ((Runtime.getRuntime().maxMemory() / 1024L) / 32L).toInt(),
+    ) {
+      override fun sizeOf(
+        key: String,
+        value: Bitmap,
+      ): Int = value.byteCount / 1024
+    }
 
   fun getFromMemory(url: String): Bitmap? = synchronized(memoryCache) { memoryCache.get(url) }
 
-  fun load(context: Context, client: OkHttpClient, url: String): Bitmap? {
+  fun load(
+    context: Context,
+    client: OkHttpClient,
+    url: String,
+  ): Bitmap? {
     getFromMemory(url)?.let { return it }
 
     val cacheDirectory = File(context.cacheDir, CACHE_DIRECTORY).apply { mkdirs() }
@@ -84,11 +93,13 @@ private object RemoteImageLoader {
     }
 
     val host = runCatching { java.net.URI(url).host }.getOrNull()
-    val request = Request.Builder()
-      .url(url)
-      .header("User-Agent", "Mozilla/5.0 (Android) mpvRx")
-      .apply { if (!host.isNullOrBlank()) header("Referer", "https://$host") }
-      .build()
+    val request =
+      Request
+        .Builder()
+        .url(url)
+        .header("User-Agent", "Mozilla/5.0 (Android) mpvRx")
+        .apply { if (!host.isNullOrBlank()) header("Referer", "https://$host") }
+        .build()
 
     return runCatching {
       client.newCall(request).execute().use { response ->
@@ -122,7 +133,8 @@ private object RemoteImageLoader {
   }
 
   private fun hash(value: String): String =
-    MessageDigest.getInstance("SHA-256")
+    MessageDigest
+      .getInstance("SHA-256")
       .digest(value.toByteArray())
       .joinToString("") { byte -> "%02x".format(byte) }
 }

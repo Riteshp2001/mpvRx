@@ -36,11 +36,16 @@ interface PlayerHost {
   val hostWindowManager: WindowManager
   val hostContentResolver: ContentResolver
   var hostRequestedOrientation: Int
-  
+
   fun requestAudioFocus(): Boolean
+
   fun abandonAudioFocus()
+
   fun currentMediaLookupHint(): String? = null
+
   fun currentPlayerLookupHints(): PlayerLookupHints = PlayerLookupHints()
+
   fun currentThumbnailSource(): String? = null
+
   fun isCurrentMediaKnownAudio(): Boolean = false
 }

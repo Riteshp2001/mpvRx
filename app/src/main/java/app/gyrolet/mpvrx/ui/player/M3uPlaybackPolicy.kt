@@ -51,7 +51,7 @@ object M3uPlaybackPolicy {
             value.substringBefore('?').substringBefore('#'),
             value.substringAfter('?', "").substringBefore('#'),
             value.substringAfter('#', ""),
-          )
+          ),
         )
 
     return uriParts.any { part ->

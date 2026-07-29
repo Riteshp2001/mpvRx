@@ -45,10 +45,14 @@ private data class AnthropicMessage(
 )
 
 @Serializable
-private data class AnthropicErrorBody(val error: AnthropicErrorDetail? = null)
+private data class AnthropicErrorBody(
+  val error: AnthropicErrorDetail? = null,
+)
 
 @Serializable
-private data class AnthropicErrorDetail(val message: String? = null)
+private data class AnthropicErrorDetail(
+  val message: String? = null,
+)
 
 @Serializable
 private data class AnthropicMessagesRequest(
@@ -70,51 +74,58 @@ class AnthropicClient(
   }
 
   private val apiClient: OkHttpClient =
-    client.newBuilder()
+    client
+      .newBuilder()
       .connectTimeout(60, TimeUnit.SECONDS)
       .readTimeout(120, TimeUnit.SECONDS)
       .writeTimeout(60, TimeUnit.SECONDS)
       .build()
 
-  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
-    runCatching {
-      val request = Request.Builder()
-        .url("$BASE_URL/models")
-        .header("x-api-key", apiKey)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .get()
-        .build()
+  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/models")
+            .header("x-api-key", apiKey)
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .get()
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
+        val response = apiClient.newCall(request).execute()
+        val body = response.body.string()
 
-      if (!response.isSuccessful) throw Exception("Anthropic API error ${response.code}: ${parseError(body)}")
+        if (!response.isSuccessful) throw Exception("Anthropic API error ${response.code}: ${parseError(body)}")
 
-      val parsed = json.decodeFromString<AnthropicModelListResponse>(body)
-      parsed.data.map { model ->
-        AiModelInfo(
-          id = model.id,
-          displayName = model.display_name ?: model.id,
-          isFree = AiModelPricing.isZeroCost(model.pricing),
-        )
+        val parsed = json.decodeFromString<AnthropicModelListResponse>(body)
+        parsed.data.map { model ->
+          AiModelInfo(
+            id = model.id,
+            displayName = model.display_name ?: model.id,
+            isFree = AiModelPricing.isZeroCost(model.pricing),
+          )
+        }
       }
     }
-  }
 
-  override suspend fun verifyKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
-    runCatching {
-      val request = Request.Builder()
-        .url("$BASE_URL/models")
-        .header("x-api-key", apiKey)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .get()
-        .build()
+  override suspend fun verifyKey(apiKey: String): Result<String> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/models")
+            .header("x-api-key", apiKey)
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .get()
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      if (!response.isSuccessful) throw Exception("Invalid API key: ${response.code}")
-      "API key verified successfully"
+        val response = apiClient.newCall(request).execute()
+        if (!response.isSuccessful) throw Exception("Invalid API key: ${response.code}")
+        "API key verified successfully"
+      }
     }
-  }
 
   override suspend fun generateContent(
     apiKey: String,
@@ -122,42 +133,48 @@ class AnthropicClient(
     instruction: String,
     userInput: String,
     options: AiGenerationOptions,
-  ): Result<AiGeneratedContent> = withContext(Dispatchers.IO) {
-    runCatching {
-      val requestBody = json.encodeToString(
-        AnthropicMessagesRequest.serializer(),
-        AnthropicMessagesRequest(
-          model = model,
-          maxTokens = options.maxTokens.coerceAtLeast(256),
-          messages = listOf(
-            AnthropicMessage(role = "user", content = listOf(AnthropicTextContent(text = userInput))),
-          ),
-          system = instruction,
-          temperature = options.temperature,
-        ),
-      )
+  ): Result<AiGeneratedContent> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val requestBody =
+          json.encodeToString(
+            AnthropicMessagesRequest.serializer(),
+            AnthropicMessagesRequest(
+              model = model,
+              maxTokens = options.maxTokens.coerceAtLeast(256),
+              messages =
+                listOf(
+                  AnthropicMessage(role = "user", content = listOf(AnthropicTextContent(text = userInput))),
+                ),
+              system = instruction,
+              temperature = options.temperature,
+            ),
+          )
 
-      val request = Request.Builder()
-        .url("$BASE_URL/messages")
-        .header("x-api-key", apiKey)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("Content-Type", "application/json")
-        .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
-        .build()
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/messages")
+            .header("x-api-key", apiKey)
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .header("Content-Type", "application/json")
+            .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
+        val response = apiClient.newCall(request).execute()
+        val body = response.body.string()
 
-      if (!response.isSuccessful) throw Exception("Anthropic generate error ${response.code}: ${parseError(body)}")
+        if (!response.isSuccessful) throw Exception("Anthropic generate error ${response.code}: ${parseError(body)}")
 
-      AiResponseParser.anthropic(json, body, "Anthropic")
+        AiResponseParser.anthropic(json, body, "Anthropic")
+      }
     }
-  }
 
-  private fun parseError(body: String): String = try {
-    val error = json.decodeFromString<AnthropicErrorBody>(body)
-    error.error?.message ?: body
-  } catch (_: Exception) {
-    body.take(200)
-  }
+  private fun parseError(body: String): String =
+    try {
+      val error = json.decodeFromString<AnthropicErrorBody>(body)
+      error.error?.message ?: body
+    } catch (_: Exception) {
+      body.take(200)
+    }
 }

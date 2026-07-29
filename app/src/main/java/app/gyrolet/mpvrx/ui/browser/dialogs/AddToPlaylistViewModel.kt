@@ -27,7 +27,9 @@ data class PlaylistOption(
   val itemCount: Int,
 )
 
-class AddToPlaylistViewModel : ViewModel(), KoinComponent {
+class AddToPlaylistViewModel :
+  ViewModel(),
+  KoinComponent {
   private val repository: PlaylistRepository by inject()
 
   private val _playlistOptions = MutableStateFlow<List<PlaylistOption>>(emptyList())
@@ -36,24 +38,31 @@ class AddToPlaylistViewModel : ViewModel(), KoinComponent {
   init {
     viewModelScope.launch(Dispatchers.IO) {
       repository.observeAllPlaylists().collectLatest { playlists ->
-        _playlistOptions.value = playlists
-          .sortedBy { it.name.lowercase() }
-          .map { playlist ->
-            PlaylistOption(
-              playlist = playlist,
-              itemCount = repository.getPlaylistItems(playlist.id).size,
-            )
-          }
+        _playlistOptions.value =
+          playlists
+            .sortedBy { it.name.lowercase() }
+            .map { playlist ->
+              PlaylistOption(
+                playlist = playlist,
+                itemCount = repository.getPlaylistItems(playlist.id).size,
+              )
+            }
       }
     }
   }
 
-  suspend fun createAndAdd(name: String, videos: List<Video>) = withContext(Dispatchers.IO) {
+  suspend fun createAndAdd(
+    name: String,
+    videos: List<Video>,
+  ) = withContext(Dispatchers.IO) {
     val playlistId = repository.createPlaylist(name).toInt()
     repository.addItemsToPlaylist(playlistId, videos.asPlaylistItems())
   }
 
-  suspend fun addToPlaylist(playlistId: Int, videos: List<Video>) = withContext(Dispatchers.IO) {
+  suspend fun addToPlaylist(
+    playlistId: Int,
+    videos: List<Video>,
+  ) = withContext(Dispatchers.IO) {
     repository.addItemsToPlaylist(playlistId, videos.asPlaylistItems())
   }
 

@@ -20,4 +20,3 @@ fun NavBackStack<*>.popSafely(): Boolean {
   removeLastOrNull()
   return true
 }
-

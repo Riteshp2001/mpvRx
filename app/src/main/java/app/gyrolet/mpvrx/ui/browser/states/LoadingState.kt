@@ -60,13 +60,15 @@ fun LoadingState(
 
   Box(
     modifier = modifier.fillMaxSize(),
-    contentAlignment = Alignment.Center
+    contentAlignment = Alignment.Center,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 48.dp)
-        .padding(bottom = 80.dp), // Account for bottom navigation bar
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 48.dp)
+          .padding(bottom = 80.dp),
+      // Account for bottom navigation bar
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center,
     ) {
@@ -112,4 +114,3 @@ fun LoadingState(
     }
   }
 }
-

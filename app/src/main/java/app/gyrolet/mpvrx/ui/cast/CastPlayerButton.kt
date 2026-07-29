@@ -7,8 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.cast
 
-import androidx.compose.ui.unit.Dp
-
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.BorderStroke
@@ -21,7 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.mediarouter.app.MediaRouteButton
@@ -29,6 +27,7 @@ import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.theme.controlColor
 import com.google.android.gms.cast.framework.CastButtonFactory
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 /** Uses the SDK button for Cast behavior while keeping the app's rounded symbol visible. */
 @Composable
@@ -36,7 +35,9 @@ fun CastPlayerButton(
   hideBackground: Boolean,
   buttonSize: Dp,
 ) {
-  val castContentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_cast)
+  val castContentDescription =
+    androidx.compose.ui.res
+      .stringResource(app.gyrolet.mpvrx.R.string.ui_cast)
   Surface(
     shape = CircleShape,
     color =

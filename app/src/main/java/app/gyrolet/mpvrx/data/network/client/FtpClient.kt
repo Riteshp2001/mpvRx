@@ -18,7 +18,9 @@ import org.apache.commons.net.ftp.FTPReply
 import java.io.InputStream
 import java.time.Duration
 
-class FtpClient(private val connection: NetworkConnection) : NetworkClient {
+class FtpClient(
+  private val connection: NetworkConnection,
+) : NetworkClient {
   private var ftpClient: FTPClient? = null
 
   override suspend fun connect(): Result<Unit> =
@@ -182,7 +184,10 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
       }
     }
 
-  override suspend fun getFileStream(path: String, offset: Long): Result<InputStream> =
+  override suspend fun getFileStream(
+    path: String,
+    offset: Long,
+  ): Result<InputStream> =
     withContext(Dispatchers.IO) {
       try {
         // Create a fresh FTP client for this stream to avoid connection conflicts
@@ -272,32 +277,37 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
             if (rawStream != null) {
               // Wrap the stream to handle cleanup when closed
-              val wrappedStream = object : InputStream() {
-                override fun read(): Int = rawStream.read()
+              val wrappedStream =
+                object : InputStream() {
+                  override fun read(): Int = rawStream.read()
 
-                override fun read(b: ByteArray): Int = rawStream.read(b)
+                  override fun read(b: ByteArray): Int = rawStream.read(b)
 
-                override fun read(b: ByteArray, off: Int, len: Int): Int = rawStream.read(b, off, len)
+                  override fun read(
+                    b: ByteArray,
+                    off: Int,
+                    len: Int,
+                  ): Int = rawStream.read(b, off, len)
 
-                override fun available(): Int = rawStream.available()
+                  override fun available(): Int = rawStream.available()
 
-                override fun close() {
-                  try {
-                    rawStream.close()
-                  } catch (e: Exception) {
-                    android.util.Log.e("FtpClient", "Error closing stream", e)
-                  }
-                  try {
-                    if (streamClient.isConnected) {
-                      streamClient.completePendingCommand()
-                      streamClient.logout()
-                      streamClient.disconnect()
+                  override fun close() {
+                    try {
+                      rawStream.close()
+                    } catch (e: Exception) {
+                      android.util.Log.e("FtpClient", "Error closing stream", e)
                     }
-                  } catch (e: Exception) {
-                    android.util.Log.e("FtpClient", "Error disconnecting", e)
+                    try {
+                      if (streamClient.isConnected) {
+                        streamClient.completePendingCommand()
+                        streamClient.logout()
+                        streamClient.disconnect()
+                      }
+                    } catch (e: Exception) {
+                      android.util.Log.e("FtpClient", "Error disconnecting", e)
+                    }
                   }
                 }
-              }
 
               return@withContext Result.success(wrappedStream)
             } else {
@@ -355,4 +365,3 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
     }
   }
 }
-

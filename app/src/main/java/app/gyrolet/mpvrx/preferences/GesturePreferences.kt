@@ -35,4 +35,3 @@ class GesturePreferences(
   val swipeSubtitlesInvertDirection =
     preferenceStore.getBoolean("swipe_subtitles_invert_direction", false)
 }
-

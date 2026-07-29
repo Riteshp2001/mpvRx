@@ -34,42 +34,49 @@ class OpenCodeClient(
 
   private enum class Protocol { RESPONSES, ANTHROPIC, GOOGLE, CHAT_COMPLETIONS }
 
-  private val apiClient = client.newBuilder()
-    .connectTimeout(60, TimeUnit.SECONDS)
-    .readTimeout(120, TimeUnit.SECONDS)
-    .writeTimeout(60, TimeUnit.SECONDS)
-    .build()
+  private val apiClient =
+    client
+      .newBuilder()
+      .connectTimeout(60, TimeUnit.SECONDS)
+      .readTimeout(120, TimeUnit.SECONDS)
+      .writeTimeout(60, TimeUnit.SECONDS)
+      .build()
 
-  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
-    runCatching {
-      val response = apiClient.newCall(
-        Request.Builder()
-          .url("$BASE_URL/models")
-          .header("Authorization", "Bearer $apiKey")
-          .get()
-          .build(),
-      ).execute()
-      val body = response.body.string()
-      if (!response.isSuccessful) {
-        throw IllegalStateException("OpenCode API error ${response.code}: ${AiResponseParser.error(json, body)}")
-      }
-      AiResponseParser.modelArray(json, body, "OpenCode").mapNotNull { model ->
-        val id = model.string("id") ?: return@mapNotNull null
-        if (!AiModelCapabilities.isTextGenerationModel(id)) return@mapNotNull null
-        val displayName = model.string("name") ?: model.string("display_name") ?: id
-        val pricing = model["pricing"] as? JsonObject
-        AiModelInfo(
-          id = id,
-          displayName = displayName,
-          isFree = AiModelPricing.isZeroCost(pricing) || id.endsWith("-free", ignoreCase = true),
-        )
+  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val response =
+          apiClient
+            .newCall(
+              Request
+                .Builder()
+                .url("$BASE_URL/models")
+                .header("Authorization", "Bearer $apiKey")
+                .get()
+                .build(),
+            ).execute()
+        val body = response.body.string()
+        if (!response.isSuccessful) {
+          throw IllegalStateException("OpenCode API error ${response.code}: ${AiResponseParser.error(json, body)}")
+        }
+        AiResponseParser.modelArray(json, body, "OpenCode").mapNotNull { model ->
+          val id = model.string("id") ?: return@mapNotNull null
+          if (!AiModelCapabilities.isTextGenerationModel(id)) return@mapNotNull null
+          val displayName = model.string("name") ?: model.string("display_name") ?: id
+          val pricing = model["pricing"] as? JsonObject
+          AiModelInfo(
+            id = id,
+            displayName = displayName,
+            isFree = AiModelPricing.isZeroCost(pricing) || id.endsWith("-free", ignoreCase = true),
+          )
+        }
       }
     }
-  }
 
-  override suspend fun verifyKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
-    fetchModels(apiKey).map { "API key verified successfully (${it.size} models available)" }
-  }
+  override suspend fun verifyKey(apiKey: String): Result<String> =
+    withContext(Dispatchers.IO) {
+      fetchModels(apiKey).map { "API key verified successfully (${it.size} models available)" }
+    }
 
   override suspend fun generateContent(
     apiKey: String,
@@ -77,48 +84,52 @@ class OpenCodeClient(
     instruction: String,
     userInput: String,
     options: AiGenerationOptions,
-  ): Result<AiGeneratedContent> = withContext(Dispatchers.IO) {
-    runCatching {
-      val apiModel = model.removePrefix("opencode/")
-      val protocol = protocolFor(apiModel)
-      val payload = when (protocol) {
-        Protocol.RESPONSES -> responsesPayload(apiModel, instruction, userInput, options)
-        Protocol.ANTHROPIC -> anthropicPayload(apiModel, instruction, userInput, options)
-        Protocol.GOOGLE -> googlePayload(instruction, userInput, options)
-        Protocol.CHAT_COMPLETIONS -> chatPayload(apiModel, instruction, userInput, options)
-      }
-      val url = when (protocol) {
-        Protocol.RESPONSES -> "$BASE_URL/responses"
-        Protocol.ANTHROPIC -> "$BASE_URL/messages"
-        Protocol.GOOGLE -> "$BASE_URL/models/$apiModel:generateContent"
-        Protocol.CHAT_COMPLETIONS -> "$BASE_URL/chat/completions"
-      }
-      val request = Request.Builder()
-        .url(url)
-        .header("Authorization", "Bearer $apiKey")
-        .header("Content-Type", "application/json")
-        .apply {
-          if (protocol == Protocol.ANTHROPIC) {
-            header("x-api-key", apiKey)
-            header("anthropic-version", ANTHROPIC_VERSION)
+  ): Result<AiGeneratedContent> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val apiModel = model.removePrefix("opencode/")
+        val protocol = protocolFor(apiModel)
+        val payload =
+          when (protocol) {
+            Protocol.RESPONSES -> responsesPayload(apiModel, instruction, userInput, options)
+            Protocol.ANTHROPIC -> anthropicPayload(apiModel, instruction, userInput, options)
+            Protocol.GOOGLE -> googlePayload(instruction, userInput, options)
+            Protocol.CHAT_COMPLETIONS -> chatPayload(apiModel, instruction, userInput, options)
           }
-          if (protocol == Protocol.GOOGLE) header("x-goog-api-key", apiKey)
+        val url =
+          when (protocol) {
+            Protocol.RESPONSES -> "$BASE_URL/responses"
+            Protocol.ANTHROPIC -> "$BASE_URL/messages"
+            Protocol.GOOGLE -> "$BASE_URL/models/$apiModel:generateContent"
+            Protocol.CHAT_COMPLETIONS -> "$BASE_URL/chat/completions"
+          }
+        val request =
+          Request
+            .Builder()
+            .url(url)
+            .header("Authorization", "Bearer $apiKey")
+            .header("Content-Type", "application/json")
+            .apply {
+              if (protocol == Protocol.ANTHROPIC) {
+                header("x-api-key", apiKey)
+                header("anthropic-version", ANTHROPIC_VERSION)
+              }
+              if (protocol == Protocol.GOOGLE) header("x-goog-api-key", apiKey)
+            }.post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+        val response = apiClient.newCall(request).execute()
+        val body = response.body.string()
+        if (!response.isSuccessful) {
+          throw IllegalStateException("OpenCode generate error ${response.code}: ${AiResponseParser.error(json, body)}")
         }
-        .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-        .build()
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
-      if (!response.isSuccessful) {
-        throw IllegalStateException("OpenCode generate error ${response.code}: ${AiResponseParser.error(json, body)}")
-      }
-      when (protocol) {
-        Protocol.RESPONSES -> AiResponseParser.openAiResponses(json, body, "OpenCode")
-        Protocol.ANTHROPIC -> AiResponseParser.anthropic(json, body, "OpenCode")
-        Protocol.GOOGLE -> AiResponseParser.google(json, body, "OpenCode")
-        Protocol.CHAT_COMPLETIONS -> AiResponseParser.openAiCompatible(json, body, "OpenCode")
+        when (protocol) {
+          Protocol.RESPONSES -> AiResponseParser.openAiResponses(json, body, "OpenCode")
+          Protocol.ANTHROPIC -> AiResponseParser.anthropic(json, body, "OpenCode")
+          Protocol.GOOGLE -> AiResponseParser.google(json, body, "OpenCode")
+          Protocol.CHAT_COMPLETIONS -> AiResponseParser.openAiCompatible(json, body, "OpenCode")
+        }
       }
     }
-  }
 
   private fun protocolFor(model: String): Protocol {
     val id = model.substringAfterLast('/').lowercase()
@@ -152,12 +163,17 @@ class OpenCodeClient(
     put("model", model)
     put("max_tokens", options.maxTokens)
     if (instruction.isNotBlank()) put("system", instruction)
-    put("messages", buildJsonArray {
-      add(buildJsonObject {
-        put("role", "user")
-        put("content", userInput)
-      })
-    })
+    put(
+      "messages",
+      buildJsonArray {
+        add(
+          buildJsonObject {
+            put("role", "user")
+            put("content", userInput)
+          },
+        )
+      },
+    )
     put("temperature", options.temperature)
   }
 
@@ -167,20 +183,31 @@ class OpenCodeClient(
     options: AiGenerationOptions,
   ) = buildJsonObject {
     if (instruction.isNotBlank()) {
-      put("systemInstruction", buildJsonObject {
-        put("parts", buildJsonArray { add(buildJsonObject { put("text", instruction) }) })
-      })
+      put(
+        "systemInstruction",
+        buildJsonObject {
+          put("parts", buildJsonArray { add(buildJsonObject { put("text", instruction) }) })
+        },
+      )
     }
-    put("contents", buildJsonArray {
-      add(buildJsonObject {
-        put("role", "user")
-        put("parts", buildJsonArray { add(buildJsonObject { put("text", userInput) }) })
-      })
-    })
-    put("generationConfig", buildJsonObject {
-      put("maxOutputTokens", options.maxTokens)
-      put("temperature", options.temperature)
-    })
+    put(
+      "contents",
+      buildJsonArray {
+        add(
+          buildJsonObject {
+            put("role", "user")
+            put("parts", buildJsonArray { add(buildJsonObject { put("text", userInput) }) })
+          },
+        )
+      },
+    )
+    put(
+      "generationConfig",
+      buildJsonObject {
+        put("maxOutputTokens", options.maxTokens)
+        put("temperature", options.temperature)
+      },
+    )
   }
 
   private fun chatPayload(
@@ -190,20 +217,28 @@ class OpenCodeClient(
     options: AiGenerationOptions,
   ) = buildJsonObject {
     put("model", model)
-    put("messages", buildJsonArray {
-      if (instruction.isNotBlank()) add(buildJsonObject {
-        put("role", "system")
-        put("content", instruction)
-      })
-      add(buildJsonObject {
-        put("role", "user")
-        put("content", userInput)
-      })
-    })
+    put(
+      "messages",
+      buildJsonArray {
+        if (instruction.isNotBlank()) {
+          add(
+            buildJsonObject {
+              put("role", "system")
+              put("content", instruction)
+            },
+          )
+        }
+        add(
+          buildJsonObject {
+            put("role", "user")
+            put("content", userInput)
+          },
+        )
+      },
+    )
     put("max_tokens", options.maxTokens)
     put("temperature", options.temperature)
   }
 
-  private fun JsonObject.string(key: String): String? =
-    (get(key) as? JsonPrimitive)?.contentOrNull
+  private fun JsonObject.string(key: String): String? = (get(key) as? JsonPrimitive)?.contentOrNull
 }

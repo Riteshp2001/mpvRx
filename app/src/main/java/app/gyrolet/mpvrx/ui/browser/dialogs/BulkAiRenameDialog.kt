@@ -105,29 +105,30 @@ fun BulkAiRenameDialog(
       val results = mutableListOf<PreviewItem>()
       var failCount = 0
 
-      val deferred = selectedVideos.map { video ->
-        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-          try {
-            semaphore.withPermit {
-              val base = video.displayName.substringBeforeLast('.')
-              val ext = video.displayName.substringAfterLast('.', "").let { if (it.isNotEmpty()) ".$it" else null }
-              aiService.renameWithAi(base, ext)
-                .onSuccess { name ->
-                  synchronized(results) {
-                    results.add(PreviewItem(video, name.removeSuffix(ext ?: ""), ext))
-                  }
-                }
-                .onFailure { synchronized(results) { failCount++ } }
+      val deferred =
+        selectedVideos.map { video ->
+          scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+              semaphore.withPermit {
+                val base = video.displayName.substringBeforeLast('.')
+                val ext = video.displayName.substringAfterLast('.', "").let { if (it.isNotEmpty()) ".$it" else null }
+                aiService
+                  .renameWithAi(base, ext)
+                  .onSuccess { name ->
+                    synchronized(results) {
+                      results.add(PreviewItem(video, name.removeSuffix(ext ?: ""), ext))
+                    }
+                  }.onFailure { synchronized(results) { failCount++ } }
+              }
+            } catch (e: Exception) {
+              synchronized(results) { failCount++ }
             }
-          } catch (e: Exception) {
-            synchronized(results) { failCount++ }
           }
         }
-      }
       deferred.forEach { it.join() }
 
       if (results.isEmpty()) {
-        errorMessage = "AI rename failed for all ${failCount} items. Check your model/API key."
+        errorMessage = "AI rename failed for all $failCount items. Check your model/API key."
         phase = RenamePhase.IDLE
         return@launch
       }
@@ -162,11 +163,12 @@ fun BulkAiRenameDialog(
     onDismissRequest = { if (phase != RenamePhase.GENERATING) onDismiss() },
     title = {
       Text(
-        text = when (phase) {
-          RenamePhase.IDLE -> "Bulk AI Rename"
-          RenamePhase.GENERATING -> "Generating Previews…"
-          RenamePhase.PREVIEW -> "Review & Confirm"
-        },
+        text =
+          when (phase) {
+            RenamePhase.IDLE -> "Bulk AI Rename"
+            RenamePhase.GENERATING -> "Generating Previews…"
+            RenamePhase.PREVIEW -> "Review & Confirm"
+          },
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
       )
@@ -174,26 +176,32 @@ fun BulkAiRenameDialog(
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
-          !canUseAi -> Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ai_rename_is_disabled_enable_it_in_settings_ai_integration),
-            color = MaterialTheme.colorScheme.error,
-          )
-
-          phase == RenamePhase.IDLE -> Text(
-            "AI will suggest new names for ${selectedVideos.size} selected file(s). " +
-              "You can review and edit each name before confirming.",
-            style = MaterialTheme.typography.bodyMedium,
-          )
-
-          phase == RenamePhase.GENERATING -> Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth(),
-          ) {
-            CircularProgressIndicator(modifier = Modifier.padding(bottom = 8.dp))
+          !canUseAi ->
             Text(
-              "Processing ${selectedVideos.size} file(s)…",
+              androidx.compose.ui.res.stringResource(
+                app.gyrolet.mpvrx.R.string.ui_ai_rename_is_disabled_enable_it_in_settings_ai_integration,
+              ),
+              color = MaterialTheme.colorScheme.error,
+            )
+
+          phase == RenamePhase.IDLE ->
+            Text(
+              "AI will suggest new names for ${selectedVideos.size} selected file(s). " +
+                "You can review and edit each name before confirming.",
               style = MaterialTheme.typography.bodyMedium,
             )
-          }
+
+          phase == RenamePhase.GENERATING ->
+            Column(
+              horizontalAlignment = Alignment.CenterHorizontally,
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              CircularProgressIndicator(modifier = Modifier.padding(bottom = 8.dp))
+              Text(
+                "Processing ${selectedVideos.size} file(s)…",
+                style = MaterialTheme.typography.bodyMedium,
+              )
+            }
 
           phase == RenamePhase.PREVIEW -> {
             if (errorMessage.isNotBlank()) {
@@ -239,10 +247,16 @@ fun BulkAiRenameDialog(
                     OutlinedTextField(
                       value = editedName,
                       onValueChange = { editedNames[key] = it },
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 48.dp),
-                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_new_name)) },
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .padding(start = 48.dp),
+                      label = {
+                        Text(
+                          androidx.compose.ui.res
+                            .stringResource(app.gyrolet.mpvrx.R.string.ui_new_name),
+                        )
+                      },
                       suffix = { item.extension?.let { Text(it, color = MaterialTheme.colorScheme.outline) } },
                       singleLine = true,
                       keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -274,9 +288,17 @@ fun BulkAiRenameDialog(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = MaterialTheme.shapes.extraLarge,
           ) {
-            Icon(imageVector = Icons.RoundedFilled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+              imageVector = Icons.RoundedFilled.AutoAwesome,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp),
+            )
             Spacer(Modifier.width(8.dp))
-            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_generate_previews), fontWeight = FontWeight.Bold)
+            Text(
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_generate_previews),
+              fontWeight = FontWeight.Bold,
+            )
           }
 
         RenamePhase.GENERATING -> {}
@@ -289,9 +311,17 @@ fun BulkAiRenameDialog(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = MaterialTheme.shapes.extraLarge,
           ) {
-            Icon(imageVector = app.gyrolet.mpvrx.ui.icons.Icons.RoundedFilled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+              imageVector = app.gyrolet.mpvrx.ui.icons.Icons.RoundedFilled.DriveFileRenameOutline,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp),
+            )
             Spacer(Modifier.width(8.dp))
-            Text(androidx.compose.ui.res.pluralStringResource(R.plurals.rename_files_action, checkedCount, checkedCount), fontWeight = FontWeight.Bold)
+            Text(
+              androidx.compose.ui.res
+                .pluralStringResource(R.plurals.rename_files_action, checkedCount, checkedCount),
+              fontWeight = FontWeight.Bold,
+            )
           }
         }
       }
@@ -299,13 +329,25 @@ fun BulkAiRenameDialog(
     dismissButton = {
       TextButton(
         onClick = {
-          if (phase == RenamePhase.PREVIEW) phase = RenamePhase.IDLE
-          else onDismiss()
+          if (phase == RenamePhase.PREVIEW) {
+            phase = RenamePhase.IDLE
+          } else {
+            onDismiss()
+          }
         },
         enabled = phase != RenamePhase.GENERATING,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text(if (phase == RenamePhase.PREVIEW) stringResource(R.string.back) else stringResource(R.string.generic_cancel), fontWeight = FontWeight.Medium)
+        Text(
+          if (phase ==
+            RenamePhase.PREVIEW
+          ) {
+            stringResource(R.string.back)
+          } else {
+            stringResource(R.string.generic_cancel)
+          },
+          fontWeight = FontWeight.Medium,
+        )
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,

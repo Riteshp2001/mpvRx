@@ -26,13 +26,22 @@ interface DirectoryScanDao {
   suspend fun upsert(entries: List<DirectoryScanEntity>)
 
   @Query("DELETE FROM directory_scan_index WHERE scanKey = :scanKey AND rootPath = :rootPath")
-  suspend fun deleteRoot(scanKey: String, rootPath: String)
+  suspend fun deleteRoot(
+    scanKey: String,
+    rootPath: String,
+  )
 
   @Query("DELETE FROM directory_scan_index WHERE scanKey = :scanKey")
   suspend fun deleteScan(scanKey: String)
 
-  @Query("DELETE FROM directory_scan_index WHERE scanKey = :scanKey AND rootPath = :rootPath AND path NOT IN (:currentPaths)")
-  suspend fun deleteMissingPaths(scanKey: String, rootPath: String, currentPaths: List<String>)
+  @Query(
+    "DELETE FROM directory_scan_index WHERE scanKey = :scanKey AND rootPath = :rootPath AND path NOT IN (:currentPaths)",
+  )
+  suspend fun deleteMissingPaths(
+    scanKey: String,
+    rootPath: String,
+    currentPaths: List<String>,
+  )
 
   @Transaction
   suspend fun reconcileRoot(

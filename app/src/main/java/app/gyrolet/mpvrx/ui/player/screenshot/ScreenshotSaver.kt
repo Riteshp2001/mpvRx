@@ -75,18 +75,20 @@ object ScreenshotSaver {
     withContext(Dispatchers.IO) {
       runCatching {
         applyMpvScreenshotOptions(settings)
-        val displayName = ScreenshotTemplate.buildFileName(
-          template = settings.template,
-          extension = settings.format.extension,
-          filename = MPVLib.getPropertyString("filename"),
-          filenameNoExt = MPVLib.getPropertyString("filename/no-ext"),
-          mediaTitle = MPVLib.getPropertyString("media-title"),
-          path = MPVLib.getPropertyString("path"),
-          positionSeconds = MPVLib.getPropertyDouble("time-pos") ?: 0.0,
-        )
-        val tempFile = captureNative(context, settings, includeSubtitles)
-          ?: captureWithAndroidFallback(context, settings, includeSubtitles)
-          ?: error("mpv does not support ${settings.format.title} format on this device")
+        val displayName =
+          ScreenshotTemplate.buildFileName(
+            template = settings.template,
+            extension = settings.format.extension,
+            filename = MPVLib.getPropertyString("filename"),
+            filenameNoExt = MPVLib.getPropertyString("filename/no-ext"),
+            mediaTitle = MPVLib.getPropertyString("media-title"),
+            path = MPVLib.getPropertyString("path"),
+            positionSeconds = MPVLib.getPropertyDouble("time-pos") ?: 0.0,
+          )
+        val tempFile =
+          captureNative(context, settings, includeSubtitles)
+            ?: captureWithAndroidFallback(context, settings, includeSubtitles)
+            ?: error("mpv does not support ${settings.format.title} format on this device")
 
         saveToPictures(context, tempFile, displayName, settings.format).also {
           tempFile.delete()
@@ -151,7 +153,8 @@ object ScreenshotSaver {
   private fun ScreenshotSettings.compressFormat(): Bitmap.CompressFormat =
     when (format) {
       ScreenshotFormat.JPG,
-      ScreenshotFormat.JPEG -> Bitmap.CompressFormat.JPEG
+      ScreenshotFormat.JPEG,
+      -> Bitmap.CompressFormat.JPEG
       ScreenshotFormat.WEBP ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && webpLossless) {
           Bitmap.CompressFormat.WEBP_LOSSLESS
@@ -166,7 +169,14 @@ object ScreenshotSaver {
   private fun ScreenshotSettings.compressQuality(): Int =
     when (format) {
       ScreenshotFormat.PNG -> (100 - pngCompression.coerceIn(0, 9) * 10).coerceIn(0, 100)
-      ScreenshotFormat.WEBP -> if (webpLossless && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) 100 else quality.coerceIn(0, 100)
+      ScreenshotFormat.WEBP ->
+        if (webpLossless &&
+          Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        ) {
+          100
+        } else {
+          quality.coerceIn(0, 100)
+        }
       else -> quality.coerceIn(0, 100)
     }
 
@@ -177,15 +187,17 @@ object ScreenshotSaver {
     format: ScreenshotFormat,
   ): ScreenshotSaveResult {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      val values = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
-        put(MediaStore.Images.Media.MIME_TYPE, format.mimeType)
-        put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/$SNAPSHOT_FOLDER")
-        put(MediaStore.Images.Media.IS_PENDING, 1)
-      }
+      val values =
+        ContentValues().apply {
+          put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+          put(MediaStore.Images.Media.MIME_TYPE, format.mimeType)
+          put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/$SNAPSHOT_FOLDER")
+          put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
       val resolver = context.contentResolver
-      val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-        ?: error("Failed to create MediaStore entry")
+      val uri =
+        resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+          ?: error("Failed to create MediaStore entry")
       resolver.openOutputStream(uri)?.use { output ->
         tempFile.inputStream().use { input -> input.copyTo(output) }
       } ?: error("Failed to open MediaStore output")
@@ -196,9 +208,10 @@ object ScreenshotSaver {
     }
 
     val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-    val snapshotsDir = File(picturesDir, SNAPSHOT_FOLDER).apply {
-      if (!exists()) mkdirs()
-    }
+    val snapshotsDir =
+      File(picturesDir, SNAPSHOT_FOLDER).apply {
+        if (!exists()) mkdirs()
+      }
     val destFile = uniqueFile(snapshotsDir, displayName)
     tempFile.copyTo(destFile, overwrite = false)
     MediaScannerConnection.scanFile(
@@ -210,7 +223,10 @@ object ScreenshotSaver {
     return ScreenshotSaveResult(displayName = destFile.name, uri = null, file = destFile)
   }
 
-  private fun uniqueFile(directory: File, displayName: String): File {
+  private fun uniqueFile(
+    directory: File,
+    displayName: String,
+  ): File {
     val baseName = displayName.substringBeforeLast('.', displayName)
     val extension = displayName.substringAfterLast('.', "")
     var candidate = File(directory, displayName)
@@ -238,13 +254,15 @@ object ScreenshotTemplate {
     path: String? = null,
     positionSeconds: Double = 0.0,
   ): String {
-    val resolvedFilename = filename?.ifBlank { null }
-      ?: path?.substringAfterLast('/')?.ifBlank { null }
-      ?: mediaTitle?.ifBlank { null }
-      ?: "video"
+    val resolvedFilename =
+      filename?.ifBlank { null }
+        ?: path?.substringAfterLast('/')?.ifBlank { null }
+        ?: mediaTitle?.ifBlank { null }
+        ?: "video"
 
-    val resolvedFilenameNoExt = filenameNoExt?.ifBlank { null }
-      ?: resolvedFilename.substringBeforeLast('.')
+    val resolvedFilenameNoExt =
+      filenameNoExt?.ifBlank { null }
+        ?: resolvedFilename.substringBeforeLast('.')
 
     val posSec = positionSeconds.coerceAtLeast(0.0)
     val totalMs = (posSec * 1000.0).toLong()
@@ -258,31 +276,34 @@ object ScreenshotTemplate {
     val wSStr = String.format(Locale.US, "%02d", seconds)
     val wTStr = String.format(Locale.US, "%03d", milliseconds)
 
-    val rendered = template.ifBlank { "mpv_snapshot_%Y%m%d_%H%M%S" }
-      .replace("%wH", wHStr)
-      .replace("%wM", wMStr)
-      .replace("%wS", wSStr)
-      .replace("%wT", wTStr)
-      .replace("%Y", now.format(DateTimeFormatter.ofPattern("yyyy")))
-      .replace("%m", now.format(DateTimeFormatter.ofPattern("MM")))
-      .replace("%d", now.format(DateTimeFormatter.ofPattern("dd")))
-      .replace("%H", now.format(DateTimeFormatter.ofPattern("HH")))
-      .replace("%M", now.format(DateTimeFormatter.ofPattern("mm")))
-      .replace("%S", now.format(DateTimeFormatter.ofPattern("ss")))
-      .replace("%f", resolvedFilename)
-      .replace("%F", resolvedFilenameNoExt)
-      .replace("%P", "$wHStr:$wMStr:$wSStr.$wTStr")
-      .replace("%p", "$wHStr:$wMStr:$wSStr")
+    val rendered =
+      template
+        .ifBlank { "mpv_snapshot_%Y%m%d_%H%M%S" }
+        .replace("%wH", wHStr)
+        .replace("%wM", wMStr)
+        .replace("%wS", wSStr)
+        .replace("%wT", wTStr)
+        .replace("%Y", now.format(DateTimeFormatter.ofPattern("yyyy")))
+        .replace("%m", now.format(DateTimeFormatter.ofPattern("MM")))
+        .replace("%d", now.format(DateTimeFormatter.ofPattern("dd")))
+        .replace("%H", now.format(DateTimeFormatter.ofPattern("HH")))
+        .replace("%M", now.format(DateTimeFormatter.ofPattern("mm")))
+        .replace("%S", now.format(DateTimeFormatter.ofPattern("ss")))
+        .replace("%f", resolvedFilename)
+        .replace("%F", resolvedFilenameNoExt)
+        .replace("%P", "$wHStr:$wMStr:$wSStr.$wTStr")
+        .replace("%p", "$wHStr:$wMStr:$wSStr")
 
-    val sanitized = rendered
-      .replace(invalidFileChars, "_")
-      .replace(whitespace, " ")
-      .trim()
-      .trim('.', ' ')
-      .ifBlank { "mpv_snapshot" }
-      .take(120)
-      .trimEnd('.', ' ', '_')
-      .ifBlank { "mpv_snapshot" }
+    val sanitized =
+      rendered
+        .replace(invalidFileChars, "_")
+        .replace(whitespace, " ")
+        .trim()
+        .trim('.', ' ')
+        .ifBlank { "mpv_snapshot" }
+        .take(120)
+        .trimEnd('.', ' ', '_')
+        .ifBlank { "mpv_snapshot" }
     return "${sanitized.lowercaseExtension(extension)}.${extension.lowercase(Locale.US)}"
   }
 

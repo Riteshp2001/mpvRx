@@ -19,7 +19,10 @@ internal class AxisObservationTracker {
   private var observedStrideSums = FloatArray(1)
   private var observedStrideCounts = IntArray(1)
 
-  fun resetIfNeeded(totalItemsCount: Int, spacingPx: Int) {
+  fun resetIfNeeded(
+    totalItemsCount: Int,
+    spacingPx: Int,
+  ) {
     if (trackedTotalItemsCount == totalItemsCount && trackedSpacingPx == spacingPx) {
       return
     }
@@ -70,11 +73,17 @@ internal class AxisObservationTracker {
     }
   }
 
-  fun observeItemSize(index: Int, sizePx: Float) {
+  fun observeItemSize(
+    index: Int,
+    sizePx: Float,
+  ) {
     observedItemSizesPx[index] = sizePx.coerceAtLeast(1f)
   }
 
-  fun observeStride(index: Int, stridePx: Float) {
+  fun observeStride(
+    index: Int,
+    stridePx: Float,
+  ) {
     if (index !in 0 until trackedTotalItemsCount) return
 
     val normalizedStridePx = stridePx.coerceAtLeast(1f)
@@ -97,7 +106,10 @@ internal class AxisObservationTracker {
       fallbackItemSizePx.coerceAtLeast(1f)
     }
 
-  fun distanceBeforeIndex(index: Int, representativeStridePx: Float): Float {
+  fun distanceBeforeIndex(
+    index: Int,
+    representativeStridePx: Float,
+  ): Float {
     if (index <= 0) return 0f
 
     val observedStridePx = strideSumBefore(index)
@@ -106,10 +118,15 @@ internal class AxisObservationTracker {
     return (observedStridePx + estimatedStridePx).coerceAtLeast(0f)
   }
 
-  fun itemSizePx(index: Int, representativeItemSizePx: Float): Float =
-    observedItemSizesPx[index] ?: representativeItemSizePx.coerceAtLeast(1f)
+  fun itemSizePx(
+    index: Int,
+    representativeItemSizePx: Float,
+  ): Float = observedItemSizesPx[index] ?: representativeItemSizePx.coerceAtLeast(1f)
 
-  private fun updateStrideSum(index: Int, delta: Float) {
+  private fun updateStrideSum(
+    index: Int,
+    delta: Float,
+  ) {
     var treeIndex = index + 1
     while (treeIndex < observedStrideSums.size) {
       observedStrideSums[treeIndex] += delta
@@ -117,7 +134,10 @@ internal class AxisObservationTracker {
     }
   }
 
-  private fun updateStrideCount(index: Int, delta: Int) {
+  private fun updateStrideCount(
+    index: Int,
+    delta: Int,
+  ) {
     var treeIndex = index + 1
     while (treeIndex < observedStrideCounts.size) {
       observedStrideCounts[treeIndex] += delta

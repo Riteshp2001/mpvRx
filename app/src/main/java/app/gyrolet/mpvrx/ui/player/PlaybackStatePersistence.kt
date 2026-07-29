@@ -59,13 +59,14 @@ internal object PlaybackStatePersistence {
       audioDelay = snapshot.audioDelayMs,
       timeRemaining = timeRemaining,
       externalSubtitles = snapshot.externalSubtitles,
-      hasBeenWatched = isWatched(
-        oldState = oldState,
-        currentPosition = snapshot.currentPosition,
-        lastPosition = lastPosition,
-        duration = duration,
-        watchedThreshold = watchedThreshold,
-      ),
+      hasBeenWatched =
+        isWatched(
+          oldState = oldState,
+          currentPosition = snapshot.currentPosition,
+          lastPosition = lastPosition,
+          duration = duration,
+          watchedThreshold = watchedThreshold,
+        ),
     )
   }
 

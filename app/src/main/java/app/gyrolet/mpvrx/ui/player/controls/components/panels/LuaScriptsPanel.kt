@@ -7,12 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import androidx.compose.ui.res.stringResource
-import app.gyrolet.mpvrx.R
-
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,9 +25,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.lua.LuaRuntimeStatusCard
 import app.gyrolet.mpvrx.ui.lua.LuaScriptToggleCard
 import app.gyrolet.mpvrx.ui.lua.LuaScriptsEmptyState
@@ -66,11 +64,12 @@ fun LuaScriptsPanel(
     val isEnabled = selectedScripts.contains(scriptName)
     val newSelection =
       if (isEnabled) {
-        Toast.makeText(
-          context,
-          "$scriptName disabled. Reopen the video if the script stays active.",
-          Toast.LENGTH_LONG,
-        ).show()
+        Toast
+          .makeText(
+            context,
+            "$scriptName disabled. Reopen the video if the script stays active.",
+            Toast.LENGTH_LONG,
+          ).show()
         selectedScripts - scriptName
       } else {
         selectedScripts + scriptName
@@ -90,7 +89,10 @@ fun LuaScriptsPanel(
             .padding(horizontal = MaterialTheme.spacing.medium)
             .padding(top = MaterialTheme.spacing.small),
       ) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_section_scripts),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.pref_section_scripts),
           style = MaterialTheme.typography.titleLarge,
         )
         Spacer(Modifier.weight(1f))
@@ -147,4 +149,3 @@ fun LuaScriptsPanel(
     }
   }
 }
-

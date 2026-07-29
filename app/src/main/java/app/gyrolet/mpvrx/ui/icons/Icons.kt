@@ -9,7 +9,86 @@ package app.gyrolet.mpvrx.ui.icons
 
 import androidx.annotation.DrawableRes
 import com.composables.icons.materialsymbols.MaterialSymbols
-import com.composables.icons.materialsymbols.roundedfilled.*
+import com.composables.icons.materialsymbols.roundedfilled.Add
+import com.composables.icons.materialsymbols.roundedfilled.Arrow_back
+import com.composables.icons.materialsymbols.roundedfilled.Arrow_drop_down
+import com.composables.icons.materialsymbols.roundedfilled.Auto_awesome
+import com.composables.icons.materialsymbols.roundedfilled.Brightness_medium
+import com.composables.icons.materialsymbols.roundedfilled.Bug_report
+import com.composables.icons.materialsymbols.roundedfilled.Cancel
+import com.composables.icons.materialsymbols.roundedfilled.Cast
+import com.composables.icons.materialsymbols.roundedfilled.Checklist
+import com.composables.icons.materialsymbols.roundedfilled.Chevron_left
+import com.composables.icons.materialsymbols.roundedfilled.Chevron_right
+import com.composables.icons.materialsymbols.roundedfilled.Close
+import com.composables.icons.materialsymbols.roundedfilled.Delete
+import com.composables.icons.materialsymbols.roundedfilled.Download
+import com.composables.icons.materialsymbols.roundedfilled.Edit
+import com.composables.icons.materialsymbols.roundedfilled.Fast_forward
+import com.composables.icons.materialsymbols.roundedfilled.Fast_rewind
+import com.composables.icons.materialsymbols.roundedfilled.File_open
+import com.composables.icons.materialsymbols.roundedfilled.Folder
+import com.composables.icons.materialsymbols.roundedfilled.Folder_off
+import com.composables.icons.materialsymbols.roundedfilled.Folder_open
+import com.composables.icons.materialsymbols.roundedfilled.Format_align_left
+import com.composables.icons.materialsymbols.roundedfilled.Format_bold
+import com.composables.icons.materialsymbols.roundedfilled.Format_italic
+import com.composables.icons.materialsymbols.roundedfilled.Format_size
+import com.composables.icons.materialsymbols.roundedfilled.Gesture
+import com.composables.icons.materialsymbols.roundedfilled.Grid_view
+import com.composables.icons.materialsymbols.roundedfilled.Headphones
+import com.composables.icons.materialsymbols.roundedfilled.History
+import com.composables.icons.materialsymbols.roundedfilled.History_2
+import com.composables.icons.materialsymbols.roundedfilled.Home
+import com.composables.icons.materialsymbols.roundedfilled.Info
+import com.composables.icons.materialsymbols.roundedfilled.Keyboard_arrow_down
+import com.composables.icons.materialsymbols.roundedfilled.Keyboard_arrow_left
+import com.composables.icons.materialsymbols.roundedfilled.Keyboard_arrow_right
+import com.composables.icons.materialsymbols.roundedfilled.Keyboard_arrow_up
+import com.composables.icons.materialsymbols.roundedfilled.Language
+import com.composables.icons.materialsymbols.roundedfilled.Link
+import com.composables.icons.materialsymbols.roundedfilled.List_alt
+import com.composables.icons.materialsymbols.roundedfilled.Lock
+import com.composables.icons.materialsymbols.roundedfilled.Monetization_on
+import com.composables.icons.materialsymbols.roundedfilled.Music_note
+import com.composables.icons.materialsymbols.roundedfilled.Opacity
+import com.composables.icons.materialsymbols.roundedfilled.Palette
+import com.composables.icons.materialsymbols.roundedfilled.Pause
+import com.composables.icons.materialsymbols.roundedfilled.Pets
+import com.composables.icons.materialsymbols.roundedfilled.Picture_in_picture_alt
+import com.composables.icons.materialsymbols.roundedfilled.Play_arrow
+import com.composables.icons.materialsymbols.roundedfilled.Play_circle
+import com.composables.icons.materialsymbols.roundedfilled.Playlist_add
+import com.composables.icons.materialsymbols.roundedfilled.Refresh
+import com.composables.icons.materialsymbols.roundedfilled.Repeat
+import com.composables.icons.materialsymbols.roundedfilled.Rounded_corner
+import com.composables.icons.materialsymbols.roundedfilled.Schedule
+import com.composables.icons.materialsymbols.roundedfilled.Search
+import com.composables.icons.materialsymbols.roundedfilled.Settings
+import com.composables.icons.materialsymbols.roundedfilled.Share
+import com.composables.icons.materialsymbols.roundedfilled.Shuffle
+import com.composables.icons.materialsymbols.roundedfilled.Skip_next
+import com.composables.icons.materialsymbols.roundedfilled.Skip_previous
+import com.composables.icons.materialsymbols.roundedfilled.Slideshow
+import com.composables.icons.materialsymbols.roundedfilled.Subtitles
+import com.composables.icons.materialsymbols.roundedfilled.System_update
+import com.composables.icons.materialsymbols.roundedfilled.Terminal
+import com.composables.icons.materialsymbols.roundedfilled.Thermostat
+import com.composables.icons.materialsymbols.roundedfilled.Timer
+import com.composables.icons.materialsymbols.roundedfilled.Translate
+import com.composables.icons.materialsymbols.roundedfilled.Undo
+import com.composables.icons.materialsymbols.roundedfilled.Video_library
+import com.composables.icons.materialsymbols.roundedfilled.Videocam
+import com.composables.icons.materialsymbols.roundedfilled.View_array
+import com.composables.icons.materialsymbols.roundedfilled.View_comfy
+import com.composables.icons.materialsymbols.roundedfilled.View_list
+import com.composables.icons.materialsymbols.roundedfilled.View_module
+import com.composables.icons.materialsymbols.roundedfilled.View_quilt
+import com.composables.icons.materialsymbols.roundedfilled.Volume_down
+import com.composables.icons.materialsymbols.roundedfilled.Volume_mute
+import com.composables.icons.materialsymbols.roundedfilled.Volume_up
+import com.composables.icons.materialsymbols.roundedfilled.Warning
+import com.composables.icons.materialsymbols.roundedfilled.Zoom_in
 import com.composables.icons.materialsymbols.roundedfilled.R as MaterialSymbolsR
 
 @Suppress("MemberVisibilityCanBePrivate")
@@ -20,7 +99,9 @@ object Icons {
     val AccountTree by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Account_tree) }
     val Add by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Add) }
     val AddCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Add_circle) }
-    val AlignVerticalCenter by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Align_vertical_center) }
+    val AlignVerticalCenter by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Align_vertical_center)
+    }
     val Article by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Article) }
     val ArrowBack by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.West) }
     val ArrowBackClassic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Arrow_back) }
@@ -72,9 +153,15 @@ object Icons {
     val Download by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Download) }
     val DragHandle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drag_handle) }
     val DriveFileMove by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_file_move) }
-    val DriveFileMoveOutline by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_file_move_outline) }
-    val DriveFileRenameOutline by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_file_rename_outline) }
-    val DriveFolderUpload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Drive_folder_upload) }
+    val DriveFileMoveOutline by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Drive_file_move_outline)
+    }
+    val DriveFileRenameOutline by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Drive_file_rename_outline)
+    }
+    val DriveFolderUpload by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Drive_folder_upload) }
     val Edit by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Edit) }
     val EditOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Edit_off) }
     val Equalizer by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Equalizer) }
@@ -82,7 +169,9 @@ object Icons {
     val ExpandMore by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Expand_more) }
     val FastForward by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fast_forward) }
     val FastRewind by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fast_rewind) }
-    val FeaturedPlayList by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Featured_play_list) }
+    val FeaturedPlayList by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Featured_play_list) }
     val FileDownload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_download) }
     val FileOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_open) }
     val FileUpload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_upload) }
@@ -91,14 +180,22 @@ object Icons {
     val Folder by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder) }
     val FolderOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder_off) }
     val FolderOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder_open) }
-    val FormatAlignCenter by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_center) }
-    val FormatAlignJustify by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_justify) }
+    val FormatAlignCenter by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_center) }
+    val FormatAlignJustify by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Format_align_justify)
+    }
     val FormatAlignLeft by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_left) }
-    val FormatAlignRight by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_right) }
+    val FormatAlignRight by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Format_align_right) }
     val FormatBold by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_bold) }
     val FormatClear by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_clear) }
     val FormatColorFill by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_color_fill) }
-    val FormatColorReset by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_color_reset) }
+    val FormatColorReset by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Format_color_reset) }
     val FormatColorText by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_color_text) }
     val FormatItalic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_italic) }
     val FormatSize by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_size) }
@@ -115,9 +212,15 @@ object Icons {
     val Home by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Home) }
     val Info by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Info) }
     val InsertDriveFile by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Description) }
-    val KeyboardArrowDown by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_down) }
-    val KeyboardArrowLeft by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_left) }
-    val KeyboardArrowRight by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_right) }
+    val KeyboardArrowDown by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_down) }
+    val KeyboardArrowLeft by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_left) }
+    val KeyboardArrowRight by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_right)
+    }
     val KeyboardArrowUp by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_up) }
     val Language by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Language) }
     val Link by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Link) }
@@ -135,11 +238,17 @@ object Icons {
     val Opacity by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Opacity) }
     val Palette by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Palette) }
     val Pause by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Pause) }
-    val PictureInPictureAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Picture_in_picture_alt) }
+    val PictureInPictureAlt by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Picture_in_picture_alt)
+    }
     val PlayArrow by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Play_arrow) }
     val PlayCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Play_circle) }
-    val PlaylistAddCheck by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add_check) }
-    val PlaylistAddCircle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add_circle) }
+    val PlaylistAddCheck by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add_check) }
+    val PlaylistAddCircle by lazy(
+      LazyThreadSafetyMode.NONE,
+    ) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add_circle) }
     val SmartDisplay by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Smart_display) }
     val Videocam by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Videocam) }
     val PlaylistAdd by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add) }
@@ -165,7 +274,9 @@ object Icons {
     val Shuffle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shuffle) }
     val ShuffleOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shuffle_on) }
     val SortByAlpha by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Sort_by_alpha) }
-    val SignalWifiStatusbarConnectedNoInternet4 by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Signal_wifi_statusbar_not_connected) }
+    val SignalWifiStatusbarConnectedNoInternet4 by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Signal_wifi_statusbar_not_connected)
+    }
     val SkipNext by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Skip_next) }
     val SkipPrevious by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Skip_previous) }
     val Slideshow by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Slideshow) }
@@ -387,6 +498,7 @@ object Icons {
     val ZoomIn get() = Shared.ZoomIn
     val ZoomOutMap get() = Shared.ZoomOutMap
   }
+
   object Alternatives {
     val AdvancedSettings get() = Shared.Code
   }
@@ -394,10 +506,15 @@ object Icons {
   /** Material Symbols for Android platform APIs that require drawable resource IDs. */
   object Platform {
     @DrawableRes val FastRewind = MaterialSymbolsR.drawable.materialsymbols_ic_fast_rewind_rounded_filled
+
     @DrawableRes val FastForward = MaterialSymbolsR.drawable.materialsymbols_ic_fast_forward_rounded_filled
+
     @DrawableRes val Previous = MaterialSymbolsR.drawable.materialsymbols_ic_skip_previous_rounded_filled
+
     @DrawableRes val Play = MaterialSymbolsR.drawable.materialsymbols_ic_play_arrow_rounded_filled
+
     @DrawableRes val Pause = MaterialSymbolsR.drawable.materialsymbols_ic_pause_rounded_filled
+
     @DrawableRes val Next = MaterialSymbolsR.drawable.materialsymbols_ic_skip_next_rounded_filled
   }
 }

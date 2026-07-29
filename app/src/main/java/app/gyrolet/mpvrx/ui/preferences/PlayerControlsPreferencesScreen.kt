@@ -7,12 +7,8 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -58,15 +54,17 @@ import app.gyrolet.mpvrx.preferences.PortraitPlaybackControlsPosition
 import app.gyrolet.mpvrx.preferences.SeekbarStyle
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStyleLivePreview
+import app.gyrolet.mpvrx.ui.preferences.components.PlayerButtonChip
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
-import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStyleLivePreview
-import app.gyrolet.mpvrx.ui.preferences.components.PlayerButtonChip
 import org.koin.compose.koinInject
 
 // Enum to identify which region we are editing
@@ -93,26 +91,30 @@ object PlayerControlsPreferencesScreen : Screen {
     val bottomLState by appearancePrefs.bottomLeftControls.collectAsState()
     val portraitBottomState by appearancePrefs.portraitBottomControls.collectAsState()
 
-    val topRightButtons = remember(topRState) {
-      appearancePrefs.parseButtons(topRState, mutableSetOf())
-    }
+    val topRightButtons =
+      remember(topRState) {
+        appearancePrefs.parseButtons(topRState, mutableSetOf())
+      }
 
-    val bottomRightButtons = remember(bottomRState) {
-      appearancePrefs.parseButtons(bottomRState, mutableSetOf())
-    }
+    val bottomRightButtons =
+      remember(bottomRState) {
+        appearancePrefs.parseButtons(bottomRState, mutableSetOf())
+      }
 
-    val bottomLeftButtons = remember(bottomLState) {
-      appearancePrefs.parseButtons(bottomLState, mutableSetOf())
-    }
+    val bottomLeftButtons =
+      remember(bottomLState) {
+        appearancePrefs.parseButtons(bottomLState, mutableSetOf())
+      }
 
-    val portraitBottomButtons = remember(portraitBottomState) {
-      appearancePrefs.parseButtons(portraitBottomState, mutableSetOf())
-    }
+    val portraitBottomButtons =
+      remember(portraitBottomState) {
+        appearancePrefs.parseButtons(portraitBottomState, mutableSetOf())
+      }
 
     Scaffold(
       topBar = {
         TopAppBar(
-          title = { 
+          title = {
             Text(
               text = stringResource(id = R.string.pref_layout_title),
               style = MaterialTheme.typography.headlineSmall,
@@ -145,7 +147,7 @@ object PlayerControlsPreferencesScreen : Screen {
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_landscape_controls))
           }
-          
+
           item {
             PreferenceCard {
               PreferenceCategoryWithEditButton(
@@ -155,9 +157,9 @@ object PlayerControlsPreferencesScreen : Screen {
                 },
               )
               PreferenceIconSummary(buttons = topRightButtons)
-              
+
               PreferenceDivider()
-              
+
               PreferenceCategoryWithEditButton(
                 title = stringResource(id = R.string.pref_layout_bottom_right_controls),
                 onClick = {
@@ -165,9 +167,9 @@ object PlayerControlsPreferencesScreen : Screen {
                 },
               )
               PreferenceIconSummary(buttons = bottomRightButtons)
-              
+
               PreferenceDivider()
-              
+
               PreferenceCategoryWithEditButton(
                 title = stringResource(id = R.string.pref_layout_bottom_left_controls),
                 onClick = {
@@ -177,7 +179,7 @@ object PlayerControlsPreferencesScreen : Screen {
               PreferenceIconSummary(buttons = bottomLeftButtons)
             }
           }
-          
+
           // Portrait Controls Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_portrait_controls))
@@ -185,8 +187,6 @@ object PlayerControlsPreferencesScreen : Screen {
 
           item {
             PreferenceCard {
-
-            
               PreferenceCategoryWithEditButton(
                 title = stringResource(id = R.string.pref_layout_portrait_bottom_controls),
                 onClick = {
@@ -196,7 +196,7 @@ object PlayerControlsPreferencesScreen : Screen {
               PreferenceIconSummary(buttons = portraitBottomButtons)
             }
           }
-          
+
           // Seekbar Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_seekbar_style))
@@ -204,7 +204,7 @@ object PlayerControlsPreferencesScreen : Screen {
 
           item {
             val seekbarStyle by appearancePrefs.seekbarStyle.collectAsState()
-            
+
             PreferenceCard {
               SeekbarStyle.entries.forEachIndexed { index, style ->
                 ListItem(
@@ -214,22 +214,25 @@ object PlayerControlsPreferencesScreen : Screen {
                   supportingContent = {
                     SeekbarStyleLivePreview(
                       style = style,
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp, bottom = 2.dp),
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .padding(top = 6.dp, bottom = 2.dp),
                     )
                   },
                   trailingContent = {
                     RadioButton(
                       selected = seekbarStyle == style,
-                      onClick = null
+                      onClick = null,
                     )
                   },
-                  colors = androidx.compose.material3.ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                  ),
-                  modifier = Modifier
-                    .clickable { appearancePrefs.seekbarStyle.set(style) }
+                  colors =
+                    androidx.compose.material3.ListItemDefaults.colors(
+                      containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                  modifier =
+                    Modifier
+                      .clickable { appearancePrefs.seekbarStyle.set(style) },
                 )
                 if (index < SeekbarStyle.entries.size - 1) {
                   PreferenceDivider()
@@ -237,12 +240,12 @@ object PlayerControlsPreferencesScreen : Screen {
               }
             }
           }
-          
+
           // Appearance Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_player_controls_appearance))
           }
-          
+
           item {
             val hidePlayerButtonsBackground by appearancePrefs.hidePlayerButtonsBackground.collectAsState()
             val portraitPlaybackControlsPosition by
@@ -251,17 +254,22 @@ object PlayerControlsPreferencesScreen : Screen {
             val clockFormat by playerPrefs.clockFormat.collectAsState()
             val predefinedTimeValues = listOf(500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000)
             val isCustomTimeValue = !predefinedTimeValues.contains(playerTimeToDisappear)
-            
+
             var showCustomTimeDialog by remember { mutableStateOf(false) }
             var customTimeValue by remember { mutableStateOf("") }
-            
+
             PreferenceCard {
               ListPreference(
                 value = portraitPlaybackControlsPosition,
                 onValueChange = { appearancePrefs.portraitPlaybackControlsPosition.set(it) },
                 values = PortraitPlaybackControlsPosition.entries,
                 valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_portrait_playback_buttons)) },
+                title = {
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_portrait_playback_buttons),
+                  )
+                },
                 summary = { Text(portraitPlaybackControlsPosition.displayName) },
               )
 
@@ -281,9 +289,9 @@ object PlayerControlsPreferencesScreen : Screen {
                   )
                 },
               )
-              
+
               PreferenceDivider()
-              
+
               ListPreference(
                 value = if (isCustomTimeValue) -1 else playerTimeToDisappear,
                 onValueChange = { newValue ->
@@ -305,11 +313,12 @@ object PlayerControlsPreferencesScreen : Screen {
                 title = { Text(text = stringResource(R.string.pref_player_display_hide_player_control_time)) },
                 summary = {
                   Text(
-                    text = if (isCustomTimeValue) {
-                      stringResource(R.string.pref_custom_time_summary_format, playerTimeToDisappear)
-                    } else {
-                      stringResource(R.string.pref_time_ms_summary, playerTimeToDisappear)
-                    },
+                    text =
+                      if (isCustomTimeValue) {
+                        stringResource(R.string.pref_custom_time_summary_format, playerTimeToDisappear)
+                      } else {
+                        stringResource(R.string.pref_time_ms_summary, playerTimeToDisappear)
+                      },
                   )
                 },
               )
@@ -321,20 +330,26 @@ object PlayerControlsPreferencesScreen : Screen {
                 onValueChange = { playerPrefs.clockFormat.set(it) },
                 values = PlayerClockFormat.entries,
                 valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_time_network_clock)) },
+                title = {
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_time_network_clock),
+                  )
+                },
                 summary = { Text(clockFormat.displayName) },
               )
             }
-            
+
             if (showCustomTimeDialog) {
               AlertDialog(
                 onDismissRequest = { showCustomTimeDialog = false },
                 title = { Text(text = stringResource(R.string.pref_player_display_hide_player_control_time)) },
                 text = {
                   Column(
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .verticalScroll(rememberScrollState()),
+                    modifier =
+                      Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
                   ) {
                     Text(
                       text = stringResource(R.string.pref_custom_time_dialog_text),
@@ -434,13 +449,12 @@ object PlayerControlsPreferencesScreen : Screen {
           PlayerButtonChip(
             button = button,
             enabled = true,
-            onClick = null, 
+            onClick = null,
             badgeIcon = null,
-            badgeColor = null
+            badgeColor = null,
           )
         }
       }
     }
   }
 }
-

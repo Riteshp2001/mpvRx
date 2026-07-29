@@ -18,4 +18,3 @@ object NetworkClientFactory {
       NetworkProtocol.WEBDAV -> WebDavClient(connection)
     }
 }
-

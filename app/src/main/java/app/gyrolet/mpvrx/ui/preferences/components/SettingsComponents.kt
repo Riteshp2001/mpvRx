@@ -47,29 +47,32 @@ fun SettingsClickableItem(
   isLastItem: Boolean = false,
   trailing: @Composable (() -> Unit)? = null,
 ) {
-  val shape = RoundedCornerShape(
-    topStart = if (isFirstItem) 16.dp else 0.dp,
-    topEnd = if (isFirstItem) 16.dp else 0.dp,
-    bottomStart = if (isLastItem) 16.dp else 0.dp,
-    bottomEnd = if (isLastItem) 16.dp else 0.dp,
-  )
+  val shape =
+    RoundedCornerShape(
+      topStart = if (isFirstItem) 16.dp else 0.dp,
+      topEnd = if (isFirstItem) 16.dp else 0.dp,
+      bottomStart = if (isLastItem) 16.dp else 0.dp,
+      bottomEnd = if (isLastItem) 16.dp else 0.dp,
+    )
 
   Surface(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(
-        enabled = enabled,
-        onClick = onClick,
-        interactionSource = remember { MutableInteractionSource() },
-        indication = null,
-      ),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(
+          enabled = enabled,
+          onClick = onClick,
+          interactionSource = remember { MutableInteractionSource() },
+          indication = null,
+        ),
     shape = shape,
     color = MaterialTheme.colorScheme.surfaceContainerLow,
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 14.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 14.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       if (icon != null) {

@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.Dp
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 
 private val dpExpressiveSpring = spring<Dp>(dampingRatio = 0.9f, stiffness = 700f)
 

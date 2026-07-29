@@ -13,13 +13,17 @@ import okhttp3.CookieJar
 import okhttp3.HttpUrl
 
 class AndroidCookieJar : CookieJar {
-  private val manager: CookieManager? = try {
-    CookieManager.getInstance()
-  } catch (_: Exception) {
-    null
-  }
+  private val manager: CookieManager? =
+    try {
+      CookieManager.getInstance()
+    } catch (_: Exception) {
+      null
+    }
 
-  override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+  override fun saveFromResponse(
+    url: HttpUrl,
+    cookies: List<Cookie>,
+  ) {
     val urlString = url.toString()
     cookies.forEach { cookie ->
       manager?.setCookie(urlString, cookie.toString())

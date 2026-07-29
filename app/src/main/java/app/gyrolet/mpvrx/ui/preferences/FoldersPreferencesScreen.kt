@@ -7,15 +7,11 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.documentfile.provider.DocumentFile
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -42,10 +38,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +55,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
@@ -69,6 +66,8 @@ import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.selection.SelectionState
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -92,27 +91,28 @@ object FoldersPreferencesScreen : Screen {
 
     val baseStorageFolder by preferences.baseStorageFolder.collectAsState()
 
-    val storageRootPicker = rememberLauncherForActivityResult(
-      ActivityResultContracts.OpenDocumentTree(),
-    ) { uri: Uri? ->
-      if (uri == null) return@rememberLauncherForActivityResult
-      context.contentResolver.takePersistableUriPermission(
-        uri,
-        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-      )
-      val uriString = uri.toString()
-      val previousBaseStorageFolder = preferences.baseStorageFolder.get()
-      if (subtitlesPreferences.fontsFolder.get() == previousBaseStorageFolder) {
-        subtitlesPreferences.fontsFolder.set("")
+    val storageRootPicker =
+      rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+      ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        context.contentResolver.takePersistableUriPermission(
+          uri,
+          Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+        )
+        val uriString = uri.toString()
+        val previousBaseStorageFolder = preferences.baseStorageFolder.get()
+        if (subtitlesPreferences.fontsFolder.get() == previousBaseStorageFolder) {
+          subtitlesPreferences.fontsFolder.set("")
+        }
+        preferences.baseStorageFolder.set(uriString)
+        advancedPreferences.mpvConfStorageUri.set(uriString)
+        subtitlesPreferences.subtitleSaveFolder.set(uriString)
+        val root = DocumentFile.fromTreeUri(context, uri) ?: return@rememberLauncherForActivityResult
+        listOf("fonts", "Subtitles", "scripts", "script-opts", "shaders").forEach { name ->
+          if (root.findFile(name) == null) root.createDirectory(name)
+        }
       }
-      preferences.baseStorageFolder.set(uriString)
-      advancedPreferences.mpvConfStorageUri.set(uriString)
-      subtitlesPreferences.subtitleSaveFolder.set(uriString)
-      val root = DocumentFile.fromTreeUri(context, uri) ?: return@rememberLauncherForActivityResult
-      listOf("fonts", "Subtitles", "scripts", "script-opts", "shaders").forEach { name ->
-        if (root.findFile(name) == null) root.createDirectory(name)
-      }
-    }
 
     val blacklistedFolders by preferences.blacklistedFolders.collectAsState()
     val includeNoMediaFolders by preferences.includeNoMediaFolders.collectAsState()
@@ -134,11 +134,17 @@ object FoldersPreferencesScreen : Screen {
           selectedCount = selectionState.selectedCount,
           totalCount = blacklistedFoldersList.size,
           onCancelSelection = { selectionState = selectionState.clear() },
-          onBackClick = if (LocalShowSettingsBackArrow.current) { { backstack.popSafely() } } else null,
+          onBackClick =
+            if (LocalShowSettingsBackArrow.current) {
+              { backstack.popSafely() }
+            } else {
+              null
+            },
           onDeleteClick = {
-            val updated = blacklistedFolders.toMutableSet().apply {
-              removeAll(selectionState.selectedIds)
-            }
+            val updated =
+              blacklistedFolders.toMutableSet().apply {
+                removeAll(selectionState.selectedIds)
+              }
             preferences.blacklistedFolders.set(updated)
             selectionState = selectionState.clear()
           },
@@ -165,13 +171,13 @@ object FoldersPreferencesScreen : Screen {
       },
     ) { padding ->
       Column(
-        modifier = Modifier
-          .fillMaxSize()
-          .padding(padding)
-          .padding(16.dp),
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(16.dp),
       ) {
         if (!selectionState.isInSelectionMode) {
-
           // ── Media Library ─────────────────────────────────────────────
           PreferenceSectionHeader(title = stringResource(R.string.pref_media_library_section))
 
@@ -179,7 +185,8 @@ object FoldersPreferencesScreen : Screen {
             includeNoMediaFolders = includeNoMediaFolders,
             onIncludeNoMediaFoldersChanged = { enabled ->
               preferences.includeNoMediaFolders.set(enabled)
-              app.gyrolet.mpvrx.repository.MediaFileRepository.clearCache()
+              app.gyrolet.mpvrx.repository.MediaFileRepository
+                .clearCache()
               MediaLibraryEvents.notifyChanged()
             },
           )
@@ -200,9 +207,10 @@ object FoldersPreferencesScreen : Screen {
 
         if (blacklistedFolders.isEmpty()) {
           Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .weight(1f),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .weight(1f),
           ) {
             EmptyState(
               icon = Icons.RoundedFilled.FolderOff,
@@ -237,27 +245,30 @@ object FoldersPreferencesScreen : Screen {
           Spacer(modifier = Modifier.height(16.dp))
 
           Card(
-            modifier = Modifier
-              .fillMaxWidth()
-              .clickable {
-                showAddDialog = true
-                isLoading = true
-                coroutineScope.launch(Dispatchers.IO) {
-                  try {
-                    availableFolders = scanAllVideoFolders(context.applicationContext as Application)
-                  } finally {
-                    isLoading = false
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .clickable {
+                  showAddDialog = true
+                  isLoading = true
+                  coroutineScope.launch(Dispatchers.IO) {
+                    try {
+                      availableFolders = scanAllVideoFolders(context.applicationContext as Application)
+                    } finally {
+                      isLoading = false
+                    }
                   }
-                }
-              },
-            colors = CardDefaults.cardColors(
-              containerColor = MaterialTheme.colorScheme.primaryContainer,
-            ),
+                },
+            colors =
+              CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+              ),
           ) {
             Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(16.dp),
               horizontalArrangement = Arrangement.Center,
               verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -321,15 +332,17 @@ private fun NoMediaPreferenceCard(
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
-    colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surfaceVariant,
-    ),
+    colors =
+      CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+      ),
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable { onIncludeNoMediaFoldersChanged(!includeNoMediaFolders) }
-        .padding(16.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .clickable { onIncludeNoMediaFoldersChanged(!includeNoMediaFolders) }
+          .padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -366,16 +379,22 @@ private fun BlacklistedFolderItem(
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
-    colors = CardDefaults.cardColors(
-      containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-      else MaterialTheme.colorScheme.surfaceVariant,
-    ),
+    colors =
+      CardDefaults.cardColors(
+        containerColor =
+          if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+          } else {
+            MaterialTheme.colorScheme.surfaceVariant
+          },
+      ),
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-        .padding(16.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+          .padding(16.dp),
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -420,9 +439,10 @@ private fun AddFolderDialog(
   var selectionState by remember { mutableStateOf(SelectionState<String>()) }
   var showDropdown by remember { mutableStateOf(false) }
 
-  val availableFolders = remember(folders, blacklistedFolders) {
-    folders.filter { it.path !in blacklistedFolders }
-  }
+  val availableFolders =
+    remember(folders, blacklistedFolders) {
+      folders.filter { it.path !in blacklistedFolders }
+    }
   val availableFolderPaths = remember(availableFolders) { availableFolders.map { it.path } }
 
   AlertDialog(
@@ -433,24 +453,34 @@ private fun AddFolderDialog(
         modifier = Modifier.clickable(enabled = !isLoading && availableFolders.isNotEmpty()) { showDropdown = true },
       ) {
         Text(
-          text = if (selectionState.isInSelectionMode)
-            stringResource(R.string.selected_items, selectionState.selectedCount, availableFolders.size)
-          else stringResource(R.string.pref_folders_select_folders),
+          text =
+            if (selectionState.isInSelectionMode) {
+              stringResource(R.string.selected_items, selectionState.selectedCount, availableFolders.size)
+            } else {
+              stringResource(R.string.pref_folders_select_folders)
+            },
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )
         if (!isLoading && availableFolders.isNotEmpty()) {
-          Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = stringResource(R.string.selection_options), modifier = Modifier.size(24.dp))
+          Icon(
+            Icons.RoundedFilled.ArrowDropDown,
+            contentDescription = stringResource(R.string.selection_options),
+            modifier = Modifier.size(24.dp),
+          )
         }
         DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
           DropdownMenuItem(text = { Text(stringResource(R.string.select_all)) }, onClick = {
-            selectionState = selectionState.selectAll(availableFolderPaths); showDropdown = false
+            selectionState = selectionState.selectAll(availableFolderPaths)
+            showDropdown = false
           })
           DropdownMenuItem(text = { Text(stringResource(R.string.invert_selection)) }, onClick = {
-            selectionState = selectionState.invertSelection(availableFolderPaths); showDropdown = false
+            selectionState = selectionState.invertSelection(availableFolderPaths)
+            showDropdown = false
           })
           DropdownMenuItem(text = { Text(stringResource(R.string.deselect_all)) }, onClick = {
-            selectionState = selectionState.clear(); showDropdown = false
+            selectionState = selectionState.clear()
+            showDropdown = false
           })
         }
       }
@@ -466,10 +496,11 @@ private fun AddFolderDialog(
         LazyColumn(modifier = Modifier.fillMaxWidth().height(400.dp)) {
           items(availableFolders) { folder ->
             Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .clickable { selectionState = selectionState.toggle(folder.path) }
-                .padding(vertical = 8.dp),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .clickable { selectionState = selectionState.toggle(folder.path) }
+                  .padding(vertical = 8.dp),
               verticalAlignment = Alignment.CenterVertically,
             ) {
               Checkbox(
@@ -478,7 +509,11 @@ private fun AddFolderDialog(
               )
               Column(modifier = Modifier.padding(start = 8.dp)) {
                 Text(text = folder.name, style = MaterialTheme.typography.bodyLarge)
-                Text(text = folder.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                  text = folder.path,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
               }
             }
           }
@@ -487,7 +522,10 @@ private fun AddFolderDialog(
     },
     confirmButton = {
       TextButton(
-        onClick = { onAddFolders(selectionState.selectedIds); onDismiss() },
+        onClick = {
+          onAddFolders(selectionState.selectedIds)
+          onDismiss()
+        },
         enabled = selectionState.isInSelectionMode && !isLoading,
       ) { Text(stringResource(R.string.generic_ok)) }
     },
@@ -505,15 +543,17 @@ internal fun StorageRootPickerCard(
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
-    colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surfaceVariant,
-    ),
+    colors =
+      CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+      ),
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable(onClick = onPickClick)
-        .padding(16.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .clickable(onClick = onPickClick)
+          .padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -524,16 +564,21 @@ internal fun StorageRootPickerCard(
         modifier = Modifier.size(24.dp),
       )
       Column(modifier = Modifier.weight(1f)) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_base_storage_folder),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_base_storage_folder),
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.Bold,
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-          text = if (currentPath.isNotEmpty())
-            getSimplifiedStoragePath(currentPath)
-          else
-            "Tap to select - creates Subtitles/, Fonts/, scripts/, script-opts/ subdirs",
+          text =
+            if (currentPath.isNotEmpty()) {
+              getSimplifiedStoragePath(currentPath)
+            } else {
+              "Tap to select - creates Subtitles/, Fonts/, scripts/, script-opts/ subdirs"
+            },
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 1,
@@ -544,7 +589,10 @@ internal fun StorageRootPickerCard(
         IconButton(onClick = onClearClick) {
           Icon(
             imageVector = Icons.RoundedFilled.Clear,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_clear_content_desc),
+            contentDescription =
+              androidx.compose.ui.res.stringResource(
+                app.gyrolet.mpvrx.R.string.pref_clear_content_desc,
+              ),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
@@ -553,11 +601,13 @@ internal fun StorageRootPickerCard(
   }
 }
 
-internal fun getSimplifiedStoragePath(uriString: String): String = try {
-  Uri.decode(uriString).substringAfterLast(':').ifEmpty { uriString }
-} catch (_: Exception) {
-  uriString
-}
+internal fun getSimplifiedStoragePath(uriString: String): String =
+  try {
+    Uri.decode(uriString).substringAfterLast(':').ifEmpty { uriString }
+  } catch (_: Exception) {
+    uriString
+  }
 
 private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder> =
-  app.gyrolet.mpvrx.repository.MediaFileRepository.getAllVideoFoldersFast(context = context)
+  app.gyrolet.mpvrx.repository.MediaFileRepository
+    .getAllVideoFoldersFast(context = context)

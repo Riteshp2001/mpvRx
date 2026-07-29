@@ -24,4 +24,3 @@ object MediaLibraryEvents {
     _changes.tryEmit(Unit)
   }
 }
-

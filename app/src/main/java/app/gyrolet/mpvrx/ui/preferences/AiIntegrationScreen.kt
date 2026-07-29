@@ -8,6 +8,7 @@
 package app.gyrolet.mpvrx.ui.preferences
 
 import android.widget.Toast
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,21 +16,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,10 +44,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.text.style.TextOverflow
-import app.gyrolet.mpvrx.ui.icons.Icon
-import me.zhanghai.compose.preference.TextFieldPreference
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,11 +53,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AiPreferences
@@ -75,12 +68,16 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.repository.ai.AiModelInfo
 import app.gyrolet.mpvrx.repository.ai.AiService
-import app.gyrolet.mpvrx.repository.ai.LocalModelCatalog
-import app.gyrolet.mpvrx.repository.ai.LocalModelInfo
-import app.gyrolet.mpvrx.repository.ai.ModelDownloadManager
 import app.gyrolet.mpvrx.repository.ai.DownloadProgress
 import app.gyrolet.mpvrx.repository.ai.LocalModelBenchmark
+import app.gyrolet.mpvrx.repository.ai.LocalModelCatalog
+import app.gyrolet.mpvrx.repository.ai.LocalModelInfo
+import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.preferences.PreferenceCard
+import app.gyrolet.mpvrx.ui.preferences.PreferenceDivider
+import app.gyrolet.mpvrx.ui.preferences.PreferenceSectionHeader
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -88,27 +85,57 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import me.zhanghai.compose.preference.ListPreference
-import me.zhanghai.compose.preference.Preference
-import app.gyrolet.mpvrx.ui.preferences.PreferenceCard
-import app.gyrolet.mpvrx.ui.preferences.PreferenceDivider
-import app.gyrolet.mpvrx.ui.preferences.PreferenceSectionHeader
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import me.zhanghai.compose.preference.TextFieldPreference
 import org.koin.compose.koinInject
 
-private val allLanguages = mapOf(
-    "en" to "English", "es" to "Spanish", "fr" to "French", "de" to "German",
-    "it" to "Italian", "pt" to "Portuguese", "ru" to "Russian", "zh" to "Chinese",
-    "ja" to "Japanese", "ko" to "Korean", "ar" to "Arabic", "hi" to "Hindi",
-    "bn" to "Bengali", "vi" to "Vietnamese", "te" to "Telugu", "ta" to "Tamil",
-    "ur" to "Urdu", "tr" to "Turkish", "pl" to "Polish", "uk" to "Ukrainian",
-    "nl" to "Dutch", "el" to "Greek", "hu" to "Hungarian", "sv" to "Swedish",
-    "cs" to "Czech", "ro" to "Romanian", "da" to "Danish", "fi" to "Finnish",
-    "no" to "Norwegian", "he" to "Hebrew", "id" to "Indonesian", "th" to "Thai",
-    "ms" to "Malay", "fa" to "Persian", "sk" to "Slovak", "bg" to "Bulgarian",
-    "hr" to "Croatian", "sr" to "Serbian", "sl" to "Slovenian", "et" to "Estonian",
-    "lv" to "Latvian", "lt" to "Lithuanian", "af" to "Afrikaans", "sw" to "Swahili",
-)
+private val allLanguages =
+  mapOf(
+    "en" to "English",
+    "es" to "Spanish",
+    "fr" to "French",
+    "de" to "German",
+    "it" to "Italian",
+    "pt" to "Portuguese",
+    "ru" to "Russian",
+    "zh" to "Chinese",
+    "ja" to "Japanese",
+    "ko" to "Korean",
+    "ar" to "Arabic",
+    "hi" to "Hindi",
+    "bn" to "Bengali",
+    "vi" to "Vietnamese",
+    "te" to "Telugu",
+    "ta" to "Tamil",
+    "ur" to "Urdu",
+    "tr" to "Turkish",
+    "pl" to "Polish",
+    "uk" to "Ukrainian",
+    "nl" to "Dutch",
+    "el" to "Greek",
+    "hu" to "Hungarian",
+    "sv" to "Swedish",
+    "cs" to "Czech",
+    "ro" to "Romanian",
+    "da" to "Danish",
+    "fi" to "Finnish",
+    "no" to "Norwegian",
+    "he" to "Hebrew",
+    "id" to "Indonesian",
+    "th" to "Thai",
+    "ms" to "Malay",
+    "fa" to "Persian",
+    "sk" to "Slovak",
+    "bg" to "Bulgarian",
+    "hr" to "Croatian",
+    "sr" to "Serbian",
+    "sl" to "Slovenian",
+    "et" to "Estonian",
+    "lv" to "Latvian",
+    "lt" to "Lithuanian",
+    "af" to "Afrikaans",
+    "sw" to "Swahili",
+  )
 
 @Serializable
 object AiIntegrationScreen : Screen {
@@ -161,7 +188,10 @@ object AiIntegrationScreen : Screen {
     var benchmarks by remember { mutableStateOf(aiService.getLocalModelBenchmarks()) }
     var benchmarkingModelId by remember { mutableStateOf<String?>(null) }
 
-    val activityManager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+    val activityManager =
+      context.getSystemService(
+        android.content.Context.ACTIVITY_SERVICE,
+      ) as android.app.ActivityManager
     val memoryInfo = android.app.ActivityManager.MemoryInfo()
     activityManager.getMemoryInfo(memoryInfo)
     val ramMb = (memoryInfo.totalMem / (1024 * 1024)).toInt()
@@ -174,15 +204,17 @@ object AiIntegrationScreen : Screen {
       scope.launch {
         isLoadingModels = true
         modelLoadError = null
-        aiService.fetchModelsForProvider(requestedProvider)
+        aiService
+          .fetchModelsForProvider(requestedProvider)
           .onSuccess { fetchedModels ->
             if (provider == requestedProvider) models = fetchedModels
-            preferences.availableModelsFor(requestedProvider).set(json.encodeToString(
-              kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()),
-              fetchedModels,
-            ))
-          }
-          .onFailure { e ->
+            preferences.availableModelsFor(requestedProvider).set(
+              json.encodeToString(
+                kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()),
+                fetchedModels,
+              ),
+            )
+          }.onFailure { e ->
             modelLoadError = e.message
           }
         isLoadingModels = false
@@ -194,11 +226,13 @@ object AiIntegrationScreen : Screen {
       val stored = preferences.availableModelsFor(provider).get()
       if (stored.isNotBlank() && stored != "[]") {
         try {
-          models = json.decodeFromString(
-            kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()),
-            stored,
-          )
-        } catch (_: Exception) {}
+          models =
+            json.decodeFromString(
+              kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()),
+              stored,
+            )
+        } catch (_: Exception) {
+        }
       }
       if (models.isEmpty() && provider != AiProvider.LOCAL) {
         loadModels()
@@ -209,7 +243,10 @@ object AiIntegrationScreen : Screen {
       topBar = {
         TopAppBar(
           title = {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_section_ai_title),
+            Text(
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.pref_section_ai_title),
               style = MaterialTheme.typography.headlineSmall,
               fontWeight = FontWeight.ExtraBold,
               color = MaterialTheme.colorScheme.primary,
@@ -231,9 +268,10 @@ object AiIntegrationScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         LazyColumn(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .padding(padding),
         ) {
           item { PreferenceSectionHeader(title = stringResource(R.string.pref_ai_features_section)) }
 
@@ -242,7 +280,12 @@ object AiIntegrationScreen : Screen {
               SwitchPreference(
                 value = enabled,
                 onValueChange = { preferences.enabled.set(it) },
-                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_enabled_title)) },
+                title = {
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_enabled_title),
+                  )
+                },
                 summary = {
                   Text(
                     if (enabled) "AI features are active" else "AI features are disabled",
@@ -265,8 +308,16 @@ object AiIntegrationScreen : Screen {
                     preferences.provider.set(it)
                   },
                   values = providers,
-                  valueToText = { androidx.compose.ui.text.AnnotatedString(it.displayName) },
-                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_provider_title)) },
+                  valueToText = {
+                    androidx.compose.ui.text
+                      .AnnotatedString(it.displayName)
+                  },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_provider_title),
+                    )
+                  },
                   summary = {
                     Text(provider.displayName, color = MaterialTheme.colorScheme.outline)
                   },
@@ -276,29 +327,52 @@ object AiIntegrationScreen : Screen {
 
             if (provider == AiProvider.LOCAL) {
               item { PreferenceSectionHeader(title = stringResource(R.string.pref_hf_setup_section)) }
-              
+
               item {
                 PreferenceCard {
                   TextFieldPreference(
                     value = huggingfaceToken,
                     onValueChange = preferences.huggingfaceToken::set,
                     textToValue = { it.trim() },
-                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_title)) },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_title),
+                      )
+                    },
                     summary = {
                       if (huggingfaceToken.isBlank()) {
-                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_summary_error), color = MaterialTheme.colorScheme.error)
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_hf_token_summary_error,
+                          ),
+                          color = MaterialTheme.colorScheme.error,
+                        )
                       } else {
-                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_summary_saved), color = MaterialTheme.colorScheme.outline)
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_hf_token_summary_saved,
+                          ),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
                       }
                     },
                     textField = { value, onValueChange, _ ->
                       Column {
-                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_dialog_text))
+                        Text(
+                          androidx.compose.ui.res
+                            .stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_dialog_text),
+                        )
                         TextField(
                           value = value,
                           onValueChange = onValueChange,
                           modifier = Modifier.fillMaxWidth(),
-                          placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_hf)) },
+                          placeholder = {
+                            Text(
+                              androidx.compose.ui.res
+                                .stringResource(app.gyrolet.mpvrx.R.string.ui_hf),
+                            )
+                          },
                           singleLine = true,
                           visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
                         )
@@ -312,24 +386,33 @@ object AiIntegrationScreen : Screen {
 
               item {
                 Column(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .padding(horizontal = 16.dp, vertical = 8.dp),
                   verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_model_picker_header),
+                  Text(
+                    text =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_model_picker_header),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                   )
-                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_model_picker_description),
+                  Text(
+                    text =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.pref_model_picker_description,
+                      ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                   )
                   Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .horizontalScroll(rememberScrollState()),
+                    modifier =
+                      Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
                   ) {
                     listOf("Recommended", "Fastest", "Best translation", "Downloaded").forEach { mode ->
                       FilterChip(
@@ -342,90 +425,172 @@ object AiIntegrationScreen : Screen {
                 }
               }
 
-              val visibleLocalModels = when (localModelSort) {
-                "Fastest" -> LocalModelCatalog.models.sortedByDescending { it.speedRank }
-                "Best translation" -> LocalModelCatalog.models.sortedByDescending { it.translationRank }
-                "Downloaded" -> LocalModelCatalog.models.sortedWith(
-                  compareByDescending<LocalModelInfo> { aiService.isLocalModelDownloaded(it.id) }
-                    .thenBy { it.tier.sortWeight }
-                    .thenByDescending { it.speedRank },
-                )
-                else -> LocalModelCatalog.speedFirst(ramMb)
-              }
+              val visibleLocalModels =
+                when (localModelSort) {
+                  "Fastest" -> LocalModelCatalog.models.sortedByDescending { it.speedRank }
+                  "Best translation" -> LocalModelCatalog.models.sortedByDescending { it.translationRank }
+                  "Downloaded" ->
+                    LocalModelCatalog.models.sortedWith(
+                      compareByDescending<LocalModelInfo> { aiService.isLocalModelDownloaded(it.id) }
+                        .thenBy { it.tier.sortWeight }
+                        .thenByDescending { it.speedRank },
+                    )
+                  else -> LocalModelCatalog.speedFirst(ramMb)
+                }
 
               items(visibleLocalModels) { model ->
-                  val isDownloaded = remember(model.id, isDownloading) {
-                      aiService.isLocalModelDownloaded(model.id)
+                val isDownloaded =
+                  remember(model.id, isDownloading) {
+                    aiService.isLocalModelDownloaded(model.id)
                   }
-                  val isSelected = localModelId == model.id
-                  val isThisDownloading = isDownloading && localModelId == model.id
-                  val benchmark = benchmarks.firstOrNull { it.modelId == model.id }
+                val isSelected = localModelId == model.id
+                val isThisDownloading = isDownloading && localModelId == model.id
+                val benchmark = benchmarks.firstOrNull { it.modelId == model.id }
 
-                  OfflineModelCard(
-                      model = model,
-                      isDownloaded = isDownloaded,
-                      isSelected = isSelected,
-                      isDownloading = isThisDownloading,
-                      isBenchmarking = benchmarkingModelId == model.id,
-                      isRecommended = recommendedModelIds.contains(model.id),
-                      benchmark = benchmark,
-                      downloadProgress = if (isThisDownloading) downloadProgress else null,
-                      onDownload = {
-                          preferences.localModelId.set(model.id)
-                          isDownloading = true
-                          downloadProgress = null
-                          scope.launch {
-                              aiService.downloadLocalModel(model.id)
-                                  .onSuccess {
-                                      downloadProgress = DownloadProgress(isComplete = true)
-                                      Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.pref_model_download_success), Toast.LENGTH_SHORT).show()
-                                  }
-                                  .onFailure { e ->
-                                      downloadProgress = DownloadProgress(error = e.message)
-                                      Toast.makeText(context, context.getString(R.string.pref_model_download_failed, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
-                                  }
-                              isDownloading = false
-                          }
-                      },
-                      onDelete = {
-                          if (aiService.deleteLocalModel(model.id)) {
-                              Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.pref_model_deleted), Toast.LENGTH_SHORT).show()
-                          }
-                      },
-                      onSelect = {
-                          preferences.localModelId.set(model.id)
-                          Toast.makeText(context, context.getString(R.string.pref_model_using, model.displayName), Toast.LENGTH_SHORT).show()
-                      },
-                      onBenchmark = {
-                          benchmarkingModelId = model.id
-                          scope.launch {
-                              aiService.benchmarkLocalModel(model.id)
-                                  .onSuccess {
-                                      benchmarks = aiService.getLocalModelBenchmarks()
-                                      Toast.makeText(context, context.getString(R.string.pref_benchmark_saved, it.speedLabel), Toast.LENGTH_SHORT).show()
-                                  }
-                                  .onFailure { e ->
-                                      Toast.makeText(context, context.getString(R.string.pref_benchmark_failed, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
-                                  }
-                              benchmarkingModelId = null
-                          }
-                      }
-                  )
+                OfflineModelCard(
+                  model = model,
+                  isDownloaded = isDownloaded,
+                  isSelected = isSelected,
+                  isDownloading = isThisDownloading,
+                  isBenchmarking = benchmarkingModelId == model.id,
+                  isRecommended = recommendedModelIds.contains(model.id),
+                  benchmark = benchmark,
+                  downloadProgress = if (isThisDownloading) downloadProgress else null,
+                  onDownload = {
+                    preferences.localModelId.set(model.id)
+                    isDownloading = true
+                    downloadProgress = null
+                    scope.launch {
+                      aiService
+                        .downloadLocalModel(model.id)
+                        .onSuccess {
+                          downloadProgress = DownloadProgress(isComplete = true)
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(app.gyrolet.mpvrx.R.string.pref_model_download_success),
+                              Toast.LENGTH_SHORT,
+                            ).show()
+                        }.onFailure { e ->
+                          downloadProgress = DownloadProgress(error = e.message)
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(
+                                R.string.pref_model_download_failed,
+                                e.message ?: context.getString(R.string.generic_unknown_error),
+                              ),
+                              Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                      isDownloading = false
+                    }
+                  },
+                  onDelete = {
+                    if (aiService.deleteLocalModel(model.id)) {
+                      Toast
+                        .makeText(
+                          context,
+                          context.getString(app.gyrolet.mpvrx.R.string.pref_model_deleted),
+                          Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                  },
+                  onSelect = {
+                    preferences.localModelId.set(model.id)
+                    Toast
+                      .makeText(
+                        context,
+                        context.getString(R.string.pref_model_using, model.displayName),
+                        Toast.LENGTH_SHORT,
+                      ).show()
+                  },
+                  onBenchmark = {
+                    benchmarkingModelId = model.id
+                    scope.launch {
+                      aiService
+                        .benchmarkLocalModel(model.id)
+                        .onSuccess {
+                          benchmarks = aiService.getLocalModelBenchmarks()
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(R.string.pref_benchmark_saved, it.speedLabel),
+                              Toast.LENGTH_SHORT,
+                            ).show()
+                        }.onFailure { e ->
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(
+                                R.string.pref_benchmark_failed,
+                                e.message ?: context.getString(R.string.generic_unknown_error),
+                              ),
+                              Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                      benchmarkingModelId = null
+                    }
+                  },
+                )
               }
-              
+
               item { Spacer(modifier = Modifier.height(16.dp)) }
             }
 
             if (provider != AiProvider.LOCAL) {
-              val apiKeyInfo = when (provider) {
-                AiProvider.OPENCODE -> ApiKeyInfo("OpenCode API Key", "Get your key from opencode.ai/auth", "sk-...", openCodeKey, preferences.openCodeApiKey::set)
-                AiProvider.GROQ -> ApiKeyInfo("Groq API Key", "Get your key from console.groq.com", "gsk_...", groqKey, preferences.groqApiKey::set)
-                AiProvider.OPENAI -> ApiKeyInfo("OpenAI API Key", "Get your key from platform.openai.com/api-keys", "sk-...", openaiKey, preferences.openaiApiKey::set)
-                AiProvider.ANTHROPIC -> ApiKeyInfo("Anthropic API Key", "Get your key from console.anthropic.com", "sk-ant-...", anthropicKey, preferences.anthropicApiKey::set)
-                AiProvider.OPENROUTER -> ApiKeyInfo("OpenRouter API Key", "Get your key from openrouter.ai/keys", "sk-or-...", openrouterKey, preferences.openrouterApiKey::set)
-                AiProvider.TOGETHER -> ApiKeyInfo("Together API Key", "Get your key from api.together.xyz/settings/api-keys", "...", togetherKey, preferences.togetherApiKey::set)
-                else -> null
-              }
+              val apiKeyInfo =
+                when (provider) {
+                  AiProvider.OPENCODE ->
+                    ApiKeyInfo(
+                      "OpenCode API Key",
+                      "Get your key from opencode.ai/auth",
+                      "sk-...",
+                      openCodeKey,
+                      preferences.openCodeApiKey::set,
+                    )
+                  AiProvider.GROQ ->
+                    ApiKeyInfo(
+                      "Groq API Key",
+                      "Get your key from console.groq.com",
+                      "gsk_...",
+                      groqKey,
+                      preferences.groqApiKey::set,
+                    )
+                  AiProvider.OPENAI ->
+                    ApiKeyInfo(
+                      "OpenAI API Key",
+                      "Get your key from platform.openai.com/api-keys",
+                      "sk-...",
+                      openaiKey,
+                      preferences.openaiApiKey::set,
+                    )
+                  AiProvider.ANTHROPIC ->
+                    ApiKeyInfo(
+                      "Anthropic API Key",
+                      "Get your key from console.anthropic.com",
+                      "sk-ant-...",
+                      anthropicKey,
+                      preferences.anthropicApiKey::set,
+                    )
+                  AiProvider.OPENROUTER ->
+                    ApiKeyInfo(
+                      "OpenRouter API Key",
+                      "Get your key from openrouter.ai/keys",
+                      "sk-or-...",
+                      openrouterKey,
+                      preferences.openrouterApiKey::set,
+                    )
+                  AiProvider.TOGETHER ->
+                    ApiKeyInfo(
+                      "Together API Key",
+                      "Get your key from api.together.xyz/settings/api-keys",
+                      "...",
+                      togetherKey,
+                      preferences.togetherApiKey::set,
+                    )
+                  else -> null
+                }
 
               if (apiKeyInfo != null) {
                 item { PreferenceSectionHeader(title = stringResource(R.string.pref_api_config_section)) }
@@ -441,7 +606,11 @@ object AiIntegrationScreen : Screen {
                         if (apiKeyInfo.apiKey.isBlank()) {
                           Text(apiKeyInfo.hint, color = MaterialTheme.colorScheme.error)
                         } else {
-                          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_api_key_saved), color = MaterialTheme.colorScheme.outline)
+                          Text(
+                            androidx.compose.ui.res
+                              .stringResource(app.gyrolet.mpvrx.R.string.pref_api_key_saved),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
                         }
                       },
                       textField = { value, onValueChange, _ ->
@@ -462,21 +631,31 @@ object AiIntegrationScreen : Screen {
                     PreferenceDivider()
 
                     Row(
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .padding(horizontal = 16.dp, vertical = 8.dp),
                       horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                       Button(
                         onClick = { showApiKey = !showApiKey },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                          containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
+                        colors =
+                          ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                          ),
                         shape = MaterialTheme.shapes.extraLarge,
                       ) {
-                        Text(if (showApiKey) stringResource(R.string.pref_hide_key) else stringResource(R.string.pref_show_key))
+                        Text(
+                          if (showApiKey) {
+                            stringResource(
+                              R.string.pref_hide_key,
+                            )
+                          } else {
+                            stringResource(R.string.pref_show_key)
+                          },
+                        )
                       }
 
                       Button(
@@ -484,12 +663,12 @@ object AiIntegrationScreen : Screen {
                           scope.launch {
                             isVerifying = true
                             verifyResult = null
-                            aiService.verifyKey()
+                            aiService
+                              .verifyKey()
                               .onSuccess {
                                 verifyResult = it
                                 preferences.lastVerified.set(System.currentTimeMillis())
-                              }
-                              .onFailure { e ->
+                              }.onFailure { e ->
                                 verifyResult = "Verification failed: ${e.message}"
                               }
                             isVerifying = false
@@ -497,9 +676,10 @@ object AiIntegrationScreen : Screen {
                         },
                         modifier = Modifier.weight(1f),
                         enabled = !isVerifying && apiKeyInfo.apiKey.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                          containerColor = MaterialTheme.colorScheme.primary,
-                        ),
+                        colors =
+                          ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                          ),
                         shape = MaterialTheme.shapes.extraLarge,
                       ) {
                         if (isVerifying) {
@@ -509,16 +689,20 @@ object AiIntegrationScreen : Screen {
                             color = MaterialTheme.colorScheme.onPrimary,
                           )
                         } else {
-                          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_verify_key))
+                          Text(
+                            androidx.compose.ui.res
+                              .stringResource(app.gyrolet.mpvrx.R.string.pref_verify_key),
+                          )
                         }
                       }
                     }
 
                     if (verifyResult != null) {
                       Row(
-                        modifier = Modifier
-                          .fillMaxWidth()
-                          .padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier =
+                          Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                       ) {
                         val isSuccess = verifyResult!!.contains("successfully") || verifyResult!!.contains("ready")
@@ -544,22 +728,28 @@ object AiIntegrationScreen : Screen {
                 item {
                   PreferenceCard {
                     Row(
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .padding(horizontal = 16.dp, vertical = 8.dp),
                       verticalAlignment = Alignment.CenterVertically,
                       horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_available_models_header),
+                      Text(
+                        text =
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_available_models_header,
+                          ),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                       )
                       Button(
                         onClick = { loadModels() },
                         enabled = !isLoadingModels && apiKeyInfo.apiKey.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                          containerColor = MaterialTheme.colorScheme.primary,
-                        ),
+                        colors =
+                          ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                          ),
                         shape = MaterialTheme.shapes.extraLarge,
                       ) {
                         if (isLoadingModels) {
@@ -571,12 +761,18 @@ object AiIntegrationScreen : Screen {
                         } else {
                           Icon(
                             imageVector = Icons.RoundedFilled.Refresh,
-                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_refresh),
+                            contentDescription =
+                              androidx.compose.ui.res.stringResource(
+                                app.gyrolet.mpvrx.R.string.ui_refresh,
+                              ),
                             modifier = Modifier.size(18.dp),
                           )
                         }
                         Spacer(modifier = Modifier.size(4.dp))
-                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_fetch_models))
+                        Text(
+                          androidx.compose.ui.res
+                            .stringResource(app.gyrolet.mpvrx.R.string.pref_fetch_models),
+                        )
                       }
                     }
 
@@ -598,23 +794,31 @@ object AiIntegrationScreen : Screen {
                         onClick = { showModelDialog = true },
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        modifier = Modifier
-                          .fillMaxWidth()
-                          .padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier =
+                          Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
                       ) {
                         Row(
                           verticalAlignment = Alignment.CenterVertically,
                           modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         ) {
                           Column(modifier = Modifier.weight(1f)) {
-                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_model_section),
+                            Text(
+                              text =
+                                androidx.compose.ui.res.stringResource(
+                                  app.gyrolet.mpvrx.R.string.pref_model_section,
+                                ),
                               style = MaterialTheme.typography.labelLarge,
                               fontWeight = FontWeight.Bold,
                             )
                             Text(
-                              text = if (selectedModel.isNotBlank()) {
-                                modelDisplayNames[selectedModel] ?: selectedModel
-                              } else "Tap to select a model",
+                              text =
+                                if (selectedModel.isNotBlank()) {
+                                  modelDisplayNames[selectedModel] ?: selectedModel
+                                } else {
+                                  "Tap to select a model"
+                                },
                               style = MaterialTheme.typography.bodySmall,
                               color = MaterialTheme.colorScheme.outline,
                             )
@@ -654,12 +858,17 @@ object AiIntegrationScreen : Screen {
                     PreferenceDivider()
 
                     Column(
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .padding(horizontal = 16.dp, vertical = 8.dp),
                       verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_verify_model_header),
+                      Text(
+                        text =
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_verify_model_header,
+                          ),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                       )
@@ -669,7 +878,8 @@ object AiIntegrationScreen : Screen {
                           scope.launch {
                             isVerifyingModel = true
                             verifyModelResult = null
-                            aiService.verifyModel()
+                            aiService
+                              .verifyModel()
                               .onSuccess { verifyModelResult = it }
                               .onFailure { e ->
                                 verifyModelResult = "Error: ${e.message}"
@@ -679,9 +889,10 @@ object AiIntegrationScreen : Screen {
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isVerifyingModel && selectedModel.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                          containerColor = MaterialTheme.colorScheme.tertiary,
-                        ),
+                        colors =
+                          ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                          ),
                         shape = MaterialTheme.shapes.extraLarge,
                       ) {
                         if (isVerifyingModel) {
@@ -692,7 +903,10 @@ object AiIntegrationScreen : Screen {
                           )
                           Spacer(Modifier.width(8.dp))
                         }
-                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_check_model_access))
+                        Text(
+                          androidx.compose.ui.res
+                            .stringResource(app.gyrolet.mpvrx.R.string.pref_check_model_access),
+                        )
                       }
 
                       if (verifyModelResult != null) {
@@ -707,29 +921,33 @@ object AiIntegrationScreen : Screen {
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                           ) {
                             lines.forEach { line ->
-                              val isPositive = line.startsWith("Available") ||
-                                line.startsWith("Free") ||
-                                line.startsWith("API access working")
-                              val isWarning = line.startsWith("Quota") ||
-                                line.startsWith("Paid") ||
-                                line.startsWith("⚠")
+                              val isPositive =
+                                line.startsWith("Available") ||
+                                  line.startsWith("Free") ||
+                                  line.startsWith("API access working")
+                              val isWarning =
+                                line.startsWith("Quota") ||
+                                  line.startsWith("Paid") ||
+                                  line.startsWith("⚠")
                               Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                               ) {
                                 Icon(
-                                  imageVector = when {
-                                    isPositive -> Icons.RoundedFilled.Check
-                                    isWarning -> Icons.RoundedFilled.Warning
-                                    else -> Icons.RoundedFilled.Close
-                                  },
+                                  imageVector =
+                                    when {
+                                      isPositive -> Icons.RoundedFilled.Check
+                                      isWarning -> Icons.RoundedFilled.Warning
+                                      else -> Icons.RoundedFilled.Close
+                                    },
                                   contentDescription = null,
                                   modifier = Modifier.size(16.dp),
-                                  tint = when {
-                                    isPositive -> MaterialTheme.colorScheme.primary
-                                    isWarning -> MaterialTheme.colorScheme.error
-                                    else -> MaterialTheme.colorScheme.error
-                                  },
+                                  tint =
+                                    when {
+                                      isPositive -> MaterialTheme.colorScheme.primary
+                                      isWarning -> MaterialTheme.colorScheme.error
+                                      else -> MaterialTheme.colorScheme.error
+                                    },
                                 )
                                 Text(
                                   text = line,
@@ -753,9 +971,16 @@ object AiIntegrationScreen : Screen {
                 SwitchPreference(
                   value = renameWithAi,
                   onValueChange = { preferences.renameWithAi.set(it) },
-                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_rename_title)) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_rename_title),
+                    )
+                  },
                   summary = {
-                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_rename_summary),
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_rename_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
@@ -766,9 +991,16 @@ object AiIntegrationScreen : Screen {
                 SwitchPreference(
                   value = subtitleFormatWithAi,
                   onValueChange = { preferences.subtitleFormatWithAi.set(it) },
-                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_search_title)) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_search_title),
+                    )
+                  },
                   summary = {
-                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_ai_search_summary),
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_search_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
@@ -788,9 +1020,16 @@ object AiIntegrationScreen : Screen {
                   SwitchPreference(
                     value = realtimeSubsEnabled,
                     onValueChange = { preferences.realtimeSubsEnabled.set(it) },
-                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_title)) },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_title),
+                      )
+                    },
                     summary = {
-                      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_summary),
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_summary),
                         color = MaterialTheme.colorScheme.outline,
                       )
                     },
@@ -802,8 +1041,16 @@ object AiIntegrationScreen : Screen {
                     value = subtitleGenerationOutputFormat,
                     onValueChange = { preferences.subtitleGenerationOutputFormat.set(it) },
                     values = listOf("srt", "vtt"),
-                    valueToText = { androidx.compose.ui.text.AnnotatedString(it.uppercase()) },
-                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_output_format_title)) },
+                    valueToText = {
+                      androidx.compose.ui.text
+                        .AnnotatedString(it.uppercase())
+                    },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_output_format_title),
+                      )
+                    },
                     summary = {
                       Text(
                         subtitleGenerationOutputFormat.uppercase(),
@@ -821,10 +1068,20 @@ object AiIntegrationScreen : Screen {
                       preferences.sttModel.set("")
                     },
                     values = sttProviders,
-                    valueToText = { androidx.compose.ui.text.AnnotatedString(it.displayName) },
-                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_provider_title)) },
+                    valueToText = {
+                      androidx.compose.ui.text
+                        .AnnotatedString(it.displayName)
+                    },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_provider_title),
+                      )
+                    },
                     summary = {
-                      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_stt_provider_summary),
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_provider_summary),
                         color = MaterialTheme.colorScheme.outline,
                       )
                     },
@@ -844,21 +1101,58 @@ object AiIntegrationScreen : Screen {
                   ListPreference(
                     value = sttLanguage,
                     onValueChange = { preferences.sttLanguage.set(it) },
-                    values = listOf("", "en", "es", "fr", "de", "hi", "ja", "zh", "ko", "pt", "ru", "ar", "it", "nl", "pl", "tr", "vi", "th"),
+                    values =
+                      listOf(
+                        "",
+                        "en",
+                        "es",
+                        "fr",
+                        "de",
+                        "hi",
+                        "ja",
+                        "zh",
+                        "ko",
+                        "pt",
+                        "ru",
+                        "ar",
+                        "it",
+                        "nl",
+                        "pl",
+                        "tr",
+                        "vi",
+                        "th",
+                      ),
                     valueToText = { lang ->
                       androidx.compose.ui.text.AnnotatedString(
                         when (lang) {
                           "" -> "Auto-detect"
-                          "en" -> "English"; "es" -> "Spanish"
-                          "fr" -> "French"; "de" -> "German"; "hi" -> "Hindi"; "ja" -> "Japanese"
-                          "zh" -> "Chinese"; "ko" -> "Korean"; "pt" -> "Portuguese"; "ru" -> "Russian"
-                          "ar" -> "Arabic"; "it" -> "Italian"; "nl" -> "Dutch"; "pl" -> "Polish"
-                          "tr" -> "Turkish"; "vi" -> "Vietnamese"; "th" -> "Thai"
+                          "en" -> "English"
+                          "es" -> "Spanish"
+                          "fr" -> "French"
+                          "de" -> "German"
+                          "hi" -> "Hindi"
+                          "ja" -> "Japanese"
+                          "zh" -> "Chinese"
+                          "ko" -> "Korean"
+                          "pt" -> "Portuguese"
+                          "ru" -> "Russian"
+                          "ar" -> "Arabic"
+                          "it" -> "Italian"
+                          "nl" -> "Dutch"
+                          "pl" -> "Polish"
+                          "tr" -> "Turkish"
+                          "vi" -> "Vietnamese"
+                          "th" -> "Thai"
                           else -> lang
-                        }
+                        },
                       )
                     },
-                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_audio_language_title)) },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_audio_language_title),
+                      )
+                    },
                     summary = {
                       Text(
                         if (sttLanguage.isBlank()) "Auto-detect speech language" else sttLanguage.uppercase(),
@@ -883,9 +1177,17 @@ object AiIntegrationScreen : Screen {
                         showSubtitleTranslationWarning = true
                       }
                     },
-                    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_enable_translation_title)) },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_enable_translation_title),
+                      )
+                    },
                     summary = {
-                      Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_enable_translation_summary),
+                      Text(
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.pref_enable_translation_summary,
+                        ),
                         color = MaterialTheme.colorScheme.outline,
                       )
                     },
@@ -908,11 +1210,19 @@ object AiIntegrationScreen : Screen {
                 SwitchPreference(
                   value = customPromptEnabled,
                   onValueChange = { preferences.customPromptEnabled.set(it) },
-                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_override_instructions_title)) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_override_instructions_title),
+                    )
+                  },
                   summary = {
                     Text(
-                      if (customPromptEnabled) "Custom prompt will be used instead of built-in instructions"
-                      else "Built-in AI instructions will be used",
+                      if (customPromptEnabled) {
+                        "Custom prompt will be used instead of built-in instructions"
+                      } else {
+                        "Built-in AI instructions will be used"
+                      },
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
@@ -922,17 +1232,26 @@ object AiIntegrationScreen : Screen {
                   PreferenceDivider()
 
                   Column(
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .padding(16.dp),
+                    modifier =
+                      Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                   ) {
-                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_prompts_header),
+                    Text(
+                      text =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.pref_custom_prompts_header,
+                        ),
                       style = MaterialTheme.typography.labelLarge,
                       fontWeight = FontWeight.Bold,
                     )
 
-                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_prompts_description),
+                    Text(
+                      text =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.pref_custom_prompts_description,
+                        ),
                       style = MaterialTheme.typography.bodySmall,
                       color = MaterialTheme.colorScheme.outline,
                     )
@@ -940,38 +1259,81 @@ object AiIntegrationScreen : Screen {
                     TextField(
                       value = customRenamePrompt,
                       onValueChange = { preferences.customRenamePrompt.set(it) },
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp),
-                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_rename_prompt_label)) },
-                      placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_instructions_for_ai_file_renaming)) },
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .height(140.dp),
+                      label = {
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_custom_rename_prompt_label,
+                          ),
+                        )
+                      },
+                      placeholder = {
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.ui_instructions_for_ai_file_renaming,
+                          ),
+                        )
+                      },
                       maxLines = 6,
                     )
 
                     TextField(
                       value = customSubtitleTranslationPrompt,
                       onValueChange = { preferences.customSubtitleTranslationPrompt.set(it) },
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp),
-                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_translation_prompt_label)) },
-                      placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_instructions_for_ai_subtitle_translation)) },
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .height(140.dp),
+                      label = {
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_custom_translation_prompt_label,
+                          ),
+                        )
+                      },
+                      placeholder = {
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.ui_instructions_for_ai_subtitle_translation,
+                          ),
+                        )
+                      },
                       maxLines = 6,
                     )
 
                     TextField(
                       value = customSubtitleFormatPrompt,
                       onValueChange = { preferences.customSubtitleFormatPrompt.set(it) },
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp),
-                      label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_format_prompt_label)) },
-                      placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_instructions_for_formatting_subtitle_search_queries)) },
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .height(140.dp),
+                      label = {
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_custom_format_prompt_label,
+                          ),
+                        )
+                      },
+                      placeholder = {
+                        Text(
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.ui_instructions_for_formatting_subtitle_search_queries,
+                          ),
+                        )
+                      },
                       maxLines = 6,
                     )
 
                     if (customPrompt.isNotBlank()) {
-                      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_legacy_prompt_info),
+                      Text(
+                        text =
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.pref_legacy_prompt_info,
+                          ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                       )
@@ -979,38 +1341,49 @@ object AiIntegrationScreen : Screen {
                   }
                 }
               }
+            }
           }
         }
       }
-    }
 
-    if (showSubtitleTranslationWarning) {
-      AlertDialog(
-        onDismissRequest = {
-          showSubtitleTranslationWarning = false
-          preferences.subtitleTranslationFirstTime.set(false)
-        },
-        title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_translation_section)) },
-        text = {
-          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_subtitle_translation_can_be_a_bit_messy) +
-            "For best results, use better models and don't rant that subs aren't working properly."
-          )
-        },
-        confirmButton = {
-          TextButton(onClick = {
+      if (showSubtitleTranslationWarning) {
+        AlertDialog(
+          onDismissRequest = {
             showSubtitleTranslationWarning = false
             preferences.subtitleTranslationFirstTime.set(false)
-          }) {
-            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.got_it))
-          }
-        }
-      )
+          },
+          title = {
+            Text(
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.pref_translation_section),
+            )
+          },
+          text = {
+            Text(
+              androidx.compose.ui.res.stringResource(
+                app.gyrolet.mpvrx.R.string.ui_subtitle_translation_can_be_a_bit_messy,
+              ) +
+                "For best results, use better models and don't rant that subs aren't working properly.",
+            )
+          },
+          confirmButton = {
+            TextButton(onClick = {
+              showSubtitleTranslationWarning = false
+              preferences.subtitleTranslationFirstTime.set(false)
+            }) {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.got_it),
+              )
+            }
+          },
+        )
+      }
     }
   }
-}
 
-@Composable
-private fun OfflineModelCard(
+  @Composable
+  private fun OfflineModelCard(
     model: LocalModelInfo,
     isDownloaded: Boolean,
     isSelected: Boolean,
@@ -1023,347 +1396,213 @@ private fun OfflineModelCard(
     onDelete: () -> Unit,
     onSelect: () -> Unit,
     onBenchmark: () -> Unit,
-) {
+  ) {
     val cardColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-    
+
     ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = cardColor,
-            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 4.dp),
+      shape = RoundedCornerShape(10.dp),
+      colors =
+        CardDefaults.elevatedCardColors(
+          containerColor = cardColor,
+          contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+      elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = model.displayName,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    ) {
-                        ModelChip(model.tier.label)
-                        ModelChip(model.sizeLabel)
-                        ModelChip("${model.minRamGb}GB RAM+")
-                    }
-                }
-                
-                if (isDownloaded && !isDownloading) {
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            Icons.RoundedFilled.Delete,
-                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.delete),
-                            tint = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-            }
-
-            Text(
-                text = model.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-            ) {
-                if (isRecommended) ModelChip("Recommended here")
-                ModelChip("Speed ${model.speedRank}")
-                ModelChip("Translation ${model.translationRank}")
-                ModelChip(model.languageTier.label)
-            }
-
-            if (benchmark != null) {
-                Text(
-                    text = "${benchmark.speedLabel} - ${benchmark.loadLabel} - about ${benchmark.memoryEstimateMb} MB while loaded",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            
-            if (isDownloading && downloadProgress != null) {
-                val percentage = downloadProgress.percentage
-                LinearProgressIndicator(
-                    progress = { percentage },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                )
-                Text(
-                    text = "${(percentage * 100).toInt()}% downloaded",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 4.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            } else if (isDownloading) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                )
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (isDownloaded && !isDownloading) {
-                    OutlinedButton(
-                        onClick = onBenchmark,
-                        enabled = !isBenchmarking,
-                        shape = RoundedCornerShape(10.dp),
-                    ) {
-                        if (isBenchmarking) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
-                        Text(if (benchmark == null) stringResource(R.string.pref_benchmark) else stringResource(R.string.pref_retest))
-                    }
-                }
-                if (!isDownloaded && !isDownloading) {
-                    Button(
-                        onClick = onDownload, 
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(Icons.RoundedFilled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_download))
-                    }
-                } else if (isDownloaded && !isSelected && !isDownloading) {
-                    Button(
-                        onClick = onSelect, 
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    ) {
-                        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_use_model))
-                    }
-                } else if (isSelected && isDownloaded && !isDownloading) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), 
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.RoundedFilled.Check,
-                                contentDescription = null, 
-                                modifier = Modifier.size(16.dp), 
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_active),
-                                style = MaterialTheme.typography.labelLarge, 
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private data class ApiKeyInfo(
-  val title: String,
-  val hint: String,
-  val placeholder: String,
-  val apiKey: String,
-  val onChange: (String) -> Unit,
-)
-
-@Composable
-private fun ModelChip(text: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun SttModelSelector(
-  sttProvider: AiProvider,
-  sttModel: String,
-  onSelectModel: (String) -> Unit,
-) {
-  val aiService = koinInject<AiService>()
-  val context = LocalContext.current
-  var showDialog by remember { mutableStateOf(false) }
-  var sttModels by remember { mutableStateOf<List<AiModelInfo>>(emptyList()) }
-  var isLoadingStt by remember { mutableStateOf(false) }
-  val scope = rememberCoroutineScope()
-
-  val modelKey = "${sttProvider.name}_stt"
-  val cachedModels = remember(modelKey) { mutableStateOf<List<AiModelInfo>?>(null) }
-
-    Surface(
-    onClick = {
-      val cached = cachedModels.value
-      if (cached != null) {
-        sttModels = cached
-        showDialog = true
-      } else {
-        isLoadingStt = true
-        scope.launch {
-          aiService.fetchSpeechModelsForProvider(sttProvider)
-            .onSuccess { sttOnly ->
-              cachedModels.value = sttOnly
-              sttModels = sttOnly
-              showDialog = true
-            }
-            .onFailure { e ->
-              Toast.makeText(context, context.getString(R.string.toast_failed_to_load_models, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_SHORT).show()
-            }
-          isLoadingStt = false
-        }
-      }
-    },
-    shape = MaterialTheme.shapes.medium,
-    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 16.dp, vertical = 4.dp),
-  ) {
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-      Column(modifier = Modifier.weight(1f)) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_real_time_model),
-          style = MaterialTheme.typography.labelLarge,
-          fontWeight = FontWeight.Bold,
-        )
-        Text(
-          text = if (sttModel.isNotBlank()) sttModel
-                 else if (isLoadingStt) "Loading..."
-                 else "Tap to select STT model",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.outline,
-        )
-      }
-      if (isLoadingStt) {
-        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-      } else {
-        Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
-      }
-    }
-  }
-
-  if (showDialog) {
-    ModelSearchDialog(
-      models = sttModels,
-      selectedModelId = sttModel,
-      onSelect = onSelectModel,
-      onDismiss = { showDialog = false },
-    )
-  }
-}
-
-@Composable
-private fun AutoTranslateLanguageConfig(
-  languages: String,
-  onLanguagesChange: (String) -> Unit,
-) {
-  val selectedCodes = remember(languages) { languages.split(",").filter { it.isNotBlank() }.toMutableSet() }
-  var adding by remember { mutableStateOf(false) }
-  var addingSearch by remember { mutableStateOf("") }
-
-  Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(16.dp),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
-  ) {
-    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_translate_target_languages),
-      style = MaterialTheme.typography.labelLarge,
-      fontWeight = FontWeight.Bold,
-    )
-    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_when_translating_subtitles_if_1_language_is_configured_it_transl),
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.outline,
-    )
-
-    if (selectedCodes.isEmpty()) {
-      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_target_languages_configured),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-      )
-    } else {
-      Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+      Column(
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        selectedCodes.forEach { code ->
-          val langName = allLanguages[code] ?: code.uppercase()
-          Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.primary,
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
           ) {
+            Text(
+              text = model.displayName,
+              style = MaterialTheme.typography.titleSmall,
+              fontWeight = FontWeight.Bold,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
             Row(
-              verticalAlignment = Alignment.CenterVertically,
-              modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+              horizontalArrangement = Arrangement.spacedBy(6.dp),
+              modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+              ModelChip(model.tier.label)
+              ModelChip(model.sizeLabel)
+              ModelChip("${model.minRamGb}GB RAM+")
+            }
+          }
+
+          if (isDownloaded && !isDownloading) {
+            IconButton(onClick = onDelete) {
+              Icon(
+                Icons.RoundedFilled.Delete,
+                contentDescription =
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.delete,
+                  ),
+                tint =
+                  if (isSelected) {
+                    MaterialTheme.colorScheme.error
+                  } else {
+                    MaterialTheme.colorScheme.error
+                      .copy(
+                        alpha = 0.8f,
+                      )
+                  },
+              )
+            }
+          }
+        }
+
+        Text(
+          text = model.description,
+          style = MaterialTheme.typography.bodySmall,
+          color =
+            if (isSelected) {
+              MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                alpha = 0.9f,
+              )
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+        ) {
+          if (isRecommended) ModelChip("Recommended here")
+          ModelChip("Speed ${model.speedRank}")
+          ModelChip("Translation ${model.translationRank}")
+          ModelChip(model.languageTier.label)
+        }
+
+        if (benchmark != null) {
+          Text(
+            text = "${benchmark.speedLabel} - ${benchmark.loadLabel} - about ${benchmark.memoryEstimateMb} MB while loaded",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+          )
+        }
+
+        if (isDownloading && downloadProgress != null) {
+          val percentage = downloadProgress.percentage
+          LinearProgressIndicator(
+            progress = { percentage },
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+          )
+          Text(
+            text = "${(percentage * 100).toInt()}% downloaded",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(top = 4.dp),
+            color = MaterialTheme.colorScheme.primary,
+          )
+        } else if (isDownloading) {
+          LinearProgressIndicator(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp)),
+          )
+        }
+
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          if (isDownloaded && !isDownloading) {
+            OutlinedButton(
+              onClick = onBenchmark,
+              enabled = !isBenchmarking,
+              shape = RoundedCornerShape(10.dp),
+            ) {
+              if (isBenchmarking) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(6.dp))
+              }
+              Text(
+                if (benchmark ==
+                  null
+                ) {
+                  stringResource(R.string.pref_benchmark)
+                } else {
+                  stringResource(R.string.pref_retest)
+                },
+              )
+            }
+          }
+          if (!isDownloaded && !isDownloading) {
+            Button(
+              onClick = onDownload,
+              shape = RoundedCornerShape(10.dp),
+              colors =
+                ButtonDefaults.buttonColors(
+                  containerColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+              Icon(Icons.RoundedFilled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+              Spacer(modifier = Modifier.width(8.dp))
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_download),
+              )
+            }
+          } else if (isDownloaded && !isSelected && !isDownloading) {
+            Button(
+              onClick = onSelect,
+              shape = RoundedCornerShape(10.dp),
+              colors =
+                ButtonDefaults.buttonColors(
+                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
             ) {
               Text(
-                text = langName,
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-                color = MaterialTheme.colorScheme.onPrimary,
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_use_model),
               )
-              Spacer(modifier = Modifier.width(4.dp))
-              IconButton(
-                onClick = {
-                  selectedCodes.remove(code)
-                  onLanguagesChange(selectedCodes.joinToString(","))
-                },
-                modifier = Modifier.size(20.dp),
+            }
+          } else if (isSelected && isDownloaded && !isDownloading) {
+            Surface(
+              color = MaterialTheme.colorScheme.primary,
+              shape = RoundedCornerShape(10.dp),
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
               ) {
                 Icon(
-                  Icons.RoundedFilled.Close,
-                  contentDescription = "Remove $langName",
-                  modifier = Modifier.size(14.dp),
+                  Icons.RoundedFilled.Check,
+                  contentDescription = null,
+                  modifier = Modifier.size(16.dp),
                   tint = MaterialTheme.colorScheme.onPrimary,
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_active),
+                  style = MaterialTheme.typography.labelLarge,
+                  color = MaterialTheme.colorScheme.onPrimary,
+                  fontWeight = FontWeight.Bold,
                 )
               }
             }
@@ -1371,87 +1610,318 @@ private fun AutoTranslateLanguageConfig(
         }
       }
     }
+  }
 
-    Spacer(modifier = Modifier.height(4.dp))
+  private data class ApiKeyInfo(
+    val title: String,
+    val hint: String,
+    val placeholder: String,
+    val apiKey: String,
+    val onChange: (String) -> Unit,
+  )
 
-    if (adding) {
-      TextField(
-        value = addingSearch,
-        onValueChange = { addingSearch = it },
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_languages)) },
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp),
+  @Composable
+  private fun ModelChip(text: String) {
+    Surface(
+      color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+      shape = RoundedCornerShape(8.dp),
+    ) {
+      Text(
+        text = text,
+        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+        style = MaterialTheme.typography.labelSmall,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
       )
+    }
+  }
 
-      val filtered = allLanguages.filter { (_, name) ->
-        addingSearch.isBlank() || name.contains(addingSearch, ignoreCase = true)
-      }.toList().sortedBy { it.second }
+  @Composable
+  private fun SttModelSelector(
+    sttProvider: AiProvider,
+    sttModel: String,
+    onSelectModel: (String) -> Unit,
+  ) {
+    val aiService = koinInject<AiService>()
+    val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(false) }
+    var sttModels by remember { mutableStateOf<List<AiModelInfo>>(emptyList()) }
+    var isLoadingStt by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
-      Column(
-        modifier = Modifier
-          .heightIn(max = 200.dp)
-          .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-      ) {
-        filtered.forEach { (code, name) ->
-          Surface(
-            onClick = {
-              selectedCodes.add(code)
-              onLanguagesChange(selectedCodes.joinToString(","))
-              addingSearch = ""
-            },
-            shape = RoundedCornerShape(8.dp),
-            color = if (selectedCodes.contains(code)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-          ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-              val isSelected = selectedCodes.contains(code)
-              Checkbox(
-                checked = isSelected,
-                onCheckedChange = {
-                  if (isSelected) selectedCodes.remove(code)
-                  else selectedCodes.add(code)
-                  onLanguagesChange(selectedCodes.joinToString(","))
-                },
-              )
-              Spacer(modifier = Modifier.width(8.dp))
-              Text(
-                text = name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-              )
-              Spacer(modifier = Modifier.weight(1f))
-              Text(
-                text = code.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline,
-              )
-            }
+    val modelKey = "${sttProvider.name}_stt"
+    val cachedModels = remember(modelKey) { mutableStateOf<List<AiModelInfo>?>(null) }
+
+    Surface(
+      onClick = {
+        val cached = cachedModels.value
+        if (cached != null) {
+          sttModels = cached
+          showDialog = true
+        } else {
+          isLoadingStt = true
+          scope.launch {
+            aiService
+              .fetchSpeechModelsForProvider(sttProvider)
+              .onSuccess { sttOnly ->
+                cachedModels.value = sttOnly
+                sttModels = sttOnly
+                showDialog = true
+              }.onFailure { e ->
+                Toast
+                  .makeText(
+                    context,
+                    context.getString(
+                      R.string.toast_failed_to_load_models,
+                      e.message ?: context.getString(R.string.generic_unknown_error),
+                    ),
+                    Toast.LENGTH_SHORT,
+                  ).show()
+              }
+            isLoadingStt = false
           }
+        }
+      },
+      shape = MaterialTheme.shapes.medium,
+      color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_real_time_model),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+          )
+          Text(
+            text =
+              if (sttModel.isNotBlank()) {
+                sttModel
+              } else if (isLoadingStt) {
+                "Loading..."
+              } else {
+                "Tap to select STT model"
+              },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline,
+          )
+        }
+        if (isLoadingStt) {
+          CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+        } else {
+          Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
         }
       }
     }
 
-    Button(
-      onClick = { adding = !adding },
-      modifier = Modifier.fillMaxWidth(),
-      shape = RoundedCornerShape(12.dp),
-      colors = ButtonDefaults.buttonColors(
-        containerColor = if (adding) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = if (adding) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
-      ),
-    ) {
-      Icon(
-        imageVector = if (adding) Icons.RoundedFilled.Check else Icons.RoundedFilled.Add,
-        contentDescription = null,
-        modifier = Modifier.size(18.dp),
+    if (showDialog) {
+      ModelSearchDialog(
+        models = sttModels,
+        selectedModelId = sttModel,
+        onSelect = onSelectModel,
+        onDismiss = { showDialog = false },
       )
-      Spacer(modifier = Modifier.width(6.dp))
-      Text(if (adding) stringResource(R.string.ui_done) else stringResource(R.string.pref_add_language))
     }
   }
-}
+
+  @Composable
+  private fun AutoTranslateLanguageConfig(
+    languages: String,
+    onLanguagesChange: (String) -> Unit,
+  ) {
+    val selectedCodes = remember(languages) { languages.split(",").filter { it.isNotBlank() }.toMutableSet() }
+    var adding by remember { mutableStateOf(false) }
+    var addingSearch by remember { mutableStateOf("") }
+
+    Column(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(16.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Text(
+        text =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_auto_translate_target_languages),
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+      )
+      Text(
+        text =
+          androidx.compose.ui.res.stringResource(
+            app.gyrolet.mpvrx.R.string.ui_when_translating_subtitles_if_1_language_is_configured_it_transl,
+          ),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.outline,
+      )
+
+      if (selectedCodes.isEmpty()) {
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_no_target_languages_configured),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+        )
+      } else {
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+          modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+          selectedCodes.forEach { code ->
+            val langName = allLanguages[code] ?: code.uppercase()
+            Surface(
+              shape = RoundedCornerShape(20.dp),
+              color = MaterialTheme.colorScheme.primary,
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+              ) {
+                Text(
+                  text = langName,
+                  style = MaterialTheme.typography.labelSmall,
+                  maxLines = 1,
+                  color = MaterialTheme.colorScheme.onPrimary,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                  onClick = {
+                    selectedCodes.remove(code)
+                    onLanguagesChange(selectedCodes.joinToString(","))
+                  },
+                  modifier = Modifier.size(20.dp),
+                ) {
+                  Icon(
+                    Icons.RoundedFilled.Close,
+                    contentDescription = "Remove $langName",
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(4.dp))
+
+      if (adding) {
+        TextField(
+          value = addingSearch,
+          onValueChange = { addingSearch = it },
+          modifier = Modifier.fillMaxWidth(),
+          placeholder = {
+            Text(
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_search_languages),
+            )
+          },
+          singleLine = true,
+          shape = RoundedCornerShape(12.dp),
+        )
+
+        val filtered =
+          allLanguages
+            .filter { (_, name) ->
+              addingSearch.isBlank() || name.contains(addingSearch, ignoreCase = true)
+            }.toList()
+            .sortedBy { it.second }
+
+        Column(
+          modifier =
+            Modifier
+              .heightIn(max = 200.dp)
+              .verticalScroll(rememberScrollState()),
+          verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+          filtered.forEach { (code, name) ->
+            Surface(
+              onClick = {
+                selectedCodes.add(code)
+                onLanguagesChange(selectedCodes.joinToString(","))
+                addingSearch = ""
+              },
+              shape = RoundedCornerShape(8.dp),
+              color =
+                if (selectedCodes.contains(
+                    code,
+                  )
+                ) {
+                  MaterialTheme.colorScheme.primary
+                } else {
+                  MaterialTheme.colorScheme.surface
+                },
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+              ) {
+                val isSelected = selectedCodes.contains(code)
+                Checkbox(
+                  checked = isSelected,
+                  onCheckedChange = {
+                    if (isSelected) {
+                      selectedCodes.remove(code)
+                    } else {
+                      selectedCodes.add(code)
+                    }
+                    onLanguagesChange(selectedCodes.joinToString(","))
+                  },
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                  text = name,
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                  text = code.uppercase(),
+                  style = MaterialTheme.typography.labelSmall,
+                  color =
+                    if (isSelected) {
+                      MaterialTheme.colorScheme.onPrimary.copy(
+                        alpha = 0.8f,
+                      )
+                    } else {
+                      MaterialTheme.colorScheme.outline
+                    },
+                )
+              }
+            }
+          }
+        }
+      }
+
+      Button(
+        onClick = { adding = !adding },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors =
+          ButtonDefaults.buttonColors(
+            containerColor = if (adding) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = if (adding) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+          ),
+      ) {
+        Icon(
+          imageVector = if (adding) Icons.RoundedFilled.Check else Icons.RoundedFilled.Add,
+          contentDescription = null,
+          modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(if (adding) stringResource(R.string.ui_done) else stringResource(R.string.pref_add_language))
+      }
+    }
+  }
 }

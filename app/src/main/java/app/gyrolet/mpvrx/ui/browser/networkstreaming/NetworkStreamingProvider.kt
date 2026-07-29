@@ -15,8 +15,8 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import android.util.Log
-import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
+import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -31,12 +31,19 @@ class NetworkStreamingProvider : ContentProvider() {
     private val clientCache =
       mutableMapOf<Long, app.gyrolet.mpvrx.data.network.client.NetworkClient>()
 
-    fun getUri(context: android.content.Context, connectionId: Long, filePath: String): Uri {
+    fun getUri(
+      context: android.content.Context,
+      connectionId: Long,
+      filePath: String,
+    ): Uri {
       val authority = "${context.packageName}.networkstreaming"
       return Uri.parse("content://$authority/$connectionId/${Uri.encode(filePath)}")
     }
 
-    fun setConnection(connectionId: Long, connection: NetworkConnection) {
+    fun setConnection(
+      connectionId: Long,
+      connection: NetworkConnection,
+    ) {
       connectionCache[connectionId] = connection
     }
 
@@ -55,9 +62,7 @@ class NetworkStreamingProvider : ContentProvider() {
     }
   }
 
-  override fun onCreate(): Boolean {
-    return true
-  }
+  override fun onCreate(): Boolean = true
 
   override fun query(
     uri: Uri,
@@ -81,11 +86,12 @@ class NetworkStreamingProvider : ContentProvider() {
     return cursor
   }
 
-  override fun getType(uri: Uri): String? {
-    return "video/*"
-  }
+  override fun getType(uri: Uri): String? = "video/*"
 
-  override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor? {
+  override fun openFile(
+    uri: Uri,
+    mode: String,
+  ): ParcelFileDescriptor? {
     try {
       val pathSegments = uri.pathSegments
 
@@ -106,9 +112,10 @@ class NetworkStreamingProvider : ContentProvider() {
       }
 
       // Get or create client
-      val client = clientCache.getOrPut(connectionId) {
-        NetworkClientFactory.createClient(connection)
-      }
+      val client =
+        clientCache.getOrPut(connectionId) {
+          NetworkClientFactory.createClient(connection)
+        }
 
       // Create a pipe for streaming
       val pipe = ParcelFileDescriptor.createPipe()
@@ -127,20 +134,22 @@ class NetworkStreamingProvider : ContentProvider() {
 
           // Get file stream and copy to pipe
           runBlocking {
-            client.getFileStream(filePath).onSuccess { inputStream ->
-              ParcelFileDescriptor.AutoCloseOutputStream(writeFd).use { output ->
-                inputStream.use { input ->
-                  val buffer = ByteArray(8192)
-                  var bytesRead: Int
+            client
+              .getFileStream(filePath)
+              .onSuccess { inputStream ->
+                ParcelFileDescriptor.AutoCloseOutputStream(writeFd).use { output ->
+                  inputStream.use { input ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
 
-                  while (input.read(buffer).also { bytesRead = it } != -1) {
-                    output.write(buffer, 0, bytesRead)
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                      output.write(buffer, 0, bytesRead)
+                    }
                   }
                 }
+              }.onFailure { error ->
+                writeFd.closeWithError(error.message ?: "Unknown error")
               }
-            }.onFailure { error ->
-              writeFd.closeWithError(error.message ?: "Unknown error")
-            }
           }
         } catch (e: Exception) {
           try {
@@ -151,7 +160,6 @@ class NetworkStreamingProvider : ContentProvider() {
         }
       }.start()
 
-
       return readFd
     } catch (e: Exception) {
       Log.e(TAG, "Error opening file", e)
@@ -159,9 +167,16 @@ class NetworkStreamingProvider : ContentProvider() {
     }
   }
 
-  override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+  override fun insert(
+    uri: Uri,
+    values: ContentValues?,
+  ): Uri? = null
 
-  override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+  override fun delete(
+    uri: Uri,
+    selection: String?,
+    selectionArgs: Array<out String>?,
+  ): Int = 0
 
   override fun update(
     uri: Uri,
@@ -170,4 +185,3 @@ class NetworkStreamingProvider : ContentProvider() {
     selectionArgs: Array<out String>?,
   ): Int = 0
 }
-

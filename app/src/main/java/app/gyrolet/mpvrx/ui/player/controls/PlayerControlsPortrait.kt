@@ -7,15 +7,10 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,20 +23,20 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerButton
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
@@ -70,10 +65,11 @@ fun TopPlayerControlsPortrait(
   val clickEvent = LocalPlayerButtonsClickEvent.current
 
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(top = MaterialTheme.spacing.medium)
-      .padding(horizontal = MaterialTheme.spacing.medium),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(top = MaterialTheme.spacing.medium)
+        .padding(horizontal = MaterialTheme.spacing.medium),
   ) {
     Row(
       verticalAlignment = Alignment.CenterVertically,
@@ -89,18 +85,37 @@ fun TopPlayerControlsPortrait(
         Column(
           modifier = Modifier.padding(start = 4.dp),
         ) {
-          val titleInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+          val titleInteractionSource =
+            remember {
+              androidx.compose.foundation.interaction
+                .MutableInteractionSource()
+            }
 
           Surface(
             shape = CircleShape,
-            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            color =
+              if (hideBackground) {
+                Color.Transparent
+              } else {
+                MaterialTheme.colorScheme.surfaceContainer.copy(
+                  alpha = 0.55f,
+                )
+              },
             contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             onClick = {
               clickEvent()
               onOpenSheet(Sheets.Playlist)
             },
             enabled = playlistModeEnabled,
-            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+            border =
+              if (hideBackground) {
+                null
+              } else {
+                BorderStroke(
+                  1.dp,
+                  MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                )
+              },
             modifier = Modifier.height(45.dp),
           ) {
             Row(
@@ -145,11 +160,12 @@ fun TopPlayerControlsPortrait(
           tint = MaterialTheme.colorScheme.tertiary,
         )
         Text(
-          text = if (isRealtimeSubsActive) {
-            "Real-time subs: ${realtimeSubsLanguage.ifBlank { "?" }} ${translationStatus.ifBlank { "" }}"
-          } else {
-            "Translating ${translatingTrackName.ifBlank { "subs" }} ${translationStatus.ifBlank { "" }}"
-          },
+          text =
+            if (isRealtimeSubsActive) {
+              "Real-time subs: ${realtimeSubsLanguage.ifBlank { "?" }} ${translationStatus.ifBlank { "" }}"
+            } else {
+              "Translating ${translatingTrackName.ifBlank { "subs" }} ${translationStatus.ifBlank { "" }}"
+            },
           style = MaterialTheme.typography.labelSmall,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
@@ -178,11 +194,12 @@ fun TopPlayerControlsPortrait(
           tint = MaterialTheme.colorScheme.tertiary,
         )
         Text(
-          text = stringResource(
-            R.string.syncplay_player_status,
-            syncplayState.room.orEmpty(),
-            syncplayState.users.size,
-          ),
+          text =
+            stringResource(
+              R.string.syncplay_player_status,
+              syncplayState.room.orEmpty(),
+              syncplayState.users.size,
+            ),
           style = MaterialTheme.typography.labelSmall,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
@@ -212,10 +229,11 @@ fun BottomPlayerControlsPortrait(
   activity: PlayerActivity,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .horizontalScroll(rememberScrollState())
-      .padding(bottom = MaterialTheme.spacing.medium),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(bottom = MaterialTheme.spacing.medium),
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium, Alignment.CenterHorizontally),
     verticalAlignment = Alignment.CenterVertically,
   ) {
@@ -242,7 +260,3 @@ fun BottomPlayerControlsPortrait(
     }
   }
 }
-
-
-
-

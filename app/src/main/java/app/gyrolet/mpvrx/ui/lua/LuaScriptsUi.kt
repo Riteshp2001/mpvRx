@@ -7,11 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.lua
 
-import app.gyrolet.mpvrx.R
-
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -45,6 +40,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -105,11 +103,15 @@ fun rememberLuaScriptsCatalog(
         }
       }.onFailure { error ->
         state = LuaScriptsCatalogState(availableScripts = emptyList(), isLoading = false)
-        Toast.makeText(
-          context,
-          context.getString(R.string.toast_error_loading_scripts, error.message ?: context.getString(R.string.generic_unknown_error)),
-          Toast.LENGTH_LONG,
-        ).show()
+        Toast
+          .makeText(
+            context,
+            context.getString(
+              R.string.toast_error_loading_scripts,
+              error.message ?: context.getString(R.string.generic_unknown_error),
+            ),
+            Toast.LENGTH_LONG,
+          ).show()
       }
   }
 
@@ -198,7 +200,10 @@ fun LuaRuntimeStatusCard(
         modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.spacedBy(2.dp),
       ) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_script_runtime),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_script_runtime),
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.SemiBold,
         )
@@ -219,9 +224,7 @@ fun LuaRuntimeStatusCard(
 }
 
 @Composable
-fun LuaScriptsLoadingState(
-  modifier: Modifier = Modifier,
-) {
+fun LuaScriptsLoadingState(modifier: Modifier = Modifier) {
   Row(
     modifier =
       modifier
@@ -396,15 +399,17 @@ fun LuaScriptToggleCard(
 }
 
 @Composable
-fun LuaSelectionFootnote(
-  modifier: Modifier = Modifier,
-) {
-  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn),
+fun LuaSelectionFootnote(modifier: Modifier = Modifier) {
+  Text(
+    text =
+      androidx.compose.ui.res.stringResource(
+        app.gyrolet.mpvrx.R.string.ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn,
+      ),
     style = MaterialTheme.typography.bodySmall,
     color = MaterialTheme.colorScheme.onSurfaceVariant,
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(horizontal = 4.dp),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(horizontal = 4.dp),
   )
 }
-

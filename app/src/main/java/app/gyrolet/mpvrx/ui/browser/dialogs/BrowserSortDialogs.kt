@@ -7,31 +7,20 @@
 
 package app.gyrolet.mpvrx.ui.browser.dialogs
 
-import androidx.compose.ui.res.stringResource
-import app.gyrolet.mpvrx.R
-
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.FolderSortType
 import app.gyrolet.mpvrx.preferences.FolderViewMode
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
-import app.gyrolet.mpvrx.preferences.MinimumAudioDuration
 import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.preferences.VideoSortType
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.repository.MediaFileRepository
-import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.ui.icons.Icons
 import org.koin.compose.koinInject
 
@@ -92,31 +81,43 @@ fun FolderSortDialog(
   val isAlbumView = folderViewMode == FolderViewMode.AlbumView
   val activeLayoutMode = if (isAlbumView) folderViewFolderLayoutMode else mediaLayoutMode
 
-  val folderGridColumnSelector = if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
-    GridColumnSelector(
-      label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
-      currentValue = folderGridColumns.coerceIn(1, maxColumns),
-      onValueChange = {
-        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
-        else browserPreferences.folderGridColumnsPortrait.set(it)
-      },
-      valueRange = 1f..maxColumns.toFloat(),
-      steps = maxColumns - 2,
-    )
-  } else null
+  val folderGridColumnSelector =
+    if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
+      GridColumnSelector(
+        label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        currentValue = folderGridColumns.coerceIn(1, maxColumns),
+        onValueChange = {
+          if (isLandscape) {
+            browserPreferences.folderGridColumnsLandscape.set(it)
+          } else {
+            browserPreferences.folderGridColumnsPortrait.set(it)
+          }
+        },
+        valueRange = 1f..maxColumns.toFloat(),
+        steps = maxColumns - 2,
+      )
+    } else {
+      null
+    }
 
-  val videoGridColumnSelector = if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
-    GridColumnSelector(
-      label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
-      currentValue = videoGridColumns.coerceIn(1, maxColumns),
-      onValueChange = {
-        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
-        else browserPreferences.videoGridColumnsPortrait.set(it)
-      },
-      valueRange = 1f..maxColumns.toFloat(),
-      steps = maxColumns - 2,
-    )
-  } else null
+  val videoGridColumnSelector =
+    if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
+      GridColumnSelector(
+        label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        currentValue = videoGridColumns.coerceIn(1, maxColumns),
+        onValueChange = {
+          if (isLandscape) {
+            browserPreferences.videoGridColumnsLandscape.set(it)
+          } else {
+            browserPreferences.videoGridColumnsPortrait.set(it)
+          }
+        },
+        valueRange = 1f..maxColumns.toFloat(),
+        steps = maxColumns - 2,
+      )
+    } else {
+      null
+    }
 
   SortDialog(
     isOpen = isOpen,
@@ -132,16 +133,18 @@ fun FolderSortDialog(
     onSortOrderChange = { isAsc ->
       onSortOrderChange(if (isAsc) SortOrder.Ascending else SortOrder.Descending)
     },
-    types = listOf(
-      FolderSortType.Title.displayName,
-      FolderSortType.Date.displayName,
-      FolderSortType.Size.displayName,
-    ),
-    icons = listOf(
-      Icons.RoundedFilled.Title,
-      Icons.RoundedFilled.CalendarToday,
-      Icons.RoundedFilled.SwapVert,
-    ),
+    types =
+      listOf(
+        FolderSortType.Title.displayName,
+        FolderSortType.Date.displayName,
+        FolderSortType.Size.displayName,
+      ),
+    icons =
+      listOf(
+        Icons.RoundedFilled.Title,
+        Icons.RoundedFilled.CalendarToday,
+        Icons.RoundedFilled.SwapVert,
+      ),
     getLabelForType = { type, _ ->
       when (type) {
         FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")
@@ -151,136 +154,143 @@ fun FolderSortDialog(
       }
     },
     showSortOptions = isAlbumView,
-    viewModeSelector = MultiViewModeSelector(
-      label = "View Mode",
-      options = listOf(
-        ViewModeOption(
-          label = "Folder",
-          icon = Icons.RoundedFilled.ViewModule,
-          isSelected = folderViewMode == FolderViewMode.AlbumView,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) }
-        ),
-        ViewModeOption(
-          label = "Tree",
-          icon = Icons.RoundedFilled.AccountTree,
-          isSelected = folderViewMode == FolderViewMode.FileManager,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) }
-        ),
-        ViewModeOption(
-          label = "Library",
-          icon = Icons.RoundedFilled.VideoLibrary,
-          isSelected = folderViewMode == FolderViewMode.MediaLibrary,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) }
-        ),
-      )
-    ),
-    layoutModeSelector = ViewModeSelector(
-      label = "Layout",
-      firstOptionLabel = "List",
-      secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.RoundedFilled.ViewList,
-      secondOptionIcon = Icons.RoundedFilled.GridView,
-      isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
-      onViewModeChange = { isFirstOption ->
-        val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
-        if (isAlbumView) {
-          browserPreferences.folderViewFolderLayoutMode.set(newLayout)
-          if (!separateFolderVideoLayout) {
-            browserPreferences.folderViewVideoLayoutMode.set(newLayout)
+    viewModeSelector =
+      MultiViewModeSelector(
+        label = "View Mode",
+        options =
+          listOf(
+            ViewModeOption(
+              label = "Folder",
+              icon = Icons.RoundedFilled.ViewModule,
+              isSelected = folderViewMode == FolderViewMode.AlbumView,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
+            ),
+            ViewModeOption(
+              label = "Tree",
+              icon = Icons.RoundedFilled.AccountTree,
+              isSelected = folderViewMode == FolderViewMode.FileManager,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
+            ),
+            ViewModeOption(
+              label = "Library",
+              icon = Icons.RoundedFilled.VideoLibrary,
+              isSelected = folderViewMode == FolderViewMode.MediaLibrary,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
+            ),
+          ),
+      ),
+    layoutModeSelector =
+      ViewModeSelector(
+        label = "Layout",
+        firstOptionLabel = "List",
+        secondOptionLabel = "Grid",
+        firstOptionIcon = Icons.RoundedFilled.ViewList,
+        secondOptionIcon = Icons.RoundedFilled.GridView,
+        isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
+        onViewModeChange = { isFirstOption ->
+          val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
+          if (isAlbumView) {
+            browserPreferences.folderViewFolderLayoutMode.set(newLayout)
+            if (!separateFolderVideoLayout) {
+              browserPreferences.folderViewVideoLayoutMode.set(newLayout)
+            }
+          } else {
+            browserPreferences.mediaLayoutMode.set(newLayout)
           }
-        } else {
-          browserPreferences.mediaLayoutMode.set(newLayout)
+        },
+        checkboxLabel = if (isAlbumView) "Only for folder list" else null,
+        isCheckboxChecked = separateFolderVideoLayout,
+        onCheckboxChange =
+          if (isAlbumView) {
+            { checked ->
+              browserPreferences.separateFolderVideoLayout.set(checked)
+              if (!checked) {
+                browserPreferences.folderViewVideoLayoutMode.set(browserPreferences.folderViewFolderLayoutMode.get())
+              }
+            }
+          } else {
+            null
+          },
+      ),
+    visibilityToggles =
+      buildList {
+        add(
+          VisibilityToggle(
+            label = "Full Name",
+            checked = unlimitedNameLines,
+            onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Path",
+            checked = showFolderPath,
+            onCheckedChange = { browserPreferences.showFolderPath.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Total Media",
+            checked = showTotalVideosChip,
+            onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Total Duration",
+            checked = showTotalDurationChip,
+            onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Folder Size",
+            checked = showTotalSizeChip,
+            onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Date",
+            checked = showDateChip,
+            onCheckedChange = { browserPreferences.showDateChip.set(it) },
+          ),
+        )
+        if (activeLayoutMode == MediaLayoutMode.GRID) {
+          add(
+            VisibilityToggle(
+              label = "Manual Grid Columns",
+              checked = manualGridColumnsEnabled,
+              onCheckedChange = { enabled ->
+                if (enabled) {
+                  if (isLandscape) {
+                    browserPreferences.folderGridColumnsLandscape.set(dynamicFolderColumns)
+                    browserPreferences.videoGridColumnsLandscape.set(dynamicVideoColumns)
+                  } else {
+                    browserPreferences.folderGridColumnsPortrait.set(dynamicFolderColumns)
+                    browserPreferences.videoGridColumnsPortrait.set(dynamicVideoColumns)
+                  }
+                }
+                browserPreferences.manualGridColumnsEnabled.set(enabled)
+              },
+            ),
+          )
+          add(
+            VisibilityToggle(
+              label = "Folder Thumbnails",
+              checked = showFolderThumbnails,
+              onCheckedChange = { browserPreferences.showFolderThumbnails.set(it) },
+            ),
+          )
+          add(
+            VisibilityToggle(
+              label = "Center Titles",
+              checked = centerGridTitles,
+              onCheckedChange = { browserPreferences.centerGridTitles.set(it) },
+            ),
+          )
         }
       },
-      checkboxLabel = if (isAlbumView) "Only for folder list" else null,
-      isCheckboxChecked = separateFolderVideoLayout,
-      onCheckboxChange = if (isAlbumView) {
-        { checked ->
-          browserPreferences.separateFolderVideoLayout.set(checked)
-          if (!checked) {
-            browserPreferences.folderViewVideoLayoutMode.set(browserPreferences.folderViewFolderLayoutMode.get())
-          }
-        }
-      } else null,
-    ),
-    visibilityToggles = buildList {
-      add(
-        VisibilityToggle(
-          label = "Full Name",
-          checked = unlimitedNameLines,
-          onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Path",
-          checked = showFolderPath,
-          onCheckedChange = { browserPreferences.showFolderPath.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Total Media",
-          checked = showTotalVideosChip,
-          onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Total Duration",
-          checked = showTotalDurationChip,
-          onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Folder Size",
-          checked = showTotalSizeChip,
-          onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Date",
-          checked = showDateChip,
-          onCheckedChange = { browserPreferences.showDateChip.set(it) },
-        )
-      )
-      if (activeLayoutMode == MediaLayoutMode.GRID) {
-        add(
-          VisibilityToggle(
-            label = "Manual Grid Columns",
-            checked = manualGridColumnsEnabled,
-            onCheckedChange = { enabled ->
-              if (enabled) {
-                if (isLandscape) {
-                  browserPreferences.folderGridColumnsLandscape.set(dynamicFolderColumns)
-                  browserPreferences.videoGridColumnsLandscape.set(dynamicVideoColumns)
-                } else {
-                  browserPreferences.folderGridColumnsPortrait.set(dynamicFolderColumns)
-                  browserPreferences.videoGridColumnsPortrait.set(dynamicVideoColumns)
-                }
-              }
-              browserPreferences.manualGridColumnsEnabled.set(enabled)
-            },
-          )
-        )
-        add(
-          VisibilityToggle(
-            label = "Folder Thumbnails",
-            checked = showFolderThumbnails,
-            onCheckedChange = { browserPreferences.showFolderThumbnails.set(it) },
-          )
-        )
-        add(
-          VisibilityToggle(
-            label = "Center Titles",
-            checked = centerGridTitles,
-            onCheckedChange = { browserPreferences.centerGridTitles.set(it) },
-          )
-        )
-      }
-    },
     folderGridColumnSelector = folderGridColumnSelector,
     videoGridColumnSelector = videoGridColumnSelector,
   )
@@ -345,31 +355,43 @@ fun VideoSortDialog(
   val dynamicFolderColumns = (usableFolderWidth / folderMinWidth).toInt().coerceIn(1, maxColumns)
   val dynamicVideoColumns = (usableVideoWidth / videoMinWidth).toInt().coerceIn(1, maxColumns)
 
-  val folderGridColumnSelector = if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
-    GridColumnSelector(
-      label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
-      currentValue = folderGridColumns.coerceIn(1, maxColumns),
-      onValueChange = {
-        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
-        else browserPreferences.folderGridColumnsPortrait.set(it)
-      },
-      valueRange = 1f..maxColumns.toFloat(),
-      steps = maxColumns - 2,
-    )
-  } else null
+  val folderGridColumnSelector =
+    if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
+      GridColumnSelector(
+        label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        currentValue = folderGridColumns.coerceIn(1, maxColumns),
+        onValueChange = {
+          if (isLandscape) {
+            browserPreferences.folderGridColumnsLandscape.set(it)
+          } else {
+            browserPreferences.folderGridColumnsPortrait.set(it)
+          }
+        },
+        valueRange = 1f..maxColumns.toFloat(),
+        steps = maxColumns - 2,
+      )
+    } else {
+      null
+    }
 
-  val videoGridColumnSelector = if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
-    GridColumnSelector(
-      label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
-      currentValue = videoGridColumns.coerceIn(1, maxColumns),
-      onValueChange = {
-        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
-        else browserPreferences.videoGridColumnsPortrait.set(it)
-      },
-      valueRange = 1f..maxColumns.toFloat(),
-      steps = maxColumns - 2,
-    )
-  } else null
+  val videoGridColumnSelector =
+    if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
+      GridColumnSelector(
+        label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        currentValue = videoGridColumns.coerceIn(1, maxColumns),
+        onValueChange = {
+          if (isLandscape) {
+            browserPreferences.videoGridColumnsLandscape.set(it)
+          } else {
+            browserPreferences.videoGridColumnsPortrait.set(it)
+          }
+        },
+        valueRange = 1f..maxColumns.toFloat(),
+        steps = maxColumns - 2,
+      )
+    } else {
+      null
+    }
 
   SortDialog(
     isOpen = isOpen,
@@ -406,58 +428,64 @@ fun VideoSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
-    viewModeSelector = MultiViewModeSelector(
-      label = "View Mode",
-      options = listOf(
-        ViewModeOption(
-          label = "Folder",
-          icon = Icons.RoundedFilled.ViewModule,
-          isSelected = folderViewMode == FolderViewMode.AlbumView,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
-        ),
-        ViewModeOption(
-          label = "Tree",
-          icon = Icons.RoundedFilled.AccountTree,
-          isSelected = folderViewMode == FolderViewMode.FileManager,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
-        ),
-        ViewModeOption(
-          label = "Library",
-          icon = Icons.RoundedFilled.VideoLibrary,
-          isSelected = folderViewMode == FolderViewMode.MediaLibrary,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
-        ),
+    viewModeSelector =
+      MultiViewModeSelector(
+        label = "View Mode",
+        options =
+          listOf(
+            ViewModeOption(
+              label = "Folder",
+              icon = Icons.RoundedFilled.ViewModule,
+              isSelected = folderViewMode == FolderViewMode.AlbumView,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
+            ),
+            ViewModeOption(
+              label = "Tree",
+              icon = Icons.RoundedFilled.AccountTree,
+              isSelected = folderViewMode == FolderViewMode.FileManager,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
+            ),
+            ViewModeOption(
+              label = "Library",
+              icon = Icons.RoundedFilled.VideoLibrary,
+              isSelected = folderViewMode == FolderViewMode.MediaLibrary,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
+            ),
+          ),
       ),
-    ),
-    layoutModeSelector = ViewModeSelector(
-      label = "Layout",
-      firstOptionLabel = "List",
-      secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.RoundedFilled.ViewList,
-      secondOptionIcon = Icons.RoundedFilled.GridView,
-      isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
-      onViewModeChange = { isFirstOption ->
-        val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
-        if (isFolderView) {
-          browserPreferences.folderViewVideoLayoutMode.set(newLayout)
-          if (!separateFolderVideoLayout) {
-            browserPreferences.folderViewFolderLayoutMode.set(newLayout)
+    layoutModeSelector =
+      ViewModeSelector(
+        label = "Layout",
+        firstOptionLabel = "List",
+        secondOptionLabel = "Grid",
+        firstOptionIcon = Icons.RoundedFilled.ViewList,
+        secondOptionIcon = Icons.RoundedFilled.GridView,
+        isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
+        onViewModeChange = { isFirstOption ->
+          val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
+          if (isFolderView) {
+            browserPreferences.folderViewVideoLayoutMode.set(newLayout)
+            if (!separateFolderVideoLayout) {
+              browserPreferences.folderViewFolderLayoutMode.set(newLayout)
+            }
+          } else {
+            browserPreferences.mediaLayoutMode.set(newLayout)
           }
-        } else {
-          browserPreferences.mediaLayoutMode.set(newLayout)
-        }
-      },
-      checkboxLabel = if (isFolderView) "Only for video list" else null,
-      isCheckboxChecked = separateFolderVideoLayout,
-      onCheckboxChange = if (isFolderView) {
-        { checked ->
-          browserPreferences.separateFolderVideoLayout.set(checked)
-          if (!checked) {
-            browserPreferences.folderViewFolderLayoutMode.set(browserPreferences.folderViewVideoLayoutMode.get())
-          }
-        }
-      } else null,
-    ),
+        },
+        checkboxLabel = if (isFolderView) "Only for video list" else null,
+        isCheckboxChecked = separateFolderVideoLayout,
+        onCheckboxChange =
+          if (isFolderView) {
+            { checked ->
+              browserPreferences.separateFolderVideoLayout.set(checked)
+              if (!checked) {
+                browserPreferences.folderViewFolderLayoutMode.set(browserPreferences.folderViewVideoLayoutMode.get())
+              }
+            }
+          } else {
+            null
+          },
+      ),
     visibilityToggles =
       buildList {
         add(
@@ -465,70 +493,70 @@ fun VideoSortDialog(
             label = "Thumbnails",
             checked = showThumbnails,
             onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Extension",
             checked = showExtensionField,
             onCheckedChange = { browserPreferences.showExtensionField.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Duration",
             checked = showDurationField,
             onCheckedChange = { browserPreferences.showDurationField.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Subtitle Indicator",
             checked = showSubtitleIndicator,
             onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Full Name",
             checked = unlimitedNameLines,
             onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Size",
             checked = showSizeChip,
             onCheckedChange = { browserPreferences.showSizeChip.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Resolution",
             checked = showResolutionChip,
             onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Framerate",
             checked = showFramerateInResolution,
             onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Date",
             checked = showDateChip,
             onCheckedChange = { browserPreferences.showDateChip.set(it) },
-          )
+          ),
         )
         add(
           VisibilityToggle(
             label = "Progress Bar",
             checked = showProgressBar,
             onCheckedChange = { browserPreferences.showProgressBar.set(it) },
-          )
+          ),
         )
         if (mediaLayoutMode == MediaLayoutMode.GRID) {
           add(
@@ -547,14 +575,14 @@ fun VideoSortDialog(
                 }
                 browserPreferences.manualGridColumnsEnabled.set(enabled)
               },
-            )
+            ),
           )
           add(
             VisibilityToggle(
               label = "Center Titles",
               checked = centerGridTitles,
               onCheckedChange = { browserPreferences.centerGridTitles.set(it) },
-            )
+            ),
           )
         }
       },
@@ -610,31 +638,43 @@ fun FileSystemSortDialog(
   val dynamicFolderColumns = (usableWidth / folderMinWidth).toInt().coerceIn(1, maxColumns)
   val dynamicVideoColumns = (usableWidth / videoMinWidth).toInt().coerceIn(1, maxColumns)
 
-  val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
-    GridColumnSelector(
-      label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
-      currentValue = folderGridColumns.coerceIn(1, maxColumns),
-      onValueChange = {
-        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
-        else browserPreferences.folderGridColumnsPortrait.set(it)
-      },
-      valueRange = 1f..maxColumns.toFloat(),
-      steps = maxColumns - 2,
-    )
-  } else null
+  val folderGridColumnSelector =
+    if (mediaLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
+      GridColumnSelector(
+        label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        currentValue = folderGridColumns.coerceIn(1, maxColumns),
+        onValueChange = {
+          if (isLandscape) {
+            browserPreferences.folderGridColumnsLandscape.set(it)
+          } else {
+            browserPreferences.folderGridColumnsPortrait.set(it)
+          }
+        },
+        valueRange = 1f..maxColumns.toFloat(),
+        steps = maxColumns - 2,
+      )
+    } else {
+      null
+    }
 
-  val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
-    GridColumnSelector(
-      label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
-      currentValue = videoGridColumns.coerceIn(1, maxColumns),
-      onValueChange = {
-        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
-        else browserPreferences.videoGridColumnsPortrait.set(it)
-      },
-      valueRange = 1f..maxColumns.toFloat(),
-      steps = maxColumns - 2,
-    )
-  } else null
+  val videoGridColumnSelector =
+    if (mediaLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
+      GridColumnSelector(
+        label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        currentValue = videoGridColumns.coerceIn(1, maxColumns),
+        onValueChange = {
+          if (isLandscape) {
+            browserPreferences.videoGridColumnsLandscape.set(it)
+          } else {
+            browserPreferences.videoGridColumnsPortrait.set(it)
+          }
+        },
+        valueRange = 1f..maxColumns.toFloat(),
+        steps = maxColumns - 2,
+      )
+    } else {
+      null
+    }
 
   SortDialog(
     isOpen = isOpen,
@@ -649,20 +689,25 @@ fun FileSystemSortDialog(
     sortOrderAsc = folderSortOrder.isAscending,
     onSortOrderChange = { isAsc ->
       browserPreferences.folderSortOrder.set(
-        if (isAsc) SortOrder.Ascending
-        else SortOrder.Descending,
+        if (isAsc) {
+          SortOrder.Ascending
+        } else {
+          SortOrder.Descending
+        },
       )
     },
-    types = listOf(
-      FolderSortType.Title.displayName,
-      FolderSortType.Date.displayName,
-      FolderSortType.Size.displayName,
-    ),
-    icons = listOf(
-      Icons.RoundedFilled.Title,
-      Icons.RoundedFilled.CalendarToday,
-      Icons.RoundedFilled.SwapVert,
-    ),
+    types =
+      listOf(
+        FolderSortType.Title.displayName,
+        FolderSortType.Date.displayName,
+        FolderSortType.Size.displayName,
+      ),
+    icons =
+      listOf(
+        Icons.RoundedFilled.Title,
+        Icons.RoundedFilled.CalendarToday,
+        Icons.RoundedFilled.SwapVert,
+      ),
     getLabelForType = { type, _ ->
       when (type) {
         FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")
@@ -672,151 +717,155 @@ fun FileSystemSortDialog(
       }
     },
     showSortOptions = true,
-    viewModeSelector = MultiViewModeSelector(
-      label = "View Mode",
-      options = listOf(
-        ViewModeOption(
-          label = "Folder",
-          icon = Icons.RoundedFilled.ViewModule,
-          isSelected = folderViewMode == FolderViewMode.AlbumView,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) }
-        ),
-        ViewModeOption(
-          label = "Tree",
-          icon = Icons.RoundedFilled.AccountTree,
-          isSelected = folderViewMode == FolderViewMode.FileManager,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) }
-        ),
-        ViewModeOption(
-          label = "Library",
-          icon = Icons.RoundedFilled.VideoLibrary,
-          isSelected = folderViewMode == FolderViewMode.MediaLibrary,
-          onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) }
-        ),
-      )
-    ),
-    layoutModeSelector = ViewModeSelector(
-      label = "Layout",
-      firstOptionLabel = "List",
-      secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.RoundedFilled.ViewList,
-      secondOptionIcon = Icons.RoundedFilled.GridView,
-      isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
-      onViewModeChange = { isFirstOption ->
-        browserPreferences.mediaLayoutMode.set(
-          if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
-        )
-      },
-    ),
+    viewModeSelector =
+      MultiViewModeSelector(
+        label = "View Mode",
+        options =
+          listOf(
+            ViewModeOption(
+              label = "Folder",
+              icon = Icons.RoundedFilled.ViewModule,
+              isSelected = folderViewMode == FolderViewMode.AlbumView,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
+            ),
+            ViewModeOption(
+              label = "Tree",
+              icon = Icons.RoundedFilled.AccountTree,
+              isSelected = folderViewMode == FolderViewMode.FileManager,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
+            ),
+            ViewModeOption(
+              label = "Library",
+              icon = Icons.RoundedFilled.VideoLibrary,
+              isSelected = folderViewMode == FolderViewMode.MediaLibrary,
+              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
+            ),
+          ),
+      ),
+    layoutModeSelector =
+      ViewModeSelector(
+        label = "Layout",
+        firstOptionLabel = "List",
+        secondOptionLabel = "Grid",
+        firstOptionIcon = Icons.RoundedFilled.ViewList,
+        secondOptionIcon = Icons.RoundedFilled.GridView,
+        isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
+        onViewModeChange = { isFirstOption ->
+          browserPreferences.mediaLayoutMode.set(
+            if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID,
+          )
+        },
+      ),
     folderGridColumnSelector = folderGridColumnSelector,
     videoGridColumnSelector = videoGridColumnSelector,
     enableViewModeOptions = isAtRoot,
     enableLayoutModeOptions = true, // Enabled layout selection
-    visibilityToggles = buildList {
-      add(
-        VisibilityToggle(
-          label = "Video Thumbnails",
-          checked = showVideoThumbnails,
-          onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Full Name",
-          checked = unlimitedNameLines,
-          onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Extension",
-          checked = showExtensionField,
-          onCheckedChange = { browserPreferences.showExtensionField.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Duration",
-          checked = showDurationField,
-          onCheckedChange = { browserPreferences.showDurationField.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Path",
-          checked = showFolderPath,
-          onCheckedChange = { browserPreferences.showFolderPath.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Total Media",
-          checked = showTotalVideosChip,
-          onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Folder Size",
-          checked = showTotalSizeChip,
-          onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Size",
-          checked = showSizeChip,
-          onCheckedChange = { browserPreferences.showSizeChip.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Resolution",
-          checked = showResolutionChip,
-          onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Framerate",
-          checked = showFramerateInResolution,
-          onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Subtitle",
-          checked = showSubtitleIndicator,
-          onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
-        )
-      )
-      add(
-        VisibilityToggle(
-          label = "Progress Bar",
-          checked = showProgressBar,
-          onCheckedChange = { browserPreferences.showProgressBar.set(it) },
-        )
-      )
-      if (mediaLayoutMode == MediaLayoutMode.GRID) {
+    visibilityToggles =
+      buildList {
         add(
           VisibilityToggle(
-            label = "Manual Grid Columns",
-            checked = manualGridColumnsEnabled,
-            onCheckedChange = { enabled ->
-              if (enabled) {
-                if (isLandscape) {
-                  browserPreferences.folderGridColumnsLandscape.set(dynamicFolderColumns)
-                  browserPreferences.videoGridColumnsLandscape.set(dynamicVideoColumns)
-                } else {
-                  browserPreferences.folderGridColumnsPortrait.set(dynamicFolderColumns)
-                  browserPreferences.videoGridColumnsPortrait.set(dynamicVideoColumns)
-                }
-              }
-              browserPreferences.manualGridColumnsEnabled.set(enabled)
-            },
-          )
+            label = "Video Thumbnails",
+            checked = showVideoThumbnails,
+            onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
+          ),
         )
-      }
-    },
+        add(
+          VisibilityToggle(
+            label = "Full Name",
+            checked = unlimitedNameLines,
+            onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Extension",
+            checked = showExtensionField,
+            onCheckedChange = { browserPreferences.showExtensionField.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Duration",
+            checked = showDurationField,
+            onCheckedChange = { browserPreferences.showDurationField.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Path",
+            checked = showFolderPath,
+            onCheckedChange = { browserPreferences.showFolderPath.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Total Media",
+            checked = showTotalVideosChip,
+            onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Folder Size",
+            checked = showTotalSizeChip,
+            onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Size",
+            checked = showSizeChip,
+            onCheckedChange = { browserPreferences.showSizeChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Resolution",
+            checked = showResolutionChip,
+            onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Framerate",
+            checked = showFramerateInResolution,
+            onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Subtitle",
+            checked = showSubtitleIndicator,
+            onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Progress Bar",
+            checked = showProgressBar,
+            onCheckedChange = { browserPreferences.showProgressBar.set(it) },
+          ),
+        )
+        if (mediaLayoutMode == MediaLayoutMode.GRID) {
+          add(
+            VisibilityToggle(
+              label = "Manual Grid Columns",
+              checked = manualGridColumnsEnabled,
+              onCheckedChange = { enabled ->
+                if (enabled) {
+                  if (isLandscape) {
+                    browserPreferences.folderGridColumnsLandscape.set(dynamicFolderColumns)
+                    browserPreferences.videoGridColumnsLandscape.set(dynamicVideoColumns)
+                  } else {
+                    browserPreferences.folderGridColumnsPortrait.set(dynamicFolderColumns)
+                    browserPreferences.videoGridColumnsPortrait.set(dynamicVideoColumns)
+                  }
+                }
+                browserPreferences.manualGridColumnsEnabled.set(enabled)
+              },
+            ),
+          )
+        }
+      },
   )
 }

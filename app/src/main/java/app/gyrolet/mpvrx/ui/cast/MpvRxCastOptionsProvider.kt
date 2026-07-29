@@ -15,19 +15,22 @@ import com.google.android.gms.cast.framework.SessionProvider
 import com.google.android.gms.cast.framework.media.CastMediaOptions
 import com.google.android.gms.cast.framework.media.NotificationOptions
 
-class mpvRxCastOptionsProvider : OptionsProvider {
+class MpvRxCastOptionsProvider : OptionsProvider {
   override fun getCastOptions(context: Context): CastOptions {
     val notificationOptions =
-      NotificationOptions.Builder()
+      NotificationOptions
+        .Builder()
         .setTargetActivityClassName(CastRemoteControllerActivity::class.java.name)
         .build()
     val mediaOptions =
-      CastMediaOptions.Builder()
+      CastMediaOptions
+        .Builder()
         .setNotificationOptions(notificationOptions)
         .setExpandedControllerActivityClassName(CastRemoteControllerActivity::class.java.name)
         .build()
 
-    return CastOptions.Builder()
+    return CastOptions
+      .Builder()
       .setReceiverApplicationId(CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID)
       .setCastMediaOptions(mediaOptions)
       .setRemoteToLocalEnabled(true)

@@ -80,7 +80,10 @@ class HdrToysManager(
       file.exists() && file.length() > 0L
     }
 
-  private fun copyAssetDirectory(assetPath: String, destination: File) {
+  private fun copyAssetDirectory(
+    assetPath: String,
+    destination: File,
+  ) {
     val children = context.assets.list(assetPath).orEmpty()
     destination.mkdirs()
     children.forEach { child ->
@@ -95,7 +98,10 @@ class HdrToysManager(
     }
   }
 
-  private fun copyAssetFile(assetPath: String, destination: File) {
+  private fun copyAssetFile(
+    assetPath: String,
+    destination: File,
+  ) {
     destination.parentFile?.mkdirs()
     context.assets.open(assetPath).use { input ->
       FileOutputStream(destination).use { output ->

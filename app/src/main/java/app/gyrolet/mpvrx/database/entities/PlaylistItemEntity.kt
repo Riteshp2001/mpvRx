@@ -45,4 +45,3 @@ data class PlaylistItemEntity(
   val userAgent: String? = null, // Per-stream user-agent from the playlist
   val isFavorite: Boolean = false, // User-starred item
 )
-

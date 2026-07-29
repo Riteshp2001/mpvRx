@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import app.gyrolet.mpvrx.ui.icons.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -49,16 +48,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import app.gyrolet.mpvrx.ui.icons.AppIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gyrolet.mpvrx.ui.icons.AppIcon
+import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import java.util.Locale
 import kotlin.math.abs
 
-private data class CastBitrateOption(val label: String, val bitrate: Int)
+private data class CastBitrateOption(
+  val label: String,
+  val bitrate: Int,
+)
 
 @Composable
 fun CastRemoteControllerScreen(
@@ -72,22 +75,25 @@ fun CastRemoteControllerScreen(
   var showBitrateDialog by remember { mutableStateOf(false) }
 
   Box(
-    modifier = modifier
-      .fillMaxSize()
-      .background(
-        Brush.verticalGradient(
-          colors = listOf(
-            Color.Black.copy(alpha = 0.85f),
-            Color.Black.copy(alpha = 0.95f),
-          )
-        )
-      ),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .background(
+          Brush.verticalGradient(
+            colors =
+              listOf(
+                Color.Black.copy(alpha = 0.85f),
+                Color.Black.copy(alpha = 0.95f),
+              ),
+          ),
+        ),
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .windowInsetsPadding(WindowInsets.safeDrawing)
-        .padding(horizontal = 24.dp, vertical = 16.dp),
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .windowInsetsPadding(WindowInsets.safeDrawing)
+          .padding(horizontal = 24.dp, vertical = 16.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Row(
@@ -95,7 +101,12 @@ fun CastRemoteControllerScreen(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterVertically)) {
-          Icon(Icons.RoundedFilled.KeyboardArrowDown, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(32.dp))
+          Icon(
+            Icons.RoundedFilled.KeyboardArrowDown,
+            contentDescription = "Close",
+            tint = Color.White,
+            modifier = Modifier.size(32.dp),
+          )
         }
         Spacer(modifier = Modifier.weight(1f))
         Text(
@@ -106,7 +117,12 @@ fun CastRemoteControllerScreen(
         )
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onStopCasting) {
-          Icon(Icons.RoundedFilled.Cast, contentDescription = "Stop Casting", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+          Icon(
+            Icons.RoundedFilled.Cast,
+            contentDescription = "Stop Casting",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp),
+          )
         }
       }
 
@@ -166,7 +182,10 @@ fun CastRemoteControllerScreen(
 }
 
 @Composable
-private fun CastSeekBar(castState: CastSessionState, controller: CastPlaybackController) {
+private fun CastSeekBar(
+  castState: CastSessionState,
+  controller: CastPlaybackController,
+) {
   var seekDragPosition by remember { mutableFloatStateOf(-1f) }
 
   val displayPosition = if (seekDragPosition >= 0f) seekDragPosition else castState.currentPosition.toFloat()
@@ -180,11 +199,12 @@ private fun CastSeekBar(castState: CastSessionState, controller: CastPlaybackCon
       seekDragPosition = -1f
     },
     valueRange = 0f..duration,
-    colors = SliderDefaults.colors(
-      thumbColor = MaterialTheme.colorScheme.primary,
-      activeTrackColor = MaterialTheme.colorScheme.primary,
-      inactiveTrackColor = Color.White.copy(alpha = 0.2f),
-    ),
+    colors =
+      SliderDefaults.colors(
+        thumbColor = MaterialTheme.colorScheme.primary,
+        activeTrackColor = MaterialTheme.colorScheme.primary,
+        inactiveTrackColor = Color.White.copy(alpha = 0.2f),
+      ),
     modifier = Modifier.fillMaxWidth(),
   )
 
@@ -193,33 +213,48 @@ private fun CastSeekBar(castState: CastSessionState, controller: CastPlaybackCon
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {
     Text(formatCastTime(displayPosition.toLong()), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
-    Text(formatCastTime((duration - displayPosition).toLong().coerceAtLeast(0)), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+    Text(
+      formatCastTime((duration - displayPosition).toLong().coerceAtLeast(0)),
+      color = Color.White.copy(alpha = 0.6f),
+      fontSize = 12.sp,
+    )
   }
 }
 
 @Composable
-private fun CastPlaybackControls(castState: CastSessionState, controller: CastPlaybackController) {
+private fun CastPlaybackControls(
+  castState: CastSessionState,
+  controller: CastPlaybackController,
+) {
   Row(
     modifier = Modifier.fillMaxWidth(),
     horizontalArrangement = Arrangement.Center,
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    IconButton(onClick = { controller.seekTo((castState.currentPosition - 10_000).coerceAtLeast(0)) }, modifier = Modifier.size(56.dp)) {
-      Icon(Icons.RoundedFilled.FastRewind, contentDescription = "Rewind 10s", tint = Color.White, modifier = Modifier.size(32.dp))
+    IconButton(onClick = {
+      controller.seekTo((castState.currentPosition - 10_000).coerceAtLeast(0))
+    }, modifier = Modifier.size(56.dp)) {
+      Icon(
+        Icons.RoundedFilled.FastRewind,
+        contentDescription = "Rewind 10s",
+        tint = Color.White,
+        modifier = Modifier.size(32.dp),
+      )
     }
 
     Spacer(modifier = Modifier.width(32.dp))
 
     Box(
-      modifier = Modifier
-        .size(72.dp)
-        .clip(CircleShape)
-        .background(MaterialTheme.colorScheme.primary)
-        .clickable(
-          interactionSource = remember { MutableInteractionSource() },
-          indication = null,
-          onClick = { if (castState.isPlaying) controller.pause() else controller.play() },
-        ),
+      modifier =
+        Modifier
+          .size(72.dp)
+          .clip(CircleShape)
+          .background(MaterialTheme.colorScheme.primary)
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = { if (castState.isPlaying) controller.pause() else controller.play() },
+          ),
       contentAlignment = Alignment.Center,
     ) {
       if (castState.isBuffering) {
@@ -236,8 +271,15 @@ private fun CastPlaybackControls(castState: CastSessionState, controller: CastPl
 
     Spacer(modifier = Modifier.width(32.dp))
 
-    IconButton(onClick = { controller.seekTo((castState.currentPosition + 30_000).coerceAtMost(castState.duration)) }, modifier = Modifier.size(56.dp)) {
-      Icon(Icons.RoundedFilled.FastForward, contentDescription = "Forward 30s", tint = Color.White, modifier = Modifier.size(32.dp))
+    IconButton(onClick = {
+      controller.seekTo((castState.currentPosition + 30_000).coerceAtMost(castState.duration))
+    }, modifier = Modifier.size(56.dp)) {
+      Icon(
+        Icons.RoundedFilled.FastForward,
+        contentDescription = "Forward 30s",
+        tint = Color.White,
+        modifier = Modifier.size(32.dp),
+      )
     }
   }
 }
@@ -248,10 +290,11 @@ private fun CastOptionsRow(
   onShowBitrate: () -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .clip(RoundedCornerShape(50))
-      .background(Color.White.copy(alpha = 0.1f))
-      .padding(vertical = 4.dp, horizontal = 8.dp),
+    modifier =
+      Modifier
+        .clip(RoundedCornerShape(50))
+        .background(Color.White.copy(alpha = 0.1f))
+        .padding(vertical = 4.dp, horizontal = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
@@ -261,17 +304,29 @@ private fun CastOptionsRow(
 }
 
 @Composable
-private fun CastOptionButton(icon: AppIcon, label: String, onClick: () -> Unit) {
+private fun CastOptionButton(
+  icon: AppIcon,
+  label: String,
+  onClick: () -> Unit,
+) {
   IconButton(onClick = onClick) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-      Icon(imageVector = icon, contentDescription = label, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(24.dp))
+      Icon(
+        imageVector = icon,
+        contentDescription = label,
+        tint = Color.White.copy(alpha = 0.8f),
+        modifier = Modifier.size(24.dp),
+      )
       Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 9.sp)
     }
   }
 }
 
 @Composable
-private fun CastVolumeSlider(castState: CastSessionState, controller: CastPlaybackController) {
+private fun CastVolumeSlider(
+  castState: CastSessionState,
+  controller: CastPlaybackController,
+) {
   var volumeSliderValue by remember(castState.volume) { mutableFloatStateOf(castState.volume.toFloat()) }
 
   Row(
@@ -280,7 +335,18 @@ private fun CastVolumeSlider(castState: CastSessionState, controller: CastPlayba
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Icon(
-      imageVector = if (volumeSliderValue <= 0f) Icons.RoundedFilled.VolumeOff else if (volumeSliderValue < 0.5f) Icons.RoundedFilled.VolumeDown else Icons.RoundedFilled.VolumeUp,
+      imageVector =
+        if (volumeSliderValue <=
+          0f
+        ) {
+          Icons.RoundedFilled.VolumeOff
+        } else if (volumeSliderValue <
+          0.5f
+        ) {
+          Icons.RoundedFilled.VolumeDown
+        } else {
+          Icons.RoundedFilled.VolumeUp
+        },
       contentDescription = "Volume",
       tint = Color.White.copy(alpha = 0.6f),
       modifier = Modifier.size(24.dp),
@@ -292,11 +358,12 @@ private fun CastVolumeSlider(castState: CastSessionState, controller: CastPlayba
         controller.setVolume(newValue.toDouble())
       },
       valueRange = 0f..1f,
-      colors = SliderDefaults.colors(
-        thumbColor = MaterialTheme.colorScheme.primary,
-        activeTrackColor = MaterialTheme.colorScheme.primary,
-        inactiveTrackColor = Color.White.copy(alpha = 0.2f),
-      ),
+      colors =
+        SliderDefaults.colors(
+          thumbColor = MaterialTheme.colorScheme.primary,
+          activeTrackColor = MaterialTheme.colorScheme.primary,
+          inactiveTrackColor = Color.White.copy(alpha = 0.2f),
+        ),
       modifier = Modifier.weight(1f),
     )
     Text(
@@ -309,7 +376,11 @@ private fun CastVolumeSlider(castState: CastSessionState, controller: CastPlayba
 }
 
 @Composable
-private fun CastSpeedDialog(currentSpeed: Float, onSpeedChange: (Float) -> Unit, onDismiss: () -> Unit) {
+private fun CastSpeedDialog(
+  currentSpeed: Float,
+  onSpeedChange: (Float) -> Unit,
+  onDismiss: () -> Unit,
+) {
   val speeds = listOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
 
   AlertDialog(
@@ -320,13 +391,20 @@ private fun CastSpeedDialog(currentSpeed: Float, onSpeedChange: (Float) -> Unit,
         speeds.forEach { speed ->
           val isSelected = speed == currentSpeed
           Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .clickable { onSpeedChange(speed); onDismiss() }
-              .padding(vertical = 12.dp, horizontal = 8.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .clickable {
+                  onSpeedChange(speed)
+                  onDismiss()
+                }.padding(vertical = 12.dp, horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            RadioButton(selected = isSelected, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary))
+            RadioButton(
+              selected = isSelected,
+              onClick = null,
+              colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary),
+            )
             Spacer(modifier = Modifier.width(16.dp))
             Text(text = "${speed}x", color = MaterialTheme.colorScheme.onSurface)
           }
@@ -338,15 +416,20 @@ private fun CastSpeedDialog(currentSpeed: Float, onSpeedChange: (Float) -> Unit,
 }
 
 @Composable
-private fun CastBitrateDialog(castState: CastSessionState, controller: CastPlaybackController, onDismiss: () -> Unit) {
-  val bitrateOptions = listOf(
-    CastBitrateOption("Auto", 0),
-    CastBitrateOption("4K (50 Mbps)", 50_000_000),
-    CastBitrateOption("4K (25 Mbps)", 25_000_000),
-    CastBitrateOption("1080p (16 Mbps)", 16_000_000),
-    CastBitrateOption("1080p (8 Mbps)", 8_000_000),
-    CastBitrateOption("720p (4 Mbps)", 4_000_000),
-  )
+private fun CastBitrateDialog(
+  castState: CastSessionState,
+  controller: CastPlaybackController,
+  onDismiss: () -> Unit,
+) {
+  val bitrateOptions =
+    listOf(
+      CastBitrateOption("Auto", 0),
+      CastBitrateOption("4K (50 Mbps)", 50_000_000),
+      CastBitrateOption("4K (25 Mbps)", 25_000_000),
+      CastBitrateOption("1080p (16 Mbps)", 16_000_000),
+      CastBitrateOption("1080p (8 Mbps)", 8_000_000),
+      CastBitrateOption("720p (4 Mbps)", 4_000_000),
+    )
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -356,13 +439,18 @@ private fun CastBitrateDialog(castState: CastSessionState, controller: CastPlayb
         bitrateOptions.forEach { option ->
           val isSelected = option.bitrate == 0
           Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .clickable { onDismiss() }
-              .padding(vertical = 12.dp, horizontal = 8.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .clickable { onDismiss() }
+                .padding(vertical = 12.dp, horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            RadioButton(selected = isSelected, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary))
+            RadioButton(
+              selected = isSelected,
+              onClick = null,
+              colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary),
+            )
             Spacer(modifier = Modifier.width(16.dp))
             Text(text = option.label, color = MaterialTheme.colorScheme.onSurface)
           }
@@ -378,6 +466,9 @@ private fun formatCastTime(timeMs: Long): String {
   val hours = totalSeconds / 3600
   val minutes = (totalSeconds % 3600) / 60
   val seconds = totalSeconds % 60
-  return if (hours > 0) String.format(Locale.ROOT, "%d:%02d:%02d", hours, minutes, seconds)
-  else String.format(Locale.ROOT, "%02d:%02d", minutes, seconds)
+  return if (hours > 0) {
+    String.format(Locale.ROOT, "%d:%02d:%02d", hours, minutes, seconds)
+  } else {
+    String.format(Locale.ROOT, "%02d:%02d", minutes, seconds)
+  }
 }

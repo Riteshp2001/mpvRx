@@ -11,25 +11,25 @@ import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
+import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.repository.NetworkRepository
-import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -71,18 +71,20 @@ class NetworkBrowserViewModel(
       _error.value = null
 
       try {
-        val connection = repository.getConnectionById(connectionId)
-          ?: throw Exception("Connection not found")
+        val connection =
+          repository.getConnectionById(connectionId)
+            ?: throw Exception("Connection not found")
         _connection.value = connection
 
-        repository.listFiles(connection, currentPath)
+        repository
+          .listFiles(connection, currentPath)
           .onSuccess { fileList ->
-            _files.value = fileList.sortedWith(
-              compareBy<NetworkFile> { !it.isDirectory }
-                .thenBy { it.name.lowercase() },
-            )
-          }
-          .onFailure { e ->
+            _files.value =
+              fileList.sortedWith(
+                compareBy<NetworkFile> { !it.isDirectory }
+                  .thenBy { it.name.lowercase() },
+              )
+          }.onFailure { e ->
             _error.value = e.message ?: "Unknown error"
           }
       } catch (e: Exception) {
@@ -93,16 +95,15 @@ class NetworkBrowserViewModel(
     }
   }
 
-
-
   /**
    * Play a video file
    */
   fun openMedia(file: NetworkFile) {
     viewModelScope.launch {
       try {
-        val connection = repository.getConnectionById(connectionId)
-          ?: throw Exception("Connection not found")
+        val connection =
+          repository.getConnectionById(connectionId)
+            ?: throw Exception("Connection not found")
 
         if (isM3uFile(file)) {
           openM3uFile(connection, file)
@@ -122,8 +123,9 @@ class NetworkBrowserViewModel(
   fun playVideo(file: NetworkFile) {
     viewModelScope.launch {
       try {
-        val connection = repository.getConnectionById(connectionId)
-          ?: throw Exception("Connection not found")
+        val connection =
+          repository.getConnectionById(connectionId)
+            ?: throw Exception("Connection not found")
         playVideoInternal(connection, file)
       } catch (e: Exception) {
         Log.e(TAG, "Error playing video", e)
@@ -140,7 +142,11 @@ class NetworkBrowserViewModel(
     val content =
       try {
         client.connect().getOrThrow()
-        client.getFileStream(file.path).getOrThrow().bufferedReader(Charsets.UTF_8).use { it.readText() }
+        client
+          .getFileStream(file.path)
+          .getOrThrow()
+          .bufferedReader(Charsets.UTF_8)
+          .use { it.readText() }
       } finally {
         client.disconnect()
       }
@@ -155,23 +161,27 @@ class NetworkBrowserViewModel(
     // (e.g. "episode02.mkv" -> "davs://server/videos/episode02.mkv").
     // getFileUri() is tried first; if it fails we build a best-effort URL
     // from the connection's base URL + file path.
-    val sourceUrl: String = NetworkClientFactory.createClient(connection)
-      .getFileUri(file.path)
-      .getOrNull()
-      ?.toString()
-      ?: buildFallbackSourceUrl(connection, file.path)
+    val sourceUrl: String =
+      NetworkClientFactory
+        .createClient(connection)
+        .getFileUri(file.path)
+        .getOrNull()
+        ?.toString()
+        ?: buildFallbackSourceUrl(connection, file.path)
 
     Log.d(TAG, "Importing M3U playlist from: $sourceUrl")
 
-    val playlistId = playlistRepository.createM3UPlaylistFromContent(
-      content = content,
-      sourceName = file.name,
-      sourceUrl = sourceUrl,
-    ).getOrElse { e ->
-      Log.e(TAG, "Failed to create playlist from M3U content", e)
-      _error.value = "Failed to import playlist: ${e.message}"
-      return
-    }
+    val playlistId =
+      playlistRepository
+        .createM3UPlaylistFromContent(
+          content = content,
+          sourceName = file.name,
+          sourceUrl = sourceUrl,
+        ).getOrElse { e ->
+          Log.e(TAG, "Failed to create playlist from M3U content", e)
+          _error.value = "Failed to import playlist: ${e.message}"
+          return
+        }
     _importedPlaylistId.emit(playlistId.toInt())
   }
 
@@ -179,12 +189,16 @@ class NetworkBrowserViewModel(
    * Builds a best-effort URL for the given file path on a network connection.
    * Used as a fallback when [NetworkClientFactory] cannot produce a URI.
    */
-  private fun buildFallbackSourceUrl(connection: NetworkConnection, filePath: String): String {
-    val protocol = when (connection.protocol) {
-      NetworkProtocol.WEBDAV -> if (connection.useHttps) "https" else "http"
-      NetworkProtocol.FTP    -> "ftp"
-      NetworkProtocol.SMB    -> "smb"
-    }
+  private fun buildFallbackSourceUrl(
+    connection: NetworkConnection,
+    filePath: String,
+  ): String {
+    val protocol =
+      when (connection.protocol) {
+        NetworkProtocol.WEBDAV -> if (connection.useHttps) "https" else "http"
+        NetworkProtocol.FTP -> "ftp"
+        NetworkProtocol.SMB -> "smb"
+      }
     val defaultPort = connection.protocol.defaultPort
     val portStr = if (connection.port != defaultPort) ":${connection.port}" else ""
     val normalizedPath = if (filePath.startsWith("/")) filePath else "/$filePath"
@@ -199,12 +213,15 @@ class NetworkBrowserViewModel(
     val useProxy = connection.protocol in PROXY_PROTOCOLS
 
     val playableFiles = currentDirectoryPlayableFiles(file)
-    val playlistIndex = playableFiles.indexOfFirst { it.path == file.path }
-      .takeIf { it >= 0 }
-      ?: 0
+    val playlistIndex =
+      playableFiles
+        .indexOfFirst { it.path == file.path }
+        .takeIf { it >= 0 }
+        ?: 0
     val playlistUris = playableFiles.map { createPlayableNetworkUri(connection, it, useProxy) }
-    val uri = playlistUris.getOrNull(playlistIndex)
-      ?: createPlayableNetworkUri(connection, file, useProxy)
+    val uri =
+      playlistUris.getOrNull(playlistIndex)
+        ?: createPlayableNetworkUri(connection, file, useProxy)
 
     // Launch the player
     val intent = Intent(Intent.ACTION_VIEW, uri)
@@ -235,8 +252,9 @@ class NetworkBrowserViewModel(
   }
 
   private fun currentDirectoryPlayableFiles(clickedFile: NetworkFile): List<NetworkFile> {
-    val files = _files.value
-      .filter { it.isPlayableVideoFile() }
+    val files =
+      _files.value
+        .filter { it.isPlayableVideoFile() }
 
     return if (files.any { it.path == clickedFile.path }) {
       files
@@ -249,23 +267,25 @@ class NetworkBrowserViewModel(
     connection: NetworkConnection,
     file: NetworkFile,
     useProxy: Boolean,
-  ): Uri {
-    return if (useProxy) {
-      val proxy = app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy.getInstance()
+  ): Uri =
+    if (useProxy) {
+      val proxy =
+        app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
+          .getInstance()
       val streamId = buildStableStreamId(file)
-      val proxyUrl = proxy.registerStream(
-        streamId = streamId,
-        connection = connection,
-        filePath = file.path,
-        fileSize = file.size,
-        mimeType = file.mimeType ?: "video/mp4",
-      )
+      val proxyUrl =
+        proxy.registerStream(
+          streamId = streamId,
+          connection = connection,
+          filePath = file.path,
+          fileSize = file.size,
+          mimeType = file.mimeType ?: "video/mp4",
+        )
       Uri.parse(proxyUrl)
     } else {
       NetworkStreamingProvider.setConnection(connectionId, connection)
       NetworkStreamingProvider.getUri(application, connectionId, file.path)
     }
-  }
 
   private fun buildStableStreamId(file: NetworkFile): String {
     val pathHash = Integer.toUnsignedString(file.path.hashCode(), 36)
@@ -302,18 +322,20 @@ class NetworkBrowserViewModel(
     private const val TAG = "NetworkBrowserVM"
 
     // Protocols that require proxy server for seeking support
-    private val PROXY_PROTOCOLS = setOf(
-      NetworkProtocol.SMB,
-      NetworkProtocol.FTP,
-      NetworkProtocol.WEBDAV,
-    )
+    private val PROXY_PROTOCOLS =
+      setOf(
+        NetworkProtocol.SMB,
+        NetworkProtocol.FTP,
+        NetworkProtocol.WEBDAV,
+      )
 
-    private val M3U_MIME_TYPES = setOf(
-      "application/x-mpegurl",
-      "application/vnd.apple.mpegurl",
-      "audio/x-mpegurl",
-      "audio/mpegurl",
-    )
+    private val M3U_MIME_TYPES =
+      setOf(
+        "application/x-mpegurl",
+        "application/vnd.apple.mpegurl",
+        "audio/x-mpegurl",
+        "audio/mpegurl",
+      )
 
     fun factory(
       application: Application,
@@ -327,4 +349,3 @@ class NetworkBrowserViewModel(
       }
   }
 }
-

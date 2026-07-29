@@ -375,7 +375,8 @@ enum class AppTheme(
     tertiaryDark = Color(0xFF9E9E9E),
     backgroundLight = Color(0xFFFFFFFF),
     backgroundDark = Color(0xFF0A0A0A),
-  );
+  ),
+  ;
 
   /**
    * Get the light color scheme for this theme
@@ -465,7 +466,14 @@ enum class AppTheme(
     useDarkTheme: Boolean,
     amoledMode: Boolean = false,
   ): VisualizerPalette {
-    val bg = if (amoledMode && useDarkTheme) Color.Black else if (useDarkTheme) backgroundDark else backgroundLight
+    val bg =
+      if (amoledMode && useDarkTheme) {
+        Color.Black
+      } else if (useDarkTheme) {
+        backgroundDark
+      } else {
+        backgroundLight
+      }
     return VisualizerPalette(
       background = bg.toArgb(),
       primary = (if (useDarkTheme) primaryDark else primaryLight).toArgb(),
@@ -477,38 +485,37 @@ enum class AppTheme(
   /**
    * Get the AMOLED (pure black) color scheme for this theme
    */
-  fun getAmoledColorScheme(): ColorScheme = getDarkColorScheme().copy(
-    background = Color.Black,
-    surface = Color.Black,
-    surfaceVariant = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1A1A1A)),
-    surfaceContainer = Color(0xFF0A0A0A),
-    surfaceContainerLow = Color(0xFF050505),
-    surfaceContainerLowest = Color.Black,
-    surfaceContainerHigh = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
-    surfaceContainerHighest = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1F1F1F)),
-    surfaceDim = Color.Black,
-    surfaceBright = primaryDark.copy(alpha = 0.06f).compositeOver(Color(0xFF2A2A2A)),
-  )
+  fun getAmoledColorScheme(): ColorScheme =
+    getDarkColorScheme().copy(
+      background = Color.Black,
+      surface = Color.Black,
+      surfaceVariant = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1A1A1A)),
+      surfaceContainer = Color(0xFF0A0A0A),
+      surfaceContainerLow = Color(0xFF050505),
+      surfaceContainerLowest = Color.Black,
+      surfaceContainerHigh = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
+      surfaceContainerHighest = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1F1F1F)),
+      surfaceDim = Color.Black,
+      surfaceBright = primaryDark.copy(alpha = 0.06f).compositeOver(Color(0xFF2A2A2A)),
+    )
 }
 
 // Extension functions for color manipulation
-private fun Color.darken(factor: Float): Color {
-  return Color(
+private fun Color.darken(factor: Float): Color =
+  Color(
     red = (red * (1 - factor)).coerceIn(0f, 1f),
     green = (green * (1 - factor)).coerceIn(0f, 1f),
     blue = (blue * (1 - factor)).coerceIn(0f, 1f),
-    alpha = alpha
+    alpha = alpha,
   )
-}
 
-private fun Color.lighten(factor: Float): Color {
-  return Color(
+private fun Color.lighten(factor: Float): Color =
+  Color(
     red = (red + (1 - red) * factor).coerceIn(0f, 1f),
     green = (green + (1 - green) * factor).coerceIn(0f, 1f),
     blue = (blue + (1 - blue) * factor).coerceIn(0f, 1f),
-    alpha = alpha
+    alpha = alpha,
   )
-}
 
 private fun Color.compositeOver(background: Color): Color {
   val bgAlpha = background.alpha
@@ -521,8 +528,7 @@ private fun Color.compositeOver(background: Color): Color {
       red = (red * fgAlpha + background.red * bgAlpha * (1f - fgAlpha)) / a,
       green = (green * fgAlpha + background.green * bgAlpha * (1f - fgAlpha)) / a,
       blue = (blue * fgAlpha + background.blue * bgAlpha * (1f - fgAlpha)) / a,
-      alpha = a
+      alpha = a,
     )
   }
 }
-

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
@@ -52,15 +51,18 @@ fun <T> OptionsDialog(
       Column {
         HorizontalDivider()
         LazyColumn(
-          contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+          contentPadding =
+            androidx.compose.foundation.layout
+              .PaddingValues(vertical = 8.dp),
           modifier = Modifier.selectableGroup(),
         ) {
           items(options) { option ->
             Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onOptionSelected(option) }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .clickable { onOptionSelected(option) }
+                  .padding(horizontal = 16.dp, vertical = 12.dp),
               verticalAlignment = Alignment.CenterVertically,
             ) {
               RadioButton(
@@ -81,16 +83,21 @@ fun <T> OptionsDialog(
     confirmButton = {},
     dismissButton = {
       TextButton(onClick = onDismiss) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+        )
       }
     },
     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     tonalElevation = 6.dp,
     shape = MaterialTheme.shapes.extraLarge,
-    properties = DialogProperties(
-      usePlatformDefaultWidth = false,
-      dismissOnBackPress = true,
-      dismissOnClickOutside = true,
-    ),
+    properties =
+      DialogProperties(
+        usePlatformDefaultWidth = false,
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true,
+      ),
   )
 }

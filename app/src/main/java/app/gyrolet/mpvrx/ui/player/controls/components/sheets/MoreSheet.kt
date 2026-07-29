@@ -7,11 +7,7 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.text.format.DateUtils
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -48,7 +43,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -58,8 +52,9 @@ import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
@@ -82,7 +77,7 @@ fun MoreSheet(
   val enableLuaScripts by advancedPreferences.enableLuaScripts.collectAsState()
   val selectedLuaScripts by advancedPreferences.selectedLuaScripts.collectAsState()
   val mpvConfStorageLocation by advancedPreferences.mpvConfStorageUri.collectAsState()
-  
+
   PlayerSheet(
     onDismissRequest,
     modifier,
@@ -182,7 +177,7 @@ fun MoreSheet(
       Text(
         text = stringResource(R.string.player_sheets_stats_page_title),
         style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary
+        color = MaterialTheme.colorScheme.primary,
       )
       LazyRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
@@ -202,17 +197,17 @@ fun MoreSheet(
                     },
                     page,
                   )
-                }
+                },
               )
             },
             onClick = {
               val isConsoleOpen = MPVLib.getPropertyBoolean("user-data/mpv/console/open") == true
-              
+
               // If we are choosing any page OTHER than Console, close the console if it's currently open
               if (page != 7 && isConsoleOpen) {
                 MPVLib.command("script-message-to", "console", "disable")
               }
-              
+
               when (page) {
                 0 -> {
                   if (statisticsPage in 1..5) MPVLib.command("script-binding", "stats/display-stats-toggle")
@@ -245,17 +240,21 @@ fun MoreSheet(
       // Standard Anime4K needs legacy gpu or gpu-next with Vulkan.
       if (anime4KUiState.isAvailable) {
         Text(
-            text = stringResource(R.string.anime4k_mode_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
+          text = stringResource(R.string.anime4k_mode_title),
+          style = MaterialTheme.typography.titleMedium,
+          color = MaterialTheme.colorScheme.primary,
         )
-        
+
         if (anime4KUiState.isHighResolution) {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_not_available_for_4k_8k_video),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+          Text(
+            text =
+              androidx.compose.ui.res.stringResource(
+                app.gyrolet.mpvrx.R.string.ui_not_available_for_4k_8k_video,
+              ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(bottom = 4.dp),
+          )
         }
 
         LazyRow(
@@ -272,8 +271,6 @@ fun MoreSheet(
           }
         }
       }
-
-
     }
   }
 }
@@ -296,7 +293,8 @@ fun TimePickerDialog(
       shape = AppShapeScale.extraLarge,
       color = MaterialTheme.colorScheme.surfaceContainerHigh,
       tonalElevation = 6.dp,
-      modifier = modifier
+      modifier =
+        modifier
           .width(360.dp)
           .padding(MaterialTheme.spacing.medium),
     ) {
@@ -306,24 +304,24 @@ fun TimePickerDialog(
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         // Header
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+          horizontalAlignment = Alignment.CenterHorizontally,
+          modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(
-              text = stringResource(R.string.timer_title), // "Sleep Timer"
-              style = MaterialTheme.typography.labelMedium,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-              text = stringResource(R.string.timer_picker_enter_timer),
-              style = MaterialTheme.typography.headlineSmall,
-              color = MaterialTheme.colorScheme.onSurface
-            )
+          Text(
+            text = stringResource(R.string.timer_title), // "Sleep Timer"
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Spacer(Modifier.height(8.dp))
+          Text(
+            text = stringResource(R.string.timer_picker_enter_timer),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+          )
         }
 
         val state =
@@ -334,33 +332,35 @@ fun TimePickerDialog(
           )
 
         TimeInput(state = state)
-        
+
         // Quick Presets
         Column(
-            horizontalAlignment = Alignment.Start,
-            modifier = Modifier.fillMaxWidth()
+          horizontalAlignment = Alignment.Start,
+          modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_quick_presets),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                sleepTimerPresets.forEach { minutes ->
-                    FilterChip(
-                        selected = false,
-                        onClick = { 
-                            onTimeSelect(minutes * 60)
-                            onDismissRequest()
-                        },
-                        label = { Text(stringResource(R.string.generic_minutes_short, minutes)) },
-                        leadingIcon = null,
-                    )
-                }
+          Text(
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_quick_presets),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 8.dp),
+          )
+          FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            sleepTimerPresets.forEach { minutes ->
+              FilterChip(
+                selected = false,
+                onClick = {
+                  onTimeSelect(minutes * 60)
+                  onDismissRequest()
+                },
+                label = { Text(stringResource(R.string.generic_minutes_short, minutes)) },
+                leadingIcon = null,
+              )
             }
+          }
         }
 
         // Actions
@@ -370,14 +370,14 @@ fun TimePickerDialog(
           modifier = Modifier.fillMaxWidth(),
         ) {
           TextButton(onClick = {
-             onTimeSelect(0)
-             onDismissRequest()
+            onTimeSelect(0)
+            onDismissRequest()
           }) {
-              Text(stringResource(id = R.string.generic_reset))
+            Text(stringResource(id = R.string.generic_reset))
           }
           Spacer(Modifier.weight(1f))
           Row(
-              horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             TextButton(onClick = onDismissRequest) {
               Text(stringResource(id = R.string.generic_cancel))
@@ -395,31 +395,33 @@ fun TimePickerDialog(
       }
     }
   }
-  }
+}
 
 @Composable
 fun SectionHeaderWithInfo(
   title: String,
   onInfoClick: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   Row(
     modifier = modifier.fillMaxWidth(),
     horizontalArrangement = Arrangement.Start,
-    verticalAlignment = Alignment.CenterVertically
+    verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(
       text = title,
       style = MaterialTheme.typography.titleMedium,
-      color = MaterialTheme.colorScheme.primary
+      color = MaterialTheme.colorScheme.primary,
     )
     Spacer(modifier = Modifier.width(8.dp))
     IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
       Icon(
         imageVector = Icons.RoundedFilled.Info,
-        contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.info),
+        contentDescription =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.info),
         tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(16.dp)
+        modifier = Modifier.size(16.dp),
       )
     }
   }

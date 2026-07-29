@@ -22,32 +22,61 @@ object HttpUtils {
   private const val READ_TIMEOUT = 3000
   private val directMediaExtensions =
     setOf(
-      "mp4", "m4v", "mkv", "webm", "avi", "mov", "wmv", "flv", "ts", "m2ts",
-      "mp3", "m4a", "aac", "flac", "wav", "ogg", "opus",
-      "m3u", "m3u8", "mpd",
+      "mp4",
+      "m4v",
+      "mkv",
+      "webm",
+      "avi",
+      "mov",
+      "wmv",
+      "flv",
+      "ts",
+      "m2ts",
+      "mp3",
+      "m4a",
+      "aac",
+      "flac",
+      "wav",
+      "ogg",
+      "opus",
+      "m3u",
+      "m3u8",
+      "mpd",
     )
   private val genericRouteTitles =
     setOf(
-      "watch", "stream", "video", "play", "embed", "download", "media",
-      "live", "reel", "reels", "short", "shorts", "player",
+      "watch",
+      "stream",
+      "video",
+      "play",
+      "embed",
+      "download",
+      "media",
+      "live",
+      "reel",
+      "reels",
+      "short",
+      "shorts",
+      "player",
     )
 
-  suspend fun extractFilenameFromUrl(url: String): String? = withContext(Dispatchers.IO) {
-    try {
-      val uri = Uri.parse(url)
-      val filenameFromHeaders = getFilenameFromHttpHeaders(url)
-      if (filenameFromHeaders != null) {
-        Log.d(TAG, "Extracted filename from headers: $filenameFromHeaders")
-        return@withContext filenameFromHeaders
+  suspend fun extractFilenameFromUrl(url: String): String? =
+    withContext(Dispatchers.IO) {
+      try {
+        val uri = Uri.parse(url)
+        val filenameFromHeaders = getFilenameFromHttpHeaders(url)
+        if (filenameFromHeaders != null) {
+          Log.d(TAG, "Extracted filename from headers: $filenameFromHeaders")
+          return@withContext filenameFromHeaders
+        }
+        val filenameFromUrl = extractFilenameFromUrlPath(uri)
+        Log.d(TAG, "Extracted filename from URL: $filenameFromUrl")
+        return@withContext filenameFromUrl
+      } catch (e: Exception) {
+        Log.e(TAG, "Error extracting filename: ${e.message}")
+        null
       }
-      val filenameFromUrl = extractFilenameFromUrlPath(uri)
-      Log.d(TAG, "Extracted filename from URL: $filenameFromUrl")
-      return@withContext filenameFromUrl
-    } catch (e: Exception) {
-      Log.e(TAG, "Error extracting filename: ${e.message}")
-      null
     }
-  }
 
   private fun getFilenameFromHttpHeaders(url: String): String? {
     var connection: HttpURLConnection? = null
@@ -115,7 +144,8 @@ object HttpUtils {
 
     if (lastSegment.isNotBlank()) {
       return try {
-        URLDecoder.decode(lastSegment, "UTF-8")
+        URLDecoder
+          .decode(lastSegment, "UTF-8")
           .substringBefore("?")
           .substringBefore("#")
           .takeIf { it.isNotBlank() } ?: uri.host ?: "Network Stream"
@@ -130,7 +160,8 @@ object HttpUtils {
   fun isNetworkStream(uri: Uri?): Boolean {
     if (uri == null) return false
     val scheme = uri.scheme?.lowercase()
-    return scheme in listOf("http", "https", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh", "ftp", "ftps", "gopher", "sctp")
+    return scheme in
+      listOf("http", "https", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh", "ftp", "ftps", "gopher", "sctp")
   }
 
   fun shouldPreferResolvedMediaTitle(
@@ -154,7 +185,11 @@ object HttpUtils {
   }
 
   private fun hasDirectMediaExtension(uri: Uri): Boolean {
-    val lastSegment = uri.lastPathSegment?.substringAfterLast('/')?.let(Uri::decode).orEmpty()
+    val lastSegment =
+      uri.lastPathSegment
+        ?.substringAfterLast('/')
+        ?.let(Uri::decode)
+        .orEmpty()
     if (lastSegment.isBlank()) return false
     val extension = lastSegment.substringAfterLast('.', "").lowercase()
     return extension in directMediaExtensions
@@ -163,18 +198,18 @@ object HttpUtils {
   /**
    * Extracts the referer domain from a Uri.
    * Returns the full origin (scheme + host + port) to be used as Referer header.
-   * 
+   *
    * @param uri The Uri to extract the referer from
    * @return The referer origin string, or null if extraction fails
    */
   fun extractRefererDomain(uri: Uri?): String? {
     if (uri == null) return null
-    
+
     return try {
       val scheme = uri.scheme ?: return null
       val host = uri.host ?: return null
       val port = uri.port
-      
+
       // Build the referer origin
       if (port != -1 && port != 80 && port != 443) {
         // Include non-standard port
@@ -195,30 +230,35 @@ object HttpUtils {
    */
   fun isLikelyJunkTitle(title: String?): Boolean {
     if (title.isNullOrBlank()) return true
-    
+
     val lower = title.lowercase()
 
     if (lower in genericRouteTitles) return true
-    
+
     // Check for common URL patterns
     if (lower.startsWith("http") || lower.contains("://") || lower.contains("www.")) return true
-    
+
     // Check for query parameters or common dynamic file types
-    if (lower.contains("?") || lower.contains("&") || lower.contains("=") || 
-        lower.contains(".aspx") || lower.contains(".php") || 
-        lower.contains(".jsp") || lower.contains(".cfm")) return true
-        
+    if (lower.contains("?") ||
+      lower.contains("&") ||
+      lower.contains("=") ||
+      lower.contains(".aspx") ||
+      lower.contains(".php") ||
+      lower.contains(".jsp") ||
+      lower.contains(".cfm")
+    ) {
+      return true
+    }
+
     // Check for "download" prefix followed by nonsense
     if (lower.startsWith("download.")) return true
-    
+
     // Check for specific junk seen in user screenshots
     if (lower.contains("share=") || lower.contains("tokens=")) return true
-    
+
     // Unusually long strings with no spaces are likely URLs or hashes
     if (title.length > 60 && !title.contains(" ")) return true
-    
+
     return false
   }
 }
-
-

@@ -60,8 +60,7 @@ fun OnlineSubtitle.subdlGroupEpisodeRange(): IntRange? {
   return start..end
 }
 
-fun OnlineSubtitle.selectedSubdlGroupEpisode(): Int? =
-  metadata[SUBDL_SELECTED_EPISODE_KEY]?.toIntOrNull()
+fun OnlineSubtitle.selectedSubdlGroupEpisode(): Int? = metadata[SUBDL_SELECTED_EPISODE_KEY]?.toIntOrNull()
 
 fun OnlineSubtitle.withSelectedSubdlGroupEpisode(episode: Int): OnlineSubtitle =
   copy(metadata = metadata + (SUBDL_SELECTED_EPISODE_KEY to episode.toString()))

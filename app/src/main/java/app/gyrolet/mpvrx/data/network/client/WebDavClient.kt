@@ -8,12 +8,11 @@
 package app.gyrolet.mpvrx.data.network.client
 
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
+import com.thegrizzlylabs.sardineandroid.DavResource
 import com.thegrizzlylabs.sardineandroid.Sardine
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
-import com.thegrizzlylabs.sardineandroid.DavResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
@@ -21,7 +20,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.InputStream
 
-class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
+class WebDavClient(
+  private val connection: NetworkConnection,
+) : NetworkClient {
   companion object {
     private const val TAG = "WebDavClient"
     private val rangeHttpClient by lazy { OkHttpClient() }
@@ -39,7 +40,7 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
     val protocol = if (connection.useHttps) "https" else "http"
     val basePath = connection.path.trim('/')
     val cleanPath = relativePath.trim('/')
-    
+
     // If relativePath is "/" or empty, it means we're at the root of the connection
     // In that case, just use the basePath (connection.path)
     return when {
@@ -98,13 +99,14 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
             .drop(1) // Skip the directory itself
             .map { resource: DavResource ->
               val resourceName = resource.name ?: ""
-              
+
               // Build child path by appending filename to current path
-              val filePath = if (path.isEmpty() || path == "/") {
-                resourceName
-              } else {
-                "${path.trimEnd('/')}/$resourceName"
-              }
+              val filePath =
+                if (path.isEmpty() || path == "/") {
+                  resourceName
+                } else {
+                  "${path.trimEnd('/')}/$resourceName"
+                }
 
               NetworkFile(
                 name = resourceName,
@@ -132,7 +134,7 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
         val client = sardine ?: return@withContext Result.failure(Exception("Not connected"))
 
         val url = buildUrl(path)
-        
+
         // Use PROPFIND to get file properties including size
         val resources = client.list(url, 0) // depth 0 = only the resource itself
         if (resources.isNotEmpty() && !resources[0].isDirectory) {
@@ -146,7 +148,10 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
       }
     }
 
-  override suspend fun getFileStream(path: String, offset: Long): Result<InputStream> =
+  override suspend fun getFileStream(
+    path: String,
+    offset: Long,
+  ): Result<InputStream> =
     withContext(Dispatchers.IO) {
       try {
         if (offset > 0L) {
@@ -168,23 +173,28 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
         }
 
         // Wrap the stream
-        val wrappedStream = object : InputStream() {
-          override fun read(): Int = rawStream.read()
+        val wrappedStream =
+          object : InputStream() {
+            override fun read(): Int = rawStream.read()
 
-          override fun read(b: ByteArray): Int = rawStream.read(b)
+            override fun read(b: ByteArray): Int = rawStream.read(b)
 
-          override fun read(b: ByteArray, off: Int, len: Int): Int = rawStream.read(b, off, len)
+            override fun read(
+              b: ByteArray,
+              off: Int,
+              len: Int,
+            ): Int = rawStream.read(b, off, len)
 
-          override fun available(): Int = rawStream.available()
+            override fun available(): Int = rawStream.available()
 
-          override fun close() {
-            try {
-              rawStream.close()
-            } catch (e: Exception) {
-              // Ignore
+            override fun close() {
+              try {
+                rawStream.close()
+              } catch (e: Exception) {
+                // Ignore
+              }
             }
           }
-        }
 
         Result.success(wrappedStream)
       } catch (e: Exception) {
@@ -192,9 +202,13 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
       }
     }
 
-  private fun getRangedFileStream(path: String, offset: Long): Result<InputStream> {
+  private fun getRangedFileStream(
+    path: String,
+    offset: Long,
+  ): Result<InputStream> {
     val requestBuilder =
-      Request.Builder()
+      Request
+        .Builder()
         .url(buildUrl(path))
         .get()
         .addHeader("Range", "bytes=$offset-")
@@ -213,17 +227,25 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
     }
 
     val rawStream = response.body.byteStream()
-    val wrappedStream = object : InputStream() {
-      override fun read(): Int = rawStream.read()
-      override fun read(b: ByteArray): Int = rawStream.read(b)
-      override fun read(b: ByteArray, off: Int, len: Int): Int = rawStream.read(b, off, len)
-      override fun available(): Int = rawStream.available()
+    val wrappedStream =
+      object : InputStream() {
+        override fun read(): Int = rawStream.read()
 
-      override fun close() {
-        runCatching { rawStream.close() }
-        runCatching { response.close() }
+        override fun read(b: ByteArray): Int = rawStream.read(b)
+
+        override fun read(
+          b: ByteArray,
+          off: Int,
+          len: Int,
+        ): Int = rawStream.read(b, off, len)
+
+        override fun available(): Int = rawStream.available()
+
+        override fun close() {
+          runCatching { rawStream.close() }
+          runCatching { response.close() }
+        }
       }
-    }
     return Result.success(wrappedStream)
   }
 
@@ -233,19 +255,21 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
         val protocol = if (connection.useHttps) "https" else "http"
         val basePath = connection.path.trim('/')
         val cleanPath = path.trim('/')
-        
-        val fullPath = when {
-          cleanPath.isEmpty() -> basePath
-          basePath.isEmpty() -> cleanPath
-          else -> "$basePath/$cleanPath"
-        }
+
+        val fullPath =
+          when {
+            cleanPath.isEmpty() -> basePath
+            basePath.isEmpty() -> cleanPath
+            else -> "$basePath/$cleanPath"
+          }
 
         // Build WebDAV URI with credentials embedded for mpv
-        val uriString = if (connection.isAnonymous) {
-          "$protocol://${connection.host}:${connection.port}/$fullPath"
-        } else {
-          "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}/$fullPath"
-        }
+        val uriString =
+          if (connection.isAnonymous) {
+            "$protocol://${connection.host}:${connection.port}/$fullPath"
+          } else {
+            "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}/$fullPath"
+          }
 
         Result.success(Uri.parse(uriString))
       } catch (e: Exception) {
@@ -270,4 +294,3 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
     }
   }
 }
-

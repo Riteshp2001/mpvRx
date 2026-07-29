@@ -7,9 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.sheets
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.launch
@@ -106,7 +105,10 @@ fun PlayLinkSheet(
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       // Title
-      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_link),
+      Text(
+        text =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_play_link),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurface,
@@ -123,7 +125,12 @@ fun PlayLinkSheet(
             isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
           },
           modifier = Modifier.fillMaxWidth(),
-          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_enter_url)) },
+          label = {
+            Text(
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_enter_url),
+            )
+          },
           placeholder = { Text("https://example.com/video.mp4") },
           singleLine = true,
           isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
@@ -135,7 +142,10 @@ fun PlayLinkSheet(
         )
 
         if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
-          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_unsupported_url_protocol),
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_unsupported_url_protocol),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
@@ -149,7 +159,10 @@ fun PlayLinkSheet(
         horizontalArrangement = Arrangement.End,
       ) {
         TextButton(onClick = handleDismiss) {
-          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
             fontWeight = FontWeight.Medium,
           )
         }
@@ -162,7 +175,10 @@ fun PlayLinkSheet(
               containerColor = MaterialTheme.colorScheme.primary,
             ),
         ) {
-          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
             fontWeight = FontWeight.SemiBold,
           )
         }
@@ -178,18 +194,18 @@ private fun ValidationIcon(isValid: Boolean) {
   if (isValid) {
     Icon(
       Icons.RoundedFilled.Check,
-      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_valid_url),
+      contentDescription =
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.ui_valid_url),
       tint = MaterialTheme.colorScheme.primary,
     )
   } else {
     Icon(
       Icons.RoundedFilled.Close,
-      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_invalid_url),
+      contentDescription =
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.ui_invalid_url),
       tint = MaterialTheme.colorScheme.error,
     )
   }
 }
-
-
-
-

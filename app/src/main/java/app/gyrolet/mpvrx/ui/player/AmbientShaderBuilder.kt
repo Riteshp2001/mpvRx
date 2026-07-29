@@ -157,7 +157,6 @@ object AmbientShaderPresets {
       vignetteStrength = 0.62f,
       opacity = 1.0f,
     )
-
 }
 
 fun matchesGlowPreset(
@@ -210,9 +209,11 @@ private const val GOLDEN_ANGLE = 2.399963229728653
 
 private fun glslFloat(value: Double): String {
   val normalized = if (abs(value) < 0.0000005) 0.0 else value
-  val formatted = String.format(Locale.US, "%.8f", normalized)
-    .trimEnd('0')
-    .trimEnd('.')
+  val formatted =
+    String
+      .format(Locale.US, "%.8f", normalized)
+      .trimEnd('0')
+      .trimEnd('.')
   return if (formatted.contains('.')) formatted else "$formatted.0"
 }
 
@@ -234,7 +235,10 @@ private fun buildSpiralTapTable(
   return "const vec3 $name[$count] = vec3[$count](\n$taps\n);"
 }
 
-private fun halton(index: Int, base: Int): Double {
+private fun halton(
+  index: Int,
+  base: Int,
+): Double {
   var result = 0.0
   var f = 1.0
   var i = index
@@ -261,9 +265,10 @@ object AmbientShaderBuilder {
     }
 
   private val youtubeTapTable: String by lazy {
-    val taps = (1..8).joinToString(",\n") { i ->
-      "    vec2(${glslFloat(halton(i, 2))}, ${glslFloat(halton(i, 3))})"
-    }
+    val taps =
+      (1..8).joinToString(",\n") { i ->
+        "    vec2(${glslFloat(halton(i, 2))}, ${glslFloat(halton(i, 3))})"
+      }
     "const vec2 YOUTUBE_TAPS[8] = vec2[8](\n$taps\n);"
   }
 
@@ -285,7 +290,7 @@ object AmbientShaderBuilder {
 
 // 8 Halton(2,3) positions precomputed in Kotlin — better spatial coverage than
 // 20 pseudo-random scatter points, 60% fewer texture fetches per ambient pixel.
-${youtubeTapTable}
+$youtubeTapTable
 
 vec4 hook() {
     vec2 uv = HOOKED_pos;
@@ -328,8 +333,7 @@ vec4 hook() {
 }
     """.trimIndent()
 
-  private fun buildGlow(spec: AmbientGlowShaderSpec): String =
-    buildGlowFull(spec)
+  private fun buildGlow(spec: AmbientGlowShaderSpec): String = buildGlowFull(spec)
 
   private fun buildGlowFull(spec: AmbientGlowShaderSpec): String =
     """
@@ -431,8 +435,7 @@ vec4 hook() {
 }
     """.trimIndent()
 
-  private fun buildFrameExtend(spec: AmbientFrameExtendShaderSpec): String =
-    buildFrameExtendFull(spec)
+  private fun buildFrameExtend(spec: AmbientFrameExtendShaderSpec): String = buildFrameExtendFull(spec)
 
   private fun buildFrameExtendFull(spec: AmbientFrameExtendShaderSpec): String {
     val effectiveBudget = spec.sampleBudget.coerceIn(8, 32)
@@ -652,7 +655,6 @@ vec4 hook() {
     vec4 ambient_out = vec4(fill_rgb * OPACITY, 1.0);
     return mix(vec4(edge_rgb, 1.0), ambient_out, bezel_alpha);
 }
-    """.trimIndent()
+      """.trimIndent()
   }
 }
-

@@ -28,6 +28,7 @@ abstract class BaseBrowserViewModel(
 ) : AndroidViewModel(application),
   KoinComponent {
   protected val metadataCache: VideoMetadataCacheRepository by inject()
+
   /**
    * Observable recently played file path for highlighting
    * Automatically filters out non-existent files
@@ -81,4 +82,3 @@ abstract class BaseBrowserViewModel(
     return result
   }
 }
-

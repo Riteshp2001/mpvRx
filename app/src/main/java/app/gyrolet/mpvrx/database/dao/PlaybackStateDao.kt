@@ -44,4 +44,3 @@ interface PlaybackStateDao {
   @Upsert
   suspend fun upsertAll(playbackStates: List<PlaybackStateEntity>)
 }
-

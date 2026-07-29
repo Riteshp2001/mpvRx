@@ -17,30 +17,29 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class NetworkLifecycleObserver(
-    private val networkRepository: NetworkRepository
+  private val networkRepository: NetworkRepository,
 ) : DefaultLifecycleObserver {
+  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    override fun onStop(owner: LifecycleOwner) {
-        super.onStop(owner)
-        Log.d("NetworkLifecycle", "App in background: Disconnecting all idle network shares to save battery")
-        scope.launch {
-            try {
-                networkRepository.disconnectAll()
-            } catch (e: Exception) {
-                Log.e("NetworkLifecycle", "Error disconnecting shares", e)
-            }
-        }
+  override fun onStop(owner: LifecycleOwner) {
+    super.onStop(owner)
+    Log.d("NetworkLifecycle", "App in background: Disconnecting all idle network shares to save battery")
+    scope.launch {
+      try {
+        networkRepository.disconnectAll()
+      } catch (e: Exception) {
+        Log.e("NetworkLifecycle", "Error disconnecting shares", e)
+      }
     }
+  }
 
-    override fun onDestroy(owner: LifecycleOwner) {
-        // Cancel any pending disconnect work and release the SupervisorJob so
-        // the CoroutineScope is not leaked when MainActivity is destroyed
-        // (config change, process death, etc.). Without this, every Activity
-        // recreation leaks a scope with a live job. See issue 2.5 in the
-        // leak audit.
-        scope.cancel()
-        super.onDestroy(owner)
-    }
+  override fun onDestroy(owner: LifecycleOwner) {
+    // Cancel any pending disconnect work and release the SupervisorJob so
+    // the CoroutineScope is not leaked when MainActivity is destroyed
+    // (config change, process death, etc.). Without this, every Activity
+    // recreation leaks a scope with a live job. See issue 2.5 in the
+    // leak audit.
+    scope.cancel()
+    super.onDestroy(owner)
+  }
 }

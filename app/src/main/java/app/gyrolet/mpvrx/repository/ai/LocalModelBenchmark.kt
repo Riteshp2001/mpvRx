@@ -18,11 +18,12 @@ data class LocalModelBenchmark(
   val benchmarkedAtMs: Long,
 ) {
   val loadLabel: String
-    get() = if (loadMs >= 1000) {
-      "%.1fs load".format(loadMs / 1000f)
-    } else {
-      "${loadMs}ms load"
-    }
+    get() =
+      if (loadMs >= 1000) {
+        "%.1fs load".format(loadMs / 1000f)
+      } else {
+        "${loadMs}ms load"
+      }
 
   val speedLabel: String
     get() = "%.1f tok/s".format(tokensPerSecond)

@@ -7,8 +7,8 @@
 
 package app.gyrolet.mpvrx.ui.player
 
-import `is`.xyz.mpv.MPVLib
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
+import `is`.xyz.mpv.MPVLib
 import org.koin.core.context.GlobalContext
 import kotlin.math.roundToInt
 
@@ -20,15 +20,17 @@ private val subtitlesPreferences by lazy {
   GlobalContext.get().get<SubtitlesPreferences>()
 }
 
-fun clampSubtitlePosition(position: Int): Int =
-  position.coerceIn(MIN_SUBTITLE_POSITION, MAX_SUBTITLE_POSITION)
+fun clampSubtitlePosition(position: Int): Int = position.coerceIn(MIN_SUBTITLE_POSITION, MAX_SUBTITLE_POSITION)
 
 /**
  * Estimates subtitle hitbox bounds (lowerBound, upperBound) relative to subtitleScreenY.
  * Accounts for sub-text content, font size, sub-scale, and screen width to handle
  * multi-line wrapping in both portrait and landscape.
  */
-fun getSubtitleHitboxBounds(screenWidth: Float, screenHeight: Float): Pair<Float, Float> {
+fun getSubtitleHitboxBounds(
+  screenWidth: Float,
+  screenHeight: Float,
+): Pair<Float, Float> {
   val subScale = MPVLib.getPropertyFloat("sub-scale") ?: subtitlesPreferences.subScale.get()
   val fontSize = (MPVLib.getPropertyInt("sub-font-size") ?: subtitlesPreferences.fontSize.get()).toFloat()
   val scaleMultiplier = subScale.coerceIn(0.4f, 3.0f)
@@ -39,29 +41,31 @@ fun getSubtitleHitboxBounds(screenWidth: Float, screenHeight: Float): Pair<Float
 
   // Estimate how many lines the subtitle actually occupies
   val subText = MPVLib.getPropertyString("sub-text") ?: ""
-  val estimatedLines = if (subText.isNotEmpty()) {
-    // Count explicit newlines first
-    val explicitLines = subText.split("\n")
+  val estimatedLines =
+    if (subText.isNotEmpty()) {
+      // Count explicit newlines first
+      val explicitLines = subText.split("\n")
 
-    // Estimate wrapping per explicit line based on available width
-    // Subtitles typically use ~80% of screen width (sub-margin-x on each side)
-    val subMarginX = (MPVLib.getPropertyInt("sub-margin-x") ?: 25).toFloat()
-    val availableWidth = screenWidth * (1f - 2f * subMarginX / screenWidth.coerceAtLeast(1f))
+      // Estimate wrapping per explicit line based on available width
+      // Subtitles typically use ~80% of screen width (sub-margin-x on each side)
+      val subMarginX = (MPVLib.getPropertyInt("sub-margin-x") ?: 25).toFloat()
+      val availableWidth = screenWidth * (1f - 2f * subMarginX / screenWidth.coerceAtLeast(1f))
 
-    // Estimate character width: roughly fontSize * scale * 0.55 (typical char width ratio)
-    val charWidthPx = (fontSize / 720f) * screenHeight * scaleMultiplier * 0.55f
-    val charsPerLine = if (charWidthPx > 0f) (availableWidth / charWidthPx).toInt().coerceAtLeast(1) else 40
+      // Estimate character width: roughly fontSize * scale * 0.55 (typical char width ratio)
+      val charWidthPx = (fontSize / 720f) * screenHeight * scaleMultiplier * 0.55f
+      val charsPerLine = if (charWidthPx > 0f) (availableWidth / charWidthPx).toInt().coerceAtLeast(1) else 40
 
-    var totalLines = 0
-    for (line in explicitLines) {
-      val stripped = line.replace(Regex("<[^>]*>"), "").replace(Regex("[{][^}]*[}]"), "")
-      totalLines += if (stripped.isEmpty()) 1 else ((stripped.length + charsPerLine - 1) / charsPerLine).coerceAtLeast(1)
+      var totalLines = 0
+      for (line in explicitLines) {
+        val stripped = line.replace(Regex("<[^>]*>"), "").replace(Regex("[{][^}]*[}]"), "")
+        totalLines +=
+          if (stripped.isEmpty()) 1 else ((stripped.length + charsPerLine - 1) / charsPerLine).coerceAtLeast(1)
+      }
+      totalLines.coerceAtLeast(1)
+    } else {
+      // No text available, assume a reasonable default
+      2
     }
-    totalLines.coerceAtLeast(1)
-  } else {
-    // No text available, assume a reasonable default
-    2
-  }
 
   // Subtitle text grows upward from the sub-pos anchor point.
   // Lower bound: small region below the anchor (padding for touch imprecision)
@@ -80,10 +84,20 @@ fun calculateSecondarySubtitlePosition(
 ): Int {
   val primary = clampSubtitlePosition(primaryPosition)
 
-  val width = screenWidth ?: MPVLib.getPropertyInt("osd-width")?.toFloat()
-    ?: GlobalContext.get().get<android.content.Context>().resources.displayMetrics.widthPixels.toFloat()
-  val height = screenHeight ?: MPVLib.getPropertyInt("osd-height")?.toFloat()
-    ?: GlobalContext.get().get<android.content.Context>().resources.displayMetrics.heightPixels.toFloat()
+  val width =
+    screenWidth ?: MPVLib.getPropertyInt("osd-width")?.toFloat()
+      ?: GlobalContext
+        .get()
+        .get<android.content.Context>()
+        .resources.displayMetrics.widthPixels
+        .toFloat()
+  val height =
+    screenHeight ?: MPVLib.getPropertyInt("osd-height")?.toFloat()
+      ?: GlobalContext
+        .get()
+        .get<android.content.Context>()
+        .resources.displayMetrics.heightPixels
+        .toFloat()
 
   // Calculate the hitbox of the primary subtitle
   val (_, upperBound) = getSubtitleHitboxBounds(width, height)
@@ -125,10 +139,20 @@ fun applySubtitlePositions(
   MPVLib.setPropertyInt("sub-pos", primary)
 
   // Retrieve OSD or display dimensions as fallbacks if null
-  val width = screenWidth ?: MPVLib.getPropertyInt("osd-width")?.toFloat()
-    ?: GlobalContext.get().get<android.content.Context>().resources.displayMetrics.widthPixels.toFloat()
-  val height = screenHeight ?: MPVLib.getPropertyInt("osd-height")?.toFloat()
-    ?: GlobalContext.get().get<android.content.Context>().resources.displayMetrics.heightPixels.toFloat()
+  val width =
+    screenWidth ?: MPVLib.getPropertyInt("osd-width")?.toFloat()
+      ?: GlobalContext
+        .get()
+        .get<android.content.Context>()
+        .resources.displayMetrics.widthPixels
+        .toFloat()
+  val height =
+    screenHeight ?: MPVLib.getPropertyInt("osd-height")?.toFloat()
+      ?: GlobalContext
+        .get()
+        .get<android.content.Context>()
+        .resources.displayMetrics.heightPixels
+        .toFloat()
 
   MPVLib.setPropertyInt("secondary-sub-pos", calculateSecondarySubtitlePosition(primary, width, height))
 }
@@ -142,4 +166,3 @@ fun applySubtitleLayout(
   applySubtitleOverrides(forceAssOverride)
   applySubtitlePositions(primaryPosition, screenWidth, screenHeight)
 }
-

@@ -7,28 +7,29 @@
 
 package app.gyrolet.mpvrx.ui.utils
 
-import androidx.compose.ui.unit.Dp
-
 import androidx.compose.runtime.Composable
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import org.koin.compose.koinInject
 import kotlin.math.abs
 
-fun lcm(a: Int, b: Int): Int {
-  return if (a == 0 || b == 0) 0 else abs(a * b) / gcd(a, b)
-}
+fun lcm(
+  a: Int,
+  b: Int,
+): Int = if (a == 0 || b == 0) 0 else abs(a * b) / gcd(a, b)
 
-fun gcd(a: Int, b: Int): Int {
-  return if (b == 0) a else gcd(b, a % b)
-}
+fun gcd(
+  a: Int,
+  b: Int,
+): Int = if (b == 0) a else gcd(b, a % b)
 
 data class ResponsiveGridSpans(
   val spans: Int,
   val folderSpan: Int,
-  val videoSpan: Int
+  val videoSpan: Int,
 )
 
 @Composable
@@ -38,7 +39,7 @@ fun calculateResponsiveGridSpans(
   videoMinWidth: Dp = 130.dp,
   contentHorizontalPadding: Dp = 8.dp,
   itemSpacing: Dp = 2.dp,
-  isGridMode: Boolean = true
+  isGridMode: Boolean = true,
 ): ResponsiveGridSpans {
   val browserPreferences = koinInject<BrowserPreferences>()
   val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()

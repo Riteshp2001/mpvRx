@@ -48,4 +48,3 @@ data class PathComponent(
   val name: String,
   val fullPath: String,
 )
-

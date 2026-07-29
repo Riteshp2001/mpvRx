@@ -7,12 +7,10 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components
 
-import android.graphics.Paint as AndroidPaint
 import android.graphics.Typeface
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.updateTransition
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,14 +26,16 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import android.graphics.Paint as AndroidPaint
 
 @Composable
 fun AnimatedPlayPauseIcon(
@@ -44,31 +44,67 @@ fun AnimatedPlayPauseIcon(
   tint: Color = LocalContentColor.current,
 ) {
   val transition = updateTransition(targetState = isPlaying, label = "play_pause_icon")
-  val playAlpha = transition.animateFloat(
-    transitionSpec = { spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness) },
-    label = "play_alpha",
-  ) { playing -> if (playing) 0f else 1f }
-  val playScale = transition.animateFloat(
-    transitionSpec = { spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness) },
-    label = "play_scale",
-  ) { playing -> if (playing) 0.82f else 1f }
-  val playRotation = transition.animateFloat(
-    transitionSpec = { spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness) },
-    label = "play_rotation",
-  ) { playing -> if (playing) -12f else 0f }
+  val playAlpha =
+    transition.animateFloat(
+      transitionSpec = {
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        )
+      },
+      label = "play_alpha",
+    ) { playing -> if (playing) 0f else 1f }
+  val playScale =
+    transition.animateFloat(
+      transitionSpec = {
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        )
+      },
+      label = "play_scale",
+    ) { playing -> if (playing) 0.82f else 1f }
+  val playRotation =
+    transition.animateFloat(
+      transitionSpec = {
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        )
+      },
+      label = "play_rotation",
+    ) { playing -> if (playing) -12f else 0f }
 
-  val pauseAlpha = transition.animateFloat(
-    transitionSpec = { spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness) },
-    label = "pause_alpha",
-  ) { playing -> if (playing) 1f else 0f }
-  val pauseScale = transition.animateFloat(
-    transitionSpec = { spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness) },
-    label = "pause_scale",
-  ) { playing -> if (playing) 1f else 0.82f }
-  val barSpread = transition.animateFloat(
-    transitionSpec = { spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness) },
-    label = "pause_spread",
-  ) { playing -> if (playing) 1f else 0f }
+  val pauseAlpha =
+    transition.animateFloat(
+      transitionSpec = {
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        )
+      },
+      label = "pause_alpha",
+    ) { playing -> if (playing) 1f else 0f }
+  val pauseScale =
+    transition.animateFloat(
+      transitionSpec = {
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        )
+      },
+      label = "pause_scale",
+    ) { playing -> if (playing) 1f else 0.82f }
+  val barSpread =
+    transition.animateFloat(
+      transitionSpec = {
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        )
+      },
+      label = "pause_spread",
+    ) { playing -> if (playing) 1f else 0f }
 
   Box(
     modifier = modifier,
@@ -85,16 +121,17 @@ fun AnimatedPlayPauseIcon(
             rotationZ = playRotation.value,
           ),
     ) {
-      val triangle = Path().apply {
-        moveTo(size.width * 0.34f, size.height * 0.20f)
-        quadraticTo(size.width * 0.30f, size.height * 0.24f, size.width * 0.30f, size.height * 0.31f)
-        lineTo(size.width * 0.30f, size.height * 0.69f)
-        quadraticTo(size.width * 0.30f, size.height * 0.76f, size.width * 0.34f, size.height * 0.80f)
-        lineTo(size.width * 0.76f, size.height * 0.56f)
-        quadraticTo(size.width * 0.83f, size.height * 0.52f, size.width * 0.83f, size.height * 0.50f)
-        quadraticTo(size.width * 0.83f, size.height * 0.48f, size.width * 0.76f, size.height * 0.44f)
-        close()
-      }
+      val triangle =
+        Path().apply {
+          moveTo(size.width * 0.34f, size.height * 0.20f)
+          quadraticTo(size.width * 0.30f, size.height * 0.24f, size.width * 0.30f, size.height * 0.31f)
+          lineTo(size.width * 0.30f, size.height * 0.69f)
+          quadraticTo(size.width * 0.30f, size.height * 0.76f, size.width * 0.34f, size.height * 0.80f)
+          lineTo(size.width * 0.76f, size.height * 0.56f)
+          quadraticTo(size.width * 0.83f, size.height * 0.52f, size.width * 0.83f, size.height * 0.50f)
+          quadraticTo(size.width * 0.83f, size.height * 0.48f, size.width * 0.76f, size.height * 0.44f)
+          close()
+        }
       drawPath(
         path = triangle,
         color = tint,
@@ -235,7 +272,12 @@ fun AbLoopIcon(
       )
 
       drawIntoCanvas { canvas ->
-        fun drawLabel(text: String, center: Offset, color: Color, horizontalOffset: Float) {
+        fun drawLabel(
+          text: String,
+          center: Offset,
+          color: Color,
+          horizontalOffset: Float,
+        ) {
           val paint =
             AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
               this.color = color.toArgb()
@@ -255,4 +297,3 @@ fun AbLoopIcon(
     }
   }
 }
-

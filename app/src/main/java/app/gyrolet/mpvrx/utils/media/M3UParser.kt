@@ -39,8 +39,15 @@ data class M3UPlaylistItem(
  * Result of M3U playlist parsing
  */
 sealed class M3UParseResult {
-  data class Success(val playlistName: String, val items: List<M3UPlaylistItem>) : M3UParseResult()
-  data class Error(val message: String, val exception: Throwable? = null) : M3UParseResult()
+  data class Success(
+    val playlistName: String,
+    val items: List<M3UPlaylistItem>,
+  ) : M3UParseResult()
+
+  data class Error(
+    val message: String,
+    val exception: Throwable? = null,
+  ) : M3UParseResult()
 }
 
 /**
@@ -57,7 +64,7 @@ object M3UParser {
   private const val KODIPROP_PREFIX = "#KODIPROP:"
   private const val EXTVLCOPT_PREFIX = "#EXTVLCOPT:"
   private const val KODI_LICENSE_TYPE = "inputstream.adaptive.license_type"
-  private const val KODI_LICENSE_KEY  = "inputstream.adaptive.license_key"
+  private const val KODI_LICENSE_KEY = "inputstream.adaptive.license_key"
 
   private val kodiPropRegex = """([^=]+)=(.+)""".toRegex()
   private val extinfMetaRegex = """([\w\-_.]+)=\s*(?:"([^"]*)"|([\S]+))""".toRegex()
@@ -66,84 +73,100 @@ object M3UParser {
   /**
    * Parse an M3U/M3U8 playlist from a URL
    */
-  suspend fun parseFromUrl(url: String, userAgent: String? = null): M3UParseResult = withContext(Dispatchers.IO) {
-    try {
-      Log.d(TAG, "Parsing M3U playlist from URL: $url")
-      
-      val urlObj = URL(url)
-      val connection = urlObj.openConnection() as HttpURLConnection
-      connection.connectTimeout = TIMEOUT_MS
-      connection.readTimeout = TIMEOUT_MS
-      connection.requestMethod = "GET"
-      connection.setRequestProperty("User-Agent", userAgent?.takeIf { it.isNotBlank() } ?: DEFAULT_USER_AGENT)
-      
-      val responseCode = connection.responseCode
-      if (responseCode != HttpURLConnection.HTTP_OK) {
-        return@withContext M3UParseResult.Error("HTTP error: $responseCode")
+  suspend fun parseFromUrl(
+    url: String,
+    userAgent: String? = null,
+  ): M3UParseResult =
+    withContext(Dispatchers.IO) {
+      try {
+        Log.d(TAG, "Parsing M3U playlist from URL: $url")
+
+        val urlObj = URL(url)
+        val connection = urlObj.openConnection() as HttpURLConnection
+        connection.connectTimeout = TIMEOUT_MS
+        connection.readTimeout = TIMEOUT_MS
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("User-Agent", userAgent?.takeIf { it.isNotBlank() } ?: DEFAULT_USER_AGENT)
+
+        val responseCode = connection.responseCode
+        if (responseCode != HttpURLConnection.HTTP_OK) {
+          return@withContext M3UParseResult.Error("HTTP error: $responseCode")
+        }
+
+        val content =
+          BufferedReader(InputStreamReader(connection.inputStream, "UTF-8")).use { reader ->
+            reader.readText()
+          }
+
+        connection.disconnect()
+
+        parseContent(content, url)
+      } catch (e: Exception) {
+        Log.e(TAG, "Error parsing M3U playlist", e)
+        M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
       }
-      
-      val content = BufferedReader(InputStreamReader(connection.inputStream, "UTF-8")).use { reader ->
-        reader.readText()
-      }
-      
-      connection.disconnect()
-      
-      parseContent(content, url)
-    } catch (e: Exception) {
-      Log.e(TAG, "Error parsing M3U playlist", e)
-      M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
     }
-  }
-  
+
   /**
    * Parse an M3U/M3U8 playlist from a local file URI
    */
-  suspend fun parseFromUri(context: Context, uri: Uri): M3UParseResult = withContext(Dispatchers.IO) {
-    try {
-      Log.d(TAG, "Parsing M3U playlist from URI: $uri")
-      
-      val content = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-        BufferedReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
-          reader.readText()
-        }
-      } ?: return@withContext M3UParseResult.Error("Failed to open file")
-      
-      // Resolve sourceUrl to its real filesystem path to allow proper base directory resolution
-      val resolvedPath = runCatching { uri.openContentFd(context) }.getOrNull()
-      val sourceUrl = if (resolvedPath != null && !resolvedPath.startsWith("fd://")) {
-        resolvedPath
-      } else {
-        uri.toString()
+  suspend fun parseFromUri(
+    context: Context,
+    uri: Uri,
+  ): M3UParseResult =
+    withContext(Dispatchers.IO) {
+      try {
+        Log.d(TAG, "Parsing M3U playlist from URI: $uri")
+
+        val content =
+          context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            BufferedReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
+              reader.readText()
+            }
+          } ?: return@withContext M3UParseResult.Error("Failed to open file")
+
+        // Resolve sourceUrl to its real filesystem path to allow proper base directory resolution
+        val resolvedPath = runCatching { uri.openContentFd(context) }.getOrNull()
+        val sourceUrl =
+          if (resolvedPath != null && !resolvedPath.startsWith("fd://")) {
+            resolvedPath
+          } else {
+            uri.toString()
+          }
+
+        // Get filename for playlist name with multi-stage fallback
+        val rawFilename =
+          context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) {
+              cursor.getString(nameIndex)
+            } else {
+              null
+            }
+          } ?: (if (resolvedPath != null && !resolvedPath.startsWith("fd://")) File(resolvedPath).name else null)
+            ?: uri.lastPathSegment
+            ?: "Local M3U Playlist"
+
+        // URL-decode to handle encoded names (e.g. %20 -> space, %3A -> :)
+        val decodedFilename =
+          runCatching { java.net.URLDecoder.decode(rawFilename, "UTF-8") }.getOrNull() ?: rawFilename
+
+        // Clean the name: strip extension, replace underscores/dashes with spaces
+        val cleanPlaylistName =
+          decodedFilename
+            .substringBeforeLast('.')
+            .replace('_', ' ')
+            .replace('-', ' ')
+            .trim()
+            .ifEmpty { "Local M3U Playlist" }
+
+        parseContent(content, sourceUrl, overridePlaylistName = cleanPlaylistName)
+      } catch (e: Exception) {
+        Log.e(TAG, "Error parsing M3U playlist from URI", e)
+        M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
       }
-
-      // Get filename for playlist name with multi-stage fallback
-      val rawFilename = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-        if (nameIndex >= 0 && cursor.moveToFirst()) {
-          cursor.getString(nameIndex)
-        } else null
-      } ?: (if (resolvedPath != null && !resolvedPath.startsWith("fd://")) File(resolvedPath).name else null)
-        ?: uri.lastPathSegment
-        ?: "Local M3U Playlist"
-
-      // URL-decode to handle encoded names (e.g. %20 -> space, %3A -> :)
-      val decodedFilename = runCatching { java.net.URLDecoder.decode(rawFilename, "UTF-8") }.getOrNull() ?: rawFilename
-
-      // Clean the name: strip extension, replace underscores/dashes with spaces
-      val cleanPlaylistName = decodedFilename
-        .substringBeforeLast('.')
-        .replace('_', ' ')
-        .replace('-', ' ')
-        .trim()
-        .ifEmpty { "Local M3U Playlist" }
-      
-      parseContent(content, sourceUrl, overridePlaylistName = cleanPlaylistName)
-    } catch (e: Exception) {
-      Log.e(TAG, "Error parsing M3U playlist from URI", e)
-      M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
     }
-  }
-  
+
   /**
    * Parse M3U/M3U8 content from a string.
    *
@@ -188,28 +211,41 @@ object M3UParser {
             val match = extinfInfoRegex.matchEntire(info)
             if (match != null) {
               currentDuration = match.groups[1]?.value?.toIntOrNull() ?: -1
-              currentTitle = match.groups[3]?.value?.trim()?.ifBlank { null }
-              val metaText = match.groups[2]?.value.orEmpty().trim()
+              currentTitle =
+                match.groups[3]
+                  ?.value
+                  ?.trim()
+                  ?.ifBlank { null }
+              val metaText =
+                match.groups[2]
+                  ?.value
+                  .orEmpty()
+                  .trim()
               for (m in extinfMetaRegex.findAll(metaText)) {
-                val key   = m.groups[1]?.value?.trim() ?: continue
+                val key = m.groups[1]?.value?.trim() ?: continue
                 val value = (m.groups[2]?.value ?: m.groups[3]?.value)?.ifBlank { null } ?: continue
                 when (key) {
-                  "tvg-id"      -> currentTvgId = value
-                  "tvg-name"    -> currentTvgName = value
-                  "tvg-logo"    -> currentTvgLogo = value
+                  "tvg-id" -> currentTvgId = value
+                  "tvg-name" -> currentTvgName = value
+                  "tvg-logo" -> currentTvgLogo = value
                   "group-title" -> currentGroupTitle = value
                 }
               }
             } else {
               // Fallback: old comma-based split
               val parts = info.split(",", limit = 2)
-              currentDuration = parts.firstOrNull()?.trim()?.split(" ")?.firstOrNull()?.toIntOrNull() ?: -1
+              currentDuration = parts
+                .firstOrNull()
+                ?.trim()
+                ?.split(" ")
+                ?.firstOrNull()
+                ?.toIntOrNull() ?: -1
               currentTitle = if (parts.size > 1) parts[1].trim().ifBlank { null } else null
               if (parts.isNotEmpty()) {
-                currentTvgLogo    = extractAttribute(parts[0], "tvg-logo")
+                currentTvgLogo = extractAttribute(parts[0], "tvg-logo")
                 currentGroupTitle = extractAttribute(parts[0], "group-title")
-                currentTvgId      = extractAttribute(parts[0], "tvg-id")
-                currentTvgName    = extractAttribute(parts[0], "tvg-name")
+                currentTvgId = extractAttribute(parts[0], "tvg-id")
+                currentTvgName = extractAttribute(parts[0], "tvg-name")
               }
             }
           }
@@ -217,11 +253,15 @@ object M3UParser {
           line.startsWith(KODIPROP_PREFIX) -> {
             val kodi = line.substring(KODIPROP_PREFIX.length).trim()
             val m = kodiPropRegex.matchEntire(kodi) ?: continue
-            val key   = m.groups[1]?.value?.trim() ?: continue
-            val value = m.groups[2]?.value?.trim()?.ifBlank { null } ?: continue
+            val key = m.groups[1]?.value?.trim() ?: continue
+            val value =
+              m.groups[2]
+                ?.value
+                ?.trim()
+                ?.ifBlank { null } ?: continue
             when (key) {
               KODI_LICENSE_TYPE -> currentLicenseType = value
-              KODI_LICENSE_KEY  -> currentLicenseKey  = value
+              KODI_LICENSE_KEY -> currentLicenseKey = value
             }
           }
 
@@ -267,7 +307,7 @@ object M3UParser {
                 licenseType = currentLicenseType,
                 licenseKey = currentLicenseKey,
                 userAgent = currentUserAgent,
-              )
+              ),
             )
 
             // Reset current info for next entry
@@ -283,29 +323,30 @@ object M3UParser {
           }
         }
       }
-      
+
       if (items.isEmpty()) {
         return M3UParseResult.Error("No valid media URLs found in playlist")
       }
-      
+
       // Extract playlist name from override, source URL/filename, or use default
-      val playlistName = overridePlaylistName ?: sourceUrl?.let { 
-        if (it.startsWith("http://") || it.startsWith("https://")) {
-          extractPlaylistNameFromUrl(it)
-        } else {
-          // It's a filename or a non-http URL — extract name without extension
-          it.substringAfterLast('/')
-            .substringBeforeLast('.')
-            .replace('_', ' ')
-            .replace('-', ' ')
-            .trim()
-            .ifEmpty { "M3U Playlist" }
-        }
-      } ?: "M3U Playlist"
-      
+      val playlistName =
+        overridePlaylistName ?: sourceUrl?.let {
+          if (it.startsWith("http://") || it.startsWith("https://")) {
+            extractPlaylistNameFromUrl(it)
+          } else {
+            // It's a filename or a non-http URL — extract name without extension
+            it
+              .substringAfterLast('/')
+              .substringBeforeLast('.')
+              .replace('_', ' ')
+              .replace('-', ' ')
+              .trim()
+              .ifEmpty { "M3U Playlist" }
+          }
+        } ?: "M3U Playlist"
+
       Log.d(TAG, "Successfully parsed M3U playlist with ${items.size} items")
       return M3UParseResult.Success(playlistName, items)
-      
     } catch (e: Exception) {
       Log.e(TAG, "Error parsing M3U content", e)
       return M3UParseResult.Error("Failed to parse playlist content: ${e.message}", e)
@@ -315,8 +356,7 @@ object M3UParser {
   /**
    * Returns true if the URL string is already absolute (has a scheme or is protocol-relative).
    */
-  private fun isAbsoluteUrl(url: String): Boolean =
-    url.startsWith("//") || Uri.parse(url).scheme != null
+  private fun isAbsoluteUrl(url: String): Boolean = url.startsWith("//") || Uri.parse(url).scheme != null
 
   fun isLikelyHlsMediaManifest(content: String): Boolean {
     val lines = content.lines().map { it.trim() }
@@ -329,12 +369,15 @@ object M3UParser {
         line.startsWith("#EXT-X-ENDLIST")
     }
   }
-  
+
   /**
    * Extract attribute value from an EXTINF attribute string.
    * Example: extractAttribute(line, "tvg-logo") -> "http://example.com/logo.png"
    */
-  private fun extractAttribute(line: String, attributeName: String): String? {
+  private fun extractAttribute(
+    line: String,
+    attributeName: String,
+  ): String? {
     val pattern = """$attributeName="([^"]+)"""".toRegex()
     return pattern.find(line)?.groupValues?.getOrNull(1)
   }
@@ -364,7 +407,7 @@ object M3UParser {
     val stripped = url.substringBeforeLast('/')
     return if (stripped == url) "$url/" else "$stripped/"
   }
-  
+
   /**
    * Resolve a relative URL against a base URL.
    *
@@ -375,7 +418,10 @@ object M3UParser {
    * @param baseUrl      Directory URL (always ends with '/' from [extractBaseUrl])
    * @param relativeUrl  Raw URL string from an M3U entry line
    */
-  private fun resolveRelativeUrl(baseUrl: String, relativeUrl: String): String {
+  private fun resolveRelativeUrl(
+    baseUrl: String,
+    relativeUrl: String,
+  ): String {
     // Fast path: already absolute or protocol-relative
     if (isAbsoluteUrl(relativeUrl)) return relativeUrl
 
@@ -399,11 +445,16 @@ object M3UParser {
    * Pure Uri-based relative URL resolver.
    * Works for any URI scheme where java.net.URL is not applicable.
    */
-  private fun resolveWithUri(baseUrl: String, relativeUrl: String, baseScheme: String?): String {
+  private fun resolveWithUri(
+    baseUrl: String,
+    relativeUrl: String,
+    baseScheme: String?,
+  ): String {
     val baseUri = Uri.parse(baseUrl)
-    val authority = baseUri.encodedAuthority?.takeIf { it.isNotBlank() }
-      ?: baseUri.authority?.takeIf { it.isNotBlank() }
-      ?: ""
+    val authority =
+      baseUri.encodedAuthority?.takeIf { it.isNotBlank() }
+        ?: baseUri.authority?.takeIf { it.isNotBlank() }
+        ?: ""
     val schemePrefix = if (baseScheme != null) "$baseScheme://" else "//"
 
     return when {
@@ -417,24 +468,28 @@ object M3UParser {
         val combined = baseUrl + relativeUrl
         // Use java.net.URI.normalize() to collapse '..' and '.' segments
         try {
-          java.net.URI(combined).normalize().toString()
+          java.net
+            .URI(combined)
+            .normalize()
+            .toString()
         } catch (_: Exception) {
           combined
         }
       }
     }
   }
-  
+
   /**
    * Extract a human-readable title from a media URL.
    * Falls back to URL-decoding the last path segment and stripping the extension.
    */
-  private fun extractTitleFromUrl(url: String): String {
-    return try {
+  private fun extractTitleFromUrl(url: String): String =
+    try {
       val path = Uri.parse(url).path ?: url
       val filename = path.substringAfterLast('/')
       val nameWithoutExt = filename.substringBeforeLast('.')
-      java.net.URLDecoder.decode(nameWithoutExt, "UTF-8")
+      java.net.URLDecoder
+        .decode(nameWithoutExt, "UTF-8")
         .replace('_', ' ')
         .replace('-', ' ')
         .trim()
@@ -442,8 +497,7 @@ object M3UParser {
     } catch (_: Exception) {
       url.substringAfterLast('/').take(60)
     }
-  }
-  
+
   /**
    * Extract a human-readable playlist name from a URL.
    * Decodes URL encoding and strips the file extension.
@@ -453,7 +507,8 @@ object M3UParser {
       val path = Uri.parse(url).path ?: return "M3U Playlist"
       val filename = path.substringAfterLast('/')
       val nameWithoutExt = filename.substringBeforeLast('.')
-      java.net.URLDecoder.decode(nameWithoutExt, "UTF-8")
+      java.net.URLDecoder
+        .decode(nameWithoutExt, "UTF-8")
         .replace('_', ' ')
         .replace('-', ' ')
         .replaceFirstChar { it.uppercase() }
@@ -463,5 +518,4 @@ object M3UParser {
       "M3U Playlist"
     }
   }
-
 }

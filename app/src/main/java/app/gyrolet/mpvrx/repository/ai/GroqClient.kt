@@ -57,58 +57,65 @@ class GroqClient(
   }
 
   private val apiClient: OkHttpClient =
-    client.newBuilder()
+    client
+      .newBuilder()
       .connectTimeout(60, TimeUnit.SECONDS)
       .readTimeout(120, TimeUnit.SECONDS)
       .writeTimeout(60, TimeUnit.SECONDS)
       .build()
 
-  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
-    runCatching {
-      val request = Request.Builder()
-        .url("$BASE_URL/models")
-        .header("Authorization", "Bearer $apiKey")
-        .get()
-        .build()
+  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/models")
+            .header("Authorization", "Bearer $apiKey")
+            .get()
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
-
-      if (!response.isSuccessful) {
-        val errorMsg = parseError(body)
-        throw Exception("Groq API error ${response.code}: $errorMsg")
-      }
-
-      val parsed = json.decodeFromString<GroqModelListResponse>(body)
-      parsed.data
-        .filter { AiModelCapabilities.isTextGenerationModel(it.id) }
-        .map {
-          val displayName = if (it.owned_by != null) "${it.id} (${it.owned_by})" else it.id
-          AiModelInfo(
-            id = it.id,
-            displayName = displayName,
-            isFree = AiModelPricing.isZeroCost(it.pricing),
-          )
-        }
-    }
-  }
-
-  override suspend fun verifyKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
-    runCatching {
-      val request = Request.Builder()
-        .url("$BASE_URL/models")
-        .header("Authorization", "Bearer $apiKey")
-        .get()
-        .build()
-
-      val response = apiClient.newCall(request).execute()
-      if (!response.isSuccessful) {
+        val response = apiClient.newCall(request).execute()
         val body = response.body.string()
-        throw Exception("Invalid API key: ${response.code} $body")
+
+        if (!response.isSuccessful) {
+          val errorMsg = parseError(body)
+          throw Exception("Groq API error ${response.code}: $errorMsg")
+        }
+
+        val parsed = json.decodeFromString<GroqModelListResponse>(body)
+        parsed.data
+          .filter { AiModelCapabilities.isTextGenerationModel(it.id) }
+          .map {
+            val displayName = if (it.owned_by != null) "${it.id} (${it.owned_by})" else it.id
+            AiModelInfo(
+              id = it.id,
+              displayName = displayName,
+              isFree = AiModelPricing.isZeroCost(it.pricing),
+            )
+          }
       }
-      "API key verified successfully"
     }
-  }
+
+  override suspend fun verifyKey(apiKey: String): Result<String> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/models")
+            .header("Authorization", "Bearer $apiKey")
+            .get()
+            .build()
+
+        val response = apiClient.newCall(request).execute()
+        if (!response.isSuccessful) {
+          val body = response.body.string()
+          throw Exception("Invalid API key: ${response.code} $body")
+        }
+        "API key verified successfully"
+      }
+    }
 
   override suspend fun generateContent(
     apiKey: String,
@@ -116,45 +123,51 @@ class GroqClient(
     instruction: String,
     userInput: String,
     options: AiGenerationOptions,
-  ): Result<AiGeneratedContent> = withContext(Dispatchers.IO) {
-    runCatching {
-      val requestBody = json.encodeToString(
-        GroqChatRequest.serializer(),
-        GroqChatRequest(
-          model = model,
-          messages = listOf(
-            GroqMessage(role = "system", content = instruction),
-            GroqMessage(role = "user", content = userInput),
-          ),
-          temperature = options.temperature,
-          maxTokens = options.maxTokens,
-        ),
-      )
+  ): Result<AiGeneratedContent> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val requestBody =
+          json.encodeToString(
+            GroqChatRequest.serializer(),
+            GroqChatRequest(
+              model = model,
+              messages =
+                listOf(
+                  GroqMessage(role = "system", content = instruction),
+                  GroqMessage(role = "user", content = userInput),
+                ),
+              temperature = options.temperature,
+              maxTokens = options.maxTokens,
+            ),
+          )
 
-      val request = Request.Builder()
-        .url("$BASE_URL/chat/completions")
-        .header("Authorization", "Bearer $apiKey")
-        .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
-        .build()
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/chat/completions")
+            .header("Authorization", "Bearer $apiKey")
+            .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
+        val response = apiClient.newCall(request).execute()
+        val body = response.body.string()
 
-      if (!response.isSuccessful) {
-        val errorMsg = parseError(body)
-        throw Exception("Groq generate error ${response.code}: $errorMsg")
+        if (!response.isSuccessful) {
+          val errorMsg = parseError(body)
+          throw Exception("Groq generate error ${response.code}: $errorMsg")
+        }
+
+        AiResponseParser.openAiCompatible(json, body, "Groq")
       }
-
-      AiResponseParser.openAiCompatible(json, body, "Groq")
     }
-  }
 
-  private fun parseError(body: String): String = try {
-    val error = json.decodeFromString<GroqErrorBody>(body)
-    error.error?.message ?: body
-  } catch (_: Exception) {
-    body.take(200)
-  }
+  private fun parseError(body: String): String =
+    try {
+      val error = json.decodeFromString<GroqErrorBody>(body)
+      error.error?.message ?: body
+    } catch (_: Exception) {
+      body.take(200)
+    }
 }
 
 @Serializable

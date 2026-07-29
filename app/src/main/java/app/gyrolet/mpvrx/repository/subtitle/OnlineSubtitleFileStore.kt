@@ -39,7 +39,9 @@ class OnlineSubtitleFileStore(
       )
     if (extracted == null && SubtitleArchiveExtractor.isZipArchive(bytes)) {
       val selectedEpisodeMessage = selectedEpisode?.let { " for episode $it" }.orEmpty()
-      throw IllegalStateException("Downloaded subtitle archive did not contain a supported subtitle file$selectedEpisodeMessage")
+      throw IllegalStateException(
+        "Downloaded subtitle archive did not contain a supported subtitle file$selectedEpisodeMessage",
+      )
     }
     val extension =
       extracted?.extension
@@ -175,11 +177,9 @@ class OnlineSubtitleFileStore(
     return true
   }
 
-  private fun isGenericSubtitleName(value: String): Boolean =
-    value.normalizedFilePart() in GENERIC_SUBTITLE_NAMES
+  private fun isGenericSubtitleName(value: String): Boolean = value.normalizedFilePart() in GENERIC_SUBTITLE_NAMES
 
-  private fun String.normalizedFilePart(): String =
-    lowercase(Locale.ROOT).replace(Regex("""[^a-z0-9]+"""), "")
+  private fun String.normalizedFilePart(): String = lowercase(Locale.ROOT).replace(Regex("""[^a-z0-9]+"""), "")
 
   private fun mimeForSubtitle(extension: String): String =
     when (extension) {
@@ -191,7 +191,8 @@ class OnlineSubtitleFileStore(
   private companion object {
     val STANDARD_SUBTITLE_EXTENSIONS = setOf("srt", "ass", "ssa", "vtt", "sub")
     val STRIPPED_FILE_EXTENSIONS =
-      STANDARD_SUBTITLE_EXTENSIONS + setOf("zip", "rar", "7z", "txt", "mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts")
+      STANDARD_SUBTITLE_EXTENSIONS +
+        setOf("zip", "rar", "7z", "txt", "mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts")
     val GENERIC_SUBTITLE_NAMES =
       setOf(
         "sub",

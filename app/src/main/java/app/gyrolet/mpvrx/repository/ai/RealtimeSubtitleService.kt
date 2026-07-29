@@ -15,8 +15,6 @@ import android.media.MediaMuxer
 import android.net.Uri
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AiProvider
-import java.io.File
-import java.nio.ByteBuffer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,6 +27,8 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
+import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
 @kotlinx.serialization.Serializable
@@ -126,15 +126,16 @@ class RealtimeSubtitleService(
               if (transcript == null || transcript.segments.isEmpty()) continue
 
               val newSegments =
-                transcript.segments.filter { segment ->
-                  segment.endMs > previousEndMs
-                }.map { segment ->
-                  SpeechSegment(
-                    startMs = chunkStartMs + segment.startMs,
-                    endMs = chunkStartMs + segment.endMs,
-                    text = segment.text,
-                  )
-                }
+                transcript.segments
+                  .filter { segment ->
+                    segment.endMs > previousEndMs
+                  }.map { segment ->
+                    SpeechSegment(
+                      startMs = chunkStartMs + segment.startMs,
+                      endMs = chunkStartMs + segment.endMs,
+                      text = segment.text,
+                    )
+                  }
 
               if (newSegments.isNotEmpty()) {
                 allSegments.addAll(newSegments)
@@ -168,82 +169,94 @@ class RealtimeSubtitleService(
     videoUri: Uri,
     startMs: Long,
     endMs: Long,
-  ): File? = withContext(Dispatchers.IO) {
-    runCatching {
-      val extractor = MediaExtractor()
-      var outputFile: File? = null
-      try {
-        extractor.setDataSource(context, videoUri, null)
-
-        var audioTrackIndex = -1
-        for (i in 0 until extractor.trackCount) {
-          val format = extractor.getTrackFormat(i)
-          val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-          if (mime.startsWith("audio/")) {
-            audioTrackIndex = i
-            break
-          }
-        }
-        if (audioTrackIndex < 0) return@runCatching null
-
-        val audioFormat = extractor.getTrackFormat(audioTrackIndex)
-        val audioMime = audioFormat.getString(MediaFormat.KEY_MIME) ?: return@runCatching null
-        val isWebm = audioMime == "audio/opus" || audioMime == "audio/vorbis"
-
-        outputFile = File.createTempFile(
-          "rt_chunk_",
-          if (isWebm) ".webm" else ".m4a",
-          context.cacheDir,
-        )
-        if (!isActive) { outputFile!!.delete(); return@runCatching null }
-
-        extractor.selectTrack(audioTrackIndex)
-        extractor.seekTo(startMs * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-
-        val muxer = MediaMuxer(
-          outputFile!!.absolutePath,
-          if (isWebm) MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM
-          else MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4,
-        )
+  ): File? =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val extractor = MediaExtractor()
+        var outputFile: File? = null
         try {
-          val muxerTrackIndex = muxer.addTrack(audioFormat)
-          muxer.start()
+          extractor.setDataSource(context, videoUri, null)
 
-          val buffer = ByteBuffer.allocate(512 * 1024)
-          val bufferInfo = MediaCodec.BufferInfo()
+          var audioTrackIndex = -1
+          for (i in 0 until extractor.trackCount) {
+            val format = extractor.getTrackFormat(i)
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+            if (mime.startsWith("audio/")) {
+              audioTrackIndex = i
+              break
+            }
+          }
+          if (audioTrackIndex < 0) return@runCatching null
 
-          while (isActive) {
-            val sampleSize = extractor.readSampleData(buffer, 0)
-            if (sampleSize < 0) break
+          val audioFormat = extractor.getTrackFormat(audioTrackIndex)
+          val audioMime = audioFormat.getString(MediaFormat.KEY_MIME) ?: return@runCatching null
+          val isWebm = audioMime == "audio/opus" || audioMime == "audio/vorbis"
 
-            val sampleTimeUs = extractor.sampleTime
-            if (sampleTimeUs > endMs * 1000) break
-
-            bufferInfo.set(0, sampleSize, sampleTimeUs, extractor.sampleFlags)
-            muxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo)
-            extractor.advance()
+          outputFile =
+            File.createTempFile(
+              "rt_chunk_",
+              if (isWebm) ".webm" else ".m4a",
+              context.cacheDir,
+            )
+          if (!isActive) {
+            outputFile!!.delete()
+            return@runCatching null
           }
 
-          muxer.stop()
+          extractor.selectTrack(audioTrackIndex)
+          extractor.seekTo(startMs * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+
+          val muxer =
+            MediaMuxer(
+              outputFile!!.absolutePath,
+              if (isWebm) {
+                MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM
+              } else {
+                MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
+              },
+            )
+          try {
+            val muxerTrackIndex = muxer.addTrack(audioFormat)
+            muxer.start()
+
+            val buffer = ByteBuffer.allocate(512 * 1024)
+            val bufferInfo = MediaCodec.BufferInfo()
+
+            while (isActive) {
+              val sampleSize = extractor.readSampleData(buffer, 0)
+              if (sampleSize < 0) break
+
+              val sampleTimeUs = extractor.sampleTime
+              if (sampleTimeUs > endMs * 1000) break
+
+              bufferInfo.set(0, sampleSize, sampleTimeUs, extractor.sampleFlags)
+              muxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo)
+              extractor.advance()
+            }
+
+            muxer.stop()
+          } finally {
+            muxer.release()
+          }
         } finally {
-          muxer.release()
+          extractor.release()
         }
-      } finally {
-        extractor.release()
-      }
 
-      if (!isActive) { outputFile.delete(); return@runCatching null }
+        if (!isActive) {
+          outputFile.delete()
+          return@runCatching null
+        }
 
-      if (outputFile.length() > MAX_CHUNK_SIZE_BYTES) {
-        val mb = outputFile.length() / (1024 * 1024)
-        android.util.Log.w("RealtimeSubtitle", "Chunk too large ($mb MB), skipping")
-        outputFile.delete()
-        return@runCatching null
-      }
+        if (outputFile.length() > MAX_CHUNK_SIZE_BYTES) {
+          val mb = outputFile.length() / (1024 * 1024)
+          android.util.Log.w("RealtimeSubtitle", "Chunk too large ($mb MB), skipping")
+          outputFile.delete()
+          return@runCatching null
+        }
 
-      outputFile
-    }.getOrNull()
-  }
+        outputFile
+      }.getOrNull()
+    }
 
   private suspend fun transcribe(
     audioFile: File,
@@ -294,64 +307,65 @@ class RealtimeSubtitleService(
     model: String,
     audioFile: File,
     language: String?,
-  ): SpeechTranscript? = withContext(Dispatchers.IO) {
-    runCatching {
-      val fileSizeMb = audioFile.length() / (1024 * 1024)
-      if (audioFile.length() > MAX_CHUNK_SIZE_BYTES) {
-        throw Exception("Audio file too large ($fileSizeMb MB) for transcription API limit. Try a shorter video.")
-      }
+  ): SpeechTranscript? =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val fileSizeMb = audioFile.length() / (1024 * 1024)
+        if (audioFile.length() > MAX_CHUNK_SIZE_BYTES) {
+          throw Exception("Audio file too large ($fileSizeMb MB) for transcription API limit. Try a shorter video.")
+        }
 
-      val apiClient =
-        okHttpClient
-          .newBuilder()
-          .connectTimeout(60, TimeUnit.SECONDS)
-          .readTimeout(180, TimeUnit.SECONDS)
-          .writeTimeout(180, TimeUnit.SECONDS)
-          .build()
+        val apiClient =
+          okHttpClient
+            .newBuilder()
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(180, TimeUnit.SECONDS)
+            .writeTimeout(180, TimeUnit.SECONDS)
+            .build()
 
-      val bodyBuilder =
-        MultipartBody
-          .Builder()
-          .setType(MultipartBody.FORM)
-          .addFormDataPart("model", model)
-          .addFormDataPart("response_format", "verbose_json")
-          .addFormDataPart("temperature", "0")
-          .addFormDataPart("file", audioFile.name, audioFile.asRequestBody(audioMediaType(audioFile)))
+        val bodyBuilder =
+          MultipartBody
+            .Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("model", model)
+            .addFormDataPart("response_format", "verbose_json")
+            .addFormDataPart("temperature", "0")
+            .addFormDataPart("file", audioFile.name, audioFile.asRequestBody(audioMediaType(audioFile)))
 
-      if (!language.isNullOrBlank()) {
-        bodyBuilder.addFormDataPart("language", language)
-      }
+        if (!language.isNullOrBlank()) {
+          bodyBuilder.addFormDataPart("language", language)
+        }
 
-      val request =
-        Request
-          .Builder()
-          .url(baseUrl)
-          .header("Authorization", "Bearer $apiKey")
-          .post(bodyBuilder.build())
-          .build()
+        val request =
+          Request
+            .Builder()
+            .url(baseUrl)
+            .header("Authorization", "Bearer $apiKey")
+            .post(bodyBuilder.build())
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
-      if (!response.isSuccessful) {
-        throw Exception("STT failed: HTTP ${response.code} ${body.take(240)}")
-      }
+        val response = apiClient.newCall(request).execute()
+        val body = response.body.string()
+        if (!response.isSuccessful) {
+          throw Exception("STT failed: HTTP ${response.code} ${body.take(240)}")
+        }
 
-      val parsed = json.decodeFromString(OpenAiTranscriptionResponse.serializer(), body)
-      SpeechTranscript(
-        text = parsed.text.orEmpty().trim(),
-        segments =
-          parsed.segments.mapNotNull { segment ->
-            val text = segment.text?.trim().orEmpty()
-            if (text.isBlank()) return@mapNotNull null
-            SpeechSegment(
-              startMs = (segment.start * 1000).toLong(),
-              endMs = (segment.end * 1000).toLong(),
-              text = text,
-            )
-          },
-      )
-    }.getOrNull()
-  }
+        val parsed = json.decodeFromString(OpenAiTranscriptionResponse.serializer(), body)
+        SpeechTranscript(
+          text = parsed.text.orEmpty().trim(),
+          segments =
+            parsed.segments.mapNotNull { segment ->
+              val text = segment.text?.trim().orEmpty()
+              if (text.isBlank()) return@mapNotNull null
+              SpeechSegment(
+                startMs = (segment.start * 1000).toLong(),
+                endMs = (segment.end * 1000).toLong(),
+                text = text,
+              )
+            },
+        )
+      }.getOrNull()
+    }
 
   private fun deduplicateSegments(segments: MutableList<SpeechSegment>) {
     var i = 0
@@ -367,9 +381,10 @@ class RealtimeSubtitleService(
   }
 
   private fun toSrt(segments: List<SpeechSegment>): String =
-    segments.mapIndexed { index, segment ->
-      "${index + 1}\n${formatSrtTime(segment.startMs)} --> ${formatSrtTime(segment.endMs)}\n${segment.text.trim()}"
-    }.joinToString("\n\n")
+    segments
+      .mapIndexed { index, segment ->
+        "${index + 1}\n${formatSrtTime(segment.startMs)} --> ${formatSrtTime(segment.endMs)}\n${segment.text.trim()}"
+      }.joinToString("\n\n")
 
   private fun formatSrtTime(ms: Long): String {
     val hours = ms / 3_600_000

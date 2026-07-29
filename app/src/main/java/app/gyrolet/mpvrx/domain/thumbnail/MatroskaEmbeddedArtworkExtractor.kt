@@ -104,10 +104,15 @@ internal object MatroskaEmbeddedArtworkExtractor {
     val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     val sampleSize = calculateThumbnailSampleSize(options.outWidth, options.outHeight)
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
-      inSampleSize = sampleSize
-      inPreferredConfig = Bitmap.Config.RGB_565
-    })
+    return BitmapFactory.decodeByteArray(
+      bytes,
+      0,
+      bytes.size,
+      BitmapFactory.Options().apply {
+        inSampleSize = sampleSize
+        inPreferredConfig = Bitmap.Config.RGB_565
+      },
+    )
   }
 
   private fun readElementHeader(file: RandomAccessFile): ElementHeader? {

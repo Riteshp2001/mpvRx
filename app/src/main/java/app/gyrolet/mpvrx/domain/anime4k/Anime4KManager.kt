@@ -8,45 +8,51 @@
 package app.gyrolet.mpvrx.domain.anime4k
 
 import android.content.Context
-
 import java.io.File
 
 /**
  * Anime4K Manager
  * Manages GLSL shaders for real-time anime upscaling
  */
-class Anime4KManager(private val context: Context) {
-
+class Anime4KManager(
+  private val context: Context,
+) {
   companion object {
     val BUILT_IN_SHADER_FILES: Set<String> = Anime4KShaderCatalog.requiredFileSet
     val DEFAULT_QUALITY = Quality.BALANCED
 
     // GLSL tokens that require FP32 (highp) float precision. Passes containing any
     // of these (FSR EASU/RCAS) are excluded from the FP16/mediump optimization.
-    private val FP32_MARKERS = listOf(
-      "floatBitsToUint",
-      "uintBitsToFloat",
-      "floatBitsToInt",
-      "intBitsToFloat",
-      "bitfieldExtract",
-      "bitfieldInsert",
-      "FsrEasu",
-      "FsrRcas",
-      "APrxLoRcpF1",
-      "APrxLoRsqF1",
-      "APrxMedRcpF1",
-    )
+    private val FP32_MARKERS =
+      listOf(
+        "floatBitsToUint",
+        "uintBitsToFloat",
+        "floatBitsToInt",
+        "intBitsToFloat",
+        "bitfieldExtract",
+        "bitfieldInsert",
+        "FsrEasu",
+        "FsrRcas",
+        "APrxLoRcpF1",
+        "APrxLoRsqF1",
+        "APrxMedRcpF1",
+      )
   }
 
   // Shader quality levels
-  enum class Quality(val suffix: String, val titleRes: Int) {
+  enum class Quality(
+    val suffix: String,
+    val titleRes: Int,
+  ) {
     FAST("S", app.gyrolet.mpvrx.R.string.anime4k_quality_fast),
     BALANCED("M", app.gyrolet.mpvrx.R.string.anime4k_quality_balanced),
-    HIGH("L", app.gyrolet.mpvrx.R.string.anime4k_quality_high)
+    HIGH("L", app.gyrolet.mpvrx.R.string.anime4k_quality_high),
   }
 
   // Anime4K modes
-  enum class Mode(val titleRes: Int) {
+  enum class Mode(
+    val titleRes: Int,
+  ) {
     OFF(app.gyrolet.mpvrx.R.string.anime4k_mode_off),
     A(app.gyrolet.mpvrx.R.string.anime4k_mode_a),
     B(app.gyrolet.mpvrx.R.string.anime4k_mode_b),
@@ -54,15 +60,18 @@ class Anime4KManager(private val context: Context) {
     A_PLUS(app.gyrolet.mpvrx.R.string.anime4k_mode_a_plus),
     B_PLUS(app.gyrolet.mpvrx.R.string.anime4k_mode_b_plus),
     C_PLUS(app.gyrolet.mpvrx.R.string.anime4k_mode_c_plus),
-    ARTCNN(app.gyrolet.mpvrx.R.string.anime4k_mode_artcnn)
+    ARTCNN(app.gyrolet.mpvrx.R.string.anime4k_mode_artcnn),
   }
 
   private var shaderDir: File? = null
   private var isInitialized = false
+
   @Volatile
   private var enableDarken: Boolean = true
+
   @Volatile
   private var enableThin: Boolean = true
+
   @Volatile
   private var enableDeblur: Boolean = false
 
@@ -84,7 +93,7 @@ class Anime4KManager(private val context: Context) {
     if (isInitialized) {
       return true
     }
-    
+
     return try {
       // Create shader directory
       shaderDir = File(context.filesDir, Anime4KShaderCatalog.INSTALL_DIRECTORY)
@@ -97,9 +106,11 @@ class Anime4KManager(private val context: Context) {
 
       // List and copy all shader files from assets.
       // If any required file is missing/invalid, force-copy it.
-      val shaderFiles = context.assets.list(Anime4KShaderCatalog.ASSET_DIRECTORY)
-        ?.filter { it.endsWith(".glsl") }
-        .orEmpty()
+      val shaderFiles =
+        context.assets
+          .list(Anime4KShaderCatalog.ASSET_DIRECTORY)
+          ?.filter { it.endsWith(".glsl") }
+          .orEmpty()
       for (fileName in shaderFiles) {
         val forceCopy = fileName in Anime4KShaderCatalog.requiredFileSet
         if (!copyShaderFromAssets(fileName, forceCopy = forceCopy)) {
@@ -107,16 +118,17 @@ class Anime4KManager(private val context: Context) {
         }
       }
 
-      val missingRequiredFiles = Anime4KShaderCatalog.requiredFiles.any { required ->
-        val file = File(shaderDir, required)
-        !file.exists() || file.length() <= 0L
-      }
+      val missingRequiredFiles =
+        Anime4KShaderCatalog.requiredFiles.any { required ->
+          val file = File(shaderDir, required)
+          !file.exists() || file.length() <= 0L
+        }
       if (missingRequiredFiles) {
         return false
       }
 
       removeLegacyFlatShaderCopies()
-      
+
       isInitialized = true
       true
     } catch (e: Exception) {
@@ -125,7 +137,10 @@ class Anime4KManager(private val context: Context) {
     }
   }
 
-  private fun copyShaderFromAssets(fileName: String, forceCopy: Boolean = false): Boolean {
+  private fun copyShaderFromAssets(
+    fileName: String,
+    forceCopy: Boolean = false,
+  ): Boolean {
     val destFile = File(shaderDir, fileName)
 
     // Skip only when not forced and file already exists and is valid.
@@ -135,9 +150,10 @@ class Anime4KManager(private val context: Context) {
 
     try {
       // Read the original shader source code from assets
-      val originalContent = context.assets.open("${Anime4KShaderCatalog.ASSET_DIRECTORY}/$fileName").use { input ->
-        input.bufferedReader().use { it.readText() }
-      }
+      val originalContent =
+        context.assets.open("${Anime4KShaderCatalog.ASSET_DIRECTORY}/$fileName").use { input ->
+          input.bufferedReader().use { it.readText() }
+        }
 
       // Dynamically compile and optimize the shader GLSL code
       val optimizedContent = optimizeShaderContent(fileName, originalContent)
@@ -180,7 +196,10 @@ class Anime4KManager(private val context: Context) {
    * GL_EXT_shader_explicit_arithmetic_types_float16 — the injected qualifiers are
    * redundant but harmless for those passes.
    */
-  private fun optimizeShaderContent(fileName: String, content: String): String {
+  private fun optimizeShaderContent(
+    fileName: String,
+    content: String,
+  ): String {
     if (!fileName.endsWith(".glsl")) return content
 
     val lines = content.lines()
@@ -212,11 +231,12 @@ class Anime4KManager(private val context: Context) {
         }
         // 2. Explicitly qualify every float-type variable declaration in the body.
         // This is what actually enforces FP16 on drivers that ignore the default.
-        val rewritten = if (precisionInjectedForBlock && !trimmed.startsWith("//!")) {
-          rewriteLineWithExplicitPrecision(line, if (currentPassNeedsHighp) "highp" else "mediump")
-        } else {
-          line
-        }
+        val rewritten =
+          if (precisionInjectedForBlock && !trimmed.startsWith("//!")) {
+            rewriteLineWithExplicitPrecision(line, if (currentPassNeedsHighp) "highp" else "mediump")
+          } else {
+            line
+          }
         newLines.add(rewritten)
       }
     }
@@ -241,7 +261,10 @@ class Anime4KManager(private val context: Context) {
    *   `// vec4 comment`       → unchanged (comment)
    *   `#define go_0(...)`     → unchanged (macro)
    */
-  private fun rewriteLineWithExplicitPrecision(line: String, precision: String): String {
+  private fun rewriteLineWithExplicitPrecision(
+    line: String,
+    precision: String,
+  ): String {
     val trimmed = line.trim()
 
     // Skip blank lines, comments, preprocessor directives
@@ -264,9 +287,10 @@ class Anime4KManager(private val context: Context) {
       if (rest.startsWith("$type ") || rest.startsWith("$type(")) {
         // Exclude function definitions: `vec4 identifier(` without `=` before `(`
         val afterType = rest.removePrefix(type).trimStart()
-        val isFunctionDef = afterType.contains("(") &&
-          !afterType.substringBefore("(").contains("=") &&
-          afterType.first() != '('  // constructor call starts with `(`
+        val isFunctionDef =
+          afterType.contains("(") &&
+            !afterType.substringBefore("(").contains("=") &&
+            afterType.first() != '(' // constructor call starts with `(`
         if (isFunctionDef) return line
 
         return "$indent$precision $rest"
@@ -277,15 +301,20 @@ class Anime4KManager(private val context: Context) {
 
   private fun optimizeCreluPasses(content: String): String {
     val passes = content.split("(?=(?://!DESC|//!HOOK))".toRegex())
-    val optimizedPasses = passes.map { pass ->
-      optimizeSinglePass(pass)
-    }
+    val optimizedPasses =
+      passes.map { pass ->
+        optimizeSinglePass(pass)
+      }
     return optimizedPasses.joinToString("")
   }
 
   private fun optimizeSinglePass(pass: String): String {
-    val go0Regex = """#define\s+go_0\([^\)]+\)\s+\(max\(\(?\s*([A-Za-z0-9_]+)_texOff\(vec2\([^\)]+\)\)\)?\s*,\s*0\.0\)\)""".toRegex()
-    val go1Regex = """#define\s+go_1\([^\)]+\)\s+\(max\(\-\(?\s*([A-Za-z0-9_]+)_texOff\(vec2\([^\)]+\)\)\)?\s*,\s*0\.0\)\)""".toRegex()
+    val go0Regex =
+      """#define\s+go_0\([^\)]+\)\s+\(max\(\(?\s*([A-Za-z0-9_]+)_texOff\(vec2\([^\)]+\)\)\)?\s*,\s*0\.0\)\)"""
+        .toRegex()
+    val go1Regex =
+      """#define\s+go_1\([^\)]+\)\s+\(max\(\-\(?\s*([A-Za-z0-9_]+)_texOff\(vec2\([^\)]+\)\)\)?\s*,\s*0\.0\)\)"""
+        .toRegex()
 
     val match0 = go0Regex.find(pass)
     val match1 = go1Regex.find(pass)
@@ -306,7 +335,8 @@ class Anime4KManager(private val context: Context) {
     optimized = optimized.replace(match1.value, "// optimized go_1 macro")
 
     val hookStartRegex = """vec4\s+hook\(\s*\)\s*\{""".toRegex()
-    val hookDeclaration = """
+    val hookDeclaration =
+      """
       vec4 hook() {
           vec4 t_m1_m1 = ${texName}_texOff(vec2(-1.0, -1.0));
           vec4 t_m1_0  = ${texName}_texOff(vec2(-1.0, 0.0));
@@ -317,23 +347,25 @@ class Anime4KManager(private val context: Context) {
           vec4 t_1_m1  = ${texName}_texOff(vec2(1.0, -1.0));
           vec4 t_1_0   = ${texName}_texOff(vec2(1.0, 0.0));
           vec4 t_1_1   = ${texName}_texOff(vec2(1.0, 1.0));
-    """.trimIndent()
+      """.trimIndent()
 
     optimized = optimized.replaceFirst(hookStartRegex, hookDeclaration)
 
     val go0CallRegex = """go_0\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)""".toRegex()
-    optimized = go0CallRegex.replace(optimized) { result ->
-      val x = mapCoord(result.groupValues[1])
-      val y = mapCoord(result.groupValues[2])
-      "max(t_${x}_${y}, 0.0)"
-    }
+    optimized =
+      go0CallRegex.replace(optimized) { result ->
+        val x = mapCoord(result.groupValues[1])
+        val y = mapCoord(result.groupValues[2])
+        "max(t_${x}_$y, 0.0)"
+      }
 
     val go1CallRegex = """go_1\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)""".toRegex()
-    optimized = go1CallRegex.replace(optimized) { result ->
-      val x = mapCoord(result.groupValues[1])
-      val y = mapCoord(result.groupValues[2])
-      "max(-t_${x}_${y}, 0.0)"
-    }
+    optimized =
+      go1CallRegex.replace(optimized) { result ->
+        val x = mapCoord(result.groupValues[1])
+        val y = mapCoord(result.groupValues[2])
+        "max(-t_${x}_$y, 0.0)"
+      }
 
     // Defensive: mapCoord() emits "unknown" for any offset outside {-1,0,1}.
     // If that ever happens (a future shader with a larger kernel), the rewrite
@@ -351,7 +383,10 @@ class Anime4KManager(private val context: Context) {
    * Returns true if the pass body starting at [bodyStart] contains FP32-sensitive
    * operations (FSR bit tricks) that must not be compiled as FP16/mediump.
    */
-  private fun passNeedsHighpFloat(lines: List<String>, bodyStart: Int): Boolean {
+  private fun passNeedsHighpFloat(
+    lines: List<String>,
+    bodyStart: Int,
+  ): Boolean {
     var j = bodyStart
     while (j < lines.size && !lines[j].trim().startsWith("//!")) {
       val body = lines[j]
@@ -363,32 +398,37 @@ class Anime4KManager(private val context: Context) {
     return false
   }
 
-  private fun mapCoord(c: String): String {
-    return when (c.trim()) {
+  private fun mapCoord(c: String): String =
+    when (c.trim()) {
       "-1.0", "-1" -> "m1"
       "0.0", "0" -> "0"
       "1.0", "1" -> "1"
       else -> "unknown"
     }
-  }
 
   /**
    * Get shader chain for the specified mode and quality
    * Returns empty string if mode is OFF or initialization failed
    */
-  fun getShaderChain(mode: Mode, quality: Quality): String {
-    return getShaderPaths(mode, quality).joinToString(":")
-  }
+  fun getShaderChain(
+    mode: Mode,
+    quality: Quality,
+  ): String = getShaderPaths(mode, quality).joinToString(":")
 
   fun getShaderPaths(mode: Mode): List<String> = getShaderPaths(mode, DEFAULT_QUALITY)
 
-  fun getShaderPaths(mode: Mode, quality: Quality): List<String> {
-    return getShaderFiles(mode, quality).map { file ->
+  fun getShaderPaths(
+    mode: Mode,
+    quality: Quality,
+  ): List<String> =
+    getShaderFiles(mode, quality).map { file ->
       file.absolutePath
     }
-  }
 
-  fun getShaderFiles(mode: Mode, quality: Quality): List<File> {
+  fun getShaderFiles(
+    mode: Mode,
+    quality: Quality,
+  ): List<File> {
     if (mode == Mode.OFF) {
       return emptyList()
     }
@@ -470,10 +510,11 @@ class Anime4KManager(private val context: Context) {
     }
 
     // Validate that all shader files exist
-    val missingShaders = shaders.filterNot { file ->
-      file.exists()
-    }
-    
+    val missingShaders =
+      shaders.filterNot { file ->
+        file.exists()
+      }
+
     if (missingShaders.isNotEmpty()) {
       return emptyList()
     }
@@ -481,21 +522,21 @@ class Anime4KManager(private val context: Context) {
     return shaders
   }
 
-  private fun getShaderFile(fileName: String): File {
-    return File(shaderDir, fileName)
-  }
+  private fun getShaderFile(fileName: String): File = File(shaderDir, fileName)
 
   private fun darkenShaderFile(quality: Quality): String =
     when (quality) {
       Quality.FAST -> "Anime4K_Darken_Fast.glsl"
       Quality.BALANCED,
-      Quality.HIGH -> "Anime4K_Darken_HQ.glsl"
+      Quality.HIGH,
+      -> "Anime4K_Darken_HQ.glsl"
     }
 
   private fun thinShaderFile(quality: Quality): String =
     when (quality) {
       Quality.FAST -> "Anime4K_Thin_Fast.glsl"
       Quality.BALANCED,
-      Quality.HIGH -> "Anime4K_Thin_HQ.glsl"
+      Quality.HIGH,
+      -> "Anime4K_Thin_HQ.glsl"
     }
 }

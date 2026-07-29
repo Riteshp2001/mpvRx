@@ -69,4 +69,3 @@ class NoMediaPathFilter(
     const val TAG = "NoMediaPathFilter"
   }
 }
-

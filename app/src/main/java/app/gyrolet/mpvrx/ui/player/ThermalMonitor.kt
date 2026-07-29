@@ -25,7 +25,6 @@ import android.util.Log
  * that follow sustained SoC heat buildup.
  */
 object ThermalMonitor {
-
   private const val TAG = "ThermalMonitor"
 
   /**
@@ -71,7 +70,10 @@ object ThermalMonitor {
    * @param headroom The current thermal headroom from [getHeadroom].
    * @return The effective budget to use, always ≤ [baselineBudget].
    */
-  fun clampAmbientSampleBudget(baselineBudget: Int, headroom: Float): Int =
+  fun clampAmbientSampleBudget(
+    baselineBudget: Int,
+    headroom: Float,
+  ): Int =
     when {
       headroom < 0.40f -> baselineBudget.coerceAtMost(4)
       headroom < 0.60f -> baselineBudget.coerceAtMost(8)

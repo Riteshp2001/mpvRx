@@ -25,4 +25,3 @@ interface PlaybackStateRepository {
     newTitle: String,
   )
 }
-

@@ -76,4 +76,3 @@ fun ExposedTextDropDownMenu(
     }
   }
 }
-

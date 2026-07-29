@@ -74,4 +74,3 @@ data class TrackNode(
   val isSubtitle = type == "sub"
   val isSelected = selected == true
 }
-

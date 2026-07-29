@@ -20,4 +20,3 @@ class NetworkProtocolConverter {
   @TypeConverter
   fun toNetworkProtocol(value: String): NetworkProtocol = NetworkProtocol.valueOf(value)
 }
-

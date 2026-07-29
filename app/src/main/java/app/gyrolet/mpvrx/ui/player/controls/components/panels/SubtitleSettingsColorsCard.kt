@@ -7,9 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -17,10 +14,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
@@ -51,11 +48,13 @@ import app.gyrolet.mpvrx.preferences.preference.Preference
 import app.gyrolet.mpvrx.preferences.preference.deleteAndGet
 import app.gyrolet.mpvrx.presentation.components.ExpandableCard
 import app.gyrolet.mpvrx.presentation.components.TintedSliderItem
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.PlayerViewModel
+import app.gyrolet.mpvrx.ui.player.applySubtitleLayout
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
-import app.gyrolet.mpvrx.ui.player.PlayerViewModel
-import app.gyrolet.mpvrx.ui.player.applySubtitleLayout
 import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
 
@@ -191,12 +190,13 @@ fun resetColors(
   preferences: SubtitlesPreferences,
   type: SubColorType,
 ) {
-  val hexColor = when (type) {
-    SubColorType.Text -> preferences.textColor.deleteAndGet().toColorHexString()
-    SubColorType.Border -> preferences.borderColor.deleteAndGet().toColorHexString()
-    SubColorType.Background -> preferences.backgroundColor.deleteAndGet().toColorHexString()
-    SubColorType.Shadow -> preferences.shadowColor.deleteAndGet().toColorHexString()
-  }
+  val hexColor =
+    when (type) {
+      SubColorType.Text -> preferences.textColor.deleteAndGet().toColorHexString()
+      SubColorType.Border -> preferences.borderColor.deleteAndGet().toColorHexString()
+      SubColorType.Background -> preferences.backgroundColor.deleteAndGet().toColorHexString()
+      SubColorType.Shadow -> preferences.shadowColor.deleteAndGet().toColorHexString()
+    }
   MPVLib.setPropertyString(type.property, hexColor)
   MPVLib.setPropertyString(type.property.replace("sub-", "secondary-sub-"), hexColor)
 }
@@ -258,8 +258,9 @@ fun AssOverrideWarningBanner(
 ) {
   val subtitleTracks by viewModel.subtitleTracks.collectAsState()
   val activeSubTrack = subtitleTracks.find { it.isSelected }
-  val isActiveSubAss = activeSubTrack?.codec?.contains("ass", ignoreCase = true) == true ||
-                       activeSubTrack?.codec?.contains("ssa", ignoreCase = true) == true
+  val isActiveSubAss =
+    activeSubTrack?.codec?.contains("ass", ignoreCase = true) == true ||
+      activeSubTrack?.codec?.contains("ssa", ignoreCase = true) == true
 
   var overrideAssSubs by remember {
     mutableStateOf(preferences.overrideAssSubs.get())
@@ -271,34 +272,37 @@ fun AssOverrideWarningBanner(
 
   if (isActiveSubAss && !overrideAssSubs) {
     androidx.compose.material3.Card(
-      colors = androidx.compose.material3.CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f),
-        contentColor = MaterialTheme.colorScheme.onErrorContainer
-      ),
-      border = androidx.compose.foundation.BorderStroke(
-        width = 1.dp,
-        color = MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-      ),
-      modifier = modifier
-        .fillMaxWidth()
-        .padding(horizontal = MaterialTheme.spacing.medium)
-        .padding(bottom = MaterialTheme.spacing.medium)
+      colors =
+        androidx.compose.material3.CardDefaults.cardColors(
+          containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f),
+          contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
+      border =
+        androidx.compose.foundation.BorderStroke(
+          width = 1.dp,
+          color = MaterialTheme.colorScheme.error.copy(alpha = 0.3f),
+        ),
+      modifier =
+        modifier
+          .fillMaxWidth()
+          .padding(horizontal = MaterialTheme.spacing.medium)
+          .padding(bottom = MaterialTheme.spacing.medium),
     ) {
       Row(
         modifier = Modifier.padding(MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
         Icon(
           Icons.RoundedFilled.Warning,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.error,
-          modifier = Modifier.size(24.dp)
+          modifier = Modifier.size(24.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
           Text(
             text = stringResource(R.string.player_sheets_sub_ass_override_warning),
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodySmall,
           )
           Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
           TextButton(
@@ -307,11 +311,16 @@ fun AssOverrideWarningBanner(
               overrideAssSubs = true
               applySubtitleLayout(MPVLib.getPropertyInt("sub-pos") ?: preferences.subPos.get(), true)
             },
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+            contentPadding =
+              androidx.compose.foundation.layout
+                .PaddingValues(horizontal = 0.dp, vertical = 0.dp),
           ) {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_enable_ass_override),
+            Text(
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_enable_ass_override),
               style = MaterialTheme.typography.labelMedium,
-              color = MaterialTheme.colorScheme.error
+              color = MaterialTheme.colorScheme.error,
             )
           }
         }
@@ -319,8 +328,3 @@ fun AssOverrideWarningBanner(
     }
   }
 }
-
-
-
-
-

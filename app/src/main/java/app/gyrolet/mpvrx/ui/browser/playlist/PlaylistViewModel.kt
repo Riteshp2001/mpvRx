@@ -65,9 +65,10 @@ class PlaylistViewModel(
         val cachedPlaylists = repository.getAllPlaylists()
         if (cachedPlaylists.isNotEmpty()) {
           // Show cached data immediately (without video counts for speed)
-          val quickLoad = cachedPlaylists.sortedBy { it.name.lowercase() }.map { playlist ->
-            PlaylistWithCount(playlist, 0) // Show 0 count initially
-          }
+          val quickLoad =
+            cachedPlaylists.sortedBy { it.name.lowercase() }.map { playlist ->
+              PlaylistWithCount(playlist, 0) // Show 0 count initially
+            }
           _playlistsWithCount.value = quickLoad
           _hasCompletedInitialLoad.value = true
         }
@@ -81,10 +82,11 @@ class PlaylistViewModel(
       repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
         val sortedPlaylists = playlistsFromDb.sortedBy { it.name.lowercase() }
 
-        val playlistsWithCounts = sortedPlaylists.map { playlist ->
-          val count = getActualVideoCount(playlist.id)
-          PlaylistWithCount(playlist, count)
-        }
+        val playlistsWithCounts =
+          sortedPlaylists.map { playlist ->
+            val count = getActualVideoCount(playlist.id)
+            PlaylistWithCount(playlist, count)
+          }
 
         _playlistsWithCount.value = playlistsWithCounts
         _hasCompletedInitialLoad.value = true
@@ -106,9 +108,11 @@ class PlaylistViewModel(
     }
 
     // For regular playlists, check if files still exist
-    val bucketIds = items.map { item ->
-      File(item.filePath).parent ?: ""
-    }.toSet()
+    val bucketIds =
+      items
+        .map { item ->
+          File(item.filePath).parent ?: ""
+        }.toSet()
 
     val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
 
@@ -124,10 +128,11 @@ class PlaylistViewModel(
         val playlistsFromDb = repository.getAllPlaylists()
         val sortedPlaylists = playlistsFromDb.sortedBy { it.name.lowercase() }
 
-        val playlistsWithCounts = sortedPlaylists.map { playlist ->
-          val count = getActualVideoCount(playlist.id)
-          PlaylistWithCount(playlist, count)
-        }
+        val playlistsWithCounts =
+          sortedPlaylists.map { playlist ->
+            val count = getActualVideoCount(playlist.id)
+            PlaylistWithCount(playlist, count)
+          }
 
         _playlistsWithCount.value = playlistsWithCounts
       } catch (e: Exception) {
@@ -138,21 +143,17 @@ class PlaylistViewModel(
     }
   }
 
-  suspend fun createPlaylist(name: String): Long {
-    return repository.createPlaylist(name)
-  }
+  suspend fun createPlaylist(name: String): Long = repository.createPlaylist(name)
 
-  suspend fun createM3UPlaylist(url: String, userAgent: String? = null): Result<Long> {
-    return repository.createM3UPlaylist(url, userAgent)
-  }
+  suspend fun createM3UPlaylist(
+    url: String,
+    userAgent: String? = null,
+  ): Result<Long> = repository.createM3UPlaylist(url, userAgent)
 
-  suspend fun createM3UPlaylistFromFile(uri: android.net.Uri): Result<Long> {
-    return repository.createM3UPlaylistFromFile(getApplication(), uri)
-  }
+  suspend fun createM3UPlaylistFromFile(uri: android.net.Uri): Result<Long> =
+    repository.createM3UPlaylistFromFile(getApplication(), uri)
 
-  suspend fun refreshM3UPlaylist(playlistId: Int): Result<Unit> {
-    return repository.refreshM3UPlaylist(playlistId)
-  }
+  suspend fun refreshM3UPlaylist(playlistId: Int): Result<Unit> = repository.refreshM3UPlaylist(playlistId)
 
   suspend fun deletePlaylist(playlist: PlaylistEntity) {
     repository.deletePlaylist(playlist)
@@ -162,4 +163,3 @@ class PlaylistViewModel(
     repository.updatePlaylist(playlist)
   }
 }
-

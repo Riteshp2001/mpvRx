@@ -62,8 +62,7 @@ internal fun normalizeStoragePath(path: String?): String? {
   return normalized.ifBlank { "/" }
 }
 
-internal fun storagePathKey(path: String?): String? =
-  normalizeStoragePath(path)?.lowercase(Locale.ROOT)
+internal fun storagePathKey(path: String?): String? = normalizeStoragePath(path)?.lowercase(Locale.ROOT)
 
 internal fun mediaPathKey(path: String?): String? {
   val normalizedPath = normalizeStoragePath(path) ?: return null
@@ -149,4 +148,3 @@ private fun storageDisplayScore(path: String): Int {
       .count { preferredName -> path.contains("/$preferredName") || path.endsWith(preferredName) }
   return uppercaseScore + mediaFolderBonus
 }
-

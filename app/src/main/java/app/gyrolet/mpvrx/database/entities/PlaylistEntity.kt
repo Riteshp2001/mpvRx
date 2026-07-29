@@ -20,4 +20,3 @@ data class PlaylistEntity(
   val isM3uPlaylist: Boolean = false, // True if this playlist was created from an M3U source
   val userAgent: String? = null, // Custom User-Agent for fetching this M3U
 )
-

@@ -25,4 +25,3 @@ sealed class RecentlyPlayedItem {
     override val timestamp: Long,
   ) : RecentlyPlayedItem()
 }
-

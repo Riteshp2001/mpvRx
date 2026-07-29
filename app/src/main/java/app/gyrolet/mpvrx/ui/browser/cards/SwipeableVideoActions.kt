@@ -70,20 +70,24 @@ fun SwipeableVideoActions(
   var offsetX by remember(itemKey) { mutableFloatStateOf(0f) }
   var settleJob by remember(itemKey) { androidx.compose.runtime.mutableStateOf<Job?>(null) }
 
-  fun settle(target: Float, action: (() -> Unit)? = null) {
+  fun settle(
+    target: Float,
+    action: (() -> Unit)? = null,
+  ) {
     settleJob?.cancel()
     action?.invoke()
     if (reduceMotion) {
       offsetX = target
       return
     }
-    settleJob = scope.launch {
-      animate(
-        initialValue = offsetX,
-        targetValue = target,
-        animationSpec = AppMotion.Spatial.StandardDefault,
-      ) { value, _ -> offsetX = value }
-    }
+    settleJob =
+      scope.launch {
+        animate(
+          initialValue = offsetX,
+          targetValue = target,
+          animationSpec = AppMotion.Spatial.StandardDefault,
+        ) { value, _ -> offsetX = value }
+      }
   }
 
   LaunchedEffect(enabled) {

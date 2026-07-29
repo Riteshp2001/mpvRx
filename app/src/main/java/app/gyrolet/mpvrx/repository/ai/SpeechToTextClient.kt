@@ -7,8 +7,8 @@
 
 package app.gyrolet.mpvrx.repository.ai
 
-import java.io.File
 import kotlinx.serialization.Serializable
+import java.io.File
 
 @Serializable
 data class SpeechSegment(

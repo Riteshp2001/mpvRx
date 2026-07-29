@@ -246,4 +246,3 @@ private fun PreviewVerticalSliderItem() {
     5,
   )
 }
-

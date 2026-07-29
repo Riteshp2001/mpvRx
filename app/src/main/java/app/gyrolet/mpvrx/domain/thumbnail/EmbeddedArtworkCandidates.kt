@@ -20,9 +20,13 @@ object EmbeddedArtworkCandidates {
   fun forVideoPath(path: String): List<String> {
     if (path.isBlank() || path.isRemoteOrOpaqueUri()) return emptyList()
     val normalizedPath = path.replace('\\', '/')
-    val parent = normalizedPath.substringBeforeLast('/', missingDelimiterValue = "").takeIf { it.isNotBlank() } ?: return emptyList()
+    val parent =
+      normalizedPath.substringBeforeLast('/', missingDelimiterValue = "").takeIf { it.isNotBlank() }
+        ?: return emptyList()
     val fileName = normalizedPath.substringAfterLast('/')
-    val baseName = fileName.substringBeforeLast('.', missingDelimiterValue = fileName).takeIf { it.isNotBlank() } ?: return emptyList()
+    val baseName =
+      fileName.substringBeforeLast('.', missingDelimiterValue = fileName).takeIf { it.isNotBlank() }
+        ?: return emptyList()
 
     return buildList {
       artworkExtensions.forEach { extension ->

@@ -28,4 +28,3 @@ data class VideoMetadataEntity(
   val subtitleCodec: String = "",
   val lastScanned: Long, // When this metadata was extracted (timestamp)
 )
-

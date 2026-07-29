@@ -14,4 +14,3 @@ interface Screen : NavKey {
   @Composable
   fun Content()
 }
-

@@ -7,7 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.icons
 
-import androidx.compose.material3.Icon as MaterialIcon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -17,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.material3.Icon as MaterialIcon
 
 @Immutable
 class AppIcon(
@@ -24,8 +24,7 @@ class AppIcon(
   private val rtlImageVector: ImageVector? = null,
   val mirrorInRtl: Boolean = false,
 ) {
-  internal fun resolve(isRtl: Boolean): ImageVector =
-    if (isRtl) rtlImageVector ?: ltrImageVector else ltrImageVector
+  internal fun resolve(isRtl: Boolean): ImageVector = if (isRtl) rtlImageVector ?: ltrImageVector else ltrImageVector
 
   internal fun hasExplicitRtlSource(): Boolean = rtlImageVector != null
 }
@@ -52,4 +51,3 @@ fun Icon(
     tint = tint,
   )
 }
-

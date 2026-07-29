@@ -90,139 +90,185 @@ fun EditConnectionSheet(
     onDismissRequest = handleDismiss,
     modifier = Modifier.widthIn(min = 400.dp, max = 600.dp),
     title = {
-      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_edit_connection),
+      Text(
+        text =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_edit_connection),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Medium,
       )
     },
     text = {
       Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .verticalScroll(rememberScrollState()),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
-            // Name and Protocol in one row
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-              // Connection Name
-              OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_name), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                modifier = Modifier.weight(0.60f),
-                singleLine = true,
+        // Name and Protocol in one row
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          // Connection Name
+          OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_name),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
               )
+            },
+            modifier = Modifier.weight(0.60f),
+            singleLine = true,
+          )
 
-              // Protocol Dropdown
-              ExposedDropdownMenuBox(
-                expanded = protocolMenuExpanded,
-                onExpandedChange = { protocolMenuExpanded = it },
-                modifier = Modifier.weight(0.40f),
-              ) {
-                OutlinedTextField(
-                  value = protocol.displayName,
-                  onValueChange = { },
-                  readOnly = true,
-                  label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_protocol), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                  trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = protocolMenuExpanded) },
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                )
-                ExposedDropdownMenu(
-                  expanded = protocolMenuExpanded,
-                  onDismissRequest = { protocolMenuExpanded = false },
-                ) {
-                  NetworkProtocol.entries.forEach { proto ->
-                    DropdownMenuItem(
-                      text = { Text(proto.displayName) },
-                      onClick = {
-                        protocol = proto
-                        port = proto.defaultPort.toString()
-                        protocolMenuExpanded = false
-                      },
-                    )
-                  }
-                }
-              }
-            }
-
-            // Host
+          // Protocol Dropdown
+          ExposedDropdownMenuBox(
+            expanded = protocolMenuExpanded,
+            onExpandedChange = { protocolMenuExpanded = it },
+            modifier = Modifier.weight(0.40f),
+          ) {
             OutlinedTextField(
-              value = host,
-              onValueChange = { host = it },
-              label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_host_ip_address), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-              modifier = Modifier.fillMaxWidth(),
-              singleLine = true,
-              placeholder = { Text("192.168.1.100", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+              value = protocol.displayName,
+              onValueChange = { },
+              readOnly = true,
+              label = {
+                Text(
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_protocol),
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                )
+              },
+              trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = protocolMenuExpanded) },
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             )
-
-            // Port and Path in one row
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ExposedDropdownMenu(
+              expanded = protocolMenuExpanded,
+              onDismissRequest = { protocolMenuExpanded = false },
             ) {
-              // Port
-              OutlinedTextField(
-                value = port,
-                onValueChange = { port = it },
-                label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_port), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                modifier = Modifier.weight(0.3f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              )
-
-              // Path
-              OutlinedTextField(
-                value = path,
-                onValueChange = { path = it },
-                label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_path), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                modifier = Modifier.weight(0.7f),
-                singleLine = true,
-                placeholder = { Text("/", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-              )
-            }
-
-            // Anonymous checkbox
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              modifier = Modifier.fillMaxWidth(),
-            ) {
-              Checkbox(
-                checked = isAnonymous,
-                onCheckedChange = { isAnonymous = it },
-              )
-              Spacer(modifier = Modifier.width(8.dp))
-              Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_anonymous_guest_access))
-            }
-            
-            // HTTPS checkbox (only for WebDAV)
-            if (protocol == NetworkProtocol.WEBDAV) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-              ) {
-                Checkbox(
-                  checked = useHttps,
-                  onCheckedChange = { 
-                    useHttps = it
-                    // Auto-update port when toggling HTTPS
-                    if (it && port == "80") {
-                      port = "443"
-                    } else if (!it && port == "443") {
-                      port = "80"
-                    }
+              NetworkProtocol.entries.forEach { proto ->
+                DropdownMenuItem(
+                  text = { Text(proto.displayName) },
+                  onClick = {
+                    protocol = proto
+                    port = proto.defaultPort.toString()
+                    protocolMenuExpanded = false
                   },
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_use_https_secure_connection))
               }
             }
+          }
+        }
 
-            // Username and Password in one row
+        // Host
+        OutlinedTextField(
+          value = host,
+          onValueChange = { host = it },
+          label = {
+            Text(
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_host_ip_address),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true,
+          placeholder = { Text("192.168.1.100", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        )
+
+        // Port and Path in one row
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          // Port
+          OutlinedTextField(
+            value = port,
+            onValueChange = { port = it },
+            label = {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_port),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            },
+            modifier = Modifier.weight(0.3f),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          )
+
+          // Path
+          OutlinedTextField(
+            value = path,
+            onValueChange = { path = it },
+            label = {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_path),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            },
+            modifier = Modifier.weight(0.7f),
+            singleLine = true,
+            placeholder = { Text("/", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+          )
+        }
+
+        // Anonymous checkbox
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Checkbox(
+            checked = isAnonymous,
+            onCheckedChange = { isAnonymous = it },
+          )
+          Spacer(modifier = Modifier.width(8.dp))
+          Text(
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_anonymous_guest_access),
+          )
+        }
+
+        // HTTPS checkbox (only for WebDAV)
+        if (protocol == NetworkProtocol.WEBDAV) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Checkbox(
+              checked = useHttps,
+              onCheckedChange = {
+                useHttps = it
+                // Auto-update port when toggling HTTPS
+                if (it && port == "80") {
+                  port = "443"
+                } else if (!it && port == "443") {
+                  port = "80"
+                }
+              },
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_use_https_secure_connection),
+            )
+          }
+        }
+
+        // Username and Password in one row
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -231,7 +277,14 @@ fun EditConnectionSheet(
           OutlinedTextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_username), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            label = {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_username),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            },
             modifier = Modifier.weight(0.50f),
             singleLine = true,
             enabled = !isAnonymous,
@@ -241,7 +294,14 @@ fun EditConnectionSheet(
           OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_password), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            label = {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_password),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            },
             modifier = Modifier.weight(0.50f),
             singleLine = true,
             enabled = !isAnonymous,
@@ -254,14 +314,20 @@ fun EditConnectionSheet(
         onClick = handleSave,
         enabled = host.isNotBlank() && (isAnonymous || username.isNotBlank()),
       ) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_save),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_save),
           fontWeight = FontWeight.SemiBold,
         )
       }
     },
     dismissButton = {
       TextButton(onClick = handleDismiss) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
           fontWeight = FontWeight.Medium,
         )
       }
@@ -271,4 +337,3 @@ fun EditConnectionSheet(
     shape = MaterialTheme.shapes.extraLarge,
   )
 }
-

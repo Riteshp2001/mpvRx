@@ -107,4 +107,3 @@ interface VideoMetadataDao {
   @Query("SELECT * FROM video_metadata_cache ORDER BY lastScanned DESC")
   suspend fun getAllMetadata(): List<VideoMetadataEntity>
 }
-

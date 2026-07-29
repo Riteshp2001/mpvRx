@@ -55,10 +55,11 @@ fun AnimatedSection(
 
   Column(modifier = modifier) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable { isExpanded = !isExpanded }
-        .padding(horizontal = 16.dp, vertical = 12.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .clickable { isExpanded = !isExpanded }
+          .padding(horizontal = 16.dp, vertical = 12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       if (headerContent != null) {
@@ -80,18 +81,22 @@ fun AnimatedSection(
 
     AnimatedVisibility(
       visible = isExpanded,
-      enter = expandVertically(
-        animationSpec = AppMotion.spatial(
-          AppMotion.IntSizeSpring,
-          AppMotion.ReducedIntSize,
-        ),
-      ) + fadeIn(animationSpec = AppMotion.Effect.Alpha),
-      exit = shrinkVertically(
-        animationSpec = AppMotion.spatial(
-          AppMotion.IntSizeSpring,
-          AppMotion.ReducedIntSize,
-        ),
-      ) + fadeOut(animationSpec = AppMotion.Effect.Alpha),
+      enter =
+        expandVertically(
+          animationSpec =
+            AppMotion.spatial(
+              AppMotion.IntSizeSpring,
+              AppMotion.ReducedIntSize,
+            ),
+        ) + fadeIn(animationSpec = AppMotion.Effect.Alpha),
+      exit =
+        shrinkVertically(
+          animationSpec =
+            AppMotion.spatial(
+              AppMotion.IntSizeSpring,
+              AppMotion.ReducedIntSize,
+            ),
+        ) + fadeOut(animationSpec = AppMotion.Effect.Alpha),
     ) {
       Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         content()
@@ -119,10 +124,11 @@ fun AnimatedSection(
 
   Column(modifier = modifier) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable { onExpandedChange(!isExpanded) }
-        .padding(horizontal = 16.dp, vertical = 12.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .clickable { onExpandedChange(!isExpanded) }
+          .padding(horizontal = 16.dp, vertical = 12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Text(
@@ -140,18 +146,22 @@ fun AnimatedSection(
 
     AnimatedVisibility(
       visible = isExpanded,
-      enter = expandVertically(
-        animationSpec = AppMotion.spatial(
-          AppMotion.IntSizeSpring,
-          AppMotion.ReducedIntSize,
-        ),
-      ) + fadeIn(animationSpec = AppMotion.Effect.Alpha),
-      exit = shrinkVertically(
-        animationSpec = AppMotion.spatial(
-          AppMotion.IntSizeSpring,
-          AppMotion.ReducedIntSize,
-        ),
-      ) + fadeOut(animationSpec = AppMotion.Effect.Alpha),
+      enter =
+        expandVertically(
+          animationSpec =
+            AppMotion.spatial(
+              AppMotion.IntSizeSpring,
+              AppMotion.ReducedIntSize,
+            ),
+        ) + fadeIn(animationSpec = AppMotion.Effect.Alpha),
+      exit =
+        shrinkVertically(
+          animationSpec =
+            AppMotion.spatial(
+              AppMotion.IntSizeSpring,
+              AppMotion.ReducedIntSize,
+            ),
+        ) + fadeOut(animationSpec = AppMotion.Effect.Alpha),
     ) {
       Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         content()

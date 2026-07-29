@@ -101,4 +101,3 @@ suspend fun loadCustomFontEntries(context: Context): List<CustomFontEntry> =
 
     entries.sortedBy { it.familyName }
   }
-

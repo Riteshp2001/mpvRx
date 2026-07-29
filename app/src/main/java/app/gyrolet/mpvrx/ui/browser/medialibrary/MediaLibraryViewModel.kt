@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import androidx.compose.runtime.Immutable
 
 class MediaLibraryViewModel(
   application: Application,
@@ -56,18 +55,20 @@ class MediaLibraryViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         _isLoading.value = true
-        var videoList = MediaFileRepository.getAllVideos(
-          context = getApplication(),
-          includeAudioOverride = true,
-        )
+        var videoList =
+          MediaFileRepository.getAllVideos(
+            context = getApplication(),
+            includeAudioOverride = true,
+          )
 
         if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
-          videoList = MetadataRetrieval.enrichVideosIfNeeded(
-            context = getApplication(),
-            videos = videoList,
-            browserPreferences = browserPreferences,
-            metadataCache = metadataCache
-          )
+          videoList =
+            MetadataRetrieval.enrichVideosIfNeeded(
+              context = getApplication(),
+              videos = videoList,
+              browserPreferences = browserPreferences,
+              metadataCache = metadataCache,
+            )
         }
 
         _videos.value = videoList
@@ -96,27 +97,29 @@ class MediaLibraryViewModel(
       videos.map { video ->
         val playbackState = playbackByTitle[video.displayName]
 
-        val progress = if (playbackState != null && video.duration > 0) {
-          val durationSeconds = video.duration / 1000
-          val watched = durationSeconds - playbackState.timeRemaining.toLong()
-          val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-          if (progressValue in 0.01f..0.99f) progressValue else null
-        } else {
-          null
-        }
+        val progress =
+          if (playbackState != null && video.duration > 0) {
+            val durationSeconds = video.duration / 1000
+            val watched = durationSeconds - playbackState.timeRemaining.toLong()
+            val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+            if (progressValue in 0.01f..0.99f) progressValue else null
+          } else {
+            null
+          }
 
         val videoAge = currentTime - (video.dateModified * 1000)
         val isOldAndUnplayed = playbackState == null && videoAge <= thresholdMillis
 
-        val isWatched = if (playbackState != null && video.duration > 0) {
-           val durationSeconds = video.duration / 1000
-           val watched = durationSeconds - playbackState.timeRemaining.toLong()
-           val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-           val calculatedWatched = progressValue >= (watchedThreshold / 100f)
-           playbackState.hasBeenWatched || calculatedWatched
-        } else {
-           false
-        }
+        val isWatched =
+          if (playbackState != null && video.duration > 0) {
+            val durationSeconds = video.duration / 1000
+            val watched = durationSeconds - playbackState.timeRemaining.toLong()
+            val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+            val calculatedWatched = progressValue >= (watchedThreshold / 100f)
+            playbackState.hasBeenWatched || calculatedWatched
+          } else {
+            false
+          }
 
         VideoWithPlaybackInfo(
           video = video,
@@ -133,9 +136,7 @@ class MediaLibraryViewModel(
     fun factory(application: Application): ViewModelProvider.Factory =
       object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-          return MediaLibraryViewModel(application) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = MediaLibraryViewModel(application) as T
       }
   }
 }

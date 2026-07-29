@@ -17,4 +17,3 @@ val LocalBackStack: ProvidableCompositionLocal<NavBackStack<Screen>> =
 
 val LocalShowSettingsBackArrow: ProvidableCompositionLocal<Boolean> =
   compositionLocalOf { true }
-

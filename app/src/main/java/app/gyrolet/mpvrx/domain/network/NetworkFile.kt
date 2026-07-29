@@ -21,4 +21,3 @@ data class NetworkFile(
   val lastModified: Long = 0,
   val mimeType: String? = null,
 )
-

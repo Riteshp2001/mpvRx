@@ -91,21 +91,22 @@ object TreeViewScanner {
     showNewLabels: Boolean = false,
     thresholdDays: Int = 7,
     maxAutoFlattenLevels: Int = -1,
-  ): List<FolderData> = withContext(Dispatchers.IO) {
-    val allFolders =
-      getOrBuildTreeViewData(
-        context = context,
-        options = options,
-        forceFileSystemCheck = forceFileSystemCheck,
-        playedMediaTitles = playedMediaTitles,
-        showNewLabels = showNewLabels,
-        thresholdDays = thresholdDays,
-      )
+  ): List<FolderData> =
+    withContext(Dispatchers.IO) {
+      val allFolders =
+        getOrBuildTreeViewData(
+          context = context,
+          options = options,
+          forceFileSystemCheck = forceFileSystemCheck,
+          playedMediaTitles = playedMediaTitles,
+          showNewLabels = showNewLabels,
+          thresholdDays = thresholdDays,
+        )
 
-    getEffectiveChildren(parentPath, allFolders, maxAutoFlattenLevels)
-      .map(::toFolderData)
-      .sortedBy { it.name.lowercase(Locale.getDefault()) }
-  }
+      getEffectiveChildren(parentPath, allFolders, maxAutoFlattenLevels)
+        .map(::toFolderData)
+        .sortedBy { it.name.lowercase(Locale.getDefault()) }
+    }
 
   suspend fun getFolderDataRecursive(
     context: Context,
@@ -115,37 +116,38 @@ object TreeViewScanner {
     playedMediaTitles: Set<String> = emptySet(),
     showNewLabels: Boolean = false,
     thresholdDays: Int = 7,
-  ): FolderData? = withContext(Dispatchers.IO) {
-    val allFolders =
-      getOrBuildTreeViewData(
-        context = context,
-        options = options,
-        forceFileSystemCheck = forceFileSystemCheck,
-        playedMediaTitles = playedMediaTitles,
-        showNewLabels = showNewLabels,
-        thresholdDays = thresholdDays,
+  ): FolderData? =
+    withContext(Dispatchers.IO) {
+      val allFolders =
+        getOrBuildTreeViewData(
+          context = context,
+          options = options,
+          forceFileSystemCheck = forceFileSystemCheck,
+          playedMediaTitles = playedMediaTitles,
+          showNewLabels = showNewLabels,
+          thresholdDays = thresholdDays,
+        )
+      val normalizedFolderPath = normalizeStoragePath(folderPath) ?: return@withContext null
+      val folderKey = storagePathKey(normalizedFolderPath) ?: return@withContext null
+
+      allFolders[folderKey]?.let { return@withContext toFolderData(it) }
+
+      val children = getEffectiveChildren(normalizedFolderPath, allFolders)
+      if (children.isEmpty()) {
+        return@withContext null
+      }
+
+      FolderData(
+        path = normalizedFolderPath,
+        name = leafStorageName(normalizedFolderPath),
+        videoCount = children.sumOf { it.recursiveVideoCount },
+        totalSize = children.sumOf { it.recursiveSize },
+        totalDuration = children.sumOf { it.recursiveDuration },
+        lastModified = children.maxOfOrNull { it.recursiveLastModified } ?: 0L,
+        hasSubfolders = true,
+        newCount = children.sumOf { it.recursiveNewCount },
       )
-    val normalizedFolderPath = normalizeStoragePath(folderPath) ?: return@withContext null
-    val folderKey = storagePathKey(normalizedFolderPath) ?: return@withContext null
-
-    allFolders[folderKey]?.let { return@withContext toFolderData(it) }
-
-    val children = getEffectiveChildren(normalizedFolderPath, allFolders)
-    if (children.isEmpty()) {
-      return@withContext null
     }
-
-    FolderData(
-      path = normalizedFolderPath,
-      name = leafStorageName(normalizedFolderPath),
-      videoCount = children.sumOf { it.recursiveVideoCount },
-      totalSize = children.sumOf { it.recursiveSize },
-      totalDuration = children.sumOf { it.recursiveDuration },
-      lastModified = children.maxOfOrNull { it.recursiveLastModified } ?: 0L,
-      hasSubfolders = true,
-      newCount = children.sumOf { it.recursiveNewCount },
-    )
-  }
 
   private suspend fun getOrBuildTreeViewData(
     context: Context,
@@ -154,37 +156,38 @@ object TreeViewScanner {
     playedMediaTitles: Set<String>,
     showNewLabels: Boolean,
     thresholdDays: Int,
-  ): Map<String, FolderNode> = withContext(Dispatchers.IO) {
-    val now = System.currentTimeMillis()
-    val cacheKey =
-      buildCacheKey(
-        options = options,
-        showNewLabels = showNewLabels,
-        thresholdDays = thresholdDays,
-        playedMediaTitles = playedMediaTitles,
-      )
+  ): Map<String, FolderNode> =
+    withContext(Dispatchers.IO) {
+      val now = System.currentTimeMillis()
+      val cacheKey =
+        buildCacheKey(
+          options = options,
+          showNewLabels = showNewLabels,
+          thresholdDays = thresholdDays,
+          playedMediaTitles = playedMediaTitles,
+        )
 
-    cachedTreeViewData?.let { cached ->
-      if (!forceFileSystemCheck && now - cacheTimestamp < CACHE_TTL_MS && cacheOptionsKey == cacheKey) {
-        return@withContext cached
+      cachedTreeViewData?.let { cached ->
+        if (!forceFileSystemCheck && now - cacheTimestamp < CACHE_TTL_MS && cacheOptionsKey == cacheKey) {
+          return@withContext cached
+        }
       }
+
+      val data =
+        buildTreeViewData(
+          context = context,
+          options = options,
+          forceFileSystemCheck = forceFileSystemCheck,
+          playedMediaTitles = playedMediaTitles,
+          showNewLabels = showNewLabels,
+          thresholdDays = thresholdDays,
+        )
+
+      cachedTreeViewData = data
+      cacheTimestamp = now
+      cacheOptionsKey = cacheKey
+      data
     }
-
-    val data =
-      buildTreeViewData(
-        context = context,
-        options = options,
-        forceFileSystemCheck = forceFileSystemCheck,
-        playedMediaTitles = playedMediaTitles,
-        showNewLabels = showNewLabels,
-        thresholdDays = thresholdDays,
-      )
-
-    cachedTreeViewData = data
-    cacheTimestamp = now
-    cacheOptionsKey = cacheKey
-    data
-  }
 
   private fun buildCacheKey(
     options: MediaScanOptions,
@@ -209,44 +212,45 @@ object TreeViewScanner {
     playedMediaTitles: Set<String>,
     showNewLabels: Boolean,
     thresholdDays: Int,
-  ): Map<String, FolderNode> = withContext(Dispatchers.IO) {
-    val allFolders = mutableMapOf<String, FolderNode>()
-    val noMediaPathFilter = NoMediaPathFilter(options)
-    val storageRootKeys = getStorageRootKeys(context)
-    val newBadgeConfig =
-      NewBadgeConfig(
-        enabled = showNewLabels,
-        thresholdMillis = thresholdDays.toLong() * 24L * 60L * 60L * 1000L,
-        playedMediaTitles = playedMediaTitles,
-      )
-    val currentTimeMs = System.currentTimeMillis()
+  ): Map<String, FolderNode> =
+    withContext(Dispatchers.IO) {
+      val allFolders = mutableMapOf<String, FolderNode>()
+      val noMediaPathFilter = NoMediaPathFilter(options)
+      val storageRootKeys = getStorageRootKeys(context)
+      val newBadgeConfig =
+        NewBadgeConfig(
+          enabled = showNewLabels,
+          thresholdMillis = thresholdDays.toLong() * 24L * 60L * 60L * 1000L,
+          playedMediaTitles = playedMediaTitles,
+        )
+      val currentTimeMs = System.currentTimeMillis()
 
-    scanMediaStoreRecursive(context, allFolders, noMediaPathFilter, newBadgeConfig, currentTimeMs)
-    if (options.includeAudio) {
-      scanAudioMediaStoreRecursive(
-        context,
-        allFolders,
-        noMediaPathFilter,
-        newBadgeConfig,
-        currentTimeMs,
-        options,
+      scanMediaStoreRecursive(context, allFolders, noMediaPathFilter, newBadgeConfig, currentTimeMs)
+      if (options.includeAudio) {
+        scanAudioMediaStoreRecursive(
+          context,
+          allFolders,
+          noMediaPathFilter,
+          newBadgeConfig,
+          currentTimeMs,
+          options,
+        )
+      }
+      scanFileSystemRoots(
+        context = context,
+        folders = allFolders,
+        options = options,
+        noMediaPathFilter = noMediaPathFilter,
+        forceFileSystemCheck = forceFileSystemCheck,
+        newBadgeConfig = newBadgeConfig,
+        currentTimeMs = currentTimeMs,
       )
+      buildParentHierarchy(allFolders)
+      markFlattenedFolders(allFolders, storageRootKeys)
+
+      allFolders.entries.removeIf { it.value.recursiveVideoCount <= 0 && !it.value.isFlattened }
+      allFolders
     }
-    scanFileSystemRoots(
-      context = context,
-      folders = allFolders,
-      options = options,
-      noMediaPathFilter = noMediaPathFilter,
-      forceFileSystemCheck = forceFileSystemCheck,
-      newBadgeConfig = newBadgeConfig,
-      currentTimeMs = currentTimeMs,
-    )
-    buildParentHierarchy(allFolders)
-    markFlattenedFolders(allFolders, storageRootKeys)
-
-    allFolders.entries.removeIf { it.value.recursiveVideoCount <= 0 && !it.value.isFlattened }
-    allFolders
-  }
 
   private fun scanMediaStoreRecursive(
     context: Context,
@@ -265,53 +269,54 @@ object TreeViewScanner {
       )
 
     try {
-      context.contentResolver.query(
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        null,
-        null,
-        null,
-      )?.use { cursor ->
-        val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-        val displayNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-        val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
-        val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-        val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
+      context.contentResolver
+        .query(
+          MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+          projection,
+          null,
+          null,
+          null,
+        )?.use { cursor ->
+          val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+          val displayNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+          val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+          val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+          val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
 
-        val videosByFolder = mutableMapOf<String, FolderAggregate>()
+          val videosByFolder = mutableMapOf<String, FolderAggregate>()
 
-        while (cursor.moveToNext()) {
-          val videoPath = cursor.getString(dataColumn)
-          val file = File(videoPath)
+          while (cursor.moveToNext()) {
+            val videoPath = cursor.getString(dataColumn)
+            val file = File(videoPath)
 
-          if (!file.exists()) continue
-          if (!FileTypeUtils.isVideoFile(file)) continue
-          if (noMediaPathFilter.shouldExcludeDirectory(file.parentFile)) continue
+            if (!file.exists()) continue
+            if (!FileTypeUtils.isVideoFile(file)) continue
+            if (noMediaPathFilter.shouldExcludeDirectory(file.parentFile)) continue
 
-          val folderPath = normalizeStoragePath(file.parent) ?: continue
-          val folderKey = storagePathKey(folderPath) ?: continue
-          val aggregate = videosByFolder.getOrPut(folderKey) { FolderAggregate(path = folderPath) }
-          aggregate.path = choosePreferredStoragePath(aggregate.path, folderPath)
-          aggregate.videos.add(
-            VideoInfo(
-              displayName = cursor.getString(displayNameColumn) ?: file.name,
-              size = cursor.getLong(sizeColumn),
-              duration = cursor.getLong(durationColumn),
-              dateModified = cursor.getLong(dateColumn),
-            ),
-          )
-        }
-
-        for ((folderKey, aggregate) in videosByFolder) {
-          folders[folderKey] =
-            createDirectNode(
-              folderPath = aggregate.path,
-              videos = aggregate.videos,
-              newBadgeConfig = newBadgeConfig,
-              currentTimeMs = currentTimeMs,
+            val folderPath = normalizeStoragePath(file.parent) ?: continue
+            val folderKey = storagePathKey(folderPath) ?: continue
+            val aggregate = videosByFolder.getOrPut(folderKey) { FolderAggregate(path = folderPath) }
+            aggregate.path = choosePreferredStoragePath(aggregate.path, folderPath)
+            aggregate.videos.add(
+              VideoInfo(
+                displayName = cursor.getString(displayNameColumn) ?: file.name,
+                size = cursor.getLong(sizeColumn),
+                duration = cursor.getLong(durationColumn),
+                dateModified = cursor.getLong(dateColumn),
+              ),
             )
+          }
+
+          for ((folderKey, aggregate) in videosByFolder) {
+            folders[folderKey] =
+              createDirectNode(
+                folderPath = aggregate.path,
+                videos = aggregate.videos,
+                newBadgeConfig = newBadgeConfig,
+                currentTimeMs = currentTimeMs,
+              )
+          }
         }
-      }
     } catch (e: Exception) {
       Log.e(TAG, "MediaStore scan error", e)
     }
@@ -365,54 +370,55 @@ object TreeViewScanner {
         MediaStore.Audio.Media.DATE_MODIFIED,
       )
     try {
-      context.contentResolver.query(
-        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        null,
-        null,
-        null,
-      )?.use { cursor ->
-        val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
-        val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-        val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-        val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
-        val audioByFolder = mutableMapOf<String, FolderAggregate>()
+      context.contentResolver
+        .query(
+          MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+          projection,
+          null,
+          null,
+          null,
+        )?.use { cursor ->
+          val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+          val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+          val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+          val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+          val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+          val audioByFolder = mutableMapOf<String, FolderAggregate>()
 
-        while (cursor.moveToNext()) {
-          val file = File(cursor.getString(dataColumn))
-          if (!file.exists() || noMediaPathFilter.shouldExcludeDirectory(file.parentFile)) continue
-          if (!FileTypeUtils.isAudioFile(file)) continue
-          val duration = cursor.getLong(durationColumn)
-          if (!options.includesAudioDuration(duration)) continue
-          val folderPath = normalizeStoragePath(file.parent) ?: continue
-          val folderKey = storagePathKey(folderPath) ?: continue
-          audioByFolder.getOrPut(folderKey) { FolderAggregate(folderPath) }.videos +=
-            VideoInfo(
-              displayName = cursor.getString(nameColumn) ?: file.name,
-              size = cursor.getLong(sizeColumn),
-              duration = duration,
-              dateModified = cursor.getLong(dateColumn),
-            )
-        }
+          while (cursor.moveToNext()) {
+            val file = File(cursor.getString(dataColumn))
+            if (!file.exists() || noMediaPathFilter.shouldExcludeDirectory(file.parentFile)) continue
+            if (!FileTypeUtils.isAudioFile(file)) continue
+            val duration = cursor.getLong(durationColumn)
+            if (!options.includesAudioDuration(duration)) continue
+            val folderPath = normalizeStoragePath(file.parent) ?: continue
+            val folderKey = storagePathKey(folderPath) ?: continue
+            audioByFolder.getOrPut(folderKey) { FolderAggregate(folderPath) }.videos +=
+              VideoInfo(
+                displayName = cursor.getString(nameColumn) ?: file.name,
+                size = cursor.getLong(sizeColumn),
+                duration = duration,
+                dateModified = cursor.getLong(dateColumn),
+              )
+          }
 
-        for ((folderKey, aggregate) in audioByFolder) {
-          val audioNode = createDirectNode(aggregate.path, aggregate.videos, newBadgeConfig, currentTimeMs)
-          val existing = folders[folderKey]
-          folders[folderKey] =
-            if (existing == null) {
-              audioNode
-            } else {
-              existing.apply {
-                directVideoCount += audioNode.directVideoCount
-                directSize += audioNode.directSize
-                directDuration += audioNode.directDuration
-                directLastModified = maxOf(directLastModified, audioNode.directLastModified)
-                directNewCount += audioNode.directNewCount
+          for ((folderKey, aggregate) in audioByFolder) {
+            val audioNode = createDirectNode(aggregate.path, aggregate.videos, newBadgeConfig, currentTimeMs)
+            val existing = folders[folderKey]
+            folders[folderKey] =
+              if (existing == null) {
+                audioNode
+              } else {
+                existing.apply {
+                  directVideoCount += audioNode.directVideoCount
+                  directSize += audioNode.directSize
+                  directDuration += audioNode.directDuration
+                  directLastModified = maxOf(directLastModified, audioNode.directLastModified)
+                  directNewCount += audioNode.directNewCount
+                }
               }
-            }
+          }
         }
-      }
     } catch (e: Exception) {
       Log.e(TAG, "MediaStore audio tree scan error", e)
     }

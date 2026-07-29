@@ -9,6 +9,7 @@ package app.gyrolet.mpvrx.ui.editor
 
 import android.content.Context
 import android.graphics.Typeface
+import android.os.Bundle
 import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
@@ -25,14 +26,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.lang.EmptyLanguage
-import android.os.Bundle
 import io.github.rosemoe.sora.lang.Language
 import io.github.rosemoe.sora.lang.completion.CompletionHelper
 import io.github.rosemoe.sora.lang.completion.CompletionPublisher
-import io.github.rosemoe.sora.text.CharPosition
-import io.github.rosemoe.sora.text.ContentReference
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
 import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
@@ -40,10 +39,11 @@ import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
+import io.github.rosemoe.sora.text.CharPosition
+import io.github.rosemoe.sora.text.ContentReference
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import io.github.rosemoe.sora.widget.subscribeAlways
-import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import org.eclipse.tm4e.core.registry.IThemeSource
 
 @Composable
@@ -65,27 +65,28 @@ fun MpvScriptEditor(
     ScriptEditorTextMate.ensureInitialized(context)
   }
 
-  val editor = remember {
-    ScriptEditorTextMate.ensureInitialized(context)
-    SafeCodeEditor(context).apply {
-      setTextSize(textSize.value)
-      typefaceText = Typeface.MONOSPACE
-      typefaceLineNumber = Typeface.MONOSPACE
-      setPinLineNumber(true)
-      editable = true
-      colorScheme = createEditorColorScheme(isDarkTheme)
-      colorScheme.applyMpvColors(
-        colors = colors,
-        selectionBackground = selectionColors.backgroundColor.toArgb(),
-      )
-      setEditorLanguage(language.toTextMateLanguage())
-      subscribeAlways<ContentChangeEvent> { event ->
-        if (!applyingExternalText) {
-          latestOnContentChange(event.editor.text.toString())
+  val editor =
+    remember {
+      ScriptEditorTextMate.ensureInitialized(context)
+      SafeCodeEditor(context).apply {
+        setTextSize(textSize.value)
+        typefaceText = Typeface.MONOSPACE
+        typefaceLineNumber = Typeface.MONOSPACE
+        setPinLineNumber(true)
+        editable = true
+        colorScheme = createEditorColorScheme(isDarkTheme)
+        colorScheme.applyMpvColors(
+          colors = colors,
+          selectionBackground = selectionColors.backgroundColor.toArgb(),
+        )
+        setEditorLanguage(language.toTextMateLanguage())
+        subscribeAlways<ContentChangeEvent> { event ->
+          if (!applyingExternalText) {
+            latestOnContentChange(event.editor.text.toString())
+          }
         }
       }
     }
-  }
 
   DisposableEffect(editor) {
     onDispose {
@@ -126,7 +127,9 @@ fun MpvScriptEditor(
   )
 }
 
-private class SafeCodeEditor(context: Context) : CodeEditor(context) {
+private class SafeCodeEditor(
+  context: Context,
+) : CodeEditor(context) {
   override fun copyTextToClipboard(
     text: CharSequence,
     start: Int,
@@ -186,27 +189,30 @@ private fun createEditorColorScheme(isDarkTheme: Boolean): EditorColorScheme {
 
 private fun String.toTextMateLanguage(): Language {
   val normalizedLanguage = lowercase()
-  val scopeName = when (normalizedLanguage) {
-    "lua" -> "source.lua"
-    "js", "javascript" -> "source.js"
-    "mpv.conf", "mpv-conf", "mpv_config" -> "source.mpv.conf"
-    "input.conf", "input-conf", "input_config" -> "source.mpv.input"
-    else -> null
-  }
-  val completionMode = when (normalizedLanguage) {
-    "lua", "js", "javascript" -> MpvCompletionMode.SCRIPT
-    "mpv.conf", "mpv-conf", "mpv_config" -> MpvCompletionMode.MPV_CONF
-    "input.conf", "input-conf", "input_config" -> MpvCompletionMode.INPUT_CONF
-    else -> null
-  }
-
-  val baseLanguage = scopeName
-    ?.let { 
-      runCatching { 
-        TextMateLanguage.create(it, false)
-      }.getOrNull() 
+  val scopeName =
+    when (normalizedLanguage) {
+      "lua" -> "source.lua"
+      "js", "javascript" -> "source.js"
+      "mpv.conf", "mpv-conf", "mpv_config" -> "source.mpv.conf"
+      "input.conf", "input-conf", "input_config" -> "source.mpv.input"
+      else -> null
     }
-    ?: EmptyLanguage()
+  val completionMode =
+    when (normalizedLanguage) {
+      "lua", "js", "javascript" -> MpvCompletionMode.SCRIPT
+      "mpv.conf", "mpv-conf", "mpv_config" -> MpvCompletionMode.MPV_CONF
+      "input.conf", "input-conf", "input_config" -> MpvCompletionMode.INPUT_CONF
+      else -> null
+    }
+
+  val baseLanguage =
+    scopeName
+      ?.let {
+        runCatching {
+          TextMateLanguage.create(it, false)
+        }.getOrNull()
+      }
+      ?: EmptyLanguage()
 
   return completionMode
     ?.let { MpvLanguageWrapper(baseLanguage, it) }
@@ -221,7 +227,7 @@ private class MpvLanguageWrapper(
     content: ContentReference,
     position: CharPosition,
     publisher: CompletionPublisher,
-    extraArguments: Bundle
+    extraArguments: Bundle,
   ) {
     base.requireAutoComplete(content, position, publisher, extraArguments)
     val prefix = CompletionHelper.computePrefix(content, position, ::isMpvCompletionChar)

@@ -144,12 +144,16 @@ private inline fun withPreservedVideoGeometry(block: () -> Unit) {
 
 private fun captureVideoGeometry(): VideoGeometrySnapshot =
   VideoGeometrySnapshot(
-    doubles = VIDEO_GEOMETRY_DOUBLE_PROPS.mapNotNull { prop ->
-      MPVLib.getPropertyDouble(prop)?.let { prop to it }
-    }.toMap(),
-    strings = VIDEO_GEOMETRY_STRING_PROPS.mapNotNull { prop ->
-      MPVLib.getPropertyString(prop)?.takeIf { it.isNotBlank() }?.let { prop to it }
-    }.toMap(),
+    doubles =
+      VIDEO_GEOMETRY_DOUBLE_PROPS
+        .mapNotNull { prop ->
+          MPVLib.getPropertyDouble(prop)?.let { prop to it }
+        }.toMap(),
+    strings =
+      VIDEO_GEOMETRY_STRING_PROPS
+        .mapNotNull { prop ->
+          MPVLib.getPropertyString(prop)?.takeIf { it.isNotBlank() }?.let { prop to it }
+        }.toMap(),
   )
 
 private fun restoreVideoGeometry(snapshot: VideoGeometrySnapshot) {
@@ -161,28 +165,31 @@ private fun restoreVideoGeometry(snapshot: VideoGeometrySnapshot) {
   }
 }
 
-private val VIDEO_GEOMETRY_DOUBLE_PROPS = listOf(
-  "video-zoom",
-  "video-pan-x",
-  "video-pan-y",
-  "video-align-x",
-  "video-align-y",
-  "video-aspect-override",
-  "panscan",
-  "brightness",
-  "contrast",
-  "saturation",
-  "gamma",
-  "hue",
-  "sharpen",
-)
+private val VIDEO_GEOMETRY_DOUBLE_PROPS =
+  listOf(
+    "video-zoom",
+    "video-pan-x",
+    "video-pan-y",
+    "video-align-x",
+    "video-align-y",
+    "video-aspect-override",
+    "panscan",
+    "brightness",
+    "contrast",
+    "saturation",
+    "gamma",
+    "hue",
+    "sharpen",
+  )
 
-private val VIDEO_GEOMETRY_STRING_PROPS = listOf(
-  "video-unscaled",
-)
+private val VIDEO_GEOMETRY_STRING_PROPS =
+  listOf(
+    "video-unscaled",
+  )
 
 private fun currentShaderList(): List<String> =
-  MPVLib.getPropertyString("glsl-shaders")
+  MPVLib
+    .getPropertyString("glsl-shaders")
     ?.split(":")
     ?.map { it.trim() }
     ?.filter { it.isNotEmpty() }

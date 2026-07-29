@@ -7,9 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.dialogs
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -76,9 +75,10 @@ fun DeleteConfirmationDialog(
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         Card(
-          colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-          ),
+          colors =
+            CardDefaults.cardColors(
+              containerColor = MaterialTheme.colorScheme.errorContainer,
+            ),
           shape = MaterialTheme.shapes.large,
           modifier = Modifier.fillMaxWidth(),
         ) {
@@ -104,18 +104,20 @@ fun DeleteConfirmationDialog(
 
         if (itemNames.isNotEmpty()) {
           Card(
-            colors = CardDefaults.cardColors(
-              containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
+            colors =
+              CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+              ),
             shape = MaterialTheme.shapes.large,
             modifier = Modifier.fillMaxWidth(),
           ) {
             Column(
-              modifier = Modifier
-                .padding(14.dp)
-                .fillMaxWidth()
-                .heightIn(max = 200.dp)
-                .verticalScroll(rememberScrollState()),
+              modifier =
+                Modifier
+                  .padding(14.dp)
+                  .fillMaxWidth()
+                  .heightIn(max = 200.dp)
+                  .verticalScroll(rememberScrollState()),
               verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
               itemNames.forEachIndexed { index, name ->
@@ -150,10 +152,11 @@ fun DeleteConfirmationDialog(
           onConfirm()
           onDismiss()
         },
-        colors = ButtonDefaults.buttonColors(
-          containerColor = MaterialTheme.colorScheme.error,
-          contentColor = MaterialTheme.colorScheme.onError,
-        ),
+        colors =
+          ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError,
+          ),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
         Icon(
@@ -162,7 +165,10 @@ fun DeleteConfirmationDialog(
           modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.delete),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.delete),
           fontWeight = FontWeight.Bold,
         )
       }
@@ -178,7 +184,11 @@ fun DeleteConfirmationDialog(
           modifier = Modifier.size(16.dp),
         )
         Spacer(modifier = Modifier.width(4.dp))
-        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = FontWeight.Medium)
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+          fontWeight = FontWeight.Medium,
+        )
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,

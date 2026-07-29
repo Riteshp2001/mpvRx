@@ -7,13 +7,11 @@
 
 package app.gyrolet.mpvrx.preferences
 
-import androidx.compose.ui.semantics.Role
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
@@ -130,7 +129,9 @@ class AppearancePreferences(
       .toList()
 }
 
-enum class PortraitPlaybackControlsPosition(val displayName: String) {
+enum class PortraitPlaybackControlsPosition(
+  val displayName: String,
+) {
   Center("Center of screen"),
   BelowSeekbar("Between seekbar and controls"),
 }
@@ -143,9 +144,10 @@ fun MultiChoiceSegmentedButton(
   modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(MaterialTheme.spacing.medium),
     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
   ) {
     choices.forEachIndexed { index, choice ->
@@ -153,26 +155,28 @@ fun MultiChoiceSegmentedButton(
       ToggleButton(
         checked = selectedIndices.contains(index),
         onCheckedChange = { onClick(index, buttonCenter) },
-        modifier = Modifier
-          .weight(1f)
-          .defaultMinSize(minHeight = MaterialTheme.spacing.extraLarge)
-          .onGloballyPositioned { buttonCenter = it.boundsInWindow().center }
-          .semantics { role = Role.RadioButton },
-        colors = ToggleButtonDefaults.toggleButtonColors(
-          checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-          checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-          containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-          contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-        ),
-        shapes = when (index) {
-          0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-          choices.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-          else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-        },
+        modifier =
+          Modifier
+            .weight(1f)
+            .defaultMinSize(minHeight = MaterialTheme.spacing.extraLarge)
+            .onGloballyPositioned { buttonCenter = it.boundsInWindow().center }
+            .semantics { role = Role.RadioButton },
+        colors =
+          ToggleButtonDefaults.toggleButtonColors(
+            checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+            contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+          ),
+        shapes =
+          when (index) {
+            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+            choices.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+          },
       ) {
         Text(text = choice)
       }
     }
   }
 }
-

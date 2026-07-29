@@ -115,17 +115,15 @@ object RecentlyPlayedOps {
     }
   }
 
-  suspend fun hasRecentlyPlayed(): Boolean = withContext(Dispatchers.IO) {
-    if (!preferences.enableRecentlyPlayed.get()) return@withContext false
-    getLastPlayed() != null
-  }
-  suspend fun getRecentlyPlayed(limit: Int = 50): List<RecentlyPlayedEntity> {
-    return repository.getRecentlyPlayed(limit)
-  }
+  suspend fun hasRecentlyPlayed(): Boolean =
+    withContext(Dispatchers.IO) {
+      if (!preferences.enableRecentlyPlayed.get()) return@withContext false
+      getLastPlayed() != null
+    }
 
-  suspend fun getRecentlyPlayedCount(): Int {
-    return repository.getRecentlyPlayedCount()
-  }
+  suspend fun getRecentlyPlayed(limit: Int = 50): List<RecentlyPlayedEntity> = repository.getRecentlyPlayed(limit)
+
+  suspend fun getRecentlyPlayedCount(): Int = repository.getRecentlyPlayedCount()
 
   @OptIn(ExperimentalCoroutinesApi::class)
   fun observeLastPlayedPath(): Flow<String?> =
@@ -168,40 +166,42 @@ object RecentlyPlayedOps {
 
   @SuppressLint("UseKtx")
   private fun fileExists(path: String): Boolean =
-    kotlin.runCatching {
-      // For file paths, don't use Uri.parse as it treats # as fragment separator
-      // Instead, check if it looks like a file path directly
-      if (path.startsWith("/") || path.startsWith("file://")) {
-        // It's a local file path - use it directly
-        val filePath = if (path.startsWith("file://")) {
-          path.removePrefix("file://")
+    kotlin
+      .runCatching {
+        // For file paths, don't use Uri.parse as it treats # as fragment separator
+        // Instead, check if it looks like a file path directly
+        if (path.startsWith("/") || path.startsWith("file://")) {
+          // It's a local file path - use it directly
+          val filePath =
+            if (path.startsWith("file://")) {
+              path.removePrefix("file://")
+            } else {
+              path
+            }
+          java.io.File(filePath).exists()
         } else {
-          path
+          // It's likely a network URI - parse it normally
+          val uri = Uri.parse(path)
+          val scheme = uri.scheme
+          if (scheme == null || scheme.equals("file", ignoreCase = true)) {
+            java.io.File(path).exists()
+          } else {
+            true
+          }
         }
-        java.io.File(filePath).exists()
-      } else {
-        // It's likely a network URI - parse it normally
-        val uri = Uri.parse(path)
-        val scheme = uri.scheme
-        if (scheme == null || scheme.equals("file", ignoreCase = true)) {
-          java.io.File(path).exists()
-        } else {
-          true
-        }
-      }
-    }.getOrDefault(false)
+      }.getOrDefault(false)
 
   @SuppressLint("UseKtx")
   private fun isNonFileUri(path: String): Boolean =
-    kotlin.runCatching {
-      // For file paths starting with / or file://, don't parse as URI
-      if (path.startsWith("/") || path.startsWith("file://")) {
-        false
-      } else {
-        // For other paths, check if they have a non-file scheme
-        val scheme = Uri.parse(path).scheme
-        scheme != null && !scheme.equals("file", ignoreCase = true)
-      }
-    }.getOrDefault(false)
+    kotlin
+      .runCatching {
+        // For file paths starting with / or file://, don't parse as URI
+        if (path.startsWith("/") || path.startsWith("file://")) {
+          false
+        } else {
+          // For other paths, check if they have a non-file scheme
+          val scheme = Uri.parse(path).scheme
+          scheme != null && !scheme.equals("file", ignoreCase = true)
+        }
+      }.getOrDefault(false)
 }
-

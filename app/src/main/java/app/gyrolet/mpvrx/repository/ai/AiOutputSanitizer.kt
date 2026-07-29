@@ -13,25 +13,30 @@ internal data class SanitizedAiOutput(
 )
 
 internal object AiOutputSanitizer {
-  private val pairedReasoningBlock = Regex(
-    "<(think|thinking|analysis|reasoning)>\\s*(.*?)\\s*</\\1>",
-    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
-  )
-  private val finalMarker = Regex(
-    "(?:^|\\n)\\s*(?:final(?: answer)?|answer|output)\\s*:\\s*",
-    RegexOption.IGNORE_CASE,
-  )
-  private val openingReasoningTag = Regex(
-    "^\\s*<(think|thinking|analysis|reasoning)>\\s*",
-    RegexOption.IGNORE_CASE,
-  )
+  private val pairedReasoningBlock =
+    Regex(
+      "<(think|thinking|analysis|reasoning)>\\s*(.*?)\\s*</\\1>",
+      setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+  private val finalMarker =
+    Regex(
+      "(?:^|\\n)\\s*(?:final(?: answer)?|answer|output)\\s*:\\s*",
+      RegexOption.IGNORE_CASE,
+    )
+  private val openingReasoningTag =
+    Regex(
+      "^\\s*<(think|thinking|analysis|reasoning)>\\s*",
+      RegexOption.IGNORE_CASE,
+    )
 
   fun splitReasoning(raw: String): SanitizedAiOutput {
-    val reasoning = pairedReasoningBlock.findAll(raw)
-      .map { it.groupValues[2].trim() }
-      .filter { it.isNotBlank() }
-      .joinToString("\n")
-      .ifBlank { null }
+    val reasoning =
+      pairedReasoningBlock
+        .findAll(raw)
+        .map { it.groupValues[2].trim() }
+        .filter { it.isNotBlank() }
+        .joinToString("\n")
+        .ifBlank { null }
     var finalText = pairedReasoningBlock.replace(raw, "").trim()
     val marker = finalMarker.findAll(finalText).lastOrNull()
     if (marker != null) {
@@ -51,7 +56,8 @@ internal object AiOutputSanitizer {
   fun stripCodeFence(value: String): String {
     val trimmed = value.trim()
     if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) return trimmed
-    return trimmed.removePrefix("```")
+    return trimmed
+      .removePrefix("```")
       .substringAfter('\n', "")
       .removeSuffix("```")
       .trim()

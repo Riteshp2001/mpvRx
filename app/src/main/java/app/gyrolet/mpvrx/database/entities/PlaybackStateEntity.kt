@@ -26,4 +26,3 @@ data class PlaybackStateEntity(
   val externalSubtitles: String = "", // Comma-separated list of external subtitle URIs
   val hasBeenWatched: Boolean = false, // Persistent flag: true if video has ever reached the watched threshold
 )
-

@@ -11,7 +11,9 @@ import app.gyrolet.mpvrx.preferences.preference.Preference
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 
-enum class AiProvider(val displayName: String) {
+enum class AiProvider(
+  val displayName: String,
+) {
   OPENCODE("OpenCode"),
   GROQ("Groq"),
   OPENAI("OpenAI"),
@@ -101,23 +103,25 @@ class AiPreferences(
     }
   }
 
-  fun selectedModelFor(provider: AiProvider): Preference<String> = when (provider) {
-    AiProvider.OPENCODE -> openCodeSelectedModel
-    AiProvider.GROQ -> groqSelectedModel
-    AiProvider.OPENAI -> openAiSelectedModel
-    AiProvider.ANTHROPIC -> anthropicSelectedModel
-    AiProvider.OPENROUTER -> openRouterSelectedModel
-    AiProvider.TOGETHER -> togetherSelectedModel
-    AiProvider.LOCAL -> localModelId
-  }
+  fun selectedModelFor(provider: AiProvider): Preference<String> =
+    when (provider) {
+      AiProvider.OPENCODE -> openCodeSelectedModel
+      AiProvider.GROQ -> groqSelectedModel
+      AiProvider.OPENAI -> openAiSelectedModel
+      AiProvider.ANTHROPIC -> anthropicSelectedModel
+      AiProvider.OPENROUTER -> openRouterSelectedModel
+      AiProvider.TOGETHER -> togetherSelectedModel
+      AiProvider.LOCAL -> localModelId
+    }
 
-  fun availableModelsFor(provider: AiProvider): Preference<String> = when (provider) {
-    AiProvider.OPENCODE -> openCodeAvailableModels
-    AiProvider.GROQ -> groqAvailableModels
-    AiProvider.OPENAI -> openAiAvailableModels
-    AiProvider.ANTHROPIC -> anthropicAvailableModels
-    AiProvider.OPENROUTER -> openRouterAvailableModels
-    AiProvider.TOGETHER -> togetherAvailableModels
-    AiProvider.LOCAL -> availableModels
-  }
+  fun availableModelsFor(provider: AiProvider): Preference<String> =
+    when (provider) {
+      AiProvider.OPENCODE -> openCodeAvailableModels
+      AiProvider.GROQ -> groqAvailableModels
+      AiProvider.OPENAI -> openAiAvailableModels
+      AiProvider.ANTHROPIC -> anthropicAvailableModels
+      AiProvider.OPENROUTER -> openRouterAvailableModels
+      AiProvider.TOGETHER -> togetherAvailableModels
+      AiProvider.LOCAL -> availableModels
+    }
 }

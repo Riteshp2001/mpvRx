@@ -11,11 +11,11 @@ import android.app.Application
 import android.content.ContentValues
 import android.content.Context
 import android.content.SharedPreferences
-import android.media.MediaScannerConnection
 import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -538,30 +538,32 @@ class VideoCompressorViewModel(
     val configuredState =
       when (template.preset) {
         VideoCompressionPreset.CUSTOM -> {
-          baseState.copy(
-            activePreset = VideoCompressionPreset.CUSTOM,
-            targetSizeMb = template.targetSizeMb,
-            targetResolutionHeight = template.targetResolutionHeight,
-            targetFps = template.targetFps,
-            videoCodec = template.videoCodec,
-            removeAudio = template.removeAudio,
-            audioBitrate = template.audioBitrate,
-            showBitrate = template.showBitrate,
-            useMbps = template.useMbps,
-            preserveMetadata = template.preserveMetadata,
-          ).autoAdjust(template.targetSizeMb)
+          baseState
+            .copy(
+              activePreset = VideoCompressionPreset.CUSTOM,
+              targetSizeMb = template.targetSizeMb,
+              targetResolutionHeight = template.targetResolutionHeight,
+              targetFps = template.targetFps,
+              videoCodec = template.videoCodec,
+              removeAudio = template.removeAudio,
+              audioBitrate = template.audioBitrate,
+              showBitrate = template.showBitrate,
+              useMbps = template.useMbps,
+              preserveMetadata = template.preserveMetadata,
+            ).autoAdjust(template.targetSizeMb)
         }
 
-        else -> applyPresetToState(
-          baseState.copy(
-            activePreset = template.preset,
-            videoCodec = template.videoCodec,
-            showBitrate = template.showBitrate,
-            useMbps = template.useMbps,
-            preserveMetadata = template.preserveMetadata,
-          ),
-          template.preset,
-        ).copy(videoCodec = template.videoCodec, preserveMetadata = template.preserveMetadata)
+        else ->
+          applyPresetToState(
+            baseState.copy(
+              activePreset = template.preset,
+              videoCodec = template.videoCodec,
+              showBitrate = template.showBitrate,
+              useMbps = template.useMbps,
+              preserveMetadata = template.preserveMetadata,
+            ),
+            template.preset,
+          ).copy(videoCodec = template.videoCodec, preserveMetadata = template.preserveMetadata)
       }
 
     return configuredState.copy(
@@ -605,6 +607,7 @@ class VideoCompressorViewModel(
 
     val current = state
     val isVertical = current.originalHeight > current.originalWidth
+
     fun targetHeight(targetShortSide: Int): Int {
       if (current.originalWidth <= 0 || current.originalHeight <= 0) return current.originalHeight
       return if (isVertical) {
@@ -618,38 +621,41 @@ class VideoCompressorViewModel(
     return when (preset) {
       VideoCompressionPreset.HIGH -> {
         val targetMb = (current.originalSize / (1024.0 * 1024.0) * 0.7).toFloat().coerceAtLeast(0.1f)
-        current.copy(
-          activePreset = VideoCompressionPreset.HIGH,
-          targetResolutionHeight = current.originalHeight,
-          targetFps = 0,
-          targetSizeMb = targetMb,
-          audioBitrate = 320_000,
-          removeAudio = false,
-        ).autoAdjust(targetMb, lockAudioBitrate = true, allowUpward = false)
+        current
+          .copy(
+            activePreset = VideoCompressionPreset.HIGH,
+            targetResolutionHeight = current.originalHeight,
+            targetFps = 0,
+            targetSizeMb = targetMb,
+            audioBitrate = 320_000,
+            removeAudio = false,
+          ).autoAdjust(targetMb, lockAudioBitrate = true, allowUpward = false)
       }
 
       VideoCompressionPreset.MEDIUM -> {
         val targetMb = (current.originalSize / (1024.0 * 1024.0) * 0.4).toFloat().coerceAtLeast(0.1f)
-        current.copy(
-          activePreset = VideoCompressionPreset.MEDIUM,
-          targetResolutionHeight = targetHeight(1080),
-          targetFps = if (current.originalFps < 30f) 0 else 30,
-          targetSizeMb = targetMb,
-          audioBitrate = 192_000,
-          removeAudio = false,
-        ).autoAdjust(targetMb, lockAudioBitrate = true, allowUpward = false)
+        current
+          .copy(
+            activePreset = VideoCompressionPreset.MEDIUM,
+            targetResolutionHeight = targetHeight(1080),
+            targetFps = if (current.originalFps < 30f) 0 else 30,
+            targetSizeMb = targetMb,
+            audioBitrate = 192_000,
+            removeAudio = false,
+          ).autoAdjust(targetMb, lockAudioBitrate = true, allowUpward = false)
       }
 
       VideoCompressionPreset.LOW -> {
         val targetMb = (current.originalSize / (1024.0 * 1024.0) * 0.2).toFloat().coerceAtLeast(0.1f)
-        current.copy(
-          activePreset = VideoCompressionPreset.LOW,
-          targetResolutionHeight = targetHeight(720),
-          targetFps = if (current.originalFps < 30f) 0 else 30,
-          targetSizeMb = targetMb,
-          audioBitrate = 128_000,
-          removeAudio = false,
-        ).autoAdjust(targetMb, lockAudioBitrate = true, allowUpward = false)
+        current
+          .copy(
+            activePreset = VideoCompressionPreset.LOW,
+            targetResolutionHeight = targetHeight(720),
+            targetFps = if (current.originalFps < 30f) 0 else 30,
+            targetSizeMb = targetMb,
+            audioBitrate = 128_000,
+            removeAudio = false,
+          ).autoAdjust(targetMb, lockAudioBitrate = true, allowUpward = false)
       }
 
       VideoCompressionPreset.CUSTOM -> current
@@ -950,7 +956,8 @@ class VideoCompressorViewModel(
       if (targetWidth % 2 != 0) targetWidth -= 1
       if (targetHeight % 2 != 0) targetHeight -= 1
       if (targetWidth > 0 && targetHeight > 0) {
-        videoEffects += Presentation.createForWidthAndHeight(targetWidth, targetHeight, Presentation.LAYOUT_SCALE_TO_FIT)
+        videoEffects +=
+          Presentation.createForWidthAndHeight(targetWidth, targetHeight, Presentation.LAYOUT_SCALE_TO_FIT)
       }
     }
 
@@ -1044,9 +1051,20 @@ class VideoCompressorViewModel(
         viewModelScope.launch(Dispatchers.IO) {
           while (continuation.isActive) {
             val progressHolder = ProgressHolder()
-            val progressState = runCatching { transformer.getProgress(progressHolder) }.getOrDefault(Transformer.PROGRESS_STATE_NOT_STARTED)
+            val progressState =
+              runCatching {
+                transformer.getProgress(progressHolder)
+              }.getOrDefault(Transformer.PROGRESS_STATE_NOT_STARTED)
             val isAvailable = progressState == Transformer.PROGRESS_STATE_AVAILABLE
-            val itemProgress = if (isAvailable) (progressHolder.progress / 100f).coerceIn(0f, 1f) else _uiState.value.currentItemProgress
+            val itemProgress =
+              if (isAvailable) {
+                (progressHolder.progress / 100f).coerceIn(
+                  0f,
+                  1f,
+                )
+              } else {
+                _uiState.value.currentItemProgress
+              }
             val overallProgress = ((queueIndex + itemProgress) / queueSize.toFloat()).coerceIn(0f, 0.999f)
             val currentSize = if (outputFile.exists()) outputFile.length() else 0L
             _uiState.update {
@@ -1163,8 +1181,9 @@ class VideoCompressorViewModel(
           return@launch
         }
 
-        val outputStream = context.contentResolver.openOutputStream(targetUri)
-          ?: throw IllegalStateException("Could not open destination stream.")
+        val outputStream =
+          context.contentResolver.openOutputStream(targetUri)
+            ?: throw IllegalStateException("Could not open destination stream.")
         outputStream.use { out ->
           file.inputStream().use { input -> input.copyTo(out) }
         }
@@ -1209,7 +1228,9 @@ class VideoCompressorViewModel(
             if (!containsKey(MediaStore.Video.Media.DATE_MODIFIED)) {
               put(MediaStore.Video.Media.DATE_MODIFIED, System.currentTimeMillis() / 1000)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && currentState.preserveMetadata && currentState.originalDate != null &&
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+              currentState.preserveMetadata &&
+              currentState.originalDate != null &&
               !containsKey(MediaStore.Video.Media.DATE_TAKEN)
             ) {
               put(MediaStore.Video.Media.DATE_TAKEN, currentState.originalDate)
@@ -1233,8 +1254,9 @@ class VideoCompressorViewModel(
           return@launch
         }
 
-        val outputStream = context.contentResolver.openOutputStream(itemUri)
-          ?: throw IllegalStateException("Could not open gallery output stream.")
+        val outputStream =
+          context.contentResolver.openOutputStream(itemUri)
+            ?: throw IllegalStateException("Could not open gallery output stream.")
         outputStream.use { out ->
           file.inputStream().use { input -> input.copyTo(out) }
         }
@@ -1276,7 +1298,11 @@ class VideoCompressorViewModel(
       list.codecInfos.any { info ->
         if (!info.isEncoder) return@any false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && info.isSoftwareOnly) return@any false
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && info.name.lowercase().startsWith("c2.android")) return@any false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+          info.name.lowercase().startsWith("c2.android")
+        ) {
+          return@any false
+        }
         info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }
       }
     }.getOrDefault(false)
@@ -1355,16 +1381,26 @@ class VideoCompressorViewModel(
     runCatching {
       context.contentResolver.query(sourceUri, projection, null, null, null)?.use { cursor ->
         if (!cursor.moveToFirst()) return@use
-        copyLongColumn(cursor, MediaStore.Video.Media.DATE_ADDED)?.let { values.put(MediaStore.Video.Media.DATE_ADDED, it) }
-        copyLongColumn(cursor, MediaStore.Video.Media.DATE_MODIFIED)?.let { values.put(MediaStore.Video.Media.DATE_MODIFIED, it) }
-        copyLongColumn(cursor, MediaStore.Video.Media.DATE_TAKEN)?.let { values.put(MediaStore.Video.Media.DATE_TAKEN, it) }
+        copyLongColumn(
+          cursor,
+          MediaStore.Video.Media.DATE_ADDED,
+        )?.let { values.put(MediaStore.Video.Media.DATE_ADDED, it) }
+        copyLongColumn(cursor, MediaStore.Video.Media.DATE_MODIFIED)?.let {
+          values.put(MediaStore.Video.Media.DATE_MODIFIED, it)
+        }
+        copyLongColumn(
+          cursor,
+          MediaStore.Video.Media.DATE_TAKEN,
+        )?.let { values.put(MediaStore.Video.Media.DATE_TAKEN, it) }
         copyStringColumn(cursor, MediaStore.Video.Media.TITLE)?.let { values.put(MediaStore.Video.Media.TITLE, it) }
         copyStringColumn(cursor, MediaStore.Video.Media.ARTIST)?.let { values.put(MediaStore.Video.Media.ARTIST, it) }
         copyStringColumn(cursor, MediaStore.Video.Media.ALBUM)?.let { values.put(MediaStore.Video.Media.ALBUM, it) }
-        copyStringColumn(cursor, MediaStore.Video.Media.DESCRIPTION)?.let { values.put(MediaStore.Video.Media.DESCRIPTION, it) }
+        copyStringColumn(
+          cursor,
+          MediaStore.Video.Media.DESCRIPTION,
+        )?.let { values.put(MediaStore.Video.Media.DESCRIPTION, it) }
       }
     }
-
   }
 
   private fun copyLongColumn(

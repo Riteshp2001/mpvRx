@@ -38,7 +38,10 @@ interface NetworkClient {
   /**
    * Get input stream for a file
    */
-  suspend fun getFileStream(path: String, offset: Long = 0L): Result<InputStream>
+  suspend fun getFileStream(
+    path: String,
+    offset: Long = 0L,
+  ): Result<InputStream>
 
   /**
    * Get file size when the protocol can expose it cheaply.
@@ -51,4 +54,3 @@ interface NetworkClient {
    */
   suspend fun getFileUri(path: String): Result<Uri>
 }
-

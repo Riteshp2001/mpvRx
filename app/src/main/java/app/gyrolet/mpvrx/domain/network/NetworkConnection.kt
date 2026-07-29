@@ -29,13 +29,16 @@ data class NetworkConnection(
   val isAnonymous: Boolean = false,
   val lastConnected: Long = 0,
   val autoConnect: Boolean = false,
-  val useHttps: Boolean = false,  // For WebDAV: use HTTPS instead of HTTP
+  val useHttps: Boolean = false, // For WebDAV: use HTTPS instead of HTTP
 )
 
 /**
  * Supported network protocols
  */
-enum class NetworkProtocol(val displayName: String, val defaultPort: Int) {
+enum class NetworkProtocol(
+  val displayName: String,
+  val defaultPort: Int,
+) {
   SMB("SMB", 445),
   FTP("FTP", 21),
   WEBDAV("WebDAV", 80),
@@ -51,4 +54,3 @@ data class ConnectionStatus(
   val isConnecting: Boolean = false,
   val error: String? = null,
 )
-

@@ -16,6 +16,7 @@ plugins {
 android {
   namespace = "app.gyrolet.mpvrx"
   compileSdk = 37
+  ndkVersion = "27.3.13750724"
 
   defaultConfig {
     applicationId = "app.gyrolet.mpvrx"
@@ -78,7 +79,7 @@ android {
       isShrinkResources = true
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
-        "proguard-rules.pro"
+        "proguard-rules.pro",
       )
       ndk {
         debugSymbolLevel = "none"
@@ -140,10 +141,11 @@ android {
 }
 
 androidComponents {
-  val abiCodes = mutableMapOf(
-    "armeabi-v7a" to 1,
-    "arm64-v8a" to 2
-  )
+  val abiCodes =
+    mutableMapOf(
+      "armeabi-v7a" to 1,
+      "arm64-v8a" to 2,
+    )
   if (enableX86) {
     abiCodes["x86"] = 3
     abiCodes["x86_64"] = 4
@@ -151,12 +153,13 @@ androidComponents {
 
   onVariants { variant ->
     variant.outputs.forEach { output ->
-      val abi = output.filters
-        .find { it.filterType == FilterConfiguration.FilterType.ABI }
-        ?.identifier
+      val abi =
+        output.filters
+          .find { it.filterType == FilterConfiguration.FilterType.ABI }
+          ?.identifier
 
       output.versionCode.set(
-        (output.versionCode.orNull ?: 0) * 10 + (abiCodes[abi] ?: 0)
+        (output.versionCode.orNull ?: 0) * 10 + (abiCodes[abi] ?: 0),
       )
     }
   }
@@ -169,7 +172,7 @@ kotlin {
       "-Xannotation-default-target=param-property",
       "-opt-in=com.google.accompanist.permissions.ExperimentalPermissionsApi",
       "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-      "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi"
+      "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
     )
     jvmTarget.set(JvmTarget.JVM_17)
   }
@@ -238,7 +241,7 @@ dependencies {
   implementation(libs.llamatik)
   implementation(libs.androidx.profileinstaller)
   implementation(libs.google.cast.framework)
-  
+
   implementation(files("libs/mpvlib.aar"))
 
   // Network protocol libraries
@@ -252,25 +255,25 @@ dependencies {
   implementation(libs.reorderable)
 }
 
-/* ---------------- Git helpers ---------------- */
+// ---------------- Git helpers ----------------
 
-fun getCommitCount(): String =
-  runCommand("git rev-list --count HEAD") ?: "0"
+fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"
 
-fun getCommitSha(): String =
-  runCommand("git rev-parse --short HEAD") ?: "unknown"
+fun getCommitSha(): String = runCommand("git rev-parse --short HEAD") ?: "unknown"
 
 fun runCommand(command: String): String? =
   try {
     val parts = command.split(' ')
-    val process = ProcessBuilder(parts)
-      .redirectErrorStream(true)
-      .start()
+    val process =
+      ProcessBuilder(parts)
+        .redirectErrorStream(true)
+        .start()
 
-    val output = process.inputStream
-      .bufferedReader()
-      .readText()
-      .trim()
+    val output =
+      process.inputStream
+        .bufferedReader()
+        .readText()
+        .trim()
 
     process.waitFor()
     output.ifEmpty { null }

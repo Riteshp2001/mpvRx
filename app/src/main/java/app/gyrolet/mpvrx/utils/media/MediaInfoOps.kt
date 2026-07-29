@@ -347,35 +347,39 @@ object MediaInfoOps {
           val textCount = mi.Count_Get(MediaInfo.Stream.Text)
           val hasEmbeddedSubtitles = textCount > 0
 
-          val subtitleCodec = if (hasEmbeddedSubtitles) {
-            val codecs = mutableSetOf<String>()
-            for (i in 0 until textCount) {
-              val codecId = mi.getInfo(MediaInfo.Stream.Text, i, "CodecID")
+          val subtitleCodec =
+            if (hasEmbeddedSubtitles) {
+              val codecs = mutableSetOf<String>()
+              for (i in 0 until textCount) {
+                val codecId = mi.getInfo(MediaInfo.Stream.Text, i, "CodecID")
 
-              val normalizedCodec = when {
-                codecId.contains("PGS", ignoreCase = true) -> "PGS"
-                codecId.contains("ASS", ignoreCase = true) -> "ASS"
-                codecId.contains("SSA", ignoreCase = true) -> "SSA"
-                codecId.contains("SRT", ignoreCase = true) -> "SRT"
-                codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
-                codecId.contains("VOBSUB", ignoreCase = true) -> "DVD"
-                codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
-                codecId.contains("UTF8", ignoreCase = true) -> "SRT"
-                codecId.contains("HDMV", ignoreCase = true) -> "PGS"
-                codecId.contains("DVB", ignoreCase = true) -> "DVB"
-                codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
-                codecId.isNotEmpty() -> {
-                  codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
+                val normalizedCodec =
+                  when {
+                    codecId.contains("PGS", ignoreCase = true) -> "PGS"
+                    codecId.contains("ASS", ignoreCase = true) -> "ASS"
+                    codecId.contains("SSA", ignoreCase = true) -> "SSA"
+                    codecId.contains("SRT", ignoreCase = true) -> "SRT"
+                    codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
+                    codecId.contains("VOBSUB", ignoreCase = true) -> "DVD"
+                    codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
+                    codecId.contains("UTF8", ignoreCase = true) -> "SRT"
+                    codecId.contains("HDMV", ignoreCase = true) -> "PGS"
+                    codecId.contains("DVB", ignoreCase = true) -> "DVB"
+                    codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
+                    codecId.isNotEmpty() -> {
+                      codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
+                    }
+                    else -> ""
+                  }
+
+                if (normalizedCodec.isNotEmpty()) {
+                  codecs.add(normalizedCodec)
                 }
-                else -> ""
               }
-              
-              if (normalizedCodec.isNotEmpty()) {
-                codecs.add(normalizedCodec)
-              }
+              codecs.joinToString(" ")
+            } else {
+              ""
             }
-            codecs.joinToString(" ")
-          } else ""
 
           val retrieverFallback =
             if (duration <= 0L || width <= 0 || height <= 0 || fps <= 0f) {
@@ -415,16 +419,20 @@ object MediaInfoOps {
         VideoMetadata(
           sizeBytes = 0L,
           durationMs =
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            retriever
+              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
               ?.toLongOrNull() ?: 0L,
           width =
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+            retriever
+              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
               ?.toIntOrNull() ?: 0,
           height =
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+            retriever
+              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
               ?.toIntOrNull() ?: 0,
           fps =
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+            retriever
+              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
               ?.toFloatOrNull() ?: 0f,
           hasEmbeddedSubtitles = false,
         )
@@ -453,20 +461,21 @@ object MediaInfoOps {
     context: Context,
     uri: Uri,
     fileName: String = "",
-  ): Int = withContext(Dispatchers.IO) {
-    runCatching {
-      val contentResolver = context.contentResolver
-      val pfd = contentResolver.openFileDescriptor(uri, "r") ?: return@runCatching 0
-      val fd = pfd.detachFd()
-      val mi = MediaInfo()
-      try {
-        mi.Open(fd, fileName)
-        val rotationStr = mi.Get(MediaInfo.Stream.Video, 0, "Rotation")
-        rotationStr.toFloatOrNull()?.toInt() ?: 0
-      } finally {
-        mi.Close()
-        pfd.close()
-      }
-    }.getOrDefault(0)
-  }
+  ): Int =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val contentResolver = context.contentResolver
+        val pfd = contentResolver.openFileDescriptor(uri, "r") ?: return@runCatching 0
+        val fd = pfd.detachFd()
+        val mi = MediaInfo()
+        try {
+          mi.Open(fd, fileName)
+          val rotationStr = mi.Get(MediaInfo.Stream.Video, 0, "Rotation")
+          rotationStr.toFloatOrNull()?.toInt() ?: 0
+        } finally {
+          mi.Close()
+          pfd.close()
+        }
+      }.getOrDefault(0)
+    }
 }

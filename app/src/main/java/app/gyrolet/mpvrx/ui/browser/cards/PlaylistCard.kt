@@ -7,24 +7,22 @@
 
 package app.gyrolet.mpvrx.ui.browser.cards
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 
 /**
  * Card for displaying a playlist item
- * 
+ *
  * @param playlist The playlist entity to display
  * @param itemCount Number of items in the playlist
  * @param onClick Action to perform when the card is clicked
@@ -48,15 +46,16 @@ fun PlaylistCard(
   thumbnail: android.graphics.Bitmap? = null,
 ) {
   // Convert playlist to VideoFolder format for FolderCard
-  val folderModel = VideoFolder(
-    bucketId = playlist.id.toString(),
-    name = playlist.name,
-    path = "", // Not used for playlists
-    videoCount = itemCount,
-    totalSize = 0, // Not tracked for playlists
-    totalDuration = 0, // Not tracked for playlists
-    lastModified = playlist.updatedAt / 1000,
-  )
+  val folderModel =
+    VideoFolder(
+      bucketId = playlist.id.toString(),
+      name = playlist.name,
+      path = "", // Not used for playlists
+      videoCount = itemCount,
+      totalSize = 0, // Not tracked for playlists
+      totalDuration = 0, // Not tracked for playlists
+      lastModified = playlist.updatedAt / 1000,
+    )
 
   // Create a custom chip renderer for playlist type
   val customChipRenderer: @Composable () -> Unit = {
@@ -64,21 +63,22 @@ fun PlaylistCard(
 
     // Use Material Design theme colors
     val materialTheme = androidx.compose.material3.MaterialTheme.colorScheme
-    val (chipColor, chipBgColor) = if (playlist.isM3uPlaylist) {
-      Pair(materialTheme.tertiary, materialTheme.tertiaryContainer)
-    } else {
-      Pair(materialTheme.primary, materialTheme.primaryContainer)
-    }
+    val (chipColor, chipBgColor) =
+      if (playlist.isM3uPlaylist) {
+        Pair(materialTheme.tertiary, materialTheme.tertiaryContainer)
+      } else {
+        Pair(materialTheme.primary, materialTheme.primaryContainer)
+      }
 
     androidx.compose.material3.Text(
       text = chipText,
       style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-      modifier = Modifier
-        .background(
-          chipBgColor,
-          AppShapeScale.small
-        )
-        .padding(horizontal = 8.dp, vertical = 4.dp),
+      modifier =
+        Modifier
+          .background(
+            chipBgColor,
+            AppShapeScale.small,
+          ).padding(horizontal = 8.dp, vertical = 4.dp),
       color = chipColor,
     )
   }
@@ -96,10 +96,6 @@ fun PlaylistCard(
     modifier = modifier,
     customChipContent = customChipRenderer,
     isGridMode = isGridMode,
-    thumbnail = thumbnail?.asImageBitmap()
+    thumbnail = thumbnail?.asImageBitmap(),
   )
 }
-
-
-
-

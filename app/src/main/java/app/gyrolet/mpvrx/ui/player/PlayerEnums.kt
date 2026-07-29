@@ -384,7 +384,9 @@ enum class DebandSettings(
 }
 
 /** Controls whether the playback service shows a notification, and which style it uses. */
-enum class NotificationStyle(val displayName: String) {
+enum class NotificationStyle(
+  val displayName: String,
+) {
   /** Do not show any playback notification. */
   None("No Notification"),
 
@@ -402,4 +404,3 @@ enum class NotificationStyle(val displayName: String) {
       None, Media -> true
     }
 }
-

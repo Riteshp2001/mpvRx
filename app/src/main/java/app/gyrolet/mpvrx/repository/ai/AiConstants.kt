@@ -8,7 +8,6 @@
 package app.gyrolet.mpvrx.repository.ai
 
 object AiPrompts {
-
   val RENAME_INSTRUCTION: String =
     """
 You are a media file naming assistant. Your task is to rename video files into clean, user-friendly names based on the provided context.
@@ -34,7 +33,7 @@ Output: Breaking Bad - S01E01
 
 Input: Avatar (2009) [Extended Cut] 1080p BluRay
 Output: Avatar (2009)
-""".trimIndent()
+    """.trimIndent()
 
   val SUBTITLE_FORMAT_INSTRUCTION: String =
     """
@@ -60,7 +59,7 @@ Output: Spider-Man No Way Home (2021)
 
 Input: Game.of.Thrones.S01E01.1080p.BluRay.x264
 Output: Game of Thrones S01E01
-""".trimIndent()
+    """.trimIndent()
 
   val SUBTITLE_TRANSLATION_INSTRUCTION: String =
     """
@@ -85,7 +84,7 @@ Output:
 1
 00:00:01,000 --> 00:00:04,000
 Hola, ¿cómo estás hoy?
-""".trimIndent()
+    """.trimIndent()
 
   fun resolveInstruction(
     task: AiTask,
@@ -103,20 +102,22 @@ Hola, ¿cómo estás hoy?
       }
     }
 
-    val taskPrompt = when (task) {
-      AiTask.RENAME -> customRenamePrompt
-      AiTask.SUBTITLE_FORMAT -> customSubtitleFormatPrompt
-      AiTask.TRANSLATE -> customSubtitleTranslationPrompt
-    }
+    val taskPrompt =
+      when (task) {
+        AiTask.RENAME -> customRenamePrompt
+        AiTask.SUBTITLE_FORMAT -> customSubtitleFormatPrompt
+        AiTask.TRANSLATE -> customSubtitleTranslationPrompt
+      }
 
     return when {
       taskPrompt.isNotBlank() -> taskPrompt.trim()
       customPrompt.isNotBlank() -> customPrompt.trim()
-      else -> when (task) {
-        AiTask.RENAME -> RENAME_INSTRUCTION
-        AiTask.SUBTITLE_FORMAT -> SUBTITLE_FORMAT_INSTRUCTION
-        AiTask.TRANSLATE -> SUBTITLE_TRANSLATION_INSTRUCTION
-      }
+      else ->
+        when (task) {
+          AiTask.RENAME -> RENAME_INSTRUCTION
+          AiTask.SUBTITLE_FORMAT -> SUBTITLE_FORMAT_INSTRUCTION
+          AiTask.TRANSLATE -> SUBTITLE_TRANSLATION_INSTRUCTION
+        }
     }
   }
 }

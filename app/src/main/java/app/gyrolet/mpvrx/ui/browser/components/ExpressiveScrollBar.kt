@@ -7,10 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.components
 
-import androidx.compose.ui.unit.Dp
-
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -46,8 +42,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,8 +58,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -166,8 +165,7 @@ private fun buildVisibleGridLines(layoutInfo: LazyGridLayoutInfo): List<VisibleG
         offsetPx = itemsInLine.minOf { if (isVertical) it.offset.y else it.offset.x },
         sizePx = itemsInLine.maxOf { if (isVertical) it.size.height else it.size.width },
       )
-    }
-    .sortedBy { it.index }
+    }.sortedBy { it.index }
 }
 
 private fun estimateGridFallbackStridePx(
@@ -383,10 +381,11 @@ fun ExpressiveScrollBar(
               listMetricsTracker.distanceBeforeIndex(
                 index = lastItemIndex,
                 representativeStridePx = itemStridePx,
-              ) + listMetricsTracker.itemSizePx(
-                index = lastItemIndex,
-                representativeItemSizePx = representativeItemSizePx,
-              ) - viewportHeightPx,
+              ) +
+                listMetricsTracker.itemSizePx(
+                  index = lastItemIndex,
+                  representativeItemSizePx = representativeItemSizePx,
+                ) - viewportHeightPx,
             ).coerceAtLeast(1f)
         approximateMaxScrollIndex = (totalItemsCount - estimatedVisibleItems).toInt().coerceAtLeast(1)
       } else if (gridState != null) {
@@ -429,10 +428,11 @@ fun ExpressiveScrollBar(
               gridMetricsTracker.distanceBeforeIndex(
                 index = lastRowIndex,
                 representativeStridePx = rowStridePx,
-              ) + gridMetricsTracker.itemSizePx(
-                index = lastRowIndex,
-                representativeItemSizePx = representativeRowSizePx,
-              ) - viewportHeightPx,
+              ) +
+                gridMetricsTracker.itemSizePx(
+                  index = lastRowIndex,
+                  representativeItemSizePx = representativeRowSizePx,
+                ) - viewportHeightPx,
             ).coerceAtLeast(1f)
         approximateMaxScrollIndex =
           (((totalRows - estimatedVisibleRows).toInt().coerceAtLeast(1)) * itemsPerRow)
@@ -466,7 +466,10 @@ fun ExpressiveScrollBar(
       )
     }
 
-    fun updateProgressFromTouch(touchY: Float, grabOffset: Float) {
+    fun updateProgressFromTouch(
+      touchY: Float,
+      grabOffset: Float,
+    ) {
       // The list's total geometry is stable for a drag. Reusing this snapshot avoids rebuilding
       // grid lines and sampling visible items for every pointer event.
       val stats = dragScrollMetrics ?: getScrollStats()
@@ -603,8 +606,7 @@ fun ExpressiveScrollBar(
                 }
               },
             )
-          }
-          .pointerInput(inputEnabled, listState, gridState, minHeight, maxHeight) {
+          }.pointerInput(inputEnabled, listState, gridState, minHeight, maxHeight) {
             if (!inputEnabled) return@pointerInput
             var grabOffset = 0f
 
@@ -713,8 +715,7 @@ fun ExpressiveScrollBar(
                 val x = maxWidthPx - paddingEndPx - (animatedWidthPx / 2f) - (iconSizePx / 2f)
                 val y = handleY + (handleHeightPx / 2f) - (iconSizePx / 2f)
                 IntOffset(x.toInt(), y.toInt())
-              }
-              .size(24.dp)
+              }.size(24.dp)
               .graphicsLayer {
                 alpha = iconAlpha
                 scaleX = iconAlpha
@@ -749,8 +750,7 @@ fun ExpressiveScrollBar(
                 val x = indicatorX - dragLabelSizePx - dragLabelGapPx - dragLabelSlidePx
                 val y = handleY + (handleHeightPx / 2f) - (dragLabelSizePx / 2f)
                 IntOffset(x.toInt(), y.toInt())
-              }
-              .size(dragLabelSize)
+              }.size(dragLabelSize)
               .graphicsLayer {
                 alpha = dragLabelAlpha
                 scaleX = dragLabelScale

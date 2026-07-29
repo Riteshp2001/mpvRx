@@ -7,11 +7,8 @@
 
 package app.gyrolet.mpvrx.ui.browser.cards
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -51,6 +47,8 @@ import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
@@ -82,15 +80,16 @@ fun M3UVideoCard(
   val showNetworkThumbnails by appearancePreferences.showNetworkThumbnails.collectAsState()
   var thumbnail by remember(url) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
-  val isNetwork = remember(url) {
-    url.startsWith("http://", ignoreCase = true) ||
-      url.startsWith("https://", ignoreCase = true) ||
-      url.startsWith("rtmp://", ignoreCase = true) ||
-      url.startsWith("rtsp://", ignoreCase = true) ||
-      url.startsWith("ftp://", ignoreCase = true) ||
-      url.startsWith("sftp://", ignoreCase = true) ||
-      url.startsWith("smb://", ignoreCase = true)
-  }
+  val isNetwork =
+    remember(url) {
+      url.startsWith("http://", ignoreCase = true) ||
+        url.startsWith("https://", ignoreCase = true) ||
+        url.startsWith("rtmp://", ignoreCase = true) ||
+        url.startsWith("rtsp://", ignoreCase = true) ||
+        url.startsWith("ftp://", ignoreCase = true) ||
+        url.startsWith("sftp://", ignoreCase = true) ||
+        url.startsWith("smb://", ignoreCase = true)
+    }
 
   if (!isNetwork || showNetworkThumbnails) {
     val density = LocalDensity.current
@@ -98,56 +97,60 @@ fun M3UVideoCard(
     val thumbWidthPx = with(density) { targetThumbnailSize.toPx().roundToInt() }
     val thumbHeightPx = (thumbWidthPx / (16f / 9f)).roundToInt()
 
-    val actualVideo = remember(video, url) {
-      video ?: Video(
-        id = url.hashCode().toLong(),
-        title = title,
-        displayName = title,
-        path = url,
-        uri = android.net.Uri.parse(url),
-        duration = 0,
-        durationFormatted = "",
-        size = 0,
-        sizeFormatted = "",
-        dateModified = 0,
-        dateAdded = 0,
-        mimeType = "video/*",
-        bucketId = "",
-        bucketDisplayName = "",
-        width = 0,
-        height = 0,
-        fps = 0f,
-        resolution = ""
-      )
-    }
-
-    val thumbnailKey = remember(actualVideo.id, thumbWidthPx, thumbHeightPx, isNetwork) {
-      if (isNetwork) {
-        thumbnailRepository.thumbnailKeyForNetworkPath(url, thumbWidthPx, thumbHeightPx)
-      } else {
-        thumbnailRepository.thumbnailKey(actualVideo, thumbWidthPx, thumbHeightPx)
+    val actualVideo =
+      remember(video, url) {
+        video ?: Video(
+          id = url.hashCode().toLong(),
+          title = title,
+          displayName = title,
+          path = url,
+          uri = android.net.Uri.parse(url),
+          duration = 0,
+          durationFormatted = "",
+          size = 0,
+          sizeFormatted = "",
+          dateModified = 0,
+          dateAdded = 0,
+          mimeType = "video/*",
+          bucketId = "",
+          bucketDisplayName = "",
+          width = 0,
+          height = 0,
+          fps = 0f,
+          resolution = "",
+        )
       }
-    }
+
+    val thumbnailKey =
+      remember(actualVideo.id, thumbWidthPx, thumbHeightPx, isNetwork) {
+        if (isNetwork) {
+          thumbnailRepository.thumbnailKeyForNetworkPath(url, thumbWidthPx, thumbHeightPx)
+        } else {
+          thumbnailRepository.thumbnailKey(actualVideo, thumbWidthPx, thumbHeightPx)
+        }
+      }
 
     LaunchedEffect(thumbnailKey) {
       thumbnailRepository.thumbnailReadyKeys.filter { it == thumbnailKey }.collect {
-        thumbnail = thumbnailRepository.getThumbnailFromMemory(
-          actualVideo,
-          thumbWidthPx,
-          thumbHeightPx
-        )
+        thumbnail =
+          thumbnailRepository.getThumbnailFromMemory(
+            actualVideo,
+            thumbWidthPx,
+            thumbHeightPx,
+          )
       }
     }
 
     LaunchedEffect(thumbnailKey) {
       if (thumbnail == null) {
-        thumbnail = withContext(Dispatchers.IO) {
-          if (isNetwork) {
-            thumbnailRepository.getThumbnailForNetworkPath(url, thumbWidthPx, thumbHeightPx)
-          } else {
-            thumbnailRepository.getThumbnail(actualVideo, thumbWidthPx, thumbHeightPx)
+        thumbnail =
+          withContext(Dispatchers.IO) {
+            if (isNetwork) {
+              thumbnailRepository.getThumbnailForNetworkPath(url, thumbWidthPx, thumbHeightPx)
+            } else {
+              thumbnailRepository.getThumbnail(actualVideo, thumbWidthPx, thumbHeightPx)
+            }
           }
-        }
       }
     }
   }
@@ -177,8 +180,7 @@ fun M3UVideoCard(
             } else {
               Color.Transparent
             },
-          )
-          .padding(16.dp),
+          ).padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Box(
@@ -206,9 +208,10 @@ fun M3UVideoCard(
             url = logoUrl,
             contentDescription = null,
             contentScale = ContentScale.Fit,
-            modifier = Modifier
-              .matchParentSize()
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .matchParentSize()
+                .padding(8.dp),
           )
         } else {
           Icon(
@@ -227,11 +230,12 @@ fun M3UVideoCard(
         Text(
           title,
           style = MaterialTheme.typography.titleSmall,
-          color = if (isRecentlyPlayed) {
-            MaterialTheme.colorScheme.primary
-          } else {
-            MaterialTheme.colorScheme.onSurface
-          },
+          color =
+            if (isRecentlyPlayed) {
+              MaterialTheme.colorScheme.primary
+            } else {
+              MaterialTheme.colorScheme.onSurface
+            },
           maxLines = maxLines,
           overflow = TextOverflow.Ellipsis,
           fontWeight = if (isFavorite) FontWeight.SemiBold else FontWeight.Normal,
@@ -244,8 +248,12 @@ fun M3UVideoCard(
           overflow = TextOverflow.Ellipsis,
         )
         FlowRow(
-          horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
-          verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+          horizontalArrangement =
+            androidx.compose.foundation.layout.Arrangement
+              .spacedBy(6.dp),
+          verticalArrangement =
+            androidx.compose.foundation.layout.Arrangement
+              .spacedBy(6.dp),
         ) {
           if (!groupTitle.isNullOrBlank()) {
             M3UMetadataChip(
@@ -284,11 +292,12 @@ fun M3UVideoCard(
           Icon(
             imageVector = Icons.RoundedFilled.Bookmarks,
             contentDescription = if (isFavorite) "Unsave stream" else "Save stream",
-            tint = if (isFavorite) {
-              MaterialTheme.colorScheme.primary
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            tint =
+              if (isFavorite) {
+                MaterialTheme.colorScheme.primary
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
           )
         }
       }
@@ -315,7 +324,3 @@ private fun M3UMetadataChip(
     overflow = TextOverflow.Ellipsis,
   )
 }
-
-
-
-

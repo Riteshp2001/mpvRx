@@ -7,12 +7,12 @@
 
 package app.gyrolet.mpvrx.repository
 
+import app.gyrolet.mpvrx.data.network.client.NetworkClient
+import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
 import app.gyrolet.mpvrx.database.dao.NetworkConnectionDao
 import app.gyrolet.mpvrx.domain.network.ConnectionStatus
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
-import app.gyrolet.mpvrx.data.network.client.NetworkClient
-import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -113,35 +113,37 @@ class NetworkRepository(
       val client = NetworkClientFactory.createClient(connection)
 
       // Attempt to connect
-      client.connect().onSuccess {
-        // Store the active client
-        activeClients[connection.id] = client
+      client
+        .connect()
+        .onSuccess {
+          // Store the active client
+          activeClients[connection.id] = client
 
-        // Update last connected time
-        dao.updateLastConnected(connection.id, System.currentTimeMillis())
+          // Update last connected time
+          dao.updateLastConnected(connection.id, System.currentTimeMillis())
 
-        // Update status to connected
-        updateConnectionStatus(
-          connection.id,
-          ConnectionStatus(
-            connectionId = connection.id,
-            isConnected = true,
-            isConnecting = false,
-          ),
-        )
-      }.onFailure { e ->
-        // Update status with error
-        updateConnectionStatus(
-          connection.id,
-          ConnectionStatus(
-            connectionId = connection.id,
-            isConnected = false,
-            isConnecting = false,
-            error = e.message ?: "Connection failed",
-          ),
-        )
-        throw e
-      }
+          // Update status to connected
+          updateConnectionStatus(
+            connection.id,
+            ConnectionStatus(
+              connectionId = connection.id,
+              isConnected = true,
+              isConnecting = false,
+            ),
+          )
+        }.onFailure { e ->
+          // Update status with error
+          updateConnectionStatus(
+            connection.id,
+            ConnectionStatus(
+              connectionId = connection.id,
+              isConnected = false,
+              isConnecting = false,
+              error = e.message ?: "Connection failed",
+            ),
+          )
+          throw e
+        }
       Result.success(Unit)
     } catch (e: Exception) {
       // Update status with error
@@ -208,15 +210,16 @@ class NetworkRepository(
       val existingClient = activeClients[connection.id]
 
       // If no client exists, or if connection details have changed, create a new one
-      val client = if (existingClient == null) {
-        // Create new client with latest connection settings
-        NetworkClientFactory.createClient(latestConnection).also { newClient ->
-          newClient.connect().getOrThrow()
-          activeClients[connection.id] = newClient
+      val client =
+        if (existingClient == null) {
+          // Create new client with latest connection settings
+          NetworkClientFactory.createClient(latestConnection).also { newClient ->
+            newClient.connect().getOrThrow()
+            activeClients[connection.id] = newClient
+          }
+        } else {
+          existingClient
         }
-      } else {
-        existingClient
-      }
 
       // List files
       client.listFiles(path)
@@ -256,4 +259,3 @@ class NetworkRepository(
     _connectionStatuses.value += (connectionId to status)
   }
 }
-

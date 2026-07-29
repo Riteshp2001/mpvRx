@@ -224,4 +224,3 @@ sealed class AndroidPreference<T>(
       }
   }
 }
-

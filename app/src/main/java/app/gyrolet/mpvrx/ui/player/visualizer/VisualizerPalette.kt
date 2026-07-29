@@ -17,8 +17,11 @@ internal data class VisualizerPalette(
   val tertiary: Int,
 ) {
   fun backgroundRgb(): FloatArray = background.toGlRgb()
+
   fun primaryRgb(): FloatArray = primary.toGlRgb()
+
   fun secondaryRgb(): FloatArray = secondary.toGlRgb()
+
   fun tertiaryRgb(): FloatArray = tertiary.toGlRgb()
 
   private fun Int.toGlRgb(): FloatArray =

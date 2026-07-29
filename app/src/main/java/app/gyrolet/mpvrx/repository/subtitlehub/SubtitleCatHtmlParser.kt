@@ -31,9 +31,17 @@ internal object SubtitleCatHtmlParser {
       val anchor = cells.firstOrNull()?.selectFirst("a[href]") ?: return@mapNotNull null
       val title = anchor.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
       val path = anchor.attr("href").trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-      val size = cells.getOrNull(2)?.text()?.trim()?.removePrefix("SIZE")?.trim()?.takeIf { it.isNotBlank() }
+      val size =
+        cells
+          .getOrNull(2)
+          ?.text()
+          ?.trim()
+          ?.removePrefix("SIZE")
+          ?.trim()
+          ?.takeIf { it.isNotBlank() }
       val downloads =
-        cells.getOrNull(3)
+        cells
+          .getOrNull(3)
           ?.text()
           ?.trim()
           ?.split(Regex("""\s+"""))
@@ -59,14 +67,25 @@ internal object SubtitleCatHtmlParser {
           languageCode = code,
           path = anchor.attr("href"),
           languageLabel = anchor.text().trim().takeIf { it.isNotBlank() },
-          fileName = anchor.attr("href").substringBefore("?").substringAfterLast("/").takeIf { it.isNotBlank() },
+          fileName =
+            anchor
+              .attr("href")
+              .substringBefore("?")
+              .substringAfterLast("/")
+              .takeIf { it.isNotBlank() },
         )
       }
 
     val blockLinks =
       doc.select("div.sub-single").mapNotNull { block ->
         val code = block.selectFirst("span img[alt]")?.attr("alt")?.takeIf { it.isNotBlank() }
-        val label = block.select("span").getOrNull(1)?.text()?.trim()?.takeIf { it.isNotBlank() }
+        val label =
+          block
+            .select("span")
+            .getOrNull(1)
+            ?.text()
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
         val anchor = block.selectFirst("a[href]") ?: return@mapNotNull null
         val href = anchor.attr("href").takeIf { it.isNotBlank() } ?: return@mapNotNull null
         SubtitleCatDownloadLink(

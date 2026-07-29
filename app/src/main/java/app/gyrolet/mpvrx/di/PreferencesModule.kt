@@ -7,7 +7,6 @@
 
 package app.gyrolet.mpvrx.di
 
-import app.gyrolet.mpvrx.database.mpvRxDatabase
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -44,4 +43,3 @@ val PreferencesModule =
     singleOf(::YtdlPreferences)
     singleOf(::SettingsManager)
   }
-

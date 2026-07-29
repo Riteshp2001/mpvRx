@@ -22,10 +22,10 @@ internal class ScreenUnlockPlaybackController {
 
     pendingResumeAfterUnlock =
       autoplayAfterScreenUnlockEnabled &&
-        wasPlayingWhenScreenTurnedOff &&
-        !backgroundPlaybackActive &&
-        !isUserFinishing &&
-        !isFinishing
+      wasPlayingWhenScreenTurnedOff &&
+      !backgroundPlaybackActive &&
+      !isUserFinishing &&
+      !isFinishing
   }
 
   fun hasPendingResume(): Boolean = pendingResumeAfterUnlock

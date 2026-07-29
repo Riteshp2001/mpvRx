@@ -90,7 +90,11 @@ object SubtitleHashUtils {
     uri: Uri,
   ): InputStream? =
     when (uri.scheme) {
-      "file" -> uri.path?.let(::File)?.takeIf(File::exists)?.let(::FileInputStream)
+      "file" ->
+        uri.path
+          ?.let(::File)
+          ?.takeIf(File::exists)
+          ?.let(::FileInputStream)
       else -> context.contentResolver.openInputStream(uri)
     }
 

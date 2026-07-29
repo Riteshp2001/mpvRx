@@ -64,4 +64,3 @@ object PlaybackStateOps {
     }
   }
 }
-

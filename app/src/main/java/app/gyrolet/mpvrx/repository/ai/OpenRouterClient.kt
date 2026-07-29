@@ -45,10 +45,14 @@ private data class OrMessage(
 )
 
 @Serializable
-private data class OrErrorBody(val error: OrErrorDetail? = null)
+private data class OrErrorBody(
+  val error: OrErrorDetail? = null,
+)
 
 @Serializable
-private data class OrErrorDetail(val message: String? = null)
+private data class OrErrorDetail(
+  val message: String? = null,
+)
 
 @Serializable
 private data class OrChatRequest(
@@ -68,55 +72,63 @@ class OpenRouterClient(
   }
 
   private val apiClient: OkHttpClient =
-    client.newBuilder()
+    client
+      .newBuilder()
       .connectTimeout(60, TimeUnit.SECONDS)
       .readTimeout(120, TimeUnit.SECONDS)
       .writeTimeout(60, TimeUnit.SECONDS)
       .build()
 
-  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
-    runCatching {
-      val request = Request.Builder()
-        .url("$BASE_URL/models")
-        .header("Authorization", "Bearer $apiKey")
-        .get()
-        .build()
+  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/models")
+            .header("Authorization", "Bearer $apiKey")
+            .get()
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
+        val response = apiClient.newCall(request).execute()
+        val body = response.body.string()
 
-      if (!response.isSuccessful) throw Exception("OpenRouter API error ${response.code}: ${parseError(body)}")
+        if (!response.isSuccessful) throw Exception("OpenRouter API error ${response.code}: ${parseError(body)}")
 
-      val parsed = json.decodeFromString<OrModelListResponse>(body)
-      parsed.data.filter { AiModelCapabilities.isTextGenerationModel(it.id) }.map { model ->
-        val isFree = model.pricing?.let { p ->
-          p.prompt.toDoubleOrNull() == 0.0 &&
-            p.completion.toDoubleOrNull() == 0.0 &&
-            p.image.toDoubleOrNull() == 0.0 &&
-            p.request.toDoubleOrNull() == 0.0
-        } ?: false
-        AiModelInfo(
-          id = model.id,
-          displayName = model.name ?: model.id,
-          isFree = isFree,
-        )
+        val parsed = json.decodeFromString<OrModelListResponse>(body)
+        parsed.data.filter { AiModelCapabilities.isTextGenerationModel(it.id) }.map { model ->
+          val isFree =
+            model.pricing?.let { p ->
+              p.prompt.toDoubleOrNull() == 0.0 &&
+                p.completion.toDoubleOrNull() == 0.0 &&
+                p.image.toDoubleOrNull() == 0.0 &&
+                p.request.toDoubleOrNull() == 0.0
+            } ?: false
+          AiModelInfo(
+            id = model.id,
+            displayName = model.name ?: model.id,
+            isFree = isFree,
+          )
+        }
       }
     }
-  }
 
-  override suspend fun verifyKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
-    runCatching {
-      val request = Request.Builder()
-        .url("$BASE_URL/auth/key")
-        .header("Authorization", "Bearer $apiKey")
-        .get()
-        .build()
+  override suspend fun verifyKey(apiKey: String): Result<String> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/auth/key")
+            .header("Authorization", "Bearer $apiKey")
+            .get()
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      if (!response.isSuccessful) throw Exception("Invalid API key: ${response.code}")
-      "API key verified successfully"
+        val response = apiClient.newCall(request).execute()
+        if (!response.isSuccessful) throw Exception("Invalid API key: ${response.code}")
+        "API key verified successfully"
+      }
     }
-  }
 
   override suspend fun generateContent(
     apiKey: String,
@@ -124,42 +136,48 @@ class OpenRouterClient(
     instruction: String,
     userInput: String,
     options: AiGenerationOptions,
-  ): Result<AiGeneratedContent> = withContext(Dispatchers.IO) {
-    runCatching {
-      val requestBody = json.encodeToString(
-        OrChatRequest.serializer(),
-        OrChatRequest(
-          model = model,
-          messages = listOf(
-            OrMessage(role = "system", content = instruction),
-            OrMessage(role = "user", content = userInput),
-          ),
-          temperature = options.temperature,
-          maxTokens = options.maxTokens,
-        ),
-      )
+  ): Result<AiGeneratedContent> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val requestBody =
+          json.encodeToString(
+            OrChatRequest.serializer(),
+            OrChatRequest(
+              model = model,
+              messages =
+                listOf(
+                  OrMessage(role = "system", content = instruction),
+                  OrMessage(role = "user", content = userInput),
+                ),
+              temperature = options.temperature,
+              maxTokens = options.maxTokens,
+            ),
+          )
 
-      val request = Request.Builder()
-        .url("$BASE_URL/chat/completions")
-        .header("Authorization", "Bearer $apiKey")
-        .header("HTTP-Referer", "https://mpvrx.app")
-        .header("X-OpenRouter-Title", "mpvRx")
-        .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
-        .build()
+        val request =
+          Request
+            .Builder()
+            .url("$BASE_URL/chat/completions")
+            .header("Authorization", "Bearer $apiKey")
+            .header("HTTP-Referer", "https://mpvrx.app")
+            .header("X-OpenRouter-Title", "mpvRx")
+            .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
+            .build()
 
-      val response = apiClient.newCall(request).execute()
-      val body = response.body.string()
+        val response = apiClient.newCall(request).execute()
+        val body = response.body.string()
 
-      if (!response.isSuccessful) throw Exception("OpenRouter generate error ${response.code}: ${parseError(body)}")
+        if (!response.isSuccessful) throw Exception("OpenRouter generate error ${response.code}: ${parseError(body)}")
 
-      AiResponseParser.openAiCompatible(json, body, "OpenRouter")
+        AiResponseParser.openAiCompatible(json, body, "OpenRouter")
+      }
     }
-  }
 
-  private fun parseError(body: String): String = try {
-    val error = json.decodeFromString<OrErrorBody>(body)
-    error.error?.message ?: body
-  } catch (_: Exception) {
-    body.take(200)
-  }
+  private fun parseError(body: String): String =
+    try {
+      val error = json.decodeFromString<OrErrorBody>(body)
+      error.error?.message ?: body
+    } catch (_: Exception) {
+      body.take(200)
+    }
 }

@@ -14,4 +14,3 @@ val FileManagerModule =
   module {
     single { FileManager(get()) }
   }
-

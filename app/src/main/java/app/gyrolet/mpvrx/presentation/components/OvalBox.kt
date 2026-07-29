@@ -95,4 +95,3 @@ private fun PreviewLeftSideOvalBox() {
         .background(Color.Red),
   ) {}
 }
-

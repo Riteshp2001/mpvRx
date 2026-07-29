@@ -7,18 +7,13 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import android.content.Intent
-import android.net.Uri
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
@@ -51,6 +47,9 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLibraryType
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -58,7 +57,6 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import me.zhanghai.compose.preference.TextFieldPreference
 import org.koin.compose.koinInject
 
@@ -72,15 +70,15 @@ object AudioPreferencesScreen : Screen {
     val backstack = LocalBackStack.current
     val preferences = koinInject<AudioPreferences>()
     val browserPreferences = koinInject<BrowserPreferences>()
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-      contract = ActivityResultContracts.RequestPermission()
-    ) { _ -> }
-
+    val notificationPermissionLauncher =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+      ) { _ -> }
 
     Scaffold(
       topBar = {
         TopAppBar(
-          title = { 
+          title = {
             Text(
               text = stringResource(R.string.pref_audio),
               style = MaterialTheme.typography.headlineSmall,
@@ -124,9 +122,17 @@ object AudioPreferencesScreen : Screen {
                     browserPreferences.mediaLibraryType.set(MediaLibraryType.Video)
                   }
                 },
-                title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_include_audio_files)) },
+                title = {
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_include_audio_files),
+                  )
+                },
                 summary = {
-                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_show_audio_files_in_the_browser),
+                  Text(
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_show_audio_files_in_the_browser,
+                    ),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -138,7 +144,12 @@ object AudioPreferencesScreen : Screen {
                 SliderPreference(
                   value = minimumAudioDurationSeconds.toFloat(),
                   onValueChange = { browserPreferences.minimumAudioDurationSeconds.set(it.toInt()) },
-                  title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_minimum_audio_duration)) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_minimum_audio_duration),
+                    )
+                  },
                   valueRange = 0f..120f,
                   valueSteps = 24,
                   summary = {
@@ -186,20 +197,34 @@ object AudioPreferencesScreen : Screen {
                         stringResource(audioVisualizerStyle.title),
                         color = MaterialTheme.colorScheme.outline,
                       )
-                      if (audioVisualizerStyle == AudioVisualizerStyle.Galaxy) {
+                      if (audioVisualizerStyle == AudioVisualizerStyle.Galaxy ||
+                        audioVisualizerStyle == AudioVisualizerStyle.Cuboid
+                      ) {
                         Text(
-                          text = stringResource(R.string.pref_audio_visualizer_galaxy_credit),
+                          text =
+                            if (audioVisualizerStyle == AudioVisualizerStyle.Cuboid) {
+                              "Inspired by the Cuboid Warptunnel concept by Niklas Knaack"
+                            } else {
+                              stringResource(R.string.pref_audio_visualizer_galaxy_credit)
+                            },
                           color = MaterialTheme.colorScheme.primary,
                           style = MaterialTheme.typography.bodySmall,
                           textDecoration = TextDecoration.Underline,
-                          modifier = Modifier.clickable {
-                            context.startActivity(
-                              Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://codepen.io/Zain-Raza-the-sasster/pen/ByBeKqa"),
-                              ),
-                            )
-                          },
+                          modifier =
+                            Modifier.clickable {
+                              context.startActivity(
+                                Intent(
+                                  Intent.ACTION_VIEW,
+                                  Uri.parse(
+                                    if (audioVisualizerStyle == AudioVisualizerStyle.Cuboid) {
+                                      "https://codepen.io/NiklasKnaack/pen/WyWqja"
+                                    } else {
+                                      "https://codepen.io/Zain-Raza-the-sasster/pen/ByBeKqa"
+                                    },
+                                  ),
+                                ),
+                              )
+                            },
                         )
                       }
                     }
@@ -229,25 +254,26 @@ object AudioPreferencesScreen : Screen {
                 value = preferredLanguages,
                 onValueChange = { preferences.preferredLanguages.set(it) },
                 textToValue = { input ->
-                  input.split(",")
+                  input
+                    .split(",")
                     .map { it.trim().lowercase() }
                     .filter { it.isNotEmpty() }
                     .joinToString(",")
                 },
                 title = { Text(stringResource(R.string.pref_preferred_languages)) },
                 summary = {
-                    if (preferredLanguages.isNotBlank()) {
-                      Text(
-                        preferredLanguages,
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    } else {
-                      Text(
-                        stringResource(R.string.not_set_video_default),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    }
-                  },
+                  if (preferredLanguages.isNotBlank()) {
+                    Text(
+                      preferredLanguages,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  } else {
+                    Text(
+                      stringResource(R.string.not_set_video_default),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
+                },
                 textField = { value, onValueChange, _ ->
                   Column {
                     Text(stringResource(R.string.pref_audio_preferred_language))
@@ -266,11 +292,11 @@ object AudioPreferencesScreen : Screen {
                 value = audioPitchCorrection,
                 onValueChange = { preferences.audioPitchCorrection.set(it) },
                 title = { Text(stringResource(R.string.pref_audio_pitch_correction_title)) },
-                summary = { 
+                summary = {
                   Text(
                     stringResource(R.string.pref_audio_pitch_correction_summary),
                     color = MaterialTheme.colorScheme.outline,
-                  ) 
+                  )
                 },
               )
 
@@ -280,11 +306,11 @@ object AudioPreferencesScreen : Screen {
                 value = volumeNormalization,
                 onValueChange = { preferences.volumeNormalization.set(it) },
                 title = { Text(stringResource(R.string.pref_audio_volume_normalization_title)) },
-                summary = { 
+                summary = {
                   Text(
                     stringResource(R.string.pref_audio_volume_normalization_summary),
                     color = MaterialTheme.colorScheme.outline,
-                  ) 
+                  )
                 },
               )
 
@@ -295,14 +321,19 @@ object AudioPreferencesScreen : Screen {
                 onValueChange = { enabled ->
                   preferences.backgroundPlayback.set(enabled)
                   if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                      PackageManager.PERMISSION_GRANTED
+                    ) {
                       notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                   }
                 },
                 title = { Text(stringResource(R.string.background_playback_title)) },
                 summary = {
-                  Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_keep_audio_and_video_playing_when_leaving_the_player_or_locking),
+                  Text(
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_keep_audio_and_video_playing_when_leaving_the_player_or_locking,
+                    ),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -316,11 +347,11 @@ object AudioPreferencesScreen : Screen {
                 values = AudioChannels.entries,
                 valueToText = { AnnotatedString(resources.getString(it.title)) },
                 title = { Text(text = stringResource(id = R.string.pref_audio_channels)) },
-                summary = { 
+                summary = {
                   Text(
                     text = stringResource(audioChannel.title),
                     color = MaterialTheme.colorScheme.outline,
-                  ) 
+                  )
                 },
               )
 

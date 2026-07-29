@@ -7,9 +7,6 @@
 
 package app.gyrolet.mpvrx.presentation.components
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.annotation.SuppressLint
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -38,6 +35,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
 
 @SuppressLint("UnrememberedMutableState")
@@ -49,18 +48,20 @@ fun ExpandableCard(
   modifier: Modifier = Modifier,
   colors: CardColors = CardDefaults.cardColors(),
   shape: Shape = MaterialTheme.shapes.large,
-  border: BorderStroke? = BorderStroke(
-    1.dp,
-    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-  ),
-  elevation: CardElevation = CardDefaults.cardElevation(
-    defaultElevation = 0.dp,
-    pressedElevation = 0.dp,
-    focusedElevation = 0.dp,
-    hoveredElevation = 0.dp,
-    draggedElevation = 0.dp,
-    disabledElevation = 0.dp,
-  ),
+  border: BorderStroke? =
+    BorderStroke(
+      1.dp,
+      MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+    ),
+  elevation: CardElevation =
+    CardDefaults.cardElevation(
+      defaultElevation = 0.dp,
+      pressedElevation = 0.dp,
+      focusedElevation = 0.dp,
+      hoveredElevation = 0.dp,
+      draggedElevation = 0.dp,
+      disabledElevation = 0.dp,
+    ),
   content: @Composable () -> Unit,
 ) {
   val rotationState by animateFloatAsState(if (isExpanded) 0f else 180f, label = "card_rotation")
@@ -112,12 +113,18 @@ private fun PreviewExpandableCard() {
 
   ExpandableCard(
     isExpanded,
-    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_preferences)) },
-    content = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_appearance_summary)) },
+    title = {
+      Text(
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.pref_preferences),
+      )
+    },
+    content = {
+      Text(
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.pref_appearance_summary),
+      )
+    },
     onExpand = { isExpanded = it },
   )
 }
-
-
-
-

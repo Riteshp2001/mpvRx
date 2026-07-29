@@ -57,7 +57,8 @@ enum class HdrScreenMode(
     titleRes = R.string.hdr_mode_linear,
     shortTitleRes = R.string.hdr_mode_linear_short,
     descriptionRes = R.string.hdr_mode_linear_description,
-  );
+  ),
+  ;
 
   companion object {
     /** Modes shown in the HDR panel (excludes OFF — that is handled by the toggle button). */
@@ -87,43 +88,46 @@ internal fun hdrScreenOutputSettings(
   }
 }
 
-private fun offSettings(): List<Pair<String, String>> = listOf(
-  "target-colorspace-hint-mode" to "target",
-  "inverse-tone-mapping"        to "no",
-  "tone-mapping"                to "auto",
-  "gamut-mapping-mode"          to "auto",
-  "hdr-compute-peak"            to "no",
-  "hdr-reference-white"         to "203",
-  "tone-mapping-visualize"      to "no",
-  "glsl-shader-opts"            to "",        // clear any hdr-toys shader options
-)
+private fun offSettings(): List<Pair<String, String>> =
+  listOf(
+    "target-colorspace-hint-mode" to "target",
+    "inverse-tone-mapping" to "no",
+    "tone-mapping" to "auto",
+    "gamut-mapping-mode" to "auto",
+    "hdr-compute-peak" to "no",
+    "hdr-reference-white" to "203",
+    "tone-mapping-visualize" to "no",
+    "glsl-shader-opts" to "", // clear any hdr-toys shader options
+  )
 
-private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>> = listOf(
-  // Disable mpv's built-in colorspace management so hdr-toys shaders have full control.
-  "target-colorspace-hint"      to "no",
-  "target-colorspace-hint-mode" to "target",
-  "target-prim"                 to profile.targetPrim,
-  "target-trc"                  to profile.targetTrc,
-  "target-peak"                 to "auto",
-  "inverse-tone-mapping"        to "no",
-  "tone-mapping"                to "clip",    // hdr-toys handles tone-mapping in GLSL
-  "gamut-mapping-mode"          to "clip",    // hdr-toys handles gamut-mapping in GLSL
-  "hdr-compute-peak"            to "no",
-  "hdr-reference-white"         to "203",
-  "tone-mapping-visualize"      to "no",
-  "glsl-shader-opts"            to profile.shaderOptionsValue,
-)
+private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>> =
+  listOf(
+    // Disable mpv's built-in colorspace management so hdr-toys shaders have full control.
+    "target-colorspace-hint" to "no",
+    "target-colorspace-hint-mode" to "target",
+    "target-prim" to profile.targetPrim,
+    "target-trc" to profile.targetTrc,
+    "target-peak" to "auto",
+    "inverse-tone-mapping" to "no",
+    "tone-mapping" to "clip", // hdr-toys handles tone-mapping in GLSL
+    "gamut-mapping-mode" to "clip", // hdr-toys handles gamut-mapping in GLSL
+    "hdr-compute-peak" to "no",
+    "hdr-reference-white" to "203",
+    "tone-mapping-visualize" to "no",
+    "glsl-shader-opts" to profile.shaderOptionsValue,
+  )
 
-private fun linearHdrSettings(hdrEnabled: Boolean): List<Pair<String, String>> = listOf(
-  "target-colorspace-hint"      to if (hdrEnabled) "yes" else "no",
-  "tone-mapping-visualize"      to "no",
-  "inverse-tone-mapping"        to if (hdrEnabled) "yes" else "no",
-  "tone-mapping"                to "clip",
-  "gamut-mapping-mode"          to if (hdrEnabled) "clip" else "auto",
-  "hdr-compute-peak"            to if (hdrEnabled) "yes" else "auto",
-  "hdr-reference-white"         to "203",
-  "glsl-shader-opts"            to "",
-)
+private fun linearHdrSettings(hdrEnabled: Boolean): List<Pair<String, String>> =
+  listOf(
+    "target-colorspace-hint" to if (hdrEnabled) "yes" else "no",
+    "tone-mapping-visualize" to "no",
+    "inverse-tone-mapping" to if (hdrEnabled) "yes" else "no",
+    "tone-mapping" to "clip",
+    "gamut-mapping-mode" to if (hdrEnabled) "clip" else "auto",
+    "hdr-compute-peak" to if (hdrEnabled) "yes" else "auto",
+    "hdr-reference-white" to "203",
+    "glsl-shader-opts" to "",
+  )
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public apply helpers

@@ -11,7 +11,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Xml
 import app.gyrolet.mpvrx.BuildConfig
-import app.gyrolet.mpvrx.database.mpvRxDatabase
+import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
@@ -25,11 +25,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 class SettingsManager(
   private val context: Context,
   private val preferenceStore: PreferenceStore,
-  private val database: mpvRxDatabase,
+  private val database: MpvRxDatabase,
 ) {
   companion object {
     private const val TAG_ROOT = "mpvRxSettings"
@@ -38,7 +37,7 @@ class SettingsManager(
     private const val TAG_DATABASE = "database"
     private const val TAG_NETWORK_CONNECTIONS = "networkConnections"
     private const val TAG_NETWORK_CONNECTION = "networkConnection"
-    
+
     private const val ATTR_KEY = "key"
     private const val ATTR_TYPE = "type"
     private const val ATTR_VALUE = "value"
@@ -54,7 +53,6 @@ class SettingsManager(
     private const val STRING_SET_SEPARATOR = "|||"
   }
 
-
   suspend fun exportSettings(outputUri: Uri): Result<ExportStats> =
     withContext(Dispatchers.IO) {
       try {
@@ -67,7 +65,6 @@ class SettingsManager(
       }
     }
 
-
   suspend fun importSettings(inputUri: Uri): Result<ImportStats> =
     withContext(Dispatchers.IO) {
       try {
@@ -79,7 +76,6 @@ class SettingsManager(
         Result.failure(e)
       }
     }
-
 
   private suspend fun writeSettingsToXml(outputStream: OutputStream): ExportStats {
     val serializer: XmlSerializer = Xml.newSerializer()
@@ -136,14 +132,14 @@ class SettingsManager(
     )
   }
 
-
-  private fun sanitizeXmlValue(value: String): String {
-    return value.filter { c ->
-      c.code == 0x9 || c.code == 0xA || c.code == 0xD ||
+  private fun sanitizeXmlValue(value: String): String =
+    value.filter { c ->
+      c.code == 0x9 ||
+        c.code == 0xA ||
+        c.code == 0xD ||
         (c.code in 0x20..0xD7FF) ||
         (c.code in 0xE000..0xFFFD)
     }
-  }
 
   private fun writePreference(
     serializer: XmlSerializer,
@@ -187,7 +183,6 @@ class SettingsManager(
 
     serializer.endTag(null, TAG_PREFERENCE)
   }
-
 
   private fun writeNetworkConnection(
     serializer: XmlSerializer,
@@ -263,7 +258,6 @@ class SettingsManager(
     return stats
   }
 
-
   private fun readPreference(parser: XmlPullParser) {
     val key = parser.getAttributeValue(null, ATTR_KEY) ?: return
     val type = parser.getAttributeValue(null, ATTR_TYPE) ?: return
@@ -294,9 +288,8 @@ class SettingsManager(
     editor.apply()
   }
 
-
-  private fun readNetworkConnection(parser: XmlPullParser): NetworkConnection {
-    return NetworkConnection(
+  private fun readNetworkConnection(parser: XmlPullParser): NetworkConnection =
+    NetworkConnection(
       id = 0, // Will be auto-generated
       name = parser.getAttributeValue(null, "name") ?: "",
       protocol =
@@ -312,7 +305,6 @@ class SettingsManager(
       lastConnected = parser.getAttributeValue(null, "lastConnected")?.toLongOrNull() ?: 0L,
       autoConnect = parser.getAttributeValue(null, "autoConnect")?.toBoolean() ?: false,
     )
-  }
 
   fun getDefaultExportFilename(): String {
     val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
@@ -331,5 +323,3 @@ class SettingsManager(
     val exportedKeys: List<String>,
   )
 }
-
-

@@ -7,63 +7,59 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.R
-import androidx.compose.ui.res.stringResource
-
-import androidx.compose.animation.core.Spring
-
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.editor.MpvHelpScreen
-import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
-
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,8 +73,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,17 +82,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.FileProvider
-import java.io.File
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.presentation.Screen
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.ui.text.TextStyle
+import app.gyrolet.mpvrx.ui.editor.MpvHelpScreen
+import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
@@ -113,26 +105,26 @@ import java.util.UUID
 
 @Serializable
 enum class CustomButtonScriptLanguage(
-    val displayName: String,
+  val displayName: String,
 ) {
-    LUA("Lua"),
-    JS("JavaScript"),
+  LUA("Lua"),
+  JS("JavaScript"),
 }
 
 @Serializable
 data class CustomButton(
-    val id: String = UUID.randomUUID().toString(),
-    val title: String,
-    val content: String,
-    val longPressContent: String = "",
-    val onStartup: String = "",
-    val enabled: Boolean = true,
-    val scriptLanguage: CustomButtonScriptLanguage = CustomButtonScriptLanguage.LUA,
+  val id: String = UUID.randomUUID().toString(),
+  val title: String,
+  val content: String,
+  val longPressContent: String = "",
+  val onStartup: String = "",
+  val enabled: Boolean = true,
+  val scriptLanguage: CustomButtonScriptLanguage = CustomButtonScriptLanguage.LUA,
 )
 
 @Serializable
 data class CustomButtonSlots(
-    val slots: List<CustomButton?> = List(8) { null }
+  val slots: List<CustomButton?> = List(8) { null },
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,279 +133,347 @@ data class CustomButtonSlots(
 
 @Serializable
 object CustomButtonScreen : Screen {
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    override fun Content() {
-        val context = LocalContext.current
-        val backstack = LocalBackStack.current
-        val preferences = koinInject<PlayerPreferences>()
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  override fun Content() {
+    val context = LocalContext.current
+    val backstack = LocalBackStack.current
+    val preferences = koinInject<PlayerPreferences>()
 
-        // 8 slots — order = left 0-3, right 4-7
-        val buttonSlots = remember { mutableStateListOf<CustomButton?>(*Array(8) { null }) }
+    // 8 slots — order = left 0-3, right 4-7
+    val buttonSlots = remember { mutableStateListOf<CustomButton?>(*Array(8) { null }) }
 
-        // Import dialog state
-        var showImportDialog by remember { mutableStateOf(false) }
-        var importedSlots by remember { mutableStateOf<List<CustomButton?>>(emptyList()) }
-        var selectedImportSlots by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    // Import dialog state
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importedSlots by remember { mutableStateOf<List<CustomButton?>>(emptyList()) }
+    var selectedImportSlots by remember { mutableStateOf<Set<Int>>(emptySet()) }
 
-        // Export launcher
-        val exportLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.CreateDocument("text/xml")
-        ) { uri ->
-            uri?.let {
-                runCatching {
-                    val xmlContent = buildXmlExport(buttonSlots.toList())
-                    context.contentResolver.openOutputStream(it)?.use { output ->
-                        output.write(xmlContent.toByteArray())
-                    }
-                    Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.ui_buttons_exported_successfully), Toast.LENGTH_SHORT).show()
-                }.onFailure { e ->
-                    Toast.makeText(context, context.getString(R.string.pref_export_failed_toast, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
-                }
+    // Export launcher
+    val exportLauncher =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/xml"),
+      ) { uri ->
+        uri?.let {
+          runCatching {
+            val xmlContent = buildXmlExport(buttonSlots.toList())
+            context.contentResolver.openOutputStream(it)?.use { output ->
+              output.write(xmlContent.toByteArray())
             }
+            Toast
+              .makeText(
+                context,
+                context.getString(app.gyrolet.mpvrx.R.string.ui_buttons_exported_successfully),
+                Toast.LENGTH_SHORT,
+              ).show()
+          }.onFailure { e ->
+            Toast
+              .makeText(
+                context,
+                context.getString(
+                  R.string.pref_export_failed_toast,
+                  e.message ?: context.getString(R.string.generic_unknown_error),
+                ),
+                Toast.LENGTH_LONG,
+              ).show()
+          }
         }
+      }
 
-        // Import launcher
-        val importLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocument()
-        ) { uri ->
-            uri?.let {
-                runCatching {
-                    val xmlContent = context.contentResolver.openInputStream(it)?.use { input ->
-                        input.bufferedReader().readText()
-                    } ?: ""
-                    
-                    val parsed = parseXmlImport(xmlContent)
-                    importedSlots = parsed
-                    
-                    // Pre-select all non-null slots
-                    selectedImportSlots = parsed.indices.filter { index -> parsed[index] != null }.toSet()
-                    
-                    showImportDialog = true
-                }.onFailure { e ->
-                    Toast.makeText(context, context.getString(R.string.toast_failed_to_read_file, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
-                }
-            }
+    // Import launcher
+    val importLauncher =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+      ) { uri ->
+        uri?.let {
+          runCatching {
+            val xmlContent =
+              context.contentResolver.openInputStream(it)?.use { input ->
+                input.bufferedReader().readText()
+              } ?: ""
+
+            val parsed = parseXmlImport(xmlContent)
+            importedSlots = parsed
+
+            // Pre-select all non-null slots
+            selectedImportSlots = parsed.indices.filter { index -> parsed[index] != null }.toSet()
+
+            showImportDialog = true
+          }.onFailure { e ->
+            Toast
+              .makeText(
+                context,
+                context.getString(
+                  R.string.toast_failed_to_read_file,
+                  e.message ?: context.getString(R.string.generic_unknown_error),
+                ),
+                Toast.LENGTH_LONG,
+              ).show()
+          }
         }
+      }
 
-        // Load saved data
-        LaunchedEffect(Unit) {
-            val jsonString = preferences.customButtons.get()
-            if (jsonString.isNotBlank()) {
-                runCatching {
-                    val loaded = Json.decodeFromString<CustomButtonSlots>(jsonString)
-                    val slots = loaded.slots.take(8).toMutableList()
-                    while (slots.size < 8) slots.add(null)
-                    buttonSlots.clear()
-                    buttonSlots.addAll(slots)
-                }.onFailure {
-                    runCatching {
-                        val old: List<CustomButton> = Json.decodeFromString(jsonString)
-                        val slots = MutableList<CustomButton?>(8) { null }
-                        old.forEachIndexed { i, b -> if (i < 8) slots[i] = b }
-                        buttonSlots.clear()
-                        buttonSlots.addAll(slots)
-                    }
-                }
-            }
+    // Load saved data
+    LaunchedEffect(Unit) {
+      val jsonString = preferences.customButtons.get()
+      if (jsonString.isNotBlank()) {
+        runCatching {
+          val loaded = Json.decodeFromString<CustomButtonSlots>(jsonString)
+          val slots = loaded.slots.take(8).toMutableList()
+          while (slots.size < 8) slots.add(null)
+          buttonSlots.clear()
+          buttonSlots.addAll(slots)
+        }.onFailure {
+          runCatching {
+            val old: List<CustomButton> = Json.decodeFromString(jsonString)
+            val slots = MutableList<CustomButton?>(8) { null }
+            old.forEachIndexed { i, b -> if (i < 8) slots[i] = b }
+            buttonSlots.clear()
+            buttonSlots.addAll(slots)
+          }
         }
-
-        // Persist on every change
-        LaunchedEffect(buttonSlots.toList()) {
-            preferences.customButtons.set(Json.encodeToString(CustomButtonSlots(buttonSlots.toList())))
-        }
-
-        // Reorderable list state 
-        val lazyListState = rememberLazyListState()
-        val NON_SLOT_ITEMS_BEFORE = 1  // the Spacer item()
-        val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
-            val fromIdx = (from.index - NON_SLOT_ITEMS_BEFORE).coerceIn(0, buttonSlots.lastIndex)
-            val toIdx   = (to.index   - NON_SLOT_ITEMS_BEFORE).coerceIn(0, buttonSlots.lastIndex)
-            val moved = buttonSlots.removeAt(fromIdx)
-            buttonSlots.add(toIdx.coerceIn(0, buttonSlots.size), moved)
-        }
-
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_custom_lua_title),
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_drag_to_reorder_tap_any_slot_to_expand_edit),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { backstack.popSafely() }) {
-                            Icon(
-                                Icons.RoundedFilled.ArrowBack,
-                                contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.back),
-                                tint = MaterialTheme.colorScheme.secondary,
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                )
-            },
-        ) { padding ->
-            LazyColumn(
-                state = lazyListState,
-                contentPadding = padding,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                // Section divider items
-                item { Spacer(Modifier.height(8.dp)) }
-
-                // itemsIndexed gives us the real slot position so empty-slot keys are unique
-                itemsIndexed(
-                    items = buttonSlots.toList(),
-                    key = { index, item -> item?.id ?: "slot_$index" },
-                ) { index, button ->
-                    val side = if (index < 4) "L${index + 1}" else "R${index - 3}"
-
-                    ReorderableItem(reorderState, key = button?.id ?: "slot_$index") { isDragging ->
-                        val elevation by animateFloatAsState(
-                            targetValue = if (isDragging) 8f else 0f,
-                            animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                            label = "elevation"
-                        )
-
-                        ButtonSlotCard(
-                            slotLabel = side,
-                            button = button,
-                            isDragging = isDragging,
-                            elevation = elevation,
-                            dragHandle = { interceptModifier ->
-                                Icon(
-                                    Icons.RoundedFilled.DragHandle,
-                                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_drag_to_reorder),
-                                    modifier = interceptModifier
-                                        .draggableHandle()
-                                        .padding(horizontal = 8.dp, vertical = 12.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                )
-                            },
-                            onSave = { updated ->
-                                buttonSlots[index] = updated
-                            },
-                            onDelete = {
-                                buttonSlots[index] = null
-                            },
-                        )
-                    }
-                }
-
-                // Import/Export section
-                item { 
-                    Spacer(Modifier.height(8.dp))
-                }
-                
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_import_export),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            
-                            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_backup_or_share_all_your_custom_buttons_with_their_script_code_a),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = { importLauncher.launch(arrayOf("text/xml", "application/xml")) },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                ) {
-                                    Icon(
-                                        Icons.RoundedFilled.FileDownload,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_import))
-                                }
-                                
-                                Button(
-                                    onClick = { exportLauncher.launch("custom_buttons_${System.currentTimeMillis()}.xml") },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                ) {
-                                    Icon(
-                                        Icons.RoundedFilled.FileUpload,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_export))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item { Spacer(Modifier.height(16.dp)) }
-            }
-        }
-        
-        // Import selection dialog
-        if (showImportDialog) {
-            ImportSelectionScreen(
-                importedSlots = importedSlots,
-                currentSlots = buttonSlots.toList(),
-                selectedSlots = selectedImportSlots,
-                onSlotToggle = { slotIndex ->
-                    selectedImportSlots = if (selectedImportSlots.contains(slotIndex)) {
-                        selectedImportSlots - slotIndex
-                    } else {
-                        selectedImportSlots + slotIndex
-                    }
-                },
-                onConfirm = {
-                    selectedImportSlots.forEach { slotIndex ->
-                        if (slotIndex in importedSlots.indices) {
-                            buttonSlots[slotIndex] = importedSlots[slotIndex]
-                        }
-                    }
-                    Toast.makeText(context, context.getString(R.string.toast_imported_buttons, selectedImportSlots.size), Toast.LENGTH_SHORT).show()
-                    showImportDialog = false
-                    selectedImportSlots = emptySet()
-                },
-                onDismiss = {
-                    showImportDialog = false
-                    selectedImportSlots = emptySet()
-                }
-            )
-        }
+      }
     }
+
+    // Persist on every change
+    LaunchedEffect(buttonSlots.toList()) {
+      preferences.customButtons.set(Json.encodeToString(CustomButtonSlots(buttonSlots.toList())))
+    }
+
+    // Reorderable list state
+    val lazyListState = rememberLazyListState()
+    val NON_SLOT_ITEMS_BEFORE = 1 // the Spacer item()
+    val reorderState =
+      rememberReorderableLazyListState(lazyListState) { from, to ->
+        val fromIdx = (from.index - NON_SLOT_ITEMS_BEFORE).coerceIn(0, buttonSlots.lastIndex)
+        val toIdx = (to.index - NON_SLOT_ITEMS_BEFORE).coerceIn(0, buttonSlots.lastIndex)
+        val moved = buttonSlots.removeAt(fromIdx)
+        buttonSlots.add(toIdx.coerceIn(0, buttonSlots.size), moved)
+      }
+
+    Scaffold(
+      topBar = {
+        TopAppBar(
+          title = {
+            Column {
+              Text(
+                text =
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.pref_custom_lua_title,
+                  ),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+              )
+              Text(
+                text =
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.ui_drag_to_reorder_tap_any_slot_to_expand_edit,
+                  ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          },
+          navigationIcon = {
+            IconButton(onClick = { backstack.popSafely() }) {
+              Icon(
+                Icons.RoundedFilled.ArrowBack,
+                contentDescription =
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.back,
+                  ),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
+          },
+          colors =
+            TopAppBarDefaults.topAppBarColors(
+              containerColor = MaterialTheme.colorScheme.surface,
+            ),
+        )
+      },
+    ) { padding ->
+      LazyColumn(
+        state = lazyListState,
+        contentPadding = padding,
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        // Section divider items
+        item { Spacer(Modifier.height(8.dp)) }
+
+        // itemsIndexed gives us the real slot position so empty-slot keys are unique
+        itemsIndexed(
+          items = buttonSlots.toList(),
+          key = { index, item -> item?.id ?: "slot_$index" },
+        ) { index, button ->
+          val side = if (index < 4) "L${index + 1}" else "R${index - 3}"
+
+          ReorderableItem(reorderState, key = button?.id ?: "slot_$index") { isDragging ->
+            val elevation by animateFloatAsState(
+              targetValue = if (isDragging) 8f else 0f,
+              animationSpec = spring(stiffness = Spring.StiffnessMedium),
+              label = "elevation",
+            )
+
+            ButtonSlotCard(
+              slotLabel = side,
+              button = button,
+              isDragging = isDragging,
+              elevation = elevation,
+              dragHandle = { interceptModifier ->
+                Icon(
+                  Icons.RoundedFilled.DragHandle,
+                  contentDescription =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_drag_to_reorder,
+                    ),
+                  modifier =
+                    interceptModifier
+                      .draggableHandle()
+                      .padding(horizontal = 8.dp, vertical = 12.dp),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+              },
+              onSave = { updated ->
+                buttonSlots[index] = updated
+              },
+              onDelete = {
+                buttonSlots[index] = null
+              },
+            )
+          }
+        }
+
+        // Import/Export section
+        item {
+          Spacer(Modifier.height(8.dp))
+        }
+
+        item {
+          Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors =
+              CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+              ),
+          ) {
+            Column(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(20.dp),
+              verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+              Text(
+                text =
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.ui_import_export,
+                  ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+
+              Text(
+                text =
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.ui_backup_or_share_all_your_custom_buttons_with_their_script_code_a,
+                  ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+              ) {
+                OutlinedButton(
+                  onClick = { importLauncher.launch(arrayOf("text/xml", "application/xml")) },
+                  modifier = Modifier.weight(1f),
+                  shape = RoundedCornerShape(12.dp),
+                ) {
+                  Icon(
+                    Icons.RoundedFilled.FileDownload,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                  )
+                  Spacer(Modifier.width(8.dp))
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_import),
+                  )
+                }
+
+                Button(
+                  onClick = {
+                    exportLauncher.launch(
+                      "custom_buttons_${System.currentTimeMillis()}.xml",
+                    )
+                  },
+                  modifier = Modifier.weight(1f),
+                  shape = RoundedCornerShape(12.dp),
+                ) {
+                  Icon(
+                    Icons.RoundedFilled.FileUpload,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                  )
+                  Spacer(Modifier.width(8.dp))
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_export),
+                  )
+                }
+              }
+            }
+          }
+        }
+
+        item { Spacer(Modifier.height(16.dp)) }
+      }
+    }
+
+    // Import selection dialog
+    if (showImportDialog) {
+      ImportSelectionScreen(
+        importedSlots = importedSlots,
+        currentSlots = buttonSlots.toList(),
+        selectedSlots = selectedImportSlots,
+        onSlotToggle = { slotIndex ->
+          selectedImportSlots =
+            if (selectedImportSlots.contains(slotIndex)) {
+              selectedImportSlots - slotIndex
+            } else {
+              selectedImportSlots + slotIndex
+            }
+        },
+        onConfirm = {
+          selectedImportSlots.forEach { slotIndex ->
+            if (slotIndex in importedSlots.indices) {
+              buttonSlots[slotIndex] = importedSlots[slotIndex]
+            }
+          }
+          Toast
+            .makeText(
+              context,
+              context.getString(R.string.toast_imported_buttons, selectedImportSlots.size),
+              Toast.LENGTH_SHORT,
+            ).show()
+          showImportDialog = false
+          selectedImportSlots = emptySet()
+        },
+        onDismiss = {
+          showImportDialog = false
+          selectedImportSlots = emptySet()
+        },
+      )
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -423,290 +483,329 @@ object CustomButtonScreen : Screen {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ButtonSlotCard(
-    slotLabel: String,
-    button: CustomButton?,
-    isDragging: Boolean,
-    elevation: Float,
-    dragHandle: @Composable (Modifier) -> Unit,
-    onSave: (CustomButton) -> Unit,
-    onDelete: () -> Unit,
+  slotLabel: String,
+  button: CustomButton?,
+  isDragging: Boolean,
+  elevation: Float,
+  dragHandle: @Composable (Modifier) -> Unit,
+  onSave: (CustomButton) -> Unit,
+  onDelete: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val buttonId  = button?.id ?: remember { java.util.UUID.randomUUID().toString() }
-    var draftTitle     by remember(button?.id) { mutableStateOf(button?.title ?: "") }
-    var draftContent   by remember(button?.id) { mutableStateOf(button?.content ?: "") }
-    var draftLongPress by remember(button?.id) { mutableStateOf(button?.longPressContent ?: "") }
-    var draftStartup   by remember(button?.id) { mutableStateOf(button?.onStartup ?: "") }
-    var draftEnabled   by remember(button?.id) { mutableStateOf(button?.enabled ?: true) }
-    var draftScriptLanguage by remember(button?.id) {
-        mutableStateOf(button?.scriptLanguage ?: CustomButtonScriptLanguage.LUA)
+  var expanded by remember { mutableStateOf(false) }
+  val buttonId =
+    button?.id ?: remember {
+      java.util.UUID
+        .randomUUID()
+        .toString()
+    }
+  var draftTitle by remember(button?.id) { mutableStateOf(button?.title ?: "") }
+  var draftContent by remember(button?.id) { mutableStateOf(button?.content ?: "") }
+  var draftLongPress by remember(button?.id) { mutableStateOf(button?.longPressContent ?: "") }
+  var draftStartup by remember(button?.id) { mutableStateOf(button?.onStartup ?: "") }
+  var draftEnabled by remember(button?.id) { mutableStateOf(button?.enabled ?: true) }
+  var draftScriptLanguage by remember(button?.id) {
+    mutableStateOf(button?.scriptLanguage ?: CustomButtonScriptLanguage.LUA)
+  }
+
+  var activeScriptField by remember { mutableStateOf<String?>(null) }
+
+  val isPopulated = button != null
+  val sideColor =
+    if (slotLabel.startsWith("L")) {
+      MaterialTheme.colorScheme.primary
+    } else {
+      MaterialTheme.colorScheme.tertiary
     }
 
-    var activeScriptField by remember { mutableStateOf<String?>(null) }
+  val cardColor by animateColorAsState(
+    targetValue =
+      when {
+        isDragging -> MaterialTheme.colorScheme.primaryContainer
+        expanded -> MaterialTheme.colorScheme.surfaceContainerHigh
+        isPopulated -> MaterialTheme.colorScheme.surfaceContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerLowest
+      },
+    label = "cardColor",
+  )
 
-    val isPopulated = button != null
-    val sideColor   = if (slotLabel.startsWith("L")) MaterialTheme.colorScheme.primary
-                      else MaterialTheme.colorScheme.tertiary
-
-    val cardColor by animateColorAsState(
-        targetValue = when {
-            isDragging  -> MaterialTheme.colorScheme.primaryContainer
-            expanded    -> MaterialTheme.colorScheme.surfaceContainerHigh
-            isPopulated -> MaterialTheme.colorScheme.surfaceContainer
-            else        -> MaterialTheme.colorScheme.surfaceContainerLowest
-        },
-        label = "cardColor",
-    )
-
-    Card(
-        modifier = Modifier
+  Card(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .shadow(elevation = elevation.dp, shape = RoundedCornerShape(16.dp)),
+    shape = RoundedCornerShape(16.dp),
+    colors = CardDefaults.cardColors(containerColor = cardColor),
+    onClick = { expanded = !expanded },
+  ) {
+    Column(Modifier.fillMaxWidth()) {
+      // ── Header row ────────────────────────────────────────────────────
+      Row(
+        modifier =
+          Modifier
             .fillMaxWidth()
-            .shadow(elevation = elevation.dp, shape = RoundedCornerShape(16.dp)),
-        shape  = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        onClick = { expanded = !expanded },
-    ) {
-        Column(Modifier.fillMaxWidth()) {
-
-            // ── Header row ────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Slot badge
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(sideColor.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = slotLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = sideColor,
-                    )
-                }
-
-                Spacer(Modifier.width(12.dp))
-
-                // Title or empty hint
-                Column(Modifier.weight(1f)) {
-                    val titleAlpha = if (isPopulated && !draftEnabled) 0.4f else 1f
-                    Text(
-                        text = draftTitle.ifBlank { if (isPopulated) button.title else "Empty slot" },
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = if (isPopulated) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isPopulated)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = titleAlpha)
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    )
-                    // Code preview — first line of tap action
-                    val preview = draftContent.ifBlank { button?.content ?: "" }
-                    if (preview.isNotBlank()) {
-                        Text(
-                            text = preview.lines().first().take(60),
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = FontFamily.Monospace, fontSize = 11.sp,
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-                            maxLines = 1,
-                        )
-                    }
-                }
-
-                // Delete (only if a saved button exists)
-                if (isPopulated) {
-                    FilledTonalIconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(36.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor   = MaterialTheme.colorScheme.onErrorContainer,
-                        ),
-                    ) {
-                        Icon(Icons.RoundedFilled.Delete, contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.delete), modifier = Modifier.size(18.dp))
-                    }
-                    Spacer(Modifier.width(4.dp))
-                }
-
-                // Drag handle button - always show but disable when empty
-                if (isPopulated) {
-                    dragHandle(
-                        Modifier.pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    awaitFirstDown(requireUnconsumed = false)
-                                    expanded = false
-                                }
-                            }
-                        }
-                    )
-                } else {
-                    // Disabled drag handle for empty slots
-                    Icon(
-                        Icons.RoundedFilled.DragHandle,
-                        contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_drag_disabled),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-                    )
-                }
-            }
-
-            // ── Expandable body ───────────────────────────────────────────────
-            AnimatedVisibility(
-                visible = expanded,
-                enter   = expandVertically(spring(stiffness = Spring.StiffnessMedium)) + fadeIn(),
-                exit    = shrinkVertically(spring(stiffness = Spring.StiffnessMedium)) + fadeOut(),
-            ) {
-                ButtonExpandedContent(
-                    slotLabel      = slotLabel,
-                    buttonId       = buttonId,
-                    isPopulated    = isPopulated,
-                    draftTitle     = draftTitle,
-                    draftContent   = draftContent,
-                    draftLongPress = draftLongPress,
-                    draftStartup   = draftStartup,
-                    draftEnabled   = draftEnabled,
-                    draftScriptLanguage = draftScriptLanguage,
-                    onTitleChange   = { draftTitle   = it },
-                    onEnabledChange = { draftEnabled = it },
-                    onScriptLanguageChange = { draftScriptLanguage = it },
-                    onSave = {
-                        // Build and save the button
-                        onSave(
-                            CustomButton(
-                                id               = buttonId,
-                                title            = draftTitle,
-                                content          = draftContent,
-                                longPressContent = draftLongPress,
-                                onStartup        = draftStartup,
-                                enabled          = draftEnabled,
-                                scriptLanguage   = draftScriptLanguage,
-                            )
-                        )
-                        expanded = false
-                    },
-                    onCollapse      = { expanded = false },
-                    onOpenScriptEditor = { field -> activeScriptField = field },
-                )
-            }
-        }
-    }
-    
-    if (activeScriptField != null) {
-        val fieldKey = activeScriptField!!
-        val fieldLabel = when (fieldKey) {
-            "content"   -> "Tap action  ·  $slotLabel"
-            "longPress" -> "Long press  ·  $slotLabel"
-            "startup"   -> "On startup  ·  $slotLabel"
-            else        -> fieldKey
-        }
-        val fieldValue = when (fieldKey) {
-            "content"   -> draftContent
-            "longPress" -> draftLongPress
-            "startup"   -> draftStartup
-            else        -> ""
-        }
-
-        fun dismissAndSave() {
-            // Save all drafts (including the field that was just edited) back to preferences
-            if (draftTitle.isNotBlank()) {
-                onSave(
-                    CustomButton(
-                        id               = buttonId,
-                        title            = draftTitle,
-                        content          = draftContent,
-                        longPressContent = draftLongPress,
-                        onStartup        = draftStartup,
-                        enabled          = draftEnabled,
-                        scriptLanguage   = draftScriptLanguage,
-                    )
-                )
-            }
-            activeScriptField = null
-        }
-
-        Dialog(
-            onDismissRequest = { dismissAndSave() },
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false,
-                dismissOnBackPress      = true,
-                dismissOnClickOutside   = false,
-                decorFitsSystemWindows  = false,
-            ),
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        // Slot badge
+        Box(
+          modifier =
+            Modifier
+              .size(32.dp)
+              .clip(CircleShape)
+              .background(sideColor.copy(alpha = 0.15f)),
+          contentAlignment = Alignment.Center,
         ) {
-            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                val dialogBackstack = LocalBackStack.current
-                Column(Modifier.fillMaxSize()) {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text       = fieldLabel,
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color      = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { dismissAndSave() }) {
-                                Icon(Icons.RoundedFilled.ArrowBack, "Back")
-                            }
-                        },
-                        actions = {
-                            IconButton(
-                                onClick = { dialogBackstack.add(MpvHelpScreen()) },
-                                modifier = Modifier.padding(end = 4.dp).size(40.dp),
-                                colors = IconButtonDefaults.iconButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.secondary,
-                                ),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.RoundedFilled.Info,
-                                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_help),
-                                )
-                            }
-                            IconButton(onClick = { dismissAndSave() }) {
-                                Icon(
-                                    imageVector = Icons.RoundedFilled.Check,
-                                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_done),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        },
-                    )
-                    val language = when (draftScriptLanguage) {
-                        CustomButtonScriptLanguage.LUA -> "lua"
-                        CustomButtonScriptLanguage.JS -> "js"
-                    }
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f)
-                            .imePadding()
-                    ) {
-                        MpvScriptEditor(
-                            content = fieldValue,
-                            onContentChange = { newCode ->
-                                when (fieldKey) {
-                                    "content"   -> draftContent   = newCode
-                                    "longPress" -> draftLongPress = newCode
-                                    "startup"   -> draftStartup   = newCode
-                                }
-                            },
-                            language = language,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-            }
+          Text(
+            text = slotLabel,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = sideColor,
+          )
         }
+
+        Spacer(Modifier.width(12.dp))
+
+        // Title or empty hint
+        Column(Modifier.weight(1f)) {
+          val titleAlpha = if (isPopulated && !draftEnabled) 0.4f else 1f
+          Text(
+            text = draftTitle.ifBlank { if (isPopulated) button.title else "Empty slot" },
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = if (isPopulated) FontWeight.SemiBold else FontWeight.Normal,
+            color =
+              if (isPopulated) {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = titleAlpha)
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+              },
+          )
+          // Code preview — first line of tap action
+          val preview = draftContent.ifBlank { button?.content ?: "" }
+          if (preview.isNotBlank()) {
+            Text(
+              text = preview.lines().first().take(60),
+              style =
+                MaterialTheme.typography.bodySmall.copy(
+                  fontFamily = FontFamily.Monospace,
+                  fontSize = 11.sp,
+                ),
+              color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+              maxLines = 1,
+            )
+          }
+        }
+
+        // Delete (only if a saved button exists)
+        if (isPopulated) {
+          FilledTonalIconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(36.dp),
+            colors =
+              IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+              ),
+          ) {
+            Icon(
+              Icons.RoundedFilled.Delete,
+              contentDescription =
+                androidx.compose.ui.res.stringResource(
+                  app.gyrolet.mpvrx.R.string.delete,
+                ),
+              modifier = Modifier.size(18.dp),
+            )
+          }
+          Spacer(Modifier.width(4.dp))
+        }
+
+        // Drag handle button - always show but disable when empty
+        if (isPopulated) {
+          dragHandle(
+            Modifier.pointerInput(Unit) {
+              awaitPointerEventScope {
+                while (true) {
+                  awaitFirstDown(requireUnconsumed = false)
+                  expanded = false
+                }
+              }
+            },
+          )
+        } else {
+          // Disabled drag handle for empty slots
+          Icon(
+            Icons.RoundedFilled.DragHandle,
+            contentDescription =
+              androidx.compose.ui.res.stringResource(
+                app.gyrolet.mpvrx.R.string.ui_drag_disabled,
+              ),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+          )
+        }
+      }
+
+      // ── Expandable body ───────────────────────────────────────────────
+      AnimatedVisibility(
+        visible = expanded,
+        enter = expandVertically(spring(stiffness = Spring.StiffnessMedium)) + fadeIn(),
+        exit = shrinkVertically(spring(stiffness = Spring.StiffnessMedium)) + fadeOut(),
+      ) {
+        ButtonExpandedContent(
+          slotLabel = slotLabel,
+          buttonId = buttonId,
+          isPopulated = isPopulated,
+          draftTitle = draftTitle,
+          draftContent = draftContent,
+          draftLongPress = draftLongPress,
+          draftStartup = draftStartup,
+          draftEnabled = draftEnabled,
+          draftScriptLanguage = draftScriptLanguage,
+          onTitleChange = { draftTitle = it },
+          onEnabledChange = { draftEnabled = it },
+          onScriptLanguageChange = { draftScriptLanguage = it },
+          onSave = {
+            // Build and save the button
+            onSave(
+              CustomButton(
+                id = buttonId,
+                title = draftTitle,
+                content = draftContent,
+                longPressContent = draftLongPress,
+                onStartup = draftStartup,
+                enabled = draftEnabled,
+                scriptLanguage = draftScriptLanguage,
+              ),
+            )
+            expanded = false
+          },
+          onCollapse = { expanded = false },
+          onOpenScriptEditor = { field -> activeScriptField = field },
+        )
+      }
     }
+  }
+
+  if (activeScriptField != null) {
+    val fieldKey = activeScriptField!!
+    val fieldLabel =
+      when (fieldKey) {
+        "content" -> "Tap action  ·  $slotLabel"
+        "longPress" -> "Long press  ·  $slotLabel"
+        "startup" -> "On startup  ·  $slotLabel"
+        else -> fieldKey
+      }
+    val fieldValue =
+      when (fieldKey) {
+        "content" -> draftContent
+        "longPress" -> draftLongPress
+        "startup" -> draftStartup
+        else -> ""
+      }
+
+    fun dismissAndSave() {
+      // Save all drafts (including the field that was just edited) back to preferences
+      if (draftTitle.isNotBlank()) {
+        onSave(
+          CustomButton(
+            id = buttonId,
+            title = draftTitle,
+            content = draftContent,
+            longPressContent = draftLongPress,
+            onStartup = draftStartup,
+            enabled = draftEnabled,
+            scriptLanguage = draftScriptLanguage,
+          ),
+        )
+      }
+      activeScriptField = null
+    }
+
+    Dialog(
+      onDismissRequest = { dismissAndSave() },
+      properties =
+        DialogProperties(
+          usePlatformDefaultWidth = false,
+          dismissOnBackPress = true,
+          dismissOnClickOutside = false,
+          decorFitsSystemWindows = false,
+        ),
+    ) {
+      Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        val dialogBackstack = LocalBackStack.current
+        Column(Modifier.fillMaxSize()) {
+          TopAppBar(
+            title = {
+              Text(
+                text = fieldLabel,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+              )
+            },
+            navigationIcon = {
+              IconButton(onClick = { dismissAndSave() }) {
+                Icon(Icons.RoundedFilled.ArrowBack, "Back")
+              }
+            },
+            actions = {
+              IconButton(
+                onClick = { dialogBackstack.add(MpvHelpScreen()) },
+                modifier = Modifier.padding(end = 4.dp).size(40.dp),
+                colors =
+                  IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.secondary,
+                  ),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Info,
+                  contentDescription =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_help,
+                    ),
+                )
+              }
+              IconButton(onClick = { dismissAndSave() }) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Check,
+                  contentDescription =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_done,
+                    ),
+                  tint = MaterialTheme.colorScheme.primary,
+                )
+              }
+            },
+          )
+          val language =
+            when (draftScriptLanguage) {
+              CustomButtonScriptLanguage.LUA -> "lua"
+              CustomButtonScriptLanguage.JS -> "js"
+            }
+
+          Box(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .imePadding(),
+          ) {
+            MpvScriptEditor(
+              content = fieldValue,
+              onContentChange = { newCode ->
+                when (fieldKey) {
+                  "content" -> draftContent = newCode
+                  "longPress" -> draftLongPress = newCode
+                  "startup" -> draftStartup = newCode
+                }
+              },
+              language = language,
+              modifier = Modifier.fillMaxSize(),
+            )
+          }
+        }
+      }
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -715,153 +814,167 @@ fun ButtonSlotCard(
 
 @Composable
 fun ButtonExpandedContent(
-    slotLabel: String,
-    buttonId: String,
-    isPopulated: Boolean,
-    draftTitle: String,
-    draftContent: String,
-    draftLongPress: String,
-    draftStartup: String,
-    draftEnabled: Boolean,
-    draftScriptLanguage: CustomButtonScriptLanguage,
-    onTitleChange: (String) -> Unit,
-    onEnabledChange: (Boolean) -> Unit,
-    onScriptLanguageChange: (CustomButtonScriptLanguage) -> Unit,
-    onSave: () -> Unit,
-    onCollapse: () -> Unit,
-    onOpenScriptEditor: (String) -> Unit,
+  slotLabel: String,
+  buttonId: String,
+  isPopulated: Boolean,
+  draftTitle: String,
+  draftContent: String,
+  draftLongPress: String,
+  draftStartup: String,
+  draftEnabled: Boolean,
+  draftScriptLanguage: CustomButtonScriptLanguage,
+  onTitleChange: (String) -> Unit,
+  onEnabledChange: (Boolean) -> Unit,
+  onScriptLanguageChange: (CustomButtonScriptLanguage) -> Unit,
+  onSave: () -> Unit,
+  onCollapse: () -> Unit,
+  onOpenScriptEditor: (String) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+    verticalArrangement = Arrangement.spacedBy(10.dp),
+  ) {
+    HorizontalDividerWithLabel("Button")
+
+    // Title
+    OutlinedTextField(
+      value = draftTitle,
+      onValueChange = onTitleChange,
+      label = {
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_button_title),
+        )
+      },
+      modifier = Modifier.fillMaxWidth(),
+      singleLine = true,
+      shape = RoundedCornerShape(12.dp),
+    )
+
+    HorizontalDividerWithLabel("Scripts (Lua / JS)")
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        HorizontalDividerWithLabel("Button")
-
-        // Title
-        OutlinedTextField(
-            value         = draftTitle,
-            onValueChange = onTitleChange,
-            label         = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_button_title)) },
-            modifier      = Modifier.fillMaxWidth(),
-            singleLine    = true,
-            shape         = RoundedCornerShape(12.dp),
-        )
-
-        HorizontalDividerWithLabel("Scripts (Lua / JS)")
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            CustomButtonScriptLanguage.entries.forEach { language ->
-                val selected = draftScriptLanguage == language
-                if (selected) {
-                    Button(
-                        onClick = { onScriptLanguageChange(language) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Text(language.displayName)
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = { onScriptLanguageChange(language) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Text(language.displayName)
-                    }
-                }
-            }
+      CustomButtonScriptLanguage.entries.forEach { language ->
+        val selected = draftScriptLanguage == language
+        if (selected) {
+          Button(
+            onClick = { onScriptLanguageChange(language) },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp),
+          ) {
+            Text(language.displayName)
+          }
+        } else {
+          OutlinedButton(
+            onClick = { onScriptLanguageChange(language) },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp),
+          ) {
+            Text(language.displayName)
+          }
         }
-
-        // Tap action — required
-        LuaEditorEntryCard(
-            label      = "Tap action *",
-            code       = draftContent,
-            isRequired = true,
-            onClick    = { onOpenScriptEditor("content") },
-        )
-
-        // Long press
-        LuaEditorEntryCard(
-            label   = "Long press action",
-            code    = draftLongPress,
-            onClick = { onOpenScriptEditor("longPress") },
-        )
-
-        // On startup
-        LuaEditorEntryCard(
-            label   = "On startup",
-            code    = draftStartup,
-            onClick = { onOpenScriptEditor("startup") },
-        )
-
-        HorizontalDividerWithLabel("Settings")
-
-        // Enable / Disable row
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(text  = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_button_enabled),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text  = if (draftEnabled) "Button is active in the player" else "Button is saved but hidden",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked         = draftEnabled,
-                onCheckedChange = onEnabledChange,
-            )
-        }
-
-        // Action row
-        Row(
-            horizontalArrangement = Arrangement.End,
-            modifier              = Modifier.fillMaxWidth(),
-        ) {
-            TextButton(onClick = onCollapse) { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel)) }
-            Spacer(Modifier.width(8.dp))
-            TextButton(
-                onClick = onSave,
-                enabled = draftTitle.isNotBlank(),
-            ) {
-                Text(if (isPopulated) stringResource(R.string.ui_save) else stringResource(R.string.ui_add_button))
-            }
-        }
+      }
     }
+
+    // Tap action — required
+    LuaEditorEntryCard(
+      label = "Tap action *",
+      code = draftContent,
+      isRequired = true,
+      onClick = { onOpenScriptEditor("content") },
+    )
+
+    // Long press
+    LuaEditorEntryCard(
+      label = "Long press action",
+      code = draftLongPress,
+      onClick = { onOpenScriptEditor("longPress") },
+    )
+
+    // On startup
+    LuaEditorEntryCard(
+      label = "On startup",
+      code = draftStartup,
+      onClick = { onOpenScriptEditor("startup") },
+    )
+
+    HorizontalDividerWithLabel("Settings")
+
+    // Enable / Disable row
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+      Column(Modifier.weight(1f)) {
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_button_enabled),
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Medium,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+          text = if (draftEnabled) "Button is active in the player" else "Button is saved but hidden",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      Switch(
+        checked = draftEnabled,
+        onCheckedChange = onEnabledChange,
+      )
+    }
+
+    // Action row
+    Row(
+      horizontalArrangement = Arrangement.End,
+      modifier = Modifier.fillMaxWidth(),
+    ) {
+      TextButton(onClick = onCollapse) {
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+        )
+      }
+      Spacer(Modifier.width(8.dp))
+      TextButton(
+        onClick = onSave,
+        enabled = draftTitle.isNotBlank(),
+      ) {
+        Text(if (isPopulated) stringResource(R.string.ui_save) else stringResource(R.string.ui_add_button))
+      }
+    }
+  }
 }
 
 @Composable
 fun HorizontalDividerWithLabel(label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        androidx.compose.material3.HorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
-        Text(
-            text = " $label ",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-        )
-        androidx.compose.material3.HorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
-    }
+  Row(
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    androidx.compose.material3.HorizontalDivider(
+      modifier = Modifier.weight(1f),
+      color = MaterialTheme.colorScheme.outlineVariant,
+    )
+    Text(
+      text = " $label ",
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.outline,
+    )
+    androidx.compose.material3.HorizontalDivider(
+      modifier = Modifier.weight(1f),
+      color = MaterialTheme.colorScheme.outlineVariant,
+    )
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -871,90 +984,107 @@ fun HorizontalDividerWithLabel(label: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LuaEditorEntryCard(
-    label: String,
-    code: String,
-    isRequired: Boolean = false,
-    onClick: () -> Unit,
+  label: String,
+  code: String,
+  isRequired: Boolean = false,
+  onClick: () -> Unit,
 ) {
-    val hasCode = code.isNotBlank()
-    val borderColor = if (hasCode) 
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-    else 
-        MaterialTheme.colorScheme.outlineVariant
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (hasCode)
-                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
-            else
-                MaterialTheme.colorScheme.surfaceContainerLowest,
-        ),
-        border = BorderStroke(1.5.dp, borderColor),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            // Code icon
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (hasCode) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.RoundedFilled.Code,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = if (hasCode) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.outline,
-                )
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(4.dp))
-                if (hasCode) {
-                    Text(
-                        text = code.lines().take(3).joinToString("\n"),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
-                    )
-                } else {
-                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_tap_to_write_code),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    )
-                }
-            }
-
-            // Arrow
-            Icon(
-                Icons.RoundedFilled.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.rotate(-90f),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            )
-        }
+  val hasCode = code.isNotBlank()
+  val borderColor =
+    if (hasCode) {
+      MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+    } else {
+      MaterialTheme.colorScheme.outlineVariant
     }
+
+  Card(
+    onClick = onClick,
+    modifier = Modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(14.dp),
+    colors =
+      CardDefaults.cardColors(
+        containerColor =
+          if (hasCode) {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+          } else {
+            MaterialTheme.colorScheme.surfaceContainerLowest
+          },
+      ),
+    border = BorderStroke(1.5.dp, borderColor),
+  ) {
+    Row(
+      modifier = Modifier.padding(14.dp),
+      verticalAlignment = Alignment.Top,
+    ) {
+      // Code icon
+      Box(
+        modifier =
+          Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+              if (hasCode) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+              } else {
+                MaterialTheme.colorScheme.surfaceVariant
+              },
+            ),
+        contentAlignment = Alignment.Center,
+      ) {
+        Icon(
+          Icons.RoundedFilled.Code,
+          contentDescription = null,
+          modifier = Modifier.size(20.dp),
+          tint =
+            if (hasCode) {
+              MaterialTheme.colorScheme.primary
+            } else {
+              MaterialTheme.colorScheme.outline
+            },
+        )
+      }
+
+      Spacer(Modifier.width(12.dp))
+
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          text = label,
+          style = MaterialTheme.typography.labelLarge,
+          fontWeight = FontWeight.SemiBold,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(4.dp))
+        if (hasCode) {
+          Text(
+            text = code.lines().take(3).joinToString("\n"),
+            style =
+              MaterialTheme.typography.bodySmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
+              ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 3,
+          )
+        } else {
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_tap_to_write_code),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+          )
+        }
+      }
+
+      // Arrow
+      Icon(
+        Icons.RoundedFilled.KeyboardArrowDown,
+        contentDescription = null,
+        modifier = Modifier.rotate(-90f),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+      )
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -964,175 +1094,213 @@ fun LuaEditorEntryCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportSelectionScreen(
-    importedSlots: List<CustomButton?>,
-    currentSlots: List<CustomButton?>,
-    selectedSlots: Set<Int>,
-    onSlotToggle: (Int) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
+  importedSlots: List<CustomButton?>,
+  currentSlots: List<CustomButton?>,
+  selectedSlots: Set<Int>,
+  onSlotToggle: (Int) -> Unit,
+  onConfirm: () -> Unit,
+  onDismiss: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_select_buttons_to_import),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_choose_which_buttons_to_import),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            Icons.RoundedFilled.ArrowBack,
-                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
-                            tint = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onConfirm,
-                        enabled = selectedSlots.isNotEmpty(),
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .size(40.dp),
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                    ) {
-                        Icon(
-                            Icons.RoundedFilled.FileDownload,
-                            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_import),
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = {
+          Column {
+            Text(
+              text =
+                androidx.compose.ui.res.stringResource(
+                  app.gyrolet.mpvrx.R.string.ui_select_buttons_to_import,
+                ),
+              style = MaterialTheme.typography.titleLarge,
+              fontWeight = FontWeight.Bold,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+              text =
+                androidx.compose.ui.res.stringResource(
+                  app.gyrolet.mpvrx.R.string.ui_choose_which_buttons_to_import,
+                ),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+        },
+        navigationIcon = {
+          IconButton(onClick = onDismiss) {
+            Icon(
+              Icons.RoundedFilled.ArrowBack,
+              contentDescription =
+                androidx.compose.ui.res.stringResource(
+                  app.gyrolet.mpvrx.R.string.generic_cancel,
+                ),
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
+        },
+        actions = {
+          IconButton(
+            onClick = onConfirm,
+            enabled = selectedSlots.isNotEmpty(),
+            modifier =
+              Modifier
+                .padding(horizontal = 4.dp)
+                .size(40.dp),
+            colors =
+              IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+              ),
+            shape = RoundedCornerShape(8.dp),
+          ) {
+            Icon(
+              Icons.RoundedFilled.FileDownload,
+              contentDescription =
+                androidx.compose.ui.res.stringResource(
+                  app.gyrolet.mpvrx.R.string.ui_import,
                 ),
             )
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
-            items(
-                items = importedSlots.mapIndexedNotNull { index, button -> 
-                    button?.let { index to it }
-                },
-                key = { (index, _) -> "import_button_$index" }
-            ) { (index, button) ->
-                val side = if (index < 4) "L${index + 1}" else "R${index - 3}"
-                val isSelected = selectedSlots.contains(index)
-                val willOverwrite = currentSlots.getOrNull(index) != null
-                val sideColor = if (index < 4) 
-                    MaterialTheme.colorScheme.primary 
-                else 
-                    MaterialTheme.colorScheme.tertiary
+          }
+        },
+        colors =
+          TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+          ),
+      )
+    },
+  ) { padding ->
+    LazyColumn(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .padding(padding)
+          .padding(horizontal = 16.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+      contentPadding = PaddingValues(vertical = 16.dp),
+    ) {
+      items(
+        items =
+          importedSlots.mapIndexedNotNull { index, button ->
+            button?.let { index to it }
+          },
+        key = { (index, _) -> "import_button_$index" },
+      ) { (index, button) ->
+        val side = if (index < 4) "L${index + 1}" else "R${index - 3}"
+        val isSelected = selectedSlots.contains(index)
+        val willOverwrite = currentSlots.getOrNull(index) != null
+        val sideColor =
+          if (index < 4) {
+            MaterialTheme.colorScheme.primary
+          } else {
+            MaterialTheme.colorScheme.tertiary
+          }
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected)
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        else
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    border = if (isSelected) 
-                        BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                    else null,
-                    onClick = { onSlotToggle(index) }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = { onSlotToggle(index) }
-                        )
-                        
-                        Spacer(Modifier.width(12.dp))
-                        
-                        // Slot badge
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(sideColor.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = side,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = sideColor,
-                            )
-                        }
-                        
-                        Spacer(Modifier.width(16.dp))
-                        
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = button.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            if (button.content.isNotBlank()) {
-                                Text(
-                                    text = button.content.lines().first().take(50),
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 12.sp,
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                            if (willOverwrite) {
-                                Spacer(Modifier.height(4.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "⚠",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_will_overwrite_existing_button),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+        Card(
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(16.dp),
+          colors =
+            CardDefaults.cardColors(
+              containerColor =
+                if (isSelected) {
+                  MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                } else {
+                  MaterialTheme.colorScheme.surfaceContainerLow
+                },
+            ),
+          border =
+            if (isSelected) {
+              BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            } else {
+              null
+            },
+          onClick = { onSlotToggle(index) },
+        ) {
+          Row(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Checkbox(
+              checked = isSelected,
+              onCheckedChange = { onSlotToggle(index) },
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            // Slot badge
+            Box(
+              modifier =
+                Modifier
+                  .size(40.dp)
+                  .clip(CircleShape)
+                  .background(sideColor.copy(alpha = 0.15f)),
+              contentAlignment = Alignment.Center,
+            ) {
+              Text(
+                text = side,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = sideColor,
+              )
             }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = button.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+              Spacer(Modifier.height(4.dp))
+              if (button.content.isNotBlank()) {
+                Text(
+                  text =
+                    button.content
+                      .lines()
+                      .first()
+                      .take(50),
+                  style =
+                    MaterialTheme.typography.bodySmall.copy(
+                      fontFamily = FontFamily.Monospace,
+                      fontSize = 12.sp,
+                    ),
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                )
+              }
+              if (willOverwrite) {
+                Spacer(Modifier.height(4.dp))
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                ) {
+                  Text(
+                    text = "⚠",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                  )
+                  Spacer(Modifier.width(4.dp))
+                  Text(
+                    text =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.ui_will_overwrite_existing_button,
+                      ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                  )
+                }
+              }
+            }
+          }
         }
+      }
     }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1140,97 +1308,113 @@ fun ImportSelectionScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 private fun buildXmlExport(slots: List<CustomButton?>): String {
-    val sb = StringBuilder()
-    sb.appendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-    sb.appendLine("<customButtons>")
-    
-    slots.forEachIndexed { index, button ->
-        if (button != null) {
-            sb.appendLine("  <button slot=\"$index\">")
-            sb.appendLine("    <id>${escapeXml(button.id)}</id>")
-            sb.appendLine("    <title>${escapeXml(button.title)}</title>")
-            sb.appendLine("    <enabled>${button.enabled}</enabled>")
-            sb.appendLine("    <scriptLanguage>${button.scriptLanguage.name}</scriptLanguage>")
-            sb.appendLine("    <content><![CDATA[${button.content}]]></content>")
-            sb.appendLine("    <longPressContent><![CDATA[${button.longPressContent}]]></longPressContent>")
-            sb.appendLine("    <onStartup><![CDATA[${button.onStartup}]]></onStartup>")
-            sb.appendLine("  </button>")
-        }
+  val sb = StringBuilder()
+  sb.appendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+  sb.appendLine("<customButtons>")
+
+  slots.forEachIndexed { index, button ->
+    if (button != null) {
+      sb.appendLine("  <button slot=\"$index\">")
+      sb.appendLine("    <id>${escapeXml(button.id)}</id>")
+      sb.appendLine("    <title>${escapeXml(button.title)}</title>")
+      sb.appendLine("    <enabled>${button.enabled}</enabled>")
+      sb.appendLine("    <scriptLanguage>${button.scriptLanguage.name}</scriptLanguage>")
+      sb.appendLine("    <content><![CDATA[${button.content}]]></content>")
+      sb.appendLine("    <longPressContent><![CDATA[${button.longPressContent}]]></longPressContent>")
+      sb.appendLine("    <onStartup><![CDATA[${button.onStartup}]]></onStartup>")
+      sb.appendLine("  </button>")
     }
-    
-    sb.appendLine("</customButtons>")
-    return sb.toString()
+  }
+
+  sb.appendLine("</customButtons>")
+  return sb.toString()
 }
 
 private fun parseXmlImport(xmlContent: String): List<CustomButton?> {
-    val slots = MutableList<CustomButton?>(8) { null }
-    
-    // Simple XML parsing using regex (for basic structure)
-    val buttonPattern = """<button\s+slot="(\d+)">(.*?)</button>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    val idPattern = """<id>(.*?)</id>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    val titlePattern = """<title>(.*?)</title>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    val enabledPattern = """<enabled>(.*?)</enabled>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    val scriptLanguagePattern = """<scriptLanguage>(.*?)</scriptLanguage>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    val contentPattern = """<content><!\[CDATA\[(.*?)\]\]></content>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    val longPressPattern = """<longPressContent><!\[CDATA\[(.*?)\]\]></longPressContent>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    val startupPattern = """<onStartup><!\[CDATA\[(.*?)\]\]></onStartup>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-    
-    buttonPattern.findAll(xmlContent).forEach { buttonMatch ->
-        val slotIndex = buttonMatch.groupValues[1].toIntOrNull() ?: return@forEach
-        if (slotIndex !in 0..7) return@forEach
-        
-        val buttonXml = buttonMatch.groupValues[2]
-        
-        val id = idPattern.find(buttonXml)?.groupValues?.get(1)?.let { unescapeXml(it) } ?: UUID.randomUUID().toString()
-        val title = titlePattern.find(buttonXml)?.groupValues?.get(1)?.let { unescapeXml(it) } ?: ""
-        val enabled = enabledPattern.find(buttonXml)?.groupValues?.get(1)?.toBoolean() ?: true
-        val scriptLanguage =
-            scriptLanguagePattern.find(buttonXml)
-                ?.groupValues
-                ?.get(1)
-                ?.let { parseCustomButtonScriptLanguage(it) }
-                ?: CustomButtonScriptLanguage.LUA
-        val content = contentPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
-        val longPress = longPressPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
-        val startup = startupPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
-        
-        slots[slotIndex] = CustomButton(
-            id = id,
-            title = title,
-            content = content,
-            longPressContent = longPress,
-            onStartup = startup,
-            enabled = enabled,
-            scriptLanguage = scriptLanguage,
-        )
-    }
-    
-    return slots
+  val slots = MutableList<CustomButton?>(8) { null }
+
+  // Simple XML parsing using regex (for basic structure)
+  val buttonPattern = """<button\s+slot="(\d+)">(.*?)</button>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+  val idPattern = """<id>(.*?)</id>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+  val titlePattern = """<title>(.*?)</title>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+  val enabledPattern = """<enabled>(.*?)</enabled>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+  val scriptLanguagePattern = """<scriptLanguage>(.*?)</scriptLanguage>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+  val contentPattern = """<content><!\[CDATA\[(.*?)\]\]></content>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+  val longPressPattern =
+    """<longPressContent><!\[CDATA\[(.*?)\]\]></longPressContent>""".toRegex(
+      RegexOption.DOT_MATCHES_ALL,
+    )
+  val startupPattern = """<onStartup><!\[CDATA\[(.*?)\]\]></onStartup>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+
+  buttonPattern.findAll(xmlContent).forEach { buttonMatch ->
+    val slotIndex = buttonMatch.groupValues[1].toIntOrNull() ?: return@forEach
+    if (slotIndex !in 0..7) return@forEach
+
+    val buttonXml = buttonMatch.groupValues[2]
+
+    val id =
+      idPattern
+        .find(buttonXml)
+        ?.groupValues
+        ?.get(1)
+        ?.let { unescapeXml(it) } ?: UUID.randomUUID().toString()
+    val title =
+      titlePattern
+        .find(buttonXml)
+        ?.groupValues
+        ?.get(1)
+        ?.let { unescapeXml(it) } ?: ""
+    val enabled =
+      enabledPattern
+        .find(buttonXml)
+        ?.groupValues
+        ?.get(1)
+        ?.toBoolean() ?: true
+    val scriptLanguage =
+      scriptLanguagePattern
+        .find(buttonXml)
+        ?.groupValues
+        ?.get(1)
+        ?.let { parseCustomButtonScriptLanguage(it) }
+        ?: CustomButtonScriptLanguage.LUA
+    val content = contentPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
+    val longPress = longPressPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
+    val startup = startupPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
+
+    slots[slotIndex] =
+      CustomButton(
+        id = id,
+        title = title,
+        content = content,
+        longPressContent = longPress,
+        onStartup = startup,
+        enabled = enabled,
+        scriptLanguage = scriptLanguage,
+      )
+  }
+
+  return slots
 }
 
-private fun parseCustomButtonScriptLanguage(value: String): CustomButtonScriptLanguage {
-    return when (value.trim().uppercase()) {
-        "JS", "JAVASCRIPT" -> CustomButtonScriptLanguage.JS
-        "LUA" -> CustomButtonScriptLanguage.LUA
-        else -> CustomButtonScriptLanguage.LUA
-    }
-}
+private fun parseCustomButtonScriptLanguage(value: String): CustomButtonScriptLanguage =
+  when (value.trim().uppercase()) {
+    "JS", "JAVASCRIPT" -> CustomButtonScriptLanguage.JS
+    "LUA" -> CustomButtonScriptLanguage.LUA
+    else -> CustomButtonScriptLanguage.LUA
+  }
 
-private fun escapeXml(text: String): String {
-    return text
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&apos;")
-}
+private fun escapeXml(text: String): String =
+  text
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("\"", "&quot;")
+    .replace("'", "&apos;")
 
-private fun unescapeXml(text: String): String {
-    return text
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&amp;", "&")
-}
-
+private fun unescapeXml(text: String): String =
+  text
+    .replace("&lt;", "<")
+    .replace("&gt;", ">")
+    .replace("&quot;", "\"")
+    .replace("&apos;", "'")
+    .replace("&amp;", "&")

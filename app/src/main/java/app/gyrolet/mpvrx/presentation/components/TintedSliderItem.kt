@@ -177,4 +177,3 @@ fun generateSliderColors(baseColor: Color): SliderColors {
     disabledInactiveTickColor = darken(baseColor, 0.4f).copy(alpha = 0.5f),
   )
 }
-

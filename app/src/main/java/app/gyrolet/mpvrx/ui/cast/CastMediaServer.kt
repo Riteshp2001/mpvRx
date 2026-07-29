@@ -67,7 +67,10 @@ internal class CastMediaServer private constructor(
     return response.withMediaHeaders(contentLength)
   }
 
-  private fun serveRange(session: IHTTPSession, rangeHeader: String): Response {
+  private fun serveRange(
+    session: IHTTPSession,
+    rangeHeader: String,
+  ): Response {
     val value = rangeHeader.removePrefix("bytes=").substringBefore(',')
     val parts = value.split('-', limit = 2)
     val startText = parts.getOrElse(0) { "" }
@@ -119,25 +122,34 @@ internal class CastMediaServer private constructor(
     }
   }
 
-  private fun Response.withMediaHeaders(length: Long): Response = apply {
-    addHeader("Accept-Ranges", "bytes")
-    addHeader("Access-Control-Allow-Origin", "*")
-    addHeader("Access-Control-Allow-Headers", "Range, Content-Type")
-    addHeader("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length")
-    if (length > 0L) addHeader("Content-Length", length.toString())
-  }
+  private fun Response.withMediaHeaders(length: Long): Response =
+    apply {
+      addHeader("Accept-Ranges", "bytes")
+      addHeader("Access-Control-Allow-Origin", "*")
+      addHeader("Access-Control-Allow-Headers", "Range, Content-Type")
+      addHeader("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length")
+      if (length > 0L) addHeader("Content-Length", length.toString())
+    }
 
-  private fun Response.withRangeHeaders(start: Long, end: Long, length: Long): Response = apply {
-    withMediaHeaders(length)
-    addHeader("Content-Range", "bytes $start-$end/$contentLength")
-  }
+  private fun Response.withRangeHeaders(
+    start: Long,
+    end: Long,
+    length: Long,
+  ): Response =
+    apply {
+      withMediaHeaders(length)
+      addHeader("Content-Range", "bytes $start-$end/$contentLength")
+    }
 
   private fun rangeNotSatisfiable(): Response =
     textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Range not satisfiable").apply {
       addHeader("Content-Range", "bytes */$contentLength")
     }
 
-  private fun textResponse(status: Response.IStatus, message: String): Response =
+  private fun textResponse(
+    status: Response.IStatus,
+    message: String,
+  ): Response =
     newFixedLengthResponse(status, MIME_PLAINTEXT, message).apply {
       addHeader("Access-Control-Allow-Origin", "*")
     }
@@ -148,7 +160,11 @@ internal class CastMediaServer private constructor(
     @Volatile private var active: CastMediaServer? = null
 
     @Synchronized
-    fun expose(context: Context, source: Uri, mimeType: String): String? {
+    fun expose(
+      context: Context,
+      source: Uri,
+      mimeType: String,
+    ): String? {
       stop()
       val host = runCatching { findLanAddress(context) }.getOrNull() ?: return null
       val token = UUID.randomUUID().toString().replace("-", "")
@@ -176,7 +192,10 @@ internal class CastMediaServer private constructor(
       active = null
     }
 
-    private fun queryLength(context: Context, uri: Uri): Long {
+    private fun queryLength(
+      context: Context,
+      uri: Uri,
+    ): Long {
       context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
         if (descriptor.length >= 0L) return descriptor.length
       }
@@ -188,7 +207,8 @@ internal class CastMediaServer private constructor(
     private fun findLanAddress(context: Context): String? {
       val connectivity = context.getSystemService(ConnectivityManager::class.java)
       val properties = connectivity.getLinkProperties(connectivity.activeNetwork)
-      return properties?.linkAddresses
+      return properties
+        ?.linkAddresses
         ?.asSequence()
         ?.map { it.address }
         ?.filterIsInstance<Inet4Address>()

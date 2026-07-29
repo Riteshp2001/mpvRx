@@ -7,20 +7,24 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.net.Uri
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -41,43 +45,36 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
 import app.gyrolet.mpvrx.domain.media.model.Video
-import app.gyrolet.mpvrx.presentation.components.RemoteImage
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.ReorderableCollectionItemScope
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
-import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 data class PlaylistItem(
   val uri: Uri,
@@ -85,7 +82,7 @@ data class PlaylistItem(
   val index: Int,
   val isPlaying: Boolean,
   val progressPercent: Float = 0f, // 0-100, progress of video watched
-  val isWatched: Boolean = false,  // True if video is fully watched (100%)
+  val isWatched: Boolean = false, // True if video is fully watched (100%)
   val path: String = "", // Video path for thumbnail loading
   val duration: String = "", // Duration in formatted string (e.g., "10:30")
   val resolution: String = "", // Resolution (e.g., "1920x1080")
@@ -101,34 +98,41 @@ private fun PlaylistThumbnail(
   modifier: Modifier = Modifier,
   contentScale: ContentScale = ContentScale.Crop,
 ) {
-  val video = remember(item.uri, item.path, item.title) {
-    Video(
-      id = item.uri.toString().hashCode().toLong(),
-      title = item.title,
-      displayName = item.title,
-      path = item.path.ifBlank { item.uri.toString() },
-      uri = item.uri,
-      duration = 0L,
-      durationFormatted = item.duration,
-      size = 0L,
-      sizeFormatted = "",
-      dateModified = 0L,
-      dateAdded = 0L,
-      mimeType = if (item.isAudio) "audio/*" else "video/*",
-      bucketId = "",
-      bucketDisplayName = "",
-      width = 0,
-      height = 0,
-      fps = 0f,
-      resolution = item.resolution,
-    )
-  }
-  val (thumbWidth, thumbHeight) = remember(item.isAudio) {
-    if (item.isAudio) 512 to 512 else PLAYLIST_THUMBNAIL_WIDTH to PLAYLIST_THUMBNAIL_HEIGHT
-  }
-  val thumbnailKey = remember(video, thumbWidth, thumbHeight) {
-    thumbnailRepository.thumbnailKey(video, thumbWidth, thumbHeight)
-  }
+  val video =
+    remember(item.uri, item.path, item.title) {
+      Video(
+        id =
+          item.uri
+            .toString()
+            .hashCode()
+            .toLong(),
+        title = item.title,
+        displayName = item.title,
+        path = item.path.ifBlank { item.uri.toString() },
+        uri = item.uri,
+        duration = 0L,
+        durationFormatted = item.duration,
+        size = 0L,
+        sizeFormatted = "",
+        dateModified = 0L,
+        dateAdded = 0L,
+        mimeType = if (item.isAudio) "audio/*" else "video/*",
+        bucketId = "",
+        bucketDisplayName = "",
+        width = 0,
+        height = 0,
+        fps = 0f,
+        resolution = item.resolution,
+      )
+    }
+  val (thumbWidth, thumbHeight) =
+    remember(item.isAudio) {
+      if (item.isAudio) 512 to 512 else PLAYLIST_THUMBNAIL_WIDTH to PLAYLIST_THUMBNAIL_HEIGHT
+    }
+  val thumbnailKey =
+    remember(video, thumbWidth, thumbHeight) {
+      thumbnailRepository.thumbnailKey(video, thumbWidth, thumbHeight)
+    }
   var bitmap by remember(thumbnailKey) {
     mutableStateOf(
       thumbnailRepository.getThumbnailFromMemory(
@@ -141,13 +145,14 @@ private fun PlaylistThumbnail(
 
   LaunchedEffect(thumbnailKey) {
     if (bitmap == null) {
-      bitmap = withContext(Dispatchers.IO) {
-        thumbnailRepository.getThumbnail(
-          video,
-          thumbWidth,
-          thumbHeight,
-        )
-      }
+      bitmap =
+        withContext(Dispatchers.IO) {
+          thumbnailRepository.getThumbnail(
+            video,
+            thumbWidth,
+            thumbHeight,
+          )
+        }
     }
   }
 
@@ -229,15 +234,16 @@ fun PlaylistSheet(
   }
 
   val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-  val sheetWidth = if (isListMode) {
-    if (LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-      640.dp
+  val sheetWidth =
+    if (isListMode) {
+      if (LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+        640.dp
+      } else {
+        420.dp
+      }
     } else {
-      420.dp
+      screenWidth * 0.85f
     }
-  } else {
-    screenWidth * 0.85f
-  }
 
   PlayerSheet(
     onDismissRequest = onDismissRequest,
@@ -250,43 +256,50 @@ fun PlaylistSheet(
     Surface(
       modifier = Modifier.fillMaxWidth(),
       color = Color.Transparent,
-      shape = RoundedCornerShape(
-        topStart = 16.dp,
-        topEnd = 16.dp,
-        bottomStart = 0.dp,
-        bottomEnd = 0.dp
-      ),
+      shape =
+        RoundedCornerShape(
+          topStart = 16.dp,
+          topEnd = 16.dp,
+          bottomStart = 0.dp,
+          bottomEnd = 0.dp,
+        ),
       tonalElevation = 0.dp,
     ) {
       Column(
-        modifier = modifier.padding(
-          vertical = MaterialTheme.spacing.smaller,
-          horizontal = if (!isListMode) MaterialTheme.spacing.medium else 0.dp
-        )
+        modifier =
+          modifier.padding(
+            vertical = MaterialTheme.spacing.smaller,
+            horizontal = if (!isListMode) MaterialTheme.spacing.medium else 0.dp,
+          ),
       ) {
         // Header showing current playlist info with toggle button
         val currentItem = playlist.getOrNull(playingItemIndex)
         Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-              horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
-              vertical = MaterialTheme.spacing.small,
-            ),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(
+                horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
+                vertical = MaterialTheme.spacing.small,
+              ),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
           Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
           ) {
             if (currentItem != null) {
-              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_now_playing),
-                style = MaterialTheme.typography.titleSmall.copy(
-                  fontWeight = FontWeight.Bold,
-                  color = accentColor,
-                ),
+              Text(
+                text =
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_now_playing),
+                style =
+                  MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = accentColor,
+                  ),
               )
               Text(
                 text = "•",
@@ -304,12 +317,12 @@ fun PlaylistSheet(
           // Toggle button for list/grid view (only in landscape)
           if (!isPortrait) {
             IconButton(
-              onClick = { isListMode = !isListMode }
+              onClick = { isListMode = !isListMode },
             ) {
               Icon(
                 imageVector = if (isListMode) Icons.RoundedFilled.GridView else Icons.RoundedFilled.ViewList,
                 contentDescription = if (isListMode) "Switch to Grid View" else "Switch to List View",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
           }
@@ -319,11 +332,12 @@ fun PlaylistSheet(
         if (isListMode) {
           // Vertical list mode (original implementation)
           val showDragHandle = onReorder != null && !isM3UPlaylist && playlist.size > 1
-          val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
-            if (showDragHandle) {
-              onReorder.invoke(from.index, to.index)
+          val reorderableLazyListState =
+            rememberReorderableLazyListState(lazyListState) { from, to ->
+              if (showDragHandle) {
+                onReorder.invoke(from.index, to.index)
+              }
             }
-          }
 
           LazyColumn(
             state = lazyListState,
@@ -343,7 +357,7 @@ fun PlaylistSheet(
                     isAudioOnly = isAudioOnly,
                     dragHandle = {
                       DragHandle(scope = this, isDragging = isDragging)
-                    }
+                    },
                   )
                 }
               } else {
@@ -362,11 +376,12 @@ fun PlaylistSheet(
           // Horizontal grid mode
           LazyRow(
             state = lazyListState,
-            contentPadding = PaddingValues(
-              horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
-              vertical = MaterialTheme.spacing.small
-            ),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            contentPadding =
+              PaddingValues(
+                horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
+                vertical = MaterialTheme.spacing.small,
+              ),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
           ) {
             items(playlist, key = { it.uri.toString() }) { item ->
               PlaylistTrackGridItem(
@@ -394,29 +409,32 @@ private fun DragHandle(
 ) {
   val alpha by animateFloatAsState(
     targetValue = if (isDragging) 1f else 0.3f,
-    animationSpec = androidx.compose.animation.core.spring(
-      dampingRatio = 0.6f,
-      stiffness = 300f,
-    ),
+    animationSpec =
+      androidx.compose.animation.core.spring(
+        dampingRatio = 0.6f,
+        stiffness = 300f,
+      ),
     label = "dragHandleAlpha",
   )
 
   IconButton(
     onClick = { },
-    modifier = with(scope) {
-      modifier
-        .size(40.dp)
-        .draggableHandle()
-    },
+    modifier =
+      with(scope) {
+        modifier
+          .size(40.dp)
+          .draggableHandle()
+      },
   ) {
     Icon(
       imageVector = Icons.RoundedFilled.DragHandle,
       contentDescription = "Drag to reorder",
-      tint = if (isDragging) {
-        MaterialTheme.colorScheme.primary
-      } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-      },
+      tint =
+        if (isDragging) {
+          MaterialTheme.colorScheme.primary
+        } else {
+          MaterialTheme.colorScheme.onSurfaceVariant
+        },
       modifier = Modifier.graphicsLayer { this.alpha = alpha },
     )
   }
@@ -434,59 +452,63 @@ fun PlaylistTrackListItem(
   dragHandle: @Composable () -> Unit = {},
 ) {
   val isAudioItem = item.isAudio || isAudioOnly
-  val effectiveItem = remember(item, isAudioItem) {
-    if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
-  }
+  val effectiveItem =
+    remember(item, isAudioItem) {
+      if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
+    }
 
   // Use theme colors dynamically
   val accentSecondary = MaterialTheme.colorScheme.tertiary
 
-  val borderModifier = if (effectiveItem.isPlaying) {
-    Modifier.border(
-      width = 2.dp,
-      brush = Brush.linearGradient(listOf(accentColor, accentSecondary)),
-      shape = RoundedCornerShape(12.dp),
-    )
-  } else {
-    Modifier
-  }
+  val borderModifier =
+    if (effectiveItem.isPlaying) {
+      Modifier.border(
+        width = 2.dp,
+        brush = Brush.linearGradient(listOf(accentColor, accentSecondary)),
+        shape = RoundedCornerShape(12.dp),
+      )
+    } else {
+      Modifier
+    }
 
   Surface(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(
-        horizontal = MaterialTheme.spacing.medium,
-        vertical = MaterialTheme.spacing.extraSmall,
-      )
-      .clip(RoundedCornerShape(12.dp))
-      .then(borderModifier)
-      .clickable(onClick = onClick),
-    color = if (effectiveItem.isPlaying) {
-      MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
-    } else {
-      Color.Transparent
-    },
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(
+          horizontal = MaterialTheme.spacing.medium,
+          vertical = MaterialTheme.spacing.extraSmall,
+        ).clip(RoundedCornerShape(12.dp))
+        .then(borderModifier)
+        .clickable(onClick = onClick),
+    color =
+      if (effectiveItem.isPlaying) {
+        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+      } else {
+        Color.Transparent
+      },
     shape = RoundedCornerShape(12.dp),
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(MaterialTheme.spacing.smaller),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(MaterialTheme.spacing.smaller),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
       // Thumbnail with simple background, episode number, and progress
       Box(
-        modifier = Modifier
-          .then(
-            if (isAudioItem) {
-              Modifier.size(56.dp)
-            } else {
-              Modifier.width(100.dp).height(56.dp)
-            }
-          )
-          .clip(RoundedCornerShape(8.dp))
-          .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier =
+          Modifier
+            .then(
+              if (isAudioItem) {
+                Modifier.size(56.dp)
+              } else {
+                Modifier.width(100.dp).height(56.dp)
+              },
+            ).clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
@@ -499,7 +521,9 @@ fun PlaylistTrackListItem(
           PlaylistThumbnail(
             item = effectiveItem,
             thumbnailRepository = thumbnailRepository,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
@@ -507,21 +531,22 @@ fun PlaylistTrackListItem(
 
         // Video number badge in top-left with better visibility
         Box(
-          modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(6.dp)
-            .background(
-              color = Color.Black.copy(alpha = 0.7f),
-              shape = RoundedCornerShape(6.dp),
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+          modifier =
+            Modifier
+              .align(Alignment.TopStart)
+              .padding(6.dp)
+              .background(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(6.dp),
+              ).padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
           Text(
             text = "${item.index + 1}",
-            style = MaterialTheme.typography.labelMedium.copy(
-              fontWeight = FontWeight.Bold,
-              fontSize = 12.sp,
-            ),
+            style =
+              MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+              ),
             color = Color.White,
           )
         }
@@ -534,16 +559,18 @@ fun PlaylistTrackListItem(
       ) {
         Text(
           text = item.title,
-          style = MaterialTheme.typography.bodyMedium.copy(
-            fontWeight = if (item.isPlaying) FontWeight.Bold else FontWeight.Normal,
-            color = if (item.isPlaying) {
-              accentColor
-            } else if (item.isWatched) {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-              MaterialTheme.colorScheme.onSurface
-            },
-          ),
+          style =
+            MaterialTheme.typography.bodyMedium.copy(
+              fontWeight = if (item.isPlaying) FontWeight.Bold else FontWeight.Normal,
+              color =
+                if (item.isPlaying) {
+                  accentColor
+                } else if (item.isWatched) {
+                  MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                  MaterialTheme.colorScheme.onSurface
+                },
+            ),
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )
@@ -555,34 +582,50 @@ fun PlaylistTrackListItem(
           // Duration chip
           if (item.duration.isNotEmpty()) {
             Surface(
-              color = if (item.isPlaying) accentColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerHighest,
+              color =
+                if (item.isPlaying) {
+                  accentColor.copy(
+                    alpha = 0.15f,
+                  )
+                } else {
+                  MaterialTheme.colorScheme.surfaceContainerHighest
+                },
               shape = RoundedCornerShape(4.dp),
             ) {
               Text(
                 text = item.duration,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall.copy(
-                  fontSize = 10.sp,
-                ),
+                style =
+                  MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                  ),
                 color = if (item.isPlaying) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
           } else {
             LoadingChip(width = 40.dp)
           }
-          
+
           // Resolution chip
           if (item.resolution.isNotEmpty()) {
             Surface(
-              color = if (item.isPlaying) accentColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerHighest,
+              color =
+                if (item.isPlaying) {
+                  accentColor.copy(
+                    alpha = 0.15f,
+                  )
+                } else {
+                  MaterialTheme.colorScheme.surfaceContainerHighest
+                },
               shape = RoundedCornerShape(4.dp),
             ) {
               Text(
                 text = item.resolution,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall.copy(
-                  fontSize = 10.sp,
-                ),
+                style =
+                  MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                  ),
                 color = if (item.isPlaying) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
@@ -599,16 +642,19 @@ fun PlaylistTrackListItem(
             color = accentColor.copy(alpha = 0.15f),
             shape = RoundedCornerShape(16.dp),
           ) {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.notification_playing),
+            Text(
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.notification_playing),
               modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-              style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold,
-                color = accentColor,
-              ),
+              style =
+                MaterialTheme.typography.labelSmall.copy(
+                  fontWeight = FontWeight.SemiBold,
+                  color = accentColor,
+                ),
             )
           }
         }
-
       }
 
       dragHandle()
@@ -626,31 +672,34 @@ fun PlaylistTrackGridItem(
   modifier: Modifier = Modifier,
 ) {
   val isAudioItem = item.isAudio || isAudioOnly
-  val effectiveItem = remember(item, isAudioItem) {
-    if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
-  }
+  val effectiveItem =
+    remember(item, isAudioItem) {
+      if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
+    }
 
   // Use theme colors dynamically
   val accentColor = MaterialTheme.colorScheme.primary
   val accentSecondary = MaterialTheme.colorScheme.tertiary
 
-  val borderModifier = if (effectiveItem.isPlaying) {
-    Modifier.border(
-      width = 2.dp,
-      brush = Brush.linearGradient(listOf(accentColor, accentSecondary)),
-      shape = RoundedCornerShape(12.dp),
-    )
-  } else {
-    Modifier
-  }
+  val borderModifier =
+    if (effectiveItem.isPlaying) {
+      Modifier.border(
+        width = 2.dp,
+        brush = Brush.linearGradient(listOf(accentColor, accentSecondary)),
+        shape = RoundedCornerShape(12.dp),
+      )
+    } else {
+      Modifier
+    }
 
   // YouTube-style vertical card
   Surface(
-    modifier = modifier
-      .width(200.dp)
-      .clip(RoundedCornerShape(12.dp))
-      .then(borderModifier)
-      .clickable(onClick = onClick),
+    modifier =
+      modifier
+        .width(200.dp)
+        .clip(RoundedCornerShape(12.dp))
+        .then(borderModifier)
+        .clickable(onClick = onClick),
     color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
     shape = RoundedCornerShape(12.dp),
   ) {
@@ -660,17 +709,17 @@ fun PlaylistTrackGridItem(
     ) {
       // Thumbnail with 1:1 aspect ratio for audio, fixed height for video
       Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .then(
-            if (isAudioItem) {
-              Modifier.aspectRatio(1f)
-            } else {
-              Modifier.height(112.dp)
-            }
-          )
-          .clip(RoundedCornerShape(8.dp))
-          .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .then(
+              if (isAudioItem) {
+                Modifier.aspectRatio(1f)
+              } else {
+                Modifier.height(112.dp)
+              },
+            ).clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
@@ -683,7 +732,9 @@ fun PlaylistTrackGridItem(
           PlaylistThumbnail(
             item = effectiveItem,
             thumbnailRepository = thumbnailRepository,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
@@ -691,21 +742,22 @@ fun PlaylistTrackGridItem(
 
         // Video number badge in top-left
         Box(
-          modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(6.dp)
-            .background(
-              color = Color.Black.copy(alpha = 0.7f),
-              shape = RoundedCornerShape(6.dp),
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+          modifier =
+            Modifier
+              .align(Alignment.TopStart)
+              .padding(6.dp)
+              .background(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(6.dp),
+              ).padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
           Text(
             text = "${item.index + 1}",
-            style = MaterialTheme.typography.labelMedium.copy(
-              fontWeight = FontWeight.Bold,
-              fontSize = 12.sp,
-            ),
+            style =
+              MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+              ),
             color = Color.White,
           )
         }
@@ -713,30 +765,32 @@ fun PlaylistTrackGridItem(
         // Duration badge in bottom-right
         if (item.duration.isNotEmpty()) {
           Box(
-            modifier = Modifier
-              .align(Alignment.BottomEnd)
-              .padding(6.dp)
-              .background(
-                color = Color.Black.copy(alpha = 0.8f),
-                shape = RoundedCornerShape(4.dp),
-              )
-              .padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier =
+              Modifier
+                .align(Alignment.BottomEnd)
+                .padding(6.dp)
+                .background(
+                  color = Color.Black.copy(alpha = 0.8f),
+                  shape = RoundedCornerShape(4.dp),
+                ).padding(horizontal = 6.dp, vertical = 2.dp),
           ) {
             Text(
               text = item.duration,
-              style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-              ),
+              style =
+                MaterialTheme.typography.labelSmall.copy(
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Medium,
+                ),
               color = Color.White,
             )
           }
         } else {
           // Loading duration badge
           Box(
-            modifier = Modifier
-              .align(Alignment.BottomEnd)
-              .padding(6.dp)
+            modifier =
+              Modifier
+                .align(Alignment.BottomEnd)
+                .padding(6.dp),
           ) {
             LoadingChip(width = 40.dp, height = 18.dp, isDark = true)
           }
@@ -745,16 +799,19 @@ fun PlaylistTrackGridItem(
         // Playing indicator overlay
         if (item.isPlaying) {
           Box(
-            modifier = Modifier
-              .matchParentSize()
-              .background(
-                brush = Brush.verticalGradient(
-                  colors = listOf(
-                    accentColor.copy(alpha = 0.3f),
-                    accentColor.copy(alpha = 0.1f),
-                  )
-                )
-              )
+            modifier =
+              Modifier
+                .matchParentSize()
+                .background(
+                  brush =
+                    Brush.verticalGradient(
+                      colors =
+                        listOf(
+                          accentColor.copy(alpha = 0.3f),
+                          accentColor.copy(alpha = 0.1f),
+                        ),
+                    ),
+                ),
           )
         }
       }
@@ -766,17 +823,19 @@ fun PlaylistTrackGridItem(
         Text(
           text = item.title,
           modifier = Modifier.height(44.dp),
-          style = MaterialTheme.typography.bodyMedium.copy(
-            fontWeight = if (item.isPlaying) FontWeight.Bold else FontWeight.Medium,
-            fontSize = 14.sp,
-            color = if (item.isPlaying) {
-              accentColor
-            } else if (item.isWatched) {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-              MaterialTheme.colorScheme.onSurface
-            },
-          ),
+          style =
+            MaterialTheme.typography.bodyMedium.copy(
+              fontWeight = if (item.isPlaying) FontWeight.Bold else FontWeight.Medium,
+              fontSize = 14.sp,
+              color =
+                if (item.isPlaying) {
+                  accentColor
+                } else if (item.isWatched) {
+                  MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                  MaterialTheme.colorScheme.onSurface
+                },
+            ),
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )
@@ -789,15 +848,23 @@ fun PlaylistTrackGridItem(
           // Resolution chip
           if (item.resolution.isNotEmpty()) {
             Surface(
-              color = if (item.isPlaying) accentColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerHighest,
+              color =
+                if (item.isPlaying) {
+                  accentColor.copy(
+                    alpha = 0.15f,
+                  )
+                } else {
+                  MaterialTheme.colorScheme.surfaceContainerHighest
+                },
               shape = RoundedCornerShape(4.dp),
             ) {
               Text(
                 text = item.resolution,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall.copy(
-                  fontSize = 10.sp,
-                ),
+                style =
+                  MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                  ),
                 color = if (item.isPlaying) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
@@ -810,13 +877,17 @@ fun PlaylistTrackGridItem(
               color = accentColor.copy(alpha = 0.15f),
               shape = RoundedCornerShape(4.dp),
             ) {
-              Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.notification_playing),
+              Text(
+                text =
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.notification_playing),
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall.copy(
-                  fontSize = 10.sp,
-                  fontWeight = FontWeight.SemiBold,
-                  color = accentColor,
-                ),
+                style =
+                  MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = accentColor,
+                  ),
               )
             }
           }
@@ -834,47 +905,50 @@ fun LoadingChip(
   modifier: Modifier = Modifier,
 ) {
   val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
-  val shimmerTranslate = infiniteTransition.animateFloat(
-    initialValue = 0f,
-    targetValue = 1000f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(durationMillis = 1200, easing = LinearEasing),
-      repeatMode = RepeatMode.Restart
-    ),
-    label = "shimmer"
-  )
+  val shimmerTranslate =
+    infiniteTransition.animateFloat(
+      initialValue = 0f,
+      targetValue = 1000f,
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 1200, easing = LinearEasing),
+          repeatMode = RepeatMode.Restart,
+        ),
+      label = "shimmer",
+    )
 
-  val baseColor = if (isDark) {
-    Color.White.copy(alpha = 0.1f)
-  } else {
-    MaterialTheme.colorScheme.surfaceContainerHighest
-  }
-  
-  val shimmerColor = if (isDark) {
-    Color.White.copy(alpha = 0.2f)
-  } else {
-    MaterialTheme.colorScheme.surfaceContainerHigh
-  }
+  val baseColor =
+    if (isDark) {
+      Color.White.copy(alpha = 0.1f)
+    } else {
+      MaterialTheme.colorScheme.surfaceContainerHighest
+    }
+
+  val shimmerColor =
+    if (isDark) {
+      Color.White.copy(alpha = 0.2f)
+    } else {
+      MaterialTheme.colorScheme.surfaceContainerHigh
+    }
 
   Box(
-    modifier = modifier
-      .width(width)
-      .height(height)
-      .clip(RoundedCornerShape(4.dp))
-      .background(
-        brush = Brush.linearGradient(
-          colors = listOf(
-            baseColor,
-            shimmerColor,
-            baseColor,
-          ),
-          start = Offset(shimmerTranslate.value - 200f, 0f),
-          end = Offset(shimmerTranslate.value, 0f)
-        )
-      )
+    modifier =
+      modifier
+        .width(width)
+        .height(height)
+        .clip(RoundedCornerShape(4.dp))
+        .background(
+          brush =
+            Brush.linearGradient(
+              colors =
+                listOf(
+                  baseColor,
+                  shimmerColor,
+                  baseColor,
+                ),
+              start = Offset(shimmerTranslate.value - 200f, 0f),
+              end = Offset(shimmerTranslate.value, 0f),
+            ),
+        ),
   )
 }
-
-
-
-

@@ -7,10 +7,10 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.BroadcastReceiver
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.media.AudioManager
@@ -22,8 +22,11 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.util.LruCache
 import android.view.inputmethod.InputMethodManager
+import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -33,7 +36,9 @@ import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayFile
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayPlaybackState
+import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
@@ -41,22 +46,32 @@ import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.repository.IntroDbLookupOutcome
 import app.gyrolet.mpvrx.repository.IntroDbLookupRequest
 import app.gyrolet.mpvrx.repository.IntroDbRepository
+import app.gyrolet.mpvrx.repository.ai.SubtitleGenerationService
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitle
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
-import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchRequest
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchMode
-import app.gyrolet.mpvrx.repository.ai.SubtitleGenerationService
+import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchRequest
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
-import app.gyrolet.mpvrx.utils.media.ChecksumUtils
-import app.gyrolet.mpvrx.utils.media.MediaInfoParser
-import app.gyrolet.mpvrx.utils.media.AudioEqualizerManager
-import app.gyrolet.mpvrx.utils.media.ParsedMediaInfo
-import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
-import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
+import app.gyrolet.mpvrx.ui.player.ScriptCurlBridge
+import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
+import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KShaderChain
+import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KStabilityOptions
+import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
+import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MAX_DB
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MIN_DB
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerPreset
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerState
+import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
+import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
+import app.gyrolet.mpvrx.ui.preferences.CustomButton
+import app.gyrolet.mpvrx.ui.preferences.CustomButtonScriptLanguage
+import app.gyrolet.mpvrx.utils.media.AudioEqualizerManager
+import app.gyrolet.mpvrx.utils.media.ChecksumUtils
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
+import app.gyrolet.mpvrx.utils.media.ParsedMediaInfo
+import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
+import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
@@ -65,11 +80,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,41 +91,26 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import app.gyrolet.mpvrx.ui.preferences.CustomButton
-import app.gyrolet.mpvrx.ui.preferences.CustomButtonScriptLanguage
-import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
-import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
-import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
-import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KShaderChain
-import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KStabilityOptions
-import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
-import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import java.io.File
 import java.security.MessageDigest
-import androidx.core.net.toUri
-import androidx.documentfile.provider.DocumentFile
-import android.webkit.MimeTypeMap
-import app.gyrolet.mpvrx.preferences.AdvancedPreferences
-import app.gyrolet.mpvrx.preferences.DecoderPreferences
-import app.gyrolet.mpvrx.ui.player.ScriptCurlBridge
+import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
-import kotlin.math.roundToInt
-
 
 enum class RepeatMode {
-  OFF,      // No repeat
-  ONE,      // Repeat current file
-  ALL       // Repeat all (playlist)
+  OFF, // No repeat
+  ONE, // Repeat current file
+  ALL, // Repeat all (playlist)
 }
 
 class PlayerViewModelProviderFactory(
@@ -186,46 +183,54 @@ class PlayerViewModel(
   }
 
   private val initialAnime4KUiState
-    get() = Anime4KUiState(
-      isEnabled = decoderPreferences.enableAnime4K.get(),
-      selectedMode = decoderPreferences.anime4kMode.get(),
-      usesGpuNext = decoderPreferences.gpuNext.get(),
-      usesVulkan = decoderPreferences.useVulkan.get(),
-    )
+    get() =
+      Anime4KUiState(
+        isEnabled = decoderPreferences.enableAnime4K.get(),
+        selectedMode = decoderPreferences.anime4kMode.get(),
+        usesGpuNext = decoderPreferences.gpuNext.get(),
+        usesVulkan = decoderPreferences.useVulkan.get(),
+      )
 
-  private val anime4KPreferenceState = combine(
-    decoderPreferences.enableAnime4K.changes(),
-    decoderPreferences.anime4kMode.changes(),
-    decoderPreferences.gpuNext.changes(),
-    decoderPreferences.useVulkan.changes(),
-  ) { enabled, mode, gpuNext, useVulkan ->
-    Anime4KUiState(
-      isEnabled = enabled,
-      selectedMode = mode,
-      usesGpuNext = gpuNext,
-      usesVulkan = useVulkan,
-    )
-  }
+  private val anime4KPreferenceState =
+    combine(
+      decoderPreferences.enableAnime4K.changes(),
+      decoderPreferences.anime4kMode.changes(),
+      decoderPreferences.gpuNext.changes(),
+      decoderPreferences.useVulkan.changes(),
+    ) { enabled, mode, gpuNext, useVulkan ->
+      Anime4KUiState(
+        isEnabled = enabled,
+        selectedMode = mode,
+        usesGpuNext = gpuNext,
+        usesVulkan = useVulkan,
+      )
+    }
 
-  val anime4KUiState = anime4KPreferenceState
-    .combine(MPVLib.propInt["video-params/w"]) { state, width ->
-      state.copy(videoWidth = width ?: 0)
-    }
-    .combine(MPVLib.propInt["video-params/h"]) { state, height ->
-      state.copy(videoHeight = height ?: 0)
-    }
-    .stateIn(
-      scope = viewModelScope,
-      started = SharingStarted.WhileSubscribed(5_000),
-      initialValue = initialAnime4KUiState,
-    )
+  val anime4KUiState =
+    anime4KPreferenceState
+      .combine(MPVLib.propInt["video-params/w"]) { state, width ->
+        state.copy(videoWidth = width ?: 0)
+      }.combine(MPVLib.propInt["video-params/h"]) { state, height ->
+        state.copy(videoHeight = height ?: 0)
+      }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = initialAnime4KUiState,
+      )
 
   // HTTP bridge for Lua/JS scripts — executes curl_request payloads via native libcurl
   private val scriptCurlBridge = ScriptCurlBridge(scope = viewModelScope)
 
   // Playlist items for the playlist sheet
-  private val _playlistItems = kotlinx.coroutines.flow.MutableStateFlow<List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>>(emptyList())
-  val playlistItems: kotlinx.coroutines.flow.StateFlow<List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>> = _playlistItems.asStateFlow()
+  private val _playlistItems =
+    kotlinx.coroutines.flow
+      .MutableStateFlow<List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>>(
+        emptyList(),
+      )
+  val playlistItems:
+    kotlinx.coroutines.flow.StateFlow<List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>> =
+    _playlistItems
+      .asStateFlow()
 
   private val _onlineSubtitleSearchResults = MutableStateFlow<List<OnlineSubtitle>>(emptyList())
   val onlineSubtitleSearchResults: StateFlow<List<OnlineSubtitle>> = _onlineSubtitleSearchResults.asStateFlow()
@@ -393,6 +398,7 @@ class PlayerViewModel(
 
   private val _skipSegments = MutableStateFlow<List<SkipSegment>>(emptyList())
   val skipSegments: StateFlow<List<SkipSegment>> = _skipSegments.asStateFlow()
+
   @Volatile private var skipSegmentsSnapshot: List<SkipSegment> = emptyList()
 
   private val _currentSkippableSegment = MutableStateFlow<SkipSegment?>(null)
@@ -401,21 +407,25 @@ class PlayerViewModel(
   val showSkipChipAuto: StateFlow<Boolean> = _showSkipChipAuto.asStateFlow()
   private var pendingIntroLookupTitle: String? = null
 
-  private val _introDbStatus = MutableStateFlow(
-    if (playerPreferences.enableIntroDb.get()) {
-      IntroDbStatus()
-    } else {
-      IntroDbStatus(
-        state = IntroDbStatusState.DISABLED,
-        message = "Online skip markers are disabled",
-      )
-    },
-  )
+  private val _introDbStatus =
+    MutableStateFlow(
+      if (playerPreferences.enableIntroDb.get()) {
+        IntroDbStatus()
+      } else {
+        IntroDbStatus(
+          state = IntroDbStatusState.DISABLED,
+          message = "Online skip markers are disabled",
+        )
+      },
+    )
   val introDbStatus: StateFlow<IntroDbStatus> = _introDbStatus.asStateFlow()
 
   // Media Search / Autocomplete
-  private val _mediaSearchResults = MutableStateFlow<List<app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult>>(emptyList())
-  val mediaSearchResults: StateFlow<List<app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult>> = _mediaSearchResults.asStateFlow()
+  private val _mediaSearchResults =
+    MutableStateFlow<List<app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult>>(emptyList())
+  val mediaSearchResults: StateFlow<List<app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult>> =
+    _mediaSearchResults
+      .asStateFlow()
 
   private val _isSearchingMedia = MutableStateFlow(false)
   val isSearchingMedia: StateFlow<Boolean> = _isSearchingMedia.asStateFlow()
@@ -441,7 +451,7 @@ class PlayerViewModel(
   val selectedEpisode: StateFlow<app.gyrolet.mpvrx.repository.wyzie.WyzieEpisode?> = _selectedEpisode.asStateFlow()
 
   fun toggleOnlineSection() {
-      _isOnlineSectionExpanded.value = !_isOnlineSectionExpanded.value
+    _isOnlineSectionExpanded.value = !_isOnlineSectionExpanded.value
   }
 
   // Cache for video metadata to avoid re-extracting — LruCache handles bounds + thread-safety
@@ -452,10 +462,16 @@ class PlayerViewModel(
   private val ambientCropRegex = Regex("""^(\d+)x(\d+)""")
   private val seekThumbnailCache =
     object : LruCache<String, Bitmap>(SEEK_THUMBNAIL_CACHE_KB) {
-      override fun sizeOf(key: String, value: Bitmap): Int = (value.allocationByteCount / 1024).coerceAtLeast(1)
+      override fun sizeOf(
+        key: String,
+        value: Bitmap,
+      ): Int = (value.allocationByteCount / 1024).coerceAtLeast(1)
     }
 
-  private fun updateMetadataCache(key: String, value: Pair<String, String>) {
+  private fun updateMetadataCache(
+    key: String,
+    value: Pair<String, String>,
+  ) {
     metadataCache.put(key, value)
   }
 
@@ -504,10 +520,16 @@ class PlayerViewModel(
       MPVLib.propString["stream-open-filename"],
     ) { node, path, streamPath ->
       val currentPath = path?.takeIf { it.isNotBlank() } ?: streamPath
-      val isFileAudioExt = currentPath?.let { p ->
-        val ext = p.substringBefore('?').substringBefore('#').substringAfterLast('.', "").lowercase()
-        ext in FileTypeUtils.AUDIO_EXTENSIONS
-      } ?: false
+      val isFileAudioExt =
+        currentPath?.let { p ->
+          val ext =
+            p
+              .substringBefore('?')
+              .substringBefore('#')
+              .substringAfterLast('.', "")
+              .lowercase()
+          ext in FileTypeUtils.AUDIO_EXTENSIONS
+        } ?: false
 
       val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
       if (tracks.isEmpty()) {
@@ -546,21 +568,26 @@ class PlayerViewModel(
 
   fun applyEqualizerPreset(preset: EqualizerPreset) {
     if (preset == EqualizerPreset.CUSTOM) return
-    equalizerState.value = equalizerState.value.copy(
-      currentPreset = preset,
-      bandGains = preset.gains
-    )
+    equalizerState.value =
+      equalizerState.value.copy(
+        currentPreset = preset,
+        bandGains = preset.gains,
+      )
     applyEqualizerMpvFilters(immediate = true)
   }
 
-  fun setEqualizerBandGain(index: Int, gainDb: Int) {
+  fun setEqualizerBandGain(
+    index: Int,
+    gainDb: Int,
+  ) {
     val currentGains = equalizerState.value.bandGains.toMutableList()
     if (index in currentGains.indices && currentGains[index] != gainDb) {
       currentGains[index] = gainDb.coerceIn(EQ_MIN_DB, EQ_MAX_DB)
-      equalizerState.value = equalizerState.value.copy(
-        currentPreset = EqualizerPreset.CUSTOM,
-        bandGains = currentGains
-      )
+      equalizerState.value =
+        equalizerState.value.copy(
+          currentPreset = EqualizerPreset.CUSTOM,
+          bandGains = currentGains,
+        )
       applyEqualizerMpvFilters(immediate = false)
     }
   }
@@ -579,7 +606,7 @@ class PlayerViewModel(
     audioEqualizerManager.updateState(
       enabled = state.isEnabled,
       bandGains = state.bandGains,
-      volumeBoostDb = state.volumeBoostDb
+      volumeBoostDb = state.volumeBoostDb,
     )
 
     // 2. MPV Audio Filter Fallback
@@ -589,10 +616,11 @@ class PlayerViewModel(
     if (immediate) {
       updateMpvAfProperty(state)
     } else {
-      equalizerMpvDebounceJob = viewModelScope.launch(Dispatchers.Default) {
-        delay(150)
-        updateMpvAfProperty(state)
-      }
+      equalizerMpvDebounceJob =
+        viewModelScope.launch(Dispatchers.Default) {
+          delay(150)
+          updateMpvAfProperty(state)
+        }
     }
   }
 
@@ -627,66 +655,120 @@ class PlayerViewModel(
     albumArtBounds.value = rect
   }
 
-  fun toggleAudioVisualizer() {
+  private val audioVisualizerToggleDebouncer =
+    app.gyrolet.mpvrx.ui.player
+      .ToggleDebouncer()
+
+  fun toggleAudioVisualizer(): Boolean {
+    if (!audioVisualizerToggleDebouncer.tryConsume()) return false
     val newValue = !showVisualizerInAudioPlayer.value
     showVisualizerInAudioPlayer.value = newValue
     audioPreferences.audioBlobEnabled.set(newValue)
+    return true
   }
 
   fun getAudioPropertiesData(): List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem> {
-    val title = currentMediaTitle.takeIf { it.isNotBlank() }
-      ?: MPVLib.getPropertyString("metadata/by-key/Title")
-      ?: MPVLib.getPropertyString("media-title")
-      ?: "Unknown Title"
+    val title =
+      currentMediaTitle.takeIf { it.isNotBlank() }
+        ?: MPVLib.getPropertyString("metadata/by-key/Title")
+        ?: MPVLib.getPropertyString("media-title")
+        ?: "Unknown Title"
 
-    val artist = MPVLib.getPropertyString("metadata/by-key/Artist")
-      ?: MPVLib.getPropertyString("metadata/by-key/ARTIST")
-      ?: MPVLib.getPropertyString("metadata/by-key/album_artist")
-      ?: "Unknown Artist"
+    val artist =
+      MPVLib.getPropertyString("metadata/by-key/Artist")
+        ?: MPVLib.getPropertyString("metadata/by-key/ARTIST")
+        ?: MPVLib.getPropertyString("metadata/by-key/album_artist")
+        ?: "Unknown Artist"
 
-    val album = MPVLib.getPropertyString("metadata/by-key/Album")
-      ?: MPVLib.getPropertyString("metadata/by-key/ALBUM")
-      ?: "Unknown Album"
+    val album =
+      MPVLib.getPropertyString("metadata/by-key/Album")
+        ?: MPVLib.getPropertyString("metadata/by-key/ALBUM")
+        ?: "Unknown Album"
 
     val codec = MPVLib.getPropertyString("audio-codec-name")?.uppercase() ?: "Unknown"
     val samplerateInt = MPVLib.getPropertyInt("audio-params/samplerate") ?: 0
-    val sampleRateStr = if (samplerateInt > 0) String.format(java.util.Locale.US, "%.1f kHz", samplerateInt / 1000f) else "Unknown"
+    val sampleRateStr =
+      if (samplerateInt >
+        0
+      ) {
+        String.format(java.util.Locale.US, "%.1f kHz", samplerateInt / 1000f)
+      } else {
+        "Unknown"
+      }
 
     val channelsInt = MPVLib.getPropertyInt("audio-params/channel-count") ?: 0
-    val channelsStr = when (channelsInt) {
-      1 -> "Mono (1.0)"
-      2 -> "Stereo (2.0)"
-      6 -> "5.1 Surround"
-      8 -> "7.1 Surround"
-      else -> if (channelsInt > 0) "$channelsInt Channels" else "Unknown"
-    }
+    val channelsStr =
+      when (channelsInt) {
+        1 -> "Mono (1.0)"
+        2 -> "Stereo (2.0)"
+        6 -> "5.1 Surround"
+        8 -> "7.1 Surround"
+        else -> if (channelsInt > 0) "$channelsInt Channels" else "Unknown"
+      }
 
     val bitrateInt = MPVLib.getPropertyInt("audio-bitrate") ?: 0
     val bitrateStr = if (bitrateInt > 0) "${bitrateInt / 1000} kbps" else "Variable / Unknown"
 
     val path = MPVLib.getPropertyString("path") ?: MPVLib.getPropertyString("stream-open-filename") ?: ""
-    val fileSizeStr = if (path.isNotBlank() && !path.startsWith("content://") && !path.startsWith("http")) {
-      runCatching {
-        val bytes = java.io.File(path.removePrefix("file://")).length()
-        if (bytes > 0) String.format(java.util.Locale.US, "%.2f MB", bytes / (1024f * 1024f)) else ""
-      }.getOrDefault("")
-    } else ""
+    val fileSizeStr =
+      if (path.isNotBlank() && !path.startsWith("content://") && !path.startsWith("http")) {
+        runCatching {
+          val bytes = java.io.File(path.removePrefix("file://")).length()
+          if (bytes > 0) String.format(java.util.Locale.US, "%.2f MB", bytes / (1024f * 1024f)) else ""
+        }.getOrDefault("")
+      } else {
+        ""
+      }
 
-    val formatExt = path.substringBefore('?').substringBefore('#').substringAfterLast('.', "").uppercase()
+    val formatExt =
+      path
+        .substringBefore('?')
+        .substringBefore('#')
+        .substringAfterLast('.', "")
+        .uppercase()
 
     return buildList {
-      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Title", title))
-      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Artist", artist))
-      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Album", album))
-      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Format / Codec", if (formatExt.isNotBlank()) "$formatExt ($codec)" else codec))
-      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Sample Rate", sampleRateStr))
-      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Bitrate", bitrateStr))
-      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("Channels", channelsStr))
+      add(
+        app.gyrolet.mpvrx.ui.player.controls.components.sheets
+          .AudioPropertyItem("Title", title),
+      )
+      add(
+        app.gyrolet.mpvrx.ui.player.controls.components.sheets
+          .AudioPropertyItem("Artist", artist),
+      )
+      add(
+        app.gyrolet.mpvrx.ui.player.controls.components.sheets
+          .AudioPropertyItem("Album", album),
+      )
+      add(
+        app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
+          "Format / Codec",
+          if (formatExt.isNotBlank()) "$formatExt ($codec)" else codec,
+        ),
+      )
+      add(
+        app.gyrolet.mpvrx.ui.player.controls.components.sheets
+          .AudioPropertyItem("Sample Rate", sampleRateStr),
+      )
+      add(
+        app.gyrolet.mpvrx.ui.player.controls.components.sheets
+          .AudioPropertyItem("Bitrate", bitrateStr),
+      )
+      add(
+        app.gyrolet.mpvrx.ui.player.controls.components.sheets
+          .AudioPropertyItem("Channels", channelsStr),
+      )
       if (fileSizeStr.isNotBlank()) {
-        add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("File Size", fileSizeStr))
+        add(
+          app.gyrolet.mpvrx.ui.player.controls.components.sheets
+            .AudioPropertyItem("File Size", fileSizeStr),
+        )
       }
       if (path.isNotBlank()) {
-        add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem("File Location", path))
+        add(
+          app.gyrolet.mpvrx.ui.player.controls.components.sheets
+            .AudioPropertyItem("File Location", path),
+        )
       }
     }
   }
@@ -695,6 +777,7 @@ class PlayerViewModel(
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   val currentVolumePercent = MutableStateFlow(systemVolumeToPercent(currentVolume.value))
+
   // UI state
   private val _controlsShown = MutableStateFlow(false)
   val controlsShown: StateFlow<Boolean> = _controlsShown.asStateFlow()
@@ -727,7 +810,12 @@ class PlayerViewModel(
   val videoOpenAnimationState: StateFlow<VideoOpenAnimationState> = _videoOpenAnimationState.asStateFlow()
 
   // Seek state — combined to allow atomic updates and reduce flow count
-  data class SeekState(val text: String? = null, val amount: Int = 0, val isForwards: Boolean = false)
+  data class SeekState(
+    val text: String? = null,
+    val amount: Int = 0,
+    val isForwards: Boolean = false,
+  )
+
   private val _seekState = MutableStateFlow(SeekState())
   val seekState: StateFlow<SeekState> = _seekState.asStateFlow()
 
@@ -738,8 +826,10 @@ class PlayerViewModel(
     val bitmap: Bitmap? = null,
     val isLoading: Boolean = false,
   )
+
   private val _seekThumbnailPreview = MutableStateFlow(SeekThumbnailPreview())
   val seekThumbnailPreview: StateFlow<SeekThumbnailPreview> = _seekThumbnailPreview.asStateFlow()
+
   private data class SeekThumbnailRequest(
     val source: String,
     val positionSeconds: Float,
@@ -747,6 +837,7 @@ class PlayerViewModel(
     val bucket: Int,
     val requestId: Long,
   )
+
   private val seekThumbnailRequestLock = Any()
   private var pendingSeekThumbnailRequest: SeekThumbnailRequest? = null
   private var seekThumbnailWorkerJob: Job? = null
@@ -789,12 +880,14 @@ class PlayerViewModel(
   private val _videoHash = MutableStateFlow<String?>(null)
   val videoHash: StateFlow<String?> = _videoHash.asStateFlow()
   private var videoHashJob: Job? = null
+
   @Volatile
   private var videoHashGeneration = 0
 
   // External subtitle tracking
   private val _externalSubtitles = mutableListOf<String>()
   val externalSubtitles: List<String> get() = _externalSubtitles.toList()
+
   // Mutex to prevent race-condition duplicates when scan adds multiple subtitle URIs concurrently
   private val subtitleAddMutex = Mutex()
 
@@ -805,13 +898,14 @@ class PlayerViewModel(
     _videoHash.value = null
     val generation = ++videoHashGeneration
     videoHashJob?.cancel()
-    videoHashJob = viewModelScope.launch(Dispatchers.IO) {
-      val hash = SubtitleHashUtils.computeHash(host.context, uri)
-      if (videoHashGeneration == generation) {
-        _videoHash.value = hash
+    videoHashJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        val hash = SubtitleHashUtils.computeHash(host.context, uri)
+        if (videoHashGeneration == generation) {
+          _videoHash.value = hash
+        }
+        Log.d(TAG, "Computed video hash for $uri: ${hash ?: "unavailable"}")
       }
-      Log.d(TAG, "Computed video hash for $uri: ${hash ?: "unavailable"}")
-    }
   }
 
   // Repeat and Shuffle state
@@ -822,12 +916,21 @@ class PlayerViewModel(
   val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
 
   // A-B Loop state — combined for atomic updates
-  data class ABLoopState(val a: Double? = null, val b: Double? = null, val isExpanded: Boolean = false)
+  data class ABLoopState(
+    val a: Double? = null,
+    val b: Double? = null,
+    val isExpanded: Boolean = false,
+  )
+
   private val _abLoopState = MutableStateFlow(ABLoopState())
   val abLoopState: StateFlow<ABLoopState> = _abLoopState.asStateFlow()
 
   // Transform state (mirror + flip) — combined, saves 1 StateFlow object
-  data class TransformState(val isMirrored: Boolean = false, val isVerticalFlipped: Boolean = false)
+  data class TransformState(
+    val isMirrored: Boolean = false,
+    val isVerticalFlipped: Boolean = false,
+  )
+
   private val _transformState = MutableStateFlow(TransformState())
   val transformState: StateFlow<TransformState> = _transformState.asStateFlow()
 
@@ -892,6 +995,7 @@ class PlayerViewModel(
   private var ambientDebounceJob: kotlinx.coroutines.Job? = null
   private var ambientShaderSeq = 0
   private var ambientShaderFile: java.io.File? = null
+
   /**
    * Caches the [AmbientShaderSpec] that was last compiled into a GLSL file.
    * When [updateAmbientStretch] is called but every parameter is identical to
@@ -903,6 +1007,7 @@ class PlayerViewModel(
    * buildSpiralTapTable trig math before the early-return guard fires.
    */
   private var lastCompiledSpec: AmbientShaderSpec? = null
+
   /**
    * Latest device thermal headroom reading ([0f] = at thermal limit, [1f] = cool).
    * Sampled every 10 s by the thermal-monitor coroutine and used to cap the ambient
@@ -936,8 +1041,10 @@ class PlayerViewModel(
   val customButtons: StateFlow<List<CustomButtonState>> = _customButtons.asStateFlow()
   private var customButtonsSetupJob: Job? = null
   private val customButtonsLoadMutex = Mutex()
+
   @Volatile
   private var isMpvReadyForCustomButtons = false
+
   @Volatile
   private var customButtonsScriptPaths: Map<CustomButtonScriptLanguage, String> = emptyMap()
   private val legacyCustomButtonsLoadedFlagProperty = "user-data/mpvrx/custombuttons_loaded"
@@ -1026,7 +1133,7 @@ class PlayerViewModel(
         val intervalMs =
           when {
             paused == false && (seekBarVisibleForPolling || controlsVisibleForPolling) -> 50L
-            paused == false -> 500L   // was 250 ms — halved to reduce idle CPU wake-ups
+            paused == false -> 500L // was 250 ms — halved to reduce idle CPU wake-ups
             else -> 500L
           }
         delay(intervalMs)
@@ -1063,22 +1170,23 @@ class PlayerViewModel(
         if (!_isMpvCoreReady.value) return@collect
         val dur = MPVLib.getPropertyDouble("duration")
         if (dur != null && dur > 0) {
-            _preciseDuration.value = dur.toFloat()
-            mergeSkipSegments()
-            checkPendingIntroLookup()
-            syncplayManager.updateFileInfo(currentSyncplayFileInfo())
+          _preciseDuration.value = dur.toFloat()
+          mergeSkipSegments()
+          checkPendingIntroLookup()
+          syncplayManager.updateFileInfo(currentSyncplayFileInfo())
 
-            // --- AMBIENT FIX: Adapt shader to new file dimensions by @Chinna95P ---
-            if (_isAmbientEnabled.value) {
-                lastAmbientScaleX = -1.0 // Force a complete shader rewrite
-                ambientDebounceJob?.cancel()
-                ambientDebounceJob = viewModelScope.launch(renderPrepDispatcher) {
-                    // Slight delay ensures MPV's video-params (w/h/crop) are fully populated
-                    delay(250)
-                    updateAmbientStretch()
-                }
-            }
-            // --------------------------------------------------------
+          // --- AMBIENT FIX: Adapt shader to new file dimensions by @Chinna95P ---
+          if (_isAmbientEnabled.value) {
+            lastAmbientScaleX = -1.0 // Force a complete shader rewrite
+            ambientDebounceJob?.cancel()
+            ambientDebounceJob =
+              viewModelScope.launch(renderPrepDispatcher) {
+                // Slight delay ensures MPV's video-params (w/h/crop) are fully populated
+                delay(250)
+                updateAmbientStretch()
+              }
+          }
+          // --------------------------------------------------------
         }
       }
     }
@@ -1087,7 +1195,7 @@ class PlayerViewModel(
       chapters
         .collect { chapterList ->
           refreshChapterDerivedSegments(chapterList)
-      }
+        }
     }
 
     viewModelScope.launch(playbackStateDispatcher) {
@@ -1095,7 +1203,7 @@ class PlayerViewModel(
         playerPreferences.customIntroKeywordsEnabled.changes(),
         playerPreferences.customIntroKeywords.changes(),
         playerPreferences.customOutroKeywordsEnabled.changes(),
-        playerPreferences.customOutroKeywords.changes()
+        playerPreferences.customOutroKeywords.changes(),
       ) { _, _, _, _ -> }.collect {
         refreshChapterDerivedSegments(chapters.value)
       }
@@ -1138,7 +1246,6 @@ class PlayerViewModel(
         MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
       }
     }
-
 
     // Refresh custom buttons whenever their configuration changes.
     viewModelScope.launch {
@@ -1213,12 +1320,13 @@ class PlayerViewModel(
     if (androidSystemInfoBridgeJob?.isActive == true) return
 
     val appContext = host.context.applicationContext
-    androidSystemInfoBridgeJob = viewModelScope.launch(playbackStateDispatcher) {
-      while (isActive) {
-        publishAndroidBatteryState(appContext)
-        delay(30_000L)
+    androidSystemInfoBridgeJob =
+      viewModelScope.launch(playbackStateDispatcher) {
+        while (isActive) {
+          publishAndroidBatteryState(appContext)
+          delay(30_000L)
+        }
       }
-    }
   }
 
   private fun publishAndroidBatteryState(context: Context) {
@@ -1244,17 +1352,19 @@ class PlayerViewModel(
     val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     val intentLevel = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
     val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-    val propertyLevel = batteryManager
-      ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-      ?.takeIf { it in 0..100 }
+    val propertyLevel =
+      batteryManager
+        ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        ?.takeIf { it in 0..100 }
     val fallbackLevel =
       if (intentLevel >= 0 && scale > 0) {
         ((intentLevel * 100f) / scale).roundToInt().coerceIn(0, 100)
       } else {
         -1
       }
-    val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
-      ?: BatteryManager.BATTERY_STATUS_UNKNOWN
+    val status =
+      batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
+        ?: BatteryManager.BATTERY_STATUS_UNKNOWN
     val pluggedExtra = batteryIntent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
     val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
     return AndroidBatteryState(
@@ -1289,10 +1399,12 @@ class PlayerViewModel(
 
   private fun currentSyncplayPlaybackState(): SyncplayPlaybackState =
     SyncplayPlaybackState(
-      position = runCatching { MPVLib.getPropertyDouble("time-pos") }.getOrNull()
-        ?: precisePosition.value.toDouble(),
-      paused = runCatching { MPVLib.getPropertyBoolean("pause") }.getOrNull()
-        ?: (paused ?: true),
+      position =
+        runCatching { MPVLib.getPropertyDouble("time-pos") }.getOrNull()
+          ?: precisePosition.value.toDouble(),
+      paused =
+        runCatching { MPVLib.getPropertyBoolean("pause") }.getOrNull()
+          ?: (paused ?: true),
     )
 
   private fun currentSyncplayFileInfo(): SyncplayFile? {
@@ -1307,8 +1419,7 @@ class PlayerViewModel(
         runCatching { MPVLib.getPropertyString("path") }
           .getOrNull()
           ?.substringAfterLast('/'),
-      )
-        .map { it.trim() }
+      ).map { it.trim() }
         .firstOrNull { it.isNotBlank() }
         ?: return null
 
@@ -1331,117 +1442,122 @@ class PlayerViewModel(
 
   private fun setupCustomButtons() {
     customButtonsSetupJob?.cancel()
-    customButtonsSetupJob = viewModelScope.launch(Dispatchers.IO) {
-      try {
-        val buttons = mutableListOf<CustomButtonState>()
-        val scriptBodies = linkedMapOf<CustomButtonScriptLanguage, StringBuilder>()
-        val jsonString = playerPreferences.customButtons.get()
-        if (jsonString.isNotBlank()) {
-          try {
-            // Try new slot-based format first
-            val slotsData = json.decodeFromString<app.gyrolet.mpvrx.ui.preferences.CustomButtonSlots>(jsonString)
-            slotsData.slots.forEachIndexed { index, btn ->
-              if (btn != null && btn.enabled) {
-                val safeId = btn.id.replace("-", "_")
-                val isLeft = index < 4 // Slots 0-3 are left, 4-7 are right
-                processButton(
-                  originalId = btn.id,
-                  safeId = safeId,
-                  label = btn.title,
-                  command = btn.content,
-                  longPressCommand = btn.longPressContent,
-                  onStartup = btn.onStartup,
-                  language = btn.scriptLanguage,
-                  scriptBuilder = scriptBodies.getOrPut(btn.scriptLanguage) { StringBuilder() },
-                  isLeft = isLeft,
-                  uiList = buttons,
-                )
-              }
-            }
-          } catch (e: Exception) {
-            // Fallback to old format for backward compatibility
+    customButtonsSetupJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        try {
+          val buttons = mutableListOf<CustomButtonState>()
+          val scriptBodies = linkedMapOf<CustomButtonScriptLanguage, StringBuilder>()
+          val jsonString = playerPreferences.customButtons.get()
+          if (jsonString.isNotBlank()) {
             try {
-              val customButtonsList = json.decodeFromString<List<app.gyrolet.mpvrx.ui.preferences.CustomButton>>(jsonString)
-              customButtonsList.forEachIndexed { index, btn ->
-                val safeId = btn.id.replace("-", "_")
-                val isLeft = index < 4 // First 4 are left buttons, rest are right
-                processButton(
-                  originalId = btn.id,
-                  safeId = safeId,
-                  label = btn.title,
-                  command = btn.content,
-                  longPressCommand = btn.longPressContent,
-                  onStartup = btn.onStartup,
-                  language = btn.scriptLanguage,
-                  scriptBuilder = scriptBodies.getOrPut(btn.scriptLanguage) { StringBuilder() },
-                  isLeft = isLeft,
-                  uiList = buttons,
-                )
+              // Try new slot-based format first
+              val slotsData = json.decodeFromString<app.gyrolet.mpvrx.ui.preferences.CustomButtonSlots>(jsonString)
+              slotsData.slots.forEachIndexed { index, btn ->
+                if (btn != null && btn.enabled) {
+                  val safeId = btn.id.replace("-", "_")
+                  val isLeft = index < 4 // Slots 0-3 are left, 4-7 are right
+                  processButton(
+                    originalId = btn.id,
+                    safeId = safeId,
+                    label = btn.title,
+                    command = btn.content,
+                    longPressCommand = btn.longPressContent,
+                    onStartup = btn.onStartup,
+                    language = btn.scriptLanguage,
+                    scriptBuilder = scriptBodies.getOrPut(btn.scriptLanguage) { StringBuilder() },
+                    isLeft = isLeft,
+                    uiList = buttons,
+                  )
+                }
               }
-            } catch (e2: Exception) {
-              e2.printStackTrace()
+            } catch (e: Exception) {
+              // Fallback to old format for backward compatibility
+              try {
+                val customButtonsList =
+                  json.decodeFromString<List<app.gyrolet.mpvrx.ui.preferences.CustomButton>>(
+                    jsonString,
+                  )
+                customButtonsList.forEachIndexed { index, btn ->
+                  val safeId = btn.id.replace("-", "_")
+                  val isLeft = index < 4 // First 4 are left buttons, rest are right
+                  processButton(
+                    originalId = btn.id,
+                    safeId = safeId,
+                    label = btn.title,
+                    command = btn.content,
+                    longPressCommand = btn.longPressContent,
+                    onStartup = btn.onStartup,
+                    language = btn.scriptLanguage,
+                    scriptBuilder = scriptBodies.getOrPut(btn.scriptLanguage) { StringBuilder() },
+                    isLeft = isLeft,
+                    uiList = buttons,
+                  )
+                }
+              } catch (e2: Exception) {
+                e2.printStackTrace()
+              }
             }
           }
-        }
 
-        _customButtons.value = buttons
+          _customButtons.value = buttons
 
-        val generatedPaths = mutableMapOf<CustomButtonScriptLanguage, String>()
-        val scriptsDir = File(host.context.filesDir, "scripts")
-        if (!scriptsDir.exists()) scriptsDir.mkdirs()
+          val generatedPaths = mutableMapOf<CustomButtonScriptLanguage, String>()
+          val scriptsDir = File(host.context.filesDir, "scripts")
+          if (!scriptsDir.exists()) scriptsDir.mkdirs()
 
-        scriptBodies.forEach { (language, bodyBuilder) ->
-          val rawScriptContent = bodyBuilder.toString()
-          if (rawScriptContent.isBlank()) return@forEach
+          scriptBodies.forEach { (language, bodyBuilder) ->
+            val rawScriptContent = bodyBuilder.toString()
+            if (rawScriptContent.isBlank()) return@forEach
 
-          val target = customButtonScriptTargetsByLanguage[language] ?: return@forEach
-          val scriptVersion = rawScriptContent.md5()
-          val scriptContent = buildCustomButtonsScript(rawScriptContent, scriptVersion, target)
+            val target = customButtonScriptTargetsByLanguage[language] ?: return@forEach
+            val scriptVersion = rawScriptContent.md5()
+            val scriptContent = buildCustomButtonsScript(rawScriptContent, scriptVersion, target)
 
-          val file = File(scriptsDir, target.fileName)
-          file.writeText(scriptContent)
-          generatedPaths[language] = file.absolutePath
-        }
+            val file = File(scriptsDir, target.fileName)
+            file.writeText(scriptContent)
+            generatedPaths[language] = file.absolutePath
+          }
 
-        customButtonsScriptPaths = generatedPaths.toMap()
-        deleteCustomButtonsScriptFiles(activePaths = generatedPaths.values.toSet())
-        withContext(Dispatchers.Main) {
-          customButtonScriptTargets
-            .filter { it.language !in generatedPaths.keys }
-            .forEach(::deactivateCustomButtonsScript)
-        }
+          customButtonsScriptPaths = generatedPaths.toMap()
+          deleteCustomButtonsScriptFiles(activePaths = generatedPaths.values.toSet())
+          withContext(Dispatchers.Main) {
+            customButtonScriptTargets
+              .filter { it.language !in generatedPaths.keys }
+              .forEach(::deactivateCustomButtonsScript)
+          }
 
-        if (generatedPaths.isNotEmpty()) {
-          if (isMpvReadyForCustomButtons) {
-            customButtonsLoadMutex.withLock {
-              withContext(Dispatchers.Main) {
-                deactivateLegacyCustomButtonsScript()
-              }
-              generatedPaths.forEach { (language, path) ->
-                val target = customButtonScriptTargetsByLanguage[language] ?: return@forEach
-                val loaded = withContext(Dispatchers.Main) {
-                  loadCustomButtonsScript(File(path), target)
+          if (generatedPaths.isNotEmpty()) {
+            if (isMpvReadyForCustomButtons) {
+              customButtonsLoadMutex.withLock {
+                withContext(Dispatchers.Main) {
+                  deactivateLegacyCustomButtonsScript()
                 }
-                if (!loaded) {
-                  android.util.Log.w("PlayerViewModel", "Failed to load ${target.fileName}")
+                generatedPaths.forEach { (language, path) ->
+                  val target = customButtonScriptTargetsByLanguage[language] ?: return@forEach
+                  val loaded =
+                    withContext(Dispatchers.Main) {
+                      loadCustomButtonsScript(File(path), target)
+                    }
+                  if (!loaded) {
+                    android.util.Log.w("PlayerViewModel", "Failed to load ${target.fileName}")
+                  }
                 }
               }
+            } else {
+              android.util.Log.d("PlayerViewModel", "Deferring custom button scripts until MPV is ready")
             }
           } else {
-            android.util.Log.d("PlayerViewModel", "Deferring custom button scripts until MPV is ready")
+            customButtonsScriptPaths = emptyMap()
+            deleteCustomButtonsScriptFiles()
+            withContext(Dispatchers.Main) {
+              customButtonScriptTargets.forEach(::deactivateCustomButtonsScript)
+              deactivateLegacyCustomButtonsScript()
+            }
           }
-        } else {
-          customButtonsScriptPaths = emptyMap()
-          deleteCustomButtonsScriptFiles()
-          withContext(Dispatchers.Main) {
-            customButtonScriptTargets.forEach(::deactivateCustomButtonsScript)
-            deactivateLegacyCustomButtonsScript()
-          }
+        } catch (e: Exception) {
+          android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
         }
-      } catch (e: Exception) {
-        android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
       }
-    }
   }
 
   private fun reloadCustomButtonsScript(reason: String) {
@@ -1459,9 +1575,10 @@ class PlayerViewModel(
 
         for ((language, scriptPath) in scriptPaths) {
           val target = customButtonScriptTargetsByLanguage[language] ?: continue
-          val isLoaded = withContext(Dispatchers.Main) {
-            isCustomButtonsScriptLoaded(target)
-          }
+          val isLoaded =
+            withContext(Dispatchers.Main) {
+              isCustomButtonsScriptLoaded(target)
+            }
           if (isLoaded) continue
 
           val file = File(scriptPath)
@@ -1471,9 +1588,10 @@ class PlayerViewModel(
             break
           }
 
-          val loaded = withContext(Dispatchers.Main) {
-            loadCustomButtonsScript(file, target)
-          }
+          val loaded =
+            withContext(Dispatchers.Main) {
+              loadCustomButtonsScript(file, target)
+            }
           if (!loaded) {
             android.util.Log.w("PlayerViewModel", "${target.fileName} load failed during $reason")
           }
@@ -1595,7 +1713,7 @@ class PlayerViewModel(
     language: CustomButtonScriptLanguage,
     scriptBuilder: StringBuilder,
     isLeft: Boolean,
-    uiList: MutableList<CustomButtonState>
+    uiList: MutableList<CustomButtonState>,
   ) {
     if (label.isNotBlank()) {
       uiList.add(CustomButtonState(originalId, label, isLeft))
@@ -1626,7 +1744,6 @@ class PlayerViewModel(
         )
       }
     }
-
   }
 
   private fun StringBuilder.appendButtonHandler(
@@ -1644,7 +1761,7 @@ class PlayerViewModel(
               $command
           end
           mp.register_script_message('$messageName', $functionName)
-          """.trimIndent()
+          """.trimIndent(),
         )
       }
       CustomButtonScriptLanguage.JS -> {
@@ -1655,15 +1772,14 @@ class PlayerViewModel(
               $command
           };
           mp.register_script_message('$messageName', $functionName);
-          """.trimIndent()
+          """.trimIndent(),
         )
       }
     }
     append("\n")
   }
 
-  private fun String.toScriptLiteral(): String =
-    replace("\\", "\\\\").replace("'", "\\'")
+  private fun String.toScriptLiteral(): String = replace("\\", "\\\\").replace("'", "\\'")
 
   // Cached values
   private val doubleTapToSeekDuration by lazy { gesturePreferences.doubleTapToSeekDuration.get() }
@@ -1696,21 +1812,46 @@ class PlayerViewModel(
     val VALID_SUBTITLE_EXTENSIONS =
       setOf(
         // Common & modern
-        "srt", "vtt", "ass", "ssa",
+        "srt",
+        "vtt",
+        "ass",
+        "ssa",
         // DVD / Blu-ray
-        "sub", "idx", "sup",
+        "sub",
+        "idx",
+        "sup",
         // Streaming / XML / Professional
-        "xml", "ttml", "dfxp", "itt", "ebu", "imsc", "usf",
+        "xml",
+        "ttml",
+        "dfxp",
+        "itt",
+        "ebu",
+        "imsc",
+        "usf",
         // Online platforms
-        "sbv", "srv1", "srv2", "srv3", "json",
+        "sbv",
+        "srv1",
+        "srv2",
+        "srv3",
+        "json",
         // Legacy & niche
-        "sami", "smi", "mpl", "pjs", "stl", "rt", "psb", "cap",
+        "sami",
+        "smi",
+        "mpl",
+        "pjs",
+        "stl",
+        "rt",
+        "psb",
+        "cap",
         // Broadcast captions
-        "scc", "vttx",
+        "scc",
+        "vttx",
         // Karaoke / lyrics
-        "lrc", "krc",
+        "lrc",
+        "krc",
         // Fallback / raw text
-        "txt", "pgs"
+        "txt",
+        "pgs",
       )
   }
 
@@ -1758,156 +1899,178 @@ class PlayerViewModel(
     }
   }
 
-  fun addSubtitle(uri: Uri, select: Boolean = true, silent: Boolean = false) {
+  fun addSubtitle(
+    uri: Uri,
+    select: Boolean = true,
+    silent: Boolean = false,
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
       addSubtitleSuspend(uri, select, silent)
     }
   }
 
-  suspend fun addSubtitleSuspend(uri: Uri, select: Boolean = true, silent: Boolean = false) {
-      subtitleAddMutex.withLock {
-        val uriString = uri.toString()
-        if (_externalSubtitles.contains(uriString)) {
-          android.util.Log.d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
-          return@withLock
+  suspend fun addSubtitleSuspend(
+    uri: Uri,
+    select: Boolean = true,
+    silent: Boolean = false,
+  ) {
+    subtitleAddMutex.withLock {
+      val uriString = uri.toString()
+      if (_externalSubtitles.contains(uriString)) {
+        android.util.Log.d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
+        return@withLock
+      }
+
+      runCatching {
+        val fileName = getFileNameFromUri(uri) ?: "subtitle.srt"
+
+        if (!isValidSubtitleFile(fileName)) {
+          return@withLock withContext(Dispatchers.Main) {
+            showToast("Invalid subtitle file format")
+          }
         }
 
-        runCatching {
-          val fileName = getFileNameFromUri(uri) ?: "subtitle.srt"
+        // Take persistent URI permission for content:// URIs
+        if (uri.scheme == "content") {
+          try {
+            host.context.contentResolver.takePersistableUriPermission(
+              uri,
+              Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+          } catch (e: SecurityException) {
+            // Permission already granted, not available, or not needed (e.g. from tree).
+            android.util.Log.i(
+              "PlayerViewModel",
+              "Persistent permission not taken for $uri (may already have it via tree)",
+            )
+          }
+        }
 
-          if (!isValidSubtitleFile(fileName)) {
-            return@withLock withContext(Dispatchers.Main) {
-              showToast("Invalid subtitle file format")
+        val mpvPath = uri.resolveUri(host.context) ?: uri.toString()
+        val mode = if (select) "select" else "auto"
+
+        // Check if MPV already auto-loaded this subtitle (prevents duplication)
+        val existingTrack = subtitleTracks.value.find { it.externalFilename == mpvPath }
+        if (existingTrack != null) {
+          android.util.Log.d("PlayerViewModel", "Subtitle already loaded by MPV, skipping sub-add: $mpvPath")
+          if (select) {
+            withContext(Dispatchers.Main) {
+              runCatching { MPVLib.setPropertyInt("sid", existingTrack.id) }
             }
           }
-
-          // Take persistent URI permission for content:// URIs
-          if (uri.scheme == "content") {
-            try {
-              host.context.contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-              )
-            } catch (e: SecurityException) {
-              // Permission already granted, not available, or not needed (e.g. from tree).
-              android.util.Log.i("PlayerViewModel", "Persistent permission not taken for $uri (may already have it via tree)")
-            }
-          }
-
-          val mpvPath = uri.resolveUri(host.context) ?: uri.toString()
-          val mode = if (select) "select" else "auto"
-
-          // Check if MPV already auto-loaded this subtitle (prevents duplication)
-          val existingTrack = subtitleTracks.value.find { it.externalFilename == mpvPath }
-          if (existingTrack != null) {
-            android.util.Log.d("PlayerViewModel", "Subtitle already loaded by MPV, skipping sub-add: $mpvPath")
-            if (select) {
-              withContext(Dispatchers.Main) {
-                runCatching { MPVLib.setPropertyInt("sid", existingTrack.id) }
-              }
-            }
-            // Still track it in _externalSubtitles if it's not there
-            if (!_externalSubtitles.contains(uriString)) {
-              _externalSubtitles.add(uriString)
-            }
-            return@withLock
-          }
-
-          // Store mapping for reliable physical deletion later
-          mpvPathToUriMap[mpvPath] = uri.toString()
-
-          withContext(Dispatchers.Main) {
-            MPVLib.command("sub-add", mpvPath, mode)
-          }
-
-          // Track external subtitle URI for persistence
+          // Still track it in _externalSubtitles if it's not there
           if (!_externalSubtitles.contains(uriString)) {
             _externalSubtitles.add(uriString)
           }
+          return@withLock
+        }
 
-          val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
-          if (!silent) {
-            withContext(Dispatchers.Main) {
-              showToast("$displayName added")
-            }
+        // Store mapping for reliable physical deletion later
+        mpvPathToUriMap[mpvPath] = uri.toString()
+
+        withContext(Dispatchers.Main) {
+          MPVLib.command("sub-add", mpvPath, mode)
+        }
+
+        // Track external subtitle URI for persistence
+        if (!_externalSubtitles.contains(uriString)) {
+          _externalSubtitles.add(uriString)
+        }
+
+        val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
+        if (!silent) {
+          withContext(Dispatchers.Main) {
+            showToast("$displayName added")
           }
-        }.onFailure {
-          if (!silent) {
-            withContext(Dispatchers.Main) {
-              showToast("Failed to load subtitle")
-            }
+        }
+      }.onFailure {
+        if (!silent) {
+          withContext(Dispatchers.Main) {
+            showToast("Failed to load subtitle")
           }
         }
       }
+    }
   }
 
   private var translationJob: Job? = null
 
-  fun translateSubtitle(track: TrackNode, targetLanguage: String) {
+  fun translateSubtitle(
+    track: TrackNode,
+    targetLanguage: String,
+  ) {
     val externalPath = track.externalFilename ?: return
     val uriString = mpvPathToUriMap[externalPath] ?: externalPath
-    
+
     // Convert file path to proper URI if needed
-    val uri = if (uriString.startsWith("/")) {
-      File(uriString).toUri()
-    } else {
-      Uri.parse(uriString)
-    }
+    val uri =
+      if (uriString.startsWith("/")) {
+        File(uriString).toUri()
+      } else {
+        Uri.parse(uriString)
+      }
 
     translationJob?.cancel()
-    translationJob = viewModelScope.launch(Dispatchers.IO) {
-      _isTranslatingSub.value = true
-      _translatingTrackId.value = track.id
-      _translatingTrackName.value = getFileNameFromUri(uri)?.let { it.substringBeforeLast(".") }?.lowercase() ?: "subtitle"
-      _translationProgress.value = 0f
-      _translationStatus.value = "Preparing translation"
-
-      try {
-        val content = host.context.contentResolver.openInputStream(uri)?.use {
-          it.readBytes().decodeToString()
-        } ?: throw Exception("Could not read subtitle file")
-
-        val originalFileName = getFileNameFromUri(uri) ?: "subtitle.srt"
-        val extension = originalFileName.substringAfterLast('.', "srt")
-
-        val result = aiService.translateSubtitle(content, targetLanguage, extension) { progress ->
-          _translationProgress.value = progress.progress
-          _translationStatus.value = buildString {
-            append(if (progress.isResuming) "Resuming" else "Translating")
-            append(" ${progress.completedChunks}/${progress.totalChunks}")
-          }
-        }
-
-        result.onSuccess { translatedContent ->
-          val baseName = originalFileName.substringBeforeLast(".").ifBlank { "subtitle" }
-          val sanitizedLang = targetLanguage.replace(" ", "_").ifBlank { "translated" }
-          val newFileName = "${baseName}.${sanitizedLang}.AI.${extension}"
-
-          val savedUri = saveTranslatedSubtitle(uri, newFileName, extension, targetLanguage, translatedContent)
-            ?: throw Exception("Could not save translated subtitle")
-
-          withContext(Dispatchers.Main) {
-            addSubtitle(savedUri, select = true)
-            showToast("Translation complete: $newFileName")
-          }
-        }.onFailure { error ->
-          withContext(Dispatchers.Main) {
-            showToast("Translation failed: ${error.message}")
-          }
-        }
-      } catch (e: Exception) {
-        withContext(Dispatchers.Main) {
-          showToast("Error: ${e.message}")
-        }
-      } finally {
-        _isTranslatingSub.value = false
-        _translatingTrackId.value = null
-        _translatingTrackName.value = ""
+    translationJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        _isTranslatingSub.value = true
+        _translatingTrackId.value = track.id
+        _translatingTrackName.value =
+          getFileNameFromUri(uri)?.let { it.substringBeforeLast(".") }?.lowercase() ?: "subtitle"
         _translationProgress.value = 0f
-        _translationStatus.value = ""
-        translationJob = null
+        _translationStatus.value = "Preparing translation"
+
+        try {
+          val content =
+            host.context.contentResolver.openInputStream(uri)?.use {
+              it.readBytes().decodeToString()
+            } ?: throw Exception("Could not read subtitle file")
+
+          val originalFileName = getFileNameFromUri(uri) ?: "subtitle.srt"
+          val extension = originalFileName.substringAfterLast('.', "srt")
+
+          val result =
+            aiService.translateSubtitle(content, targetLanguage, extension) { progress ->
+              _translationProgress.value = progress.progress
+              _translationStatus.value =
+                buildString {
+                  append(if (progress.isResuming) "Resuming" else "Translating")
+                  append(" ${progress.completedChunks}/${progress.totalChunks}")
+                }
+            }
+
+          result
+            .onSuccess { translatedContent ->
+              val baseName = originalFileName.substringBeforeLast(".").ifBlank { "subtitle" }
+              val sanitizedLang = targetLanguage.replace(" ", "_").ifBlank { "translated" }
+              val newFileName = "$baseName.$sanitizedLang.AI.$extension"
+
+              val savedUri =
+                saveTranslatedSubtitle(uri, newFileName, extension, targetLanguage, translatedContent)
+                  ?: throw Exception("Could not save translated subtitle")
+
+              withContext(Dispatchers.Main) {
+                addSubtitle(savedUri, select = true)
+                showToast("Translation complete: $newFileName")
+              }
+            }.onFailure { error ->
+              withContext(Dispatchers.Main) {
+                showToast("Translation failed: ${error.message}")
+              }
+            }
+        } catch (e: Exception) {
+          withContext(Dispatchers.Main) {
+            showToast("Error: ${e.message}")
+          }
+        } finally {
+          _isTranslatingSub.value = false
+          _translatingTrackId.value = null
+          _translatingTrackName.value = ""
+          _translationProgress.value = 0f
+          _translationStatus.value = ""
+          translationJob = null
+        }
       }
-    }
   }
 
   fun cancelTranslation() {
@@ -1926,7 +2089,10 @@ class PlayerViewModel(
     showToast("Translation cancelled")
   }
 
-  fun generateSubtitles(language: String, outputFormat: String = "srt") {
+  fun generateSubtitles(
+    language: String,
+    outputFormat: String = "srt",
+  ) {
     val videoUri = currentVideoUriForSubtitleGeneration()
     if (videoUri == null) {
       showToast("Could not find current video path")
@@ -1942,30 +2108,33 @@ class PlayerViewModel(
       _subtitleGenerationStatus.value = "Preparing audio"
 
       try {
-        val result = subtitleGenerationService.generateSubtitles(
-          videoUri = videoUri,
-          language = actualLanguage,
-          outputFormat = actualFormat,
-        ) { progress ->
-          _subtitleGenerationProgress.value = progress.progress
-          _subtitleGenerationStatus.value = progress.stage
-        }
+        val result =
+          subtitleGenerationService.generateSubtitles(
+            videoUri = videoUri,
+            language = actualLanguage,
+            outputFormat = actualFormat,
+          ) { progress ->
+            _subtitleGenerationProgress.value = progress.progress
+            _subtitleGenerationStatus.value = progress.stage
+          }
 
-        result.onSuccess { generated ->
-          val baseName = currentMediaTitle.substringBeforeLast(".").ifBlank { "video" }
-          val sanitizedLang = actualLanguage.replace(" ", "_")
-          val newFileName = "${baseName}.${sanitizedLang}.AI.${generated.extension}"
-          val savedUri = saveTranslatedSubtitle(videoUri, newFileName, generated.extension, sanitizedLang, generated.content)
-            ?: throw Exception("Could not save generated subtitles")
-          withContext(Dispatchers.Main) {
-            addSubtitle(savedUri, select = true)
-            showToast("Generated subtitles: $newFileName")
+        result
+          .onSuccess { generated ->
+            val baseName = currentMediaTitle.substringBeforeLast(".").ifBlank { "video" }
+            val sanitizedLang = actualLanguage.replace(" ", "_")
+            val newFileName = "$baseName.$sanitizedLang.AI.${generated.extension}"
+            val savedUri =
+              saveTranslatedSubtitle(videoUri, newFileName, generated.extension, sanitizedLang, generated.content)
+                ?: throw Exception("Could not save generated subtitles")
+            withContext(Dispatchers.Main) {
+              addSubtitle(savedUri, select = true)
+              showToast("Generated subtitles: $newFileName")
+            }
+          }.onFailure { error ->
+            withContext(Dispatchers.Main) {
+              showToast("Subtitle generation failed: ${error.message}")
+            }
           }
-        }.onFailure { error ->
-          withContext(Dispatchers.Main) {
-            showToast("Subtitle generation failed: ${error.message}")
-          }
-        }
       } catch (e: Exception) {
         withContext(Dispatchers.Main) {
           showToast("Subtitle generation error: ${e.message}")
@@ -2069,7 +2238,11 @@ class PlayerViewModel(
       if (parent?.exists() == true) {
         val saved = File(parent, newFileName).also { it.writeText(translatedContent) }.toUri()
         // Clean up common buggy patterns: .AI.ext, lang.AI.ext, ..AI.ext
-        listOf(".AI.${extension}", "${targetLanguage}.AI.${extension}", "..AI.${extension}").filter { it.isNotBlank() }.forEach { pattern ->
+        listOf(
+          ".AI.$extension",
+          "$targetLanguage.AI.$extension",
+          "..AI.$extension",
+        ).filter { it.isNotBlank() }.forEach { pattern ->
           val buggy = File(parent, pattern)
           if (buggy.exists() && buggy.name != newFileName) buggy.delete()
         }
@@ -2081,17 +2254,23 @@ class PlayerViewModel(
       val sourceDocument = DocumentFile.fromSingleUri(host.context, originalUri)
       val parentDocument = sourceDocument?.parentFile
       if (parentDocument?.canWrite() == true) {
-        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
-          ?: "text/plain"
-        val targetDocument = parentDocument.findFile(newFileName)
-          ?: parentDocument.createFile(mimeType, newFileName)
+        val mimeType =
+          MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+            ?: "text/plain"
+        val targetDocument =
+          parentDocument.findFile(newFileName)
+            ?: parentDocument.createFile(mimeType, newFileName)
 
         if (targetDocument != null) {
           host.context.contentResolver.openOutputStream(targetDocument.uri)?.use { output ->
             output.write(translatedContent.toByteArray())
           }
           // Clean up common buggy patterns
-          listOf(".AI.${extension}", "${targetLanguage}.AI.${extension}", "..AI.${extension}").filter { it.isNotBlank() }.forEach { pattern ->
+          listOf(
+            ".AI.$extension",
+            "$targetLanguage.AI.$extension",
+            "..AI.$extension",
+          ).filter { it.isNotBlank() }.forEach { pattern ->
             parentDocument.findFile(pattern)?.let { buggy ->
               if (buggy.uri != targetDocument.uri) buggy.delete()
             }
@@ -2102,14 +2281,15 @@ class PlayerViewModel(
     }
 
     val fallbackDir = host.context.getExternalFilesDir(null) ?: host.context.filesDir
-    val backupFile = File(File(fallbackDir, "Subtitles"), newFileName).apply {
-      parentFile?.mkdirs()
-    }
+    val backupFile =
+      File(File(fallbackDir, "Subtitles"), newFileName).apply {
+        parentFile?.mkdirs()
+      }
     backupFile.writeText(translatedContent)
     // Clean up common buggy patterns in fallback dir
     val backupParent = backupFile.parentFile
     if (backupParent != null) {
-      listOf(".AI.${extension}", "${targetLanguage}.AI.${extension}", "..AI.${extension}").filter { it.isNotBlank() }.forEach { pattern ->
+      listOf(".AI.$extension", "$targetLanguage.AI.$extension", "..AI.$extension").filter { it.isNotBlank() }.forEach { pattern ->
         val buggy = File(backupParent, pattern)
         if (buggy.exists() && buggy.name != newFileName) buggy.delete()
       }
@@ -2206,18 +2386,18 @@ class PlayerViewModel(
 
       // 2. Reset Video Zoom
       if (_videoZoom.value != 0f) {
-          _videoZoom.value = 0f
-          runCatching { MPVLib.setPropertyDouble("video-zoom", 0.0) }
+        _videoZoom.value = 0f
+        runCatching { MPVLib.setPropertyDouble("video-zoom", 0.0) }
       }
 
       // 3. Reset Video Pan
       if (_videoPanX.value != 0f || _videoPanY.value != 0f) {
-          _videoPanX.value = 0f
-          _videoPanY.value = 0f
-          runCatching {
-              MPVLib.setPropertyDouble("video-pan-x", 0.0)
-              MPVLib.setPropertyDouble("video-pan-y", 0.0)
-          }
+        _videoPanX.value = 0f
+        _videoPanY.value = 0f
+        runCatching {
+          MPVLib.setPropertyDouble("video-pan-x", 0.0)
+          MPVLib.setPropertyDouble("video-pan-y", 0.0)
+        }
       }
       // ---------------------------------------------------
     }
@@ -2228,7 +2408,8 @@ class PlayerViewModel(
       skipSegmentsSnapshot.firstOrNull { segment ->
         positionSeconds in segment.startSeconds..segment.endSeconds && (segment.endSeconds - positionSeconds) >= 1.0
       }
-    val showChip = activeSegment != null && (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
+    val showChip =
+      activeSegment != null && (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
     if (_currentSkippableSegment.value != activeSegment) {
       _currentSkippableSegment.value = activeSegment
     }
@@ -2342,65 +2523,80 @@ class PlayerViewModel(
     introLookupJob?.cancel()
     introLookupJob =
       viewModelScope.launch {
-        val outcome = if (provider == IntroSegmentProvider.HYBRID) {
-          val channel = kotlinx.coroutines.channels.Channel<IntroDbLookupOutcome>(4)
-          val lookupJobs = listOf(
-              IntroSegmentProvider.INTRO_DB,
-              IntroSegmentProvider.THE_INTRO_DB,
-              IntroSegmentProvider.ANI_SKIP,
-              IntroSegmentProvider.ANIME_SKIP
-          ).map { p ->
-              launch(kotlinx.coroutines.Dispatchers.IO) {
+        val outcome =
+          if (provider == IntroSegmentProvider.HYBRID) {
+            val channel = kotlinx.coroutines.channels.Channel<IntroDbLookupOutcome>(4)
+            val lookupJobs =
+              listOf(
+                IntroSegmentProvider.INTRO_DB,
+                IntroSegmentProvider.THE_INTRO_DB,
+                IntroSegmentProvider.ANI_SKIP,
+                IntroSegmentProvider.ANIME_SKIP,
+              ).map { p ->
+                launch(kotlinx.coroutines.Dispatchers.IO) {
                   try {
-                      val res = introDbRepository.lookupSegments(lookupRequest.copy(provider = p))
-                      channel.send(res)
+                    val res = introDbRepository.lookupSegments(lookupRequest.copy(provider = p))
+                    channel.send(res)
                   } catch (e: Exception) {
-                      channel.send(IntroDbLookupOutcome.Error(e.message ?: "unknown", p))
+                    channel.send(IntroDbLookupOutcome.Error(e.message ?: "unknown", p))
                   }
+                }
               }
-          }
 
-          var finalOutcome: IntroDbLookupOutcome? = null
-          var loadedOutcome: IntroDbLookupOutcome.Loaded? = null
-          val receivedOutcomes = mutableListOf<IntroDbLookupOutcome>()
+            var finalOutcome: IntroDbLookupOutcome? = null
+            var loadedOutcome: IntroDbLookupOutcome.Loaded? = null
+            val receivedOutcomes = mutableListOf<IntroDbLookupOutcome>()
 
-          for (i in 0 until 4) {
+            for (i in 0 until 4) {
               val out = channel.receive()
               receivedOutcomes.add(out)
               if (out is IntroDbLookupOutcome.Loaded) {
-                  loadedOutcome = out
-                  break
+                loadedOutcome = out
+                break
               }
-          }
+            }
 
-          // Cancel remaining lookup jobs if we got a loaded outcome
-          lookupJobs.forEach { it.cancel() }
+            // Cancel remaining lookup jobs if we got a loaded outcome
+            lookupJobs.forEach { it.cancel() }
 
-          if (loadedOutcome != null) {
+            if (loadedOutcome != null) {
               IntroDbLookupOutcome.Loaded(
-                  imdbId = loadedOutcome.imdbId,
-                  segments = loadedOutcome.segments,
-                  source = loadedOutcome.source,
-                  provider = IntroSegmentProvider.HYBRID
+                imdbId = loadedOutcome.imdbId,
+                segments = loadedOutcome.segments,
+                source = loadedOutcome.source,
+                provider = IntroSegmentProvider.HYBRID,
               )
-          } else {
+            } else {
               val firstNonError = receivedOutcomes.firstOrNull { it !is IntroDbLookupOutcome.Error }
               val fallbackOutcome = firstNonError ?: receivedOutcomes.firstOrNull()
-              
+
               if (fallbackOutcome != null) {
-                  when (fallbackOutcome) {
-                      is IntroDbLookupOutcome.NoSegments -> IntroDbLookupOutcome.NoSegments(fallbackOutcome.imdbId, fallbackOutcome.source, IntroSegmentProvider.HYBRID)
-                      is IntroDbLookupOutcome.Unresolved -> IntroDbLookupOutcome.Unresolved(fallbackOutcome.title, IntroSegmentProvider.HYBRID)
-                      is IntroDbLookupOutcome.Error -> IntroDbLookupOutcome.Error(fallbackOutcome.reason, IntroSegmentProvider.HYBRID)
-                      else -> fallbackOutcome
-                  }
+                when (fallbackOutcome) {
+                  is IntroDbLookupOutcome.NoSegments ->
+                    IntroDbLookupOutcome.NoSegments(
+                      fallbackOutcome.imdbId,
+                      fallbackOutcome.source,
+                      IntroSegmentProvider.HYBRID,
+                    )
+                  is IntroDbLookupOutcome.Unresolved ->
+                    IntroDbLookupOutcome.Unresolved(
+                      fallbackOutcome.title,
+                      IntroSegmentProvider.HYBRID,
+                    )
+                  is IntroDbLookupOutcome.Error ->
+                    IntroDbLookupOutcome.Error(
+                      fallbackOutcome.reason,
+                      IntroSegmentProvider.HYBRID,
+                    )
+                  else -> fallbackOutcome
+                }
               } else {
-                  IntroDbLookupOutcome.Error("No outcomes", IntroSegmentProvider.HYBRID)
+                IntroDbLookupOutcome.Error("No outcomes", IntroSegmentProvider.HYBRID)
               }
+            }
+          } else {
+            introDbRepository.lookupSegments(lookupRequest)
           }
-        } else {
-          introDbRepository.lookupSegments(lookupRequest)
-        }
 
         if (currentMediaTitle != lookupKey) return@launch
 
@@ -2451,9 +2647,7 @@ class PlayerViewModel(
       append(request.episode?.toString().orEmpty())
     }.md5()
 
-  private fun readIntroMarkerCacheEntry(
-    cacheKey: String,
-  ): IntroMarkerCacheEntry? {
+  private fun readIntroMarkerCacheEntry(cacheKey: String): IntroMarkerCacheEntry? {
     val prefKey = INTRO_MARKER_CACHE_PREFIX + cacheKey
     val rawValue = introMarkerCachePrefs.getString(prefKey, null) ?: return null
     val entry =
@@ -2534,9 +2728,11 @@ class PlayerViewModel(
         .take(cacheEntries.size - INTRO_MARKER_CACHE_MAX_ENTRIES)
         .map { it.first }
 
-    introMarkerCachePrefs.edit().apply {
-      keysToRemove.forEach(::remove)
-    }.apply()
+    introMarkerCachePrefs
+      .edit()
+      .apply {
+        keysToRemove.forEach(::remove)
+      }.apply()
   }
 
   private fun applyIntroMarkerCacheEntry(
@@ -2550,7 +2746,12 @@ class PlayerViewModel(
         _introDbStatus.value =
           IntroDbStatus(
             state = IntroDbStatusState.LOADED,
-            message = cacheStatusMessage(provider, entry.message, "loaded ${entry.segments.size} marker${if (entry.segments.size == 1) "" else "s"}"),
+            message =
+              cacheStatusMessage(
+                provider,
+                entry.message,
+                "loaded ${entry.segments.size} marker${if (entry.segments.size == 1) "" else "s"}",
+              ),
             imdbId = entry.imdbId,
             segmentCount = entry.segments.size,
           )
@@ -2685,23 +2886,27 @@ class PlayerViewModel(
         }
       }
 
-    val introKeywords = if (playerPreferences.customIntroKeywordsEnabled.get()) {
-      playerPreferences.customIntroKeywords.get()
-        .split(",")
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-    } else {
-      introKeywordPatterns
-    }
+    val introKeywords =
+      if (playerPreferences.customIntroKeywordsEnabled.get()) {
+        playerPreferences.customIntroKeywords
+          .get()
+          .split(",")
+          .map { it.trim() }
+          .filter { it.isNotEmpty() }
+      } else {
+        introKeywordPatterns
+      }
 
-    val outroKeywords = if (playerPreferences.customOutroKeywordsEnabled.get()) {
-      playerPreferences.customOutroKeywords.get()
-        .split(",")
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-    } else {
-      outroKeywordPatterns
-    }
+    val outroKeywords =
+      if (playerPreferences.customOutroKeywordsEnabled.get()) {
+        playerPreferences.customOutroKeywords
+          .get()
+          .split(",")
+          .map { it.trim() }
+          .filter { it.isNotEmpty() }
+      } else {
+        outroKeywordPatterns
+      }
 
     val hasIntro = hasKeyword(introKeywords)
     val hasRecap = hasKeyword(recapKeywordPatterns)
@@ -2732,7 +2937,7 @@ class PlayerViewModel(
       endSecondsOrNull ?: durationSec.takeIf {
         (type == SkipSegmentType.CREDITS || type == SkipSegmentType.PREVIEW) && it > normalizedStart
       }
-      ?: return null
+        ?: return null
     if (endSeconds <= normalizedStart) return null
     return SkipSegment(
       type = type,
@@ -2741,7 +2946,6 @@ class PlayerViewModel(
       source = introDbSourceKey,
     )
   }
-
 
   fun removeSubtitle(id: Int) {
     viewModelScope.launch(Dispatchers.IO) {
@@ -2766,7 +2970,7 @@ class PlayerViewModel(
         }
       }
 
-        MPVLib.command("sub-remove", id.toString())
+      MPVLib.command("sub-remove", id.toString())
     }
   }
 
@@ -2786,18 +2990,19 @@ class PlayerViewModel(
       return
     }
 
-    mediaSearchJob = viewModelScope.launch {
-      delay(300) // Debounce
-      _isSearchingMedia.value = true
-      wyzieRepository.searchMedia(query)
-        .onSuccess { results ->
-          _mediaSearchResults.value = results
-        }
-        .onFailure {
-          // Silent failure for autocomplete, or optionally show toast(if someone is reading this if u need u can impelmen this in future )
-        }
-      _isSearchingMedia.value = false
-    }
+    mediaSearchJob =
+      viewModelScope.launch {
+        delay(300) // Debounce
+        _isSearchingMedia.value = true
+        wyzieRepository
+          .searchMedia(query)
+          .onSuccess { results ->
+            _mediaSearchResults.value = results
+          }.onFailure {
+            // Silent failure for autocomplete, or optionally show toast(if someone is reading this if u need u can impelmen this in future )
+          }
+        _isSearchingMedia.value = false
+      }
   }
 
   fun selectMedia(result: app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult) {
@@ -2823,20 +3028,21 @@ class PlayerViewModel(
   ) {
     viewModelScope.launch {
       _isFetchingTvDetails.value = true
-      wyzieRepository.getTvShowDetails(id)
+      wyzieRepository
+        .getTvShowDetails(id)
         .onSuccess { details ->
           val validSeasons = details.seasons.filter { it.season_number > 0 }.sortedBy { it.season_number }
           _selectedTvShow.value = details.copy(seasons = validSeasons)
           _selectedSeason.value = null
           _seasonEpisodes.value = emptyList()
-          val matchingSeason = preferredSeason?.let { wanted ->
-            validSeasons.firstOrNull { it.season_number == wanted }
-          }
+          val matchingSeason =
+            preferredSeason?.let { wanted ->
+              validSeasons.firstOrNull { it.season_number == wanted }
+            }
           if (matchingSeason != null) {
             selectSeason(matchingSeason, preferredEpisode)
           }
-        }
-        .onFailure {
+        }.onFailure {
           showProviderStatusToast("Failed to load series details: ${it.message}")
         }
       _isFetchingTvDetails.value = false
@@ -2852,13 +3058,15 @@ class PlayerViewModel(
 
     viewModelScope.launch {
       _isFetchingEpisodes.value = true
-      wyzieRepository.getSeasonEpisodes(tvShowId, season.season_number)
+      wyzieRepository
+        .getSeasonEpisodes(tvShowId, season.season_number)
         .onSuccess { episodes ->
           val validEpisodes = episodes.filter { it.episode_number > 0 }.sortedBy { it.episode_number }
           _seasonEpisodes.value = validEpisodes
-          val matchingEpisode = preferredEpisode?.let { wanted ->
-            validEpisodes.firstOrNull { it.episode_number == wanted }
-          }
+          val matchingEpisode =
+            preferredEpisode?.let { wanted ->
+              validEpisodes.firstOrNull { it.episode_number == wanted }
+            }
           _selectedEpisode.value = matchingEpisode
           matchingEpisode?.let { episode ->
             val tvShowName = _selectedTvShow.value?.name ?: currentMediaTitle
@@ -2869,8 +3077,7 @@ class PlayerViewModel(
               tmdbId = tvShowId,
             )
           }
-        }
-        .onFailure {
+        }.onFailure {
           showProviderStatusToast("Failed to load episodes: ${it.message}")
         }
       _isFetchingEpisodes.value = false
@@ -2941,41 +3148,41 @@ class PlayerViewModel(
   ) {
     subtitleSearchJob?.cancel()
     _onlineSubtitleSearchResults.value = emptyList()
-    subtitleSearchJob = viewModelScope.launch {
-      _isSearchingSub.value = true
-      val cleanSubHubTitle = MediaInfoParser.parse(query).title.ifBlank { query.trim() }
-      val wyzieRequest =
-        OnlineSubtitleSearchRequest(
-          query = query,
-          tmdbId = tmdbId,
-          season = season,
-          episode = episode,
-          year = year,
-          movieHash = _videoHash.value,
-        )
-      val subtitleHubRequest =
-        OnlineSubtitleSearchRequest(
-          query = cleanSubHubTitle,
-          year = year,
-        )
-      onlineSubtitleOrchestrator.search(
-        wyzieRequest,
-        subtitlesPreferences.onlineSubtitleSearchMode.get(),
-        subtitleHubRequest = subtitleHubRequest,
-        includeWyzie = includeWyzie,
-        includeSubtitleHub = includeSubtitleHub,
-        onResults = { results ->
-          _onlineSubtitleSearchResults.value = results
-        },
-      )
-        .onSuccess { results ->
-          _onlineSubtitleSearchResults.value = results
-        }
-        .onFailure {
-          showProviderStatusToast("Search failed: ${it.message}")
-        }
-      _isSearchingSub.value = false
-    }
+    subtitleSearchJob =
+      viewModelScope.launch {
+        _isSearchingSub.value = true
+        val cleanSubHubTitle = MediaInfoParser.parse(query).title.ifBlank { query.trim() }
+        val wyzieRequest =
+          OnlineSubtitleSearchRequest(
+            query = query,
+            tmdbId = tmdbId,
+            season = season,
+            episode = episode,
+            year = year,
+            movieHash = _videoHash.value,
+          )
+        val subtitleHubRequest =
+          OnlineSubtitleSearchRequest(
+            query = cleanSubHubTitle,
+            year = year,
+          )
+        onlineSubtitleOrchestrator
+          .search(
+            wyzieRequest,
+            subtitlesPreferences.onlineSubtitleSearchMode.get(),
+            subtitleHubRequest = subtitleHubRequest,
+            includeWyzie = includeWyzie,
+            includeSubtitleHub = includeSubtitleHub,
+            onResults = { results ->
+              _onlineSubtitleSearchResults.value = results
+            },
+          ).onSuccess { results ->
+            _onlineSubtitleSearchResults.value = results
+          }.onFailure {
+            showProviderStatusToast("Search failed: ${it.message}")
+          }
+        _isSearchingSub.value = false
+      }
   }
 
   private fun buildWyzieSearchPlan(
@@ -3028,23 +3235,22 @@ class PlayerViewModel(
   }
 
   fun downloadSubtitle(subtitle: OnlineSubtitle) {
-      viewModelScope.launch {
-          _isDownloadingSub.value = true
-          onlineSubtitleOrchestrator.download(subtitle, currentMediaTitle)
-              .onSuccess { uri ->
-                  if (subtitle.isHashMatch) {
-                    MPVLib.setPropertyDouble("sub-delay", 0.0)
-                    Log.d(TAG, "Applied perfect-sync subtitle match for ${subtitle.displayName}")
-                  }
-                  addSubtitle(uri)
-              }
-              .onFailure {
-                  showToast("Download failed: ${it.message}")
-              }
-          _isDownloadingSub.value = false
-      }
+    viewModelScope.launch {
+      _isDownloadingSub.value = true
+      onlineSubtitleOrchestrator
+        .download(subtitle, currentMediaTitle)
+        .onSuccess { uri ->
+          if (subtitle.isHashMatch) {
+            MPVLib.setPropertyDouble("sub-delay", 0.0)
+            Log.d(TAG, "Applied perfect-sync subtitle match for ${subtitle.displayName}")
+          }
+          addSubtitle(uri)
+        }.onFailure {
+          showToast("Download failed: ${it.message}")
+        }
+      _isDownloadingSub.value = false
+    }
   }
-
 
   fun toggleSubtitle(id: Int) {
     val primarySid = getTrackSelectionId("sid")
@@ -3394,8 +3600,10 @@ class PlayerViewModel(
       .coerceAtLeast(0f)
       .let { if (durationSeconds > 0f) it.coerceAtMost(durationSeconds) else it }
 
-  private fun seekThumbnailCacheKey(source: String, bucket: Int): String =
-    "$source|$bucket|$SEEK_THUMBNAIL_MAX_SIZE"
+  private fun seekThumbnailCacheKey(
+    source: String,
+    bucket: Int,
+  ): String = "$source|$bucket|$SEEK_THUMBNAIL_MAX_SIZE"
 
   private fun findNearestSeekThumbnail(
     source: String,
@@ -3422,7 +3630,10 @@ class PlayerViewModel(
     coalesceSeek(offset)
   }
 
-  fun seekTo(position: Int, fast: Boolean = false) {
+  fun seekTo(
+    position: Int,
+    fast: Boolean = false,
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
       val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
       var clampedPosition = position.coerceIn(0, maxDuration)
@@ -3444,12 +3655,13 @@ class PlayerViewModel(
 
       // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
       // If fast is true, override and use keyframe seeking for speed
-      val seekMode = if (fast) {
-        "absolute+keyframes"
-      } else {
-        val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
-        if (shouldUsePreciseSeeking) "absolute+exact" else "absolute+keyframes"
-      }
+      val seekMode =
+        if (fast) {
+          "absolute+keyframes"
+        } else {
+          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
+          if (shouldUsePreciseSeeking) "absolute+exact" else "absolute+keyframes"
+        }
       MPVLib.command("seek", clampedPosition.toString(), seekMode)
       syncplayManager.updatePlayerState(
         clampedPosition.toDouble(),
@@ -3473,23 +3685,23 @@ class PlayerViewModel(
           val currentPos = MPVLib.getPropertyInt("time-pos") ?: 0
 
           if (duration > 0 && currentPos + toApply >= duration) {
-              // If seeking past the end, force seek to 100% absolute to ensure EOF is triggered
-              MPVLib.command("seek", "100", "absolute-percent+exact")
-              syncplayManager.updatePlayerState(
-                duration.toDouble(),
-                MPVLib.getPropertyBoolean("pause") ?: false,
-                doSeek = true,
-              )
+            // If seeking past the end, force seek to 100% absolute to ensure EOF is triggered
+            MPVLib.command("seek", "100", "absolute-percent+exact")
+            syncplayManager.updatePlayerState(
+              duration.toDouble(),
+              MPVLib.getPropertyBoolean("pause") ?: false,
+              doSeek = true,
+            )
           } else {
-              // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
-              val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || duration < 120
-              val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
-              MPVLib.command("seek", toApply.toString(), seekMode)
-              syncplayManager.updatePlayerState(
-                (currentPos + toApply).toDouble(),
-                MPVLib.getPropertyBoolean("pause") ?: false,
-                doSeek = true,
-              )
+            // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+            val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || duration < 120
+            val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
+            MPVLib.command("seek", toApply.toString(), seekMode)
+            syncplayManager.updatePlayerState(
+              (currentPos + toApply).toDouble(),
+              MPVLib.getPropertyBoolean("pause") ?: false,
+              doSeek = true,
+            )
           }
         }
       }
@@ -3504,7 +3716,17 @@ class PlayerViewModel(
 
   fun rightSeek() {
     _seekState.update { s ->
-      s.copy(amount = if ((pos ?: 0) < (duration ?: 0)) s.amount + doubleTapToSeekDuration else s.amount, isForwards = true)
+      s.copy(
+        amount =
+          if ((pos ?: 0) <
+            (duration ?: 0)
+          ) {
+            s.amount + doubleTapToSeekDuration
+          } else {
+            s.amount
+          },
+        isForwards = true,
+      )
     }
     seekBy(doubleTapToSeekDuration)
   }
@@ -3565,7 +3787,10 @@ class PlayerViewModel(
     brightnessSliderTimestamp.value = System.currentTimeMillis()
   }
 
-  fun changeVolumeBy(change: Int, showUi: Boolean = false) {
+  fun changeVolumeBy(
+    change: Int,
+    showUi: Boolean = false,
+  ) {
     val currentSystemVolume = syncCurrentSystemVolume()
     val mpvVolume = MPVLib.getPropertyInt("volume") ?: 100
     val absoluteMaxVolume = volumeBoostCap ?: (audioPreferences.volumeBoostCap.get() + 100)
@@ -3603,7 +3828,10 @@ class PlayerViewModel(
     }
   }
 
-  fun changeVolumeTo(volume: Int, showUi: Boolean = false) {
+  fun changeVolumeTo(
+    volume: Int,
+    showUi: Boolean = false,
+  ) {
     val newVolume = volume.coerceIn(0..maxVolume)
     val flags = if (showUi || isAudioOnly.value) AudioManager.FLAG_SHOW_UI else 0
     host.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, flags)
@@ -3687,13 +3915,14 @@ class PlayerViewModel(
         val isVideoRotated = (rotate % 180 == 90) // 90° or 270° rotation
 
         // Calculate screen ratio, inverting if video is rotated
-        val screenRatio = if (isVideoRotated) {
-          // Video is rotated, so invert the screen ratio
-          dm.heightPixels.toDouble() / dm.widthPixels.toDouble()
-        } else {
-          // Video is not rotated, use normal screen ratio
-          dm.widthPixels.toDouble() / dm.heightPixels.toDouble()
-        }
+        val screenRatio =
+          if (isVideoRotated) {
+            // Video is rotated, so invert the screen ratio
+            dm.heightPixels.toDouble() / dm.widthPixels.toDouble()
+          } else {
+            // Video is not rotated, use normal screen ratio
+            dm.widthPixels.toDouble() / dm.heightPixels.toDouble()
+          }
 
         // Set aspect override first, then reset panscan
         // This prevents the brief flash of Fit mode
@@ -3858,9 +4087,10 @@ class PlayerViewModel(
     when (gesturePreferences.leftSingleActionGesture.get()) {
       SingleActionGesture.Seek -> leftSeek()
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
-      }
+      SingleActionGesture.Custom ->
+        viewModelScope.launch(Dispatchers.IO) {
+          MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
+        }
       SingleActionGesture.None -> {}
     }
   }
@@ -3868,9 +4098,10 @@ class PlayerViewModel(
   fun handleCenterDoubleTap() {
     when (gesturePreferences.centerSingleActionGesture.get()) {
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
-      }
+      SingleActionGesture.Custom ->
+        viewModelScope.launch(Dispatchers.IO) {
+          MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+        }
       SingleActionGesture.Seek, SingleActionGesture.None -> {}
     }
   }
@@ -3878,9 +4109,10 @@ class PlayerViewModel(
   fun handleCenterSingleTap() {
     when (gesturePreferences.centerSingleActionGesture.get()) {
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
-      }
+      SingleActionGesture.Custom ->
+        viewModelScope.launch(Dispatchers.IO) {
+          MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+        }
       SingleActionGesture.Seek, SingleActionGesture.None -> {}
     }
   }
@@ -3889,9 +4121,10 @@ class PlayerViewModel(
     when (gesturePreferences.rightSingleActionGesture.get()) {
       SingleActionGesture.Seek -> rightSeek()
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
-      }
+      SingleActionGesture.Custom ->
+        viewModelScope.launch(Dispatchers.IO) {
+          MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
+        }
       SingleActionGesture.None -> {}
     }
   }
@@ -3909,7 +4142,10 @@ class PlayerViewModel(
   private val _videoPanY = MutableStateFlow(0f)
   val videoPanY: StateFlow<Float> = _videoPanY.asStateFlow()
 
-  fun setVideoPan(x: Float, y: Float) {
+  fun setVideoPan(
+    x: Float,
+    y: Float,
+  ) {
     _videoPanX.value = x
     _videoPanY.value = y
   }
@@ -4001,12 +4237,13 @@ class PlayerViewModel(
 
   fun resetFrameNavigationTimer() {
     frameNavigationCollapseJob?.cancel()
-    frameNavigationCollapseJob = viewModelScope.launch {
-      delay(10000) // 10 seconds
-      if (_isFrameNavigationExpanded.value) {
-        _isFrameNavigationExpanded.value = false
+    frameNavigationCollapseJob =
+      viewModelScope.launch {
+        delay(10000) // 10 seconds
+        if (_isFrameNavigationExpanded.value) {
+          _isFrameNavigationExpanded.value = false
+        }
       }
-    }
   }
 
   fun takeSnapshot(context: Context) {
@@ -4014,11 +4251,12 @@ class PlayerViewModel(
       _isSnapshotLoading.value = true
       try {
         val includeSubtitles = playerPreferences.includeSubtitlesInSnapshot.get()
-        ScreenshotSaver.save(
-          context = context,
-          settings = ScreenshotSettings.fromPreferences(playerPreferences),
-          includeSubtitles = includeSubtitles,
-        ).getOrThrow()
+        ScreenshotSaver
+          .save(
+            context = context,
+            settings = ScreenshotSettings.fromPreferences(playerPreferences),
+            includeSubtitles = includeSubtitles,
+          ).getOrThrow()
         withContext(Dispatchers.Main) {
           Toast
             .makeText(
@@ -4029,7 +4267,15 @@ class PlayerViewModel(
         }
       } catch (e: Exception) {
         withContext(Dispatchers.Main) {
-          Toast.makeText(context, context.getString(R.string.toast_failed_to_save_snapshot, e.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
+          Toast
+            .makeText(
+              context,
+              context.getString(
+                R.string.toast_failed_to_save_snapshot,
+                e.message ?: context.getString(R.string.generic_unknown_error),
+              ),
+              Toast.LENGTH_LONG,
+            ).show()
         }
       } finally {
         _isSnapshotLoading.value = false
@@ -4069,17 +4315,21 @@ class PlayerViewModel(
     // Get current video progress
     val currentPos = pos ?: 0
     val currentDuration = duration ?: 0
-    val currentProgress = if (currentDuration > 0) {
-      ((currentPos.toFloat() / currentDuration.toFloat()) * 100f).coerceIn(0f, 100f)
-    } else 0f
+    val currentProgress =
+      if (currentDuration > 0) {
+        ((currentPos.toFloat() / currentDuration.toFloat()) * 100f).coerceIn(0f, 100f)
+      } else {
+        0f
+      }
 
     return activity.playlist.mapIndexed { index, uri ->
       val title = activity.getPlaylistItemTitle(uri)
-      val resolvedUri = if (uri.scheme == "content") {
-        uri.extractLocalPath()?.let { Uri.fromFile(File(it)) } ?: uri
-      } else {
-        uri
-      }
+      val resolvedUri =
+        if (uri.scheme == "content") {
+          uri.extractLocalPath()?.let { Uri.fromFile(File(it)) } ?: uri
+        } else {
+          uri
+        }
       val path = resolvedUri.toString()
       val isAudio =
         path
@@ -4113,14 +4363,20 @@ class PlayerViewModel(
   }
 
   private fun getVideoMetadata(uri: Uri): Pair<String, String> {
-    val resolvedUri = if (uri.scheme == "content") {
-      uri.extractLocalPath()?.let { Uri.fromFile(File(it)) } ?: uri
-    } else {
-      uri
-    }
+    val resolvedUri =
+      if (uri.scheme == "content") {
+        uri.extractLocalPath()?.let { Uri.fromFile(File(it)) } ?: uri
+      } else {
+        uri
+      }
 
     // Skip metadata extraction for network streams and M3U playlists
-    if (resolvedUri.scheme?.startsWith("http") == true || resolvedUri.scheme == "rtmp" || resolvedUri.scheme == "ftp" || resolvedUri.scheme == "rtsp" || resolvedUri.scheme == "mms") {
+    if (resolvedUri.scheme?.startsWith("http") == true ||
+      resolvedUri.scheme == "rtmp" ||
+      resolvedUri.scheme == "ftp" ||
+      resolvedUri.scheme == "rtsp" ||
+      resolvedUri.scheme == "mms"
+    ) {
       return "" to ""
     }
 
@@ -4149,16 +4405,22 @@ class PlayerViewModel(
 
       // Get duration
       val durationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-      val durationStr = if (durationMs != null) {
-        formatDuration(durationMs.toLong())
-      } else ""
+      val durationStr =
+        if (durationMs != null) {
+          formatDuration(durationMs.toLong())
+        } else {
+          ""
+        }
 
       // Get resolution
       val width = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
       val height = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-      val resolutionStr = if (width != null && height != null) {
-        "${width}x${height}"
-      } else ""
+      val resolutionStr =
+        if (width != null && height != null) {
+          "${width}x$height"
+        } else {
+          ""
+        }
 
       durationStr to resolutionStr
     } catch (e: Exception) {
@@ -4179,115 +4441,137 @@ class PlayerViewModel(
    */
   private fun getVideoMetadataFromMediaStore(uri: Uri): Pair<String, String>? {
     return try {
-      val projection = arrayOf(
-        android.provider.MediaStore.Video.Media.DURATION,
-        android.provider.MediaStore.Video.Media.WIDTH,
-        android.provider.MediaStore.Video.Media.HEIGHT,
-        android.provider.MediaStore.Video.Media.DATA
-      )
+      val projection =
+        arrayOf(
+          android.provider.MediaStore.Video.Media.DURATION,
+          android.provider.MediaStore.Video.Media.WIDTH,
+          android.provider.MediaStore.Video.Media.HEIGHT,
+          android.provider.MediaStore.Video.Media.DATA,
+        )
 
       // Determine the query URI based on the input URI scheme
-      val queryUri = when (uri.scheme) {
-        "content" -> {
-          // If it's already a content URI, use it directly
-          if (uri.toString().startsWith(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI.toString())) {
-            uri
-          } else {
-            // Try to find by path if available
+      val queryUri =
+        when (uri.scheme) {
+          "content" -> {
+            // If it's already a content URI, use it directly
+            if (uri.toString().startsWith(
+                android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                  .toString(),
+              )
+            ) {
+              uri
+            } else {
+              // Try to find by path if available
+              null
+            }
+          }
+          "file" -> {
+            // For file:// URIs, query by path
             null
           }
+          else -> null
         }
-        "file" -> {
-          // For file:// URIs, query by path
-          null
-        }
-        else -> null
-      }
 
       // Query by URI if we have a content URI
       if (queryUri != null) {
-        host.context.contentResolver.query(
-          queryUri,
-          projection,
-          null,
-          null,
-          null
-        )?.use { cursor ->
-          if (cursor.moveToFirst()) {
-            val durationColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.DURATION)
-            val widthColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.WIDTH)
-            val heightColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.HEIGHT)
+        host.context.contentResolver
+          .query(
+            queryUri,
+            projection,
+            null,
+            null,
+            null,
+          )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+              val durationColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.DURATION)
+              val widthColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.WIDTH)
+              val heightColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.HEIGHT)
 
-            val durationMs = if (durationColumn >= 0) cursor.getLong(durationColumn) else 0L
-            val width = if (widthColumn >= 0) cursor.getInt(widthColumn) else 0
-            val height = if (heightColumn >= 0) cursor.getInt(heightColumn) else 0
+              val durationMs = if (durationColumn >= 0) cursor.getLong(durationColumn) else 0L
+              val width = if (widthColumn >= 0) cursor.getInt(widthColumn) else 0
+              val height = if (heightColumn >= 0) cursor.getInt(heightColumn) else 0
 
-            val durationStr = formatDuration(durationMs)
+              val durationStr = formatDuration(durationMs)
 
-            val resolutionStr = if (width > 0 && height > 0) {
-              "${width}x${height}"
-            } else ""
+              val resolutionStr =
+                if (width > 0 && height > 0) {
+                  "${width}x$height"
+                } else {
+                  ""
+                }
 
-            return durationStr to resolutionStr
+              return durationStr to resolutionStr
+            }
           }
-        }
       }
 
       // Query by file path if we have a file:// URI or content URI without direct match
-      val filePath = when (uri.scheme) {
-        "file" -> uri.path
-        "content" -> {
-          // Try to get the file path from content URI
-          host.context.contentResolver.query(
-            uri,
-            arrayOf(android.provider.MediaStore.Video.Media.DATA),
-            null,
-            null,
-            null
-          )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-              val dataColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.DATA)
-              if (dataColumn >= 0) cursor.getString(dataColumn) else null
-            } else null
+      val filePath =
+        when (uri.scheme) {
+          "file" -> uri.path
+          "content" -> {
+            // Try to get the file path from content URI
+            host.context.contentResolver
+              .query(
+                uri,
+                arrayOf(android.provider.MediaStore.Video.Media.DATA),
+                null,
+                null,
+                null,
+              )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                  val dataColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.DATA)
+                  if (dataColumn >= 0) cursor.getString(dataColumn) else null
+                } else {
+                  null
+                }
+              }
           }
+          else -> null
         }
-        else -> null
-      }
 
       if (filePath != null) {
         val selection = "${android.provider.MediaStore.Video.Media.DATA} = ?"
         val selectionArgs = arrayOf(filePath)
 
-        host.context.contentResolver.query(
-          android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-          projection,
-          selection,
-          selectionArgs,
-          null
-        )?.use { cursor ->
-          if (cursor.moveToFirst()) {
-            val durationColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.DURATION)
-            val widthColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.WIDTH)
-            val heightColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.HEIGHT)
+        host.context.contentResolver
+          .query(
+            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            null,
+          )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+              val durationColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.DURATION)
+              val widthColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.WIDTH)
+              val heightColumn = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.HEIGHT)
 
-            val durationMs = if (durationColumn >= 0) cursor.getLong(durationColumn) else 0L
-            val width = if (widthColumn >= 0) cursor.getInt(widthColumn) else 0
-            val height = if (heightColumn >= 0) cursor.getInt(heightColumn) else 0
+              val durationMs = if (durationColumn >= 0) cursor.getLong(durationColumn) else 0L
+              val width = if (widthColumn >= 0) cursor.getInt(widthColumn) else 0
+              val height = if (heightColumn >= 0) cursor.getInt(heightColumn) else 0
 
-            val durationStr = formatDuration(durationMs)
+              val durationStr = formatDuration(durationMs)
 
-            val resolutionStr = if (width > 0 && height > 0) {
-              "${width}x${height}"
-            } else ""
+              val resolutionStr =
+                if (width > 0 && height > 0) {
+                  "${width}x$height"
+                } else {
+                  ""
+                }
 
-            return durationStr to resolutionStr
+              return durationStr to resolutionStr
+            }
           }
-        }
       }
 
       null
     } catch (e: Exception) {
-      android.util.Log.w("PlayerViewModel", "Failed to get metadata from MediaStore for $uri, will try MediaMetadataRetriever", e)
+      android.util.Log.w(
+        "PlayerViewModel",
+        "Failed to get metadata from MediaStore for $uri, will try MediaMetadataRetriever",
+        e,
+      )
       null
     }
   }
@@ -4310,14 +4594,15 @@ class PlayerViewModel(
     }
   }
 
-
-
   fun playPlaylistItem(index: Int) {
     val activity = host as? PlayerActivity ?: return
     activity.playPlaylistItem(index)
   }
 
-  fun reorderPlaylistItem(from: Int, to: Int) {
+  fun reorderPlaylistItem(
+    from: Int,
+    to: Int,
+  ) {
     val activity = host as? PlayerActivity ?: return
     activity.movePlaylistItem(from, to)
   }
@@ -4351,64 +4636,74 @@ class PlayerViewModel(
    * Uses batched updates to avoid O(n²) complexity with large playlists.
    * Skips metadata extraction for M3U playlists (network streams).
    */
-  private fun loadPlaylistMetadataAsync(items: List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>) {
+  private fun loadPlaylistMetadataAsync(
+    items: List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem>,
+  ) {
     playlistMetadataJob?.cancel()
-    playlistMetadataJob = viewModelScope.launch(Dispatchers.IO) {
-      // Skip metadata extraction for M3U playlists only if they contain network streams
-      val activity = host as? PlayerActivity
-      if (activity?.isCurrentPlaylistM3U() == true) {
-        val hasNetworkStreams = activity.playlist.any { uri ->
-          val scheme = uri.scheme?.lowercase()
-          scheme == "http" || scheme == "https" || scheme == "davs" || scheme == "smb" || scheme == "ftp" || scheme == "sftp"
+    playlistMetadataJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        // Skip metadata extraction for M3U playlists only if they contain network streams
+        val activity = host as? PlayerActivity
+        if (activity?.isCurrentPlaylistM3U() == true) {
+          val hasNetworkStreams =
+            activity.playlist.any { uri ->
+              val scheme = uri.scheme?.lowercase()
+              scheme == "http" ||
+                scheme == "https" ||
+                scheme == "davs" ||
+                scheme == "smb" ||
+                scheme == "ftp" ||
+                scheme == "sftp"
+            }
+          if (hasNetworkStreams) {
+            Log.d(TAG, "Skipping metadata extraction for M3U playlist with network streams")
+            return@launch
+          }
         }
-        if (hasNetworkStreams) {
-          Log.d(TAG, "Skipping metadata extraction for M3U playlist with network streams")
-          return@launch
+
+        val metadataItems =
+          activity?.let { currentActivity ->
+            if (items.size <= PLAYLIST_METADATA_PREFETCH_LIMIT) {
+              items
+            } else {
+              val currentIndex = currentActivity.playlistIndex.coerceIn(0, items.lastIndex)
+              val startIndex = maxOf(0, currentIndex - PLAYLIST_METADATA_PREFETCH_RADIUS)
+              val endIndex = minOf(items.lastIndex, currentIndex + PLAYLIST_METADATA_PREFETCH_RADIUS)
+              items.subList(startIndex, endIndex + 1)
+            }
+          } ?: items
+
+        // Limit concurrent metadata extraction to avoid overwhelming resources
+        val batchSize = 5
+        metadataItems.chunked(batchSize).forEach { batch ->
+          val updates = mutableMapOf<String, Pair<String, String>>()
+
+          // Extract metadata for the batch
+          batch.forEach { item ->
+            val cacheKey = item.uri.toString()
+
+            // Skip if already in cache (LruCache is thread-safe)
+            if (metadataCache.get(cacheKey) == null) {
+              // Extract metadata
+              val (durationStr, resolutionStr) = getVideoMetadata(item.uri)
+
+              // Update cache and track update
+              updateMetadataCache(cacheKey, durationStr to resolutionStr)
+              updates[cacheKey] = durationStr to resolutionStr
+            }
+          }
+
+          // Apply all batched updates at once (single playlist update)
+          if (updates.isNotEmpty()) {
+            _playlistItems.value =
+              _playlistItems.value.map { currentItem ->
+                val cacheKey = currentItem.uri.toString()
+                val (durationStr, resolutionStr) = updates[cacheKey] ?: return@map currentItem
+                currentItem.copy(duration = durationStr, resolution = resolutionStr)
+              }
+          }
         }
       }
-
-      val metadataItems =
-        activity?.let { currentActivity ->
-          if (items.size <= PLAYLIST_METADATA_PREFETCH_LIMIT) {
-            items
-          } else {
-            val currentIndex = currentActivity.playlistIndex.coerceIn(0, items.lastIndex)
-            val startIndex = maxOf(0, currentIndex - PLAYLIST_METADATA_PREFETCH_RADIUS)
-            val endIndex = minOf(items.lastIndex, currentIndex + PLAYLIST_METADATA_PREFETCH_RADIUS)
-            items.subList(startIndex, endIndex + 1)
-          }
-        } ?: items
-
-      // Limit concurrent metadata extraction to avoid overwhelming resources
-      val batchSize = 5
-      metadataItems.chunked(batchSize).forEach { batch ->
-        val updates = mutableMapOf<String, Pair<String, String>>()
-
-        // Extract metadata for the batch
-        batch.forEach { item ->
-          val cacheKey = item.uri.toString()
-
-          // Skip if already in cache (LruCache is thread-safe)
-          if (metadataCache.get(cacheKey) == null) {
-            // Extract metadata
-            val (durationStr, resolutionStr) = getVideoMetadata(item.uri)
-
-            // Update cache and track update
-            updateMetadataCache(cacheKey, durationStr to resolutionStr)
-            updates[cacheKey] = durationStr to resolutionStr
-          }
-        }
-
-        // Apply all batched updates at once (single playlist update)
-        if (updates.isNotEmpty()) {
-          _playlistItems.value = _playlistItems.value.map { currentItem ->
-            val cacheKey = currentItem.uri.toString()
-            val (durationStr, resolutionStr) = updates[cacheKey] ?: return@map currentItem
-            currentItem.copy(duration = durationStr, resolution = resolutionStr)
-          }
-        }
-      }
-    }
   }
 
   fun hasNext(): Boolean = (host as? PlayerActivity)?.hasNext() ?: false
@@ -4435,11 +4730,12 @@ class PlayerViewModel(
   fun cycleRepeatMode() {
     val hasPlaylist = (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
 
-    _repeatMode.value = when (_repeatMode.value) {
-      RepeatMode.OFF -> RepeatMode.ONE
-      RepeatMode.ONE -> if (hasPlaylist) RepeatMode.ALL else RepeatMode.OFF
-      RepeatMode.ALL -> RepeatMode.OFF
-    }
+    _repeatMode.value =
+      when (_repeatMode.value) {
+        RepeatMode.OFF -> RepeatMode.ONE
+        RepeatMode.ONE -> if (hasPlaylist) RepeatMode.ALL else RepeatMode.OFF
+        RepeatMode.ALL -> RepeatMode.OFF
+      }
 
     // Persist the repeat mode
     playerPreferences.repeatMode.set(_repeatMode.value)
@@ -4462,14 +4758,12 @@ class PlayerViewModel(
     playerUpdate.value = PlayerUpdates.Shuffle(_shuffleEnabled.value)
   }
 
-  fun shouldRepeatCurrentFile(): Boolean {
-    return _repeatMode.value == RepeatMode.ONE ||
+  fun shouldRepeatCurrentFile(): Boolean =
+    _repeatMode.value == RepeatMode.ONE ||
       (_repeatMode.value == RepeatMode.ALL && (host as? PlayerActivity)?.playlist?.isEmpty() == true)
-  }
 
-  fun shouldRepeatPlaylist(): Boolean {
-    return _repeatMode.value == RepeatMode.ALL && (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
-  }
+  fun shouldRepeatPlaylist(): Boolean =
+    _repeatMode.value == RepeatMode.ALL && (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
 
   // ==================== A-B Loop ====================
 
@@ -4525,7 +4819,12 @@ class PlayerViewModel(
     } else {
       MPVLib.command("vf", "remove", "@mpvrx_hflip")
     }
-    playerUpdate.value = PlayerUpdates.ShowText(host.context.getString(if (newMirrorState) R.string.player_horizontal_flip_on else R.string.player_horizontal_flip_off))
+    playerUpdate.value =
+      PlayerUpdates.ShowText(
+        host.context.getString(
+          if (newMirrorState) R.string.player_horizontal_flip_on else R.string.player_horizontal_flip_off,
+        ),
+      )
   }
 
   fun toggleVerticalFlip() {
@@ -4539,13 +4838,19 @@ class PlayerViewModel(
       MPVLib.command("vf", "remove", "@mpvrx_vflip")
     }
 
-    playerUpdate.value = PlayerUpdates.ShowText(host.context.getString(if (newState) R.string.player_vertical_flip_on else R.string.player_vertical_flip_off))
+    playerUpdate.value =
+      PlayerUpdates.ShowText(
+        host.context.getString(if (newState) R.string.player_vertical_flip_on else R.string.player_vertical_flip_off),
+      )
   }
 
   fun toggleHdrScreenOutput() {
     val nextMode =
-      if (_hdrScreenMode.value == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode
-      else HdrScreenMode.OFF
+      if (_hdrScreenMode.value == HdrScreenMode.OFF) {
+        HdrScreenMode.defaultEnabledMode
+      } else {
+        HdrScreenMode.OFF
+      }
     setHdrScreenMode(nextMode)
   }
 
@@ -4557,12 +4862,13 @@ class PlayerViewModel(
     decoderPreferences.hdrScreenMode.set(mode)
     decoderPreferences.hdrScreenOutput.set(mode != HdrScreenMode.OFF)
     applyHdrScreenOutput(mode)
-    playerUpdate.value = PlayerUpdates.ShowText(host.context.getString(R.string.hdr_screen_output_update, host.context.getString(mode.shortTitleRes)))
+    playerUpdate.value =
+      PlayerUpdates.ShowText(
+        host.context.getString(R.string.hdr_screen_output_update, host.context.getString(mode.shortTitleRes)),
+      )
   }
 
-  private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean {
-    return true
-  }
+  private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean = true
 
   private fun initialHdrScreenMode(): HdrScreenMode {
     val savedMode = decoderPreferences.hdrScreenMode.get()
@@ -4601,33 +4907,35 @@ class PlayerViewModel(
     decoderPreferences.anime4kMode.set(mode.name)
     viewModelScope.launch(Dispatchers.Default) {
       runCatching {
-        val shouldRefreshShaderStack = if (mode == Anime4KManager.Mode.OFF) {
-          clearAnime4KShaders()
-          true
-        } else {
-          val selection = selectRuntimeStableAnime4K(
-            mode = mode,
-            quality = decoderPreferences.anime4kQuality.get(),
-            context = host.context,
-          )
-          if (selection.mode == Anime4KManager.Mode.OFF) {
+        val shouldRefreshShaderStack =
+          if (mode == Anime4KManager.Mode.OFF) {
             clearAnime4KShaders()
             true
           } else {
-            anime4kManager.setPostFilters(
-              darken = decoderPreferences.anime4kDarken.get(),
-              thin = decoderPreferences.anime4kThin.get(),
-              deblur = decoderPreferences.anime4kDeblur.get(),
-            )
-            applyAnime4KShaderChain(anime4kManager, selection.mode, selection.quality).also { applied ->
-              if (applied) {
-                applyAnime4KStabilityOptions(
-                  useVulkan = MPVLib.getPropertyString("gpu-api") == "vulkan",
-                )
+            val selection =
+              selectRuntimeStableAnime4K(
+                mode = mode,
+                quality = decoderPreferences.anime4kQuality.get(),
+                context = host.context,
+              )
+            if (selection.mode == Anime4KManager.Mode.OFF) {
+              clearAnime4KShaders()
+              true
+            } else {
+              anime4kManager.setPostFilters(
+                darken = decoderPreferences.anime4kDarken.get(),
+                thin = decoderPreferences.anime4kThin.get(),
+                deblur = decoderPreferences.anime4kDeblur.get(),
+              )
+              applyAnime4KShaderChain(anime4kManager, selection.mode, selection.quality).also { applied ->
+                if (applied) {
+                  applyAnime4KStabilityOptions(
+                    useVulkan = MPVLib.getPropertyString("gpu-api") == "vulkan",
+                  )
+                }
               }
             }
           }
-        }
 
         if (shouldRefreshShaderStack) {
           restartHdrScreenOutputAndAmbientIfActive()
@@ -4647,7 +4955,10 @@ class PlayerViewModel(
     restartAmbientIfActive()
   }
 
-  private fun applyHdrToysMode(mode: HdrScreenMode, pipelineReady: Boolean) {
+  private fun applyHdrToysMode(
+    mode: HdrScreenMode,
+    pipelineReady: Boolean,
+  ) {
     val profile = mode.hdrToysProfile
     if (!pipelineReady || profile == null) {
       hdrToysManager.clear()
@@ -4701,10 +5012,11 @@ class PlayerViewModel(
     lastAmbientScaleX = -1.0
     lastAmbientScaleY = -1.0
     ambientDebounceJob?.cancel()
-    ambientDebounceJob = viewModelScope.launch(renderPrepDispatcher) {
-      delay(200)
-      updateAmbientStretch()
-    }
+    ambientDebounceJob =
+      viewModelScope.launch(renderPrepDispatcher) {
+        delay(200)
+        updateAmbientStretch()
+      }
   }
 
   /** Removes the old file-specific ambient shader while preserving the user's selected ambient mode. */
@@ -4726,15 +5038,16 @@ class PlayerViewModel(
       oldFile.delete()
     }
     ambientShaderFile = null
-    lastAmbientScaleX = -1.0         // Force scale recalculation
+    lastAmbientScaleX = -1.0 // Force scale recalculation
     lastAmbientScaleY = -1.0
-    lastCompiledSpec = null    // Invalidate cache — the old file is gone, must recompile
+    lastCompiledSpec = null // Invalidate cache — the old file is gone, must recompile
     // Small delay to let Anime4K shaders settle
     ambientDebounceJob?.cancel()
-    ambientDebounceJob = viewModelScope.launch(renderPrepDispatcher) {
-      delay(200)
-      updateAmbientStretch()
-    }
+    ambientDebounceJob =
+      viewModelScope.launch(renderPrepDispatcher) {
+        delay(200)
+        updateAmbientStretch()
+      }
   }
 
   fun updateAmbientVisualMode(mode: AmbientVisualMode) {
@@ -4759,7 +5072,7 @@ class PlayerViewModel(
     vignetteStrength: Float = _ambientVignetteStrength.value,
     warmth: Float = _ambientWarmth.value,
     fadeCurve: Float = _ambientFadeCurve.value,
-    opacity: Float = _ambientOpacity.value
+    opacity: Float = _ambientOpacity.value,
   ) {
     _ambientBlurSamples.value = blurSamples
     _ambientMaxRadius.value = maxRadius
@@ -4811,10 +5124,11 @@ class PlayerViewModel(
     if (!_isAmbientEnabled.value) return
 
     ambientDebounceJob?.cancel()
-    ambientDebounceJob = viewModelScope.launch(renderPrepDispatcher) {
-      delay(delayMs)
-      updateAmbientStretch()
-    }
+    ambientDebounceJob =
+      viewModelScope.launch(renderPrepDispatcher) {
+        delay(delayMs)
+        updateAmbientStretch()
+      }
   }
 
   private fun setAmbientSampleBudget(sampleBudget: Int) {
@@ -4969,8 +5283,8 @@ class PlayerViewModel(
 
       var vidW = (MPVLib.getPropertyInt("video-params/w") ?: 1920).toDouble()
       var vidH = (MPVLib.getPropertyInt("video-params/h") ?: 1080).toDouble()
-      val par  = MPVLib.getPropertyDouble("video-params/par") ?: 1.0
-      val rot  = MPVLib.getPropertyInt("video-params/rotate") ?: 0
+      val par = MPVLib.getPropertyDouble("video-params/par") ?: 1.0
+      val rot = MPVLib.getPropertyInt("video-params/rotate") ?: 0
 
       // Intercept autocrop boundaries — if a crop is active, use the cropped dimensions
       // so the shader's aspect-ratio math matches the actual visible video area
@@ -4986,10 +5300,14 @@ class PlayerViewModel(
       // Apply pixel aspect ratio (non-square pixels)
       vidW *= par
       // Swap dimensions for 90°/270° rotated videos (portrait shot stored as landscape)
-      if (rot == 90 || rot == 270) { val tmp = vidW; vidW = vidH; vidH = tmp }
+      if (rot == 90 || rot == 270) {
+        val tmp = vidW
+        vidW = vidH
+        vidH = tmp
+      }
 
       val screenAr = osdW.toDouble() / osdH.toDouble()
-      val vidAr    = vidW / vidH
+      val vidAr = vidW / vidH
 
       // Scale the video to fill the screen — the shader remaps it back to the
       // correct aspect ratio, so only the "overflow" area receives ambient glow.
@@ -4997,7 +5315,8 @@ class PlayerViewModel(
       val scaleY = if (vidAr > screenAr) vidAr / screenAr else 1.0
 
       if (Math.abs(scaleX - lastAmbientScaleX) > 0.001 ||
-          Math.abs(scaleY - lastAmbientScaleY) > 0.001) {
+        Math.abs(scaleY - lastAmbientScaleY) > 0.001
+      ) {
         lastAmbientScaleX = scaleX
         lastAmbientScaleY = scaleY
         MPVLib.setPropertyDouble("video-scale-x", scaleX)
@@ -5007,31 +5326,38 @@ class PlayerViewModel(
       MPVLib.setPropertyString("blend-subtitles", blendMode)
 
       // ── Snapshot current parameter values ─────────────────────────────────
-      val sx      = lastAmbientScaleX
-      val sy      = lastAmbientScaleY
+      val sx = lastAmbientScaleX
+      val sy = lastAmbientScaleY
       // Thermal-aware sample budget: cap shader complexity before the device enters
       // hard CPU/GPU throttling.  On a cool device this is a no-op.
       val rawSamples = _ambientBlurSamples.value
       val samples = ThermalMonitor.clampAmbientSampleBudget(rawSamples, thermalHeadroom)
-      val radius  = _ambientMaxRadius.value
-      val glow    = _ambientGlowIntensity.value
-      val sat     = _ambientSatBoost.value
-      val dither  = _ambientDitherNoise.value
-      val bezel   = _ambientBezelDepth.value
-      val vignette= _ambientVignetteStrength.value
-      val warmth  = _ambientWarmth.value
-      val curve   = _ambientFadeCurve.value
+      val radius = _ambientMaxRadius.value
+      val glow = _ambientGlowIntensity.value
+      val sat = _ambientSatBoost.value
+      val dither = _ambientDitherNoise.value
+      val bezel = _ambientBezelDepth.value
+      val vignette = _ambientVignetteStrength.value
+      val warmth = _ambientWarmth.value
+      val curve = _ambientFadeCurve.value
       val opacity = _ambientOpacity.value
 
       // ── Generate GLSL shader ───────────────────────────────────────────────
-      val spec = buildAmbientSpec(
-        sx = sx, sy = sy,
-        blurSamples = samples, maxRadius = radius,
-        glowIntensity = glow, satBoost = sat,
-        ditherNoise = dither, bezelDepth = bezel,
-        vignetteStrength = vignette, warmth = warmth,
-        fadeCurve = curve, opacity = opacity,
-      )
+      val spec =
+        buildAmbientSpec(
+          sx = sx,
+          sy = sy,
+          blurSamples = samples,
+          maxRadius = radius,
+          glowIntensity = glow,
+          satBoost = sat,
+          ditherNoise = dither,
+          bezelDepth = bezel,
+          vignetteStrength = vignette,
+          warmth = warmth,
+          fadeCurve = curve,
+          opacity = opacity,
+        )
 
       // ── Shader parameter cache ──────────────────────────────────────────────────────
       // Compare the AmbientShaderSpec data class (cheap equality) before building
@@ -5067,12 +5393,18 @@ class PlayerViewModel(
    * spec has actually changed from the last compiled version.
    */
   private fun buildAmbientSpec(
-    sx: Double, sy: Double,
-    blurSamples: Int, maxRadius: Float,
-    glowIntensity: Float, satBoost: Float,
-    ditherNoise: Float, bezelDepth: Float,
-    vignetteStrength: Float, warmth: Float,
-    fadeCurve: Float, opacity: Float,
+    sx: Double,
+    sy: Double,
+    blurSamples: Int,
+    maxRadius: Float,
+    glowIntensity: Float,
+    satBoost: Float,
+    ditherNoise: Float,
+    bezelDepth: Float,
+    vignetteStrength: Float,
+    warmth: Float,
+    fadeCurve: Float,
+    opacity: Float,
   ): AmbientShaderSpec {
     val context = AmbientRenderContext(scaleX = sx, scaleY = sy)
     val shared =
@@ -5145,7 +5477,6 @@ class PlayerViewModel(
 
     super.onCleared()
   }
-
 }
 
 // Extension functions

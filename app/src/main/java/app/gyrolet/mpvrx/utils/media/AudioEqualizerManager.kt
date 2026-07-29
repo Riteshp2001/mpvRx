@@ -36,7 +36,11 @@ class AudioEqualizerManager {
     }
   }
 
-  fun updateState(enabled: Boolean, bandGains: List<Int>, volumeBoostDb: Int) {
+  fun updateState(
+    enabled: Boolean,
+    bandGains: List<Int>,
+    volumeBoostDb: Int,
+  ) {
     if (!isInitialized) {
       initSession(0)
     }

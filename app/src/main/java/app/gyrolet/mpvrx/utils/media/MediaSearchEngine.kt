@@ -14,14 +14,14 @@ import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 private data class VideoIndex(
   val video: Video,
   val nameLower: String,
-  val tokens: List<String>
+  val tokens: List<String>,
 )
 
 // Holds pre-processed folder data for fast searching
 private data class FolderIndex(
   val folder: VideoFolder,
   val nameLower: String,
-  val tokens: List<String>
+  val tokens: List<String>,
 )
 
 object MediaSearchEngine {
@@ -32,34 +32,37 @@ object MediaSearchEngine {
   // -------------------------
   // INDEXING
   // -------------------------
+
   /**
    * Builds the search index. Call this ONCE when entering the search screen.
    * Pre-lowercasing and tokenizing here prevents expensive string operations during typing.
    */
   fun buildIndex(
     folders: List<VideoFolder>,
-    videosByFolder: Map<String, List<Video>>
+    videosByFolder: Map<String, List<Video>>,
   ) {
     videoMap.clear()
     folderMap.clear()
 
     for (folder in folders) {
       val name = folder.name
-      folderMap[folder.path] = FolderIndex(
-        folder = folder,
-        nameLower = name.lowercase(),
-        tokens = tokenize(name)
-      )
+      folderMap[folder.path] =
+        FolderIndex(
+          folder = folder,
+          nameLower = name.lowercase(),
+          tokens = tokenize(name),
+        )
 
       // Optimization: Skip folders with no videos to save memory and loop time
       val videos = videosByFolder[folder.bucketId] ?: continue
       for (video in videos) {
         val vName = video.displayName
-        videoMap[video.path] = VideoIndex(
-          video = video,
-          nameLower = vName.lowercase(),
-          tokens = tokenize(vName)
-        )
+        videoMap[video.path] =
+          VideoIndex(
+            video = video,
+            nameLower = vName.lowercase(),
+            tokens = tokenize(vName),
+          )
       }
     }
   }
@@ -67,17 +70,21 @@ object MediaSearchEngine {
   // -------------------------
   // SEARCH
   // -------------------------
+
   /**
-   * Searches the pre-built index. 
-   * Enforces left-to-right matching and filters out zero-score results before sorting 
+   * Searches the pre-built index.
+   * Enforces left-to-right matching and filters out zero-score results before sorting
    * to ensure maximum performance on every keystroke.
    */
-  fun search(query: String, limit: Int = 50): List<Any> {
+  fun search(
+    query: String,
+    limit: Int = 50,
+  ): List<Any> {
     if (query.isBlank()) return emptyList()
 
     val q = query.lowercase()
     val qTokens = tokenize(q)
-    
+
     // Optimization: Pre-allocate ArrayList capacity to avoid internal array resizing
     val results = ArrayList<Pair<Any, Int>>(videoMap.size + folderMap.size)
 
@@ -102,34 +109,35 @@ object MediaSearchEngine {
   // -------------------------
   // SCORING & HELPERS
   // -------------------------
+
   /**
-   * Calculates a relevance score. 
+   * Calculates a relevance score.
    * Enforces strict left-to-right matching for both full strings and individual tokens.   * Uses early exits to skip unnecessary calculations once a high score is achieved or a match fails.
    */
   private fun score(
     text: String,
     tokens: List<String>,
     query: String,
-    qTokens: List<String>
+    qTokens: List<String>,
   ): Int {
     // 1. Exact match: Highest possible score, return immediately
     if (text == query) return 1000
-    
+
     var score = 0
-    
+
     // 2. Strict left-to-right prefix match
     if (text.startsWith(query)) {
       score += 200
       // Optimization: If the query is long enough, a prefix match is practically perfect.
       // Skip the heavier token loops entirely to save CPU cycles.
-      if (query.length > 3) return score 
+      if (query.length > 3) return score
     }
 
     // 3. Token matching: Enforces strict left-to-right word order
     var lastMatchedIndex = -1
     for (qt in qTokens) {
       var found = false
-      
+
       // Only search for the current query token AFTER the previously matched token
       for (i in (lastMatchedIndex + 1) until tokens.size) {
         val t = tokens[i]
@@ -145,10 +153,10 @@ object MediaSearchEngine {
           break // Move to the next query token
         }
       }
-      
-      // Optimization: Early exit. If a query token is not found in the remaining text, 
+
+      // Optimization: Early exit. If a query token is not found in the remaining text,
       // the left-to-right sequence is broken. Stop checking and return current score.
-      if (!found) return score 
+      if (!found) return score
     }
 
     // 4. Sequential character match (fuzzy left-to-right, e.g., "bg prb" matches "big problem")
@@ -160,16 +168,18 @@ object MediaSearchEngine {
    * Splits text into searchable tokens.
    * Optimization: split() with vararg chars is significantly faster than Regex.
    */
-  private fun tokenize(text: String): List<String> {
-    return text.lowercase().split(' ', '_', '-', '.', '/').filter { it.isNotEmpty() }
-  }
+  private fun tokenize(text: String): List<String> =
+    text.lowercase().split(' ', '_', '-', '.', '/').filter { it.isNotEmpty() }
 
   /**
-   * Checks if the query characters appear in the text in the exact same order, 
+   * Checks if the query characters appear in the text in the exact same order,
    * even if other characters are between them (e.g., query "bg" matches "biG").
    * Optimization: Cached query.length to avoid repeated property access in the loop.
    */
-  private fun isSequentialMatch(text: String, query: String): Boolean {
+  private fun isSequentialMatch(
+    text: String,
+    query: String,
+  ): Boolean {
     var i = 0
     val qLen = query.length
     for (c in text) {

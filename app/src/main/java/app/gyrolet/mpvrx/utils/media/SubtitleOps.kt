@@ -8,8 +8,8 @@
 package app.gyrolet.mpvrx.utils.media
 
 import android.util.Log
-import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
+import app.gyrolet.mpvrx.repository.NetworkRepository
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -71,7 +71,7 @@ object SubtitleOps : KoinComponent {
   ) {
     try {
       Log.d(TAG, "Autoloading subtitles for network file: $videoFilePath")
-      
+
       // Get the network connection
       val connection = networkRepository.getConnectionById(networkConnectionId)
       if (connection == null) {
@@ -99,13 +99,14 @@ object SubtitleOps : KoinComponent {
       }
 
       val files = filesResult.getOrNull() ?: emptyList()
-      
+
       // Filter for subtitle files that match the video base name
-      val subtitles = files.filter { file ->
-        !file.isDirectory &&
-          isSubtitleFile(file.name) &&
-          file.name.substringBeforeLast('.').startsWith(baseName, ignoreCase = true)
-      }
+      val subtitles =
+        files.filter { file ->
+          !file.isDirectory &&
+            isSubtitleFile(file.name) &&
+            file.name.substringBeforeLast('.').startsWith(baseName, ignoreCase = true)
+        }
 
       if (subtitles.isEmpty()) {
         Log.d(TAG, "No matching subtitle files found for: $baseName")
@@ -116,34 +117,40 @@ object SubtitleOps : KoinComponent {
 
       // Load subtitles via proxy
       val proxy = NetworkStreamingProxy.getInstance()
-      
+
       // Dispatch JNI calls to the Main thread to prevent concurrent JNI usage/crashes.
       withContext(Dispatchers.Main) {
         subtitles.forEachIndexed { index, subtitle ->
           try {
             // Extract just the filename without path for display
             // Handle both forward slashes and backslashes
-            val displayName = subtitle.name
-              .substringAfterLast('/')
-              .substringAfterLast('\\')
-              .takeIf { it.isNotBlank() } ?: subtitle.name
+            val displayName =
+              subtitle.name
+                .substringAfterLast('/')
+                .substringAfterLast('\\')
+                .takeIf { it.isNotBlank() } ?: subtitle.name
 
-            Log.d(TAG, "Processing subtitle - name: '${subtitle.name}', displayName: '$displayName', path: '${subtitle.path}'")
+            Log.d(
+              TAG,
+              "Processing subtitle - name: '${subtitle.name}', displayName: '$displayName', path: '${subtitle.path}'",
+            )
 
             // Create a URL-safe filename for the streamId
-            val urlSafeFilename = displayName
-              .replace(" ", ".")
-              .replace(Regex("[^a-zA-Z0-9._-]"), "")
+            val urlSafeFilename =
+              displayName
+                .replace(" ", ".")
+                .replace(Regex("[^a-zA-Z0-9._-]"), "")
 
             // Register subtitle stream with proxy using the filename in streamId
             val streamId = urlSafeFilename
-            val proxyUrl = proxy.registerStream(
-              streamId = streamId,
-              connection = connection,
-              filePath = subtitle.path,
-              fileSize = subtitle.size,
-              mimeType = "text/plain",
-            )
+            val proxyUrl =
+              proxy.registerStream(
+                streamId = streamId,
+                connection = connection,
+                filePath = subtitle.path,
+                fileSize = subtitle.size,
+                mimeType = "text/plain",
+              )
 
             // Get current subtitle track count before adding
             val trackCountBefore = MPVLib.getPropertyInt("track-list/count") ?: 0
@@ -201,24 +208,49 @@ object SubtitleOps : KoinComponent {
 
   private fun isSubtitleFile(fileName: String): Boolean {
     val extension = fileName.substringAfterLast('.', "").lowercase(Locale.getDefault())
-    return extension in setOf(
-      // Common & modern
-      "srt", "vtt", "ass", "ssa",
-      // DVD / Blu-ray
-      "sub", "idx", "sup",
-      // Streaming / XML / Professional
-      "xml", "ttml", "dfxp", "itt", "ebu", "imsc", "usf",
-      // Online platforms
-      "sbv", "srv1", "srv2", "srv3", "json",
-      // Legacy & niche
-      "sami", "smi", "mpl", "pjs", "stl", "rt", "psb", "cap",
-      // Broadcast captions
-      "scc", "vttx",
-      // Karaoke / lyrics
-      "lrc", "krc",
-      // Fallback / raw text
-      "txt", "pgs"
-    )
+    return extension in
+      setOf(
+        // Common & modern
+        "srt",
+        "vtt",
+        "ass",
+        "ssa",
+        // DVD / Blu-ray
+        "sub",
+        "idx",
+        "sup",
+        // Streaming / XML / Professional
+        "xml",
+        "ttml",
+        "dfxp",
+        "itt",
+        "ebu",
+        "imsc",
+        "usf",
+        // Online platforms
+        "sbv",
+        "srv1",
+        "srv2",
+        "srv3",
+        "json",
+        // Legacy & niche
+        "sami",
+        "smi",
+        "mpl",
+        "pjs",
+        "stl",
+        "rt",
+        "psb",
+        "cap",
+        // Broadcast captions
+        "scc",
+        "vttx",
+        // Karaoke / lyrics
+        "lrc",
+        "krc",
+        // Fallback / raw text
+        "txt",
+        "pgs",
+      )
   }
 }
-

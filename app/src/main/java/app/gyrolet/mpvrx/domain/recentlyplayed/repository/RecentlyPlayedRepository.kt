@@ -68,4 +68,3 @@ interface RecentlyPlayedRepository {
     height: Int,
   )
 }
-

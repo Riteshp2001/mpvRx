@@ -38,15 +38,21 @@ sealed class ThumbnailStrategy {
     override val cacheKey: String = "first_frame"
   }
 
-  data class FrameAtPercentage(val percentage: Float = 0.33f) : ThumbnailStrategy() {
+  data class FrameAtPercentage(
+    val percentage: Float = 0.33f,
+  ) : ThumbnailStrategy() {
     override val cacheKey: String = "frame_$percentage"
   }
 
-  data class Hybrid(val percentage: Float = 0.33f) : ThumbnailStrategy() {
+  data class Hybrid(
+    val percentage: Float = 0.33f,
+  ) : ThumbnailStrategy() {
     override val cacheKey: String = "hybrid_$percentage"
   }
 
-  data class EmbeddedOrHybrid(val percentage: Float = 0.33f) : ThumbnailStrategy() {
+  data class EmbeddedOrHybrid(
+    val percentage: Float = 0.33f,
+  ) : ThumbnailStrategy() {
     override val cacheKey: String = "embedded_or_hybrid_$percentage"
   }
 
@@ -54,4 +60,3 @@ sealed class ThumbnailStrategy {
     override val cacheKey: String = "embedded_or_first_frame"
   }
 }
-

@@ -15,14 +15,14 @@ import android.graphics.Matrix
 import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.util.LruCache
+import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.preferences.ThumbnailMode
-import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import `is`.xyz.mpv.FastThumbnails
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,12 +45,12 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.max
 import kotlin.math.roundToInt
-import java.util.concurrent.ConcurrentHashMap
 
 class ThumbnailRepository(
   private val context: Context,
@@ -186,8 +186,9 @@ class ThumbnailRepository(
         memoryCache.get(key)
       }?.let { return@withContext it }
 
-      val decoded = readBitmapFromDisk(diskCacheKey(video), isNetworkUrl(video.path))
-        ?: return@withContext null
+      val decoded =
+        readBitmapFromDisk(diskCacheKey(video), isNetworkUrl(video.path))
+          ?: return@withContext null
       val scaled = scaleBitmap(decoded, widthPx, heightPx)
       synchronized(memoryCache) {
         memoryCache.put(key, scaled)
@@ -239,12 +240,13 @@ class ThumbnailRepository(
   ) {
     val videoSequence = videos.asSequence()
     val filteredVideos =
-      (if (appearancePreferences.showNetworkThumbnails.get()) {
-         videoSequence
-       } else {
-         videoSequence.filterNot { isNetworkUrl(it.path) }
-       })
-        .take(maxFolderBatchSize)
+      (
+        if (appearancePreferences.showNetworkThumbnails.get()) {
+          videoSequence
+        } else {
+          videoSequence.filterNot { isNetworkUrl(it.path) }
+        }
+      ).take(maxFolderBatchSize)
         .toList()
 
     if (filteredVideos.isEmpty()) {
@@ -292,8 +294,7 @@ class ThumbnailRepository(
                   async {
                     getThumbnail(filteredVideos[index], widthPx, heightPx)
                   }
-                }
-                .awaitAll()
+                }.awaitAll()
             }
             i = batchEnd
             state.nextIndex = i
@@ -348,7 +349,8 @@ class ThumbnailRepository(
     diskVideoBaseKeyCache[baseKey]?.let { return it }
 
     val artworkSignature =
-      EmbeddedArtworkCandidates.forVideoPath(video.path)
+      EmbeddedArtworkCandidates
+        .forVideoPath(video.path)
         .asSequence()
         .map(::File)
         .firstOrNull { it.isFile && it.canRead() }
@@ -397,19 +399,21 @@ class ThumbnailRepository(
     if (video.isAudio || video.path.isBlank()) return null
 
     val durationSeconds = video.duration.coerceAtLeast(0L) / 1000.0
-    val requestedPosition = when (mode) {
-      ThumbnailMode.FirstFrame, ThumbnailMode.EmbeddedThumbnail -> 0.0
-      ThumbnailMode.FrameAtPosition ->
-        durationSeconds * (browserPreferences.thumbnailFramePosition.get() / 100.0).coerceIn(0.0, 1.0)
-      ThumbnailMode.Smart -> durationSeconds * 0.33
-    }
+    val requestedPosition =
+      when (mode) {
+        ThumbnailMode.FirstFrame, ThumbnailMode.EmbeddedThumbnail -> 0.0
+        ThumbnailMode.FrameAtPosition ->
+          durationSeconds * (browserPreferences.thumbnailFramePosition.get() / 100.0).coerceIn(0.0, 1.0)
+        ThumbnailMode.Smart -> durationSeconds * 0.33
+      }
     val lastSafePosition = (durationSeconds - 0.1).coerceAtLeast(0.0)
-    val positions = when (mode) {
-      ThumbnailMode.Smart -> listOf(requestedPosition, 10.0, 20.0, 30.0)
-      else -> listOf(requestedPosition)
-    }.map { position ->
-      if (durationSeconds > 0.0) position.coerceIn(0.0, lastSafePosition) else position.coerceAtLeast(0.0)
-    }.distinct()
+    val positions =
+      when (mode) {
+        ThumbnailMode.Smart -> listOf(requestedPosition, 10.0, 20.0, 30.0)
+        else -> listOf(requestedPosition)
+      }.map { position ->
+        if (durationSeconds > 0.0) position.coerceIn(0.0, lastSafePosition) else position.coerceAtLeast(0.0)
+      }.distinct()
 
     var lastSolidBitmap: Bitmap? = null
     for (position in positions) {
@@ -441,10 +445,14 @@ class ThumbnailRepository(
     return lastSolidBitmap?.let { rotateNativeThumbnail(video, it) }
   }
 
-  private suspend fun rotateNativeThumbnail(video: Video, bitmap: Bitmap): Bitmap {
+  private suspend fun rotateNativeThumbnail(
+    video: Video,
+    bitmap: Bitmap,
+  ): Bitmap {
     val rotation =
       try {
-        app.gyrolet.mpvrx.utils.media.MediaInfoOps.getRotation(context, video.uri, video.displayName)
+        app.gyrolet.mpvrx.utils.media.MediaInfoOps
+          .getRotation(context, video.uri, video.displayName)
       } catch (cancellation: CancellationException) {
         bitmap.takeUnless { it.isRecycled }?.recycle()
         throw cancellation
@@ -453,29 +461,35 @@ class ThumbnailRepository(
       }
     if (rotation == 0) return bitmap
 
-    val rotated = Bitmap.createBitmap(
-      bitmap,
-      0,
-      0,
-      bitmap.width,
-      bitmap.height,
-      Matrix().apply { postRotate(rotation.toFloat()) },
-      true,
-    )
+    val rotated =
+      Bitmap.createBitmap(
+        bitmap,
+        0,
+        0,
+        bitmap.width,
+        bitmap.height,
+        Matrix().apply { postRotate(rotation.toFloat()) },
+        true,
+      )
     if (rotated !== bitmap && !bitmap.isRecycled) bitmap.recycle()
     return rotated
   }
 
-  private fun extractLocalVideoFrame(video: Video, widthPx: Int, heightPx: Int): Bitmap? =
+  private fun extractLocalVideoFrame(
+    video: Video,
+    widthPx: Int,
+    heightPx: Int,
+  ): Bitmap? =
     runCatching {
       val retriever = MediaMetadataRetriever()
       try {
         setLocalDataSource(retriever, video)
         extractFrameWithStrategy(
           retriever = retriever,
-          strategy = browserPreferences.thumbnailMode.get().toThumbnailStrategy(
-            browserPreferences.thumbnailFramePosition.get(),
-          ),
+          strategy =
+            browserPreferences.thumbnailMode.get().toThumbnailStrategy(
+              browserPreferences.thumbnailFramePosition.get(),
+            ),
           targetWidth = widthPx.takeIf { it > 0 },
           targetHeight = heightPx.takeIf { it > 0 },
           videoPath = video.path,
@@ -485,14 +499,20 @@ class ThumbnailRepository(
       }
     }.getOrNull()
 
-  private fun setLocalDataSource(retriever: MediaMetadataRetriever, video: Video) {
+  private fun setLocalDataSource(
+    retriever: MediaMetadataRetriever,
+    video: Video,
+  ) {
     when {
       video.path.isNotBlank() && !video.path.contains("://") -> retriever.setDataSource(video.path)
       else -> retriever.setDataSource(context, video.uri)
     }
   }
 
-  private fun readBitmapFromDisk(key: String, network: Boolean): Bitmap? =
+  private fun readBitmapFromDisk(
+    key: String,
+    network: Boolean,
+  ): Bitmap? =
     diskCacheLock.read {
       val file = File(if (network) networkDiskDir else localDiskDir, keyToFileName(key))
       if (!file.isFile) return@read null
@@ -510,7 +530,11 @@ class ThumbnailRepository(
       }.getOrNull()
     }
 
-  private fun writeBitmapToDisk(key: String, bitmap: Bitmap, network: Boolean) {
+  private fun writeBitmapToDisk(
+    key: String,
+    bitmap: Bitmap,
+    network: Boolean,
+  ) {
     val file = File(if (network) networkDiskDir else localDiskDir, keyToFileName(key))
     val encoded =
       runCatching {
@@ -533,7 +557,8 @@ class ThumbnailRepository(
   }
 
   private fun keyToFileName(key: String): String =
-    MessageDigest.getInstance("SHA-256")
+    MessageDigest
+      .getInstance("SHA-256")
       .digest(key.toByteArray())
       .joinToString("") { byte -> "%02x".format(byte) } + ".jpg"
 
@@ -553,12 +578,13 @@ class ThumbnailRepository(
 
     val scaledWidth = max(1, (bitmap.width * scale).roundToInt())
     val scaledHeight = max(1, (bitmap.height * scale).roundToInt())
-    val scaled = try {
-      Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
-    } catch (_: IllegalArgumentException) {
-      // Bitmap was recycled between the check and the scale call
-      return bitmap
-    }
+    val scaled =
+      try {
+        Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+      } catch (_: IllegalArgumentException) {
+        // Bitmap was recycled between the check and the scale call
+        return bitmap
+      }
     if (scaled != bitmap && !bitmap.isRecycled) {
       bitmap.recycle()
     }
@@ -629,25 +655,27 @@ class ThumbnailRepository(
       } else {
         null
       }
-    val timeUs = when (strategy) {
-      ThumbnailStrategy.FirstFrame -> 0L
-      is ThumbnailStrategy.FrameAtPercentage -> frameTimeMicros(retriever, strategy.percentage)
-      is ThumbnailStrategy.Hybrid, is ThumbnailStrategy.EmbeddedOrHybrid -> 0L
-      ThumbnailStrategy.EmbeddedOrFirstFrame -> 0L
-    }
+    val timeUs =
+      when (strategy) {
+        ThumbnailStrategy.FirstFrame -> 0L
+        is ThumbnailStrategy.FrameAtPercentage -> frameTimeMicros(retriever, strategy.percentage)
+        is ThumbnailStrategy.Hybrid, is ThumbnailStrategy.EmbeddedOrHybrid -> 0L
+        ThumbnailStrategy.EmbeddedOrFirstFrame -> 0L
+      }
 
     var shouldRotate = true
-    val raw = when (strategy) {
-      ThumbnailStrategy.EmbeddedOrFirstFrame ->
-        embeddedPicture?.also { shouldRotate = false }
-          ?: getFrameAt(retriever, timeUs, targetWidth, targetHeight)
-      ThumbnailStrategy.FirstFrame -> getFrameAt(retriever, 0L, targetWidth, targetHeight)
-      is ThumbnailStrategy.FrameAtPercentage -> getFrameAt(retriever, timeUs, targetWidth, targetHeight)
-      is ThumbnailStrategy.Hybrid -> decodeHybridFrame(retriever, strategy.percentage, targetWidth, targetHeight)
-      is ThumbnailStrategy.EmbeddedOrHybrid ->
-        embeddedPicture?.also { shouldRotate = false }
-          ?: decodeHybridFrame(retriever, strategy.percentage, targetWidth, targetHeight)
-    } ?: return null
+    val raw =
+      when (strategy) {
+        ThumbnailStrategy.EmbeddedOrFirstFrame ->
+          embeddedPicture?.also { shouldRotate = false }
+            ?: getFrameAt(retriever, timeUs, targetWidth, targetHeight)
+        ThumbnailStrategy.FirstFrame -> getFrameAt(retriever, 0L, targetWidth, targetHeight)
+        is ThumbnailStrategy.FrameAtPercentage -> getFrameAt(retriever, timeUs, targetWidth, targetHeight)
+        is ThumbnailStrategy.Hybrid -> decodeHybridFrame(retriever, strategy.percentage, targetWidth, targetHeight)
+        is ThumbnailStrategy.EmbeddedOrHybrid ->
+          embeddedPicture?.also { shouldRotate = false }
+            ?: decodeHybridFrame(retriever, strategy.percentage, targetWidth, targetHeight)
+      } ?: return null
 
     return if (shouldRotate) rotateBitmapIfNeeded(retriever, raw) else raw
   }
@@ -681,7 +709,14 @@ class ThumbnailRepository(
       return retriever.getFrameAtTime(timeUs)
     }
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-      runCatching { retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, w, h) }.getOrNull()
+      runCatching {
+        retriever.getScaledFrameAtTime(
+          timeUs,
+          MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+          w,
+          h,
+        )
+      }.getOrNull()
         ?: retriever.getFrameAtTime(timeUs)
     } else {
       retriever.getFrameAtTime(timeUs)
@@ -735,63 +770,66 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
     connection: NetworkConnection? = null,
-  ): Bitmap? = withContext(Dispatchers.IO) {
-    if (!appearancePreferences.showNetworkThumbnails.get()) return@withContext null
+  ): Bitmap? =
+    withContext(Dispatchers.IO) {
+      if (!appearancePreferences.showNetworkThumbnails.get()) return@withContext null
 
-    // For non-HTTP paths (SMB, FTP, WebDAV), use the proxy to create a local HTTP stream
-    if (!isHttpUrl(path)) {
-      return@withContext getNonHttpNetworkThumbnail(path, connection, widthPx, heightPx)
+      // For non-HTTP paths (SMB, FTP, WebDAV), use the proxy to create a local HTTP stream
+      if (!isHttpUrl(path)) {
+        return@withContext getNonHttpNetworkThumbnail(path, connection, widthPx, heightPx)
+      }
+
+      // Check if this network URL has previously failed all extraction strategies
+      val videoKey = path.hashCode().toString()
+      if (networkThumbnailFailed.containsKey(videoKey)) {
+        android.util.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
+        return@withContext null
+      }
+
+      val memKey = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}"
+      val diskKey = "video-thumb-v2|$path|network|${thumbnailModeKey()}|${thumbnailQualityKey()}"
+
+      // Memory cache hit
+      synchronized(memoryCache) { memoryCache.get(memKey) }?.let { return@withContext it }
+
+      // Disk cache hit
+      readBitmapFromDisk(diskKey, network = true)?.let { bitmap ->
+        val scaled = scaleBitmap(bitmap, widthPx, heightPx)
+        synchronized(memoryCache) { memoryCache.put(memKey, scaled) }
+        return@withContext scaled
+      }
+
+      val strategy =
+        browserPreferences.thumbnailMode.get().toThumbnailStrategy(
+          browserPreferences.thumbnailFramePosition.get(),
+        )
+
+      // Extract directly via MediaMetadataRetriever HTTP streaming (efficient — only seeks header bytes)
+      val bitmap =
+        networkGenerationSemaphore.withPermit {
+          (
+            extractNetworkVideoFrame(
+              url = path,
+              strategy = strategy,
+              targetWidth = widthPx.takeIf { it > 0 },
+              targetHeight = heightPx.takeIf { it > 0 },
+            ) ?: generateFastNetworkThumbnail(path, widthPx, heightPx)
+          )?.let { scaleBitmap(it, widthPx, heightPx) }
+        }
+
+      if (bitmap == null) {
+        android.util.Log.w("ThumbnailRepository", "All strategies failed for network stream $path")
+        networkThumbnailFailed[videoKey] = true
+        return@withContext null
+      }
+
+      // Write to disk cache
+      writeBitmapToDisk(diskKey, bitmap, network = true)
+
+      synchronized(memoryCache) { memoryCache.put(memKey, bitmap) }
+      _thumbnailReadyKeys.tryEmit(memKey)
+      bitmap
     }
-
-    // Check if this network URL has previously failed all extraction strategies
-    val videoKey = path.hashCode().toString()
-    if (networkThumbnailFailed.containsKey(videoKey)) {
-      android.util.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
-      return@withContext null
-    }
-
-    val memKey  = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}"
-    val diskKey = "video-thumb-v2|$path|network|${thumbnailModeKey()}|${thumbnailQualityKey()}"
-
-    // Memory cache hit
-    synchronized(memoryCache) { memoryCache.get(memKey) }?.let { return@withContext it }
-
-    // Disk cache hit
-    readBitmapFromDisk(diskKey, network = true)?.let { bitmap ->
-      val scaled = scaleBitmap(bitmap, widthPx, heightPx)
-      synchronized(memoryCache) { memoryCache.put(memKey, scaled) }
-      return@withContext scaled
-    }
-
-    val strategy =
-      browserPreferences.thumbnailMode.get().toThumbnailStrategy(
-        browserPreferences.thumbnailFramePosition.get(),
-      )
-
-    // Extract directly via MediaMetadataRetriever HTTP streaming (efficient — only seeks header bytes)
-    val bitmap = networkGenerationSemaphore.withPermit {
-      (extractNetworkVideoFrame(
-        url = path,
-        strategy = strategy,
-        targetWidth = widthPx.takeIf { it > 0 },
-        targetHeight = heightPx.takeIf { it > 0 },
-      ) ?: generateFastNetworkThumbnail(path, widthPx, heightPx))
-        ?.let { scaleBitmap(it, widthPx, heightPx) }
-    }
-
-    if (bitmap == null) {
-      android.util.Log.w("ThumbnailRepository", "All strategies failed for network stream $path")
-      networkThumbnailFailed[videoKey] = true
-      return@withContext null
-    }
-
-    // Write to disk cache
-    writeBitmapToDisk(diskKey, bitmap, network = true)
-
-    synchronized(memoryCache) { memoryCache.put(memKey, bitmap) }
-    _thumbnailReadyKeys.tryEmit(memKey)
-    bitmap
-  }
 
   private suspend fun getNonHttpNetworkThumbnail(
     path: String,
@@ -823,14 +861,16 @@ class ThumbnailRepository(
         browserPreferences.thumbnailFramePosition.get(),
       )
 
-    val bitmap = networkGenerationSemaphore.withPermit {
-      (if (connection != null) {
-          extractNetworkVideoFrameViaProxy(path, connection, strategy, widthPx, heightPx)
-        } else {
-          generateFastNetworkThumbnail(path, widthPx, heightPx)
-        })
-        ?.let { scaleBitmap(it, widthPx, heightPx) }
-    }
+    val bitmap =
+      networkGenerationSemaphore.withPermit {
+        (
+          if (connection != null) {
+            extractNetworkVideoFrameViaProxy(path, connection, strategy, widthPx, heightPx)
+          } else {
+            generateFastNetworkThumbnail(path, widthPx, heightPx)
+          }
+        )?.let { scaleBitmap(it, widthPx, heightPx) }
+      }
 
     if (bitmap == null) {
       android.util.Log.w("ThumbnailRepository", "All strategies failed for network path $path")
@@ -857,11 +897,12 @@ class ThumbnailRepository(
     val streamId = "thumb_${path.hashCode()}_${System.nanoTime()}"
 
     return try {
-      val localUrl = proxy.registerStream(
-        streamId = streamId,
-        connection = connection,
-        filePath = path,
-      )
+      val localUrl =
+        proxy.registerStream(
+          streamId = streamId,
+          connection = connection,
+          filePath = path,
+        )
 
       extractNetworkVideoFrame(
         url = localUrl,
@@ -879,8 +920,11 @@ class ThumbnailRepository(
   }
 
   /** The memory-cache key used by [getThumbnailForNetworkPath]. */
-  fun thumbnailKeyForNetworkPath(path: String, widthPx: Int, heightPx: Int): String =
-    "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}"
+  fun thumbnailKeyForNetworkPath(
+    path: String,
+    widthPx: Int,
+    heightPx: Int,
+  ): String = "$path|network|$widthPx|$heightPx|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
   /**
    * Get a thumbnail for a folder using the first video in the folder.
@@ -891,22 +935,23 @@ class ThumbnailRepository(
     videos: List<Video>,
     widthPx: Int,
     heightPx: Int,
-  ): Bitmap? = withContext(Dispatchers.IO) {
-    if (videos.isEmpty()) return@withContext null
+  ): Bitmap? =
+    withContext(Dispatchers.IO) {
+      if (videos.isEmpty()) return@withContext null
 
-    // Filter out network videos if network thumbnails are disabled
-    val filteredVideos =
-      if (appearancePreferences.showNetworkThumbnails.get()) {
-        videos
-      } else {
-        videos.filterNot { isNetworkUrl(it.path) }
-      }
+      // Filter out network videos if network thumbnails are disabled
+      val filteredVideos =
+        if (appearancePreferences.showNetworkThumbnails.get()) {
+          videos
+        } else {
+          videos.filterNot { isNetworkUrl(it.path) }
+        }
 
-    if (filteredVideos.isEmpty()) return@withContext null
+      if (filteredVideos.isEmpty()) return@withContext null
 
-    // Use the first video as the folder thumbnail
-    getThumbnail(filteredVideos.first(), widthPx, heightPx)
-  }
+      // Use the first video as the folder thumbnail
+      getThumbnail(filteredVideos.first(), widthPx, heightPx)
+    }
 
   private fun folderSignature(
     videos: List<Video>,
@@ -962,5 +1007,3 @@ class ThumbnailRepository(
       null
     }
 }
-
-

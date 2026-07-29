@@ -8,16 +8,14 @@
 package app.gyrolet.mpvrx.utils.permission
 
 import android.app.Activity
-import android.content.Context
 import android.content.ContentValues
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,7 +46,7 @@ import java.io.File
  */
 object PermissionUtils {
   private const val FILE_ACCESS_TAG = "FileAccessRequest"
-  
+
   private var mediaRequestLauncher: ActivityResultLauncher<IntentSenderRequest>? = null
   private var resultOkCallback: () -> Unit = {}
   private var resultCancelledCallback: () -> Unit = {}
@@ -88,14 +86,15 @@ object PermissionUtils {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || uris.isEmpty()) return true
     return withContext(Dispatchers.Main) {
       suspendCancellableCoroutine { continuation ->
-        val launcher = mediaRequestLauncher ?: run {
-          continuation.resumeWith(Result.success(false))
-          return@suspendCancellableCoroutine
-        }
+        val launcher =
+          mediaRequestLauncher ?: run {
+            continuation.resumeWith(Result.success(false))
+            return@suspendCancellableCoroutine
+          }
 
         resultOkCallback = { continuation.resumeWith(Result.success(true)) }
         resultCancelledCallback = { continuation.resumeWith(Result.success(false)) }
-        
+
         val pendingIntent = MediaStore.createWriteRequest(context.contentResolver, uris)
         launcher.launch(IntentSenderRequest.Builder(pendingIntent).build())
       }
@@ -109,19 +108,21 @@ object PermissionUtils {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || uris.isEmpty()) return true
     return withContext(Dispatchers.Main) {
       suspendCancellableCoroutine { continuation ->
-        val launcher = mediaRequestLauncher ?: run {
-          continuation.resumeWith(Result.success(false))
-          return@suspendCancellableCoroutine
-        }
+        val launcher =
+          mediaRequestLauncher ?: run {
+            continuation.resumeWith(Result.success(false))
+            return@suspendCancellableCoroutine
+          }
 
         resultOkCallback = { continuation.resumeWith(Result.success(true)) }
         resultCancelledCallback = { continuation.resumeWith(Result.success(false)) }
-        
+
         val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
         launcher.launch(IntentSenderRequest.Builder(pendingIntent).build())
       }
     }
   }
+
   /**
    * Returns READ_EXTERNAL_STORAGE permission for all Android versions.
    * On Android 11+, MANAGE_EXTERNAL_STORAGE provides full file access.
@@ -471,4 +472,3 @@ object PermissionUtils {
       }
   }
 }
-

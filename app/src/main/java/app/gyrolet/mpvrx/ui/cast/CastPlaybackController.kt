@@ -71,12 +71,18 @@ class CastPlaybackController(
 
   private val sessionListener =
     object : SessionManagerListener<CastSession> {
-      override fun onSessionStarted(session: CastSession, sessionId: String) {
+      override fun onSessionStarted(
+        session: CastSession,
+        sessionId: String,
+      ) {
         onSessionReady(session)
         loadCurrentMedia(session)
       }
 
-      override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
+      override fun onSessionResumed(
+        session: CastSession,
+        wasSuspended: Boolean,
+      ) {
         onSessionReady(session)
         val remote = session.remoteMediaClient
         if (remote?.mediaInfo != null) {
@@ -97,7 +103,10 @@ class CastPlaybackController(
         }
       }
 
-      override fun onSessionEnded(session: CastSession, error: Int) {
+      override fun onSessionEnded(
+        session: CastSession,
+        error: Int,
+      ) {
         CastMediaServer.stop()
         stopPositionPolling()
         if (transferredByThisController) {
@@ -113,18 +122,32 @@ class CastPlaybackController(
         _castState.value = CastSessionState()
       }
 
-      override fun onSessionStartFailed(session: CastSession, error: Int) {
+      override fun onSessionStartFailed(
+        session: CastSession,
+        error: Int,
+      ) {
         CastMediaServer.stop()
         notifyUser("Could not connect to Cast device")
       }
 
-      override fun onSessionResumeFailed(session: CastSession, error: Int) {
+      override fun onSessionResumeFailed(
+        session: CastSession,
+        error: Int,
+      ) {
         CastMediaServer.stop()
       }
 
       override fun onSessionStarting(session: CastSession) = Unit
-      override fun onSessionResuming(session: CastSession, sessionId: String) = Unit
-      override fun onSessionSuspended(session: CastSession, reason: Int) = Unit
+
+      override fun onSessionResuming(
+        session: CastSession,
+        sessionId: String,
+      ) = Unit
+
+      override fun onSessionSuspended(
+        session: CastSession,
+        reason: Int,
+      ) = Unit
     }
 
   private val remoteMediaClientCallback =
@@ -201,21 +224,22 @@ class CastPlaybackController(
 
   fun seekTo(positionMs: Long) {
     remoteMediaClient?.seek(
-      MediaSeekOptions.Builder().setPosition(positionMs.coerceAtLeast(0L)).build()
+      MediaSeekOptions.Builder().setPosition(positionMs.coerceAtLeast(0L)).build(),
     )
   }
 
   fun setVolume(volume: Double) {
     volumeDebounceJob?.cancel()
-    volumeDebounceJob = scope.launch {
-      delay(300)
-      try {
-        castSession?.volume = volume.coerceIn(0.0, 1.0)
-        _castState.update { it.copy(volume = volume.coerceIn(0.0, 1.0)) }
-      } catch (e: Exception) {
-        Log.w(TAG, "Failed to set cast volume", e)
+    volumeDebounceJob =
+      scope.launch {
+        delay(300)
+        try {
+          castSession?.volume = volume.coerceIn(0.0, 1.0)
+          _castState.update { it.copy(volume = volume.coerceIn(0.0, 1.0)) }
+        } catch (e: Exception) {
+          Log.w(TAG, "Failed to set cast volume", e)
+        }
       }
-    }
   }
 
   fun setPlaybackSpeed(speed: Float) {
@@ -260,28 +284,31 @@ class CastPlaybackController(
       } else {
         MediaMetadata.MEDIA_TYPE_MOVIE
       }
-    val metadata = MediaMetadata(metadataType).apply {
-      putString(MediaMetadata.KEY_TITLE, snapshot.title)
-    }
+    val metadata =
+      MediaMetadata(metadataType).apply {
+        putString(MediaMetadata.KEY_TITLE, snapshot.title)
+      }
     val mediaInfo =
-      MediaInfo.Builder(contentUrl)
+      MediaInfo
+        .Builder(contentUrl)
         .setStreamType(
           if (snapshot.durationMs > 0L) MediaInfo.STREAM_TYPE_BUFFERED else MediaInfo.STREAM_TYPE_LIVE,
-        )
-        .setContentType(contentType)
+        ).setContentType(contentType)
         .setMetadata(metadata)
         .setStreamDuration(snapshot.durationMs.coerceAtLeast(0L))
         .build()
     val request =
-      MediaLoadRequestData.Builder()
+      MediaLoadRequestData
+        .Builder()
         .setMediaInfo(mediaInfo)
         .setAutoplay(snapshot.isPlaying)
         .setCurrentTime(snapshot.positionMs.coerceAtLeast(0L))
         .build()
-    val remote = session.remoteMediaClient ?: run {
-      notifyUser("Cast receiver is not ready")
-      return
-    }
+    val remote =
+      session.remoteMediaClient ?: run {
+        notifyUser("Cast receiver is not ready")
+        return
+      }
 
     remote.load(request).setResultCallback { result ->
       activity.runOnUiThread {
@@ -311,12 +338,13 @@ class CastPlaybackController(
 
   private fun startPositionPolling() {
     stopPositionPolling()
-    positionPollingJob = scope.launch {
-      while (true) {
-        delay(1_000)
-        updatePositionFromRemote()
+    positionPollingJob =
+      scope.launch {
+        while (true) {
+          delay(1_000)
+          updatePositionFromRemote()
+        }
       }
-    }
   }
 
   private fun stopPositionPolling() {

@@ -8,7 +8,6 @@
 package app.gyrolet.mpvrx.utils.media
 
 import android.content.Context
-import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 
 private const val SUBTITLES_DIRECTORY_NAME = "Subtitles"
@@ -44,13 +43,14 @@ fun resolveSubtitleLookupDirectories(
     return listOf(root)
   }
 
-  val directories = buildList {
-    runCatching { root.findFile(SUBTITLES_DIRECTORY_NAME) }
-      .getOrNull()
-      ?.takeIf { it.exists() && it.isDirectory }
-      ?.let(::add)
-    add(root)
-  }
+  val directories =
+    buildList {
+      runCatching { root.findFile(SUBTITLES_DIRECTORY_NAME) }
+        .getOrNull()
+        ?.takeIf { it.exists() && it.isDirectory }
+        ?.let(::add)
+      add(root)
+    }
 
   return directories.distinctBy { it.uri.toString() }
 }

@@ -54,4 +54,3 @@ interface NetworkConnectionDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertAll(connections: List<NetworkConnection>)
 }
-

@@ -88,4 +88,3 @@ private val SharedPreferences.keyFlow
         unregisterOnSharedPreferenceChangeListener(listener)
       }
     }
-

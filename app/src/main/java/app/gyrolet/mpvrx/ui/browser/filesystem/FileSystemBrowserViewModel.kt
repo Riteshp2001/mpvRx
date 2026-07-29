@@ -27,7 +27,6 @@ import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
 import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -154,11 +153,11 @@ class FileSystemBrowserViewModel(
     // Refresh on global media library changes
     // Similar to Fossify's media scan completion listener
     viewModelScope.launch(Dispatchers.IO) {
-        MediaLibraryEvents.changes.collectLatest {
-          MediaFileRepository.invalidateTreeCache()
-          loadCurrentDirectory()
-        }
+      MediaLibraryEvents.changes.collectLatest {
+        MediaFileRepository.invalidateTreeCache()
+        loadCurrentDirectory()
       }
+    }
 
     viewModelScope.launch(Dispatchers.IO) {
       PlaybackStateEvents.changes.collectLatest {
@@ -191,8 +190,7 @@ class FileSystemBrowserViewModel(
         appearancePreferences.unplayedOldVideoDays.changes(),
       ) { showLabels, thresholdDays ->
         showLabels to thresholdDays
-      }
-        .drop(1)
+      }.drop(1)
         .collectLatest {
           loadCurrentDirectory()
         }
@@ -244,11 +242,26 @@ class FileSystemBrowserViewModel(
 
       if (folder.exists() && folder.isDirectory) {
         // Scan all video files in the folder
-        val videoFiles = folder.listFiles { file ->
-          file.isFile && file.extension.lowercase() in listOf(
-            "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "3gp", "mpg", "mpeg", "ts", "m2ts"
-          )
-        }
+        val videoFiles =
+          folder.listFiles { file ->
+            file.isFile &&
+              file.extension.lowercase() in
+              listOf(
+                "mp4",
+                "mkv",
+                "avi",
+                "mov",
+                "wmv",
+                "flv",
+                "webm",
+                "m4v",
+                "3gp",
+                "mpg",
+                "mpeg",
+                "ts",
+                "m2ts",
+              )
+          }
 
         if (!videoFiles.isNullOrEmpty()) {
           val filePaths = videoFiles.map { it.absolutePath }.toTypedArray()
@@ -385,7 +398,10 @@ class FileSystemBrowserViewModel(
     return super.renameVideo(video, newDisplayName)
   }
 
-  suspend fun renameFolder(folder: FileSystemItem.Folder, newName: String): Boolean {
+  suspend fun renameFolder(
+    folder: FileSystemItem.Folder,
+    newName: String,
+  ): Boolean {
     val src = File(folder.path)
     val dst = File(src.parent ?: return false, newName)
     if (dst.exists()) return false
@@ -435,8 +451,7 @@ class FileSystemBrowserViewModel(
               path,
               showAllFileTypes = false,
               forceFileSystemCheck = forceFileSystemCheck,
-            )
-            .onSuccess { items ->
+            ).onSuccess { items ->
               // Get previous count for this path
               val previousCount = itemCountByPath[path] ?: 0
 
@@ -459,35 +474,37 @@ class FileSystemBrowserViewModel(
               Log.d(TAG, "Loaded directory: $path with $folderCount folders, $videoCount videos")
 
               // Enrich videos with metadata if chips are enabled
-              val enrichedItems = if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
-                Log.d(TAG, "Metadata chips enabled, enriching $videoCount videos")
-                val videoFiles = items.filterIsInstance<FileSystemItem.VideoFile>()
-                val videos = videoFiles.map { it.video }
-                val enrichedVideos = MetadataRetrieval.enrichVideosIfNeeded(
-                  context = getApplication(),
-                  videos = videos,
-                  browserPreferences = browserPreferences,
-                  metadataCache = metadataCache
-                )
-                
-                // Replace videos in items with enriched versions
-                val enrichedVideoMap = enrichedVideos.associateBy { it.id }
-                items.map { item ->
-                  when (item) {
-                    is FileSystemItem.VideoFile -> {
-                      val enrichedVideo = enrichedVideoMap[item.video.id]
-                      if (enrichedVideo != null) {
-                        item.copy(video = enrichedVideo)
-                      } else {
-                        item
+              val enrichedItems =
+                if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
+                  Log.d(TAG, "Metadata chips enabled, enriching $videoCount videos")
+                  val videoFiles = items.filterIsInstance<FileSystemItem.VideoFile>()
+                  val videos = videoFiles.map { it.video }
+                  val enrichedVideos =
+                    MetadataRetrieval.enrichVideosIfNeeded(
+                      context = getApplication(),
+                      videos = videos,
+                      browserPreferences = browserPreferences,
+                      metadataCache = metadataCache,
+                    )
+
+                  // Replace videos in items with enriched versions
+                  val enrichedVideoMap = enrichedVideos.associateBy { it.id }
+                  items.map { item ->
+                    when (item) {
+                      is FileSystemItem.VideoFile -> {
+                        val enrichedVideo = enrichedVideoMap[item.video.id]
+                        if (enrichedVideo != null) {
+                          item.copy(video = enrichedVideo)
+                        } else {
+                          item
+                        }
                       }
+                      else -> item
                     }
-                    else -> item
                   }
+                } else {
+                  items
                 }
-              } else {
-                items
-              }
 
               _unsortedItems.value = enrichedItems
 
@@ -556,4 +573,3 @@ class FileSystemBrowserViewModel(
     Log.d(TAG, "Loaded playback info for ${playbackMap.size} videos with progress")
   }
 }
-

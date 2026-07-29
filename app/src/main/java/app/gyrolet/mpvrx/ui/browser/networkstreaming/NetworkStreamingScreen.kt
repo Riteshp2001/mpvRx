@@ -7,12 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
-import androidx.compose.ui.res.stringResource
-import app.gyrolet.mpvrx.R
-
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,6 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,7 +37,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,22 +45,25 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.cards.NetworkConnectionCard
+import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddConnectionSheet
 import app.gyrolet.mpvrx.ui.browser.dialogs.EditConnectionSheet
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.serialization.Serializable
@@ -96,14 +94,14 @@ object NetworkStreamingScreen : Screen {
     )
 
     Scaffold(
-        topBar = {
-          BrowserTopBar(
-            title = stringResource(R.string.ui_network),
-            isInSelectionMode = false,
-            selectedCount = 0,
-            totalCount = 0,
-            onBackClick = null, // No back button for network screen (root tab)
-            onCancelSelection = { },
+      topBar = {
+        BrowserTopBar(
+          title = stringResource(R.string.ui_network),
+          isInSelectionMode = false,
+          selectedCount = 0,
+          totalCount = 0,
+          onBackClick = null, // No back button for network screen (root tab)
+          onCancelSelection = { },
           onSortClick = null,
           // Search functionality disabled for production
           onSearchClick = null,
@@ -127,141 +125,160 @@ object NetworkStreamingScreen : Screen {
           ExtendedFloatingActionButton(
             onClick = { showAddSheet = true },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
-            text = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_connection)) },
-            modifier = Modifier.padding(bottom = navigationBarHeight)
+            text = {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_add_connection),
+              )
+            },
+            modifier = Modifier.padding(bottom = navigationBarHeight),
           )
         }
       },
     ) { padding ->
       LazyColumn(
         state = listState,
-        modifier = Modifier
-          .fillMaxSize()
-          .padding(padding),
-        contentPadding = PaddingValues(
-          start = 16.dp, 
-          end = 16.dp, 
-          top = 16.dp, 
-          bottom = navigationBarHeight
-        ),
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .padding(padding),
+        contentPadding =
+          PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            bottom = navigationBarHeight,
+          ),
       ) {
-          // Section 1: Stream Link
-          item {
-            StreamLinkSection(
-              onPlayLink = { url ->
-                MediaUtils.playFile(url, context, "network_stream")
-              },
-            )
-          }
+        // Section 1: Stream Link
+        item {
+          StreamLinkSection(
+            onPlayLink = { url ->
+              MediaUtils.playFile(url, context, "network_stream")
+            },
+          )
+        }
 
-          // Syncplay
-          item {
-            Spacer(modifier = Modifier.height(24.dp))
-            var showSyncplaySheet by remember { mutableStateOf(false) }
+        // Syncplay
+        item {
+          Spacer(modifier = Modifier.height(24.dp))
+          var showSyncplaySheet by remember { mutableStateOf(false) }
 
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.SpaceBetween,
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Text(
-                text = stringResource(R.string.syncplay_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(vertical = 8.dp),
-              )
-              Button(onClick = { showSyncplaySheet = true }) {
-                Text(stringResource(R.string.syncplay_open))
-              }
-            }
-
-            if (showSyncplaySheet) {
-              SyncplaySheet(onDismiss = { showSyncplaySheet = false })
-            }
-          }
-
-          // Section 2: Local Network header
-          item {
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_local_network),
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              text = stringResource(R.string.syncplay_title),
               style = MaterialTheme.typography.titleLarge,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.primary,
               modifier = Modifier.padding(vertical = 8.dp),
             )
+            Button(onClick = { showSyncplaySheet = true }) {
+              Text(stringResource(R.string.syncplay_open))
+            }
           }
 
-          // Show empty state or connection list
-          if (connections.isEmpty()) {
-            item {
-              Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                  containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-              ) {
-                Column(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                  horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                  Icon(
-                    imageVector = Icons.RoundedFilled.SignalWifiStatusbarConnectedNoInternet4,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                  )
-                  Spacer(modifier = Modifier.height(16.dp))
-                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_network_connections),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface, // a
-                  )
-                  Spacer(modifier = Modifier.height(8.dp))
-                  Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_smb_ftp_or_webdav_connections_to_browse_network_files),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                  )
-                }
-              }
-            }
-          } else {
-            items(connections, key = { it.id }) { connection ->
-              val status = connectionStatuses[connection.id]
-              NetworkConnectionCard(
-                connection = connection,
-                onConnect = { conn ->
-                  viewModel.connect(conn)
-                },
-                onDisconnect = { conn -> viewModel.disconnect(conn) },
-                onEdit = { conn -> editingConnection = conn },
-                onDelete = { conn -> viewModel.deleteConnection(conn) },
-                onBrowse = { conn ->
-                  // Navigate to browser screen if connected
-                  if (status?.isConnected == true) {
-                    backstack.add(
-                      NetworkBrowserScreen(
-                        connectionId = conn.id,
-                        connectionName = conn.name,
-                        currentPath = "/",  // Always start at root - conn.path is already included in connection
-                      ),
-                    )
-                  }
-                },
-                onAutoConnectChange = { conn, autoConnect ->
-                  viewModel.updateConnection(conn.copy(autoConnect = autoConnect))
-                },
-                isConnected = status?.isConnected ?: false,
-                isConnecting = status?.isConnecting ?: false,
-                error = status?.error,
-                modifier = Modifier.padding(bottom = 16.dp),
-              )
-            }
+          if (showSyncplaySheet) {
+            SyncplaySheet(onDismiss = { showSyncplaySheet = false })
           }
         }
+
+        // Section 2: Local Network header
+        item {
+          Spacer(modifier = Modifier.height(24.dp))
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_local_network),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 8.dp),
+          )
+        }
+
+        // Show empty state or connection list
+        if (connections.isEmpty()) {
+          item {
+            Card(
+              modifier = Modifier.fillMaxWidth(),
+              colors =
+                CardDefaults.cardColors(
+                  containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+              Column(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.SignalWifiStatusbarConnectedNoInternet4,
+                  contentDescription = null,
+                  modifier = Modifier.size(48.dp),
+                  tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                  text =
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_no_network_connections),
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = FontWeight.Bold,
+                  color = MaterialTheme.colorScheme.onSurface, // a
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                  text =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_add_smb_ftp_or_webdav_connections_to_browse_network_files,
+                    ),
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  textAlign = TextAlign.Center,
+                )
+              }
+            }
+          }
+        } else {
+          items(connections, key = { it.id }) { connection ->
+            val status = connectionStatuses[connection.id]
+            NetworkConnectionCard(
+              connection = connection,
+              onConnect = { conn ->
+                viewModel.connect(conn)
+              },
+              onDisconnect = { conn -> viewModel.disconnect(conn) },
+              onEdit = { conn -> editingConnection = conn },
+              onDelete = { conn -> viewModel.deleteConnection(conn) },
+              onBrowse = { conn ->
+                // Navigate to browser screen if connected
+                if (status?.isConnected == true) {
+                  backstack.add(
+                    NetworkBrowserScreen(
+                      connectionId = conn.id,
+                      connectionName = conn.name,
+                      currentPath = "/", // Always start at root - conn.path is already included in connection
+                    ),
+                  )
+                }
+              },
+              onAutoConnectChange = { conn, autoConnect ->
+                viewModel.updateConnection(conn.copy(autoConnect = autoConnect))
+              },
+              isConnected = status?.isConnected ?: false,
+              isConnecting = status?.isConnecting ?: false,
+              error = status?.error,
+              modifier = Modifier.padding(bottom = 16.dp),
+            )
+          }
+        }
+      }
 
       // Add Connection Sheet
       AddConnectionSheet(
@@ -290,9 +307,7 @@ object NetworkStreamingScreen : Screen {
 }
 
 @Composable
-private fun StreamLinkSection(
-  onPlayLink: (String) -> Unit,
-) {
+private fun StreamLinkSection(onPlayLink: (String) -> Unit) {
   val context = LocalContext.current
   val keyboardController = LocalSoftwareKeyboardController.current
   val playStreamContentDescription = stringResource(R.string.ui_play_stream)
@@ -303,7 +318,13 @@ private fun StreamLinkSection(
       context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
     val clipData = clipboardManager?.primaryClip
     if (clipData != null && clipData.itemCount > 0) {
-      val text = clipData.getItemAt(0).text?.toString()?.trim().orEmpty()
+      val text =
+        clipData
+          .getItemAt(0)
+          .text
+          ?.toString()
+          ?.trim()
+          .orEmpty()
       if (text.isNotBlank()) {
         linkUrl = text
       }
@@ -322,7 +343,10 @@ private fun StreamLinkSection(
   Column(
     modifier = Modifier.fillMaxWidth(),
   ) {
-    Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_stream_link),
+    Text(
+      text =
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.ui_stream_link),
       style = MaterialTheme.typography.titleLarge,
       fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.primary,
@@ -330,15 +354,17 @@ private fun StreamLinkSection(
     )
     Card(
       modifier = Modifier.fillMaxWidth(),
-      colors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-      ),
+      colors =
+        CardDefaults.cardColors(
+          containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
       shape = RoundedCornerShape(16.dp),
     ) {
       Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(4.dp),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         OutlinedTextField(
@@ -346,7 +372,10 @@ private fun StreamLinkSection(
           onValueChange = { linkUrl = it },
           modifier = Modifier.weight(1f),
           placeholder = {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_enter_stream_url),
+            Text(
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_enter_stream_url),
               color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             )
           },
@@ -365,7 +394,10 @@ private fun StreamLinkSection(
               IconButton(onClick = { pasteFromClipboard() }) {
                 Icon(
                   imageVector = Icons.RoundedFilled.ContentPaste,
-                  contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_paste_stream_url),
+                  contentDescription =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_paste_stream_url,
+                    ),
                   modifier = Modifier.size(18.dp),
                 )
               }
@@ -373,7 +405,10 @@ private fun StreamLinkSection(
                 IconButton(onClick = { linkUrl = "" }) {
                   Icon(
                     imageVector = Icons.RoundedFilled.Close,
-                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_clear_stream_url),
+                    contentDescription =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.ui_clear_stream_url,
+                      ),
                     modifier = Modifier.size(18.dp),
                   )
                 }
@@ -382,16 +417,18 @@ private fun StreamLinkSection(
           },
           singleLine = true,
           shape = RoundedCornerShape(14.dp),
-          colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-          ),
+          colors =
+            OutlinedTextFieldDefaults.colors(
+              focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+              unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+              focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+              unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
           keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-          keyboardActions = KeyboardActions(
-            onGo = { playCurrentLink() },
-          ),
+          keyboardActions =
+            KeyboardActions(
+              onGo = { playCurrentLink() },
+            ),
         )
         Spacer(modifier = Modifier.size(6.dp))
         Button(
@@ -399,12 +436,14 @@ private fun StreamLinkSection(
           enabled = linkUrl.isNotBlank(),
           contentPadding = PaddingValues(12.dp),
           shape = RoundedCornerShape(14.dp),
-          colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-          ),
-          modifier = Modifier.semantics {
-            contentDescription = playStreamContentDescription
-          },
+          colors =
+            ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.primary,
+            ),
+          modifier =
+            Modifier.semantics {
+              contentDescription = playStreamContentDescription
+            },
         ) {
           Icon(
             imageVector = Icons.RoundedFilled.PlayArrow,
@@ -416,7 +455,3 @@ private fun StreamLinkSection(
     }
   }
 }
-
-
-
-

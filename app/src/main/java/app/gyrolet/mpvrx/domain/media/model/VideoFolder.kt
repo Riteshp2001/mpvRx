@@ -19,4 +19,3 @@ data class VideoFolder(
   val totalDuration: Long = 0L, // in milliseconds
   val lastModified: Long = 0L,
 )
-

@@ -58,9 +58,10 @@ fun YtdlpPanel(
     }
   }
 
-  val qualityLabel = remember(ytdlQuality) {
-    if (ytdlQuality == -1) "Any" else "${ytdlQuality}p"
-  }
+  val qualityLabel =
+    remember(ytdlQuality) {
+      if (ytdlQuality == -1) "Any" else "${ytdlQuality}p"
+    }
 
   DraggablePanel(
     modifier = modifier,
@@ -68,268 +69,331 @@ fun YtdlpPanel(
       Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = MaterialTheme.spacing.medium)
-          .padding(top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.extraSmall),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.medium)
+            .padding(top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.extraSmall),
       ) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_yt_dlp_manager),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_yt_dlp_manager),
           style = MaterialTheme.typography.titleLarge,
-          fontWeight = FontWeight.Bold
+          fontWeight = FontWeight.Bold,
         )
         IconButton(onClick = onDismissRequest) {
           Icon(Icons.RoundedFilled.Close, null, modifier = Modifier.size(24.dp))
         }
       }
-    }
+    },
   ) {
     Column(
-      modifier = Modifier
-        .padding(MaterialTheme.spacing.medium)
-        .animateContentSize(),
+      modifier =
+        Modifier
+          .padding(MaterialTheme.spacing.medium)
+          .animateContentSize(),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
       // Settings Panel
-        
-        // Compact Status Indicator
-        Surface(
-          color = if (hasYtdlp) MaterialTheme.colorScheme.primaryContainer
-                  else MaterialTheme.colorScheme.errorContainer,
-          shape = RoundedCornerShape(16.dp),
-          tonalElevation = 0.dp,
-        ) {
-          Row(
-            modifier = Modifier
+
+      // Compact Status Indicator
+      Surface(
+        color =
+          if (hasYtdlp) {
+            MaterialTheme.colorScheme.primaryContainer
+          } else {
+            MaterialTheme.colorScheme.errorContainer
+          },
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 0.dp,
+      ) {
+        Row(
+          modifier =
+            Modifier
               .fillMaxWidth()
               .padding(horizontal = 16.dp, vertical = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+          Icon(
+            if (hasYtdlp) Icons.RoundedFilled.CheckCircle else Icons.RoundedFilled.CloudDownload,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint =
+              if (hasYtdlp) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+              } else {
+                MaterialTheme.colorScheme.onErrorContainer
+              },
+          )
+          Text(
+            text = if (hasYtdlp) "yt-dlp core is installed & active" else "yt-dlp core not installed",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color =
+              if (hasYtdlp) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+              } else {
+                MaterialTheme.colorScheme.onErrorContainer
+              },
+          )
+        }
+      }
+
+      // Quick Quality Chip Panel
+      val cardsColors = panelCardsColors()
+      Surface(
+        shape = MaterialTheme.shapes.large,
+        color = cardsColors.containerColor,
+        tonalElevation = 0.dp,
+        border =
+          BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+          ),
+      ) {
+        Column(
+          modifier = Modifier.padding(14.dp),
+          verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_quick_quality_selection),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall),
+          )
+          Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            modifier = Modifier.fillMaxWidth(),
           ) {
-            Icon(
-              if (hasYtdlp) Icons.RoundedFilled.CheckCircle else Icons.RoundedFilled.CloudDownload,
-              contentDescription = null,
-              modifier = Modifier.size(20.dp),
-              tint = if (hasYtdlp) MaterialTheme.colorScheme.onPrimaryContainer
-                     else MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-              text = if (hasYtdlp) "yt-dlp core is installed & active" else "yt-dlp core not installed",
-              style = MaterialTheme.typography.bodyMedium,
-              fontWeight = FontWeight.Bold,
-              color = if (hasYtdlp) MaterialTheme.colorScheme.onPrimaryContainer
-                      else MaterialTheme.colorScheme.onErrorContainer,
-            )
-          }
-        }
-
-        // Quick Quality Chip Panel
-        val cardsColors = panelCardsColors()
-        Surface(
-          shape = MaterialTheme.shapes.large,
-          color = cardsColors.containerColor,
-          tonalElevation = 0.dp,
-          border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-          ),
-        ) {
-          Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-          ) {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_quick_quality_selection),
-              style = MaterialTheme.typography.bodyMedium,
-              fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall),
-            )
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-              modifier = Modifier.fillMaxWidth()
-            ) {
-              val quickQualities = listOf(-1 to "Any", 1080 to "1080p", 720 to "720p", 480 to "480p")
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.weight(1f)
-              ) {
-                quickQualities.forEach { (level, label) ->
-                  FilterChip(
-                    selected = ytdlQuality == level,
-                    onClick = {
-                      ytdlPreferences.ytdlQuality.set(level)
-                      updateFormatString(ytdlPreferences)
-                    },
-                    label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                    leadingIcon = if (ytdlQuality == level) {
-                      { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(14.dp)) }
-                    } else null,
-                  )
-                }
-              }
-              
-              Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.padding(start = 4.dp)
-              ) {
-                Text(
-                  text = qualityLabel,
-                  modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                  style = MaterialTheme.typography.labelSmall,
-                  fontWeight = FontWeight.ExtraBold,
-                  color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-              }
-            }
-          }
-        }
-
-        Surface(
-          shape = MaterialTheme.shapes.large,
-          color = cardsColors.containerColor,
-          tonalElevation = 0.dp,
-          border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-          ),
-        ) {
-          Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-          ) {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_codec_preset),
-              style = MaterialTheme.typography.bodyMedium,
-              fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall),
-            )
+            val quickQualities = listOf(-1 to "Any", 1080 to "1080p", 720 to "720p", 480 to "480p")
             FlowRow(
               horizontalArrangement = Arrangement.spacedBy(6.dp),
               verticalArrangement = Arrangement.spacedBy(6.dp),
-              modifier = Modifier.fillMaxWidth()
+              modifier = Modifier.weight(1f),
             ) {
-              listOf(
-                YtdlCodecPreference.AUTO,
-                YtdlCodecPreference.H264,
-                YtdlCodecPreference.VP9,
-                YtdlCodecPreference.VP9_PROFILE2,
-                YtdlCodecPreference.AV1,
-              ).forEach { codec ->
+              quickQualities.forEach { (level, label) ->
                 FilterChip(
-                  selected = codecPreference == codec || (codec == YtdlCodecPreference.H264 && preferH264),
+                  selected = ytdlQuality == level,
                   onClick = {
-                    ytdlPreferences.codecPreference.set(codec)
-                    ytdlPreferences.preferH264.set(codec == YtdlCodecPreference.H264)
+                    ytdlPreferences.ytdlQuality.set(level)
                     updateFormatString(ytdlPreferences)
                   },
-                  label = { Text(codec.title, style = MaterialTheme.typography.labelSmall) },
-                  leadingIcon = if (codecPreference == codec) {
-                    { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(14.dp)) }
-                  } else null,
+                  label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                  leadingIcon =
+                    if (ytdlQuality == level) {
+                      { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(14.dp)) }
+                    } else {
+                      null
+                    },
                 )
               }
             }
+
+            Surface(
+              shape = RoundedCornerShape(12.dp),
+              color = MaterialTheme.colorScheme.secondaryContainer,
+              modifier = Modifier.padding(start = 4.dp),
+            ) {
+              Text(
+                text = qualityLabel,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+              )
+            }
           }
         }
+      }
 
-        // Subtitles Switches Card
-        Surface(
-          shape = MaterialTheme.shapes.large,
-          color = cardsColors.containerColor,
-          tonalElevation = 0.dp,
-          border = BorderStroke(
+      Surface(
+        shape = MaterialTheme.shapes.large,
+        color = cardsColors.containerColor,
+        tonalElevation = 0.dp,
+        border =
+          BorderStroke(
             1.dp,
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
           ),
+      ) {
+        Column(
+          modifier = Modifier.padding(14.dp),
+          verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
-          Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_codec_preset),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall),
+          )
+          FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
           ) {
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_quick_subtitle_config),
-              style = MaterialTheme.typography.bodyMedium,
-              fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall, bottom = 2.dp),
-            )
-            
-            // Subtitle download toggle
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-              Column(modifier = Modifier.weight(1f)) {
-                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_download_subtitles), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_fetch_subs_from_stream_sources), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-              }
-              Switch(
-                checked = writeSubs,
-                onCheckedChange = { ytdlPreferences.writeSubs.set(it) }
-              )
-            }
-            
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-            
-            // Auto subtitles toggle
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-              Column(modifier = Modifier.weight(1f)) {
-                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_generated_captions), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_include_auto_captions_transcripts), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-              }
-              Switch(
-                checked = writeAutoSubs,
-                onCheckedChange = { ytdlPreferences.writeAutoSubs.set(it) }
+            listOf(
+              YtdlCodecPreference.AUTO,
+              YtdlCodecPreference.H264,
+              YtdlCodecPreference.VP9,
+              YtdlCodecPreference.VP9_PROFILE2,
+              YtdlCodecPreference.AV1,
+            ).forEach { codec ->
+              FilterChip(
+                selected = codecPreference == codec || (codec == YtdlCodecPreference.H264 && preferH264),
+                onClick = {
+                  ytdlPreferences.codecPreference.set(codec)
+                  ytdlPreferences.preferH264.set(codec == YtdlCodecPreference.H264)
+                  updateFormatString(ytdlPreferences)
+                },
+                label = { Text(codec.title, style = MaterialTheme.typography.labelSmall) },
+                leadingIcon =
+                  if (codecPreference == codec) {
+                    { Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(14.dp)) }
+                  } else {
+                    null
+                  },
               )
             }
           }
         }
+      }
 
-        // Installer Buttons
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+      // Subtitles Switches Card
+      Surface(
+        shape = MaterialTheme.shapes.large,
+        color = cardsColors.containerColor,
+        tonalElevation = 0.dp,
+        border =
+          BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+          ),
+      ) {
+        Column(
+          modifier = Modifier.padding(14.dp),
+          verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-          Button(
-            onClick = {
-              scope.launch {
-                isRunning = true
-                YtdlpManager.runInstall(context) {}
-                isRunning = false
-              }
-            },
-            enabled = !isRunning,
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.weight(1f)
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_quick_subtitle_config),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall, bottom = 2.dp),
+          )
+
+          // Subtitle download toggle
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
           ) {
-            Icon(Icons.RoundedFilled.CloudDownload, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_install_core))
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_download_subtitles),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+              )
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_fetch_subs_from_stream_sources),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            Switch(
+              checked = writeSubs,
+              onCheckedChange = { ytdlPreferences.writeSubs.set(it) },
+            )
           }
 
-          OutlinedButton(
-            onClick = {
-              scope.launch {
-                isRunning = true
-                YtdlpManager.runUpdate(context) {}
-                isRunning = false
-              }
-            },
-            enabled = !isRunning && hasYtdlp,
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.weight(1f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+          HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+          // Auto subtitles toggle
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
           ) {
-            Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_update_core))
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_auto_generated_captions),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+              )
+              Text(
+                androidx.compose.ui.res.stringResource(
+                  app.gyrolet.mpvrx.R.string.ui_include_auto_captions_transcripts,
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            Switch(
+              checked = writeAutoSubs,
+              onCheckedChange = { ytdlPreferences.writeAutoSubs.set(it) },
+            )
           }
+        }
+      }
+
+      // Installer Buttons
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+      ) {
+        Button(
+          onClick = {
+            scope.launch {
+              isRunning = true
+              YtdlpManager.runInstall(context) {}
+              isRunning = false
+            }
+          },
+          enabled = !isRunning,
+          shape = RoundedCornerShape(16.dp),
+          modifier = Modifier.weight(1f),
+        ) {
+          Icon(Icons.RoundedFilled.CloudDownload, null, modifier = Modifier.size(18.dp))
+          Spacer(Modifier.width(8.dp))
+          Text(
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_install_core),
+          )
+        }
+
+        OutlinedButton(
+          onClick = {
+            scope.launch {
+              isRunning = true
+              YtdlpManager.runUpdate(context) {}
+              isRunning = false
+            }
+          },
+          enabled = !isRunning && hasYtdlp,
+          shape = RoundedCornerShape(16.dp),
+          modifier = Modifier.weight(1f),
+          border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
+          Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
+          Spacer(Modifier.width(8.dp))
+          Text(
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_update_core),
+          )
+        }
       }
     }
   }

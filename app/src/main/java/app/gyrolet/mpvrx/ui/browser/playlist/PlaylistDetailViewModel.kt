@@ -18,17 +18,17 @@ import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
+import app.gyrolet.mpvrx.ui.player.extractLocalPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
-import app.gyrolet.mpvrx.ui.player.extractLocalPath
-import kotlinx.coroutines.withContext
 
 data class PlaylistVideoItem(
   val playlistItem: PlaylistItemEntity,
@@ -104,23 +104,26 @@ class PlaylistDetailViewModel(
             } else {
               // For regular playlists, use the existing logic with MediaFileRepository
               // Get unique bucket IDs from playlist items' parent folders
-              val bucketIds = items.map { item ->
-                File(item.filePath).parent ?: ""
-              }.toSet()
+              val bucketIds =
+                items
+                  .map { item ->
+                    File(item.filePath).parent ?: ""
+                  }.toSet()
 
               // Get all videos from those folders (uses cache)
               val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
 
               // Match videos by path, maintaining playlist order
-              val videoItems = items.mapNotNull { item ->
-                val matchedVideo = allVideos.find { video -> video.path == item.filePath }
-                if (matchedVideo != null) {
-                  PlaylistVideoItem(item, matchedVideo)
-                } else {
-                  Log.w(TAG, "Video not found for path: ${item.filePath}")
-                  null
+              val videoItems =
+                items.mapNotNull { item ->
+                  val matchedVideo = allVideos.find { video -> video.path == item.filePath }
+                  if (matchedVideo != null) {
+                    PlaylistVideoItem(item, matchedVideo)
+                  } else {
+                    Log.w(TAG, "Video not found for path: ${item.filePath}")
+                    null
+                  }
                 }
-              }
 
               Log.d(TAG, "Loaded ${videoItems.size} videos out of ${items.size} playlist items")
               _videoItems.value = videoItems
@@ -156,15 +159,18 @@ class PlaylistDetailViewModel(
           _videoItems.value = buildM3UVideoItems(playlist, items)
         } else {
           // For regular playlists, use existing logic
-          val bucketIds = items.map { item ->
-            File(item.filePath).parent ?: ""
-          }.toSet()
+          val bucketIds =
+            items
+              .map { item ->
+                File(item.filePath).parent ?: ""
+              }.toSet()
           val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
-          val videoItems = items.mapNotNull { item ->
-            allVideos.find { video -> video.path == item.filePath }?.let { video ->
-              PlaylistVideoItem(item, video)
+          val videoItems =
+            items.mapNotNull { item ->
+              allVideos.find { video -> video.path == item.filePath }?.let { video ->
+                PlaylistVideoItem(item, video)
+              }
             }
-          }
           _videoItems.value = videoItems
         }
       } else {
@@ -198,11 +204,17 @@ class PlaylistDetailViewModel(
     playlistRepository.removeItemsFromPlaylist(itemsToRemove)
   }
 
-  suspend fun updatePlayHistory(filePath: String, position: Long = 0) {
+  suspend fun updatePlayHistory(
+    filePath: String,
+    position: Long = 0,
+  ) {
     playlistRepository.updatePlayHistory(playlistId, filePath, position)
   }
 
-  suspend fun reorderPlaylistItems(fromIndex: Int, toIndex: Int) {
+  suspend fun reorderPlaylistItems(
+    fromIndex: Int,
+    toIndex: Int,
+  ) {
     val currentItems = _videoItems.value.toMutableList()
     if (fromIndex < 0 || fromIndex >= currentItems.size || toIndex < 0 || toIndex >= currentItems.size) {
       return
@@ -218,14 +230,13 @@ class PlaylistDetailViewModel(
     playlistRepository.reorderPlaylistItems(playlistId, newOrder)
   }
 
-  suspend fun refreshM3UPlaylist(): Result<Unit> {
-    return try {
+  suspend fun refreshM3UPlaylist(): Result<Unit> =
+    try {
       _isLoading.value = true
       playlistRepository.refreshM3UPlaylist(playlistId)
     } finally {
       _isLoading.value = false
     }
-  }
 
   suspend fun toggleFavorite(itemId: Int) {
     playlistRepository.toggleFavorite(itemId)
@@ -234,69 +245,78 @@ class PlaylistDetailViewModel(
   private suspend fun buildM3UVideoItems(
     playlist: PlaylistEntity?,
     items: List<PlaylistItemEntity>,
-  ): List<PlaylistVideoItem> = withContext(Dispatchers.IO) {
-    items.mapNotNull { item ->
-      try {
-        val isNetwork = item.filePath.startsWith("http://", ignoreCase = true) ||
-            item.filePath.startsWith("https://", ignoreCase = true) ||
-            item.filePath.startsWith("rtmp://", ignoreCase = true) ||
-            item.filePath.startsWith("rtsp://", ignoreCase = true) ||
-            item.filePath.startsWith("ftp://", ignoreCase = true) ||
-            item.filePath.startsWith("sftp://", ignoreCase = true) ||
-            item.filePath.startsWith("smb://", ignoreCase = true)
-        
-        var resolvedVideo: Video? = null
-        val localPath = if (!isNetwork) {
-          if (item.filePath.startsWith("content://") || item.filePath.startsWith("file://")) {
-            android.net.Uri.parse(item.filePath).extractLocalPath()
-          } else {
-            item.filePath
-          }
-        } else null
+  ): List<PlaylistVideoItem> =
+    withContext(Dispatchers.IO) {
+      items.mapNotNull { item ->
+        try {
+          val isNetwork =
+            item.filePath.startsWith("http://", ignoreCase = true) ||
+              item.filePath.startsWith("https://", ignoreCase = true) ||
+              item.filePath.startsWith("rtmp://", ignoreCase = true) ||
+              item.filePath.startsWith("rtsp://", ignoreCase = true) ||
+              item.filePath.startsWith("ftp://", ignoreCase = true) ||
+              item.filePath.startsWith("sftp://", ignoreCase = true) ||
+              item.filePath.startsWith("smb://", ignoreCase = true)
 
-        if (localPath != null) {
-          val file = File(localPath)
-          if (file.exists()) {
-            val videos = MediaFileRepository.getVideosFromFiles(getApplication(), listOf(file))
-            resolvedVideo = videos.firstOrNull()?.copy(
-              id = item.id.toLong()
+          var resolvedVideo: Video? = null
+          val localPath =
+            if (!isNetwork) {
+              if (item.filePath.startsWith("content://") || item.filePath.startsWith("file://")) {
+                android.net.Uri
+                  .parse(item.filePath)
+                  .extractLocalPath()
+              } else {
+                item.filePath
+              }
+            } else {
+              null
+            }
+
+          if (localPath != null) {
+            val file = File(localPath)
+            if (file.exists()) {
+              val videos = MediaFileRepository.getVideosFromFiles(getApplication(), listOf(file))
+              resolvedVideo =
+                videos.firstOrNull()?.copy(
+                  id = item.id.toLong(),
+                )
+            }
+          }
+
+          val fallbackPath = localPath ?: item.filePath
+          val fallbackUri =
+            if (localPath != null) {
+              android.net.Uri.fromFile(File(localPath))
+            } else {
+              android.net.Uri.parse(item.filePath)
+            }
+
+          val video =
+            resolvedVideo ?: Video(
+              id = item.id.toLong(),
+              title = item.fileName,
+              displayName = item.fileName,
+              path = fallbackPath,
+              uri = fallbackUri,
+              duration = 0L,
+              durationFormatted = "--",
+              size = 0L,
+              sizeFormatted = "--",
+              dateModified = item.addedAt,
+              dateAdded = item.addedAt,
+              mimeType = "video/*",
+              bucketId = "m3u_playlist_$playlistId",
+              bucketDisplayName = playlist?.name ?: "M3U Playlist",
+              width = 0,
+              height = 0,
+              fps = 0f,
+              resolution = "--",
             )
-          }
+          PlaylistVideoItem(item, video)
+        } catch (e: Exception) {
+          Log.w(TAG, "Failed to create video item for URL: ${item.filePath}", e)
+          null
         }
-        
-        val fallbackPath = localPath ?: item.filePath
-        val fallbackUri = if (localPath != null) {
-          android.net.Uri.fromFile(File(localPath))
-        } else {
-          android.net.Uri.parse(item.filePath)
-        }
-
-        val video = resolvedVideo ?: Video(
-          id = item.id.toLong(),
-          title = item.fileName,
-          displayName = item.fileName,
-          path = fallbackPath,
-          uri = fallbackUri,
-          duration = 0L,
-          durationFormatted = "--",
-          size = 0L,
-          sizeFormatted = "--",
-          dateModified = item.addedAt,
-          dateAdded = item.addedAt,
-          mimeType = "video/*",
-          bucketId = "m3u_playlist_$playlistId",
-          bucketDisplayName = playlist?.name ?: "M3U Playlist",
-          width = 0,
-          height = 0,
-          fps = 0f,
-          resolution = "--",
-        )
-        PlaylistVideoItem(item, video)
-      } catch (e: Exception) {
-        Log.w(TAG, "Failed to create video item for URL: ${item.filePath}", e)
-        null
       }
     }
-  }
 }
-

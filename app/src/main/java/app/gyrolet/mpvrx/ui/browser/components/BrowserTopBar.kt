@@ -7,9 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.components
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
-import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -45,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.LocalThemeTransitionState
 import kotlinx.coroutines.delay
@@ -154,67 +151,76 @@ private fun NormalTopBar(
   val darkTheme = isSystemInDarkTheme()
   val themeTransition = LocalThemeTransitionState.current
   val coroutineScope = rememberCoroutineScope()
-  
+
   // Track title bounds for animation position
   val titleBounds = remember { mutableStateOf(Rect.Zero) }
-  
+
   // Helper function to toggle dark mode
   fun toggleDarkMode() {
     when (darkMode) {
-      DarkMode.System -> if (darkTheme) {
-        preferences.darkMode.set(DarkMode.Light)
-      } else {
-        preferences.darkMode.set(DarkMode.Dark)
-      }
-      DarkMode.Light -> if (darkTheme) {
-        preferences.darkMode.set(DarkMode.System)
-      } else {
-        preferences.darkMode.set(DarkMode.Dark)
-      }
-      DarkMode.Dark -> if (darkTheme) {
-        preferences.darkMode.set(DarkMode.Light)
-      } else {
-        preferences.darkMode.set(DarkMode.System)
-      }
+      DarkMode.System ->
+        if (darkTheme) {
+          preferences.darkMode.set(DarkMode.Light)
+        } else {
+          preferences.darkMode.set(DarkMode.Dark)
+        }
+      DarkMode.Light ->
+        if (darkTheme) {
+          preferences.darkMode.set(DarkMode.System)
+        } else {
+          preferences.darkMode.set(DarkMode.Dark)
+        }
+      DarkMode.Dark ->
+        if (darkTheme) {
+          preferences.darkMode.set(DarkMode.Light)
+        } else {
+          preferences.darkMode.set(DarkMode.System)
+        }
     }
   }
 
   TopAppBar(
-    colors = colors ?: TopAppBarDefaults.topAppBarColors(
-      containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
-        Color.Black
-      } else {
-        MaterialTheme.colorScheme.surfaceContainer
-      },
-    ),
+    colors =
+      colors ?: TopAppBarDefaults.topAppBarColors(
+        containerColor =
+          if (MaterialTheme.colorScheme.background == Color.Black) {
+            Color.Black
+          } else {
+            MaterialTheme.colorScheme.surfaceContainer
+          },
+      ),
     title = {
-      val titleModifier = Modifier
-        .onGloballyPositioned { coordinates ->
-          titleBounds.value = coordinates.boundsInWindow()
-        }
-        .pointerInput(onTitleLongPress) {
-          detectTapGestures(
-            onTap = { localOffset ->
-              // Don't allow theme change if animation is in progress
-              if (themeTransition?.isAnimating == true) return@detectTapGestures
-              
-              // Calculate window position for circular reveal
-              val windowOffset = Offset(
-                titleBounds.value.left + localOffset.x,
-                titleBounds.value.top + localOffset.y
-              )
-              themeTransition?.startTransition(windowOffset)
-              // Delay theme change to allow overlay to display first
-              coroutineScope.launch {
-                delay(50)
-                toggleDarkMode()
-              }
-            },
-            onLongPress = if (onTitleLongPress != null) {
-              { onTitleLongPress() }
-            } else null
-          )
-        }
+      val titleModifier =
+        Modifier
+          .onGloballyPositioned { coordinates ->
+            titleBounds.value = coordinates.boundsInWindow()
+          }.pointerInput(onTitleLongPress) {
+            detectTapGestures(
+              onTap = { localOffset ->
+                // Don't allow theme change if animation is in progress
+                if (themeTransition?.isAnimating == true) return@detectTapGestures
+
+                // Calculate window position for circular reveal
+                val windowOffset =
+                  Offset(
+                    titleBounds.value.left + localOffset.x,
+                    titleBounds.value.top + localOffset.y,
+                  )
+                themeTransition?.startTransition(windowOffset)
+                // Delay theme change to allow overlay to display first
+                coroutineScope.launch {
+                  delay(50)
+                  toggleDarkMode()
+                }
+              },
+              onLongPress =
+                if (onTitleLongPress != null) {
+                  { onTitleLongPress() }
+                } else {
+                  null
+                },
+            )
+          }
 
       Text(
         title,
@@ -262,7 +268,10 @@ private fun NormalTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.Search,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.settings_search_title),
+            contentDescription =
+              androidx.compose.ui.res.stringResource(
+                app.gyrolet.mpvrx.R.string.settings_search_title,
+              ),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -288,7 +297,9 @@ private fun NormalTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.Settings,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_settings),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_settings),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -328,13 +339,15 @@ private fun SelectionTopBar(
   var showDropdown by remember { mutableStateOf(false) }
 
   TopAppBar(
-    colors = colors ?: TopAppBarDefaults.topAppBarColors(
-      containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
-        Color.Black
-      } else {
-        MaterialTheme.colorScheme.surfaceContainer
-      },
-    ),
+    colors =
+      colors ?: TopAppBarDefaults.topAppBarColors(
+        containerColor =
+          if (MaterialTheme.colorScheme.background == Color.Black) {
+            Color.Black
+          } else {
+            MaterialTheme.colorScheme.surfaceContainer
+          },
+      ),
     title = {
       Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -410,7 +423,9 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.PlayArrow,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.primary,
           )
@@ -424,7 +439,9 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.PushPin,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_pin_folders),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_pin_folders),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -439,7 +456,9 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.PlaylistAdd,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_to_playlist),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_add_to_playlist),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -510,7 +529,9 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.ContentCopy,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_copy_path),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_copy_path),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -547,10 +568,9 @@ private fun SelectionTopBar(
         }
       }
     },
-    modifier = modifier.clip(RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 28.dp, bottomEnd = 28.dp)),
+    modifier =
+      modifier.clip(
+        RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 28.dp, bottomEnd = 28.dp),
+      ),
   )
 }
-
-
-
-

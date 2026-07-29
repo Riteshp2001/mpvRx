@@ -13,8 +13,8 @@ import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AiProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -40,15 +40,16 @@ class AiService(
     private const val TAG = "AiService"
   }
 
-  private val clients: Map<AiProvider, AiClient> = mapOf(
-    AiProvider.OPENCODE to openCodeClient,
-    AiProvider.GROQ to groqClient,
-    AiProvider.OPENAI to openAiClient,
-    AiProvider.ANTHROPIC to anthropicClient,
-    AiProvider.OPENROUTER to openRouterClient,
-    AiProvider.TOGETHER to togetherClient,
-    AiProvider.LOCAL to localAiClient,
-  )
+  private val clients: Map<AiProvider, AiClient> =
+    mapOf(
+      AiProvider.OPENCODE to openCodeClient,
+      AiProvider.GROQ to groqClient,
+      AiProvider.OPENAI to openAiClient,
+      AiProvider.ANTHROPIC to anthropicClient,
+      AiProvider.OPENROUTER to openRouterClient,
+      AiProvider.TOGETHER to togetherClient,
+      AiProvider.LOCAL to localAiClient,
+    )
 
   @Serializable
   private data class SubtitleTranslationCache(
@@ -64,140 +65,156 @@ class AiService(
     val isResuming: Boolean = false,
   )
 
-  suspend fun fetchModels(): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
-    val provider = preferences.provider.get()
-    fetchModelsForProvider(provider)
-  }
-
-  suspend fun fetchModelsForProvider(provider: AiProvider): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
-    val apiKey = getApiKey(provider)
-
-    if (provider == AiProvider.LOCAL) {
-      return@withContext localAiClient.fetchModels("")
+  suspend fun fetchModels(): Result<List<AiModelInfo>> =
+    withContext(Dispatchers.IO) {
+      val provider = preferences.provider.get()
+      fetchModelsForProvider(provider)
     }
 
-    if (apiKey.isBlank()) {
-      return@withContext Result.failure(Exception("API key not configured for $provider"))
+  suspend fun fetchModelsForProvider(provider: AiProvider): Result<List<AiModelInfo>> =
+    withContext(Dispatchers.IO) {
+      val apiKey = getApiKey(provider)
+
+      if (provider == AiProvider.LOCAL) {
+        return@withContext localAiClient.fetchModels("")
+      }
+
+      if (apiKey.isBlank()) {
+        return@withContext Result.failure(Exception("API key not configured for $provider"))
+      }
+
+      val client = clients[provider] ?: return@withContext Result.failure(Exception("Unknown provider: $provider"))
+      client.fetchModels(apiKey)
     }
 
-    val client = clients[provider] ?: return@withContext Result.failure(Exception("Unknown provider: $provider"))
-    client.fetchModels(apiKey)
-  }
-
-  fun fetchSpeechModelsForProvider(provider: AiProvider): Result<List<AiModelInfo>> = when (provider) {
-    AiProvider.GROQ -> Result.success(
-      listOf(
-        AiModelInfo("whisper-large-v3-turbo", "Whisper Large V3 Turbo"),
-        AiModelInfo("whisper-large-v3", "Whisper Large V3"),
-      ),
-    )
-    AiProvider.OPENAI -> Result.success(
-      listOf(
-        AiModelInfo("whisper-1", "Whisper"),
-      ),
-    )
-    AiProvider.OPENROUTER -> Result.success(
-      listOf(
-        AiModelInfo("openai/whisper-large-v3-turbo", "Whisper Large V3 Turbo"),
-        AiModelInfo("openai/whisper-large-v3", "Whisper Large V3"),
-      ),
-    )
-    else -> Result.failure(IllegalArgumentException("$provider does not provide speech-to-text in mpvRx"))
-  }
-
-  suspend fun verifyKey(): Result<String> = withContext(Dispatchers.IO) {
-    val provider = preferences.provider.get()
-
-    if (provider == AiProvider.LOCAL) {
-      return@withContext Result.success("Local model ready")
+  fun fetchSpeechModelsForProvider(provider: AiProvider): Result<List<AiModelInfo>> =
+    when (provider) {
+      AiProvider.GROQ ->
+        Result.success(
+          listOf(
+            AiModelInfo("whisper-large-v3-turbo", "Whisper Large V3 Turbo"),
+            AiModelInfo("whisper-large-v3", "Whisper Large V3"),
+          ),
+        )
+      AiProvider.OPENAI ->
+        Result.success(
+          listOf(
+            AiModelInfo("whisper-1", "Whisper"),
+          ),
+        )
+      AiProvider.OPENROUTER ->
+        Result.success(
+          listOf(
+            AiModelInfo("openai/whisper-large-v3-turbo", "Whisper Large V3 Turbo"),
+            AiModelInfo("openai/whisper-large-v3", "Whisper Large V3"),
+          ),
+        )
+      else -> Result.failure(IllegalArgumentException("$provider does not provide speech-to-text in mpvRx"))
     }
 
-    val apiKey = getApiKey(provider)
-    if (apiKey.isBlank()) {
-      return@withContext Result.failure(Exception("API key not configured for $provider"))
-    }
+  suspend fun verifyKey(): Result<String> =
+    withContext(Dispatchers.IO) {
+      val provider = preferences.provider.get()
 
-    val client = clients[provider] ?: return@withContext Result.failure(Exception("Unknown provider: $provider"))
-    client.verifyKey(apiKey)
-  }
+      if (provider == AiProvider.LOCAL) {
+        return@withContext Result.success("Local model ready")
+      }
+
+      val apiKey = getApiKey(provider)
+      if (apiKey.isBlank()) {
+        return@withContext Result.failure(Exception("API key not configured for $provider"))
+      }
+
+      val client = clients[provider] ?: return@withContext Result.failure(Exception("Unknown provider: $provider"))
+      client.verifyKey(apiKey)
+    }
 
   suspend fun generateWithAi(
     userInput: String,
     task: AiTask,
     extraInstruction: String? = null,
-  ): Result<String> = withContext(Dispatchers.IO) {
-    // Subtitle translation uses only online providers
-    val effectiveProvider = if (task == AiTask.TRANSLATE && preferences.provider.get() == AiProvider.LOCAL) {
-      preferences.sttProvider.get()
-    } else {
-      preferences.provider.get()
-    }
-    val model = preferences.selectedModelFor(effectiveProvider).get()
-    val apiKey = getApiKey(effectiveProvider)
+  ): Result<String> =
+    withContext(Dispatchers.IO) {
+      // Subtitle translation uses only online providers
+      val effectiveProvider =
+        if (task == AiTask.TRANSLATE && preferences.provider.get() == AiProvider.LOCAL) {
+          preferences.sttProvider.get()
+        } else {
+          preferences.provider.get()
+        }
+      val model = preferences.selectedModelFor(effectiveProvider).get()
+      val apiKey = getApiKey(effectiveProvider)
 
-    if (userInput.isBlank()) {
-      return@withContext Result.failure(Exception("Empty input provided to AI"))
-    }
-    val customPromptEnabled = preferences.customPromptEnabled.get()
-    val customPrompt = preferences.customPrompt.get()
-    val customRenamePrompt = preferences.customRenamePrompt.get()
-    val customSubtitleTranslationPrompt = preferences.customSubtitleTranslationPrompt.get()
-    val customSubtitleFormatPrompt = preferences.customSubtitleFormatPrompt.get()
-
-    if (effectiveProvider != AiProvider.LOCAL && apiKey.isBlank()) {
-      return@withContext Result.failure(Exception("API key not configured for $effectiveProvider"))
-    }
-    if (effectiveProvider == AiProvider.LOCAL) {
-      if (preferences.localModelId.get().isBlank()) {
-        return@withContext Result.failure(Exception("No local model selected. Go to AI Settings to select a model."))
+      if (userInput.isBlank()) {
+        return@withContext Result.failure(Exception("Empty input provided to AI"))
       }
-    } else if (model.isBlank()) {
-      return@withContext Result.failure(Exception("No AI model selected"))
-    }
+      val customPromptEnabled = preferences.customPromptEnabled.get()
+      val customPrompt = preferences.customPrompt.get()
+      val customRenamePrompt = preferences.customRenamePrompt.get()
+      val customSubtitleTranslationPrompt = preferences.customSubtitleTranslationPrompt.get()
+      val customSubtitleFormatPrompt = preferences.customSubtitleFormatPrompt.get()
 
-    var instruction = AiPrompts.resolveInstruction(
-      task,
-      customPromptEnabled,
-      customPrompt,
-      customRenamePrompt,
-      customSubtitleTranslationPrompt,
-      customSubtitleFormatPrompt,
-    )
-    if (extraInstruction != null) {
-      instruction = "$instruction\n\n$extraInstruction"
-    }
-
-    val client = clients[effectiveProvider] ?: return@withContext Result.failure(Exception("Unknown provider: $effectiveProvider"))
-    val options = generationOptionsFor(task)
-
-    if (effectiveProvider == AiProvider.LOCAL) {
-      val modelId = preferences.localModelId.get()
-      val localInfo = LocalModelCatalog.getById(modelId)
-      if (localInfo == null) {
-        return@withContext Result.failure(Exception("Local model not selected. Go to AI Settings to download a model."))
+      if (effectiveProvider != AiProvider.LOCAL && apiKey.isBlank()) {
+        return@withContext Result.failure(Exception("API key not configured for $effectiveProvider"))
       }
-      val modelDir = getLocalModelDir()
-      val modelFile = modelDownloadManager.getModelFile(localInfo, modelDir)
-      if (!modelFile.exists()) {
-        return@withContext Result.failure(Exception("Model file not found. Please download the model first."))
+      if (effectiveProvider == AiProvider.LOCAL) {
+        if (preferences.localModelId.get().isBlank()) {
+          return@withContext Result.failure(Exception("No local model selected. Go to AI Settings to select a model."))
+        }
+      } else if (model.isBlank()) {
+        return@withContext Result.failure(Exception("No AI model selected"))
       }
-      return@withContext localAiClient.generateContent(
-        modelFile.absolutePath,
-        modelId,
-        instruction,
-        userInput,
-        options,
-      ).map { it.text }
+
+      var instruction =
+        AiPrompts.resolveInstruction(
+          task,
+          customPromptEnabled,
+          customPrompt,
+          customRenamePrompt,
+          customSubtitleTranslationPrompt,
+          customSubtitleFormatPrompt,
+        )
+      if (extraInstruction != null) {
+        instruction = "$instruction\n\n$extraInstruction"
+      }
+
+      val client =
+        clients[effectiveProvider]
+          ?: return@withContext Result.failure(Exception("Unknown provider: $effectiveProvider"))
+      val options = generationOptionsFor(task)
+
+      if (effectiveProvider == AiProvider.LOCAL) {
+        val modelId = preferences.localModelId.get()
+        val localInfo = LocalModelCatalog.getById(modelId)
+        if (localInfo == null) {
+          return@withContext Result.failure(
+            Exception("Local model not selected. Go to AI Settings to download a model."),
+          )
+        }
+        val modelDir = getLocalModelDir()
+        val modelFile = modelDownloadManager.getModelFile(localInfo, modelDir)
+        if (!modelFile.exists()) {
+          return@withContext Result.failure(Exception("Model file not found. Please download the model first."))
+        }
+        return@withContext localAiClient
+          .generateContent(
+            modelFile.absolutePath,
+            modelId,
+            instruction,
+            userInput,
+            options,
+          ).map { it.text }
+      }
+
+      client.generateContent(apiKey, model, instruction, userInput, options).map { it.text }
     }
 
-    client.generateContent(apiKey, model, instruction, userInput, options).map { it.text }
-  }
-
-  private fun generationOptionsFor(task: AiTask): AiGenerationOptions = when (task) {
-    AiTask.RENAME -> AiGenerationOptions(maxTokens = 1024, temperature = 0.1)
-    AiTask.SUBTITLE_FORMAT -> AiGenerationOptions(maxTokens = 1024, temperature = 0.1)
-    AiTask.TRANSLATE -> AiGenerationOptions(maxTokens = 2048, temperature = 0.2)
-  }
+  private fun generationOptionsFor(task: AiTask): AiGenerationOptions =
+    when (task) {
+      AiTask.RENAME -> AiGenerationOptions(maxTokens = 1024, temperature = 0.1)
+      AiTask.SUBTITLE_FORMAT -> AiGenerationOptions(maxTokens = 1024, temperature = 0.1)
+      AiTask.TRANSLATE -> AiGenerationOptions(maxTokens = 2048, temperature = 0.2)
+    }
 
   private fun deviceRamMb(): Int {
     val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
@@ -207,12 +224,13 @@ class AiService(
   }
 
   private fun selectBestDownloadedLocalModelForTranslation(extraInstruction: String) {
-    val targetLanguage = Regex("TARGET LANGUAGE:\\s*([^\\n]+)", RegexOption.IGNORE_CASE)
-      .find(extraInstruction)
-      ?.groupValues
-      ?.getOrNull(1)
-      ?.trim()
-      .orEmpty()
+    val targetLanguage =
+      Regex("TARGET LANGUAGE:\\s*([^\\n]+)", RegexOption.IGNORE_CASE)
+        .find(extraInstruction)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.trim()
+        .orEmpty()
     if (targetLanguage.isBlank()) return
 
     val ramMb = deviceRamMb()
@@ -221,20 +239,24 @@ class AiService(
 
     val current = LocalModelCatalog.getById(preferences.localModelId.get())
     val lowerLanguage = targetLanguage.lowercase(Locale.ROOT)
-    val currentIsGood = current != null &&
-      current.tier != LocalModelTier.UTILITY &&
-      current.weakLanguages.none { lowerLanguage.contains(it.lowercase(Locale.ROOT)) } &&
-      isLocalModelDownloaded(current.id)
+    val currentIsGood =
+      current != null &&
+        current.tier != LocalModelTier.UTILITY &&
+        current.weakLanguages.none { lowerLanguage.contains(it.lowercase(Locale.ROOT)) } &&
+        isLocalModelDownloaded(current.id)
     if (currentIsGood) return
 
-    val best = downloaded
-      .filter { it.tier != LocalModelTier.UTILITY }
-      .sortedWith(
-        compareByDescending<LocalModelInfo> { it.bestLanguages.any { lang -> lowerLanguage.contains(lang.lowercase(Locale.ROOT)) } }
-          .thenByDescending { it.translationRank }
-          .thenByDescending { it.speedRank },
-      )
-      .firstOrNull()
+    val best =
+      downloaded
+        .filter { it.tier != LocalModelTier.UTILITY }
+        .sortedWith(
+          compareByDescending<LocalModelInfo> {
+            it.bestLanguages.any { lang ->
+              lowerLanguage.contains(lang.lowercase(Locale.ROOT))
+            }
+          }.thenByDescending { it.translationRank }
+            .thenByDescending { it.speedRank },
+        ).firstOrNull()
     if (best != null && best.id != preferences.localModelId.get()) {
       preferences.localModelId.set(best.id)
       preferences.localModelPath.set(modelDownloadManager.getModelFile(best, getLocalModelDir()).absolutePath)
@@ -246,95 +268,111 @@ class AiService(
   suspend fun renameWithAi(
     currentName: String,
     extension: String?,
-  ): Result<String> = withContext(Dispatchers.IO) {
-    val result = generateWithAi(currentName, AiTask.RENAME)
-    result.mapCatching { aiName ->
-      val candidate = extractTaskValue(aiName, listOf("filename", "name", "title", "output"))
-      val normalizedExtension = extension.orEmpty()
-      val withoutExtension = if (
-        normalizedExtension.isNotBlank() && candidate.endsWith(normalizedExtension, ignoreCase = true)
-      ) {
-        candidate.dropLast(normalizedExtension.length)
-      } else candidate
-      val clean = sanitizeFileName(withoutExtension)
-      if (clean.isBlank()) throw IllegalStateException("AI returned an empty filename")
-      "$clean$normalizedExtension"
-    }
-  }
-
-  suspend fun formatTitleForSubtitleSearch(
-    fileTitle: String,
-  ): Result<String> = withContext(Dispatchers.IO) {
-    val result = generateWithAi(fileTitle, AiTask.SUBTITLE_FORMAT)
-    result.mapCatching {
-      extractTaskValue(it, listOf("query", "title", "name", "output"))
-        .replace(Regex("[\\r\\n]+"), " ")
-        .trim()
-        .ifBlank { throw IllegalStateException("AI returned an empty search title") }
-    }
-  }
-
-  suspend fun verifyModel(): Result<String> = withContext(Dispatchers.IO) {
-    val provider = preferences.provider.get()
-
-    if (provider == AiProvider.LOCAL) {
-      val modelId = preferences.localModelId.get()
-      if (modelId.isBlank()) return@withContext Result.failure(Exception("No local model selected"))
-      if (!isLocalModelDownloaded(modelId)) return@withContext Result.failure(Exception("Local model not downloaded"))
-      return@withContext Result.success("Local model is ready")
-    }
-
-    val model = preferences.selectedModelFor(provider).get()
-    if (model.isBlank()) return@withContext Result.failure(Exception("No model selected"))
-
-    val apiKey = getApiKey(provider)
-    if (apiKey.isBlank()) return@withContext Result.failure(Exception("API key not configured"))
-
-    val stored = preferences.availableModelsFor(provider).get()
-    val knownModels = if (stored.isNotBlank()) {
-      runCatching {
-        json.decodeFromString(kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()), stored)
-      }.getOrDefault(emptyList())
-    } else emptyList()
-    val modelInfo = knownModels.firstOrNull { it.id == model }
-
-    val sb = StringBuilder()
-    if (modelInfo != null) {
-      sb.appendLine("Available")
-      sb.appendLine(if (modelInfo.isFree) "Free model" else "Paid model")
-    }
-    val client = clients[provider] ?: return@withContext Result.failure(Exception("Unknown provider"))
-    val testResult = client.generateContent(
-      apiKey,
-      model,
-      "Return only the word OK.",
-      "Connectivity check",
-      AiGenerationOptions(maxTokens = 512, temperature = 0.0),
-    )
-    if (testResult.isSuccess) {
-      sb.append("API access working")
-    } else {
-      val msg = testResult.exceptionOrNull()?.message ?: "unknown error"
-      when {
-        msg.contains("quota", ignoreCase = true) || msg.contains("rate limit", ignoreCase = true) || msg.contains("insufficient_quota", ignoreCase = true) ->
-          sb.append("Quota exceeded / rate limited")
-        msg.contains("not found", ignoreCase = true) || msg.contains("not available", ignoreCase = true) || msg.contains("model_not_found", ignoreCase = true) ->
-          sb.append("Model not available")
-        msg.contains("billing", ignoreCase = true) || msg.contains("payment", ignoreCase = true) || msg.contains("credit", ignoreCase = true) ||
-          msg.contains("insufficient", ignoreCase = true) ->
-          sb.append("Paid model \u2014 billing required")
-        else ->
-          sb.append("Access error: ${testResult.exceptionOrNull()?.message?.take(100)}")
+  ): Result<String> =
+    withContext(Dispatchers.IO) {
+      val result = generateWithAi(currentName, AiTask.RENAME)
+      result.mapCatching { aiName ->
+        val candidate = extractTaskValue(aiName, listOf("filename", "name", "title", "output"))
+        val normalizedExtension = extension.orEmpty()
+        val withoutExtension =
+          if (
+            normalizedExtension.isNotBlank() && candidate.endsWith(normalizedExtension, ignoreCase = true)
+          ) {
+            candidate.dropLast(normalizedExtension.length)
+          } else {
+            candidate
+          }
+        val clean = sanitizeFileName(withoutExtension)
+        if (clean.isBlank()) throw IllegalStateException("AI returned an empty filename")
+        "$clean$normalizedExtension"
       }
     }
-    Result.success(sb.toString())
-  }
+
+  suspend fun formatTitleForSubtitleSearch(fileTitle: String): Result<String> =
+    withContext(Dispatchers.IO) {
+      val result = generateWithAi(fileTitle, AiTask.SUBTITLE_FORMAT)
+      result.mapCatching {
+        extractTaskValue(it, listOf("query", "title", "name", "output"))
+          .replace(Regex("[\\r\\n]+"), " ")
+          .trim()
+          .ifBlank { throw IllegalStateException("AI returned an empty search title") }
+      }
+    }
+
+  suspend fun verifyModel(): Result<String> =
+    withContext(Dispatchers.IO) {
+      val provider = preferences.provider.get()
+
+      if (provider == AiProvider.LOCAL) {
+        val modelId = preferences.localModelId.get()
+        if (modelId.isBlank()) return@withContext Result.failure(Exception("No local model selected"))
+        if (!isLocalModelDownloaded(modelId)) return@withContext Result.failure(Exception("Local model not downloaded"))
+        return@withContext Result.success("Local model is ready")
+      }
+
+      val model = preferences.selectedModelFor(provider).get()
+      if (model.isBlank()) return@withContext Result.failure(Exception("No model selected"))
+
+      val apiKey = getApiKey(provider)
+      if (apiKey.isBlank()) return@withContext Result.failure(Exception("API key not configured"))
+
+      val stored = preferences.availableModelsFor(provider).get()
+      val knownModels =
+        if (stored.isNotBlank()) {
+          runCatching {
+            json.decodeFromString(kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()), stored)
+          }.getOrDefault(emptyList())
+        } else {
+          emptyList()
+        }
+      val modelInfo = knownModels.firstOrNull { it.id == model }
+
+      val sb = StringBuilder()
+      if (modelInfo != null) {
+        sb.appendLine("Available")
+        sb.appendLine(if (modelInfo.isFree) "Free model" else "Paid model")
+      }
+      val client = clients[provider] ?: return@withContext Result.failure(Exception("Unknown provider"))
+      val testResult =
+        client.generateContent(
+          apiKey,
+          model,
+          "Return only the word OK.",
+          "Connectivity check",
+          AiGenerationOptions(maxTokens = 512, temperature = 0.0),
+        )
+      if (testResult.isSuccess) {
+        sb.append("API access working")
+      } else {
+        val msg = testResult.exceptionOrNull()?.message ?: "unknown error"
+        when {
+          msg.contains("quota", ignoreCase = true) ||
+            msg.contains("rate limit", ignoreCase = true) ||
+            msg.contains("insufficient_quota", ignoreCase = true) ->
+            sb.append("Quota exceeded / rate limited")
+          msg.contains("not found", ignoreCase = true) ||
+            msg.contains("not available", ignoreCase = true) ||
+            msg.contains("model_not_found", ignoreCase = true) ->
+            sb.append("Model not available")
+          msg.contains("billing", ignoreCase = true) ||
+            msg.contains("payment", ignoreCase = true) ||
+            msg.contains("credit", ignoreCase = true) ||
+            msg.contains("insufficient", ignoreCase = true) ->
+            sb.append("Paid model \u2014 billing required")
+          else ->
+            sb.append("Access error: ${testResult.exceptionOrNull()?.message?.take(100)}")
+        }
+      }
+      Result.success(sb.toString())
+    }
 
   suspend fun isConfigured(): Boolean {
     val provider = preferences.provider.get()
     return when (provider) {
       AiProvider.LOCAL -> {
-        preferences.enabled.get() && preferences.localModelId.get().isNotBlank() && preferences.localModelDownloaded.get()
+        preferences.enabled.get() &&
+          preferences.localModelId.get().isNotBlank() &&
+          preferences.localModelDownloaded.get()
       }
       else -> {
         val apiKey = getApiKey(provider)
@@ -345,22 +383,23 @@ class AiService(
 
   fun getOnlineProviders(): List<AiProvider> = AiProvider.values().filter { it != AiProvider.LOCAL }
 
-  fun getApiKey(provider: AiProvider): String = when (provider) {
-    AiProvider.OPENCODE -> preferences.openCodeApiKey.get()
-    AiProvider.GROQ -> preferences.groqApiKey.get()
-    AiProvider.OPENAI -> preferences.openaiApiKey.get()
-    AiProvider.ANTHROPIC -> preferences.anthropicApiKey.get()
-    AiProvider.OPENROUTER -> preferences.openrouterApiKey.get()
-    AiProvider.TOGETHER -> preferences.togetherApiKey.get()
-    AiProvider.LOCAL -> ""
-  }
+  fun getApiKey(provider: AiProvider): String =
+    when (provider) {
+      AiProvider.OPENCODE -> preferences.openCodeApiKey.get()
+      AiProvider.GROQ -> preferences.groqApiKey.get()
+      AiProvider.OPENAI -> preferences.openaiApiKey.get()
+      AiProvider.ANTHROPIC -> preferences.anthropicApiKey.get()
+      AiProvider.OPENROUTER -> preferences.openrouterApiKey.get()
+      AiProvider.TOGETHER -> preferences.togetherApiKey.get()
+      AiProvider.LOCAL -> ""
+    }
 
-  fun getLocalModelDir(): File =
-    File(context.filesDir, "local_ai_models").also { it.mkdirs() }
+  fun getLocalModelDir(): File = File(context.filesDir, "local_ai_models").also { it.mkdirs() }
 
   suspend fun downloadLocalModel(modelId: String): Result<File> {
-    val model = LocalModelCatalog.getById(modelId)
-      ?: return Result.failure(Exception("Unknown model: $modelId"))
+    val model =
+      LocalModelCatalog.getById(modelId)
+        ?: return Result.failure(Exception("Unknown model: $modelId"))
 
     val modelDir = getLocalModelDir()
     val hfToken = preferences.huggingfaceToken.get()
@@ -396,118 +435,126 @@ class AiService(
 
   fun getDownloadProgress() = modelDownloadManager.progress
 
-  fun getLocalModelBenchmarks(): List<LocalModelBenchmark> = runCatching {
-    json.decodeFromString(
-      ListSerializer(LocalModelBenchmark.serializer()),
-      preferences.localModelBenchmarks.get(),
-    )
-  }.getOrDefault(emptyList())
-
-  suspend fun benchmarkLocalModel(modelId: String): Result<LocalModelBenchmark> = withContext(Dispatchers.IO) {
-    val model = LocalModelCatalog.getById(modelId)
-      ?: return@withContext Result.failure(Exception("Unknown model: $modelId"))
-    val modelFile = modelDownloadManager.getModelFile(model, getLocalModelDir())
-    if (!modelFile.exists()) {
-      return@withContext Result.failure(Exception("Download ${model.displayName} before benchmarking."))
-    }
-
-    localAiClient.benchmark(modelFile.absolutePath, model.id).onSuccess { benchmark ->
-      val existing = getLocalModelBenchmarks().filterNot { it.modelId == model.id }
-      preferences.localModelBenchmarks.set(
-        json.encodeToString(
-          ListSerializer(LocalModelBenchmark.serializer()),
-          existing + benchmark,
-        ),
+  fun getLocalModelBenchmarks(): List<LocalModelBenchmark> =
+    runCatching {
+      json.decodeFromString(
+        ListSerializer(LocalModelBenchmark.serializer()),
+        preferences.localModelBenchmarks.get(),
       )
+    }.getOrDefault(emptyList())
+
+  suspend fun benchmarkLocalModel(modelId: String): Result<LocalModelBenchmark> =
+    withContext(Dispatchers.IO) {
+      val model =
+        LocalModelCatalog.getById(modelId)
+          ?: return@withContext Result.failure(Exception("Unknown model: $modelId"))
+      val modelFile = modelDownloadManager.getModelFile(model, getLocalModelDir())
+      if (!modelFile.exists()) {
+        return@withContext Result.failure(Exception("Download ${model.displayName} before benchmarking."))
+      }
+
+      localAiClient.benchmark(modelFile.absolutePath, model.id).onSuccess { benchmark ->
+        val existing = getLocalModelBenchmarks().filterNot { it.modelId == model.id }
+        preferences.localModelBenchmarks.set(
+          json.encodeToString(
+            ListSerializer(LocalModelBenchmark.serializer()),
+            existing + benchmark,
+          ),
+        )
+      }
     }
-  }
 
   suspend fun translateSubtitle(
     content: String,
     targetLanguage: String,
     subtitleFormat: String? = null,
     onProgress: (SubtitleTranslationProgress) -> Unit = {},
-  ): Result<String> = withContext(Dispatchers.IO) {
-    try {
-      val fmt = subtitleFormat?.lowercase(Locale.ROOT)
-      val normalizedContent = content.replace("\r\n", "\n").replace("\r", "\n")
+  ): Result<String> =
+    withContext(Dispatchers.IO) {
+      try {
+        val fmt = subtitleFormat?.lowercase(Locale.ROOT)
+        val normalizedContent = content.replace("\r\n", "\n").replace("\r", "\n")
 
-      // ASS/SSA: header must be preserved verbatim; only Dialogue: lines translated
-      if (fmt == "ass" || fmt == "ssa") {
-        return@withContext translateAssContent(normalizedContent, targetLanguage, onProgress)
-      }
-
-      val chunks = when (fmt) {
-        "srt", "vtt", "sbv", "srv1", "srv2", "srv3" ->
-          normalizedContent.split(Regex("\n{2,}")).map(String::trim).filter { it.isNotBlank() }
-        "ttml", "dfxp", "itt", "imsc" ->
-          Regex("<p\\b[^>]*>.*?</p>", RegexOption.DOT_MATCHES_ALL)
-            .findAll(normalizedContent).map { it.value }.toList()
-        "lrc", "krc" ->
-          normalizedContent.lines().filter { it.isNotBlank() }
-        else ->
-          normalizedContent.lines().filter { it.isNotBlank() }
-      }
-
-      if (chunks.isEmpty()) return@withContext Result.success(content)
-
-      val chunkSize = 15
-      val totalChunks = (chunks.size + chunkSize - 1) / chunkSize
-      val cacheKey = translationCacheKey(normalizedContent, targetLanguage, fmt)
-      val cacheFile = translationCacheFile(cacheKey)
-      val cachedChunks = loadTranslationCache(cacheKey, totalChunks)
-      val translatedChunks = MutableList<String?>(totalChunks) { index -> cachedChunks.getOrNull(index) }
-      val cachedCount = translatedChunks.count { it != null }
-      if (cachedCount > 0) {
-        onProgress(
-          SubtitleTranslationProgress(
-            progress = cachedCount.toFloat() / totalChunks,
-            completedChunks = cachedCount,
-            totalChunks = totalChunks,
-            isResuming = true,
-          ),
-        )
-      }
-
-      for (i in 0 until totalChunks) {
-        if (translatedChunks[i] != null) {
-          continue
-        }
-        val start = i * chunkSize
-        val end = minOf(start + chunkSize, chunks.size)
-        val chunk = chunks.subList(start, end).joinToString("\n\n")
-
-        val extra = buildString {
-          append("TARGET LANGUAGE: $targetLanguage\n")
-          append("OUTPUT FORMAT: keep the exact subtitle format and structure of the original file.")
-          subtitleFormat?.let { append("\nSOURCE FORMAT: .$it") }
+        // ASS/SSA: header must be preserved verbatim; only Dialogue: lines translated
+        if (fmt == "ass" || fmt == "ssa") {
+          return@withContext translateAssContent(normalizedContent, targetLanguage, onProgress)
         }
 
-        val result = generateWithAi(chunk, AiTask.TRANSLATE, extra)
-        result.onSuccess { 
-            val clean = it.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "").trim()
-            translatedChunks[i] = clean
-            saveTranslationCache(cacheFile, cacheKey, translatedChunks)
+        val chunks =
+          when (fmt) {
+            "srt", "vtt", "sbv", "srv1", "srv2", "srv3" ->
+              normalizedContent.split(Regex("\n{2,}")).map(String::trim).filter { it.isNotBlank() }
+            "ttml", "dfxp", "itt", "imsc" ->
+              Regex("<p\\b[^>]*>.*?</p>", RegexOption.DOT_MATCHES_ALL)
+                .findAll(normalizedContent)
+                .map { it.value }
+                .toList()
+            "lrc", "krc" ->
+              normalizedContent.lines().filter { it.isNotBlank() }
+            else ->
+              normalizedContent.lines().filter { it.isNotBlank() }
+          }
+
+        if (chunks.isEmpty()) return@withContext Result.success(content)
+
+        val chunkSize = 15
+        val totalChunks = (chunks.size + chunkSize - 1) / chunkSize
+        val cacheKey = translationCacheKey(normalizedContent, targetLanguage, fmt)
+        val cacheFile = translationCacheFile(cacheKey)
+        val cachedChunks = loadTranslationCache(cacheKey, totalChunks)
+        val translatedChunks = MutableList<String?>(totalChunks) { index -> cachedChunks.getOrNull(index) }
+        val cachedCount = translatedChunks.count { it != null }
+        if (cachedCount > 0) {
+          onProgress(
+            SubtitleTranslationProgress(
+              progress = cachedCount.toFloat() / totalChunks,
+              completedChunks = cachedCount,
+              totalChunks = totalChunks,
+              isResuming = true,
+            ),
+          )
         }
-          .onFailure { return@withContext Result.failure(it) }
 
-        onProgress(
-          SubtitleTranslationProgress(
-            progress = translatedChunks.count { it != null }.toFloat() / totalChunks,
-            completedChunks = translatedChunks.count { it != null },
-            totalChunks = totalChunks,
-            isResuming = cachedCount > 0,
-          ),
-        )
+        for (i in 0 until totalChunks) {
+          if (translatedChunks[i] != null) {
+            continue
+          }
+          val start = i * chunkSize
+          val end = minOf(start + chunkSize, chunks.size)
+          val chunk = chunks.subList(start, end).joinToString("\n\n")
+
+          val extra =
+            buildString {
+              append("TARGET LANGUAGE: $targetLanguage\n")
+              append("OUTPUT FORMAT: keep the exact subtitle format and structure of the original file.")
+              subtitleFormat?.let { append("\nSOURCE FORMAT: .$it") }
+            }
+
+          val result = generateWithAi(chunk, AiTask.TRANSLATE, extra)
+          result
+            .onSuccess {
+              val clean = it.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "").trim()
+              translatedChunks[i] = clean
+              saveTranslationCache(cacheFile, cacheKey, translatedChunks)
+            }.onFailure { return@withContext Result.failure(it) }
+
+          onProgress(
+            SubtitleTranslationProgress(
+              progress = translatedChunks.count { it != null }.toFloat() / totalChunks,
+              completedChunks = translatedChunks.count { it != null },
+              totalChunks = totalChunks,
+              isResuming = cachedCount > 0,
+            ),
+          )
+        }
+
+        cacheFile.delete()
+        Result.success(translatedChunks.filterNotNull().joinToString("\n\n"))
+      } catch (e: Exception) {
+        Log.e(TAG, "Subtitle translation failed", e)
+        Result.failure(e)
       }
-
-      cacheFile.delete()
-      Result.success(translatedChunks.filterNotNull().joinToString("\n\n"))
-    } catch (e: Exception) {
-      Log.e(TAG, "Subtitle translation failed", e)
-      Result.failure(e)
     }
-  }
 
   /**
    * ASS/SSA translation strategy:
@@ -520,7 +567,11 @@ class AiService(
     targetLanguage: String,
     onProgress: (SubtitleTranslationProgress) -> Unit,
   ): Result<String> {
-    data class DLine(val lineIdx: Int, val prefix: String, val text: String)
+    data class DLine(
+      val lineIdx: Int,
+      val prefix: String,
+      val text: String,
+    )
 
     val lines = content.lines()
     val dialogueLines = mutableListOf<DLine>()
@@ -569,20 +620,22 @@ class AiService(
       }
 
       val batchInput = chunk.joinToString(delimiter) { it.text }
-      val extra = "TARGET LANGUAGE: $targetLanguage\n" +
-        "OUTPUT FORMAT: Return ONLY the translated segments in the same order separated by '$delimiter'. " +
-        "Preserve ALL ASS override tags like {\\an8}, {\\pos()}, {\\i1}, {\\b1} exactly. " +
-        "Do NOT add or remove any '$delimiter' separators."
+      val extra =
+        "TARGET LANGUAGE: $targetLanguage\n" +
+          "OUTPUT FORMAT: Return ONLY the translated segments in the same order separated by '$delimiter'. " +
+          "Preserve ALL ASS override tags like {\\an8}, {\\pos()}, {\\i1}, {\\b1} exactly. " +
+          "Do NOT add or remove any '$delimiter' separators."
 
       val result = generateWithAi(batchInput, AiTask.TRANSLATE, extra)
-      result.onSuccess { translated ->
-        translatedChunkTexts[chunkIdx] = translated
-        saveTranslationCache(cacheFile, cacheKey, translatedChunkTexts)
-        val parts = translated.split(delimiter)
-        parts.forEachIndexed { partIdx, text ->
-          if (partIdx < chunk.size) translatedTextByIdx[chunk[partIdx].lineIdx] = text.trim()
-        }
-      }.onFailure { return Result.failure(it) }
+      result
+        .onSuccess { translated ->
+          translatedChunkTexts[chunkIdx] = translated
+          saveTranslationCache(cacheFile, cacheKey, translatedChunkTexts)
+          val parts = translated.split(delimiter)
+          parts.forEachIndexed { partIdx, text ->
+            if (partIdx < chunk.size) translatedTextByIdx[chunk[partIdx].lineIdx] = text.trim()
+          }
+        }.onFailure { return Result.failure(it) }
 
       onProgress(
         SubtitleTranslationProgress(
@@ -594,10 +647,11 @@ class AiService(
       )
     }
 
-    val resultLines = lines.mapIndexed { idx, line ->
-      val dl = dialogueLines.find { it.lineIdx == idx }
-      if (dl != null) "${dl.prefix}${translatedTextByIdx[idx] ?: dl.text}" else line
-    }
+    val resultLines =
+      lines.mapIndexed { idx, line ->
+        val dl = dialogueLines.find { it.lineIdx == idx }
+        if (dl != null) "${dl.prefix}${translatedTextByIdx[idx] ?: dl.text}" else line
+      }
     cacheFile.delete()
     return Result.success(resultLines.joinToString("\n"))
   }
@@ -607,16 +661,18 @@ class AiService(
     targetLanguage: String,
     format: String?,
   ): String {
-    val effectiveProvider = if (preferences.provider.get() == AiProvider.LOCAL) {
-      preferences.sttProvider.get().name
-    } else {
-      preferences.provider.get().name
-    }
-    val provider = if (preferences.provider.get() == AiProvider.LOCAL) {
-      preferences.sttProvider.get()
-    } else {
-      preferences.provider.get()
-    }
+    val effectiveProvider =
+      if (preferences.provider.get() == AiProvider.LOCAL) {
+        preferences.sttProvider.get().name
+      } else {
+        preferences.provider.get().name
+      }
+    val provider =
+      if (preferences.provider.get() == AiProvider.LOCAL) {
+        preferences.sttProvider.get()
+      } else {
+        preferences.provider.get()
+      }
     val model = preferences.selectedModelFor(provider).get()
     val input = listOf(content, targetLanguage, format.orEmpty(), effectiveProvider, model).joinToString("\u001f")
     val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
@@ -626,7 +682,10 @@ class AiService(
   private fun translationCacheFile(key: String): File =
     File(context.filesDir, "ai_translation_cache").also { it.mkdirs() }.resolve("$key.json")
 
-  private fun loadTranslationCache(key: String, totalChunks: Int): List<String?> {
+  private fun loadTranslationCache(
+    key: String,
+    totalChunks: Int,
+  ): List<String?> {
     val file = translationCacheFile(key)
     if (!file.exists()) return emptyList()
     return runCatching {
@@ -660,20 +719,28 @@ class AiService(
     }
   }
 
-  private fun extractTaskValue(raw: String, keys: List<String>): String {
-    val sanitized = AiOutputSanitizer.splitReasoning(raw).finalText
-      .trim()
-      .removeSurrounding("\"")
-      .removeSurrounding("'")
+  private fun extractTaskValue(
+    raw: String,
+    keys: List<String>,
+  ): String {
+    val sanitized =
+      AiOutputSanitizer
+        .splitReasoning(raw)
+        .finalText
+        .trim()
+        .removeSurrounding("\"")
+        .removeSurrounding("'")
     if (sanitized.isBlank()) return ""
-    val objectValue = runCatching {
-      val parsed = json.parseToJsonElement(AiOutputSanitizer.stripCodeFence(sanitized)) as? JsonObject
-      keys.firstNotNullOfOrNull { key ->
-        (parsed?.get(key) as? JsonPrimitive)?.contentOrNull
-      }
-    }.getOrNull()
+    val objectValue =
+      runCatching {
+        val parsed = json.parseToJsonElement(AiOutputSanitizer.stripCodeFence(sanitized)) as? JsonObject
+        keys.firstNotNullOfOrNull { key ->
+          (parsed?.get(key) as? JsonPrimitive)?.contentOrNull
+        }
+      }.getOrNull()
     val value = objectValue ?: sanitized
-    return AiOutputSanitizer.stripCodeFence(value)
+    return AiOutputSanitizer
+      .stripCodeFence(value)
       .lineSequence()
       .firstOrNull { it.isNotBlank() }
       .orEmpty()
@@ -682,11 +749,11 @@ class AiService(
       .removeSurrounding("'")
   }
 
-  private fun sanitizeFileName(value: String): String = value
-    .replace(Regex("[\\u0000-\\u001F\\u007F/\\\\:*?\"<>|]"), " ")
-    .replace(Regex("\\s+"), " ")
-    .trim(' ', '.')
-    .take(180)
-    .trimEnd(' ', '.')
+  private fun sanitizeFileName(value: String): String =
+    value
+      .replace(Regex("[\\u0000-\\u001F\\u007F/\\\\:*?\"<>|]"), " ")
+      .replace(Regex("\\s+"), " ")
+      .trim(' ', '.')
+      .take(180)
+      .trimEnd(' ', '.')
 }
-

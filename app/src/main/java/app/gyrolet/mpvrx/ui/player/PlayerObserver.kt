@@ -73,9 +73,11 @@ class PlayerObserver(
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
 
-  override fun event(eventId: Int, data: MPVNode) {
+  override fun event(
+    eventId: Int,
+    data: MPVNode,
+  ) {
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.event(eventId) }
   }
 }
-

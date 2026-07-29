@@ -7,7 +7,6 @@
 
 package app.gyrolet.mpvrx.data.network.proxy
 
-import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 
@@ -15,7 +14,6 @@ import androidx.lifecycle.LifecycleOwner
  * Lifecycle observer to properly manage the proxy server lifecycle
  */
 class ProxyLifecycleObserver : DefaultLifecycleObserver {
-
   companion object {
     private const val TAG = "ProxyLifecycleObserver"
   }
@@ -31,4 +29,3 @@ class ProxyLifecycleObserver : DefaultLifecycleObserver {
     NetworkStreamingProxy.stopInstance()
   }
 }
-

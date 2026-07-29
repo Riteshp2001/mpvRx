@@ -11,7 +11,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import app.gyrolet.mpvrx.database.mpvRxDatabase
+import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.database.repository.PlaybackStateRepositoryImpl
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.database.repository.RecentlyPlayedRepositoryImpl
@@ -43,145 +43,145 @@ import org.koin.dsl.module
  * - Adds PlaylistItemEntity table (playlist items with foreign key)
  * - Adds 6 new columns to RecentlyPlayedEntity (videoTitle, duration, fileSize, width, height, playlistId)
  */
-val MIGRATION_1_2 = object : Migration(1, 2) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_1_2", "Starting migration from v1.0.0 to v1.1.0")
+val MIGRATION_1_2 =
+  object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_1_2", "Starting migration from v1.0.0 to v1.1.0")
 
-      // ===== 1. Update PlaybackStateEntity: Remove secondarySid/secondarySubDelay, add videoZoom =====
-      android.util.Log.d("Migration_1_2", "Updating PlaybackStateEntity schema")
+        // ===== 1. Update PlaybackStateEntity: Remove secondarySid/secondarySubDelay, add videoZoom =====
+        android.util.Log.d("Migration_1_2", "Updating PlaybackStateEntity schema")
 
-      // Create new PlaybackStateEntity table with correct schema
-      db.execSQL(
-        """
-        CREATE TABLE IF NOT EXISTS `PlaybackStateEntity_new` (
-          `mediaTitle` TEXT NOT NULL,
-          `lastPosition` INTEGER NOT NULL,
-          `playbackSpeed` REAL NOT NULL,
-          `videoZoom` REAL NOT NULL DEFAULT 0.0,
-          `sid` INTEGER NOT NULL,
-          `subDelay` INTEGER NOT NULL,
-          `subSpeed` REAL NOT NULL,
-          `aid` INTEGER NOT NULL,
-          `audioDelay` INTEGER NOT NULL,
-          `timeRemaining` INTEGER NOT NULL DEFAULT 0,
-          PRIMARY KEY(`mediaTitle`)
+        // Create new PlaybackStateEntity table with correct schema
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaybackStateEntity_new` (
+            `mediaTitle` TEXT NOT NULL,
+            `lastPosition` INTEGER NOT NULL,
+            `playbackSpeed` REAL NOT NULL,
+            `videoZoom` REAL NOT NULL DEFAULT 0.0,
+            `sid` INTEGER NOT NULL,
+            `subDelay` INTEGER NOT NULL,
+            `subSpeed` REAL NOT NULL,
+            `aid` INTEGER NOT NULL,
+            `audioDelay` INTEGER NOT NULL,
+            `timeRemaining` INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(`mediaTitle`)
+          )
+          """.trimIndent(),
         )
-        """.trimIndent(),
-      )
 
-      // Copy data from old table (excluding secondarySid and secondarySubDelay, adding videoZoom with default)
-      db.execSQL(
-        """
-        INSERT INTO `PlaybackStateEntity_new` 
-        (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `subDelay`, 
-         `subSpeed`, `aid`, `audioDelay`, `timeRemaining`)
-        SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, 0.0, `sid`, `subDelay`, 
-               `subSpeed`, `aid`, `audioDelay`, `timeRemaining`
-        FROM `PlaybackStateEntity`
-        """.trimIndent(),
-      )
-
-      // Drop old table and rename new one
-      db.execSQL("DROP TABLE `PlaybackStateEntity`")
-      db.execSQL("ALTER TABLE `PlaybackStateEntity_new` RENAME TO `PlaybackStateEntity`")
-
-      // ===== 2. Drop ExternalSubtitleEntity table =====
-      android.util.Log.d("Migration_1_2", "Removing ExternalSubtitleEntity table")
-      db.execSQL("DROP TABLE IF EXISTS `ExternalSubtitleEntity`")
-
-      // ===== 3. Create video_metadata_cache table =====
-      android.util.Log.d("Migration_1_2", "Creating video_metadata_cache table")
-      db.execSQL(
-        """
-        CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
-          `path` TEXT NOT NULL,
-          `size` INTEGER NOT NULL,
-          `dateModified` INTEGER NOT NULL,
-          `duration` INTEGER NOT NULL,
-          `width` INTEGER NOT NULL,
-          `height` INTEGER NOT NULL,
-          `fps` REAL NOT NULL,
-          `lastScanned` INTEGER NOT NULL,
-          PRIMARY KEY(`path`)
+        // Copy data from old table (excluding secondarySid and secondarySubDelay, adding videoZoom with default)
+        db.execSQL(
+          """
+          INSERT INTO `PlaybackStateEntity_new` 
+          (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `subDelay`, 
+           `subSpeed`, `aid`, `audioDelay`, `timeRemaining`)
+          SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, 0.0, `sid`, `subDelay`, 
+                 `subSpeed`, `aid`, `audioDelay`, `timeRemaining`
+          FROM `PlaybackStateEntity`
+          """.trimIndent(),
         )
-        """.trimIndent(),
-      )
 
-      // ===== 4. Create network_connections table =====
-      android.util.Log.d("Migration_1_2", "Creating network_connections table")
-      db.execSQL(
-        """
-        CREATE TABLE IF NOT EXISTS `network_connections` (
-          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-          `name` TEXT NOT NULL,
-          `protocol` TEXT NOT NULL,
-          `host` TEXT NOT NULL,
-          `port` INTEGER NOT NULL,
-          `username` TEXT NOT NULL DEFAULT '',
-          `password` TEXT NOT NULL DEFAULT '',
-          `path` TEXT NOT NULL DEFAULT '/',
-          `isAnonymous` INTEGER NOT NULL DEFAULT 0,
-          `lastConnected` INTEGER NOT NULL DEFAULT 0,
-          `autoConnect` INTEGER NOT NULL DEFAULT 0
+        // Drop old table and rename new one
+        db.execSQL("DROP TABLE `PlaybackStateEntity`")
+        db.execSQL("ALTER TABLE `PlaybackStateEntity_new` RENAME TO `PlaybackStateEntity`")
+
+        // ===== 2. Drop ExternalSubtitleEntity table =====
+        android.util.Log.d("Migration_1_2", "Removing ExternalSubtitleEntity table")
+        db.execSQL("DROP TABLE IF EXISTS `ExternalSubtitleEntity`")
+
+        // ===== 3. Create video_metadata_cache table =====
+        android.util.Log.d("Migration_1_2", "Creating video_metadata_cache table")
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
+            `path` TEXT NOT NULL,
+            `size` INTEGER NOT NULL,
+            `dateModified` INTEGER NOT NULL,
+            `duration` INTEGER NOT NULL,
+            `width` INTEGER NOT NULL,
+            `height` INTEGER NOT NULL,
+            `fps` REAL NOT NULL,
+            `lastScanned` INTEGER NOT NULL,
+            PRIMARY KEY(`path`)
+          )
+          """.trimIndent(),
         )
-        """.trimIndent(),
-      )
 
-      // ===== 5. Create PlaylistEntity table =====
-      android.util.Log.d("Migration_1_2", "Creating PlaylistEntity table")
-      db.execSQL(
-        """
-        CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
-          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-          `name` TEXT NOT NULL,
-          `createdAt` INTEGER NOT NULL,
-          `updatedAt` INTEGER NOT NULL
+        // ===== 4. Create network_connections table =====
+        android.util.Log.d("Migration_1_2", "Creating network_connections table")
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `network_connections` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `name` TEXT NOT NULL,
+            `protocol` TEXT NOT NULL,
+            `host` TEXT NOT NULL,
+            `port` INTEGER NOT NULL,
+            `username` TEXT NOT NULL DEFAULT '',
+            `password` TEXT NOT NULL DEFAULT '',
+            `path` TEXT NOT NULL DEFAULT '/',
+            `isAnonymous` INTEGER NOT NULL DEFAULT 0,
+            `lastConnected` INTEGER NOT NULL DEFAULT 0,
+            `autoConnect` INTEGER NOT NULL DEFAULT 0
+          )
+          """.trimIndent(),
         )
-        """.trimIndent(),
-      )
 
-      // ===== 6. Create PlaylistItemEntity table with foreign key =====
-      android.util.Log.d("Migration_1_2", "Creating PlaylistItemEntity table")
-      db.execSQL(
-        """
-        CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
-          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-          `playlistId` INTEGER NOT NULL,
-          `filePath` TEXT NOT NULL,
-          `fileName` TEXT NOT NULL,
-          `position` INTEGER NOT NULL,
-          `addedAt` INTEGER NOT NULL,
-          `lastPlayedAt` INTEGER NOT NULL DEFAULT 0,
-          `playCount` INTEGER NOT NULL DEFAULT 0,
-          `lastPosition` INTEGER NOT NULL DEFAULT 0,
-          FOREIGN KEY(`playlistId`) REFERENCES `PlaylistEntity`(`id`) ON DELETE CASCADE
+        // ===== 5. Create PlaylistEntity table =====
+        android.util.Log.d("Migration_1_2", "Creating PlaylistEntity table")
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `name` TEXT NOT NULL,
+            `createdAt` INTEGER NOT NULL,
+            `updatedAt` INTEGER NOT NULL
+          )
+          """.trimIndent(),
         )
-        """.trimIndent(),
-      )
 
-      // Create index for PlaylistItemEntity foreign key
-      db.execSQL(
-        "CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)",
-      )
+        // ===== 6. Create PlaylistItemEntity table with foreign key =====
+        android.util.Log.d("Migration_1_2", "Creating PlaylistItemEntity table")
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `playlistId` INTEGER NOT NULL,
+            `filePath` TEXT NOT NULL,
+            `fileName` TEXT NOT NULL,
+            `position` INTEGER NOT NULL,
+            `addedAt` INTEGER NOT NULL,
+            `lastPlayedAt` INTEGER NOT NULL DEFAULT 0,
+            `playCount` INTEGER NOT NULL DEFAULT 0,
+            `lastPosition` INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY(`playlistId`) REFERENCES `PlaylistEntity`(`id`) ON DELETE CASCADE
+          )
+          """.trimIndent(),
+        )
 
-      // ===== 7. Add new columns to RecentlyPlayedEntity =====
-      android.util.Log.d("Migration_1_2", "Adding columns to RecentlyPlayedEntity")
-      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `videoTitle` TEXT")
-      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `duration` INTEGER NOT NULL DEFAULT 0")
-      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `fileSize` INTEGER NOT NULL DEFAULT 0")
-      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `width` INTEGER NOT NULL DEFAULT 0")
-      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
-      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
+        // Create index for PlaylistItemEntity foreign key
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)",
+        )
 
-      android.util.Log.d("Migration_1_2", "Migration completed successfully")
+        // ===== 7. Add new columns to RecentlyPlayedEntity =====
+        android.util.Log.d("Migration_1_2", "Adding columns to RecentlyPlayedEntity")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `videoTitle` TEXT")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `duration` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `fileSize` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `width` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
 
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_1_2", "Migration failed", e)
-      throw e
+        android.util.Log.d("Migration_1_2", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_1_2", "Migration failed", e)
+        throw e
+      }
     }
   }
-}
 
 /**
  * Migration from version 2 to version 3
@@ -189,25 +189,25 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
  * Changes:
  * - Adds externalSubtitles column to PlaybackStateEntity to persist external subtitle URIs
  */
-val MIGRATION_2_3 = object : Migration(2, 3) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_2_3", "Starting migration from version 2 to version 3")
+val MIGRATION_2_3 =
+  object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_2_3", "Starting migration from version 2 to version 3")
 
-      // Add externalSubtitles column to PlaybackStateEntity
-      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalSubtitles` TEXT NOT NULL DEFAULT ''")
+        // Add externalSubtitles column to PlaybackStateEntity
+        db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalSubtitles` TEXT NOT NULL DEFAULT ''")
 
-      // Add subtitleCodec column to video_metadata_cache
-      db.execSQL("ALTER TABLE video_metadata_cache ADD COLUMN subtitleCodec TEXT NOT NULL DEFAULT ''")
+        // Add subtitleCodec column to video_metadata_cache
+        db.execSQL("ALTER TABLE video_metadata_cache ADD COLUMN subtitleCodec TEXT NOT NULL DEFAULT ''")
 
-
-      android.util.Log.d("Migration_2_3", "Migration completed successfully")
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_2_3", "Migration failed", e)
-      throw e
+        android.util.Log.d("Migration_2_3", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_2_3", "Migration failed", e)
+        throw e
+      }
     }
   }
-}
 
 /**
  * Migration from version 3 to version 4
@@ -215,26 +215,27 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
  * Changes:
  * - Adds m3uSourceUrl and isM3uPlaylist columns to PlaylistEntity for M3U/M3U8 playlist support
  */
-val MIGRATION_3_4 = object : Migration(3, 4) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_3_4", "Starting migration from version 3 to version 4")
+val MIGRATION_3_4 =
+  object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_3_4", "Starting migration from version 3 to version 4")
 
-      // Add M3U-related columns to PlaylistEntity
-      db.execSQL(
-        "ALTER TABLE `PlaylistEntity` ADD COLUMN `m3uSourceUrl` TEXT DEFAULT NULL"
-      )
-      db.execSQL(
-        "ALTER TABLE `PlaylistEntity` ADD COLUMN `isM3uPlaylist` INTEGER NOT NULL DEFAULT 0"
-      )
+        // Add M3U-related columns to PlaylistEntity
+        db.execSQL(
+          "ALTER TABLE `PlaylistEntity` ADD COLUMN `m3uSourceUrl` TEXT DEFAULT NULL",
+        )
+        db.execSQL(
+          "ALTER TABLE `PlaylistEntity` ADD COLUMN `isM3uPlaylist` INTEGER NOT NULL DEFAULT 0",
+        )
 
-      android.util.Log.d("Migration_3_4", "Migration completed successfully")
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_3_4", "Migration failed", e)
-      throw e
+        android.util.Log.d("Migration_3_4", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_3_4", "Migration failed", e)
+        throw e
+      }
     }
   }
-}
 
 /**
  * Migration from version 4 to version 5
@@ -243,69 +244,73 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
  * - Adds secondarySid column to PlaybackStateEntity to persist secondary subtitle track
  *   This allows saving and restoring both primary and secondary subtitle selections
  */
-val MIGRATION_4_5 = object : Migration(4, 5) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_4_5", "Starting migration from version 4 to version 5")
+val MIGRATION_4_5 =
+  object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_4_5", "Starting migration from version 4 to version 5")
 
-      // Add secondarySid column to PlaybackStateEntity (-1 means disabled)
-      db.execSQL(
-        "ALTER TABLE `PlaybackStateEntity` ADD COLUMN `secondarySid` INTEGER NOT NULL DEFAULT -1"
-      )
+        // Add secondarySid column to PlaybackStateEntity (-1 means disabled)
+        db.execSQL(
+          "ALTER TABLE `PlaybackStateEntity` ADD COLUMN `secondarySid` INTEGER NOT NULL DEFAULT -1",
+        )
 
-      android.util.Log.d("Migration_4_5", "Migration completed successfully")
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_4_5", "Migration failed", e)
-      throw e
+        android.util.Log.d("Migration_4_5", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_4_5", "Migration failed", e)
+        throw e
+      }
     }
   }
-}
 
-val MIGRATION_5_6 = object : Migration(5, 6) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_5_6", "Starting migration from version 5 to 6")
-      
-      // Get existing columns to check what needs to be added
-      val cursor = db.query("PRAGMA table_info(video_metadata_cache)")
-      val existingColumns = mutableSetOf<String>()
-      while (cursor.moveToNext()) {
-        val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
-        existingColumns.add(columnName)
-      }
-      cursor.close()
-      
-      // Add subtitleCodec if it doesn't exist yet (should have been added in MIGRATION_2_3 but might be missing)
-      if (!existingColumns.contains("subtitleCodec")) {
-        try {
-          db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `subtitleCodec` TEXT NOT NULL DEFAULT ''")
-          android.util.Log.d("Migration_5_6", "Added subtitleCodec column")
-        } catch (e: Exception) {
-          android.util.Log.w("Migration_5_6", "Error adding subtitleCodec column, may already exist", e)
+val MIGRATION_5_6 =
+  object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_5_6", "Starting migration from version 5 to 6")
+
+        // Get existing columns to check what needs to be added
+        val cursor = db.query("PRAGMA table_info(video_metadata_cache)")
+        val existingColumns = mutableSetOf<String>()
+        while (cursor.moveToNext()) {
+          val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+          existingColumns.add(columnName)
         }
-      } else {
-        android.util.Log.d("Migration_5_6", "subtitleCodec column already exists, skipping")
-      }
-      
-      // Add hasEmbeddedSubtitles if it doesn't exist
-      if (!existingColumns.contains("hasEmbeddedSubtitles")) {
-        try {
-          db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `hasEmbeddedSubtitles` INTEGER NOT NULL DEFAULT 0")
-          android.util.Log.d("Migration_5_6", "Added hasEmbeddedSubtitles column")
-        } catch (e: Exception) {
-          android.util.Log.w("Migration_5_6", "Error adding hasEmbeddedSubtitles column, may already exist", e)
+        cursor.close()
+
+        // Add subtitleCodec if it doesn't exist yet (should have been added in MIGRATION_2_3 but might be missing)
+        if (!existingColumns.contains("subtitleCodec")) {
+          try {
+            db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `subtitleCodec` TEXT NOT NULL DEFAULT ''")
+            android.util.Log.d("Migration_5_6", "Added subtitleCodec column")
+          } catch (e: Exception) {
+            android.util.Log.w("Migration_5_6", "Error adding subtitleCodec column, may already exist", e)
+          }
+        } else {
+          android.util.Log.d("Migration_5_6", "subtitleCodec column already exists, skipping")
         }
-      } else {
-        android.util.Log.d("Migration_5_6", "hasEmbeddedSubtitles column already exists, skipping")
+
+        // Add hasEmbeddedSubtitles if it doesn't exist
+        if (!existingColumns.contains("hasEmbeddedSubtitles")) {
+          try {
+            db.execSQL(
+              "ALTER TABLE `video_metadata_cache` ADD COLUMN `hasEmbeddedSubtitles` INTEGER NOT NULL DEFAULT 0",
+            )
+            android.util.Log.d("Migration_5_6", "Added hasEmbeddedSubtitles column")
+          } catch (e: Exception) {
+            android.util.Log.w("Migration_5_6", "Error adding hasEmbeddedSubtitles column, may already exist", e)
+          }
+        } else {
+          android.util.Log.d("Migration_5_6", "hasEmbeddedSubtitles column already exists, skipping")
+        }
+
+        android.util.Log.d("Migration_5_6", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_5_6", "Migration failed", e)
+        throw e
       }
-      
-      android.util.Log.d("Migration_5_6", "Migration completed successfully")
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_5_6", "Migration failed", e)
-      throw e
     }
   }
-}
 
 /**
  * Migration from version 6 to version 7
@@ -313,21 +318,22 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
  * Changes:
  * - Adds useHttps column to network_connections table for explicit HTTPS control on WebDAV
  */
-val MIGRATION_6_7 = object : Migration(6, 7) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_6_7", "Starting migration from version 6 to 7")
-      
-      // Add useHttps column to network_connections table
-      db.execSQL("ALTER TABLE `network_connections` ADD COLUMN `useHttps` INTEGER NOT NULL DEFAULT 0")
-      
-      android.util.Log.d("Migration_6_7", "Migration completed successfully")
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_6_7", "Migration failed", e)
-      throw e
+val MIGRATION_6_7 =
+  object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_6_7", "Starting migration from version 6 to 7")
+
+        // Add useHttps column to network_connections table
+        db.execSQL("ALTER TABLE `network_connections` ADD COLUMN `useHttps` INTEGER NOT NULL DEFAULT 0")
+
+        android.util.Log.d("Migration_6_7", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_6_7", "Migration failed", e)
+        throw e
+      }
     }
   }
-}
 
 /**
  * Migration from version 7 to version 8
@@ -335,21 +341,22 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
  * Changes:
  * - Adds hasBeenWatched column to PlaybackStateEntity to persist watched status
  */
-val MIGRATION_7_8 = object : Migration(7, 8) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_7_8", "Starting migration from version 7 to 8")
-      
-      // Add hasBeenWatched column to PlaybackStateEntity
-      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `hasBeenWatched` INTEGER NOT NULL DEFAULT 0")
-      
-      android.util.Log.d("Migration_7_8", "Migration completed successfully")
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_7_8", "Migration failed", e)
-      throw e
+val MIGRATION_7_8 =
+  object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_7_8", "Starting migration from version 7 to 8")
+
+        // Add hasBeenWatched column to PlaybackStateEntity
+        db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `hasBeenWatched` INTEGER NOT NULL DEFAULT 0")
+
+        android.util.Log.d("Migration_7_8", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_7_8", "Migration failed", e)
+        throw e
+      }
     }
   }
-}
 
 /**
  * Migration from version 8 to version 9
@@ -362,176 +369,189 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
  * - Ensures PlaybackStateEntity has the correct schema by recreating the table
  * - Preserves all existing data during the migration
  */
-val MIGRATION_8_9 = object : Migration(8, 9) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    try {
-      android.util.Log.d("Migration_8_9", "Starting migration from version 8 to 9 (schema repair)")
-      
-      // Check current schema to see if we need to repair
-      val cursor = db.query("PRAGMA table_info(PlaybackStateEntity)")
-      val existingColumns = mutableSetOf<String>()
-      while (cursor.moveToNext()) {
-        val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
-        existingColumns.add(columnName)
-      }
-      cursor.close()
-      
-      android.util.Log.d("Migration_8_9", "Existing columns: $existingColumns")
-      
-      // Check if we have the wrong schema (secondarySubDelay instead of externalSubtitles)
-      val hasSecondarySubDelay = existingColumns.contains("secondarySubDelay")
-      val hasExternalSubtitles = existingColumns.contains("externalSubtitles")
-      val hasHasBeenWatched = existingColumns.contains("hasBeenWatched")
-      
-      if (hasSecondarySubDelay || !hasExternalSubtitles || !hasHasBeenWatched) {
-        android.util.Log.d("Migration_8_9", "Schema mismatch detected, recreating table")
-        
-        // Create new table with correct schema
-        db.execSQL(
-          """
-          CREATE TABLE IF NOT EXISTS `PlaybackStateEntity_new` (
-            `mediaTitle` TEXT NOT NULL,
-            `lastPosition` INTEGER NOT NULL,
-            `playbackSpeed` REAL NOT NULL,
-            `videoZoom` REAL NOT NULL DEFAULT 0.0,
-            `sid` INTEGER NOT NULL,
-            `secondarySid` INTEGER NOT NULL DEFAULT -1,
-            `subDelay` INTEGER NOT NULL,
-            `subSpeed` REAL NOT NULL,
-            `aid` INTEGER NOT NULL,
-            `audioDelay` INTEGER NOT NULL,
-            `timeRemaining` INTEGER NOT NULL DEFAULT 0,
-            `externalSubtitles` TEXT NOT NULL DEFAULT '',
-            `hasBeenWatched` INTEGER NOT NULL DEFAULT 0,
-            PRIMARY KEY(`mediaTitle`)
-          )
-          """.trimIndent()
-        )
-        
-        // Copy data from old table, handling missing columns
-        if (hasExternalSubtitles && hasHasBeenWatched) {
-          // Schema is correct, just copy everything
-          db.execSQL(
-            """
-            INSERT INTO `PlaybackStateEntity_new` 
-            SELECT * FROM `PlaybackStateEntity`
-            """.trimIndent()
-          )
-        } else if (hasExternalSubtitles && !hasHasBeenWatched) {
-          // Missing hasBeenWatched only
-          db.execSQL(
-            """
-            INSERT INTO `PlaybackStateEntity_new` 
-            (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
-             `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, `hasBeenWatched`)
-            SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
-                   `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, 0
-            FROM `PlaybackStateEntity`
-            """.trimIndent()
-          )
-        } else {
-          // Has old schema with secondarySubDelay, need to map columns
-          db.execSQL(
-            """
-            INSERT INTO `PlaybackStateEntity_new` 
-            (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
-             `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, `hasBeenWatched`)
-            SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, 
-                   COALESCE(`videoZoom`, 0.0), 
-                   `sid`, 
-                   COALESCE(`secondarySid`, -1), 
-                   `subDelay`, `subSpeed`, `aid`, `audioDelay`, 
-                   COALESCE(`timeRemaining`, 0), 
-                   '', 
-                   0
-            FROM `PlaybackStateEntity`
-            """.trimIndent()
-          )
+val MIGRATION_8_9 =
+  object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      try {
+        android.util.Log.d("Migration_8_9", "Starting migration from version 8 to 9 (schema repair)")
+
+        // Check current schema to see if we need to repair
+        val cursor = db.query("PRAGMA table_info(PlaybackStateEntity)")
+        val existingColumns = mutableSetOf<String>()
+        while (cursor.moveToNext()) {
+          val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+          existingColumns.add(columnName)
         }
-        
-        // Drop old table and rename new one
-        db.execSQL("DROP TABLE `PlaybackStateEntity`")
-        db.execSQL("ALTER TABLE `PlaybackStateEntity_new` RENAME TO `PlaybackStateEntity`")
-        
-        android.util.Log.d("Migration_8_9", "Table recreated successfully")
-      } else {
-        android.util.Log.d("Migration_8_9", "Schema is correct, no repair needed")
+        cursor.close()
+
+        android.util.Log.d("Migration_8_9", "Existing columns: $existingColumns")
+
+        // Check if we have the wrong schema (secondarySubDelay instead of externalSubtitles)
+        val hasSecondarySubDelay = existingColumns.contains("secondarySubDelay")
+        val hasExternalSubtitles = existingColumns.contains("externalSubtitles")
+        val hasHasBeenWatched = existingColumns.contains("hasBeenWatched")
+
+        if (hasSecondarySubDelay || !hasExternalSubtitles || !hasHasBeenWatched) {
+          android.util.Log.d("Migration_8_9", "Schema mismatch detected, recreating table")
+
+          // Create new table with correct schema
+          db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `PlaybackStateEntity_new` (
+              `mediaTitle` TEXT NOT NULL,
+              `lastPosition` INTEGER NOT NULL,
+              `playbackSpeed` REAL NOT NULL,
+              `videoZoom` REAL NOT NULL DEFAULT 0.0,
+              `sid` INTEGER NOT NULL,
+              `secondarySid` INTEGER NOT NULL DEFAULT -1,
+              `subDelay` INTEGER NOT NULL,
+              `subSpeed` REAL NOT NULL,
+              `aid` INTEGER NOT NULL,
+              `audioDelay` INTEGER NOT NULL,
+              `timeRemaining` INTEGER NOT NULL DEFAULT 0,
+              `externalSubtitles` TEXT NOT NULL DEFAULT '',
+              `hasBeenWatched` INTEGER NOT NULL DEFAULT 0,
+              PRIMARY KEY(`mediaTitle`)
+            )
+            """.trimIndent(),
+          )
+
+          // Copy data from old table, handling missing columns
+          if (hasExternalSubtitles && hasHasBeenWatched) {
+            // Schema is correct, just copy everything
+            db.execSQL(
+              """
+              INSERT INTO `PlaybackStateEntity_new` 
+              SELECT * FROM `PlaybackStateEntity`
+              """.trimIndent(),
+            )
+          } else if (hasExternalSubtitles && !hasHasBeenWatched) {
+            // Missing hasBeenWatched only
+            db.execSQL(
+              """
+              INSERT INTO `PlaybackStateEntity_new` 
+              (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
+               `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, `hasBeenWatched`)
+              SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
+                     `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, 0
+              FROM `PlaybackStateEntity`
+              """.trimIndent(),
+            )
+          } else {
+            // Has old schema with secondarySubDelay, need to map columns
+            db.execSQL(
+              """
+              INSERT INTO `PlaybackStateEntity_new` 
+              (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
+               `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, `hasBeenWatched`)
+              SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, 
+                     COALESCE(`videoZoom`, 0.0), 
+                     `sid`, 
+                     COALESCE(`secondarySid`, -1), 
+                     `subDelay`, `subSpeed`, `aid`, `audioDelay`, 
+                     COALESCE(`timeRemaining`, 0), 
+                     '', 
+                     0
+              FROM `PlaybackStateEntity`
+              """.trimIndent(),
+            )
+          }
+
+          // Drop old table and rename new one
+          db.execSQL("DROP TABLE `PlaybackStateEntity`")
+          db.execSQL("ALTER TABLE `PlaybackStateEntity_new` RENAME TO `PlaybackStateEntity`")
+
+          android.util.Log.d("Migration_8_9", "Table recreated successfully")
+        } else {
+          android.util.Log.d("Migration_8_9", "Schema is correct, no repair needed")
+        }
+
+        // Add M3U-specific metadata columns to PlaylistItemEntity
+        android.util.Log.d("Migration_8_9", "Adding M3U metadata columns to PlaylistItemEntity")
+
+        val itemCursor = db.query("PRAGMA table_info(PlaylistItemEntity)")
+        val itemColumns = mutableSetOf<String>()
+        while (itemCursor.moveToNext()) {
+          itemColumns.add(itemCursor.getString(itemCursor.getColumnIndexOrThrow("name")))
+        }
+        itemCursor.close()
+
+        if (!itemColumns.contains("tvgId")) {
+          db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `tvgId` TEXT DEFAULT NULL")
+        }
+        if (!itemColumns.contains("tvgLogo")) {
+          db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `tvgLogo` TEXT DEFAULT NULL")
+        }
+        if (!itemColumns.contains("groupTitle")) {
+          db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `groupTitle` TEXT DEFAULT NULL")
+        }
+        if (!itemColumns.contains("licenseType")) {
+          db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `licenseType` TEXT DEFAULT NULL")
+        }
+        if (!itemColumns.contains("licenseKey")) {
+          db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `licenseKey` TEXT DEFAULT NULL")
+        }
+        if (!itemColumns.contains("userAgent")) {
+          db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `userAgent` TEXT DEFAULT NULL")
+        }
+        if (!itemColumns.contains("isFavorite")) {
+          db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `isFavorite` INTEGER NOT NULL DEFAULT 0")
+        }
+
+        // Create index for isFavorite
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_isFavorite` ON `PlaylistItemEntity` (`isFavorite`)",
+        )
+
+        // Add userAgent column to PlaylistEntity
+        val playlistCursor = db.query("PRAGMA table_info(PlaylistEntity)")
+        val playlistColumns = mutableSetOf<String>()
+        while (playlistCursor.moveToNext()) {
+          playlistColumns.add(playlistCursor.getString(playlistCursor.getColumnIndexOrThrow("name")))
+        }
+        playlistCursor.close()
+
+        if (!playlistColumns.contains("userAgent")) {
+          db.execSQL("ALTER TABLE `PlaylistEntity` ADD COLUMN `userAgent` TEXT DEFAULT NULL")
+        }
+
+        android.util.Log.d("Migration_8_9", "Migration completed successfully")
+      } catch (e: Exception) {
+        android.util.Log.e("Migration_8_9", "Migration failed", e)
+        throw e
       }
-      
-      // Add M3U-specific metadata columns to PlaylistItemEntity
-      android.util.Log.d("Migration_8_9", "Adding M3U metadata columns to PlaylistItemEntity")
-
-      val itemCursor = db.query("PRAGMA table_info(PlaylistItemEntity)")
-      val itemColumns = mutableSetOf<String>()
-      while (itemCursor.moveToNext()) {
-        itemColumns.add(itemCursor.getString(itemCursor.getColumnIndexOrThrow("name")))
-      }
-      itemCursor.close()
-
-      if (!itemColumns.contains("tvgId"))
-        db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `tvgId` TEXT DEFAULT NULL")
-      if (!itemColumns.contains("tvgLogo"))
-        db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `tvgLogo` TEXT DEFAULT NULL")
-      if (!itemColumns.contains("groupTitle"))
-        db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `groupTitle` TEXT DEFAULT NULL")
-      if (!itemColumns.contains("licenseType"))
-        db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `licenseType` TEXT DEFAULT NULL")
-      if (!itemColumns.contains("licenseKey"))
-        db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `licenseKey` TEXT DEFAULT NULL")
-      if (!itemColumns.contains("userAgent"))
-        db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `userAgent` TEXT DEFAULT NULL")
-      if (!itemColumns.contains("isFavorite"))
-        db.execSQL("ALTER TABLE `PlaylistItemEntity` ADD COLUMN `isFavorite` INTEGER NOT NULL DEFAULT 0")
-
-      // Create index for isFavorite
-      db.execSQL(
-        "CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_isFavorite` ON `PlaylistItemEntity` (`isFavorite`)"
-      )
-
-      // Add userAgent column to PlaylistEntity
-      val playlistCursor = db.query("PRAGMA table_info(PlaylistEntity)")
-      val playlistColumns = mutableSetOf<String>()
-      while (playlistCursor.moveToNext()) {
-        playlistColumns.add(playlistCursor.getString(playlistCursor.getColumnIndexOrThrow("name")))
-      }
-      playlistCursor.close()
-
-      if (!playlistColumns.contains("userAgent"))
-        db.execSQL("ALTER TABLE `PlaylistEntity` ADD COLUMN `userAgent` TEXT DEFAULT NULL")
-
-      android.util.Log.d("Migration_8_9", "Migration completed successfully")
-    } catch (e: Exception) {
-      android.util.Log.e("Migration_8_9", "Migration failed", e)
-      throw e
     }
   }
-}
 
-val MIGRATION_9_10 = object : Migration(9, 10) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    db.execSQL(
-      """
-      CREATE TABLE IF NOT EXISTS `directory_scan_index` (
-        `scanKey` TEXT NOT NULL,
-        `path` TEXT NOT NULL,
-        `rootPath` TEXT NOT NULL,
-        `fingerprint` TEXT NOT NULL,
-        `isNoMediaRoot` INTEGER NOT NULL,
-        `videoCount` INTEGER NOT NULL,
-        `totalSize` INTEGER NOT NULL,
-        `totalDuration` INTEGER NOT NULL,
-        `lastModified` INTEGER NOT NULL,
-        `hasSubfolders` INTEGER NOT NULL,
-        `lastScanned` INTEGER NOT NULL,
-        PRIMARY KEY(`scanKey`, `path`)
+val MIGRATION_9_10 =
+  object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `directory_scan_index` (
+          `scanKey` TEXT NOT NULL,
+          `path` TEXT NOT NULL,
+          `rootPath` TEXT NOT NULL,
+          `fingerprint` TEXT NOT NULL,
+          `isNoMediaRoot` INTEGER NOT NULL,
+          `videoCount` INTEGER NOT NULL,
+          `totalSize` INTEGER NOT NULL,
+          `totalDuration` INTEGER NOT NULL,
+          `lastModified` INTEGER NOT NULL,
+          `hasSubfolders` INTEGER NOT NULL,
+          `lastScanned` INTEGER NOT NULL,
+          PRIMARY KEY(`scanKey`, `path`)
+        )
+        """.trimIndent(),
       )
-      """.trimIndent(),
-    )
-    db.execSQL("CREATE INDEX IF NOT EXISTS `index_directory_scan_index_scanKey_rootPath` ON `directory_scan_index` (`scanKey`, `rootPath`)")
-    db.execSQL("CREATE INDEX IF NOT EXISTS `index_directory_scan_index_scanKey_isNoMediaRoot` ON `directory_scan_index` (`scanKey`, `isNoMediaRoot`)")
+      db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_directory_scan_index_scanKey_rootPath` ON `directory_scan_index` (`scanKey`, `rootPath`)",
+      )
+      db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_directory_scan_index_scanKey_isNoMediaRoot` ON `directory_scan_index` (`scanKey`, `isNoMediaRoot`)",
+      )
+    }
   }
-}
-
 
 val DatabaseModule =
   module {
@@ -542,20 +562,29 @@ val DatabaseModule =
       }
     }
 
-    single<mpvRxDatabase> {
+    single<MpvRxDatabase> {
       val context = androidContext()
       Room
-        .databaseBuilder(context, mpvRxDatabase::class.java, "mpvrx.db")
+        .databaseBuilder(context, MpvRxDatabase::class.java, "mpvrx.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
-        .fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
+        .addMigrations(
+          MIGRATION_1_2,
+          MIGRATION_2_3,
+          MIGRATION_3_4,
+          MIGRATION_4_5,
+          MIGRATION_5_6,
+          MIGRATION_6_7,
+          MIGRATION_7_8,
+          MIGRATION_8_9,
+          MIGRATION_9_10,
+        ).fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }
 
     singleOf(::PlaybackStateRepositoryImpl).bind(PlaybackStateRepository::class)
 
     single<RecentlyPlayedRepository> {
-      RecentlyPlayedRepositoryImpl(get<mpvRxDatabase>().recentlyPlayedDao())
+      RecentlyPlayedRepositoryImpl(get<MpvRxDatabase>().recentlyPlayedDao())
     }
 
     single { ThumbnailRepository(androidContext()) }
@@ -563,14 +592,14 @@ val DatabaseModule =
     single {
       app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository(
         context = androidContext(),
-        dao = get<mpvRxDatabase>().videoMetadataDao(),
+        dao = get<MpvRxDatabase>().videoMetadataDao(),
       )
     }
 
     // MediaFileRepository is a singleton object - no DI needed
 
     single {
-      get<mpvRxDatabase>().networkConnectionDao()
+      get<MpvRxDatabase>().networkConnectionDao()
     }
 
     single {
@@ -581,9 +610,7 @@ val DatabaseModule =
 
     single {
       PlaylistRepository(
-        playlistDao = get<mpvRxDatabase>().playlistDao(),
+        playlistDao = get<MpvRxDatabase>().playlistDao(),
       )
     }
   }
-
-

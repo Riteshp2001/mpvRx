@@ -61,5 +61,3 @@ enum class AudioChannels(
   Stereo(R.string.pref_audio_channels_stereo, "audio-channels", "stereo"),
   ReverseStereo(R.string.pref_audio_channels_stereo_reversed, "af", "pan=[stereo|c0=c1|c1=c0]"),
 }
-
-

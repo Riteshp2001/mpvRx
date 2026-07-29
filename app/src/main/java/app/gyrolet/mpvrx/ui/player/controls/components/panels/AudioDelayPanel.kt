@@ -5,18 +5,13 @@
  * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
  */
 
-
 @file:Suppress("ktlint:standard:no-wildcard-imports")
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,9 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
@@ -46,12 +42,12 @@ fun AudioDelayPanel(
   modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<AudioPreferences>()
-  
+
   DraggablePanel(
     modifier = modifier,
     header = {
       AudioDelayCardTitle(onClose = onDismissRequest)
-    }
+    },
   ) {
     val delay by MPVLib.propDouble["audio-delay"].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
@@ -72,19 +68,19 @@ fun AudioDelayPanel(
 // Ensure the AudioDelayPanel also uses the content version as DraggablePanel wraps it
 @Composable
 fun DelayCard(
-    delay: Float,
-    onDelayChange: (Float) -> Unit,
-    onApply: () -> Unit,
-    onReset: () -> Unit,
-    delayType: DelayType,
+  delay: Float,
+  onDelayChange: (Float) -> Unit,
+  onApply: () -> Unit,
+  onReset: () -> Unit,
+  delayType: DelayType,
 ) {
-    DelayCardContent(
-        delay = delay,
-        onDelayChange = onDelayChange,
-        onApply = onApply,
-        onReset = onReset,
-        delayType = delayType
-    )
+  DelayCardContent(
+    delay = delay,
+    onDelayChange = onDelayChange,
+    onApply = onApply,
+    onReset = onReset,
+    delayType = delayType,
+  )
 }
 
 @Composable
@@ -95,10 +91,11 @@ fun AudioDelayCardTitle(
   Row(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(horizontal = MaterialTheme.spacing.medium)
-      .padding(top = MaterialTheme.spacing.small),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(horizontal = MaterialTheme.spacing.medium)
+        .padding(top = MaterialTheme.spacing.small),
   ) {
     Text(
       stringResource(R.string.player_sheets_audio_delay_card_title),

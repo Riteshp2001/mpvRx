@@ -7,9 +7,9 @@
 
 package app.gyrolet.mpvrx.preferences
 
+import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
-import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.ui.player.Debanding
 import app.gyrolet.mpvrx.ui.player.HdrScreenMode
 
@@ -22,6 +22,7 @@ class DecoderPreferences(
   val useVulkan = preferenceStore.getBoolean("use_vulkan", false)
   val hdrScreenOutput = preferenceStore.getBoolean("hdr_screen_output", false)
   val hdrScreenMode = preferenceStore.getEnum("hdr_screen_mode", HdrScreenMode.OFF)
+
   /** Boost SDR content into the HDR range when using the Linear HDR pipeline. */
   val boostSdrToHdr = preferenceStore.getBoolean("boost_sdr_to_hdr", false)
   val useYUV420P = preferenceStore.getBoolean("use_yuv420p", false)

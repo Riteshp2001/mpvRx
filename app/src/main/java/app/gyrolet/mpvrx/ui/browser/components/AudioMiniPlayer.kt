@@ -51,9 +51,7 @@ import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import `is`.xyz.mpv.MPVLib
 
 @Composable
-fun AudioMiniPlayer(
-  modifier: Modifier = Modifier,
-) {
+fun AudioMiniPlayer(modifier: Modifier = Modifier) {
   val isServiceRunning = MediaPlaybackService.isRunning()
   if (!isServiceRunning) return
 
@@ -71,15 +69,17 @@ fun AudioMiniPlayer(
   val progressFraction = if (dur > 0f) (pos / dur).coerceIn(0f, 1f) else 0f
 
   Surface(
-    modifier = modifier
-      .fillMaxWidth()
-      .clip(RoundedCornerShape(24.dp))
-      .clickable {
-        val intent = Intent(context, PlayerActivity::class.java).apply {
-          flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        context.startActivity(intent)
-      },
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(24.dp))
+        .clickable {
+          val intent =
+            Intent(context, PlayerActivity::class.java).apply {
+              flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+          context.startActivity(intent)
+        },
     color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
     tonalElevation = 6.dp,
     shadowElevation = 8.dp,
@@ -88,35 +88,37 @@ fun AudioMiniPlayer(
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
 
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .drawBehind {
-          if (progressFraction > 0f) {
-            drawRect(
-              color = primaryContainerColor.copy(alpha = 0.35f),
-              size = Size(
-                width = size.width * progressFraction,
-                height = size.height,
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .drawBehind {
+            if (progressFraction > 0f) {
+              drawRect(
+                color = primaryContainerColor.copy(alpha = 0.35f),
+                size =
+                  Size(
+                    width = size.width * progressFraction,
+                    height = size.height,
+                  ),
               )
-            )
-          }
-        }
-        .padding(horizontal = 12.dp, vertical = 8.dp),
+            }
+          }.padding(horizontal = 12.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       // Music Icon Badge
       Box(
-        modifier = Modifier
-          .size(42.dp)
-          .clip(CircleShape)
-          .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center
+        modifier =
+          Modifier
+            .size(42.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
       ) {
         Icon(
           imageVector = Icons.RoundedFilled.Audiotrack,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.size(24.dp)
+          modifier = Modifier.size(24.dp),
         )
       }
 
@@ -125,7 +127,7 @@ fun AudioMiniPlayer(
       // Title & Track Status
       Column(
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
       ) {
         Text(
           text = title,
@@ -133,13 +135,13 @@ fun AudioMiniPlayer(
           color = MaterialTheme.colorScheme.onSurface,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.basicMarquee()
+          modifier = Modifier.basicMarquee(),
         )
         Text(
           text = if (isPlaying) "Playing" else "Paused",
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 1
+          maxLines = 1,
         )
       }
 
@@ -148,18 +150,18 @@ fun AudioMiniPlayer(
       // Play / Pause Action Button
       IconButton(
         onClick = { MPVLib.command("cycle", "pause") },
-        modifier = Modifier.size(36.dp)
+        modifier = Modifier.size(36.dp),
       ) {
         AnimatedContent(
           targetState = isPlaying,
           transitionSpec = { fadeIn() togetherWith fadeOut() },
-          label = "mini_play_pause"
+          label = "mini_play_pause",
         ) { playing ->
           Icon(
             imageVector = if (playing) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(26.dp)
+            modifier = Modifier.size(26.dp),
           )
         }
       }
@@ -167,26 +169,26 @@ fun AudioMiniPlayer(
       // Next Track Action Button
       IconButton(
         onClick = { MPVLib.command("playlist-next") },
-        modifier = Modifier.size(36.dp)
+        modifier = Modifier.size(36.dp),
       ) {
         Icon(
           imageVector = Icons.RoundedFilled.SkipNext,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurface,
-          modifier = Modifier.size(24.dp)
+          modifier = Modifier.size(24.dp),
         )
       }
 
       // Close Action Button
       IconButton(
         onClick = { MPVLib.command("stop") },
-        modifier = Modifier.size(32.dp)
+        modifier = Modifier.size(32.dp),
       ) {
         Icon(
           imageVector = Icons.RoundedFilled.Close,
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.size(18.dp)
+          modifier = Modifier.size(18.dp),
         )
       }
     }

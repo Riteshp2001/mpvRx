@@ -25,7 +25,9 @@ data class AiGeneratedContent(
 
 interface AiClient {
   suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>>
+
   suspend fun verifyKey(apiKey: String): Result<String>
+
   suspend fun generateContent(
     apiKey: String,
     model: String,

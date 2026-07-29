@@ -12,29 +12,28 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
-import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
+import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.util.Locale
 
 data class FolderWithNewCount(
   val folder: VideoFolder,
@@ -175,18 +174,19 @@ class FolderListViewModel(
 
   private fun saveFoldersToCache(folders: List<VideoFolder>) {
     cacheWriteJob?.cancel()
-    cacheWriteJob = viewModelScope.launch(Dispatchers.IO) {
-      delay(750)
-      try {
-        val prefs =
-          getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
-        val json = serializeFoldersToJson(folders)
-        prefs.edit().putString(currentFolderCacheKey(), json).apply()
-        Log.d(TAG, "Saved ${folders.size} folders to cache")
-      } catch (e: Exception) {
-        Log.e(TAG, "Error saving folders to cache", e)
+    cacheWriteJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        delay(750)
+        try {
+          val prefs =
+            getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
+          val json = serializeFoldersToJson(folders)
+          prefs.edit().putString(currentFolderCacheKey(), json).apply()
+          Log.d(TAG, "Saved ${folders.size} folders to cache")
+        } catch (e: Exception) {
+          Log.e(TAG, "Error saving folders to cache", e)
+        }
       }
-    }
   }
 
   private fun currentFolderCacheKey(): String =
@@ -200,8 +200,8 @@ class FolderListViewModel(
     }
   }
 
-  private fun parseFoldersFromJson(json: String): List<VideoFolder> {
-    return try {
+  private fun parseFoldersFromJson(json: String): List<VideoFolder> =
+    try {
       json.split("|").mapNotNull { item ->
         val parts = item.split("::")
         if (parts.size == 7) {
@@ -214,63 +214,68 @@ class FolderListViewModel(
             totalDuration = parts[5].toLongOrNull() ?: 0L,
             lastModified = parts[6].toLongOrNull() ?: 0L,
           )
-        } else null
+        } else {
+          null
+        }
       }
     } catch (e: Exception) {
       Log.e(TAG, "Error parsing cached folders", e)
       emptyList()
     }
-  }
 
   private fun calculateNewVideoCounts(folders: List<VideoFolder>) {
     newCountJob?.cancel()
-    newCountJob = viewModelScope.launch(Dispatchers.IO) {
-      delay(400)
-      try {
-        val showLabel = appearancePreferences.showUnplayedOldVideoLabel.get()
-        if (!showLabel) {
-          // If feature is disabled, just return folders with 0 count
-          _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
-          return@launch
-        }
+    newCountJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        delay(400)
+        try {
+          val showLabel = appearancePreferences.showUnplayedOldVideoLabel.get()
+          if (!showLabel) {
+            // If feature is disabled, just return folders with 0 count
+            _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
+            return@launch
+          }
 
-        val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
-        val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
-        val currentTime = System.currentTimeMillis()
+          val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
+          val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
+          val currentTime = System.currentTimeMillis()
 
-        val foldersWithCounts = folders.map { folder ->
-          try {
-            // Get all videos in this folder
-            val videos = app.gyrolet.mpvrx.repository.MediaFileRepository
-              .getVideosInFolder(getApplication(), folder.bucketId)
+          val foldersWithCounts =
+            folders.map { folder ->
+              try {
+                // Get all videos in this folder
+                val videos =
+                  app.gyrolet.mpvrx.repository.MediaFileRepository
+                    .getVideosInFolder(getApplication(), folder.bucketId)
 
-            // Count new unplayed videos
-            val newCount = videos.count { video ->
-              // Check if video was modified within threshold days
-              val videoAge = currentTime - (video.dateModified * 1000)
-              val isRecent = videoAge <= thresholdMillis
+                // Count new unplayed videos
+                val newCount =
+                  videos.count { video ->
+                    // Check if video was modified within threshold days
+                    val videoAge = currentTime - (video.dateModified * 1000)
+                    val isRecent = videoAge <= thresholdMillis
 
-              // Check if video has been played
-              // A video is considered "played" if it has any playback state
-              val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
-              val isUnplayed = playbackState == null
+                    // Check if video has been played
+                    // A video is considered "played" if it has any playback state
+                    val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+                    val isUnplayed = playbackState == null
 
-              isRecent && isUnplayed
+                    isRecent && isUnplayed
+                  }
+
+                FolderWithNewCount(folder, newCount)
+              } catch (e: Exception) {
+                Log.e(TAG, "Error counting new videos for folder ${folder.name}", e)
+                FolderWithNewCount(folder, 0)
+              }
             }
 
-            FolderWithNewCount(folder, newCount)
-          } catch (e: Exception) {
-            Log.e(TAG, "Error counting new videos for folder ${folder.name}", e)
-            FolderWithNewCount(folder, 0)
-          }
+          _foldersWithNewCount.value = foldersWithCounts
+        } catch (e: Exception) {
+          Log.e(TAG, "Error calculating new video counts", e)
+          _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
         }
-
-        _foldersWithNewCount.value = foldersWithCounts
-      } catch (e: Exception) {
-        Log.e(TAG, "Error calculating new video counts", e)
-        _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
       }
-    }
   }
 
   override fun refresh() {
@@ -288,14 +293,14 @@ class FolderListViewModel(
 
     loadVideoFolders(forceFileSystemCheck = true)
   }
-  
+
   /**
    * Trigger a comprehensive media scan to update MediaStore
    */
   private fun triggerMediaScan() {
     try {
       val externalStorage = android.os.Environment.getExternalStorageDirectory()
-      
+
       android.media.MediaScannerConnection.scanFile(
         getApplication(),
         arrayOf(externalStorage.absolutePath),
@@ -303,7 +308,7 @@ class FolderListViewModel(
       ) { path, uri ->
         Log.d(TAG, "Media scan completed for: $path -> $uri")
       }
-      
+
       Log.d(TAG, "Triggered comprehensive media scan")
     } catch (e: Exception) {
       Log.e(TAG, "Failed to trigger media scan", e)
@@ -318,7 +323,10 @@ class FolderListViewModel(
     calculateNewVideoCounts(_videoFolders.value)
   }
 
-  suspend fun renameFolder(folder: VideoFolder, newName: String): Boolean {
+  suspend fun renameFolder(
+    folder: VideoFolder,
+    newName: String,
+  ): Boolean {
     val src = java.io.File(folder.path)
     val dst = java.io.File(src.parent ?: return false, newName)
     if (dst.exists()) return false
@@ -334,106 +342,116 @@ class FolderListViewModel(
   private fun loadVideoFolders(forceFileSystemCheck: Boolean = false) {
     currentScanJob?.cancel()
 
-    currentScanJob = viewModelScope.launch(Dispatchers.IO) {
-      try {
-        val hasExistingData = _allVideoFolders.value.isNotEmpty()
-        if (!hasExistingData) {
-          _isLoading.value = true
-          _scanStatus.value = "Reading media library..."
-        }
-
-        val previousFolders = _allVideoFolders.value.associateBy(::folderKey)
-        val mediaStoreFolders = MediaFileRepository.getAllVideoFoldersFast(
-            context = getApplication(),
-            onProgress = { count ->
-              if (!hasExistingData) _scanStatus.value = "Found $count folders"
-            },
-            forceFileSystemCheck = forceFileSystemCheck,
-          )
-        // This is the important latency boundary: never wait for a filesystem walk.
-        _allVideoFolders.value = mediaStoreFolders
-        _isLoading.value = false
-        _hasCompletedInitialLoad.value = true
-
-        val indexedFolders = MediaFileRepository.getIndexedNoMediaFolders()
-        var visibleFolders = mergeFolders(mediaStoreFolders, indexedFolders)
-        _allVideoFolders.value = visibleFolders
-        Log.d(TAG, "Published ${mediaStoreFolders.size} MediaStore and ${indexedFolders.size} indexed folders")
-
-        if (foldersPreferences.includeNoMediaFolders.get()) {
-          _scanStatus.value = if (forceFileSystemCheck || indexedFolders.isEmpty()) {
-            "Discovering hidden folders..."
-          } else {
-            "Checking hidden folders..."
-          }
-          MediaFileRepository.scanNoMediaFoldersIncrementally(
-            context = getApplication(),
-            forceDiscovery = forceFileSystemCheck,
-          ).collect { batch ->
-            visibleFolders = mergeFolders(visibleFolders, batch)
-            _allVideoFolders.value = visibleFolders
-            _scanStatus.value = "Found ${visibleFolders.size} folders"
+    currentScanJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        try {
+          val hasExistingData = _allVideoFolders.value.isNotEmpty()
+          if (!hasExistingData) {
+            _isLoading.value = true
+            _scanStatus.value = "Reading media library..."
           }
 
-          // Replace the old indexed snapshot after the scan, removing deleted/stale folders.
-          visibleFolders = mergeFolders(mediaStoreFolders, MediaFileRepository.getIndexedNoMediaFolders())
+          val previousFolders = _allVideoFolders.value.associateBy(::folderKey)
+          val mediaStoreFolders =
+            MediaFileRepository.getAllVideoFoldersFast(
+              context = getApplication(),
+              onProgress = { count ->
+                if (!hasExistingData) _scanStatus.value = "Found $count folders"
+              },
+              forceFileSystemCheck = forceFileSystemCheck,
+            )
+          // This is the important latency boundary: never wait for a filesystem walk.
+          _allVideoFolders.value = mediaStoreFolders
+          _isLoading.value = false
+          _hasCompletedInitialLoad.value = true
+
+          val indexedFolders = MediaFileRepository.getIndexedNoMediaFolders()
+          var visibleFolders = mergeFolders(mediaStoreFolders, indexedFolders)
           _allVideoFolders.value = visibleFolders
-        }
+          Log.d(TAG, "Published ${mediaStoreFolders.size} MediaStore and ${indexedFolders.size} indexed folders")
 
-        if (visibleFolders.isEmpty()) return@launch
+          if (foldersPreferences.includeNoMediaFolders.get()) {
+            _scanStatus.value =
+              if (forceFileSystemCheck || indexedFolders.isEmpty()) {
+                "Discovering hidden folders..."
+              } else {
+                "Checking hidden folders..."
+              }
+            MediaFileRepository
+              .scanNoMediaFoldersIncrementally(
+                context = getApplication(),
+                forceDiscovery = forceFileSystemCheck,
+              ).collect { batch ->
+                visibleFolders = mergeFolders(visibleFolders, batch)
+                _allVideoFolders.value = visibleFolders
+                _scanStatus.value = "Found ${visibleFolders.size} folders"
+              }
 
-        var needsEnrichment = false
-        val foldersForEnrichment = visibleFolders.map { folder ->
-          val cached = previousFolders[folderKey(folder)]
-          val cachedIsComplete = cached != null && (cached.videoCount == 0 || cached.totalDuration > 0)
-          if (cached != null && cached.videoCount == folder.videoCount &&
-            cached.lastModified == folder.lastModified && cachedIsComplete
-          ) {
-            cached
-          } else {
-            needsEnrichment = true
-            folder
+            // Replace the old indexed snapshot after the scan, removing deleted/stale folders.
+            visibleFolders = mergeFolders(mediaStoreFolders, MediaFileRepository.getIndexedNoMediaFolders())
+            _allVideoFolders.value = visibleFolders
           }
-        }
-        _allVideoFolders.value = foldersForEnrichment
 
-        val needsDurationEnrichment = needsEnrichment && MetadataRetrieval.isFolderMetadataNeeded(browserPreferences)
-        if (!needsDurationEnrichment) return@launch
+          if (visibleFolders.isEmpty()) return@launch
 
-        _isEnriching.value = true
-        _scanStatus.value = "Processing metadata..."
-        val enrichedFolders = MetadataRetrieval.enrichFoldersIfNeeded(
-            context = getApplication(),
-            folders = foldersForEnrichment,
-            browserPreferences = browserPreferences,
-            metadataCache = metadataCache,
-            onProgress = { processed, total ->
-               _scanStatus.value = "Processing metadata $processed/$total"
+          var needsEnrichment = false
+          val foldersForEnrichment =
+            visibleFolders.map { folder ->
+              val cached = previousFolders[folderKey(folder)]
+              val cachedIsComplete = cached != null && (cached.videoCount == 0 || cached.totalDuration > 0)
+              if (cached != null &&
+                cached.videoCount == folder.videoCount &&
+                cached.lastModified == folder.lastModified &&
+                cachedIsComplete
+              ) {
+                cached
+              } else {
+                needsEnrichment = true
+                folder
+              }
             }
-          )
+          _allVideoFolders.value = foldersForEnrichment
 
-        _allVideoFolders.value = enrichedFolders
-      } catch (e: kotlinx.coroutines.CancellationException) {
-        Log.d(TAG, "Scan cancelled (new scan started)")
-        throw e
-      } catch (e: Exception) {
-        Log.e(TAG, "Error loading video folders", e)
-        _hasCompletedInitialLoad.value = true
-      } finally {
-        _isLoading.value = false
-        _isEnriching.value = false
-        _scanStatus.value = null
+          val needsDurationEnrichment = needsEnrichment && MetadataRetrieval.isFolderMetadataNeeded(browserPreferences)
+          if (!needsDurationEnrichment) return@launch
+
+          _isEnriching.value = true
+          _scanStatus.value = "Processing metadata..."
+          val enrichedFolders =
+            MetadataRetrieval.enrichFoldersIfNeeded(
+              context = getApplication(),
+              folders = foldersForEnrichment,
+              browserPreferences = browserPreferences,
+              metadataCache = metadataCache,
+              onProgress = { processed, total ->
+                _scanStatus.value = "Processing metadata $processed/$total"
+              },
+            )
+
+          _allVideoFolders.value = enrichedFolders
+        } catch (e: kotlinx.coroutines.CancellationException) {
+          Log.d(TAG, "Scan cancelled (new scan started)")
+          throw e
+        } catch (e: Exception) {
+          Log.e(TAG, "Error loading video folders", e)
+          _hasCompletedInitialLoad.value = true
+        } finally {
+          _isLoading.value = false
+          _isEnriching.value = false
+          _scanStatus.value = null
+        }
       }
-    }
   }
 
-  private fun folderKey(folder: VideoFolder): String = folder.path.replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
+  private fun folderKey(folder: VideoFolder): String =
+    folder.path
+      .replace('\\', '/')
+      .trimEnd('/')
+      .lowercase(Locale.ROOT)
 
   private fun mergeFolders(vararg groups: List<VideoFolder>): List<VideoFolder> {
     val merged = linkedMapOf<String, VideoFolder>()
     groups.forEach { folders -> folders.forEach { folder -> merged[folderKey(folder)] = folder } }
     return merged.values.sortedBy { it.name.lowercase(Locale.getDefault()) }
   }
-
 }
-

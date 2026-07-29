@@ -7,10 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
@@ -62,6 +58,8 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -181,23 +179,33 @@ fun FrameNavigationSheet(
         coroutineScope.launch {
           isSnapshotLoading = true
           try {
-            val result = withContext(Dispatchers.IO) {
-              ScreenshotSaver.save(
-                context = context,
-                settings = ScreenshotSettings.fromPreferences(playerPreferences),
-                includeSubtitles = includeSubtitlesInSnapshot,
-              )
-            }
-            result.onSuccess {
-              Toast
-                .makeText(
-                  context,
-                  context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
-                  Toast.LENGTH_SHORT,
-                ).show()
-            }.onFailure { error ->
-              Toast.makeText(context, context.getString(R.string.toast_failed_to_save_snapshot, error.message ?: context.getString(R.string.generic_unknown_error)), Toast.LENGTH_LONG).show()
-            }
+            val result =
+              withContext(Dispatchers.IO) {
+                ScreenshotSaver.save(
+                  context = context,
+                  settings = ScreenshotSettings.fromPreferences(playerPreferences),
+                  includeSubtitles = includeSubtitlesInSnapshot,
+                )
+              }
+            result
+              .onSuccess {
+                Toast
+                  .makeText(
+                    context,
+                    context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+                    Toast.LENGTH_SHORT,
+                  ).show()
+              }.onFailure { error ->
+                Toast
+                  .makeText(
+                    context,
+                    context.getString(
+                      R.string.toast_failed_to_save_snapshot,
+                      error.message ?: context.getString(R.string.generic_unknown_error),
+                    ),
+                    Toast.LENGTH_LONG,
+                  ).show()
+              }
           } finally {
             isSnapshotLoading = false
           }
@@ -445,7 +453,10 @@ private fun FrameInfoDisplay(
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_frame),
+      Text(
+        text =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_frame),
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
         color = MaterialTheme.colorScheme.tertiary,
       )
@@ -464,7 +475,10 @@ private fun FrameInfoDisplay(
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_timestamp),
+      Text(
+        text =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_timestamp),
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
         color = MaterialTheme.colorScheme.tertiary,
       )
@@ -604,25 +618,25 @@ private fun IncludeSubsToggle(
         Crossfade(
           targetState = includeSubs,
           animationSpec = tween(durationMillis = 200),
-          label = "SwitchIconAnimation"
+          label = "SwitchIconAnimation",
         ) { isChecked ->
           if (isChecked) {
             Icon(
               Icons.RoundedFilled.Check,
               contentDescription = null,
               modifier = Modifier.size(SwitchDefaults.IconSize),
-              tint = MaterialTheme.colorScheme.onPrimaryContainer
+              tint = MaterialTheme.colorScheme.onPrimaryContainer,
             )
           } else {
             Icon(
               Icons.RoundedFilled.Close,
               contentDescription = null,
               modifier = Modifier.size(SwitchDefaults.IconSize),
-              tint = MaterialTheme.colorScheme.onSurfaceVariant
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
         }
-      }
+      },
     )
     Text(
       text = stringResource(R.string.player_sheets_frame_navigation_include_subtitles),
@@ -631,7 +645,3 @@ private fun IncludeSubsToggle(
     )
   }
 }
-
-
-
-

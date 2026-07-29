@@ -7,17 +7,11 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
-import androidx.compose.ui.unit.Dp
-
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.text.format.DateFormat
-import app.gyrolet.mpvrx.ui.icons.Icon as AppSymbolIcon
-import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
-
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -41,7 +35,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -55,9 +48,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
@@ -66,11 +61,13 @@ import app.gyrolet.mpvrx.preferences.PlayerClockFormat
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.cast.CastPlayerButton
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.VideoAspect
+import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.CurrentChapter
 import app.gyrolet.mpvrx.ui.theme.controlColor
@@ -81,6 +78,7 @@ import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.ui.icons.Icon as AppSymbolIcon
 
 @Composable
 fun RenderPlayerButton(
@@ -149,9 +147,10 @@ fun RenderPlayerButton(
             .clip(CircleShape)
             .clickable(
               interactionSource = titleInteractionSource,
-              indication = ripple(
-                bounded = true,
-              ),
+              indication =
+                ripple(
+                  bounded = true,
+                ),
               enabled = playlistModeEnabled,
               onClick = {
                 clickEvent()
@@ -202,37 +201,53 @@ fun RenderPlayerButton(
       if (isSpeedNonOne) {
         Surface(
           shape = CircleShape,
-          color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+          color =
+            if (hideBackground) {
+              Color.Transparent
+            } else {
+              MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = 0.55f,
+              )
+            },
           contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           tonalElevation = 0.dp,
           shadowElevation = 0.dp,
-          border = if (hideBackground) null else BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-          ),
-          modifier = Modifier
-            .height(buttonSize)
-            .clip(CircleShape)
-            .clickable(
-              interactionSource = remember { MutableInteractionSource() },
-              indication = ripple(bounded = true),
-              onClick = {
-                clickEvent()
-                onOpenSheet(Sheets.PlaybackSpeed)
-              },
-            ),
+          border =
+            if (hideBackground) {
+              null
+            } else {
+              BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+              )
+            },
+          modifier =
+            Modifier
+              .height(buttonSize)
+              .clip(CircleShape)
+              .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = true),
+                onClick = {
+                  clickEvent()
+                  onOpenSheet(Sheets.PlaybackSpeed)
+                },
+              ),
         ) {
           Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            modifier = Modifier.padding(
-              horizontal = MaterialTheme.spacing.small,
-              vertical = MaterialTheme.spacing.small,
-            ),
+            modifier =
+              Modifier.padding(
+                horizontal = MaterialTheme.spacing.small,
+                vertical = MaterialTheme.spacing.small,
+              ),
           ) {
             AppSymbolIcon(
               imageVector = Icons.RoundedFilled.Speed,
-              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playback_speed),
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_playback_speed),
               tint = MaterialTheme.colorScheme.primary,
               modifier = Modifier.size(20.dp),
             )
@@ -276,17 +291,18 @@ fun RenderPlayerButton(
               MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
             )
           },
-        modifier = Modifier
-          .height(buttonSize)
-          .clip(CircleShape)
-          .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = ripple(bounded = true),
-            onClick = {
-              clickEvent()
-              onOpenSheet(Sheets.Decoders)
-            },
-          ),
+        modifier =
+          Modifier
+            .height(buttonSize)
+            .clip(CircleShape)
+            .clickable(
+              interactionSource = remember { MutableInteractionSource() },
+              indication = ripple(bounded = true),
+              onClick = {
+                clickEvent()
+                onOpenSheet(Sheets.Decoders)
+              },
+            ),
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
@@ -313,11 +329,12 @@ fun RenderPlayerButton(
         icon = if (isHdrEnabled) Icons.RoundedFilled.HdrOn else Icons.RoundedFilled.HdrOff,
         onClick = viewModel::toggleHdrScreenOutput,
         onLongClick = { onOpenPanel(Panels.HdrScreenOutput) },
-        color = if (hideBackground) {
-          if (isHdrEnabled) MaterialTheme.colorScheme.primary else controlColor
-        } else {
-          if (isHdrEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-        },
+        color =
+          if (hideBackground) {
+            if (isHdrEnabled) MaterialTheme.colorScheme.primary else controlColor
+          } else {
+            if (isHdrEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+          },
         modifier = Modifier.size(buttonSize),
       )
     }
@@ -349,7 +366,15 @@ fun RenderPlayerButton(
           Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            border =
+              if (hideBackground) {
+                null
+              } else {
+                BorderStroke(
+                  1.dp,
+                  MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
+              },
             modifier = Modifier.height(buttonSize),
           ) {
             Row(
@@ -361,18 +386,22 @@ fun RenderPlayerButton(
               Surface(
                 shape = CircleShape,
                 color = Color.Transparent,
-                modifier = Modifier
-                  .size(buttonSize - 4.dp)
-                  .clip(CircleShape)
-                  .clickable(onClick = {
-                    viewModel.frameStepBackward()
-                    viewModel.resetFrameNavigationTimer()
-                  }),
+                modifier =
+                  Modifier
+                    .size(buttonSize - 4.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = {
+                      viewModel.frameStepBackward()
+                      viewModel.resetFrameNavigationTimer()
+                    }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   AppSymbolIcon(
                     imageVector = Icons.RoundedFilled.FastRewind,
-                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_previous_frame),
+                    contentDescription =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.ui_previous_frame,
+                      ),
                     tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(20.dp),
                   )
@@ -401,21 +430,25 @@ fun RenderPlayerButton(
                   shape = CircleShape,
                   color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
                   border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                  modifier = Modifier
-                    .size(buttonSize - 4.dp)
-                    .clip(CircleShape)
-                    .combinedClickable(
-                      onClick = {
-                        viewModel.takeSnapshot(context)
-                        viewModel.resetFrameNavigationTimer()
-                      },
-                      onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
-                    ),
+                  modifier =
+                    Modifier
+                      .size(buttonSize - 4.dp)
+                      .clip(CircleShape)
+                      .combinedClickable(
+                        onClick = {
+                          viewModel.takeSnapshot(context)
+                          viewModel.resetFrameNavigationTimer()
+                        },
+                        onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
+                      ),
                 ) {
                   Box(contentAlignment = Alignment.Center) {
                     AppSymbolIcon(
                       imageVector = Icons.RoundedFilled.Aperture,
-                      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_take_screenshot),
+                      contentDescription =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.ui_take_screenshot,
+                        ),
                       tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                       modifier = Modifier.size(20.dp),
                     )
@@ -427,18 +460,22 @@ fun RenderPlayerButton(
               Surface(
                 shape = CircleShape,
                 color = Color.Transparent,
-                modifier = Modifier
-                  .size(buttonSize - 4.dp)
-                  .clip(CircleShape)
-                  .clickable(onClick = {
-                    viewModel.frameStepForward()
-                    viewModel.resetFrameNavigationTimer()
-                  }),
+                modifier =
+                  Modifier
+                    .size(buttonSize - 4.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = {
+                      viewModel.frameStepForward()
+                      viewModel.resetFrameNavigationTimer()
+                    }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   AppSymbolIcon(
                     imageVector = Icons.RoundedFilled.FastForward,
-                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_next_frame),
+                    contentDescription =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.ui_next_frame,
+                      ),
                     tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(20.dp),
                   )
@@ -464,41 +501,58 @@ fun RenderPlayerButton(
         @OptIn(ExperimentalFoundationApi::class)
         Surface(
           shape = CircleShape,
-          color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+          color =
+            if (hideBackground) {
+              Color.Transparent
+            } else {
+              MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = 0.55f,
+              )
+            },
           contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           tonalElevation = 0.dp,
           shadowElevation = 0.dp,
-          border = if (hideBackground) null else BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-          ),
-          modifier = Modifier
-            .height(buttonSize)
-            .clip(CircleShape)
-            .combinedClickable(
-              interactionSource = remember { MutableInteractionSource() },
-              indication = ripple(bounded = true),
-              onClick = {
-                clickEvent()
-                onOpenSheet(Sheets.VideoZoom)
-              },
-              onLongClick = {
-                clickEvent()
-                viewModel.resetVideoZoom()
-              },
-            ),
+          border =
+            if (hideBackground) {
+              null
+            } else {
+              BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+              )
+            },
+          modifier =
+            Modifier
+              .height(buttonSize)
+              .clip(CircleShape)
+              .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = true),
+                onClick = {
+                  clickEvent()
+                  onOpenSheet(Sheets.VideoZoom)
+                },
+                onLongClick = {
+                  clickEvent()
+                  viewModel.resetVideoZoom()
+                },
+              ),
         ) {
           Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            modifier = Modifier.padding(
-              horizontal = MaterialTheme.spacing.small,
-              vertical = MaterialTheme.spacing.small,
-            ),
+            modifier =
+              Modifier.padding(
+                horizontal = MaterialTheme.spacing.small,
+                vertical = MaterialTheme.spacing.small,
+              ),
           ) {
             AppSymbolIcon(
               imageVector = Icons.RoundedFilled.ZoomIn,
-              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.player_sheets_zoom_slider_label),
+              contentDescription =
+                androidx.compose.ui.res.stringResource(
+                  app.gyrolet.mpvrx.R.string.player_sheets_zoom_slider_label,
+                ),
               tint = MaterialTheme.colorScheme.primary,
               modifier = Modifier.size(20.dp),
             )
@@ -619,25 +673,27 @@ fun RenderPlayerButton(
 
     PlayerButton.REPEAT_MODE -> {
       val repeatMode by viewModel.repeatMode.collectAsState()
-      val icon = when (repeatMode) {
-        app.gyrolet.mpvrx.ui.player.RepeatMode.OFF -> Icons.RoundedFilled.Repeat
-        app.gyrolet.mpvrx.ui.player.RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
-        app.gyrolet.mpvrx.ui.player.RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
-      }
+      val icon =
+        when (repeatMode) {
+          app.gyrolet.mpvrx.ui.player.RepeatMode.OFF -> Icons.RoundedFilled.Repeat
+          app.gyrolet.mpvrx.ui.player.RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
+          app.gyrolet.mpvrx.ui.player.RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
+        }
       ControlsButton(
         icon = icon,
         onClick = viewModel::cycleRepeatMode,
-        color = if (hideBackground) {
-          when (repeatMode) {
-            app.gyrolet.mpvrx.ui.player.RepeatMode.OFF -> controlColor
-            else -> MaterialTheme.colorScheme.primary
-          }
-        } else {
-          when (repeatMode) {
-            app.gyrolet.mpvrx.ui.player.RepeatMode.OFF -> MaterialTheme.colorScheme.onSurface
-            else -> MaterialTheme.colorScheme.primary
-          }
-        },
+        color =
+          if (hideBackground) {
+            when (repeatMode) {
+              app.gyrolet.mpvrx.ui.player.RepeatMode.OFF -> controlColor
+              else -> MaterialTheme.colorScheme.primary
+            }
+          } else {
+            when (repeatMode) {
+              app.gyrolet.mpvrx.ui.player.RepeatMode.OFF -> MaterialTheme.colorScheme.onSurface
+              else -> MaterialTheme.colorScheme.primary
+            }
+          },
         modifier = Modifier.size(buttonSize),
       )
     }
@@ -659,11 +715,12 @@ fun RenderPlayerButton(
         ControlsButton(
           icon = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
           onClick = viewModel::toggleShuffle,
-          color = if (hideBackground) {
-            if (shuffleEnabled) MaterialTheme.colorScheme.primary else controlColor
-          } else {
-            if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-          },
+          color =
+            if (hideBackground) {
+              if (shuffleEnabled) MaterialTheme.colorScheme.primary else controlColor
+            } else {
+              if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            },
           modifier = Modifier.size(buttonSize),
         )
       }
@@ -674,11 +731,12 @@ fun RenderPlayerButton(
       ControlsButton(
         icon = Icons.RoundedFilled.Flip,
         onClick = viewModel::toggleMirroring,
-        color = if (hideBackground) {
-          if (transform.isMirrored) MaterialTheme.colorScheme.primary else controlColor
-        } else {
-          if (transform.isMirrored) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-        },
+        color =
+          if (hideBackground) {
+            if (transform.isMirrored) MaterialTheme.colorScheme.primary else controlColor
+          } else {
+            if (transform.isMirrored) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+          },
         modifier = Modifier.size(buttonSize),
       )
     }
@@ -686,30 +744,50 @@ fun RenderPlayerButton(
     PlayerButton.VERTICAL_FLIP -> {
       val transform by viewModel.transformState.collectAsState()
       val isVerticalFlipped = transform.isVerticalFlipped
-      val vFlipColor = if (hideBackground) {
-        if (isVerticalFlipped) MaterialTheme.colorScheme.primary else controlColor
-      } else {
-        if (isVerticalFlipped) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-      }
+      val vFlipColor =
+        if (hideBackground) {
+          if (isVerticalFlipped) MaterialTheme.colorScheme.primary else controlColor
+        } else {
+          if (isVerticalFlipped) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        }
       Surface(
         shape = CircleShape,
-        color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+        color =
+          if (hideBackground) {
+            Color.Transparent
+          } else {
+            MaterialTheme.colorScheme.surfaceContainer.copy(
+              alpha = 0.55f,
+            )
+          },
         contentColor = vFlipColor,
-        border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-        modifier = Modifier
-          .size(buttonSize)
-          .clip(CircleShape)
-          .clickable(onClick = viewModel::toggleVerticalFlip),
+        border =
+          if (hideBackground) {
+            null
+          } else {
+            BorderStroke(
+              1.dp,
+              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            )
+          },
+        modifier =
+          Modifier
+            .size(buttonSize)
+            .clip(CircleShape)
+            .clickable(onClick = viewModel::toggleVerticalFlip),
       ) {
         Box(contentAlignment = Alignment.Center) {
           AppSymbolIcon(
             imageVector = Icons.RoundedFilled.Flip,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_vertical_flip),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_vertical_flip),
             tint = vFlipColor,
-            modifier = Modifier
-              .padding(MaterialTheme.spacing.small)
-              .size(20.dp)
-              .rotate(90f),
+            modifier =
+              Modifier
+                .padding(MaterialTheme.spacing.small)
+                .size(20.dp)
+                .rotate(90f),
           )
         }
       }
@@ -734,7 +812,15 @@ fun RenderPlayerButton(
           Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            border =
+              if (hideBackground) {
+                null
+              } else {
+                BorderStroke(
+                  1.dp,
+                  MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
+              },
             modifier = Modifier.height(buttonSize),
           ) {
             Row(
@@ -746,21 +832,23 @@ fun RenderPlayerButton(
               Surface(
                 shape = CircleShape,
                 color = if (loopA != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Transparent,
-                modifier = Modifier
-                  .height(buttonSize - 4.dp)
-                  .widthIn(min = buttonSize - 4.dp)
-                  .clip(CircleShape)
-                  .clickable(onClick = { viewModel.setLoopA() }),
+                modifier =
+                  Modifier
+                    .height(buttonSize - 4.dp)
+                    .widthIn(min = buttonSize - 4.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = { viewModel.setLoopA() }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   Text(
                     text = if (loopA != null) viewModel.formatTimestamp(loopA) else "A",
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (loopA != null) {
-                      MaterialTheme.colorScheme.onTertiaryContainer
-                    } else {
-                      if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
-                    },
+                    color =
+                      if (loopA != null) {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                      } else {
+                        if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+                      },
                     modifier = Modifier.padding(horizontal = if (loopA != null) 8.dp else 0.dp),
                   )
                 }
@@ -771,18 +859,22 @@ fun RenderPlayerButton(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                modifier = Modifier
-                  .size(buttonSize - 4.dp)
-                  .clip(CircleShape)
-                  .clickable(onClick = {
-                    viewModel.clearABLoop()
-                    viewModel.toggleABLoopExpanded()
-                  }),
+                modifier =
+                  Modifier
+                    .size(buttonSize - 4.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = {
+                      viewModel.clearABLoop()
+                      viewModel.toggleABLoopExpanded()
+                    }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   AppSymbolIcon(
                     imageVector = Icons.RoundedFilled.Close,
-                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_clear_loop),
+                    contentDescription =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.ui_clear_loop,
+                      ),
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(16.dp),
                   )
@@ -793,21 +885,23 @@ fun RenderPlayerButton(
               Surface(
                 shape = CircleShape,
                 color = if (loopB != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Transparent,
-                modifier = Modifier
-                  .height(buttonSize - 4.dp)
-                  .widthIn(min = buttonSize - 4.dp)
-                  .clip(CircleShape)
-                  .clickable(onClick = { viewModel.setLoopB() }),
+                modifier =
+                  Modifier
+                    .height(buttonSize - 4.dp)
+                    .widthIn(min = buttonSize - 4.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = { viewModel.setLoopB() }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   Text(
                     text = if (loopB != null) viewModel.formatTimestamp(loopB) else "B",
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (loopB != null) {
-                      MaterialTheme.colorScheme.onTertiaryContainer
-                    } else {
-                      if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
-                    },
+                    color =
+                      if (loopB != null) {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                      } else {
+                        if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+                      },
                     modifier = Modifier.padding(horizontal = if (loopB != null) 8.dp else 0.dp),
                   )
                 }
@@ -818,17 +912,40 @@ fun RenderPlayerButton(
           // Collapsed: Show the custom A-B loop icon
           Surface(
             shape = CircleShape,
-            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-            modifier = Modifier
-              .size(buttonSize)
-              .clip(CircleShape)
-              .clickable(onClick = viewModel::toggleABLoopExpanded),
+            color =
+              if (hideBackground) {
+                Color.Transparent
+              } else {
+                MaterialTheme.colorScheme.surfaceContainer.copy(
+                  alpha = 0.55f,
+                )
+              },
+            border =
+              if (hideBackground) {
+                null
+              } else {
+                BorderStroke(
+                  1.dp,
+                  MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
+              },
+            modifier =
+              Modifier
+                .size(buttonSize)
+                .clip(CircleShape)
+                .clickable(onClick = viewModel::toggleABLoopExpanded),
           ) {
             Box(contentAlignment = Alignment.Center) {
               AbLoopIcon(
                 modifier = Modifier.size(30.dp),
-                tint = if (loopA != null && loopB != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                tint =
+                  if (loopA != null &&
+                    loopB != null
+                  ) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    MaterialTheme.colorScheme.onSurface
+                  },
                 isASet = loopA != null,
                 isBSet = loopB != null,
               )
@@ -857,42 +974,61 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.AMBIENT_MODE -> {
-        val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
-        @OptIn(ExperimentalFoundationApi::class)
-        Surface(
-          shape = CircleShape,
-          color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-          contentColor = if (isAmbientEnabled) {
-               MaterialTheme.colorScheme.primary
-            } else {
-               if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
-            },
-          border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-          modifier = Modifier
+      val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
+      @OptIn(ExperimentalFoundationApi::class)
+      Surface(
+        shape = CircleShape,
+        color =
+          if (hideBackground) {
+            Color.Transparent
+          } else {
+            MaterialTheme.colorScheme.surfaceContainer.copy(
+              alpha = 0.55f,
+            )
+          },
+        contentColor =
+          if (isAmbientEnabled) {
+            MaterialTheme.colorScheme.primary
+          } else {
+            if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+          },
+        border =
+          if (hideBackground) {
+            null
+          } else {
+            BorderStroke(
+              1.dp,
+              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            )
+          },
+        modifier =
+          Modifier
             .size(buttonSize)
             .clip(CircleShape)
             .combinedClickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = ripple(bounded = true),
-              onClick = { 
+              onClick = {
                 clickEvent()
-                viewModel.toggleAmbientMode() 
+                viewModel.toggleAmbientMode()
               },
               onLongClick = {
                 clickEvent()
                 onOpenSheet(Sheets.AmbientConfig)
-              }
+              },
             ),
-        ) {
-          Box(contentAlignment = Alignment.Center) {
-            AppSymbolIcon(
-              imageVector = if (isAmbientEnabled) Icons.RoundedFilled.BlurOn else Icons.RoundedFilled.BlurOff,
-              contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_ambience_mode),
-              tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
-              modifier = Modifier.size(24.dp)
-            )
-          }
+      ) {
+        Box(contentAlignment = Alignment.Center) {
+          AppSymbolIcon(
+            imageVector = if (isAmbientEnabled) Icons.RoundedFilled.BlurOn else Icons.RoundedFilled.BlurOff,
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_ambience_mode),
+            tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
+            modifier = Modifier.size(24.dp),
+          )
         }
+      }
     }
 
     PlayerButton.TIME_NETWORK -> {
@@ -900,42 +1036,61 @@ fun RenderPlayerButton(
       val stat by rememberTimeAndNetworkStat(clockFormat)
       Surface(
         shape = CircleShape,
-        color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+        color =
+          if (hideBackground) {
+            Color.Transparent
+          } else {
+            MaterialTheme.colorScheme.surfaceContainer.copy(
+              alpha = 0.55f,
+            )
+          },
         contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-        modifier = Modifier
-          .height(buttonSize)
-          .clip(CircleShape)
-          .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = ripple(bounded = true),
-            onClick = {
-              clickEvent()
-              if (MPVLib.getPropertyBoolean("user-data/mpv/console/open") == true) {
-                MPVLib.command("script-message-to", "console", "disable")
-              }
-              if (statisticsPage == 6) {
-                advancedPreferences.enabledStatisticsPage.set(0)
-              } else {
-                if (statisticsPage in 1..5) {
-                  MPVLib.command("script-binding", "stats/display-stats-toggle")
+        border =
+          if (hideBackground) {
+            null
+          } else {
+            BorderStroke(
+              1.dp,
+              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            )
+          },
+        modifier =
+          Modifier
+            .height(buttonSize)
+            .clip(CircleShape)
+            .clickable(
+              interactionSource = remember { MutableInteractionSource() },
+              indication = ripple(bounded = true),
+              onClick = {
+                clickEvent()
+                if (MPVLib.getPropertyBoolean("user-data/mpv/console/open") == true) {
+                  MPVLib.command("script-message-to", "console", "disable")
                 }
-                advancedPreferences.enabledStatisticsPage.set(6)
-              }
-              onOpenSheet(Sheets.None)
-            },
-          ),
+                if (statisticsPage == 6) {
+                  advancedPreferences.enabledStatisticsPage.set(0)
+                } else {
+                  if (statisticsPage in 1..5) {
+                    MPVLib.command("script-binding", "stats/display-stats-toggle")
+                  }
+                  advancedPreferences.enabledStatisticsPage.set(6)
+                }
+                onOpenSheet(Sheets.None)
+              },
+            ),
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-          modifier = Modifier
-            .widthIn(min = 176.dp)
-            .padding(horizontal = MaterialTheme.spacing.small),
+          modifier =
+            Modifier
+              .widthIn(min = 176.dp)
+              .padding(horizontal = MaterialTheme.spacing.small),
         ) {
           AppSymbolIcon(
             imageVector = Icons.RoundedFilled.AccessTime,
-            contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_time_and_network),
+            contentDescription =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_time_and_network),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(18.dp),
           )
@@ -949,7 +1104,7 @@ fun RenderPlayerButton(
       }
     }
 
-    PlayerButton.NONE -> { /* Do nothing */
+    PlayerButton.NONE -> { // Do nothing
     }
   }
 }
@@ -989,8 +1144,9 @@ internal fun readBatterySnapshot(context: Context): BatterySnapshot {
 
   val voltageMilliVolts = batteryIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)?.takeIf { it > 0 }
 
-  val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
-    ?: BatteryManager.BATTERY_STATUS_UNKNOWN
+  val status =
+    batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
+      ?: BatteryManager.BATTERY_STATUS_UNKNOWN
   val statusText =
     when (status) {
       BatteryManager.BATTERY_STATUS_CHARGING -> "Charging"
@@ -1082,18 +1238,20 @@ private fun formatClock(
 }
 
 private fun readNetworkBytesPerSecond(): Double {
-  val directBytesPerSecond = listOf("demuxer-cache-speed", "cache-speed", "demuxer-speed")
-    .asSequence()
-    .mapNotNull { name -> runCatching { MPVLib.getPropertyDouble(name) }.getOrNull() }
-    .firstOrNull { it > 0.0 }
+  val directBytesPerSecond =
+    listOf("demuxer-cache-speed", "cache-speed", "demuxer-speed")
+      .asSequence()
+      .mapNotNull { name -> runCatching { MPVLib.getPropertyDouble(name) }.getOrNull() }
+      .firstOrNull { it > 0.0 }
 
   if (directBytesPerSecond != null) return directBytesPerSecond
 
-  val bitratesBitsPerSecond = listOf("packet-video-bitrate", "video-bitrate", "audio-bitrate")
-    .asSequence()
-    .mapNotNull { name -> runCatching { MPVLib.getPropertyDouble(name) }.getOrNull() }
-    .filter { it > 0.0 }
-    .sum()
+  val bitratesBitsPerSecond =
+    listOf("packet-video-bitrate", "video-bitrate", "audio-bitrate")
+      .asSequence()
+      .mapNotNull { name -> runCatching { MPVLib.getPropertyDouble(name) }.getOrNull() }
+      .filter { it > 0.0 }
+      .sum()
 
   return if (bitratesBitsPerSecond > 0.0) bitratesBitsPerSecond / 8.0 else 0.0
 }

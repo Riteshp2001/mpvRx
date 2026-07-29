@@ -27,4 +27,3 @@ class GlobalExceptionHandler(
     exitProcess(0)
   }
 }
-

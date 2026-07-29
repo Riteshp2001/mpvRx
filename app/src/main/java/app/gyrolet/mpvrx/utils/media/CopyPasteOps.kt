@@ -92,8 +92,7 @@ object CopyPasteOps {
    * Check if we can use direct file operations
    * Play Store flavor uses scoped/SAF path; other flavors keep classic direct file behavior.
    */
-  fun canUseDirectFileOperations(): Boolean =
-    hasManageStoragePermission()
+  fun canUseDirectFileOperations(): Boolean = hasManageStoragePermission()
 
   // ============================================================================
   // Operation Control
@@ -1095,24 +1094,27 @@ object CopyPasteOps {
  * ```
  */
 class OpenDocumentTreeContract : ActivityResultContract<Uri?, Uri?>() {
-
-  override fun createIntent(context: Context, input: Uri?): Intent {
+  override fun createIntent(
+    context: Context,
+    input: Uri?,
+  ): Intent {
     val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
 
     // Always start at root by setting EXTRA_INITIAL_URI to the primary external storage root
     // This prevents the picker from remembering the last location
     // Use the primary external storage root URI to force starting at root
-    val rootUri = DocumentsContract.buildRootUri(
-      "com.android.externalstorage.documents",
-      "primary"
-    )
+    val rootUri =
+      DocumentsContract.buildRootUri(
+        "com.android.externalstorage.documents",
+        "primary",
+      )
     intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, rootUri)
 
     return intent
   }
 
-  override fun parseResult(resultCode: Int, intent: Intent?): Uri? {
-    return intent?.data
-  }
+  override fun parseResult(
+    resultCode: Int,
+    intent: Intent?,
+  ): Uri? = intent?.data
 }
-

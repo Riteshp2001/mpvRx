@@ -7,14 +7,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.playlist
 
-import app.gyrolet.mpvrx.R
-import androidx.compose.ui.res.stringResource
-
-import androidx.compose.ui.focus.FocusRequester
-
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -27,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,12 +51,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistItemEntity
 import app.gyrolet.mpvrx.domain.media.model.Video
@@ -81,6 +75,8 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.selection.rememberSelectionManager
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -110,7 +106,9 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
  * - Full playlist loaded into PlayerActivity
  */
 @Serializable
-data class PlaylistDetailScreen(val playlistId: Int) : Screen {
+data class PlaylistDetailScreen(
+  val playlistId: Int,
+) : Screen {
   @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
   @Composable
   override fun Content() {
@@ -122,10 +120,11 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
     val viewModel: PlaylistDetailViewModel =
       viewModel(
         key = "PlaylistDetailViewModel_$playlistId",
-        factory = PlaylistDetailViewModel.factory(
-          context.applicationContext as android.app.Application,
-          playlistId,
-        ),
+        factory =
+          PlaylistDetailViewModel.factory(
+            context.applicationContext as android.app.Application,
+            playlistId,
+          ),
       )
 
     val playlist by viewModel.playlist.collectAsState()
@@ -169,16 +168,21 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       }
 
     // Filter video items based on category and search query
-    val filteredVideoItems = if (isSearching && searchQuery.isNotBlank()) {
-      m3uFilteredItems.filter { item ->
-        item.video.displayName.contains(searchQuery, ignoreCase = true) ||
-          item.video.path.contains(searchQuery, ignoreCase = true) ||
-          item.playlistItem.groupTitle.orEmpty().contains(searchQuery, ignoreCase = true) ||
-          item.playlistItem.tvgId.orEmpty().contains(searchQuery, ignoreCase = true)
+    val filteredVideoItems =
+      if (isSearching && searchQuery.isNotBlank()) {
+        m3uFilteredItems.filter { item ->
+          item.video.displayName.contains(searchQuery, ignoreCase = true) ||
+            item.video.path.contains(searchQuery, ignoreCase = true) ||
+            item.playlistItem.groupTitle
+              .orEmpty()
+              .contains(searchQuery, ignoreCase = true) ||
+            item.playlistItem.tvgId
+              .orEmpty()
+              .contains(searchQuery, ignoreCase = true)
+        }
+      } else {
+        m3uFilteredItems
       }
-    } else {
-      m3uFilteredItems
-    }
 
     // Request focus when search is activated
     LaunchedEffect(isSearching) {
@@ -227,7 +231,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       }
     }
 
-    fun launchPlaylistPlayback(item: PlaylistVideoItem, startIndex: Int) {
+    fun launchPlaylistPlayback(
+      item: PlaylistVideoItem,
+      startIndex: Int,
+    ) {
       val intent =
         Intent(context, PlayerActivity::class.java).apply {
           action = Intent.ACTION_VIEW
@@ -254,11 +261,19 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                 onSearch = { },
                 expanded = false,
                 onExpandedChange = { },
-                placeholder = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_videos)) },
+                placeholder = {
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_search_videos),
+                  )
+                },
                 leadingIcon = {
                   Icon(
                     imageVector = Icons.RoundedFilled.Search,
-                    contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.settings_search_title),
+                    contentDescription =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.settings_search_title,
+                      ),
                   )
                 },
                 trailingIcon = {
@@ -270,7 +285,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                   ) {
                     Icon(
                       imageVector = Icons.RoundedFilled.Close,
-                      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+                      contentDescription =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.generic_cancel,
+                        ),
                     )
                   }
                 },
@@ -279,9 +297,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
             },
             expanded = false,
             onExpandedChange = { },
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             shape = RoundedCornerShape(28.dp),
             tonalElevation = 6.dp,
           ) {
@@ -326,15 +345,16 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
               } else {
                 null
               },
-            onShareClick = if (playlist?.isM3uPlaylist != true) {
-              // Hide share button for M3U playlists
-              {
-                val videosToShare = selectionManager.getSelectedItems().map { it.video }
-                MediaUtils.shareVideos(context, videosToShare)
-              }
-            } else {
-              null
-            },
+            onShareClick =
+              if (playlist?.isM3uPlaylist != true) {
+                // Hide share button for M3U playlists
+                {
+                  val videosToShare = selectionManager.getSelectedItems().map { it.video }
+                  MediaUtils.shareVideos(context, videosToShare)
+                }
+              } else {
+                null
+              },
             onCopyClick = {
               val selectedPaths = selectionManager.getSelectedItems().map { it.video.path }.distinct()
               if (selectedPaths.isNotEmpty()) {
@@ -355,7 +375,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                   ) {
                     Icon(
                       imageVector = Icons.RoundedFilled.Check,
-                      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_done_reordering),
+                      contentDescription =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.ui_done_reordering,
+                        ),
                       tint = MaterialTheme.colorScheme.primary,
                     )
                   }
@@ -371,7 +394,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                     ) {
                       Icon(
                         imageVector = Icons.RoundedFilled.Search,
-                        contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_videos_2),
+                        contentDescription =
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.ui_search_videos_2,
+                          ),
                         tint = MaterialTheme.colorScheme.onSurface,
                       )
                     }
@@ -384,7 +410,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                       ) {
                         Icon(
                           imageVector = Icons.RoundedFilled.SwapVert,
-                          contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_reorder_playlist),
+                          contentDescription =
+                            androidx.compose.ui.res.stringResource(
+                              app.gyrolet.mpvrx.R.string.ui_reorder_playlist,
+                            ),
                           tint = MaterialTheme.colorScheme.onSurface,
                         )
                       }
@@ -394,9 +423,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                     // Play button
                     Button(
                       onClick = {
-                        val mostRecentlyPlayedItem = videoItems
-                          .filter { it.playlistItem.lastPlayedAt > 0 }
-                          .maxByOrNull { it.playlistItem.lastPlayedAt }
+                        val mostRecentlyPlayedItem =
+                          videoItems
+                            .filter { it.playlistItem.lastPlayedAt > 0 }
+                            .maxByOrNull { it.playlistItem.lastPlayedAt }
 
                         val itemToPlay = mostRecentlyPlayedItem ?: videoItems.firstOrNull()
                         val startIndex =
@@ -411,10 +441,11 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                           launchPlaylistPlayback(itemToPlay, startIndex)
                         }
                       },
-                      colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                      ),
+                      colors =
+                        ButtonDefaults.buttonColors(
+                          containerColor = MaterialTheme.colorScheme.primaryContainer,
+                          contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
                       shape = MaterialTheme.shapes.large,
                       modifier = Modifier.padding(end = 20.dp),
                     ) {
@@ -427,7 +458,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                           modifier = Modifier.size(20.dp),
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+                        Text(
+                          text =
+                            androidx.compose.ui.res
+                              .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
                           style = MaterialTheme.typography.labelLarge,
                           fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                         )
@@ -445,9 +479,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       // Show "no results" message when searching with no results
       if (isSearching && filteredVideoItems.isEmpty() && searchQuery.isNotBlank()) {
         Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .padding(padding),
           contentAlignment = Alignment.Center,
         ) {
           Column(
@@ -460,11 +495,17 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
               modifier = Modifier.size(64.dp),
               tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_found),
+            Text(
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_found),
               style = MaterialTheme.typography.titleMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_try_a_different_search_term),
+            Text(
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_try_a_different_search_term),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -485,14 +526,22 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
               val result = viewModel.refreshM3UPlaylist()
               result
                 .onSuccess {
-                  Toast.makeText(context, context.getString(app.gyrolet.mpvrx.R.string.playlist_refresh_success), Toast.LENGTH_SHORT).show()
-                }
-                .onFailure { error ->
-                  Toast.makeText(
-                    context,
-                    context.getString(R.string.toast_failed_to_refresh, error.message ?: context.getString(R.string.generic_unknown_error)),
-                    Toast.LENGTH_LONG,
-                  ).show()
+                  Toast
+                    .makeText(
+                      context,
+                      context.getString(app.gyrolet.mpvrx.R.string.playlist_refresh_success),
+                      Toast.LENGTH_SHORT,
+                    ).show()
+                }.onFailure { error ->
+                  Toast
+                    .makeText(
+                      context,
+                      context.getString(
+                        R.string.toast_failed_to_refresh,
+                        error.message ?: context.getString(R.string.generic_unknown_error),
+                      ),
+                      Toast.LENGTH_LONG,
+                    ).show()
                 }
             } else {
               viewModel.refreshNow()
@@ -571,7 +620,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
           onDismiss = { showUrlDialog = false },
           onCopy = {
             SafeClipboard.copyPlainText(context, "Stream URL", urlDialogContent)
-          }
+          },
         )
       }
     }
@@ -641,10 +690,12 @@ private fun PlaylistVideoListContent(
     }
 
   // Find the most recently played video (highest lastPlayedAt timestamp)
-  val mostRecentlyPlayedItem = remember(videoItems) {
-    videoItems.filter { it.playlistItem.lastPlayedAt > 0 }
-      .maxByOrNull { it.playlistItem.lastPlayedAt }
-  }
+  val mostRecentlyPlayedItem =
+    remember(videoItems) {
+      videoItems
+        .filter { it.playlistItem.lastPlayedAt > 0 }
+        .maxByOrNull { it.playlistItem.lastPlayedAt }
+    }
 
   when {
     isLoading -> {
@@ -666,7 +717,9 @@ private fun PlaylistVideoListContent(
       ) {
         androidx.compose.foundation.layout.Column(
           horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+          verticalArrangement =
+            androidx.compose.foundation.layout.Arrangement
+              .spacedBy(8.dp),
         ) {
           Icon(
             imageVector = Icons.RoundedFilled.PlaylistAdd,
@@ -674,11 +727,17 @@ private fun PlaylistVideoListContent(
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
           )
-          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_in_playlist),
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_in_playlist),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
-          Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_videos_to_get_started),
+          Text(
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_add_videos_to_get_started),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -693,19 +752,21 @@ private fun PlaylistVideoListContent(
       // Animate scrollbar alpha
       val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (!hasEnoughItems) 0f else 1f,
-        animationSpec = androidx.compose.animation.core.spring(
-          dampingRatio = app.gyrolet.mpvrx.ui.theme.AppMotion.Effect.Alpha.dampingRatio,
-          stiffness = app.gyrolet.mpvrx.ui.theme.AppMotion.Effect.Alpha.stiffness,
-        ),
+        animationSpec =
+          androidx.compose.animation.core.spring(
+            dampingRatio = app.gyrolet.mpvrx.ui.theme.AppMotion.Effect.Alpha.dampingRatio,
+            stiffness = app.gyrolet.mpvrx.ui.theme.AppMotion.Effect.Alpha.stiffness,
+          ),
         label = "scrollbarAlpha",
       )
 
       // Reorderable state
-      val reorderableLazyListState = rememberReorderableLazyListState(listState) { from, to ->
-        if (isReorderMode) {
-          onReorder(from.index, to.index)
+      val reorderableLazyListState =
+        rememberReorderableLazyListState(listState) { from, to ->
+          if (isReorderMode) {
+            onReorder(from.index, to.index)
+          }
         }
-      }
 
       Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -720,9 +781,12 @@ private fun PlaylistVideoListContent(
             ReorderableItem(reorderableLazyListState, key = videoItems[index].playlistItem.id) {
               val item = videoItems[index]
 
-              val progressPercentage = if (item.playlistItem.lastPosition > 0 && item.video.duration > 0) {
-                item.playlistItem.lastPosition.toFloat() / item.video.duration.toFloat() * 100f
-              } else null
+              val progressPercentage =
+                if (item.playlistItem.lastPosition > 0 && item.video.duration > 0) {
+                  item.playlistItem.lastPosition.toFloat() / item.video.duration.toFloat() * 100f
+                } else {
+                  null
+                }
 
               Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -734,7 +798,8 @@ private fun PlaylistVideoListContent(
                     url = item.video.path,
                     logoUrl = item.playlistItem.tvgLogo,
                     groupTitle = item.playlistItem.groupTitle,
-                    hasDrm = !item.playlistItem.licenseType.isNullOrBlank() || !item.playlistItem.licenseKey.isNullOrBlank(),
+                    hasDrm =
+                      !item.playlistItem.licenseType.isNullOrBlank() || !item.playlistItem.licenseKey.isNullOrBlank(),
                     hasCustomUserAgent = !item.playlistItem.userAgent.isNullOrBlank(),
                     onClick = { onVideoItemClick(item) },
                     onLongClick = { onVideoItemLongClick(item) },
@@ -753,11 +818,12 @@ private fun PlaylistVideoListContent(
                     isSelected = selectionManager.isSelected(item),
                     onClick = { onVideoItemClick(item) },
                     onLongClick = { onVideoItemLongClick(item) },
-                    onThumbClick = if (tapThumbnailToSelect) {
-                      { selectionManager.toggle(item) }
-                    } else {
-                      { onVideoItemClick(item) }
-                    },
+                    onThumbClick =
+                      if (tapThumbnailToSelect) {
+                        { selectionManager.toggle(item) }
+                      } else {
+                        { onVideoItemClick(item) }
+                      },
                     showSubtitleIndicator = showSubtitleIndicator,
                     modifier = Modifier.weight(1f),
                     uiConfig = videoCardUiConfig,
@@ -774,7 +840,10 @@ private fun PlaylistVideoListContent(
                   ) {
                     Icon(
                       imageVector = Icons.RoundedFilled.DragHandle,
-                      contentDescription = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_drag_to_reorder),
+                      contentDescription =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.ui_drag_to_reorder,
+                        ),
                       tint = MaterialTheme.colorScheme.primary,
                     )
                   }
@@ -818,7 +887,12 @@ private fun M3UPlaylistFilterRow(
       FilterChip(
         selected = selectedFilter == M3U_FILTER_ALL,
         onClick = { onFilterSelected(M3U_FILTER_ALL) },
-        label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_all_sources)) },
+        label = {
+          Text(
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.pref_all_sources),
+          )
+        },
       )
     }
 
@@ -827,7 +901,12 @@ private fun M3UPlaylistFilterRow(
         FilterChip(
           selected = selectedFilter == M3U_FILTER_FAVORITES,
           onClick = { onFilterSelected(M3U_FILTER_FAVORITES) },
-          label = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_saved)) },
+          label = {
+            Text(
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.ui_saved),
+            )
+          },
         )
       }
     }
@@ -864,12 +943,17 @@ private fun StreamUrlDialog(
 ) {
   androidx.compose.material3.AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_stream_url)) },
+    title = {
+      Text(
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.ui_stream_url),
+      )
+    },
     text = {
       Text(
         text = url,
         style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
       )
     },
     confirmButton = {
@@ -877,19 +961,25 @@ private fun StreamUrlDialog(
         onClick = {
           onCopy()
           onDismiss()
-        }
+        },
       ) {
         Icon(
           imageVector = Icons.RoundedFilled.ContentCopy,
           contentDescription = null,
-          modifier = Modifier.padding(end = 4.dp).size(18.dp)
+          modifier = Modifier.padding(end = 4.dp).size(18.dp),
         )
-        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_copy))
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_copy),
+        )
       }
     },
     dismissButton = {
       androidx.compose.material3.TextButton(onClick = onDismiss) {
-        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_close))
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_close),
+        )
       }
     },
   )
@@ -917,7 +1007,9 @@ private fun RemoveFromPlaylistDialog(
     },
     text = {
       androidx.compose.foundation.layout.Column(
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+        verticalArrangement =
+          androidx.compose.foundation.layout.Arrangement
+            .spacedBy(16.dp),
       ) {
         androidx.compose.material3.Card(
           colors =
@@ -949,7 +1041,10 @@ private fun RemoveFromPlaylistDialog(
           ),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text(text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_remove_from_playlist),
+        Text(
+          text =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_remove_from_playlist),
           fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
         )
       }
@@ -959,7 +1054,11 @@ private fun RemoveFromPlaylistDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel), fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+          fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+        )
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
@@ -968,8 +1067,11 @@ private fun RemoveFromPlaylistDialog(
   )
 }
 
-private fun getFileNameFromUri(context: android.content.Context, uri: Uri): String? {
-  return try {
+private fun getFileNameFromUri(
+  context: android.content.Context,
+  uri: Uri,
+): String? =
+  try {
     context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
       val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
       cursor.moveToFirst()
@@ -978,8 +1080,6 @@ private fun getFileNameFromUri(context: android.content.Context, uri: Uri): Stri
   } catch (e: Exception) {
     uri.lastPathSegment
   }
-}
 
 private const val M3U_FILTER_ALL = "__m3u_all__"
 private const val M3U_FILTER_FAVORITES = "__m3u_favorites__"
-
