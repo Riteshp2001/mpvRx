@@ -35,7 +35,6 @@ import android.widget.Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
@@ -375,48 +374,6 @@ class PlayerActivity :
    * Tracks whether we're currently bound to the background playback service.
    */
   private var serviceBound = false
-
-  private val notificationPermissionLauncher =
-    registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      val wasEnablingFromPlayerControls = pendingBackgroundTransition
-      if (granted) {
-        pendingBackgroundPlaybackStart = false
-        val started = startBackgroundPlaybackInternal(bindToActivity = false)
-        if (pendingBackgroundTransition && started) {
-          pendingBackgroundTransition = false
-          isBackgroundPlaybackSessionActive = true
-          viewModel.showToast("Background playback on")
-        } else if (pendingBackNavigationBackgroundTransition && started) {
-          pendingBackNavigationBackgroundTransition = false
-          finishIntoBackgroundPlayback()
-        } else if (!started) {
-          if (wasEnablingFromPlayerControls) {
-            audioPreferences.backgroundPlayback.set(false)
-          }
-          pendingBackgroundTransition = false
-          pendingBackNavigationBackgroundTransition = false
-          isBackgroundPlaybackSessionActive = false
-        }
-      } else {
-        if (wasEnablingFromPlayerControls) {
-          audioPreferences.backgroundPlayback.set(false)
-        }
-        pendingBackgroundPlaybackStart = false
-        pendingBackgroundTransition = false
-        pendingBackNavigationBackgroundTransition = false
-        isBackgroundPlaybackSessionActive = false
-        Toast.makeText(
-          this,
-          getString(R.string.notification_permission_denied),
-          Toast.LENGTH_LONG,
-        ).show()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-          !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
-        ) {
-          openNotificationSettings()
-        }
-      }
-    }
 
   // ==================== MediaSession ====================
 
@@ -4476,8 +4433,12 @@ class PlayerActivity :
       PackageManager.PERMISSION_GRANTED
     ) {
       if (!allowUserPrompt) return BackgroundPlaybackStartResult.Blocked
-      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-      return BackgroundPlaybackStartResult.PendingPermission
+      Toast.makeText(
+        this,
+        getString(R.string.notification_permission_denied),
+        Toast.LENGTH_LONG,
+      ).show()
+      return BackgroundPlaybackStartResult.Blocked
     }
 
     if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {

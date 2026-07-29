@@ -2,9 +2,13 @@ package app.gyrolet.mpvrx
 
 import androidx.compose.animation.core.Spring
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -39,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
@@ -127,6 +132,15 @@ class MainActivity : AppCompatActivity() {
   private val networkRepository by inject<NetworkRepository>()
   private var appliedEdgeToEdgeDarkMode: Boolean? = null
 
+  private val notificationPermissionLauncher =
+    registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      if (!granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
+      ) {
+        openNotificationSettings()
+      }
+    }
+
   /**
    * Per-process flag that ensures auto-connect only runs once per cold start,
    * even if MainActivity is recreated (config change, process death + restore,
@@ -149,6 +163,7 @@ class MainActivity : AppCompatActivity() {
     super.onCreate(savedInstanceState)
 
     PermissionUtils.setMediaAccessLauncher(mediaAccessLauncher)
+    requestNotificationPermissionAtStartupIfNeeded()
 
     val networkStreamingEnabled = appearancePreferences.showNetworkTab.get()
     if (networkStreamingEnabled) {
@@ -212,6 +227,31 @@ class MainActivity : AppCompatActivity() {
     } catch (e: Exception) {
       Log.e("MainActivity", "Error during onDestroy", e)
     }
+  }
+
+  private fun requestNotificationPermissionAtStartupIfNeeded() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+    val prefs = getSharedPreferences("startup_permission_state", MODE_PRIVATE)
+    if (prefs.getBoolean("notification_permission_prompted", false)) return
+
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+      PackageManager.PERMISSION_GRANTED
+    ) {
+      prefs.edit().putBoolean("notification_permission_prompted", true).apply()
+      return
+    }
+
+    prefs.edit().putBoolean("notification_permission_prompted", true).apply()
+    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+  }
+
+  private fun openNotificationSettings() {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+      putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+    }
+    runCatching { startActivity(intent) }
+      .onFailure { Log.e("MainActivity", "Failed to open notification settings", it) }
   }
 
   private fun resolveIsDarkMode(
