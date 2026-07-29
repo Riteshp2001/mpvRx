@@ -262,6 +262,7 @@ Próximo: NEXT</string>
   <string name="toast_subtitles_cleared">Downloads de legendas limpos</string>
   <string name="pref_audio">Áudio</string>
   <string name="pref_audio_summary">Idiomas preferidos, canais de áudio e correção de tom</string>
+  <string name="pref_audio_orientation_title">Orientação do player de áudio</string>
   <string name="pref_audio_pitch_correction_title">Ativar correção de tom do áudio</string>
   <string name="pref_audio_pitch_correction_summary">Evita que o áudio fique agudo em velocidades maiores e grave em velocidades menores</string>
   <string name="pref_audio_volume_normalization_title">Normalização de volume</string>

@@ -262,6 +262,7 @@ Suivant : NEXT</string>
   <string name="toast_subtitles_cleared">Téléchargements de sous-titres effacés</string>
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Langues préférées, canaux audio et correction de hauteur</string>
+  <string name="pref_audio_orientation_title">Orientation du lecteur audio</string>
   <string name="pref_audio_pitch_correction_title">Activer la correction de hauteur audio</string>
   <string name="pref_audio_pitch_correction_summary">Empêche le son de devenir aigu à vitesse élevée et grave à vitesse réduite</string>
   <string name="pref_audio_volume_normalization_title">Normalisation du volume</string>
