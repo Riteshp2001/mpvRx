@@ -309,7 +309,7 @@ fun PlaylistSheet(
           val showDragHandle = onReorder != null && !isM3UPlaylist && playlist.size > 1
           val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
             if (showDragHandle) {
-              onReorder?.invoke(from.index, to.index)
+              onReorder.invoke(from.index, to.index)
             }
           }
 

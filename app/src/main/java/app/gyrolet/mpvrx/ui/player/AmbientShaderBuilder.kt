@@ -227,7 +227,39 @@ private fun buildSpiralTapTable(
   return "const vec3 $name[$count] = vec3[$count](\n$taps\n);"
 }
 
+private fun halton(index: Int, base: Int): Double {
+  var result = 0.0
+  var f = 1.0
+  var i = index
+  while (i > 0) {
+    f /= base
+    result += f * (i % base)
+    i /= base
+  }
+  return result
+}
+
 object AmbientShaderBuilder {
+  private val glowTapCache = HashMap<Int, String>()
+  private val frameGlowTapCache = HashMap<Int, String>()
+
+  private fun getGlowTaps(samples: Int): String =
+    glowTapCache.getOrPut(samples) {
+      buildSpiralTapTable("GLOW_TAPS", samples) { radiusNorm, _ -> radiusNorm }
+    }
+
+  private fun getFrameGlowTaps(glowSamples: Int): String =
+    frameGlowTapCache.getOrPut(glowSamples) {
+      buildSpiralTapTable("FRAME_GLOW_TAPS", glowSamples) { _, indexNorm -> indexNorm }
+    }
+
+  private val youtubeTapTable: String by lazy {
+    val taps = (1..8).joinToString(",\n") { i ->
+      "    vec2(${glslFloat(halton(i, 2))}, ${glslFloat(halton(i, 3))})"
+    }
+    "const vec2 YOUTUBE_TAPS[8] = vec2[8](\n$taps\n);"
+  }
+
   fun build(spec: AmbientShaderSpec): String =
     when (spec) {
       is AmbientGlowShaderSpec -> buildGlow(spec)
@@ -244,10 +276,9 @@ object AmbientShaderBuilder {
 #define SCALE_X    ${spec.context.scaleX}
 #define SCALE_Y    ${spec.context.scaleY}
 
-// Simple hash function for pseudo-random sampling
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
+// 8 Halton(2,3) positions precomputed in Kotlin — better spatial coverage than
+// 20 pseudo-random scatter points, 60% fewer texture fetches per ambient pixel.
+${youtubeTapTable}
 
 vec4 hook() {
     vec2 uv = HOOKED_pos;
@@ -259,29 +290,18 @@ vec4 hook() {
         return HOOKED_tex(video_uv);
     }
 
-    // Ambient region - sample random areas from entire video
-    // Use fixed seed for temporal stability (color doesn't flicker)
+    // Sample 8 well-distributed positions across the entire video frame
     vec3 avg_color = vec3(0.0);
-    int samples = 20;
-    float base_seed = 42.0; // Fixed seed for stability
-    
-    // Sample random positions across the entire video
-    for (int i = 0; i < samples; i++) {
-        float seed = base_seed + float(i) * 0.618034;
-        float x = hash(vec2(seed, 0.123));
-        float y = hash(vec2(seed, 0.456));
-        
-        vec2 sample_pos = vec2(x, y);
-        avg_color += HOOKED_tex(sample_pos).rgb;
+    for (int i = 0; i < 8; i++) {
+        avg_color += HOOKED_tex(YOUTUBE_TAPS[i]).rgb;
     }
-    
-    avg_color /= float(samples);
+    avg_color /= 8.0;
 
     // Boost saturation slightly for more vibrant glow
     float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
     avg_color = mix(vec3(luma), avg_color, 1.3); // 30% saturation boost
 
-    // Increased brightness for more visible glow (30% instead of 20%)
+    // Increased brightness for more visible glow
     avg_color *= 0.30;
 
     // Smooth fade based on distance from video edge
@@ -290,9 +310,12 @@ vec4 hook() {
     float fade = exp(-dist * 2.5);
     avg_color *= fade;
 
-    // Debanding: add subtle dither noise to eliminate color banding
-    float dither = hash(uv * 1000.0) * 0.004 - 0.002; // ±0.002 range
-    avg_color = clamp(avg_color + dither, 0.0, 1.0);
+    // Debanding via Interleaved Gradient Noise (Jimenez 2014).
+    // Replaces the previous sin-based hash() — uses only fract + dot,
+    // eliminating the last GPU sin() call from this shader.
+    vec2 screen_pos = floor(uv * HOOKED_size);
+    float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
+    avg_color = clamp(avg_color + (ign - 0.5) * 0.004, 0.0, 1.0);
 
     return vec4(avg_color, 1.0);
 }
@@ -320,7 +343,7 @@ vec4 hook() {
 #define SCALE_Y          ${spec.context.scaleY}
 
 const float PI  = 3.14159265358979;
-${buildSpiralTapTable("GLOW_TAPS", spec.blurSamples) { radiusNorm, _ -> radiusNorm }}
+${getGlowTaps(spec.blurSamples)}
 
 float rand(vec2 seed) {
     return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
@@ -430,7 +453,7 @@ vec4 hook() {
 #define SCALE_Y           ${spec.context.scaleY}
 
 const float PI = 3.14159265358979;
-${buildSpiralTapTable("FRAME_GLOW_TAPS", glowSamples) { _, indexNorm -> indexNorm }}
+${getFrameGlowTaps(glowSamples)}
 
 float rand(vec2 seed) {
     return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);

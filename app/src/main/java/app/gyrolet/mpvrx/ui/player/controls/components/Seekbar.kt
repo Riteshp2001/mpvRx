@@ -141,6 +141,7 @@ private fun DrawScope.drawSeekbarTrackSegments(
 ) {
   val outerRadius = trackHeight / 2f
   val innerRadius = 2.dp.toPx()
+  val reusablePath = Path()
 
   fun drawPiece(
     startX: Float,
@@ -150,21 +151,20 @@ private fun DrawScope.drawSeekbarTrackSegments(
     rightRadius: Float,
   ) {
     if (endX - startX < 0.5f) return
-    val path = Path().apply {
-      addRoundRect(
-        androidx.compose.ui.geometry.RoundRect(
-          left = startX,
-          top = centerY - outerRadius,
-          right = endX,
-          bottom = centerY + outerRadius,
-          topLeftCornerRadius = CornerRadius(leftRadius),
-          bottomLeftCornerRadius = CornerRadius(leftRadius),
-          topRightCornerRadius = CornerRadius(rightRadius),
-          bottomRightCornerRadius = CornerRadius(rightRadius),
-        )
+    reusablePath.reset()
+    reusablePath.addRoundRect(
+      androidx.compose.ui.geometry.RoundRect(
+        left = startX,
+        top = centerY - outerRadius,
+        right = endX,
+        bottom = centerY + outerRadius,
+        topLeftCornerRadius = CornerRadius(leftRadius),
+        bottomLeftCornerRadius = CornerRadius(leftRadius),
+        topRightCornerRadius = CornerRadius(rightRadius),
+        bottomRightCornerRadius = CornerRadius(rightRadius),
       )
-    }
-    drawPath(path, color)
+    )
+    drawPath(reusablePath, color)
   }
 
   segments.forEach { segment ->
@@ -782,6 +782,15 @@ private fun SquigglySeekbar(
   val matchedWaveEndpoint = 1f
   val transitionEnabled = true
 
+  val wavyPath = remember { Path() }
+  val chapterFractions = remember(chapters, duration) {
+    if (duration <= 0f) FloatArray(0)
+    else chapters.mapNotNull {
+      val f = it.start / duration
+      if (f.isFinite() && f in 0f..1f) f else null
+    }.toFloatArray()
+  }
+
   // Animate height fraction based on paused state and scrubbing state
   LaunchedEffect(isPaused, isScrubbing, useWavySeekbar) {
     if (!useWavySeekbar) {
@@ -861,11 +870,11 @@ private fun SquigglySeekbar(
       }
 
     // Build wavy path for played portion
-    val path = Path()
+    wavyPath.reset()
     val waveStart = -phaseOffset - waveLength / 2f
     val waveEnd = if (transitionEnabled) totalWidth else waveProgressPx
 
-    path.moveTo(waveStart, centerY)
+    wavyPath.moveTo(waveStart, centerY)
 
     var currentX = waveStart
     var waveSign = 1f
@@ -878,7 +887,7 @@ private fun SquigglySeekbar(
       val midX = currentX + dist / 2f
       val nextAmp = computeAmplitude(nextX, waveSign)
 
-      path.cubicTo(
+      wavyPath.cubicTo(
         midX,
         centerY + currentAmp,
         midX,
@@ -901,7 +910,7 @@ private fun SquigglySeekbar(
       color: Color,
     ) {
       if (endX <= startX) return
-      if (duration <= 0f) {
+      if (duration <= 0f || chapterFractions.isEmpty()) {
         clipRect(
           left = startX,
           top = centerY - clipTop,
@@ -909,22 +918,21 @@ private fun SquigglySeekbar(
           bottom = centerY + clipTop,
         ) {
           drawPath(
-            path = path,
+            path = wavyPath,
             color = color,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
           )
         }
         return
       }
-      val gaps =
-        chapters
-          .map { (it.start / duration).coerceIn(0f, 1f) * totalWidth }
-          .filter { it in startX..endX }
-          .sorted()
-          .map { x -> (x - gapHalf).coerceAtLeast(startX) to (x + gapHalf).coerceAtMost(endX) }
 
       var segmentStart = startX
-      for ((gapStart, gapEnd) in gaps) {
+      for (i in chapterFractions.indices) {
+        val gapCenter = chapterFractions[i] * totalWidth
+        if (gapCenter < startX) continue
+        if (gapCenter > endX) break
+        val gapStart = (gapCenter - gapHalf).coerceAtLeast(startX)
+        val gapEnd = (gapCenter + gapHalf).coerceAtMost(endX)
         if (gapStart > segmentStart) {
           clipRect(
             left = segmentStart,
@@ -933,7 +941,7 @@ private fun SquigglySeekbar(
             bottom = centerY + clipTop,
           ) {
             drawPath(
-              path = path,
+              path = wavyPath,
               color = color,
               style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
             )
@@ -949,7 +957,7 @@ private fun SquigglySeekbar(
           bottom = centerY + clipTop,
         ) {
           drawPath(
-            path = path,
+            path = wavyPath,
             color = color,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
           )
@@ -1082,6 +1090,8 @@ private fun SlimSeekbar(
     val playedColor   = primaryColor
     val unplayedColor = primaryColor.copy(alpha = 0.3f)
 
+    val chapterStarts = remember(chapters) { chapters.map(Segment::start) }
+
     Canvas(modifier = modifier.fillMaxWidth().height(48.dp)) {
         val progress      = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
         val totalWidth    = size.width
@@ -1092,7 +1102,7 @@ private fun SlimSeekbar(
         val gapHalf       = chapterGapHalfDp.toPx()
 
         val segments = seekbarTrackSegments(
-            chapterStarts = chapters.map(Segment::start),
+            chapterStarts = chapterStarts,
             duration = duration,
             trackWidth = totalWidth,
             chapterGapHalf = gapHalf,
@@ -1349,7 +1359,7 @@ fun StandardSeekbar(
     
     val isThick = seekbarStyle == SeekbarStyle.Thick
     val baseTrackHeight = if (isThick) 16.dp else 8.dp
-    val trackHeightDp = baseTrackHeight * heightFraction // Apply animation to track height
+    val chapterStarts = remember(chapters) { chapters.map(Segment::start) }
     val thumbWidth by animateDpAsState(
         targetValue = when {
             isThick && isThumbInteracting -> 4.dp
@@ -1378,7 +1388,7 @@ fun StandardSeekbar(
         }
         val playedPx = size.width * playedFraction
         val bufferPx = bufferedEndPx(bufferDuration, safeDuration, size.width, playedPx)
-        val trackHeight = trackHeightDp.toPx()
+        val trackHeight = baseTrackHeight.toPx() * heightFraction
         val centerY = size.height / 2f
         val thumbWidthPx = thumbWidth.toPx()
         val thumbHeightPx = thumbHeight.toPx()
@@ -1386,7 +1396,7 @@ fun StandardSeekbar(
         val thumbGapStart = (playedPx - thumbGapHalf).coerceIn(0f, size.width)
         val thumbGapEnd = (playedPx + thumbGapHalf).coerceIn(0f, size.width)
         val segments = seekbarTrackSegments(
-            chapterStarts = chapters.map(Segment::start),
+            chapterStarts = chapterStarts,
             duration = safeDuration,
             trackWidth = size.width,
             chapterGapHalf = chapterGapHalfDp.toPx(),

@@ -29,8 +29,8 @@ internal class GalaxyVisualizerView(
         isClickable = true
     }
 
-    override fun updatePalette(palette: VisualizerPalette) {
-        galaxyRenderer.updatePalette(palette)
+    override fun updatePalette(value: VisualizerPalette) {
+        galaxyRenderer.updatePalette(value)
     }
 
     fun setReducedMotion(reducedMotion: Boolean) {
