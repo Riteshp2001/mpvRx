@@ -69,7 +69,7 @@ class CuboidWarptunnelEngine {
     var touchActive = false
     var isLightTheme = false
 
-    var palette: VisualizerPalette? = null
+    internal var palette: VisualizerPalette? = null
 
     @Volatile
     var frequencyData: ByteArray? = null
