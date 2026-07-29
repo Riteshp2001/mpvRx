@@ -869,10 +869,6 @@ class PlayerActivity :
             binding.player.visibility = View.INVISIBLE
             try {
               WindowCompat.setDecorFitsSystemWindows(window, false)
-              window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-              binding.root.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
-              window.statusBarColor = android.graphics.Color.TRANSPARENT
-              window.navigationBarColor = android.graphics.Color.TRANSPARENT
               windowInsetsController.apply {
                 systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                 show(WindowInsetsCompat.Type.statusBars())

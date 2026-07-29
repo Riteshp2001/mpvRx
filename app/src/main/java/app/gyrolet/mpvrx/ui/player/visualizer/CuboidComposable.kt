@@ -186,8 +186,8 @@ internal fun CuboidOverlay(
                                     engine.touchActive = true
 
                                     if (touchStartPos != null) {
-                                        val dx = primary.position.x - touchStartPos!!.x
-                                        val dy = primary.position.y - touchStartPos!!.y
+                                        val dx = primary.position.x - touchStartPos.x
+                                        val dy = primary.position.y - touchStartPos.y
                                         if (dx * dx + dy * dy > 100f) {
                                             longPressJob?.cancel()
                                             longPressJob = null

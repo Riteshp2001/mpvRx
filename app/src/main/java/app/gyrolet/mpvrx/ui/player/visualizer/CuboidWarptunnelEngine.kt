@@ -271,7 +271,7 @@ class CuboidWarptunnelEngine {
                 seg.y2d = (seg.y * sc) + obj.center.y
 
                 var freq = 0; var freqAdd = 0f
-                if (hasAudio && seg.audioBufferIndex < fd!!.size) {
+                if (hasAudio && seg.audioBufferIndex < fd.size) {
                     freq = fd[seg.audioBufferIndex].toInt() and 0xFF
                     freqAdd = freq / 20f
                     seg.radiusAudio = seg.radius - freqAdd
