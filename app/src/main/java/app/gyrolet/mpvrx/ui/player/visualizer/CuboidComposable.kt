@@ -1,8 +1,13 @@
 /*
-Cuboid Warptunnel Audio Visualizer
-Original by Niklas Knaack — https://codepen.io/NiklasKnaack/pen/WyWqja
-Ported to native Android Compose Canvas for mpvRx
-*/
+ * SPDX-License-Identifier: CC-BY-NC-4.0
+ *
+ * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
+ * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ *
+ * Cuboid Warptunnel Audio Visualizer
+ * Original by Niklas Knaack — https://codepen.io/NiklasKnaack/pen/WyWqja
+ * Ported to native Android Compose Canvas for mpvRx
+ */
 package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.Manifest
@@ -41,7 +46,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Composable
 internal fun CuboidOverlay(
     modifier: Modifier = Modifier,
-    palette: VisualizerPalette? = null,
+    isPlaying: Boolean = false,
+    palette: VisualizerPalette,
+    isSheetOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     val engine = remember { CuboidWarptunnelEngine() }
@@ -62,6 +69,10 @@ internal fun CuboidOverlay(
 
     LaunchedEffect(hasRecordPermission) {
         if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    LaunchedEffect(palette) {
+        engine.palette = palette
     }
 
     DisposableEffect(hasRecordPermission) {

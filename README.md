@@ -16,7 +16,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-brightgreen.svg" />
-  <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" />
+  <img src="https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg" />
   <img src="https://img.shields.io/github/v/release/Riteshp2001/mpvRx.svg?logo=github&label=Release&cacheSeconds=3600" />
   <img src="https://img.shields.io/github/downloads/Riteshp2001/mpvRx/total?logo=github&cacheSeconds=3600" />
 </p>
@@ -401,7 +401,7 @@ git push origin v1.3.1-preview.1
 
 ## License
 
-Distributed under the **Apache License 2.0**. See `LICENSE` for more information.
+Distributed under **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**. See `LICENSE` for more information.
 
 ---
 

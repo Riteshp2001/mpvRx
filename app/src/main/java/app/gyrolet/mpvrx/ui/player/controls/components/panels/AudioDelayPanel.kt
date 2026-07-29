@@ -1,3 +1,11 @@
+/*
+ * SPDX-License-Identifier: CC-BY-NC-4.0
+ *
+ * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
+ * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ */
+
+
 @file:Suppress("ktlint:standard:no-wildcard-imports")
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
@@ -102,7 +110,3 @@ fun AudioDelayCardTitle(
     }
   }
 }
-
-
-
-

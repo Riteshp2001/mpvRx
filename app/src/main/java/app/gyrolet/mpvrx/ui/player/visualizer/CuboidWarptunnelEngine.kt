@@ -1,3 +1,10 @@
+/*
+ * SPDX-License-Identifier: CC-BY-NC-4.0
+ *
+ * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
+ * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ */
+
 package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.graphics.Bitmap
@@ -62,6 +69,8 @@ class CuboidWarptunnelEngine {
     var touchActive = false
     var isLightTheme = false
 
+    var palette: VisualizerPalette? = null
+
     @Volatile
     var frequencyData: ByteArray? = null
 
@@ -96,6 +105,12 @@ class CuboidWarptunnelEngine {
         if (c.g < p) c.g = p
         if (c.b < p) c.b = p
     }
+
+    private fun paletteColor3(color: Int): Color3 = Color3(
+        Color.red(color) / 255f,
+        Color.green(color) / 255f,
+        Color.blue(color) / 255f,
+    )
 
     fun init(w: Int, h: Int) {
         renderWidth = w; renderHeight = h
@@ -188,7 +203,7 @@ class CuboidWarptunnelEngine {
     }
 
     private fun clear() {
-        pixelBuffer.fill(0xFF000000.toInt())
+        pixelBuffer.fill(palette?.background ?: 0xFF000000.toInt())
     }
 
     private fun line(x1: Int, y1: Int, x2: Int, y2: Int, r: Int, g: Int, b: Int) {
@@ -209,9 +224,15 @@ class CuboidWarptunnelEngine {
     fun render(): Bitmap? {
         clear()
 
-        val col = getColor(rgb, 0.040f, 0.028f, 0.052f)
-        val col2 = getColor(rgb2, 0.010f, 0.007f, 0.013f)
-        limit(col, 0.45f); limit(col2, 0.25f)
+        val p = palette
+        val pc = if (p != null) paletteColor3(p.primary) else Color3(1f, 1f, 1f)
+        val sc = if (p != null) paletteColor3(p.secondary) else Color3(0.5f, 0.5f, 0.5f)
+        val wave = getColor(rgb, 0.040f, 0.028f, 0.052f)
+        val wave2 = getColor(rgb2, 0.010f, 0.007f, 0.013f)
+        limit(wave, 0.85f); limit(wave2, 0.65f)
+        val col = Color3(pc.r * wave.r, pc.g * wave.g, pc.b * wave.b)
+        val col2 = Color3(sc.r * wave2.r, sc.g * wave2.g, sc.b * wave2.b)
+        limit(col, 0.12f); limit(col2, 0.04f)
 
         val pressed = mouseDown
         var sort = false
