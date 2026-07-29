@@ -31,6 +31,7 @@ enum class AudioVisualizerStyle(
 ) {
   Blob(R.string.pref_audio_visualizer_style_blob),
   Galaxy(R.string.pref_audio_visualizer_style_galaxy),
+  Cuboid(R.string.pref_audio_visualizer_style_cuboid),
 }
 
 enum class AudioChannels(

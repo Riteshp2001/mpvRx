@@ -271,6 +271,7 @@ Siguiente: NEXT</string>
   <string name="pref_audio_visualizer_style_title">Estilo del visualizador</string>
   <string name="pref_audio_visualizer_style_blob">Blob</string>
   <string name="pref_audio_visualizer_style_galaxy">Galaxia</string>
+  <string name="pref_audio_visualizer_style_cuboid">Cuboide</string>
   <string name="pref_audio_visualizer_galaxy_credit">Inspirado en Zain Raza en CodePen</string>
   <string name="pref_audio_channels">Canales de audio</string>
   <string name="pref_audio_channels_auto">Automático</string>

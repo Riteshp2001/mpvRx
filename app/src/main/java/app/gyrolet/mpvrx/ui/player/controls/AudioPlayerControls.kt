@@ -102,6 +102,7 @@ import androidx.compose.foundation.clickable
 import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.visualizer.BlobOverlay
+import app.gyrolet.mpvrx.ui.player.visualizer.CuboidOverlay
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import org.koin.compose.koinInject
@@ -407,6 +408,11 @@ fun AudioPlayerControls(
                 AudioVisualizerStyle.Blob -> BlobOverlay(
                   isPlaying = isPlaying,
                   palette = palette,
+                  isSheetOpen = isSheetOpen,
+                  modifier = Modifier.fillMaxSize()
+                )
+                AudioVisualizerStyle.Cuboid -> CuboidOverlay(
+                  isPlaying = isPlaying,
                   isSheetOpen = isSheetOpen,
                   modifier = Modifier.fillMaxSize()
                 )
