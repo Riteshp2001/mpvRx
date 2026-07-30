@@ -872,7 +872,7 @@ fun GestureHandler(
           areControlsLocked,
           isVerticalGestureActive,
         ) {
-          if ((!pinchToZoomGesture && !pinchToZoomSubtitles) ||
+          if ((!pinchToZoomGesture && !pinchToZoomSubtitles && !panAndZoomEnabled) ||
             areControlsLocked ||
             isVerticalGestureActive
           ) {
@@ -935,7 +935,7 @@ fun GestureHandler(
                     initialSubScale = MPVLib.getPropertyFloat("sub-scale") ?: subtitlesPreferences.subScale.get()
                     initialDist = dist
                     lastCalculatedSubScale = initialSubScale
-                  } else if (pinchToZoomGesture) {
+                  } else if (pinchToZoomGesture || panAndZoomEnabled) {
                     isSubZoomMode = false
                     zoom = viewModel.videoZoom.value
                   } else {
@@ -953,23 +953,32 @@ fun GestureHandler(
                       MPVLib.setPropertyFloat("sub-scale", currentSubScale)
                       viewModel.playerUpdate.update { PlayerUpdates.SubtitleZoom(currentSubScale) }
                     }
-                  } else if (pinchToZoomGesture) {
-                    // Activate on significant pinch movement
-                    if (!gestureStarted && abs(dist - prevDist) > 5f) {
+                  } else if (pinchToZoomGesture || panAndZoomEnabled) {
+                    // Activate on significant pinch movement OR mid movement (pan)
+                    val distDelta = abs(dist - prevDist)
+                    val midDeltaX = abs(midX - prevMidX)
+                    val midDeltaY = abs(midY - prevMidY)
+
+                    if (!gestureStarted && (distDelta > 5f || (panAndZoomEnabled && (midDeltaX > 3f || midDeltaY > 3f)))) {
                       gestureStarted = true
-                      viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
+                      if (pinchToZoomGesture && distDelta > 5f) {
+                        viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
+                      }
                     }
 
-                    if (gestureStarted && prevDist > 0f) {
-                      // Per-frame zoom: ratio of current distance to previous distance
-                      val zoomRatio = dist / prevDist
-                      val zoomDelta = ln(zoomRatio.toDouble()).toFloat() * 1.2f
-                      zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
-                      viewModel.setVideoZoom(zoom)
+                    if (gestureStarted) {
+                      if (pinchToZoomGesture && prevDist > 0f && distDelta > 0.5f) {
+                        // Per-frame zoom: ratio of current distance to previous distance
+                        val zoomRatio = dist / prevDist
+                        val zoomDelta = ln(zoomRatio.toDouble()).toFloat() * 1.2f
+                        zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
+                        viewModel.setVideoZoom(zoom)
+                      }
 
-                      // Simultaneous pan while pinching
+                      // Simultaneous pan while pinching or moving two fingers
                       if (panAndZoomEnabled && sw > 0f && sh > 0f) {
-                        val scale = 2f.pow(zoom)
+                        val currentZoom = viewModel.videoZoom.value
+                        val scale = 2f.pow(currentZoom)
                         val extraWidth = (scale - 1f) * sw
                         val extraHeight = (scale - 1f) * sh
                         val maxX = (extraWidth / 2f).coerceAtLeast(0f)
@@ -1000,75 +1009,6 @@ fun GestureHandler(
             }
 
             viewModel.playerUpdate.update { PlayerUpdates.None }
-          }
-        }
-        // Single-finger pan (only when Pan & Zoom enabled and zoomed in)
-        .pointerInput(panAndZoomEnabled, pinchToZoomGesture, areControlsLocked, isVerticalGestureActive) {
-          if (!panAndZoomEnabled ||
-            !pinchToZoomGesture ||
-            areControlsLocked ||
-            isVerticalGestureActive
-          ) {
-            return@pointerInput
-          }
-
-          awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false)
-            val sw = size.width.toFloat()
-            val sh = size.height.toFloat()
-            if (sw <= 0f || sh <= 0f) return@awaitEachGesture
-
-            var zoom = viewModel.videoZoom.value
-            if (zoom <= 0f) return@awaitEachGesture
-
-            var currentPanX = viewModel.videoPanX.value
-            var currentPanY = viewModel.videoPanY.value
-
-            var panning = false
-            var prevX = down.position.x
-            var prevY = down.position.y
-            val startX = prevX
-            val startY = prevY
-
-            do {
-              val event = awaitPointerEvent()
-              val pressed = event.changes.filter { it.pressed }
-
-              if (pressed.size == 1) {
-                val change = pressed[0]
-                val pos = change.position
-
-                // Activate after 20px drag threshold
-                if (!panning) {
-                  val dx = pos.x - startX
-                  val dy = pos.y - startY
-                  if (dx * dx + dy * dy > 400f) { // 20px squared
-                    panning = true
-                    prevX = pos.x
-                    prevY = pos.y
-                  }
-                }
-
-                if (panning) {
-                  val scale = 2f.pow(zoom)
-                  val extraWidth = (scale - 1f) * sw
-                  val extraHeight = (scale - 1f) * sh
-                  val maxX = (extraWidth / 2f).coerceAtLeast(0f)
-                  val maxY = (extraHeight / 2f).coerceAtLeast(0f)
-                  val deltaX = pos.x - prevX
-                  val deltaY = pos.y - prevY
-
-                  currentPanX = (currentPanX + deltaX).coerceIn(-maxX, maxX)
-                  currentPanY = (currentPanY + deltaY).coerceIn(-maxY, maxY)
-                  viewModel.setVideoPan(currentPanX, currentPanY)
-                  prevX = pos.x
-                  prevY = pos.y
-                  change.consume()
-                }
-              } else if (pressed.size > 1) {
-                break
-              }
-            } while (event.changes.any { it.pressed })
           }
         }.pointerInput(
           horizontalSwipeToSeek,
