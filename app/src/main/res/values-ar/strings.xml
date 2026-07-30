@@ -328,6 +328,8 @@
   <string name="anime4k_quality_fast">سريع</string>
   <string name="anime4k_quality_balanced">متوازن</string>
   <string name="anime4k_quality_high">عالٍ</string>
+  <string name="pref_anime4k_in_4k_title">التفعيل في فيديوهات 4K</string>
+  <string name="pref_anime4k_in_4k_summary">السماح بتحسين Anime4K لفيديوهات 4K و8K (قد يزيد من حمولة GPU أو الاختناق الحراري)</string>
   <string name="pref_anime4k_darken_title">تغميق خطوط Anime4K</string>
   <string name="pref_anime4k_darken_summary">يضيف تغميق الخطوط بعد مرشح رفع الدقة الرئيسي.</string>
   <string name="pref_anime4k_thin_title">ترقيق خطوط Anime4K</string>

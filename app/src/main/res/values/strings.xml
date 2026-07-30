@@ -320,6 +320,8 @@
   <string name="anime4k_quality_fast">Fast</string>
   <string name="anime4k_quality_balanced">Balanced</string>
   <string name="anime4k_quality_high">High</string>
+  <string name="pref_anime4k_in_4k_title">Enable in 4K Videos</string>
+  <string name="pref_anime4k_in_4k_summary">Allow Anime4K upscaling for 4K and 8K videos (may increase GPU load and thermal throttling)</string>
   <string name="pref_anime4k_darken_title">Anime4K darken lines</string>
   <string name="pref_anime4k_darken_summary">Adds line darkening after the main upscaler.</string>
   <string name="pref_anime4k_thin_title">Anime4K thin lines</string>

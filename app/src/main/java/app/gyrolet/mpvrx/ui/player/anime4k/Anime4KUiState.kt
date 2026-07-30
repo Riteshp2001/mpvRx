@@ -14,11 +14,15 @@ data class Anime4KUiState(
   val selectedMode: String = Anime4KManager.Mode.OFF.name,
   val usesGpuNext: Boolean = false,
   val usesVulkan: Boolean = false,
+  val enableIn4k: Boolean = false,
   val videoWidth: Int = 0,
   val videoHeight: Int = 0,
 ) {
   val isHighResolution: Boolean
     get() = videoWidth >= 3840 || videoHeight >= 2160
+
+  val allowHighRes: Boolean
+    get() = enableIn4k || !isHighResolution
 
   val isAvailable: Boolean
     get() = isEnabled && (!usesGpuNext || usesVulkan)

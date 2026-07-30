@@ -189,6 +189,7 @@ class PlayerViewModel(
         selectedMode = decoderPreferences.anime4kMode.get(),
         usesGpuNext = decoderPreferences.gpuNext.get(),
         usesVulkan = decoderPreferences.useVulkan.get(),
+        enableIn4k = decoderPreferences.anime4kIn4k.get(),
       )
 
   private val anime4KPreferenceState =
@@ -197,12 +198,14 @@ class PlayerViewModel(
       decoderPreferences.anime4kMode.changes(),
       decoderPreferences.gpuNext.changes(),
       decoderPreferences.useVulkan.changes(),
-    ) { enabled, mode, gpuNext, useVulkan ->
+      decoderPreferences.anime4kIn4k.changes(),
+    ) { enabled, mode, gpuNext, useVulkan, enableIn4k ->
       Anime4KUiState(
         isEnabled = enabled,
         selectedMode = mode,
         usesGpuNext = gpuNext,
         usesVulkan = useVulkan,
+        enableIn4k = enableIn4k,
       )
     }
 
@@ -4971,6 +4974,7 @@ class PlayerViewModel(
                 mode = mode,
                 quality = decoderPreferences.anime4kQuality.get(),
                 context = host.context,
+                enableIn4k = decoderPreferences.anime4kIn4k.get(),
               )
             if (selection.mode == Anime4KManager.Mode.OFF) {
               clearAnime4KShaders()

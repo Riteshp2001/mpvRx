@@ -548,7 +548,13 @@ class MPVView(
           Anime4KManager.Mode.OFF
         }
 
-      val selection = selectRuntimeStableAnime4K(mode, decoderPreferences.anime4kQuality.get(), context)
+      val selection =
+        selectRuntimeStableAnime4K(
+          mode = mode,
+          quality = decoderPreferences.anime4kQuality.get(),
+          context = context,
+          enableIn4k = decoderPreferences.anime4kIn4k.get(),
+        )
       selection.reason?.let { reason ->
         Log.i(TAG, "Anime4K thermal guard: $reason")
       }

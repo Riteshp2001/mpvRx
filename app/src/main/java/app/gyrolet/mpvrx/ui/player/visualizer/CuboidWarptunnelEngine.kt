@@ -227,10 +227,12 @@ class CuboidWarptunnelEngine {
     var toggle: Int
     var index = 0
 
+    val dynamicRadius = max(min(renderWidth, renderHeight) * 0.35f, 140f)
+
     var z = -FOV
     while (z < FOV) {
-      val coords = buildCircle(RADIUS, SEGMENTS)
-      val initialRadius = coords.firstOrNull()?.radius ?: RADIUS
+      val coords = buildCircle(dynamicRadius, SEGMENTS)
+      val initialRadius = coords.firstOrNull()?.radius ?: dynamicRadius
       val segmentsArray = Array(coords.size) {
         Segment(
           active = false,

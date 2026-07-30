@@ -43,6 +43,7 @@ import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 @Composable
 internal fun CuboidOverlay(
@@ -226,9 +227,13 @@ internal fun CuboidOverlay(
       val bmp = bitmap
       if (bmp != null && !bmp.isRecycled && bmp.width > 0 && bmp.height > 0) {
         try {
-          scale(size.width / bmp.width.toFloat(), size.height / bmp.height.toFloat()) {
-            drawImage(bmp.asImageBitmap())
-          }
+          drawImage(
+            image = bmp.asImageBitmap(),
+            dstSize = androidx.compose.ui.unit.IntSize(
+              size.width.roundToInt(),
+              size.height.roundToInt(),
+            ),
+          )
         } catch (_: Throwable) {}
       }
     }

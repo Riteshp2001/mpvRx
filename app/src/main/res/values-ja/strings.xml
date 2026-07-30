@@ -328,6 +328,8 @@
   <string name="anime4k_quality_fast">高速</string>
   <string name="anime4k_quality_balanced">バランス</string>
   <string name="anime4k_quality_high">高品質</string>
+  <string name="pref_anime4k_in_4k_title">4K動画でも有効化</string>
+  <string name="pref_anime4k_in_4k_summary">4Kおよび8K動画でのAnime4Kアップスケーリングを許可（GPU負荷やサーマルスロットリングが増加する可能性があります）</string>
   <string name="pref_anime4k_darken_title">Anime4Kの線を暗くする</string>
   <string name="pref_anime4k_darken_summary">メインアップスケーラーの後に線の暗色化を追加します。</string>
   <string name="pref_anime4k_thin_title">Anime4Kの線を細くする</string>

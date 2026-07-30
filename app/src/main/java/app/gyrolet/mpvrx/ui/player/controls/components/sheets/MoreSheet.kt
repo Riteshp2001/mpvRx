@@ -245,7 +245,7 @@ fun MoreSheet(
           color = MaterialTheme.colorScheme.primary,
         )
 
-        if (anime4KUiState.isHighResolution) {
+        if (anime4KUiState.isHighResolution && !anime4KUiState.enableIn4k) {
           Text(
             text =
               androidx.compose.ui.res.stringResource(
@@ -264,7 +264,7 @@ fun MoreSheet(
             FilterChip(
               label = { Text(stringResource(mode.titleRes)) },
               selected = anime4KUiState.selectedMode == mode.name,
-              enabled = !anime4KUiState.isHighResolution || mode == Anime4KManager.Mode.OFF,
+              enabled = anime4KUiState.allowHighRes || mode == Anime4KManager.Mode.OFF,
               leadingIcon = null,
               onClick = { onAnime4KModeSelected(mode) },
             )

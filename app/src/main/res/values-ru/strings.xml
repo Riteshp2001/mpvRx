@@ -328,6 +328,8 @@
   <string name="anime4k_quality_fast">Быстро</string>
   <string name="anime4k_quality_balanced">Сбалансированно</string>
   <string name="anime4k_quality_high">Высокое</string>
+  <string name="pref_anime4k_in_4k_title">Включить для видео 4K</string>
+  <string name="pref_anime4k_in_4k_summary">Разрешить масштабирование Anime4K для видео 4K и 8K (может увеличить нагрузку на ГПУ или нагрев)</string>
   <string name="pref_anime4k_darken_title">Затемнение линий Anime4K</string>
   <string name="pref_anime4k_darken_summary">Добавляет затемнение линий после основного масштабирования.</string>
   <string name="pref_anime4k_thin_title">Утончение линий Anime4K</string>

@@ -328,6 +328,8 @@ Weiter: NEXT</string>
   <string name="anime4k_quality_fast">Schnell</string>
   <string name="anime4k_quality_balanced">Ausgewogen</string>
   <string name="anime4k_quality_high">Hoch</string>
+  <string name="pref_anime4k_in_4k_title">In 4K-Videos aktivieren</string>
+  <string name="pref_anime4k_in_4k_summary">Anime4K-Hochskalierung für 4K- und 8K-Videos zulassen (kann GPU-Last oder thermisches Throttling erhöhen)</string>
   <string name="pref_anime4k_darken_title">Anime4K-Linien abdunkeln</string>
   <string name="pref_anime4k_darken_summary">Dunkelt die Linien nach dem Haupt-Upscaler ab.</string>
   <string name="pref_anime4k_thin_title">Anime4K-Linien ausdünnen</string>

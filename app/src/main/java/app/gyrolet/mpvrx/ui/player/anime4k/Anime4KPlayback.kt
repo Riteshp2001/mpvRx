@@ -22,12 +22,13 @@ internal data class Anime4KSelection(
 internal fun selectThermalSafeAnime4K(
   mode: Anime4KManager.Mode,
   quality: Anime4KManager.Quality,
+  enableIn4k: Boolean = false,
 ): Anime4KSelection {
   val width = MPVLib.getPropertyInt("video-params/w") ?: 0
   val height = MPVLib.getPropertyInt("video-params/h") ?: 0
   val pixels = width.toLong() * height.toLong()
 
-  if (pixels >= 3840L * 2160L) {
+  if (!enableIn4k && pixels >= 3840L * 2160L) {
     return Anime4KSelection(
       mode = Anime4KManager.Mode.OFF,
       quality = Anime4KManager.DEFAULT_QUALITY,
@@ -45,8 +46,9 @@ internal fun selectRuntimeStableAnime4K(
   mode: Anime4KManager.Mode,
   quality: Anime4KManager.Quality,
   context: Context? = null,
+  enableIn4k: Boolean = false,
 ): Anime4KSelection {
-  val staticSelection = selectThermalSafeAnime4K(mode, quality)
+  val staticSelection = selectThermalSafeAnime4K(mode, quality, enableIn4k)
   if (staticSelection.mode == Anime4KManager.Mode.OFF) {
     return staticSelection
   }

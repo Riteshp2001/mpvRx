@@ -328,7 +328,9 @@ Suivant : NEXT</string>
   <string name="anime4k_quality_fast">Rapide</string>
   <string name="anime4k_quality_balanced">Équilibrée</string>
   <string name="anime4k_quality_high">Élevée</string>
-  <string name="pref_anime4k_darken_title">Assombrir les lignes Anime4K</string>
+  <string name="pref_anime4k_in_4k_title">Activer dans les vidéos 4K</string>
+  <string name="pref_anime4k_in_4k_summary">Autoriser la mise à l’échelle Anime4K pour les vidéos 4K et 8K (peut augmenter la charge GPU ou la limitation thermique)</string>
+  <string name="pref_anime4k_darken_title">Anime4K assombrir les lignes</string>
   <string name="pref_anime4k_darken_summary">Ajoute un assombrissement des lignes après le module principal de mise à l’échelle.</string>
   <string name="pref_anime4k_thin_title">Affiner les lignes Anime4K</string>
   <string name="pref_anime4k_thin_summary">Ajoute un amincissement des lignes après le module principal de mise à l’échelle.</string>

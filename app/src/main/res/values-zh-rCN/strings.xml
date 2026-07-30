@@ -328,6 +328,8 @@
   <string name="anime4k_quality_fast">快速</string>
   <string name="anime4k_quality_balanced">均衡</string>
   <string name="anime4k_quality_high">高</string>
+  <string name="pref_anime4k_in_4k_title">在 4K 视频中启用</string>
+  <string name="pref_anime4k_in_4k_summary">允许对 4K 和 8K 视频使用 Anime4K 放大（可能会增加 GPU 负载或引发发热降频）</string>
   <string name="pref_anime4k_darken_title">Anime4K 线条加深</string>
   <string name="pref_anime4k_darken_summary">在主要超分辨率处理后增加线条加深。</string>
   <string name="pref_anime4k_thin_title">Anime4K 线条细化</string>

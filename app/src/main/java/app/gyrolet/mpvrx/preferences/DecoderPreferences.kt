@@ -45,6 +45,7 @@ class DecoderPreferences(
   val enableAnime4K = preferenceStore.getBoolean("enable_anime4k", false)
   val anime4kMode = preferenceStore.getString("anime4k_mode", "OFF")
   val anime4kQuality = preferenceStore.getEnum("anime4k_quality", Anime4KManager.DEFAULT_QUALITY)
+  val anime4kIn4k = preferenceStore.getBoolean("anime4k_in_4k", false)
   val anime4kDarken = preferenceStore.getBoolean("anime4k_darken", false)
   val anime4kThin = preferenceStore.getBoolean("anime4k_thin", false)
   val anime4kDeblur = preferenceStore.getBoolean("anime4k_deblur", false)
