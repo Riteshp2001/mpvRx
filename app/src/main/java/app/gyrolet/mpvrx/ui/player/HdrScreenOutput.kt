@@ -91,11 +91,15 @@ internal fun hdrScreenOutputSettings(
 
 private fun offSettings(): List<Pair<String, String>> =
   listOf(
+    "target-colorspace-hint" to "no",
     "target-colorspace-hint-mode" to "target",
+    "target-prim" to "auto",
+    "target-trc" to "auto",
+    "target-peak" to "auto",
     "inverse-tone-mapping" to "no",
     "tone-mapping" to "auto",
     "gamut-mapping-mode" to "auto",
-    "hdr-compute-peak" to "no",
+    "hdr-compute-peak" to "auto",
     "hdr-reference-white" to "203",
     "tone-mapping-visualize" to "no",
     "glsl-shader-opts" to "", // clear any hdr-toys shader options
