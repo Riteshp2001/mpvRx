@@ -320,18 +320,13 @@ class CuboidWarptunnelEngine {
     var err = dx - dy
     var lx = x1
     var ly = y1
-    val thickness = if (maxOf(r, g, b) > 180) 2 else 1
+    val w = renderWidth
+    val h = renderHeight
+    val colorInt = 0xFF000000.toInt() or (r shl 16) or (g shl 8) or b
+
     while (true) {
-      if (lx in 0 until renderWidth && ly in 0 until renderHeight) {
-        for (ox in -thickness..thickness) {
-          for (oy in -thickness..thickness) {
-            val px = lx + ox
-            val py = ly + oy
-            if (px in 0 until renderWidth && py in 0 until renderHeight) {
-              pixelBuffer[py * renderWidth + px] = 0xFF000000.toInt() or (r shl 16) or (g shl 8) or b
-            }
-          }
-        }
+      if (lx in 0 until w && ly in 0 until h) {
+        pixelBuffer[ly * w + lx] = colorInt
       }
       if (lx == x2 && ly == y2) break
       val e2 = 2 * err
@@ -431,10 +426,11 @@ class CuboidWarptunnelEngine {
 
       val back = if (i > 0) circleHolder[i - 1] else null
 
-      if (!touchActive) {
-        obj.mp.x += ((renderWidth / 2f) - obj.mp.x) * 0.00025f
-        obj.mp.y += ((renderHeight / 2f) - obj.mp.y) * 0.00025f
-      }
+      val targetX = if (touchActive) mousePos.x else (renderWidth / 2f)
+      val targetY = if (touchActive) mousePos.y else (renderHeight / 2f)
+      val lerpFactor = if (touchActive) 0.04f else 0.0025f
+      obj.mp.x += (targetX - obj.mp.x) * lerpFactor
+      obj.mp.y += (targetY - obj.mp.y) * lerpFactor
 
       obj.center.x = ((renderWidth / 2f) - obj.mp.x) * ((obj.z - FOV) / 500f) + renderWidth / 2f
       obj.center.y = ((renderHeight / 2f) - obj.mp.y) * ((obj.z - FOV) / 500f) + renderHeight / 2f

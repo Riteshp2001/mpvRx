@@ -195,16 +195,7 @@ internal fun CuboidOverlay(
                       engine.mousePos.x = first.position.x * sx
                       engine.mousePos.y = first.position.y * sy
                       engine.touchActive = true
-
-                      if (longPressJob?.isActive != true) {
-                        longPressJob =
-                          scope.launch {
-                            delay(400)
-                            if (pointerCount == 1) {
-                              engine.mouseDown = true
-                            }
-                          }
-                      }
+                      engine.mouseDown = true
                     }
                     changes.forEach { it.consume() }
                   }
@@ -217,36 +208,15 @@ internal fun CuboidOverlay(
                     engine.mousePos.x = primary.position.x * sx
                     engine.mousePos.y = primary.position.y * sy
                     engine.touchActive = true
-
-                    if (touchStartPos != null) {
-                      val dx = primary.position.x - touchStartPos.x
-                      val dy = primary.position.y - touchStartPos.y
-                      if (dx * dx + dy * dy > 100f) {
-                        longPressJob?.cancel()
-                        longPressJob = null
-                        engine.mouseDown = false
-                      }
-                    }
                     changes.forEach { it.consume() }
                   }
 
                   PointerEventType.Release -> {
                     if (changes.size >= 1) {
-                      val releasedIds = changes.map { it.id }.toSet()
-                      if (pointerId != null && pointerId in releasedIds) {
-                        pointerCount = 0
-                        pointerId = null
-                        longPressJob?.cancel()
-                        longPressJob = null
-                        engine.mouseDown = false
-                        engine.touchActive = false
-                      }
-                      if (changes.size >= 2) {
-                        pointerCount = if (pointerCount > 0) pointerCount - 1 else 0
-                        if (pointerCount == 1) {
-                          engine.mouseDown = false
-                        }
-                      }
+                      pointerCount = 0
+                      pointerId = null
+                      engine.mouseDown = false
+                      engine.touchActive = false
                     }
                     changes.forEach { it.consume() }
                   }
@@ -255,8 +225,10 @@ internal fun CuboidOverlay(
             }
           },
     ) {
-      engineW = size.width.toInt()
-      engineH = size.height.toInt()
+      val maxW = 540
+      val scaleFactor = if (size.width > maxW) maxW.toFloat() / size.width else 1.0f
+      engineW = (size.width * scaleFactor).toInt().coerceAtLeast(120)
+      engineH = (size.height * scaleFactor).toInt().coerceAtLeast(120)
       val bmp = bitmap
       if (bmp != null) {
         scale(size.width / bmp.width.toFloat(), size.height / bmp.height.toFloat()) {
