@@ -560,7 +560,7 @@ fun MediaLibraryContent() {
         modifier = Modifier.align(Alignment.BottomCenter),
       ) {
         BrowserBottomBar(
-          isSelectionMode = true,
+          isSelectionMode = selectionManager.isInSelectionMode,
           onCopyClick = {
             operationType.value = CopyPasteOps.OperationType.Copy
             if (CopyPasteOps.canUseDirectFileOperations()) {
@@ -583,7 +583,7 @@ fun MediaLibraryContent() {
           onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
           showCopy = true,
           showMove = true,
-          showDownscale = selectionManager.getSelectedItems().singleOrNull()?.isAudio == false,
+          showDownscale = selectionManager.getSelectedItems().let { items -> items.isNotEmpty() && items.none { it.isAudio } },
           showRename = selectionManager.selectedCount > 0,
           modifier =
             Modifier.padding(

@@ -26,6 +26,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,6 +71,29 @@ fun BrowserBottomBar(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+  var lastShowCopy by remember { mutableStateOf(showCopy) }
+  var lastShowMove by remember { mutableStateOf(showMove) }
+  var lastShowDownscale by remember { mutableStateOf(showDownscale) }
+  var lastShowRename by remember { mutableStateOf(showRename) }
+  var lastShowDelete by remember { mutableStateOf(showDelete) }
+  var lastShowAddToPlaylist by remember { mutableStateOf(showAddToPlaylist) }
+
+  if (isSelectionMode) {
+    lastShowCopy = showCopy
+    lastShowMove = showMove
+    lastShowDownscale = showDownscale
+    lastShowRename = showRename
+    lastShowDelete = showDelete
+    lastShowAddToPlaylist = showAddToPlaylist
+  }
+
+  val effectiveShowCopy = if (isSelectionMode) showCopy else lastShowCopy
+  val effectiveShowMove = if (isSelectionMode) showMove else lastShowMove
+  val effectiveShowDownscale = if (isSelectionMode) showDownscale else lastShowDownscale
+  val effectiveShowRename = if (isSelectionMode) showRename else lastShowRename
+  val effectiveShowDelete = if (isSelectionMode) showDelete else lastShowDelete
+  val effectiveShowAddToPlaylist = if (isSelectionMode) showAddToPlaylist else lastShowAddToPlaylist
+
   AnimatedVisibility(
     visible = isSelectionMode,
     modifier = modifier,
@@ -93,12 +120,12 @@ fun BrowserBottomBar(
       val availableWidth = maxWidth
       val visibleCount =
         listOf(
-          showCopy,
-          showMove,
-          showDownscale,
-          showRename,
-          showAddToPlaylist,
-          showDelete,
+          effectiveShowCopy,
+          effectiveShowMove,
+          effectiveShowDownscale,
+          effectiveShowRename,
+          effectiveShowAddToPlaylist,
+          effectiveShowDelete,
         ).count { it }
 
       val layoutParams =
@@ -204,7 +231,7 @@ fun BrowserBottomBar(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           BrowserBottomBarButton(
-            showCopy,
+            effectiveShowCopy,
             onCopyClick,
             Icons.RoundedFilled.ContentCopy,
             "Copy",
@@ -212,7 +239,7 @@ fun BrowserBottomBar(
             layoutParams.iconSize,
           )
           BrowserBottomBarButton(
-            showMove,
+            effectiveShowMove,
             onMoveClick,
             Icons.RoundedFilled.DriveFileMove,
             "Move",
@@ -220,7 +247,7 @@ fun BrowserBottomBar(
             layoutParams.iconSize,
           )
           BrowserBottomBarButton(
-            showDownscale,
+            effectiveShowDownscale,
             onDownscaleClick,
             Icons.RoundedFilled.FitScreen,
             "Compressor",
@@ -228,7 +255,7 @@ fun BrowserBottomBar(
             layoutParams.iconSize,
           )
           BrowserBottomBarButton(
-            showRename,
+            effectiveShowRename,
             onRenameClick,
             Icons.RoundedFilled.DriveFileRenameOutline,
             "Rename",
@@ -236,7 +263,7 @@ fun BrowserBottomBar(
             layoutParams.iconSize,
           )
           BrowserBottomBarButton(
-            showAddToPlaylist,
+            effectiveShowAddToPlaylist,
             onAddToPlaylistClick,
             Icons.RoundedFilled.PlaylistAdd,
             "Add to Playlist",
@@ -244,7 +271,7 @@ fun BrowserBottomBar(
             layoutParams.iconSize,
           )
           BrowserBottomBarButton(
-            showDelete,
+            effectiveShowDelete,
             onDeleteClick,
             Icons.RoundedFilled.Delete,
             "Delete",

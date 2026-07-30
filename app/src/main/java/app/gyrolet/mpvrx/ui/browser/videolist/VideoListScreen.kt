@@ -431,7 +431,7 @@ data class VideoListScreen(
         // Play Store gating is intentionally bypassed here.
         if (showFloatingBottomBar) {
           BrowserBottomBar(
-            isSelectionMode = true,
+            isSelectionMode = selectionManager.isInSelectionMode,
             onCopyClick = {
               operationType.value = CopyPasteOps.OperationType.Copy
               if (CopyPasteOps.canUseDirectFileOperations()) {
@@ -452,7 +452,7 @@ data class VideoListScreen(
             onRenameClick = { renameDialogOpen.value = true },
             onDeleteClick = { deleteDialogOpen.value = true },
             onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
-            showDownscale = selectionManager.getSelectedItems().singleOrNull()?.isAudio == false,
+            showDownscale = selectionManager.getSelectedItems().let { items -> items.isNotEmpty() && items.none { it.isAudio } },
             showRename = selectionManager.selectedCount > 0,
             modifier =
               Modifier
