@@ -13,12 +13,15 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
@@ -400,12 +403,35 @@ fun AudioPlayerControls(
 
     val centerVisualizerView = @Composable { visualizerModifier: Modifier ->
       BoxWithConstraints(
-        modifier = visualizerModifier.clipToBounds(),
+        modifier =
+          visualizerModifier
+            .clipToBounds()
+            .clickable(
+              interactionSource = remember { MutableInteractionSource() },
+              indication = null,
+              onClick = { viewModel.toggleAudioVisualizer() },
+            ),
         contentAlignment = Alignment.Center,
       ) {
         AnimatedContent(
           targetState = showVisualizer,
-          transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
+          transitionSpec = {
+            if (targetState) {
+              (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                scaleIn(animationSpec = tween(350, easing = FastOutSlowInEasing), initialScale = 0.90f))
+                .togetherWith(
+                  fadeOut(animationSpec = tween(280)) +
+                    scaleOut(animationSpec = tween(280), targetScale = 1.06f),
+                )
+            } else {
+              (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                scaleIn(animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f), initialScale = 0.88f))
+                .togetherWith(
+                  fadeOut(animationSpec = tween(280)) +
+                    scaleOut(animationSpec = tween(280), targetScale = 1.06f),
+                )
+            }
+          },
           label = "visualizer_toggle",
           modifier = Modifier.fillMaxSize(),
         ) { isVisualizerActive ->

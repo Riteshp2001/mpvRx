@@ -806,39 +806,37 @@ object FolderListScreen : Screen {
             }
           }
 
-          if (selectionManager.isInSelectionMode) {
-            BrowserBottomBar(
-              isSelectionMode = true,
-              onCopyClick = {
-                operationType.value = CopyPasteOps.OperationType.Copy
-                if (CopyPasteOps.canUseDirectFileOperations()) {
-                  folderPickerOpen.value = true
-                } else {
-                  treePickerLauncher.launch(null)
-                }
-              },
-              onMoveClick = {
-                operationType.value = CopyPasteOps.OperationType.Move
-                if (CopyPasteOps.canUseDirectFileOperations()) {
-                  folderPickerOpen.value = true
-                } else {
-                  treePickerLauncher.launch(null)
-                }
-              },
-              onRenameClick = { renameDialogOpen = true },
-              onDeleteClick = { pendingDeleteFolders = selectionManager.getSelectedItems() },
-              onAddToPlaylistClick = { },
-              showCopy = true,
-              showMove = true,
-              showRename = selectionManager.isSingleSelection,
-              showDownscale = false,
-              showAddToPlaylist = false,
-              modifier =
-                Modifier
-                  .align(Alignment.BottomCenter)
-                  .padding(bottom = 0.dp),
-            )
-          }
+          BrowserBottomBar(
+            isSelectionMode = selectionManager.isInSelectionMode,
+            onCopyClick = {
+              operationType.value = CopyPasteOps.OperationType.Copy
+              if (CopyPasteOps.canUseDirectFileOperations()) {
+                folderPickerOpen.value = true
+              } else {
+                treePickerLauncher.launch(null)
+              }
+            },
+            onMoveClick = {
+              operationType.value = CopyPasteOps.OperationType.Move
+              if (CopyPasteOps.canUseDirectFileOperations()) {
+                folderPickerOpen.value = true
+              } else {
+                treePickerLauncher.launch(null)
+              }
+            },
+            onRenameClick = { renameDialogOpen = true },
+            onDeleteClick = { pendingDeleteFolders = selectionManager.getSelectedItems() },
+            onAddToPlaylistClick = { },
+            showCopy = true,
+            showMove = true,
+            showRename = selectionManager.isSingleSelection,
+            showDownscale = false,
+            showAddToPlaylist = false,
+            modifier =
+              Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 0.dp),
+          )
         }
       }
     }

@@ -879,7 +879,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
       modifier = Modifier.align(Alignment.BottomCenter),
     ) {
       BrowserBottomBar(
-        isSelectionMode = true,
+        isSelectionMode = selectionManager.isInSelectionMode,
         onCopyClick = {
           operationType.value = CopyPasteOps.OperationType.Copy
           if (CopyPasteOps.canUseDirectFileOperations()) {
@@ -901,7 +901,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
         onDeleteClick = { deleteDialogOpen = true },
         onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
         showDownscale =
-          selectedVideos.singleOrNull()?.isAudio == false && selectedFolders.isEmpty(),
+          selectedVideos.isNotEmpty() && selectedVideos.none { it.isAudio } && selectedFolders.isEmpty(),
         showRename = selectionManager.isSingleSelection,
         showAddToPlaylist = !BuildConfig.ENABLE_UPDATE_FEATURE && onlyVideosSelected,
         modifier = Modifier.padding(bottom = 0.dp),
