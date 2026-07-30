@@ -21,6 +21,8 @@ class AudioPreferences(
   val audioChannels = preferenceStore.getEnum("audio_channels", AudioChannels.AutoSafe)
   val volumeBoostCap = preferenceStore.getInt("audio_volume_boost_cap", 30)
   val backgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
+  /** Audio-player-only background playback; video retains [backgroundPlayback]. */
+  val audioBackgroundPlayback = preferenceStore.getBoolean("audio_player_background_playback", false)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val audioBlobEnabled = preferenceStore.getBoolean("audio_blob_enabled", true)
   val audioVisualizerStyle = preferenceStore.getEnum("audio_visualizer_style", AudioVisualizerStyle.Blob)

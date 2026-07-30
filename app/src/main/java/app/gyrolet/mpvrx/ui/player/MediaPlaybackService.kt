@@ -49,6 +49,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -141,6 +142,7 @@ class MediaPlaybackService :
   private val serviceScope = CoroutineScope(SupervisorJob() + notificationDispatcher)
   private var playbackStateSaveJob: Job? = null
   private var mpvAccessReleased = false
+  private var usesAudioBackgroundPlayback = false
 
   inner class MediaPlaybackBinder : Binder() {
     fun getService() = this@MediaPlaybackService
@@ -160,7 +162,12 @@ class MediaPlaybackService :
     setupMediaSession()
 
     serviceScope.launch {
-      audioPreferences.backgroundPlayback.changes().drop(1).collect { enabled ->
+      combine(
+        audioPreferences.backgroundPlayback.changes(),
+        audioPreferences.audioBackgroundPlayback.changes(),
+      ) { videoEnabled, audioEnabled ->
+        if (usesAudioBackgroundPlayback) audioEnabled else videoEnabled
+      }.drop(1).collect { enabled ->
         if (!enabled) {
           Log.d(TAG, "Background playback disabled; stopping service and pausing playback")
           MPVLib.setPropertyBoolean("pause", true)
@@ -203,6 +210,7 @@ class MediaPlaybackService :
       val artist = it.getStringExtra("media_artist")
       val uri = it.getStringExtra("media_uri")
       val identifier = it.getStringExtra("media_identifier")
+      usesAudioBackgroundPlayback = it.getBooleanExtra("audio_background_playback", false)
 
       if (!title.isNullOrBlank()) {
         mediaTitle = title

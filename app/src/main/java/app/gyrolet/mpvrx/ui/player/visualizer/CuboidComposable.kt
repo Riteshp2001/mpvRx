@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.hypot
+import kotlin.math.ln
+import kotlin.math.max
 import kotlin.math.min
 
 @Composable
@@ -55,6 +57,7 @@ internal fun CuboidOverlay(
   var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
   val analyzerActive = remember { AtomicBoolean(false) }
   val renderLoopActive = remember { AtomicBoolean(true) }
+  val playbackActive = remember { AtomicBoolean(isPlaying) }
   val frequencyData = remember { ByteArray(2048) }
 
   var hasRecordPermission by remember {
@@ -76,8 +79,16 @@ internal fun CuboidOverlay(
     engine.palette = palette
   }
 
+  LaunchedEffect(isPlaying) {
+    playbackActive.set(isPlaying)
+    if (!isPlaying) engine.clearAudioData()
+  }
+
   DisposableEffect(hasRecordPermission) {
     var visualizer: Visualizer? = null
+    // Normalize against a decaying peak: raw Android FFT levels vary widely by device and
+    // otherwise quiet masters barely move the tunnel.
+    var fftPeak = 12f
     if (hasRecordPermission) {
       try {
         val v = Visualizer(0)
@@ -97,17 +108,20 @@ internal fun CuboidOverlay(
               fft: ByteArray?,
               sr: Int,
             ) {
-              if (fft != null && fft.size >= 8) {
+              if (playbackActive.get() && fft != null && fft.size >= 8) {
                 synchronized(frequencyData) {
                   val len = min(fft.size / 2, frequencyData.size)
                   for (k in 0 until len) {
                     val real = fft[k * 2].toInt().toFloat()
                     val imag = fft[k * 2 + 1].toInt().toFloat()
-                    val m = (hypot(real.toDouble(), imag.toDouble()) / 32f).coerceIn(0.0, 255.0)
-                    frequencyData[k] = m.toInt().coerceIn(0, 255).toByte()
+                    val magnitude = hypot(real.toDouble(), imag.toDouble()).toFloat()
+                    fftPeak = max(12f, max(magnitude, fftPeak * 0.992f))
+                    val normalized =
+                      (ln(1f + magnitude) / ln(1f + fftPeak) * 255f).toInt().coerceIn(0, 255)
+                    frequencyData[k] = normalized.toByte()
                   }
                 }
-                engine.updateFrequencyData(frequencyData.copyOf(min(frequencyData.size, 512)))
+                engine.updateFrequencyData(frequencyData.copyOf(min(fft.size / 2, frequencyData.size)))
                 analyzerActive.set(true)
               }
             }
@@ -127,13 +141,16 @@ internal fun CuboidOverlay(
       analyzerActive.set(false)
       engine.clearAudioData()
       visualizer?.release()
+      engine.release()
     }
   }
 
   var engineW by remember { mutableStateOf(1) }
   var engineH by remember { mutableStateOf(1) }
 
-  LaunchedEffect(engineW, engineH, palette) {
+  // Permission changes recreate the Android Visualizer. Include that state so the render
+  // coroutine is restarted after its previous resource-owning effect is disposed.
+  LaunchedEffect(engineW, engineH, palette, hasRecordPermission) {
     if (engineW < 2 || engineH < 2) return@LaunchedEffect
     renderLoopActive.set(true)
     engine.init(engineW, engineH)

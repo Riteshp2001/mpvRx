@@ -556,7 +556,8 @@ class PlayerViewModel(
 
   // Audio player UI state
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
-  val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.audioBlobEnabled.get())
+  // The style is persistent, but the artwork/visualizer display choice belongs to this player.
+  val showVisualizerInAudioPlayer = MutableStateFlow(true)
   val equalizerState = MutableStateFlow(EqualizerState())
   private val audioEqualizerManager = AudioEqualizerManager()
   private var equalizerMpvDebounceJob: Job? = null
@@ -663,7 +664,6 @@ class PlayerViewModel(
     if (!audioVisualizerToggleDebouncer.tryConsume()) return false
     val newValue = !showVisualizerInAudioPlayer.value
     showVisualizerInAudioPlayer.value = newValue
-    audioPreferences.audioBlobEnabled.set(newValue)
     return true
   }
 
@@ -937,6 +937,12 @@ class PlayerViewModel(
   private val _hdrScreenMode = MutableStateFlow(initialHdrScreenMode())
   val hdrScreenMode: StateFlow<HdrScreenMode> = _hdrScreenMode.asStateFlow()
 
+  private val _isGpuNextEnabled = MutableStateFlow(decoderPreferences.gpuNext.get())
+  private val _isVulkanEnabled = MutableStateFlow(decoderPreferences.useVulkan.get())
+  val isLinearHdrAvailable: StateFlow<Boolean> =
+    combine(_isGpuNextEnabled, _isVulkanEnabled) { gpuNext, vulkan -> gpuNext && vulkan }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, _isGpuNextEnabled.value && _isVulkanEnabled.value)
+
   private val _isHdrScreenOutputPipelineReady = MutableStateFlow(isHdrScreenOutputAvailable())
   val isHdrScreenOutputPipelineReady: StateFlow<Boolean> = _isHdrScreenOutputPipelineReady.asStateFlow()
 
@@ -1075,6 +1081,18 @@ class PlayerViewModel(
   )
 
   init {
+    viewModelScope.launch {
+      decoderPreferences.gpuNext.changes().collect { enabled ->
+        _isGpuNextEnabled.value = enabled
+        reconcileHdrModeWithRenderer()
+      }
+    }
+    viewModelScope.launch {
+      decoderPreferences.useVulkan.changes().collect { enabled ->
+        _isVulkanEnabled.value = enabled
+        reconcileHdrModeWithRenderer()
+      }
+    }
     syncplayManager.playbackStateProvider = { currentSyncplayPlaybackState() }
     syncplayManager.fileInfoProvider = { currentSyncplayFileInfo() }
     syncplayManager.onRemotePause = { shouldPause ->
@@ -4855,27 +4873,46 @@ class PlayerViewModel(
   }
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
-    val pipelineReady = isHdrScreenOutputAvailable(mode)
+    val resolvedMode =
+      if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
+        HdrScreenMode.defaultEnabledMode
+      } else {
+        mode
+      }
+    val pipelineReady = isHdrScreenOutputAvailable(resolvedMode)
 
-    _hdrScreenMode.value = mode
-    _isHdrScreenOutputEnabled.value = pipelineReady && mode != HdrScreenMode.OFF
-    decoderPreferences.hdrScreenMode.set(mode)
-    decoderPreferences.hdrScreenOutput.set(mode != HdrScreenMode.OFF)
-    applyHdrScreenOutput(mode)
+    _hdrScreenMode.value = resolvedMode
+    _isHdrScreenOutputEnabled.value = pipelineReady && resolvedMode != HdrScreenMode.OFF
+    decoderPreferences.hdrScreenMode.set(resolvedMode)
+    decoderPreferences.hdrScreenOutput.set(resolvedMode != HdrScreenMode.OFF)
+    applyHdrScreenOutput(resolvedMode)
     playerUpdate.value =
       PlayerUpdates.ShowText(
-        host.context.getString(R.string.hdr_screen_output_update, host.context.getString(mode.shortTitleRes)),
+        host.context.getString(R.string.hdr_screen_output_update, host.context.getString(resolvedMode.shortTitleRes)),
       )
   }
 
-  private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean = true
+  private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean =
+    mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
 
   private fun initialHdrScreenMode(): HdrScreenMode {
     val savedMode = decoderPreferences.hdrScreenMode.get()
-    return if (savedMode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) {
+    val resolvedMode =
+      if (savedMode == HdrScreenMode.LINEAR &&
+        !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
+      ) HdrScreenMode.defaultEnabledMode else savedMode
+    return if (resolvedMode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) {
       HdrScreenMode.defaultEnabledMode
     } else {
-      savedMode
+      resolvedMode
+    }
+  }
+
+  private fun reconcileHdrModeWithRenderer() {
+    if (_hdrScreenMode.value == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
+      setHdrScreenMode(HdrScreenMode.defaultEnabledMode)
+    } else {
+      refreshHdrScreenOutputPipelineState()
     }
   }
 

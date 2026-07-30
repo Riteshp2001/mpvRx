@@ -409,8 +409,9 @@ class CuboidWarptunnelEngine {
         sc.g * (0.22f + beat * 0.55f) * wave2.g,
         sc.b * (0.45f + bass * 0.55f) * wave2.b,
       )
-    limit(col, 0.18f)
-    limit(col2, 0.05f)
+    // Match the original pen's bright wireframe readability even with muted app themes.
+    limit(col, 0.42f)
+    limit(col2, 0.28f)
 
     val pressed = mouseDown
     var sort = false
@@ -461,9 +462,9 @@ class CuboidWarptunnelEngine {
         if (j > 0) {
           lv =
             if (hasAudio) {
-              min(i.toFloat() / l * (55f + freq + energy * 160f + bass * 120f), 255f)
+              min(42f + i.toFloat() / l * (105f + freq + energy * 190f + bass * 145f + beat * 85f), 255f)
             } else {
-              i.toFloat() / l * 200f
+              36f + i.toFloat() / l * 200f
             }
         }
 

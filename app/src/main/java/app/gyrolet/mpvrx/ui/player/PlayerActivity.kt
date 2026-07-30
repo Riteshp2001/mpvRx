@@ -2289,7 +2289,9 @@ class PlayerActivity :
     }
   }
 
-  private fun isBackgroundPlaybackEnabled(): Boolean = audioPreferences.backgroundPlayback.get()
+  private fun isBackgroundPlaybackEnabled(): Boolean =
+    if (viewModel.isAudioOnly.value) audioPreferences.audioBackgroundPlayback.get()
+    else audioPreferences.backgroundPlayback.get()
 
   private fun isDeviceScreenOffOrLocked(): Boolean {
     val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -4556,6 +4558,7 @@ class PlayerActivity :
         putExtra("media_artist", artist)
         putExtra("media_uri", currentPlayableUri)
         putExtra("media_identifier", mediaIdentifier)
+        putExtra("audio_background_playback", viewModel.isAudioOnly.value)
       }
 
     try {
@@ -4644,7 +4647,7 @@ class PlayerActivity :
     mediaPlaybackService = null
   }
 
-  /** Uses the same persistent setting as Settings > Audio. */
+  /** Toggles video background playback without changing the audio-player setting. */
   fun toggleBackgroundPlayback() {
     val enabled = !audioPreferences.backgroundPlayback.get()
     audioPreferences.backgroundPlayback.set(enabled)
@@ -4675,6 +4678,38 @@ class PlayerActivity :
       BackgroundPlaybackStartResult.PendingPermission -> pendingBackgroundTransition = true
       BackgroundPlaybackStartResult.Blocked -> {
         audioPreferences.backgroundPlayback.set(false)
+        isBackgroundPlaybackSessionActive = false
+        pendingBackgroundTransition = false
+      }
+    }
+  }
+
+  /** Toggles the audio-player-specific background playback setting. */
+  fun toggleAudioBackgroundPlayback() {
+    val enabled = !audioPreferences.audioBackgroundPlayback.get()
+    audioPreferences.audioBackgroundPlayback.set(enabled)
+
+    if (enabled) ensureNotificationAccessForPlayback(allowUserPrompt = true)
+    if (!enabled) {
+      pendingBackgroundTransition = false
+      isBackgroundPlaybackSessionActive = false
+      endBackgroundPlayback()
+      enableVideoAfterBackground()
+      viewModel.showToast("Audio background playback off")
+      return
+    }
+    if (fileName.isBlank() || !isReady) {
+      viewModel.showToast("Audio background playback on")
+      return
+    }
+    when (startBackgroundPlayback()) {
+      BackgroundPlaybackStartResult.Started -> {
+        isBackgroundPlaybackSessionActive = true
+        viewModel.showToast("Audio background playback on")
+      }
+      BackgroundPlaybackStartResult.PendingPermission -> pendingBackgroundTransition = true
+      BackgroundPlaybackStartResult.Blocked -> {
+        audioPreferences.audioBackgroundPlayback.set(false)
         isBackgroundPlaybackSessionActive = false
         pendingBackgroundTransition = false
       }

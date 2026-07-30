@@ -275,7 +275,7 @@ fun AudioPlayerControls(
   val audioPreferences = koinInject<AudioPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
   val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
-  val backgroundPlaybackEnabled by audioPreferences.backgroundPlayback.collectAsState()
+  val backgroundPlaybackEnabled by audioPreferences.audioBackgroundPlayback.collectAsState()
   val appTheme by appearancePreferences.appTheme.collectAsState()
   val darkMode by appearancePreferences.darkMode.collectAsState()
   val amoledMode by appearancePreferences.amoledMode.collectAsState()
@@ -816,9 +816,9 @@ fun AudioPlayerControls(
           ReactiveIconButton(onClick = {
             val act = context as? PlayerActivity
             if (act != null) {
-              act.toggleBackgroundPlayback()
+              act.toggleAudioBackgroundPlayback()
             } else {
-              audioPreferences.backgroundPlayback.set(!backgroundPlaybackEnabled)
+              audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
             }
           }) {
             Icon(

@@ -169,23 +169,8 @@ object AudioPreferencesScreen : Screen {
               }
 
               PreferenceDivider()
-              val audioBlobEnabled by preferences.audioBlobEnabled.collectAsState()
-              SwitchPreference(
-                value = audioBlobEnabled,
-                onValueChange = { preferences.audioBlobEnabled.set(it) },
-                title = { Text(stringResource(R.string.pref_music_visualizer_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_music_visualizer_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              if (audioBlobEnabled) {
-                PreferenceDivider()
-                val audioVisualizerStyle by preferences.audioVisualizerStyle.collectAsState()
-                ListPreference(
+              val audioVisualizerStyle by preferences.audioVisualizerStyle.collectAsState()
+              ListPreference(
                   value = audioVisualizerStyle,
                   onValueChange = { preferences.audioVisualizerStyle.set(it) },
                   values = AudioVisualizerStyle.entries,
@@ -229,8 +214,7 @@ object AudioPreferencesScreen : Screen {
                       }
                     }
                   },
-                )
-              }
+              )
 
               PreferenceDivider()
               val audioOrientation by preferences.audioOrientation.collectAsState()
@@ -315,11 +299,11 @@ object AudioPreferencesScreen : Screen {
               )
 
               PreferenceDivider()
-              val backgroundPlayback by preferences.backgroundPlayback.collectAsState()
+              val backgroundPlayback by preferences.audioBackgroundPlayback.collectAsState()
               SwitchPreference(
                 value = backgroundPlayback,
                 onValueChange = { enabled ->
-                  preferences.backgroundPlayback.set(enabled)
+                  preferences.audioBackgroundPlayback.set(enabled)
                   if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                       PackageManager.PERMISSION_GRANTED
