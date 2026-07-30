@@ -6,16 +6,16 @@ internal class ToggleDebouncer(
   private val minimumIntervalMs: Long = 350L,
   private val clock: () -> Long = { SystemClock.elapsedRealtime() },
 ) {
-  private var lastAcceptedAtMs: Long = Long.MIN_VALUE
+  private var lastAcceptedAtMs: Long = 0L
 
   fun tryConsume(nowMs: Long = clock()): Boolean {
-    val elapsedMs = nowMs - lastAcceptedAtMs
-    if (elapsedMs < minimumIntervalMs) return false
+    if (lastAcceptedAtMs != 0L && (nowMs - lastAcceptedAtMs) < minimumIntervalMs) return false
     lastAcceptedAtMs = nowMs
     return true
   }
 
   fun reset() {
-    lastAcceptedAtMs = Long.MIN_VALUE
+    lastAcceptedAtMs = 0L
   }
 }
+
