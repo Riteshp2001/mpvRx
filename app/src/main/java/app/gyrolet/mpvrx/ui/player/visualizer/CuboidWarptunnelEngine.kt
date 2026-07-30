@@ -3,6 +3,10 @@
  *
  * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
  * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ *
+ * Cuboid Warptunnel Audio Visualizer
+ * Original by Niklas Knaack — https://codepen.io/NiklasKnaack/pen/WyWqja
+ * Ported to native Android Compose Canvas for mpvRx
  */
 
 package app.gyrolet.mpvrx.ui.player.visualizer
@@ -29,34 +33,34 @@ class CuboidWarptunnelEngine {
   }
 
   data class SubSegment(
-    var x: Float,
-    var y: Float,
-    var x2d: Float,
-    var y2d: Float,
-    var index: Int,
+    var x: Float = 0f,
+    var y: Float = 0f,
+    var x2d: Float = 0f,
+    var y2d: Float = 0f,
+    var index: Int = 0,
   )
 
   data class Segment(
     var active: Boolean = false,
-    var x: Float,
-    var y: Float,
-    var x2d: Float,
-    var y2d: Float,
-    var index: Int,
-    var radius: Float,
-    var radiusAudio: Float,
-    var segments: Int,
-    var audioBufferIndex: Int,
-    var subs: Array<SubSegment> = emptyArray(),
+    var x: Float = 0f,
+    var y: Float = 0f,
+    var x2d: Float = 0f,
+    var y2d: Float = 0f,
+    var index: Int = 0,
+    var radius: Float = RADIUS,
+    var radiusAudio: Float = RADIUS,
+    var segments: Int = SEGMENTS,
+    var audioBufferIndex: Int = 0,
+    var subs: Array<SubSegment> = Array(7) { SubSegment() },
   )
 
   data class CircleObj(
     var z: Float,
-    var center: Offset,
-    var circleCenter: Offset,
-    var mp: Offset,
-    var radius: Float,
-    var color: Color3,
+    var center: Offset = Offset(0f, 0f),
+    var circleCenter: Offset = Offset(0f, 0f),
+    var mp: Offset = Offset(0f, 0f),
+    var radius: Float = RADIUS,
+    var color: Color3 = Color3(0f, 0f, 0f),
     var segmentsOutside: Array<Segment>,
     var index: Int,
   )
@@ -78,20 +82,40 @@ class CuboidWarptunnelEngine {
     var b: Float,
   )
 
+  private val renderLock = Any()
+
+  @Volatile
   var renderWidth = 0
+    private set
+
+  @Volatile
   var renderHeight = 0
+    private set
 
   var mousePos = Offset(0f, 0f)
+    get() = synchronized(renderLock) { field }
+    set(value) = synchronized(renderLock) { field = value }
+
   var mouseDown = false
+    get() = synchronized(renderLock) { field }
+    set(value) = synchronized(renderLock) { field = value }
+
   var touchActive = false
+    get() = synchronized(renderLock) { field }
+    set(value) = synchronized(renderLock) { field = value }
+
   var isLightTheme = false
+    get() = synchronized(renderLock) { field }
+    set(value) = synchronized(renderLock) { field = value }
 
   internal var palette: VisualizerPalette? = null
+    get() = synchronized(renderLock) { field }
+    set(value) = synchronized(renderLock) { field = value }
 
   private val audioSmoother = AudioReactiveSmoother()
 
   @Volatile
-  var frequencyData: ByteArray? = null
+  private var frequencyData: ByteArray? = null
 
   private var pixelBuffer: IntArray = IntArray(0)
   private var bitmap: Bitmap? = null
@@ -147,26 +171,46 @@ class CuboidWarptunnelEngine {
   fun init(
     w: Int,
     h: Int,
-  ) {
+  ) = synchronized(renderLock) {
+    if (w <= 0 || h <= 0) return
     renderWidth = w
     renderHeight = h
     val size = w * h
-    if (size != pixelBuffer.size) pixelBuffer = IntArray(size)
-    bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    addCircles()
+    if (size != pixelBuffer.size) {
+      pixelBuffer = IntArray(size)
+    }
+
+    bitmap?.recycle()
+    bitmap = try {
+      Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    } catch (_: Throwable) {
+      null
+    }
+
+    addCirclesLocked()
   }
 
   fun resize(
     w: Int,
     h: Int,
-  ) {
+  ) = synchronized(renderLock) {
+    if (w <= 0 || h <= 0) return
     val ow = renderWidth
     val oh = renderHeight
     renderWidth = w
     renderHeight = h
     val size = w * h
-    if (size != pixelBuffer.size) pixelBuffer = IntArray(size)
-    bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    if (size != pixelBuffer.size) {
+      pixelBuffer = IntArray(size)
+    }
+
+    bitmap?.recycle()
+    bitmap = try {
+      Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    } catch (_: Throwable) {
+      null
+    }
+
     val sx = if (ow > 0) w.toFloat() / ow else 1f
     val sy = if (oh > 0) h.toFloat() / oh else 1f
     for (obj in circleHolder) {
@@ -177,51 +221,46 @@ class CuboidWarptunnelEngine {
     }
   }
 
-  private fun addCircles() {
+  private fun addCirclesLocked() {
     circleHolder.clear()
     val mp = Offset(Random.nextFloat() * renderWidth, Random.nextFloat() * renderHeight)
-    var toggle = 1
+    var toggle: Int
     var index = 0
-    var audioIndex = AUDIO_BIN_MIN
 
     var z = -FOV
     while (z < FOV) {
       val coords = buildCircle(RADIUS, SEGMENTS)
+      val initialRadius = coords.firstOrNull()?.radius ?: RADIUS
+      val segmentsArray = Array(coords.size) {
+        Segment(
+          active = false,
+          radius = initialRadius,
+          radiusAudio = initialRadius,
+          segments = SEGMENTS,
+          subs = Array(7) { SubSegment() },
+        )
+      }
+
       val obj =
         CircleObj(
           z = z,
-          center = Offset(0f, 0f),
+          center = Offset(renderWidth / 2f, renderHeight / 2f),
           circleCenter = Offset(0f, 0f),
           mp = Offset(mp.x, mp.y),
-          radius = coords.first().radius,
+          radius = initialRadius,
           color = Color3(0f, 0f, 0f),
-          segmentsOutside =
-            Array(coords.size) {
-              Segment(
-                active = false,
-                x = 0f,
-                y = 0f,
-                x2d = 0f,
-                y2d = 0f,
-                index = 0,
-                radius = 0f,
-                radiusAudio = 0f,
-                segments = 0,
-                audioBufferIndex = 0,
-              )
-            },
+          segmentsOutside = segmentsArray,
           index = index,
         )
+
       toggle = index % 2
       index++
-      if (z < 0) audioIndex++ else audioIndex--
-
-      var bufIdx = Random.nextInt(AUDIO_BIN_MIN, AUDIO_BIN_MAX)
 
       for (i in coords.indices) {
         val c = coords[i]
         if (i % 2 == toggle) {
           val prev = if (i > 0) coords[i - 1] else coords.last()
+          val bufIdx = Random.nextInt(AUDIO_BIN_MIN, max(AUDIO_BIN_MIN + 1, AUDIO_BIN_MAX))
           val seg =
             Segment(
               active = true,
@@ -245,12 +284,6 @@ class CuboidWarptunnelEngine {
                   SubSegment(prev.x, prev.y, 0f, 0f, prev.index),
                 ),
             )
-          bufIdx =
-            if (i < coords.size - 1) {
-              Random.nextInt(AUDIO_BIN_MIN, AUDIO_BIN_MAX)
-            } else {
-              obj.segmentsOutside[0].audioBufferIndex
-            }
           obj.segmentsOutside[i] = seg
         }
       }
@@ -290,21 +323,20 @@ class CuboidWarptunnelEngine {
     return list
   }
 
-  @Synchronized
-  fun updateFrequencyData(data: ByteArray?) {
+  fun updateFrequencyData(data: ByteArray?) = synchronized(renderLock) {
     frequencyData = data?.copyOf()
   }
 
-  @Synchronized
-  fun clearAudioData() {
+  fun clearAudioData() = synchronized(renderLock) {
     frequencyData = null
   }
 
-  private fun clear() {
-    pixelBuffer.fill(palette?.background ?: 0xFF02040D.toInt())
+  private fun clearLocked() {
+    // Completely transparent background - no opaque background color!
+    pixelBuffer.fill(0x00000000)
   }
 
-  private fun line(
+  private fun lineLocked(
     x1: Int,
     y1: Int,
     x2: Int,
@@ -313,22 +345,42 @@ class CuboidWarptunnelEngine {
     g: Int,
     b: Int,
   ) {
-    var dx = abs(x2 - x1)
-    var dy = abs(y2 - y1)
-    val sx = if (x1 < x2) 1 else -1
-    val sy = if (y1 < y2) 1 else -1
-    var err = dx - dy
-    var lx = x1
-    var ly = y1
     val w = renderWidth
     val h = renderHeight
-    val colorInt = 0xFF000000.toInt() or (r shl 16) or (g shl 8) or b
+    if (w <= 0 || h <= 0 || pixelBuffer.isEmpty()) return
 
-    while (true) {
+    val maxVal = max(w, h) * 3
+    val lx1 = x1.coerceIn(-maxVal, maxVal)
+    val ly1 = y1.coerceIn(-maxVal, maxVal)
+    val lx2 = x2.coerceIn(-maxVal, maxVal)
+    val ly2 = y2.coerceIn(-maxVal, maxVal)
+
+    var dx = abs(lx2 - lx1)
+    var dy = abs(ly2 - ly1)
+    val sx = if (lx1 < lx2) 1 else -1
+    val sy = if (ly1 < ly2) 1 else -1
+    var err = dx - dy
+    var lx = lx1
+    var ly = ly1
+
+    val cr = r.coerceIn(0, 255)
+    val cg = g.coerceIn(0, 255)
+    val cb = b.coerceIn(0, 255)
+    // Opaque lines over transparent background
+    val colorInt = 0xFF000000.toInt() or (cr shl 16) or (cg shl 8) or cb
+
+    var iterations = 0
+    val maxIter = max(w, h) * 4
+
+    while (iterations < maxIter) {
+      iterations++
       if (lx in 0 until w && ly in 0 until h) {
-        pixelBuffer[ly * w + lx] = colorInt
+        val idx = ly * w + lx
+        if (idx in pixelBuffer.indices) {
+          pixelBuffer[idx] = colorInt
+        }
       }
-      if (lx == x2 && ly == y2) break
+      if (lx == lx2 && ly == ly2) break
       val e2 = 2 * err
       if (e2 > -dx) {
         err -= dy
@@ -375,12 +427,16 @@ class CuboidWarptunnelEngine {
     )
   }
 
-  fun render(): Bitmap? {
-    clear()
+  fun render(): Bitmap? = synchronized(renderLock) {
+    if (renderWidth <= 0 || renderHeight <= 0) return null
+    val targetBmp = bitmap ?: return null
+    clearLocked()
 
     val p = palette
-    val pc = if (p != null) paletteColor3(p.primary) else Color3(0.86f, 0.03f, 1f)
-    val sc = if (p != null) paletteColor3(p.secondary) else Color3(1f, 0.05f, 0.5f)
+    val defaultPrimary = if (isLightTheme) Color3(0.12f, 0.15f, 0.85f) else Color3(0.86f, 0.03f, 1f)
+    val defaultSecondary = if (isLightTheme) Color3(0.85f, 0.1f, 0.4f) else Color3(1f, 0.05f, 0.5f)
+    val pc = if (p != null) paletteColor3(p.primary) else defaultPrimary
+    val scPalette = if (p != null) paletteColor3(p.secondary) else defaultSecondary
     val audioTarget = buildAudioFrame(frequencyData)
     val audioState = audioSmoother.update(audioTarget, 1f / 60f)
     val bass = audioState.bass
@@ -400,18 +456,17 @@ class CuboidWarptunnelEngine {
       )
     val col2 =
       Color3(
-        sc.r * (0.35f + energy * 0.65f) * wave2.r,
-        sc.g * (0.22f + beat * 0.55f) * wave2.g,
-        sc.b * (0.45f + bass * 0.55f) * wave2.b,
+        scPalette.r * (0.35f + energy * 0.65f) * wave2.r,
+        scPalette.g * (0.22f + beat * 0.55f) * wave2.g,
+        scPalette.b * (0.45f + bass * 0.55f) * wave2.b,
       )
-    // Match the original pen's bright wireframe readability even with muted app themes.
     limit(col, 0.42f)
     limit(col2, 0.28f)
 
     val pressed = mouseDown
     var sort = false
     val fd = frequencyData
-    val hasAudio = fd != null
+    val hasAudio = fd != null && fd.isNotEmpty()
     val pi2 = Math.PI.toFloat() * 2
     val l = circleHolder.size
 
@@ -432,22 +487,26 @@ class CuboidWarptunnelEngine {
       obj.mp.x += (targetX - obj.mp.x) * lerpFactor
       obj.mp.y += (targetY - obj.mp.y) * lerpFactor
 
-      obj.center.x = ((renderWidth / 2f) - obj.mp.x) * ((obj.z - FOV) / 500f) + renderWidth / 2f
-      obj.center.y = ((renderHeight / 2f) - obj.mp.y) * ((obj.z - FOV) / 500f) + renderHeight / 2f
+      val depthFactor = ((obj.z - FOV) / 500f).coerceIn(-5f, 5f)
+      obj.center.x = ((renderWidth / 2f) - obj.mp.x) * depthFactor + renderWidth / 2f
+      obj.center.y = ((renderHeight / 2f) - obj.mp.y) * depthFactor + renderHeight / 2f
 
       for (j in obj.segmentsOutside.indices) {
         val seg = obj.segmentsOutside[j]
         if (!seg.active) continue
 
-        val sc = FOV / (FOV + obj.z)
-        val scB = if (i > 0) FOV / (FOV + back!!.z) else 0f
+        val zDepth = (FOV + obj.z).coerceAtLeast(1.0f)
+        val scScale = FOV / zDepth
 
-        seg.x2d = (seg.x * sc) + obj.center.x
-        seg.y2d = (seg.y * sc) + obj.center.y
+        val backZDepth = if (back != null) (FOV + back.z).coerceAtLeast(1.0f) else 1.0f
+        val scBScale = if (i > 0) FOV / backZDepth else 0f
+
+        seg.x2d = (seg.x * scScale) + obj.center.x
+        seg.y2d = (seg.y * scScale) + obj.center.y
 
         var freq = 0
         var freqAdd = 0f
-        if (hasAudio && seg.audioBufferIndex < fd.size) {
+        if (hasAudio && seg.audioBufferIndex < fd!!.size) {
           freq = fd[seg.audioBufferIndex].toInt() and 0xFF
           freqAdd = freq / 20f
           val audioLift = 1f + (bass * 0.85f) + (mid * 0.4f) + (treble * 0.25f) + (beat * 0.35f)
@@ -466,180 +525,71 @@ class CuboidWarptunnelEngine {
 
         if (i > 0 && i < l - 1 && back != null) {
           val sub1 = seg.subs[0]
-          sub1.x =
-            obj.circleCenter.x + cos(sub1.index * pi2 / seg.segments + time) * seg.radiusAudio
-          sub1.y =
-            obj.circleCenter.y + sin(sub1.index * pi2 / seg.segments + time) * seg.radiusAudio
-          sub1.x2d = (sub1.x * sc) + obj.center.x
-          sub1.y2d = (sub1.y * sc) + obj.center.y
+          sub1.x = obj.circleCenter.x + cos(sub1.index * pi2 / seg.segments + time) * seg.radiusAudio
+          sub1.y = obj.circleCenter.y + sin(sub1.index * pi2 / seg.segments + time) * seg.radiusAudio
+          sub1.x2d = (sub1.x * scScale) + obj.center.x
+          sub1.y2d = (sub1.y * scScale) + obj.center.y
 
           val sub2 = seg.subs[1]
-          sub2.x =
-            obj.circleCenter.x + cos(sub2.index * pi2 / seg.segments + time) * seg.radiusAudio
-          sub2.y =
-            obj.circleCenter.y + sin(sub2.index * pi2 / seg.segments + time) * seg.radiusAudio
-          sub2.x2d = (sub2.x * scB) + back.center.x
-          sub2.y2d = (sub2.y * scB) + back.center.y
+          sub2.x = obj.circleCenter.x + cos(sub2.index * pi2 / seg.segments + time) * seg.radiusAudio
+          sub2.y = obj.circleCenter.y + sin(sub2.index * pi2 / seg.segments + time) * seg.radiusAudio
+          sub2.x2d = (sub2.x * scBScale) + back.center.x
+          sub2.y2d = (sub2.y * scBScale) + back.center.y
 
           val sub3 = seg.subs[2]
-          sub3.x =
-            obj.circleCenter.x + cos(sub3.index * pi2 / seg.segments + time) * seg.radiusAudio
-          sub3.y =
-            obj.circleCenter.y + sin(sub3.index * pi2 / seg.segments + time) * seg.radiusAudio
-          sub3.x2d = (sub3.x * scB) + back.center.x
-          sub3.y2d = (sub3.y * scB) + back.center.y
+          sub3.x = obj.circleCenter.x + cos(sub3.index * pi2 / seg.segments + time) * seg.radiusAudio
+          sub3.y = obj.circleCenter.y + sin(sub3.index * pi2 / seg.segments + time) * seg.radiusAudio
+          sub3.x2d = (sub3.x * scBScale) + back.center.x
+          sub3.y2d = (sub3.y * scBScale) + back.center.y
 
           val sub4 = seg.subs[3]
-          sub4.x =
-            obj.circleCenter.x + cos(sub4.index * pi2 / seg.segments + time) * seg.radius
-          sub4.y =
-            obj.circleCenter.y + sin(sub4.index * pi2 / seg.segments + time) * seg.radius
-          sub4.x2d = (sub4.x * sc) + obj.center.x
-          sub4.y2d = (sub4.y * sc) + obj.center.y
+          sub4.x = obj.circleCenter.x + cos(sub4.index * pi2 / seg.segments + time) * seg.radius
+          sub4.y = obj.circleCenter.y + sin(sub4.index * pi2 / seg.segments + time) * seg.radius
+          sub4.x2d = (sub4.x * scScale) + obj.center.x
+          sub4.y2d = (sub4.y * scScale) + obj.center.y
 
           val sub5 = seg.subs[4]
-          sub5.x =
-            back.circleCenter.x + cos(sub5.index * pi2 / seg.segments + time) * seg.radius
-          sub5.y =
-            back.circleCenter.y + sin(sub5.index * pi2 / seg.segments + time) * seg.radius
-          sub5.x2d = (sub5.x * sc) + obj.center.x
-          sub5.y2d = (sub5.y * sc) + obj.center.y
+          sub5.x = back.circleCenter.x + cos(sub5.index * pi2 / seg.segments + time) * seg.radius
+          sub5.y = back.circleCenter.y + sin(sub5.index * pi2 / seg.segments + time) * seg.radius
+          sub5.x2d = (sub5.x * scScale) + obj.center.x
+          sub5.y2d = (sub5.y * scScale) + obj.center.y
 
           val sub6 = seg.subs[5]
-          sub6.x =
-            obj.circleCenter.x + cos(sub6.index * pi2 / seg.segments + time) * seg.radius
-          sub6.y =
-            obj.circleCenter.y + sin(sub6.index * pi2 / seg.segments + time) * seg.radius
-          sub6.x2d = (sub6.x * scB) + back.center.x
-          sub6.y2d = (sub6.y * scB) + back.center.y
+          sub6.x = obj.circleCenter.x + cos(sub6.index * pi2 / seg.segments + time) * seg.radius
+          sub6.y = obj.circleCenter.y + sin(sub6.index * pi2 / seg.segments + time) * seg.radius
+          sub6.x2d = (sub6.x * scBScale) + back.center.x
+          sub6.y2d = (sub6.y * scBScale) + back.center.y
 
           val sub7 = seg.subs[6]
-          sub7.x =
-            back.circleCenter.x + cos(sub7.index * pi2 / seg.segments + time) * seg.radius
-          sub7.y =
-            back.circleCenter.y + sin(sub7.index * pi2 / seg.segments + time) * seg.radius
-          sub7.x2d = (sub7.x * scB) + back.center.x
-          sub7.y2d = (sub7.y * scB) + back.center.y
+          sub7.x = back.circleCenter.x + cos(sub7.index * pi2 / seg.segments + time) * seg.radius
+          sub7.y = back.circleCenter.y + sin(sub7.index * pi2 / seg.segments + time) * seg.radius
+          sub7.x2d = (sub7.x * scBScale) + back.center.x
+          sub7.y2d = (sub7.y * scBScale) + back.center.y
 
-          var cr = (obj.color.r * lv).roundToInt()
-          var cg = (obj.color.g * lv).roundToInt()
-          var cb = (obj.color.b * lv).roundToInt()
+          val cr = (obj.color.r * lv).roundToInt().coerceIn(0, 255)
+          val cg = (obj.color.g * lv).roundToInt().coerceIn(0, 255)
+          val cb = (obj.color.b * lv).roundToInt().coerceIn(0, 255)
 
           if (freqAdd > 0) {
             val p1 = seg
             val p2 = seg.subs[1]
             val p3 = seg.subs[2]
             val p4 = seg.subs[0]
-            line(
-              p1.x2d.roundToInt(),
-              p1.y2d.roundToInt(),
-              p2.x2d.roundToInt(),
-              p2.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              p2.x2d.roundToInt(),
-              p2.y2d.roundToInt(),
-              p3.x2d.roundToInt(),
-              p3.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              p3.x2d.roundToInt(),
-              p3.y2d.roundToInt(),
-              p4.x2d.roundToInt(),
-              p4.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              p4.x2d.roundToInt(),
-              p4.y2d.roundToInt(),
-              p1.x2d.roundToInt(),
-              p1.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              seg.subs[3].x2d.roundToInt(),
-              seg.subs[3].y2d.roundToInt(),
-              p1.x2d.roundToInt(),
-              p1.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              seg.subs[4].x2d.roundToInt(),
-              seg.subs[4].y2d.roundToInt(),
-              p4.x2d.roundToInt(),
-              p4.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              sub7.x2d.roundToInt(),
-              sub7.y2d.roundToInt(),
-              p3.x2d.roundToInt(),
-              p3.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              sub6.x2d.roundToInt(),
-              sub6.y2d.roundToInt(),
-              p2.x2d.roundToInt(),
-              p2.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
+            lineLocked(p1.x2d.roundToInt(), p1.y2d.roundToInt(), p2.x2d.roundToInt(), p2.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(p2.x2d.roundToInt(), p2.y2d.roundToInt(), p3.x2d.roundToInt(), p3.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(p3.x2d.roundToInt(), p3.y2d.roundToInt(), p4.x2d.roundToInt(), p4.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(p4.x2d.roundToInt(), p4.y2d.roundToInt(), p1.x2d.roundToInt(), p1.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(seg.subs[3].x2d.roundToInt(), seg.subs[3].y2d.roundToInt(), p1.x2d.roundToInt(), p1.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(seg.subs[4].x2d.roundToInt(), seg.subs[4].y2d.roundToInt(), p4.x2d.roundToInt(), p4.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(sub7.x2d.roundToInt(), sub7.y2d.roundToInt(), p3.x2d.roundToInt(), p3.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(sub6.x2d.roundToInt(), sub6.y2d.roundToInt(), p2.x2d.roundToInt(), p2.y2d.roundToInt(), cr, cg, cb)
           }
+
           if (obj.z < FOV / 2f) {
-            line(
-              seg.subs[3].x2d.roundToInt(),
-              seg.subs[3].y2d.roundToInt(),
-              seg.subs[4].x2d.roundToInt(),
-              seg.subs[4].y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              seg.subs[4].x2d.roundToInt(),
-              seg.subs[4].y2d.roundToInt(),
-              sub7.x2d.roundToInt(),
-              sub7.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              sub7.x2d.roundToInt(),
-              sub7.y2d.roundToInt(),
-              sub6.x2d.roundToInt(),
-              sub6.y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
-            line(
-              sub6.x2d.roundToInt(),
-              sub6.y2d.roundToInt(),
-              seg.subs[3].x2d.roundToInt(),
-              seg.subs[3].y2d.roundToInt(),
-              cr,
-              cg,
-              cb,
-            )
+            lineLocked(seg.subs[3].x2d.roundToInt(), seg.subs[3].y2d.roundToInt(), seg.subs[4].x2d.roundToInt(), seg.subs[4].y2d.roundToInt(), cr, cg, cb)
+            lineLocked(seg.subs[4].x2d.roundToInt(), seg.subs[4].y2d.roundToInt(), sub7.x2d.roundToInt(), sub7.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(sub7.x2d.roundToInt(), sub7.y2d.roundToInt(), sub6.x2d.roundToInt(), sub6.y2d.roundToInt(), cr, cg, cb)
+            lineLocked(sub6.x2d.roundToInt(), sub6.y2d.roundToInt(), seg.subs[3].x2d.roundToInt(), seg.subs[3].y2d.roundToInt(), cr, cg, cb)
           }
         }
 
@@ -670,30 +620,39 @@ class CuboidWarptunnelEngine {
 
     if (pressed) {
       colorInvertValue = min(colorInvertValue + 4f, 255f)
-      softInv(colorInvertValue.roundToInt())
+      softInvLocked(colorInvertValue.roundToInt())
     } else if (colorInvertValue > 0f) {
-      colorInvertValue = maxOf(colorInvertValue - 4f, 0f)
-      if (colorInvertValue > 0f) softInv(colorInvertValue.roundToInt())
+      colorInvertValue = max(colorInvertValue - 4f, 0f)
+      if (colorInvertValue > 0f) softInvLocked(colorInvertValue.roundToInt())
     }
 
-    val bmp = bitmap ?: return null
-    bmp.setPixels(pixelBuffer, 0, renderWidth, 0, 0, renderWidth, renderHeight)
-    return bmp
+    return try {
+      targetBmp.setPixels(pixelBuffer, 0, renderWidth, 0, 0, renderWidth, renderHeight)
+      Bitmap.createBitmap(targetBmp)
+    } catch (_: Throwable) {
+      null
+    }
   }
 
-  private fun softInv(v: Int) {
+  private fun softInvLocked(v: Int) {
     for (i in pixelBuffer.indices) {
       val c = pixelBuffer[i]
-      pixelBuffer[i] = 0xFF000000.toInt() or
-        (abs(v - Color.red(c)) shl 16) or
-        (abs(v - Color.green(c)) shl 8) or
-        abs(v - Color.blue(c))
+      val a = (c ushr 24) and 0xFF
+      if (a == 0) continue // Keep transparent background transparent!
+      val r = (c ushr 16) and 0xFF
+      val g = (c ushr 8) and 0xFF
+      val b = c and 0xFF
+      val nr = abs(v - r).coerceIn(0, 255)
+      val ng = abs(v - g).coerceIn(0, 255)
+      val nb = abs(v - b).coerceIn(0, 255)
+      pixelBuffer[i] = (a shl 24) or (nr shl 16) or (ng shl 8) or nb
     }
   }
 
-  fun release() {
+  fun release() = synchronized(renderLock) {
     bitmap?.recycle()
     bitmap = null
+    pixelBuffer = IntArray(0)
     circleHolder.clear()
   }
 }

@@ -8,6 +8,7 @@
  * Original by Niklas Knaack — https://codepen.io/NiklasKnaack/pen/WyWqja
  * Ported to native Android Compose Canvas for mpvRx
  */
+
 package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.Manifest
@@ -24,7 +25,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -37,7 +37,6 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.hypot
@@ -55,7 +54,6 @@ internal fun CuboidOverlay(
   val context = LocalContext.current
   val engine = remember { CuboidWarptunnelEngine() }
   var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-  val analyzerActive = remember { AtomicBoolean(false) }
   val renderLoopActive = remember { AtomicBoolean(true) }
   val playbackActive = remember { AtomicBoolean(isPlaying) }
   val frequencyData = remember { ByteArray(2048) }
@@ -72,7 +70,15 @@ internal fun CuboidOverlay(
     }
 
   LaunchedEffect(hasRecordPermission) {
-    if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    if (!hasRecordPermission) {
+      runCatching { recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
+    }
+  }
+
+  val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
+  LaunchedEffect(isDark) {
+    engine.isLightTheme = !isDark
   }
 
   LaunchedEffect(palette) {
@@ -86,8 +92,6 @@ internal fun CuboidOverlay(
 
   DisposableEffect(hasRecordPermission) {
     var visualizer: Visualizer? = null
-    // Normalize against a decaying peak: raw Android FFT levels vary widely by device and
-    // otherwise quiet masters barely move the tunnel.
     var fftPeak = 12f
     if (hasRecordPermission) {
       try {
@@ -122,7 +126,6 @@ internal fun CuboidOverlay(
                   }
                 }
                 engine.updateFrequencyData(frequencyData.copyOf(min(fft.size / 2, frequencyData.size)))
-                analyzerActive.set(true)
               }
             }
           },
@@ -132,15 +135,17 @@ internal fun CuboidOverlay(
         )
         v.enabled = true
         visualizer = v
-      } catch (_: Exception) {
+      } catch (_: Throwable) {
+        visualizer = null
       }
     }
 
     onDispose {
       renderLoopActive.set(false)
-      analyzerActive.set(false)
       engine.clearAudioData()
-      visualizer?.release()
+      try {
+        visualizer?.release()
+      } catch (_: Throwable) {}
       engine.release()
     }
   }
@@ -148,20 +153,18 @@ internal fun CuboidOverlay(
   var engineW by remember { mutableStateOf(1) }
   var engineH by remember { mutableStateOf(1) }
 
-  // Permission changes recreate the Android Visualizer. Include that state so the render
-  // coroutine is restarted after its previous resource-owning effect is disposed.
   LaunchedEffect(engineW, engineH, palette, hasRecordPermission) {
     if (engineW < 2 || engineH < 2) return@LaunchedEffect
     renderLoopActive.set(true)
     engine.init(engineW, engineH)
     while (isActive && renderLoopActive.get()) {
       val bmp = withContext(Dispatchers.Default) { engine.render() }
-      bitmap = bmp
+      if (bmp != null) {
+        bitmap = bmp
+      }
       delay(16)
     }
   }
-
-  val scope = rememberCoroutineScope()
 
   Box(modifier = modifier.fillMaxSize()) {
     Canvas(
@@ -169,8 +172,6 @@ internal fun CuboidOverlay(
         Modifier
           .fillMaxSize()
           .pointerInput(Unit) {
-            var longPressJob: kotlinx.coroutines.Job? = null
-            var touchStartPos: Offset? = null
             var pointerId: androidx.compose.ui.input.pointer.PointerId? = null
             var pointerCount = 0
 
@@ -182,18 +183,12 @@ internal fun CuboidOverlay(
                 when (event.type) {
                   PointerEventType.Press -> {
                     val first = changes.firstOrNull() ?: continue
-                    if (pointerCount == 1 && changes.size == 2) {
-                      engine.mouseDown = true
-                      engine.touchActive = true
-                    }
-                    if (pointerCount == 0 && changes.size == 1) {
+                    if (pointerCount == 0 && changes.isNotEmpty()) {
                       pointerCount = 1
                       pointerId = first.id
-                      touchStartPos = Offset(first.position.x, first.position.y)
-                      val sx = engineW.toFloat() / size.width
-                      val sy = engineH.toFloat() / size.height
-                      engine.mousePos.x = first.position.x * sx
-                      engine.mousePos.y = first.position.y * sy
+                      val sx = if (size.width > 0) engineW.toFloat() / size.width else 1f
+                      val sy = if (size.height > 0) engineH.toFloat() / size.height else 1f
+                      engine.mousePos = CuboidWarptunnelEngine.Offset(first.position.x * sx, first.position.y * sy)
                       engine.touchActive = true
                       engine.mouseDown = true
                     }
@@ -203,16 +198,15 @@ internal fun CuboidOverlay(
                   PointerEventType.Move -> {
                     val primary =
                       changes.firstOrNull { pointerId == null || it.id == pointerId } ?: continue
-                    val sx = engineW.toFloat() / size.width
-                    val sy = engineH.toFloat() / size.height
-                    engine.mousePos.x = primary.position.x * sx
-                    engine.mousePos.y = primary.position.y * sy
+                    val sx = if (size.width > 0) engineW.toFloat() / size.width else 1f
+                    val sy = if (size.height > 0) engineH.toFloat() / size.height else 1f
+                    engine.mousePos = CuboidWarptunnelEngine.Offset(primary.position.x * sx, primary.position.y * sy)
                     engine.touchActive = true
                     changes.forEach { it.consume() }
                   }
 
                   PointerEventType.Release -> {
-                    if (changes.size >= 1) {
+                    if (changes.isNotEmpty()) {
                       pointerCount = 0
                       pointerId = null
                       engine.mouseDown = false
@@ -230,10 +224,12 @@ internal fun CuboidOverlay(
       engineW = (size.width * scaleFactor).toInt().coerceAtLeast(120)
       engineH = (size.height * scaleFactor).toInt().coerceAtLeast(120)
       val bmp = bitmap
-      if (bmp != null) {
-        scale(size.width / bmp.width.toFloat(), size.height / bmp.height.toFloat()) {
-          drawImage(bmp.asImageBitmap())
-        }
+      if (bmp != null && !bmp.isRecycled && bmp.width > 0 && bmp.height > 0) {
+        try {
+          scale(size.width / bmp.width.toFloat(), size.height / bmp.height.toFloat()) {
+            drawImage(bmp.asImageBitmap())
+          }
+        } catch (_: Throwable) {}
       }
     }
   }

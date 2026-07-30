@@ -578,12 +578,15 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.PICTURE_IN_PICTURE -> {
-      ControlsButton(
-        Icons.RoundedFilled.PictureInPictureAlt,
-        onClick = { activity.enterPipModeHidingOverlay() },
-        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(buttonSize),
-      )
+      val isAudioOnly by viewModel.isAudioOnly.collectAsState()
+      if (!isAudioOnly) {
+        ControlsButton(
+          Icons.RoundedFilled.PictureInPictureAlt,
+          onClick = { activity.enterPipModeHidingOverlay() },
+          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(buttonSize),
+        )
+      }
     }
 
     PlayerButton.CAST -> {

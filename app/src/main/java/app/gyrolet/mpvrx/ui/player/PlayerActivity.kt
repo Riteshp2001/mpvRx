@@ -824,7 +824,7 @@ class PlayerActivity :
     }
 
     // Check if auto PIP is enabled - enter PIP mode instead of finishing
-    if (playerPreferences.autoPiPOnNavigation.get() && isReady) {
+    if (playerPreferences.autoPiPOnNavigation.get() && !viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && isReady) {
       enterPipModeSmoothly()
       return
     }
@@ -911,7 +911,11 @@ class PlayerActivity :
    * Initializes the Picture-in-Picture helper.
    */
   private fun setupPipHelper() {
-    pipHelper = MPVPipHelper(activity = this, mpvView = player)
+    pipHelper = MPVPipHelper(
+      activity = this,
+      mpvView = player,
+      isAudioPlayer = { viewModel.isAudioOnly.value || isCurrentMediaKnownAudio() },
+    )
   }
 
   private fun setupCastPlayback() {
@@ -1034,8 +1038,8 @@ class PlayerActivity :
 
   override fun onUserLeaveHint() {
     super.onUserLeaveHint()
-    // Enter PIP mode when user presses home button if auto PIP is enabled
-    if (playerPreferences.autoPiPOnNavigation.get() && isReady && !isFinishing) {
+    // Enter PIP mode when user presses home button if auto PIP is enabled (disabled for audio)
+    if (playerPreferences.autoPiPOnNavigation.get() && !viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && isReady && !isFinishing) {
       enterPipModeSmoothly()
     }
   }
@@ -3518,6 +3522,7 @@ class PlayerActivity :
    * Applies saved video filter preferences (brightness, contrast, etc.) when a file is loaded.
    */
   private fun applyVideoFilterPreferences() {
+    if (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()) return
     VideoFilters.entries.forEach {
       MPVLib.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).get())
     }
@@ -4141,6 +4146,7 @@ class PlayerActivity :
    * Enters Picture-in-Picture mode and hides all overlay controls.
    */
   fun enterPipModeHidingOverlay() {
+    if (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()) return
     runCatching {
       enterPipUIMode()
     }.onFailure { e ->
@@ -4151,6 +4157,7 @@ class PlayerActivity :
   }
 
   private fun enterPipModeSmoothly() {
+    if (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()) return
     binding.root.animate().cancel()
     binding.controls.animate().cancel()
     binding.root.scaleX = 1f

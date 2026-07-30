@@ -3787,7 +3787,9 @@ class PlayerViewModel(
   // ==================== Brightness & Volume ====================
 
   fun changeBrightnessTo(brightness: Float) {
-    val coercedBrightness = brightness.coerceIn(-0.75f, 1f)
+    val isAudio = host.isCurrentMediaKnownAudio() || isAudioOnly.value
+    val minBrightness = if (isAudio) 0f else -0.75f
+    val coercedBrightness = brightness.coerceIn(minBrightness, 1f)
     host.hostWindow.attributes =
       host.hostWindow.attributes.apply {
         screenBrightness = coercedBrightness.coerceIn(0f, 1f)
