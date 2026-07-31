@@ -263,6 +263,7 @@ LaunchedEffect(visibleTabs) {
           HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = !isPermissionDenied,
           ) { page ->
             CompositionLocalProvider(
               LocalNavigationBarHeight provides fabBottomPadding,

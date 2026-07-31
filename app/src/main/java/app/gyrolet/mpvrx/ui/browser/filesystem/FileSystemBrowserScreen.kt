@@ -314,12 +314,17 @@ fun FileSystemBrowserScreen(path: String? = null) {
       onPermissionGranted = { viewModel.refresh() },
     )
 
+  var isPermissionSetupCompleted by androidx.compose.runtime.saveable.rememberSaveable {
+    androidx.compose.runtime.mutableStateOf(permissionState.status == com.google.accompanist.permissions.PermissionStatus.Granted)
+  }
+
   // Combined MainScreen updates for better performance and responsiveness
   LaunchedEffect(
     showBottomNavigation,
     isInSelectionMode,
     onlyVideosSelected,
     permissionState.status,
+    isPermissionSetupCompleted,
   ) {
     if (isAtRoot) {
       try {
@@ -333,7 +338,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           selectionManager = if (onlyVideosSelected) selectionManager else null,
         )
         mainScreenObj.updatePermissionState(
-          isDenied = permissionState.status is PermissionStatus.Denied,
+          isDenied = !isPermissionSetupCompleted || permissionState.status is PermissionStatus.Denied,
         )
       } catch (e: Exception) {
         Log.e("FileSystemBrowserScreen", "Failed to update MainScreen state", e)
@@ -770,8 +775,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
       },
     ) { padding ->
       Box(modifier = Modifier.padding(padding)) {
-        when (permissionState.status) {
-          PermissionStatus.Granted -> {
+        if (isPermissionSetupCompleted && permissionState.status == PermissionStatus.Granted) {
             if (isSearching) {
               // Show search results
               FileSystemSearchContent(
@@ -868,14 +872,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 isInSelectionMode = isInSelectionMode,
               )
             }
-          }
-
-          is PermissionStatus.Denied -> {
-            PermissionDeniedState(
-              onRequestPermission = { permissionState.launchPermissionRequest() },
-              modifier = Modifier,
-            )
-          }
+        } else {
+          PermissionDeniedState(
+            onRequestPermission = { permissionState.launchPermissionRequest() },
+            onNext = {
+              isPermissionSetupCompleted = true
+              viewModel.refresh()
+            },
+            modifier = Modifier,
+          )
         }
       }
     }

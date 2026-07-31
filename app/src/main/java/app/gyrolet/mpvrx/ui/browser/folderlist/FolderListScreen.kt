@@ -374,10 +374,14 @@ object FolderListScreen : Screen {
         onPermissionGranted = { viewModel.refresh() },
       )
 
+    var isPermissionSetupCompleted by androidx.compose.runtime.saveable.rememberSaveable {
+      androidx.compose.runtime.mutableStateOf(permissionState.status == PermissionStatus.Granted)
+    }
+
     // Update MainScreen about permission state
-    LaunchedEffect(permissionState.status) {
+    LaunchedEffect(permissionState.status, isPermissionSetupCompleted) {
       app.gyrolet.mpvrx.ui.browser.MainScreen.updatePermissionState(
-        isDenied = permissionState.status is PermissionStatus.Denied,
+        isDenied = !isPermissionSetupCompleted || permissionState.status is PermissionStatus.Denied,
       )
     }
 
@@ -728,8 +732,7 @@ object FolderListScreen : Screen {
         },
       ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-          when (permissionState.status) {
-            PermissionStatus.Granted -> {
+          if (isPermissionSetupCompleted && permissionState.status == PermissionStatus.Granted) {
               if (isSearching) {
                 // Show search results
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -822,14 +825,15 @@ object FolderListScreen : Screen {
                   selectedFolderBucketId = selectedFolderBucketId,
                 )
               }
-            }
-
-            is PermissionStatus.Denied -> {
-              PermissionDeniedState(
-                onRequestPermission = { permissionState.launchPermissionRequest() },
-                modifier = Modifier,
-              )
-            }
+          } else {
+            PermissionDeniedState(
+              onRequestPermission = { permissionState.launchPermissionRequest() },
+              onNext = {
+                isPermissionSetupCompleted = true
+                viewModel.refresh()
+              },
+              modifier = Modifier,
+            )
           }
 
           BrowserBottomBar(
