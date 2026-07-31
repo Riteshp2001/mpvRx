@@ -457,6 +457,10 @@ Weiter: NEXT</string>
   </plurals>
   <!-- Background Playback -->
   <string name="background_playback_title">Hintergrundwiedergabe</string>
+  <string name="pref_audio_background_playback_title">Hintergrundwiedergabe (Audio-Player)</string>
+  <string name="pref_audio_background_playback_summary">Audio beim Verlassen des Audio-Players oder Ausschalten des Bildschirms weiterspielen</string>
+  <string name="pref_video_background_playback_title">Hintergrundwiedergabe (Video-Player)</string>
+  <string name="pref_video_background_playback_summary">Video-Audio beim Verlassen des Video-Players oder Ausschalten des Bildschirms weiterspielen</string>
   <string name="deselect_all">Auswahl aufheben</string>
   <string name="select_all">Alle auswählen</string>
   <string name="invert_selection">Auswahl umkehren</string>

@@ -457,6 +457,10 @@ Próximo: NEXT</string>
   </plurals>
   <!-- Background Playback -->
   <string name="background_playback_title">Reprodução em segundo plano</string>
+  <string name="pref_audio_background_playback_title">Reprodução em segundo plano (Reprodutor de Áudio)</string>
+  <string name="pref_audio_background_playback_summary">Manter o áudio tocando ao sair do reprodutor de áudio ou desligar a tela</string>
+  <string name="pref_video_background_playback_title">Reprodução em segundo plano (Reprodutor de Vídeo)</string>
+  <string name="pref_video_background_playback_summary">Manter o áudio do vídeo tocando ao sair do reprodutor de vídeo ou desligar a tela</string>
   <string name="deselect_all">Desmarcar tudo</string>
   <string name="select_all">Selecionar tudo</string>
   <string name="invert_selection">Inverter seleção</string>

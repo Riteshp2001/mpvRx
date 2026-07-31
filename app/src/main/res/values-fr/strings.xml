@@ -457,6 +457,10 @@ Suivant : NEXT</string>
   </plurals>
   <!-- Background Playback -->
   <string name="background_playback_title">Lecture en arrière-plan</string>
+  <string name="pref_audio_background_playback_title">Lecture en arrière-plan (Lecteur Audio)</string>
+  <string name="pref_audio_background_playback_summary">Continuer la lecture audio en quittant le lecteur audio ou en éteignant l\'écran</string>
+  <string name="pref_video_background_playback_title">Lecture en arrière-plan (Lecteur Vidéo)</string>
+  <string name="pref_video_background_playback_summary">Continuer la lecture du son de la vidéo en quittant le lecteur vidéo ou en éteignant l\'écran</string>
   <string name="deselect_all">Tout désélectionner</string>
   <string name="select_all">Tout sélectionner</string>
   <string name="invert_selection">Inverser la sélection</string>

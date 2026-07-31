@@ -39,6 +39,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -68,6 +69,7 @@ object PlayerPreferencesScreen : Screen {
     val backstack = LocalBackStack.current
     val resources = LocalResources.current
     val preferences = koinInject<PlayerPreferences>()
+    val audioPreferences = koinInject<AudioPreferences>()
     var showTemplateDialog by remember { mutableStateOf(false) }
     var templateDraft by remember { mutableStateOf("") }
     Scaffold(
@@ -132,6 +134,21 @@ object PlayerPreferencesScreen : Screen {
                 value = closeAfterEndOfVideo,
                 onValueChange = preferences.closeAfterReachingEndOfVideo::set,
                 title = { Text(stringResource(R.string.pref_player_close_after_eof)) },
+              )
+
+              PreferenceDivider()
+
+              val videoBackgroundPlayback by audioPreferences.backgroundPlayback.collectAsState()
+              SwitchPreference(
+                value = videoBackgroundPlayback,
+                onValueChange = { audioPreferences.backgroundPlayback.set(it) },
+                title = { Text(stringResource(R.string.pref_video_background_playback_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_video_background_playback_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
               )
 
               PreferenceDivider()

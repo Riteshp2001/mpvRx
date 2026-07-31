@@ -937,10 +937,20 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.background_playback_title,
+          titleRes = R.string.pref_audio_background_playback_title,
+          summaryRes = R.string.pref_audio_background_playback_summary,
           keywords = listOf("background", "playback", "audio", "service", "music"),
           category = "Audio",
           screen = AudioPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_video_background_playback_title,
+          summaryRes = R.string.pref_video_background_playback_summary,
+          keywords = listOf("background", "playback", "video", "service", "media"),
+          category = "Player",
+          screen = PlayerPreferencesScreen,
         ),
       )
       add(

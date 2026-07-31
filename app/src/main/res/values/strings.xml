@@ -460,6 +460,10 @@
   </plurals>
   <!-- Background Playback -->
   <string name="background_playback_title">Background playback</string>
+  <string name="pref_audio_background_playback_title">Audio Player Background Playback</string>
+  <string name="pref_audio_background_playback_summary">Keep audio playing when leaving the audio player or turning off screen</string>
+  <string name="pref_video_background_playback_title">Video Player Background Playback</string>
+  <string name="pref_video_background_playback_summary">Keep video audio playing when leaving the video player or turning off screen</string>
   <string name="deselect_all">Deselect All</string>
   <string name="select_all">Select All</string>
   <string name="invert_selection">Invert Selection</string>

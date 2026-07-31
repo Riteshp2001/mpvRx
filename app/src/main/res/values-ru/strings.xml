@@ -457,6 +457,10 @@
   </plurals>
   <!-- Background Playback -->
   <string name="background_playback_title">Фоновое воспроизведение</string>
+  <string name="pref_audio_background_playback_title">Фоновое воспроизведение (Аудиоплеер)</string>
+  <string name="pref_audio_background_playback_summary">Продолжать воспроизведение аудио при выходе из аудиоплеера или выключении экрана</string>
+  <string name="pref_video_background_playback_title">Фоновое воспроизведение (Видеоплеер)</string>
+  <string name="pref_video_background_playback_summary">Продолжать воспроизведение звука видео при выходе из видеоплеера или выключении экрана</string>
   <string name="deselect_all">Снять выделение</string>
   <string name="select_all">Выбрать всё</string>
   <string name="invert_selection">Инвертировать выбор</string>

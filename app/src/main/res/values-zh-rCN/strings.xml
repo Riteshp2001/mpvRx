@@ -457,6 +457,10 @@
   </plurals>
   <!-- Background Playback -->
   <string name="background_playback_title">后台播放</string>
+  <string name="pref_audio_background_playback_title">后台播放（音频播放器）</string>
+  <string name="pref_audio_background_playback_summary">在离开音频播放器或关闭屏幕时保持音频播放</string>
+  <string name="pref_video_background_playback_title">后台播放（视频播放器）</string>
+  <string name="pref_video_background_playback_summary">在离开视频播放器或关闭屏幕时保持视频音频播放</string>
   <string name="deselect_all">取消全选</string>
   <string name="select_all">全选</string>
   <string name="invert_selection">反选</string>
