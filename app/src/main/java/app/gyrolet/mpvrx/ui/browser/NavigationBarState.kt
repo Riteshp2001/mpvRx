@@ -35,11 +35,11 @@ object NavigationBarState {
 
   fun updateSelectionState(
     inSelectionMode: Boolean,
-    onlyVideos: Boolean,
+    onlyVideos: Boolean = false,
   ) {
     isInSelectionMode = inSelectionMode
     onlyVideosSelected = onlyVideos
-    shouldHideNavigationBar = inSelectionMode && onlyVideos
+    shouldHideNavigationBar = inSelectionMode
   }
 
   fun updatePermissionState(denied: Boolean) {
