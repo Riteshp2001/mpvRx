@@ -4361,8 +4361,7 @@ class PlayerViewModel(
           .substringAfterLast('.', "")
           .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS ||
           resolvedUri.toString().lowercase().contains("audio") ||
-          uri.toString().lowercase().contains("audio") ||
-          isAudioOnly.value
+          uri.toString().lowercase().contains("audio")
       val isCurrentlyPlaying = index == activity.playlistIndex
 
       // Try to get from cache first (synchronized access)
