@@ -105,6 +105,8 @@ fun MediaLibraryContent() {
   val coroutineScope = rememberCoroutineScope()
   val backstack = LocalBackStack.current
   val browserPreferences = koinInject<BrowserPreferences>()
+  val appearancePreferences = koinInject<app.gyrolet.mpvrx.preferences.AppearancePreferences>()
+  val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
   val navigationBarHeight = LocalNavigationBarHeight.current
@@ -427,7 +429,7 @@ fun MediaLibraryContent() {
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .padding(bottom = navigationBarHeight)
                 .animateFloatingActionButton(
-                  visible = !selectionManager.isInSelectionMode && isFabVisible.value,
+                  visible = showQuickPlayFab && !selectionManager.isInSelectionMode && isFabVisible.value,
                   alignment = Alignment.BottomEnd,
                 ),
             onClick = {

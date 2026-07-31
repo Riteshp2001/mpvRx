@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">Показывать или скрывать «Плейлисты» на нижней панели навигации</string>
   <string name="pref_nav_network_title">Показывать вкладку «Сеть»</string>
   <string name="pref_nav_network_summary">Показывать или скрывать «Сеть» на нижней панели навигации</string>
+  <string name="pref_quick_play_fab_title">Кнопка быстрого воспроизведения</string>
+  <string name="pref_quick_play_fab_summary">Показывать плавающую кнопку быстрого воспроизведения на экранах браузера</string>
   <string name="pref_appearance_nav_style_slide">Скольжение</string>
   <string name="pref_appearance_nav_style_fade">Затухание</string>
   <string name="pref_appearance_nav_style_none">Нет (мгновенно)</string>
@@ -1132,6 +1134,7 @@
   <string name="ui_copy">Копировать</string>
   <string name="ui_separator">Разделитель</string>
   <string name="ui_toggle_menu">Переключить меню</string>
+  <string name="ui_quick_play">Быстрое воспроизведение</string>
   <string name="ui_open_file">Открыть файл</string>
   <string name="ui_open_link">Открыть ссылку</string>
   <string name="ui_search_folders_and_videos">Поиск папок и видео...</string>

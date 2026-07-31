@@ -107,7 +107,9 @@ object RecentlyPlayedScreen : Screen {
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     val deleteFilesCheckbox = rememberSaveable { mutableStateOf(false) }
     val advancedPreferences = koinInject<AdvancedPreferences>()
+    val appearancePreferences = koinInject<AppearancePreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
+    val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
     val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
 
     // FAB visibility for scroll-based hiding
@@ -252,7 +254,7 @@ object RecentlyPlayedScreen : Screen {
                 modifier =
                   Modifier
                     .animateFloatingActionButton(
-                      visible = !selectionManager.isInSelectionMode && isFabVisible.value,
+                      visible = showQuickPlayFab && !selectionManager.isInSelectionMode && isFabVisible.value,
                       alignment = Alignment.BottomEnd,
                     ),
                 checked = isFabExpanded.value,

@@ -165,6 +165,8 @@ object FolderListScreen : Screen {
     val gesturePreferences = koinInject<GesturePreferences>()
     val foldersPreferences = koinInject<FoldersPreferences>()
     val advancedPreferences = koinInject<app.gyrolet.mpvrx.preferences.AdvancedPreferences>()
+    val appearancePreferences = koinInject<AppearancePreferences>()
+    val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
 
     // State collection
     val videoFolders by viewModel.videoFolders.collectAsState()
@@ -623,7 +625,8 @@ object FolderListScreen : Screen {
                   modifier =
                     Modifier.animateFloatingActionButton(
                       visible =
-                        !selectionManager.isInSelectionMode &&
+                        showQuickPlayFab &&
+                          !selectionManager.isInSelectionMode &&
                           isFabVisible.value &&
                           !app.gyrolet.mpvrx.ui.browser.MainScreen
                             .getPermissionDeniedState() &&

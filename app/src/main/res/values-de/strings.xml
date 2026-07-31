@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">Wiedergabelisten in der unteren Navigationsleiste ein- oder ausblenden</string>
   <string name="pref_nav_network_title">Netzwerk-Tab anzeigen</string>
   <string name="pref_nav_network_summary">Netzwerk in der unteren Navigationsleiste ein- oder ausblenden</string>
+  <string name="pref_quick_play_fab_title">Schnellwiedergabe-FAB</string>
+  <string name="pref_quick_play_fab_summary">Schnellwiedergabe-Button in Browser-Bildschirmen anzeigen</string>
   <string name="pref_appearance_nav_style_slide">Schieben</string>
   <string name="pref_appearance_nav_style_fade">Überblenden</string>
   <string name="pref_appearance_nav_style_none">Keine (sofort)</string>
@@ -1132,6 +1134,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_copy">Kopieren</string>
   <string name="ui_separator">Trennzeichen</string>
   <string name="ui_toggle_menu">Menü ein-/ausblenden</string>
+  <string name="ui_quick_play">Schnellwiedergabe</string>
   <string name="ui_open_file">Datei öffnen</string>
   <string name="ui_open_link">Link öffnen</string>
   <string name="ui_search_folders_and_videos">Ordner und Videos suchen...</string>

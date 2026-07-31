@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">Mostrar ou ocultar Playlists na barra de navegação inferior</string>
   <string name="pref_nav_network_title">Mostrar aba Rede</string>
   <string name="pref_nav_network_summary">Mostrar ou ocultar Rede na barra de navegação inferior</string>
+  <string name="pref_quick_play_fab_title">FAB de reprodução rápida</string>
+  <string name="pref_quick_play_fab_summary">Exibir o botão flutuante de reprodução rápida nas telas do navegador</string>
   <string name="pref_appearance_nav_style_slide">Deslizar</string>
   <string name="pref_appearance_nav_style_fade">Desvanecer</string>
   <string name="pref_appearance_nav_style_none">Nenhum (instantâneo)</string>
@@ -1132,6 +1134,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="ui_copy">Copiar</string>
   <string name="ui_separator">Separador</string>
   <string name="ui_toggle_menu">Alternar menu</string>
+  <string name="ui_quick_play">Reprodução rápida</string>
   <string name="ui_open_file">Abrir arquivo</string>
   <string name="ui_open_link">Abrir link</string>
   <string name="ui_search_folders_and_videos">Pesquisar pastas e vídeos...</string>

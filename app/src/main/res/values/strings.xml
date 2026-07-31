@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">Show or hide Playlists in the bottom navigation bar</string>
   <string name="pref_nav_network_title">Show Network tab</string>
   <string name="pref_nav_network_summary">Show or hide Network in the bottom navigation bar</string>
+  <string name="pref_quick_play_fab_title">Quick Play FAB</string>
+  <string name="pref_quick_play_fab_summary">Show the quick play floating action button in browser screens</string>
   <string name="pref_appearance_nav_style_slide">Slide</string>
   <string name="pref_appearance_nav_style_fade">Fade</string>
   <string name="pref_appearance_nav_style_none">None (Instant)</string>
@@ -1142,6 +1144,7 @@
   <string name="ui_copy">Copy</string>
   <string name="ui_separator">Separator</string>
   <string name="ui_toggle_menu">Toggle menu</string>
+  <string name="ui_quick_play">Quick Play</string>
   <string name="ui_open_file">Open File</string>
   <string name="ui_open_link">Open Link</string>
   <string name="ui_search_folders_and_videos">Search folders and videos...</string>

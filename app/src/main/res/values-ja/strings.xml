@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">下部ナビゲーションバーのプレイリストを表示または非表示にします</string>
   <string name="pref_nav_network_title">ネットワークタブを表示</string>
   <string name="pref_nav_network_summary">下部ナビゲーションバーのネットワークを表示または非表示にします</string>
+  <string name="pref_quick_play_fab_title">クイック再生FAB</string>
+  <string name="pref_quick_play_fab_summary">ブラウザー画面にクイック再生フローティングアクションボタンを表示</string>
   <string name="pref_appearance_nav_style_slide">スライド</string>
   <string name="pref_appearance_nav_style_fade">フェード</string>
   <string name="pref_appearance_nav_style_none">なし（即時）</string>
@@ -1132,6 +1134,7 @@
   <string name="ui_copy">コピー</string>
   <string name="ui_separator">区切り文字</string>
   <string name="ui_toggle_menu">メニューを切り替え</string>
+  <string name="ui_quick_play">クイック再生</string>
   <string name="ui_open_file">ファイルを開く</string>
   <string name="ui_open_link">リンクを開く</string>
   <string name="ui_search_folders_and_videos">フォルダーと動画を検索...</string>

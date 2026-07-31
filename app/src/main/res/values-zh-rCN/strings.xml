@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">在底部导航栏中显示或隐藏“播放列表”</string>
   <string name="pref_nav_network_title">显示“网络”标签页</string>
   <string name="pref_nav_network_summary">在底部导航栏中显示或隐藏“网络”</string>
+  <string name="pref_quick_play_fab_title">快速播放悬浮按钮</string>
+  <string name="pref_quick_play_fab_summary">在浏览器界面中显示快速播放悬浮按钮</string>
   <string name="pref_appearance_nav_style_slide">滑动</string>
   <string name="pref_appearance_nav_style_fade">淡入淡出</string>
   <string name="pref_appearance_nav_style_none">无（立即）</string>
@@ -1132,6 +1134,7 @@
   <string name="ui_copy">复制</string>
   <string name="ui_separator">分隔符</string>
   <string name="ui_toggle_menu">切换菜单</string>
+  <string name="ui_quick_play">快速播放</string>
   <string name="ui_open_file">打开文件</string>
   <string name="ui_open_link">打开链接</string>
   <string name="ui_search_folders_and_videos">搜索文件夹和视频...</string>

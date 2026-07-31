@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">إظهار أو إخفاء قوائم التشغيل في شريط التنقل السفلي</string>
   <string name="pref_nav_network_title">إظهار علامة تبويب الشبكة</string>
   <string name="pref_nav_network_summary">إظهار أو إخفاء الشبكة في شريط التنقل السفلي</string>
+  <string name="pref_quick_play_fab_title">زر التشغيل السريع (FAB)</string>
+  <string name="pref_quick_play_fab_summary">إظهار زر التشغيل السريع في شاشات المتصفح</string>
   <string name="pref_appearance_nav_style_slide">انزلاق</string>
   <string name="pref_appearance_nav_style_fade">تلاشي</string>
   <string name="pref_appearance_nav_style_none">بلا (فوري)</string>
@@ -1132,6 +1134,7 @@
   <string name="ui_copy">نسخ</string>
   <string name="ui_separator">فاصل</string>
   <string name="ui_toggle_menu">تبديل القائمة</string>
+  <string name="ui_quick_play">التشغيل السريع</string>
   <string name="ui_open_file">فتح ملف</string>
   <string name="ui_open_link">فتح رابط</string>
   <string name="ui_search_folders_and_videos">البحث في المجلدات ومقاطع الفيديو...</string>

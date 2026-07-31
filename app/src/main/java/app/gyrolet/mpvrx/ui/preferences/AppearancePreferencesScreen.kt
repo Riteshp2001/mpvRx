@@ -761,6 +761,21 @@ object AppearancePreferencesScreen : Screen {
                   )
                 },
               )
+
+              PreferenceDivider()
+
+              val showQuickPlayFab by preferences.showQuickPlayFab.collectAsState()
+              SwitchPreference(
+                value = showQuickPlayFab,
+                onValueChange = preferences.showQuickPlayFab::set,
+                title = { Text(text = stringResource(id = R.string.pref_quick_play_fab_title)) },
+                summary = {
+                  Text(
+                    text = stringResource(id = R.string.pref_quick_play_fab_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
             }
           }
 

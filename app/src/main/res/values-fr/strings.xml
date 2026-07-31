@@ -52,6 +52,8 @@
   <string name="pref_nav_playlists_summary">Afficher ou masquer Listes de lecture dans la barre de navigation inférieure</string>
   <string name="pref_nav_network_title">Afficher l’onglet Réseau</string>
   <string name="pref_nav_network_summary">Afficher ou masquer Réseau dans la barre de navigation inférieure</string>
+  <string name="pref_quick_play_fab_title">FAB de lecture rapide</string>
+  <string name="pref_quick_play_fab_summary">Afficher le bouton d\'action flottant de lecture rapide dans les écrans du navigateur</string>
   <string name="pref_appearance_nav_style_slide">Glissement</string>
   <string name="pref_appearance_nav_style_fade">Fondu</string>
   <string name="pref_appearance_nav_style_none">Aucun (instantané)</string>
@@ -1132,6 +1134,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_copy">Copier</string>
   <string name="ui_separator">Séparateur</string>
   <string name="ui_toggle_menu">Afficher/masquer le menu</string>
+  <string name="ui_quick_play">Lecture rapide</string>
   <string name="ui_open_file">Ouvrir un fichier</string>
   <string name="ui_open_link">Ouvrir un lien</string>
   <string name="ui_search_folders_and_videos">Rechercher des dossiers et des vidéos...</string>
