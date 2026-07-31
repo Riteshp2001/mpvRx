@@ -171,41 +171,38 @@ class CuboidWarptunnelEngine {
   fun init(
     w: Int,
     h: Int,
-  ) {
-    synchronized(renderLock) {
-      if (w <= 0 || h <= 0) return
-      renderWidth = w
-      renderHeight = h
-      val size = w * h
-      if (size != pixelBuffer.size) {
-        pixelBuffer = IntArray(size)
-      }
-
-      bitmap?.recycle()
-      bitmap = try {
-        Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-      } catch (_: Throwable) {
-        null
-      }
-
-      addCirclesLocked()
+  ): Unit = synchronized(renderLock) {
+    if (w <= 0 || h <= 0) return@synchronized
+    renderWidth = w
+    renderHeight = h
+    val size = w * h
+    if (size != pixelBuffer.size) {
+      pixelBuffer = IntArray(size)
     }
+
+    bitmap?.recycle()
+    bitmap = try {
+      Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    } catch (_: Throwable) {
+      null
+    }
+
+    addCirclesLocked()
   }
 
   fun resize(
     w: Int,
     h: Int,
-  ) {
-    synchronized(renderLock) {
-      if (w <= 0 || h <= 0) return
-      val ow = renderWidth
-      val oh = renderHeight
-      renderWidth = w
-      renderHeight = h
-      val size = w * h
-      if (size != pixelBuffer.size) {
-        pixelBuffer = IntArray(size)
-      }
+  ): Unit = synchronized(renderLock) {
+    if (w <= 0 || h <= 0) return@synchronized
+    val ow = renderWidth
+    val oh = renderHeight
+    renderWidth = w
+    renderHeight = h
+    val size = w * h
+    if (size != pixelBuffer.size) {
+      pixelBuffer = IntArray(size)
+    }
 
     bitmap?.recycle()
     bitmap = try {
