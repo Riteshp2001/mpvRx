@@ -54,6 +54,8 @@
   <string name="pref_nav_network_summary">下部ナビゲーションバーのネットワークを表示または非表示にします</string>
   <string name="pref_quick_play_fab_title">クイック再生FAB</string>
   <string name="pref_quick_play_fab_summary">ブラウザー画面にクイック再生フローティングアクションボタンを表示</string>
+  <string name="pref_quick_play_fab_direct_title">ダイレクト・クイック再生</string>
+  <string name="pref_quick_play_fab_direct_summary">ボタンをタップした際にオプションを表示せず、最近再生した動画を直接再生します</string>
   <string name="pref_appearance_nav_style_slide">スライド</string>
   <string name="pref_appearance_nav_style_fade">フェード</string>
   <string name="pref_appearance_nav_style_none">なし（即時）</string>

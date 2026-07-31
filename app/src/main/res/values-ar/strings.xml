@@ -54,6 +54,8 @@
   <string name="pref_nav_network_summary">إظهار أو إخفاء الشبكة في شريط التنقل السفلي</string>
   <string name="pref_quick_play_fab_title">زر التشغيل السريع (FAB)</string>
   <string name="pref_quick_play_fab_summary">إظهار زر التشغيل السريع في شاشات المتصفح</string>
+  <string name="pref_quick_play_fab_direct_title">التشغيل السريع المباشر</string>
+  <string name="pref_quick_play_fab_direct_summary">تشغيل أحدث فيديو تم تشغيله مباشرة عند الضغط على الزر بدلاً من إظهار الخيارات</string>
   <string name="pref_appearance_nav_style_slide">انزلاق</string>
   <string name="pref_appearance_nav_style_fade">تلاشي</string>
   <string name="pref_appearance_nav_style_none">بلا (فوري)</string>

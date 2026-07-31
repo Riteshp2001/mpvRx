@@ -168,6 +168,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<app.gyrolet.mpvrx.preferences.AppearancePreferences>()
   val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
+  val quickPlayFabDirect by appearancePreferences.quickPlayFabDirect.collectAsState()
   val playerPreferences = koinInject<app.gyrolet.mpvrx.preferences.PlayerPreferences>()
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
@@ -638,12 +639,12 @@ fun FileSystemBrowserScreen(path: String? = null) {
         if (isAtRoot) {
           FloatingActionButtonMenu(
             modifier = Modifier.padding(bottom = (navigationBarHeight - 16.dp).coerceAtLeast(0.dp)),
-            expanded = isFabExpanded.value,
+            expanded = isFabExpanded.value && !quickPlayFabDirect,
             button = {
               TooltipBox(
                 positionProvider =
                   TooltipDefaults.rememberTooltipPositionProvider(
-                    if (isFabExpanded.value) {
+                    if (isFabExpanded.value && !quickPlayFabDirect) {
                       TooltipAnchorPosition.Start
                     } else {
                       TooltipAnchorPosition.Above
@@ -671,77 +672,99 @@ fun FileSystemBrowserScreen(path: String? = null) {
                               .getPermissionDeniedState(),
                         alignment = Alignment.BottomEnd,
                       ),
-                  checked = isFabExpanded.value,
-                  onCheckedChange = { isFabExpanded.value = !isFabExpanded.value },
+                  checked = isFabExpanded.value && !quickPlayFabDirect,
+                  onCheckedChange = {
+                    if (quickPlayFabDirect) {
+                      coroutineScope.launch {
+                        val lastPlayed =
+                          app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+                            .getLastPlayedEntity()
+                        if (lastPlayed != null) {
+                          MediaUtils.playFile(
+                            source = lastPlayed.filePath,
+                            context = context,
+                            launchSource = "quick_play_fab",
+                            title =
+                              lastPlayed.videoTitle?.takeIf { it.isNotBlank() }
+                                ?: lastPlayed.fileName.takeIf { it.isNotBlank() },
+                          )
+                        }
+                      }
+                    } else {
+                      isFabExpanded.value = !isFabExpanded.value
+                    }
+                  },
                 ) {
                   val imageVector by remember {
                     derivedStateOf {
-                      if (checkedProgress > 0.5f) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
+                      if (checkedProgress > 0.5f && !quickPlayFabDirect) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
                     }
                   }
                   Icon(
                     imageVector = imageVector,
                     contentDescription = null,
-                    modifier = Modifier.animateIcon({ checkedProgress }),
+                    modifier = Modifier.animateIcon({ if (quickPlayFabDirect) 0f else checkedProgress }),
                   )
                 }
               }
             },
           ) {
-            FloatingActionButtonMenuItem(
-              onClick = {
-                isFabExpanded.value = false
-                filePicker.launch(arrayOf("video/*"))
-              },
-              icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
-              text = {
-                Text(
-                  text =
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_open_file),
-                )
-              },
-            )
+            if (!quickPlayFabDirect) {
+              FloatingActionButtonMenuItem(
+                onClick = {
+                  isFabExpanded.value = false
+                  filePicker.launch(arrayOf("video/*"))
+                },
+                icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
+                text = {
+                  Text(
+                    text =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_open_file),
+                  )
+                },
+              )
 
-            FloatingActionButtonMenuItem(
-              onClick = {
-                isFabExpanded.value = false
-                coroutineScope.launch {
-                  val recentlyPlayedVideos =
-                    app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps.getRecentlyPlayed(
-                      limit = 1,
-                    )
-                  val lastPlayed = recentlyPlayedVideos.firstOrNull()
-                  if (lastPlayed != null) {
-                    MediaUtils.playFile(lastPlayed.filePath, context, "recently_played_button")
+              FloatingActionButtonMenuItem(
+                onClick = {
+                  isFabExpanded.value = false
+                  coroutineScope.launch {
+                    val recentlyPlayedVideos =
+                      app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps.getRecentlyPlayed(
+                        limit = 1,
+                      )
+                    val lastPlayed = recentlyPlayedVideos.firstOrNull()
+                    if (lastPlayed != null) {
+                      MediaUtils.playFile(lastPlayed.filePath, context, "recently_played_button")
+                    }
                   }
-                }
-              },
-              icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
-              text = {
-                Text(
-                  text =
-                    androidx.compose.ui.res.stringResource(
-                      app.gyrolet.mpvrx.R.string.pref_advanced_enable_recently_played_title,
-                    ),
-                )
-              },
-            )
+                },
+                icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
+                text = {
+                  Text(
+                    text =
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.pref_advanced_enable_recently_played_title,
+                      ),
+                  )
+                },
+              )
 
-            FloatingActionButtonMenuItem(
-              onClick = {
-                isFabExpanded.value = false
-                showLinkDialog.value = true
-              },
-              icon = { Icon(Icons.RoundedFilled.Link, contentDescription = null) },
-              text = {
-                Text(
-                  text =
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_open_link),
-                )
-              },
-            )
+              FloatingActionButtonMenuItem(
+                onClick = {
+                  isFabExpanded.value = false
+                  showLinkDialog.value = true
+                },
+                icon = { Icon(Icons.RoundedFilled.Link, contentDescription = null) },
+                text = {
+                  Text(
+                    text =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_open_link),
+                  )
+                },
+              )
+            }
           }
         }
       },

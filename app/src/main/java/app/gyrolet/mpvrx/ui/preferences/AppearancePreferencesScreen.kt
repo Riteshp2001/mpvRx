@@ -776,6 +776,23 @@ object AppearancePreferencesScreen : Screen {
                   )
                 },
               )
+
+              PreferenceDivider()
+
+              val quickPlayFabDirect by preferences.quickPlayFabDirect.collectAsState()
+              SwitchPreference(
+                value = quickPlayFabDirect,
+                onValueChange = preferences.quickPlayFabDirect::set,
+                enabled = showQuickPlayFab,
+                title = { Text(text = stringResource(id = R.string.pref_quick_play_fab_direct_title)) },
+                summary = {
+                  Text(
+                    text = stringResource(id = R.string.pref_quick_play_fab_direct_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
             }
           }
 

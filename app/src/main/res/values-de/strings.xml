@@ -54,6 +54,8 @@
   <string name="pref_nav_network_summary">Netzwerk in der unteren Navigationsleiste ein- oder ausblenden</string>
   <string name="pref_quick_play_fab_title">Schnellwiedergabe-FAB</string>
   <string name="pref_quick_play_fab_summary">Schnellwiedergabe-Button in Browser-Bildschirmen anzeigen</string>
+  <string name="pref_quick_play_fab_direct_title">Direkte Schnellwiedergabe</string>
+  <string name="pref_quick_play_fab_direct_summary">Zuletzt wiedergegebenes Video beim Tippen auf den Button direkt abspielen, statt Optionen anzuzeigen</string>
   <string name="pref_appearance_nav_style_slide">Schieben</string>
   <string name="pref_appearance_nav_style_fade">Überblenden</string>
   <string name="pref_appearance_nav_style_none">Keine (sofort)</string>

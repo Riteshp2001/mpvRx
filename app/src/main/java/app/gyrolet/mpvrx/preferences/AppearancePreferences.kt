@@ -57,6 +57,7 @@ class AppearancePreferences(
   val showPlaylistsTab = preferenceStore.getBoolean("show_playlists_tab", true)
   val showNetworkTab = preferenceStore.getBoolean("show_network_tab", false)
   val showQuickPlayFab = preferenceStore.getBoolean("show_quick_play_fab", true)
+  val quickPlayFabDirect = preferenceStore.getBoolean("quick_play_fab_direct", false)
 
   val topLeftControls =
     preferenceStore.getString(

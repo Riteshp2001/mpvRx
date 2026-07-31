@@ -54,6 +54,8 @@
   <string name="pref_nav_network_summary">Afficher ou masquer Réseau dans la barre de navigation inférieure</string>
   <string name="pref_quick_play_fab_title">FAB de lecture rapide</string>
   <string name="pref_quick_play_fab_summary">Afficher le bouton d\'action flottant de lecture rapide dans les écrans du navigateur</string>
+  <string name="pref_quick_play_fab_direct_title">Lecture rapide directe</string>
+  <string name="pref_quick_play_fab_direct_summary">Lire directement la dernière vidéo lue en appuyant sur le bouton au lieu d\'afficher les options</string>
   <string name="pref_appearance_nav_style_slide">Glissement</string>
   <string name="pref_appearance_nav_style_fade">Fondu</string>
   <string name="pref_appearance_nav_style_none">Aucun (instantané)</string>

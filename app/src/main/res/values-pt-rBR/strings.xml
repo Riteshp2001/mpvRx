@@ -54,6 +54,8 @@
   <string name="pref_nav_network_summary">Mostrar ou ocultar Rede na barra de navegação inferior</string>
   <string name="pref_quick_play_fab_title">FAB de reprodução rápida</string>
   <string name="pref_quick_play_fab_summary">Exibir o botão flutuante de reprodução rápida nas telas do navegador</string>
+  <string name="pref_quick_play_fab_direct_title">Reprodução rápida direta</string>
+  <string name="pref_quick_play_fab_direct_summary">Reproduzir diretamente o vídeo recente ao tocar no botão em vez de mostrar opções</string>
   <string name="pref_appearance_nav_style_slide">Deslizar</string>
   <string name="pref_appearance_nav_style_fade">Desvanecer</string>
   <string name="pref_appearance_nav_style_none">Nenhum (instantâneo)</string>

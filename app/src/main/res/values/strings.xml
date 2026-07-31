@@ -54,6 +54,8 @@
   <string name="pref_nav_network_summary">Show or hide Network in the bottom navigation bar</string>
   <string name="pref_quick_play_fab_title">Quick Play FAB</string>
   <string name="pref_quick_play_fab_summary">Show the quick play floating action button in browser screens</string>
+  <string name="pref_quick_play_fab_direct_title">Direct Quick Play</string>
+  <string name="pref_quick_play_fab_direct_summary">Directly play recently played video when tapping FAB instead of showing options</string>
   <string name="pref_appearance_nav_style_slide">Slide</string>
   <string name="pref_appearance_nav_style_fade">Fade</string>
   <string name="pref_appearance_nav_style_none">None (Instant)</string>
