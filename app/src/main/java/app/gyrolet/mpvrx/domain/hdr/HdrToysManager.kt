@@ -72,6 +72,21 @@ class HdrToysManager(
       .forEach { shaderPath ->
         runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", shaderPath) }
       }
+    HdrToysProfile.allShaderPaths.forEach { relPath ->
+      val absolutePath = File(context.filesDir, "shaders/$relPath").absolutePath
+      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", absolutePath) }
+    }
+    runCatching {
+      val activeShaders = MPVLib.getPropertyString("glsl-shaders")
+      if (!activeShaders.isNullOrEmpty()) {
+        val remaining =
+          activeShaders
+            .split(":")
+            .map { it.trim() }
+            .filter { path -> path.isNotEmpty() && !path.contains("hdr-toys") }
+        MPVLib.setPropertyString("glsl-shaders", remaining.joinToString(":"))
+      }
+    }
   }
 
   private fun requiredShadersExist(): Boolean =
