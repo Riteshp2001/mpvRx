@@ -171,38 +171,41 @@ class CuboidWarptunnelEngine {
   fun init(
     w: Int,
     h: Int,
-  ) = synchronized(renderLock) {
-    if (w <= 0 || h <= 0) return
-    renderWidth = w
-    renderHeight = h
-    val size = w * h
-    if (size != pixelBuffer.size) {
-      pixelBuffer = IntArray(size)
-    }
+  ) {
+    synchronized(renderLock) {
+      if (w <= 0 || h <= 0) return
+      renderWidth = w
+      renderHeight = h
+      val size = w * h
+      if (size != pixelBuffer.size) {
+        pixelBuffer = IntArray(size)
+      }
 
-    bitmap?.recycle()
-    bitmap = try {
-      Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    } catch (_: Throwable) {
-      null
-    }
+      bitmap?.recycle()
+      bitmap = try {
+        Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+      } catch (_: Throwable) {
+        null
+      }
 
-    addCirclesLocked()
+      addCirclesLocked()
+    }
   }
 
   fun resize(
     w: Int,
     h: Int,
-  ) = synchronized(renderLock) {
-    if (w <= 0 || h <= 0) return
-    val ow = renderWidth
-    val oh = renderHeight
-    renderWidth = w
-    renderHeight = h
-    val size = w * h
-    if (size != pixelBuffer.size) {
-      pixelBuffer = IntArray(size)
-    }
+  ) {
+    synchronized(renderLock) {
+      if (w <= 0 || h <= 0) return
+      val ow = renderWidth
+      val oh = renderHeight
+      renderWidth = w
+      renderHeight = h
+      val size = w * h
+      if (size != pixelBuffer.size) {
+        pixelBuffer = IntArray(size)
+      }
 
     bitmap?.recycle()
     bitmap = try {
@@ -508,7 +511,7 @@ class CuboidWarptunnelEngine {
 
         var freq = 0
         var freqAdd = 0f
-        if (hasAudio && seg.audioBufferIndex < fd!!.size) {
+        if (hasAudio && seg.audioBufferIndex < fd.size) {
           freq = fd[seg.audioBufferIndex].toInt() and 0xFF
           freqAdd = freq / 20f
           val audioLift = 1f + (bass * 0.85f) + (mid * 0.4f) + (treble * 0.25f) + (beat * 0.35f)

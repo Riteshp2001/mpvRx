@@ -76,7 +76,6 @@ fun PlayerPanels(
           onDismissRequest = onDismissRequest,
         )
       }
-      else -> {}
     }
   }
 }

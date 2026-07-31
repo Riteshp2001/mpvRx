@@ -1477,9 +1477,9 @@
   <string name="player_sheets_chapter_title_substitute_audio">صوت #%d</string>
   <string name="player_sheets_chapter_title_substitute_subtitle">ترجمة #%d</string>
   <string name="player_sheets_frame_navigation_snapshot_saved">تم الحفظ في Pictures/mpvSnaps</string>
-  <string name="player_sheets_track_lang_wo_title">#%d: %s</string>
-  <string name="player_sheets_track_title_w_lang">#%d: %s (%s)</string>
-  <string name="player_sheets_track_title_wo_lang">#%d: %s</string>
+  <string name="player_sheets_track_lang_wo_title">#%1$d: %2$s</string>
+  <string name="player_sheets_track_title_w_lang">#%1$d: %2$s (%3$s)</string>
+  <string name="player_sheets_track_title_wo_lang">#%1$d: %2$s</string>
   <string name="pref_about_donate_kofi_url">https://ko-fi.com/adityanarvekar</string>
   <string name="pref_about_donate_paypal_url">https://paypal.me/aadinarvekar</string>
   <string name="pref_about_donate_upi_id">aadiinarvekar@upi</string>
