@@ -495,6 +495,7 @@ Weiter: NEXT</string>
   <string name="notification_chapter_counter">Kapitel %1$d von %2$d</string>
   <string name="notification_permission_denied">Für die Steuerung der Hintergrundwiedergabe ist die Benachrichtigungsberechtigung erforderlich.</string>
   <string name="notification_permission_disabled">Benachrichtigungen sind für mpvRx deaktiviert. Aktivieren Sie sie, um Wiedergabesteuerungen anzuzeigen.</string>
+  <string name="notification_disabled_in_advanced_settings">Aktivieren Sie Benachrichtigungen in den erweiterten Einstellungen, um die Hintergrundwiedergabe zu nutzen.</string>
   <string name="pref_advanced_notification_style">Benachrichtigungsstil</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Präzise Suche verwenden</string>
@@ -1465,4 +1466,39 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="syncplay_connect">Verbinden</string>
   <string name="syncplay_connecting">Verbindung wird hergestellt…</string>
   <string name="syncplay_player_status">Syncplay: %1$s (%2$d Benutzer)</string>
+  <!-- Additional synchronized strings -->
+  <string name="app_name">mpvRx</string>
+  <string name="github_repo_url">https://github.com/Riteshp2001/mpvRx</string>
+  <string name="hdr_mode_bt2020">BT.2020</string>
+  <string name="hdr_mode_bt2100_hlg">BT.2100 HLG</string>
+  <string name="hdr_mode_bt2100_pq">BT.2100 PQ</string>
+  <string name="hdr_mode_hlg_short">HLG</string>
+  <string name="hdr_mode_pq_short">PQ</string>
+  <string name="player_sheets_chapter_title_substitute_audio">Audio #%d</string>
+  <string name="player_sheets_chapter_title_substitute_subtitle">Untertitel #%d</string>
+  <string name="player_sheets_frame_navigation_snapshot_saved">In Pictures/mpvSnaps gespeichert</string>
+  <string name="player_sheets_track_lang_wo_title">#%d: %s</string>
+  <string name="player_sheets_track_title_w_lang">#%d: %s (%s)</string>
+  <string name="player_sheets_track_title_wo_lang">#%d: %s</string>
+  <string name="pref_about_donate_kofi_url">https://ko-fi.com/adityanarvekar</string>
+  <string name="pref_about_donate_paypal_url">https://paypal.me/aadinarvekar</string>
+  <string name="pref_about_donate_upi_id">aadiinarvekar@upi</string>
+  <string name="ui_24fps">24fps</string>
+  <string name="ui_30fps">30fps</string>
+  <string name="ui_60fps">60fps</string>
+  <string name="ui_all_or_en_ja">all or en.*,ja</string>
+  <string name="ui_av1">AV1</string>
+  <string name="ui_extractor_args_2">extractor-args=\"youtube:player_client=android,web\"\ngeo-bypass=</string>
+  <string name="ui_h_264">H.264</string>
+  <string name="ui_h_265">H.265</string>
+  <string name="ui_hf">hf_...</string>
+  <string name="ui_mozilla_5_0">Mozilla/5.0 ...</string>
+  <string name="ui_mp4_mkv_webm">mp4, mkv, webm</string>
+  <string name="ui_res_fps_hdr_12_vcodec_vp9_2">res,fps,hdr:12,vcodec:vp9.2</string>
+  <string name="ui_socks5_127_0_0_1_1080">socks5://127.0.0.1:1080</string>
+  <string name="ui_sponsor">sponsor</string>
+  <string name="ui_sponsor_selfpromo">sponsor,selfpromo</string>
+  <string name="ui_storage_emulated_0_download_cookies_txt">/storage/emulated/0/Download/cookies.txt</string>
+  <string name="ui_youtube_player_client_android_web">youtube:player_client=android,web</string>
+  <string name="volume_slider_absolute_value">%d</string>
 </resources>
