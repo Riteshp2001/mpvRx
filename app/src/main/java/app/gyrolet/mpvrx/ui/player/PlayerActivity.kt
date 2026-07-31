@@ -4518,6 +4518,14 @@ class PlayerActivity :
     if (!shouldShowPlaybackNotification()) {
       pendingBackgroundPlaybackStart = false
       Log.d(TAG, "Playback notification disabled, skipping background playback service")
+      if (allowUserPrompt) {
+        Toast
+          .makeText(
+            this,
+            getString(R.string.notification_disabled_in_advanced_settings),
+            Toast.LENGTH_LONG,
+          ).show()
+      }
       return BackgroundPlaybackStartResult.Blocked
     }
 
@@ -4584,6 +4592,18 @@ class PlayerActivity :
   }
 
   private fun ensureNotificationAccessForPlayback(allowUserPrompt: Boolean): BackgroundPlaybackStartResult {
+    if (!shouldShowPlaybackNotification()) {
+      if (allowUserPrompt) {
+        Toast
+          .makeText(
+            this,
+            getString(R.string.notification_disabled_in_advanced_settings),
+            Toast.LENGTH_LONG,
+          ).show()
+      }
+      return BackgroundPlaybackStartResult.Blocked
+    }
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
       ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
       PackageManager.PERMISSION_GRANTED
@@ -4657,6 +4677,17 @@ class PlayerActivity :
   /** Toggles video background playback without changing the audio-player setting. */
   fun toggleBackgroundPlayback() {
     val enabled = !audioPreferences.backgroundPlayback.get()
+
+    if (enabled && !shouldShowPlaybackNotification()) {
+      Toast
+        .makeText(
+          this,
+          getString(R.string.notification_disabled_in_advanced_settings),
+          Toast.LENGTH_LONG,
+        ).show()
+      return
+    }
+
     audioPreferences.backgroundPlayback.set(enabled)
 
     if (enabled) {
@@ -4694,6 +4725,17 @@ class PlayerActivity :
   /** Toggles the audio-player-specific background playback setting. */
   fun toggleAudioBackgroundPlayback() {
     val enabled = !audioPreferences.audioBackgroundPlayback.get()
+
+    if (enabled && !shouldShowPlaybackNotification()) {
+      Toast
+        .makeText(
+          this,
+          getString(R.string.notification_disabled_in_advanced_settings),
+          Toast.LENGTH_LONG,
+        ).show()
+      return
+    }
+
     audioPreferences.audioBackgroundPlayback.set(enabled)
 
     if (enabled) ensureNotificationAccessForPlayback(allowUserPrompt = true)
@@ -5714,14 +5756,17 @@ class PlayerActivity :
       return
     }
 
+    val wereInBackground = isInBackgroundPlayback
     isInBackgroundPlayback = false
-    if (lastVid > 0) {
-      Log.d(TAG, "Restoring video after background playback (vid: $lastVid)")
-      MPVLib.setPropertyInt("vid", lastVid)
+
+    if (wereInBackground && lastVid > 0) {
+      if (!viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio()) {
+        Log.d(TAG, "Restoring video after background playback (vid: $lastVid)")
+        MPVLib.setPropertyInt("vid", lastVid)
+      } else {
+        Log.d(TAG, "Skipping video track restoration because media is in audio-only mode")
+      }
       lastVid = -1
-    } else if ((MPVLib.getPropertyInt("vid") ?: -1) <= 0) {
-      Log.d(TAG, "Restoring video after background playback with auto track selection")
-      MPVLib.setPropertyString("vid", "auto")
     }
   }
 
