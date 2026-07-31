@@ -726,11 +726,13 @@ class PlayerActivity :
         viewModel.panelShown,
         playerPreferences.autoPiPOnNavigation.changes(),
         audioPreferences.backgroundPlayback.changes(),
-      ) { sheetShown, panelShown, autoPipOnNavigation, backgroundPlaybackEnabled ->
+        audioPreferences.audioBackgroundPlayback.changes(),
+      ) { sheetShown, panelShown, autoPipOnNavigation, videoBackground, audioBackground ->
         sheetShown != Sheets.None ||
           panelShown != Panels.None ||
           autoPipOnNavigation ||
-          backgroundPlaybackEnabled
+          videoBackground ||
+          audioBackground
       }.distinctUntilChanged()
         .collect { callback.isEnabled = it }
     }
@@ -2294,7 +2296,7 @@ class PlayerActivity :
   }
 
   private fun isBackgroundPlaybackEnabled(): Boolean =
-    if (viewModel.isAudioOnly.value) audioPreferences.audioBackgroundPlayback.get()
+    if (viewModel.isAudioOnly.value || isKnownAudioLaunch(intent)) audioPreferences.audioBackgroundPlayback.get()
     else audioPreferences.backgroundPlayback.get()
 
   private fun isDeviceScreenOffOrLocked(): Boolean {
@@ -3131,6 +3133,9 @@ class PlayerActivity :
         }
         viewModel.onVideoLoadCompleted()
         handleFileLoaded()
+        if (isBackgroundPlaybackEnabled()) {
+          startBackgroundPlayback(allowUserPrompt = false)
+        }
       }
 
       MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
@@ -3919,7 +3924,14 @@ class PlayerActivity :
         pendingBackgroundTransition = false
         isReady = true
         viewModel.onVideoLoadCompleted()
-        endBackgroundPlayback()
+        if (isBackgroundPlaybackEnabled()) {
+          if (!serviceBound || mediaPlaybackService == null) {
+            startBackgroundPlaybackInternal(bindToActivity = true)
+          }
+          syncBackgroundPlaybackService(updateThumbnail = true)
+        } else {
+          endBackgroundPlayback()
+        }
         return
       }
     }
@@ -3927,7 +3939,7 @@ class PlayerActivity :
     isBackgroundPlaybackSessionActive = false
     pendingBackgroundTransition = false
     handledPipDismissal = false
-    if (serviceBound || mediaPlaybackService != null || MediaPlaybackService.isRunning()) {
+    if (!isBackgroundPlaybackEnabled() && (serviceBound || mediaPlaybackService != null || MediaPlaybackService.isRunning())) {
       endBackgroundPlayback()
     }
 
@@ -4495,7 +4507,7 @@ class PlayerActivity :
         mediaPlaybackService = binder.getService()
         serviceBound = true
         Log.d(TAG, "Service connected")
-        syncBackgroundPlaybackService(updateThumbnail = false)
+        syncBackgroundPlaybackService(updateThumbnail = true)
       }
 
       override fun onServiceDisconnected(name: ComponentName?) {
@@ -4539,7 +4551,7 @@ class PlayerActivity :
     }
 
     pendingBackgroundPlaybackStart = false
-    return if (startBackgroundPlaybackInternal(bindToActivity = false)) {
+    return if (startBackgroundPlaybackInternal(bindToActivity = true)) {
       BackgroundPlaybackStartResult.Started
     } else {
       BackgroundPlaybackStartResult.Blocked
@@ -4569,7 +4581,7 @@ class PlayerActivity :
     // Pass media info via intent extras
     val intent =
       Intent(this, MediaPlaybackService::class.java).apply {
-        putExtra("media_title", fileName)
+        putExtra("media_title", FileTypeUtils.stripExtension(fileName))
         putExtra("media_artist", artist)
         putExtra("media_uri", currentPlayableUri)
         putExtra("media_identifier", mediaIdentifier)
@@ -5106,8 +5118,12 @@ class PlayerActivity :
   }
 
   private fun syncBackgroundPlaybackService(updateThumbnail: Boolean) {
+    if (mediaPlaybackService == null && isBackgroundPlaybackEnabled() && isReady && fileName.isNotBlank()) {
+      startBackgroundPlayback(allowUserPrompt = false)
+    }
     val service = mediaPlaybackService ?: return
-    val title = getPreferredCurrentTitle().ifBlank { fileName.ifBlank { getString(R.string.player_unknown_video) } }
+    val rawTitle = getPreferredCurrentTitle().ifBlank { fileName.ifBlank { getString(R.string.player_unknown_video) } }
+    val title = FileTypeUtils.stripExtension(rawTitle)
     val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
     val thumbnailKey = buildBackgroundThumbnailKey()
     val cachedThumbnail =
@@ -5134,8 +5150,30 @@ class PlayerActivity :
       lifecycleScope.launch {
         delay(150)
         val generatedThumbnail =
-          withContext(Dispatchers.Default) {
-            runCatching { MPVLib.grabThumbnail(480) }.getOrNull()
+          withContext(Dispatchers.IO) {
+            runCatching { MPVLib.grabThumbnail(480) }.getOrNull() ?: runCatching {
+              val uriStr = currentPlayableUri
+              if (!uriStr.isNullOrBlank()) {
+                val parsedUri = Uri.parse(uriStr)
+                val cleanPath =
+                  when {
+                    parsedUri.scheme == "file" -> parsedUri.path
+                    parsedUri.scheme == "content" -> null
+                    else -> uriStr
+                  }
+                val retriever = android.media.MediaMetadataRetriever()
+                if (cleanPath != null) {
+                  retriever.setDataSource(cleanPath)
+                } else {
+                  retriever.setDataSource(this@PlayerActivity, parsedUri)
+                }
+                val art = app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever)
+                retriever.release()
+                art
+              } else {
+                null
+              }
+            }.getOrNull()
           }
 
         if (!mpvInitialized || player.isExiting || isFinishing) return@launch

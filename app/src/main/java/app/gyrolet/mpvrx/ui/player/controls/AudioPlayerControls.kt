@@ -47,7 +47,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,10 +62,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -199,13 +208,6 @@ fun AudioPlayerControls(
 
   val albumArtBitmap = rememberAudioAlbumArt(mediaPath)
 
-  fun String.stripAudioExtension(): String {
-    val dotIndex = lastIndexOf('.')
-    if (dotIndex <= 0) return this
-    val ext = substring(dotIndex + 1)
-    return if (ext.length in 2..5 && ext.none { it.isWhitespace() }) substring(0, dotIndex) else this
-  }
-
   fun cleanSongTitle(
     title: String,
     artist: String?,
@@ -330,8 +332,26 @@ fun AudioPlayerControls(
       if (showChapterIndicators) chapters.toImmutableList() else persistentListOf()
     }
 
+  LaunchedEffect(Unit) {
+    viewModel.refreshPlaylistItems()
+  }
+
+  val playlistItems by viewModel.playlistItems.collectAsState()
+  val isAudioOnly by viewModel.isAudioOnly.collectAsState()
+  val filteredPlaylist =
+    remember(playlistItems, isAudioOnly) {
+      val audioOnly = playlistItems.filter { it.isAudio }
+      if (audioOnly.isNotEmpty()) {
+        audioOnly
+      } else {
+        playlistItems
+      }
+    }
+
   val configuration = LocalConfiguration.current
   val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+  val isTablet = configuration.smallestScreenWidthDp >= 600
+  val isTabletLandscape = !isPortrait && isTablet
 
   Box(
     modifier =
@@ -854,26 +874,30 @@ fun AudioPlayerControls(
             )
           }
         }
-        ReactiveIconButton(
-          onClick = { onOpenSheet(Sheets.Playlist) },
-          modifier =
-            Modifier
-              .clip(
-                CircleShape,
-              ).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f))
-              .size(48.dp),
-        ) {
-          Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Icon(
-              imageVector = Icons.RoundedFilled.QueueMusic,
-              contentDescription = "Playlist",
-              tint = MaterialTheme.colorScheme.onSurface,
-              modifier = Modifier.size(24.dp),
-            )
+        if (!isTabletLandscape) {
+          ReactiveIconButton(
+            onClick = { onOpenSheet(Sheets.Playlist) },
+            modifier =
+              Modifier
+                .clip(
+                  CircleShape,
+                ).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f))
+                .size(48.dp),
+          ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+              Icon(
+                imageVector = Icons.RoundedFilled.QueueMusic,
+                contentDescription = "Playlist",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(24.dp),
+              )
+            }
           }
         }
       }
     }
+
+    val isTabletPortrait = isPortrait && (isTablet || configuration.screenWidthDp >= 600)
 
     if (isPortrait) {
       Column(
@@ -883,7 +907,16 @@ fun AudioPlayerControls(
         headerBar()
         losslessBadge()
         Spacer(modifier = Modifier.height(16.dp))
-        centerVisualizerView(Modifier.weight(1f).fillMaxWidth())
+        val visualizerModifier =
+          if (isTabletPortrait) {
+            Modifier
+              .weight(1f)
+              .fillMaxWidth()
+              .padding(horizontal = 48.dp, vertical = 12.dp)
+          } else {
+            Modifier.weight(1f).fillMaxWidth()
+          }
+        centerVisualizerView(visualizerModifier)
         Spacer(modifier = Modifier.height(16.dp))
         trackMetadataView()
         Spacer(modifier = Modifier.height(16.dp))
@@ -892,6 +925,53 @@ fun AudioPlayerControls(
         playbackControlsRow()
         Spacer(modifier = Modifier.height(24.dp))
         bottomActionRow()
+      }
+    } else if (isTabletLandscape) {
+      Row(
+        modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Column(
+          modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(),
+          verticalArrangement = Arrangement.SpaceBetween,
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          headerBar()
+          Spacer(modifier = Modifier.height(4.dp))
+          losslessBadge()
+          Spacer(modifier = Modifier.height(6.dp))
+          centerVisualizerView(
+            Modifier
+              .weight(1f)
+              .fillMaxWidth()
+              .padding(vertical = 12.dp, horizontal = 24.dp),
+          )
+          Spacer(modifier = Modifier.height(6.dp))
+          trackMetadataView()
+          Spacer(modifier = Modifier.height(8.dp))
+          seekbarView()
+          Spacer(modifier = Modifier.height(8.dp))
+          playbackControlsRow()
+          Spacer(modifier = Modifier.height(12.dp))
+          bottomActionRow()
+        }
+
+        Surface(
+          modifier = Modifier
+            .weight(1.1f)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(24.dp)),
+          color = MaterialTheme.colorScheme.surfaceContainerLow,
+          shape = RoundedCornerShape(24.dp),
+        ) {
+          DualPaneSidePanel(
+            viewModel = viewModel,
+            playlist = filteredPlaylist,
+          )
+        }
       }
     } else {
       Row(
@@ -916,6 +996,261 @@ fun AudioPlayerControls(
     }
   }
 }
+
+@Composable
+private fun DualPaneSidePanel(
+  viewModel: PlayerViewModel,
+  playlist: List<PlaylistItem>,
+) {
+  Box(
+    modifier = Modifier
+      .fillMaxSize()
+      .padding(16.dp),
+  ) {
+    UpNextPlaylistContent(
+      viewModel = viewModel,
+      playlist = playlist,
+    )
+  }
+}
+
+@Composable
+private fun UpNextPlaylistContent(
+  viewModel: PlayerViewModel,
+  playlist: List<PlaylistItem>,
+) {
+  val lazyListState = rememberLazyListState()
+  val isM3U = viewModel.isPlaylistM3U()
+
+  var displayPlaylist by remember(playlist) { mutableStateOf(playlist) }
+  LaunchedEffect(playlist) {
+    displayPlaylist = playlist
+  }
+
+  val showDragHandle = !isM3U && displayPlaylist.size > 1
+
+  val playingItemIndex by remember(displayPlaylist) {
+    derivedStateOf { displayPlaylist.indexOfFirst { it.isPlaying } }
+  }
+
+  LaunchedEffect(playingItemIndex) {
+    if (playingItemIndex >= 0) {
+      lazyListState.animateScrollToItem(playingItemIndex)
+    }
+  }
+
+  var dragStartIndex by remember { mutableIntStateOf(-1) }
+  var dragEndIndex by remember { mutableIntStateOf(-1) }
+
+  val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
+    if (showDragHandle) {
+      if (dragStartIndex == -1) {
+        dragStartIndex = from.index
+      }
+      dragEndIndex = to.index
+      displayPlaylist = displayPlaylist.toMutableList().apply {
+        add(to.index, removeAt(from.index))
+      }
+    }
+  }
+
+  Column(modifier = Modifier.fillMaxSize()) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 12.dp, start = 4.dp, end = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+      Text(
+        text = "Coming up next",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
+      Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
+      ) {
+        Text(
+          text = "${displayPlaylist.size} tracks",
+          style = MaterialTheme.typography.labelSmall,
+          fontWeight = FontWeight.SemiBold,
+          color = MaterialTheme.colorScheme.onSecondaryContainer,
+          modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+      }
+    }
+
+    if (displayPlaylist.isEmpty()) {
+      Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+      ) {
+        Text(
+          text = "No songs in queue",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    } else {
+      LazyColumn(
+        state = lazyListState,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        items(displayPlaylist.size, key = { index -> displayPlaylist[index].uri.toString() }) { index ->
+          val item = displayPlaylist[index]
+          if (showDragHandle) {
+            ReorderableItem(reorderableLazyListState, key = item.uri.toString()) { isDragging ->
+              val isDraggingPrev = remember { mutableStateOf(false) }
+              LaunchedEffect(isDragging) {
+                if (isDraggingPrev.value && !isDragging) {
+                  if (dragStartIndex != -1 && dragEndIndex != -1 && dragStartIndex != dragEndIndex) {
+                    viewModel.reorderPlaylistItem(dragStartIndex, dragEndIndex)
+                  }
+                  dragStartIndex = -1
+                  dragEndIndex = -1
+                }
+                isDraggingPrev.value = isDragging
+              }
+
+              UpNextPlaylistItemRow(
+                item = item,
+                isPlaying = item.isPlaying,
+                onClick = { viewModel.playPlaylistItem(item.index) },
+                scope = this,
+              )
+            }
+          } else {
+            UpNextPlaylistItemRow(
+              item = item,
+              isPlaying = item.isPlaying,
+              onClick = { viewModel.playPlaylistItem(item.index) },
+              scope = null,
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun UpNextPlaylistItemRow(
+  item: PlaylistItem,
+  isPlaying: Boolean,
+  onClick: () -> Unit,
+  scope: ReorderableCollectionItemScope?,
+) {
+  val bgColor = if (isPlaying) {
+    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+  } else {
+    MaterialTheme.colorScheme.surfaceContainer
+  }
+
+  val itemCoverArt = rememberAudioAlbumArt(item.path.ifBlank { item.uri.toString() })
+
+  Surface(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clip(RoundedCornerShape(16.dp))
+      .clickable(onClick = onClick),
+    shape = RoundedCornerShape(16.dp),
+    color = bgColor,
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 12.dp, vertical = 10.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (scope != null) {
+        Icon(
+          imageVector = Icons.RoundedFilled.DragHandle,
+          contentDescription = "Reorder",
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = with(scope) {
+            Modifier
+              .size(24.dp)
+              .draggableHandle()
+          },
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+      }
+
+      Surface(
+        modifier = Modifier.size(44.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+      ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+          if (itemCoverArt != null) {
+            Image(
+              bitmap = itemCoverArt.asImageBitmap(),
+              contentDescription = null,
+              contentScale = ContentScale.Crop,
+              modifier = Modifier.fillMaxSize(),
+            )
+            if (isPlaying) {
+              Box(
+                modifier = Modifier
+                  .fillMaxSize()
+                  .background(Color.Black.copy(alpha = 0.45f)),
+                contentAlignment = Alignment.Center,
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Equalizer,
+                  contentDescription = "Now Playing",
+                  tint = MaterialTheme.colorScheme.primary,
+                  modifier = Modifier.size(22.dp),
+                )
+              }
+            }
+          } else {
+            if (isPlaying) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Equalizer,
+                contentDescription = "Now Playing",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(22.dp),
+              )
+            } else {
+              Icon(
+                imageVector = Icons.RoundedFilled.Audiotrack,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+              )
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.width(12.dp))
+
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          text = item.title.stripAudioExtension(),
+          style = MaterialTheme.typography.bodyMedium,
+          fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.SemiBold,
+          color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        if (item.duration.isNotBlank()) {
+          Text(
+            text = item.duration,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+      }
+    }
+  }
+}
+
+
 
 private fun formatSec(totalSeconds: Long): String {
   val secs = totalSeconds.coerceAtLeast(0L)
@@ -1001,4 +1336,11 @@ private fun ReactiveSurfaceButton(
   ) {
     content()
   }
+}
+
+private fun String.stripAudioExtension(): String {
+  val dotIndex = lastIndexOf('.')
+  if (dotIndex <= 0) return this
+  val ext = substring(dotIndex + 1)
+  return if (ext.length in 2..5 && ext.none { it.isWhitespace() }) substring(0, dotIndex) else this
 }

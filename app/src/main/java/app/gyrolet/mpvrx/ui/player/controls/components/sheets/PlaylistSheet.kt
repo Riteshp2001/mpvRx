@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,6 +70,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -331,11 +333,26 @@ fun PlaylistSheet(
         // Conditional rendering based on view mode
         if (isListMode) {
           // Vertical list mode (original implementation)
-          val showDragHandle = onReorder != null && !isM3UPlaylist && playlist.size > 1
+          var displayPlaylist by remember(playlist) { mutableStateOf(playlist) }
+          LaunchedEffect(playlist) {
+            displayPlaylist = playlist
+          }
+
+          val showDragHandle = onReorder != null && !isM3UPlaylist && displayPlaylist.size > 1
+
+          var dragStartIndex by remember { mutableIntStateOf(-1) }
+          var dragEndIndex by remember { mutableIntStateOf(-1) }
+
           val reorderableLazyListState =
             rememberReorderableLazyListState(lazyListState) { from, to ->
               if (showDragHandle) {
-                onReorder.invoke(from.index, to.index)
+                if (dragStartIndex == -1) {
+                  dragStartIndex = from.index
+                }
+                dragEndIndex = to.index
+                displayPlaylist = displayPlaylist.toMutableList().apply {
+                  add(to.index, removeAt(from.index))
+                }.toImmutableList()
               }
             }
 
@@ -344,10 +361,22 @@ fun PlaylistSheet(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 16.dp),
           ) {
-            items(playlist.size, key = { index -> playlist[index].uri.toString() }) { index ->
-              val item = playlist[index]
+            items(displayPlaylist.size, key = { index -> displayPlaylist[index].uri.toString() }) { index ->
+              val item = displayPlaylist[index]
               if (showDragHandle) {
                 ReorderableItem(reorderableLazyListState, key = item.uri.toString()) { isDragging ->
+                  val isDraggingPrev = remember { mutableStateOf(false) }
+                  LaunchedEffect(isDragging) {
+                    if (isDraggingPrev.value && !isDragging) {
+                      if (dragStartIndex != -1 && dragEndIndex != -1 && dragStartIndex != dragEndIndex) {
+                        onReorder.invoke(dragStartIndex, dragEndIndex)
+                      }
+                      dragStartIndex = -1
+                      dragEndIndex = -1
+                    }
+                    isDraggingPrev.value = isDragging
+                  }
+
                   PlaylistTrackListItem(
                     item = item,
                     thumbnailRepository = thumbnailRepository,
@@ -408,23 +437,23 @@ private fun DragHandle(
   modifier: Modifier = Modifier,
 ) {
   val alpha by animateFloatAsState(
-    targetValue = if (isDragging) 1f else 0.3f,
+    targetValue = if (isDragging) 1f else 0.4f,
     animationSpec =
-      androidx.compose.animation.core.spring(
+      spring(
         dampingRatio = 0.6f,
         stiffness = 300f,
       ),
     label = "dragHandleAlpha",
   )
 
-  IconButton(
-    onClick = { },
+  Box(
     modifier =
       with(scope) {
         modifier
           .size(40.dp)
           .draggableHandle()
       },
+    contentAlignment = Alignment.Center,
   ) {
     Icon(
       imageVector = Icons.RoundedFilled.DragHandle,
@@ -435,7 +464,7 @@ private fun DragHandle(
         } else {
           MaterialTheme.colorScheme.onSurfaceVariant
         },
-      modifier = Modifier.graphicsLayer { this.alpha = alpha },
+      modifier = Modifier.size(24.dp).graphicsLayer { this.alpha = alpha },
     )
   }
 }
@@ -451,7 +480,7 @@ fun PlaylistTrackListItem(
   modifier: Modifier = Modifier,
   dragHandle: @Composable () -> Unit = {},
 ) {
-  val isAudioItem = item.isAudio || isAudioOnly
+  val isAudioItem = item.isAudio
   val effectiveItem =
     remember(item, isAudioItem) {
       if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
@@ -558,7 +587,7 @@ fun PlaylistTrackListItem(
         verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         Text(
-          text = item.title,
+          text = item.title.stripExtension(),
           style =
             MaterialTheme.typography.bodyMedium.copy(
               fontWeight = if (item.isPlaying) FontWeight.Bold else FontWeight.Normal,
@@ -671,7 +700,7 @@ fun PlaylistTrackGridItem(
   isAudioOnly: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
-  val isAudioItem = item.isAudio || isAudioOnly
+  val isAudioItem = item.isAudio
   val effectiveItem =
     remember(item, isAudioItem) {
       if (item.isAudio != isAudioItem) item.copy(isAudio = isAudioItem) else item
@@ -821,7 +850,7 @@ fun PlaylistTrackGridItem(
         verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         Text(
-          text = item.title,
+          text = item.title.stripExtension(),
           modifier = Modifier.height(44.dp),
           style =
             MaterialTheme.typography.bodyMedium.copy(
@@ -951,4 +980,11 @@ fun LoadingChip(
             ),
         ),
   )
+}
+
+private fun String.stripExtension(): String {
+  val dotIndex = lastIndexOf('.')
+  if (dotIndex <= 0) return this
+  val ext = substring(dotIndex + 1)
+  return if (ext.length in 2..5 && ext.none { it.isWhitespace() }) substring(0, dotIndex) else this
 }
