@@ -437,23 +437,23 @@ private fun DragHandle(
   modifier: Modifier = Modifier,
 ) {
   val alpha by animateFloatAsState(
-    targetValue = if (isDragging) 1f else 0.3f,
+    targetValue = if (isDragging) 1f else 0.4f,
     animationSpec =
-      androidx.compose.animation.core.spring(
+      spring(
         dampingRatio = 0.6f,
         stiffness = 300f,
       ),
     label = "dragHandleAlpha",
   )
 
-  IconButton(
-    onClick = { },
+  Box(
     modifier =
       with(scope) {
         modifier
           .size(40.dp)
           .draggableHandle()
       },
+    contentAlignment = Alignment.Center,
   ) {
     Icon(
       imageVector = Icons.RoundedFilled.DragHandle,
@@ -464,7 +464,7 @@ private fun DragHandle(
         } else {
           MaterialTheme.colorScheme.onSurfaceVariant
         },
-      modifier = Modifier.graphicsLayer { this.alpha = alpha },
+      modifier = Modifier.size(24.dp).graphicsLayer { this.alpha = alpha },
     )
   }
 }
