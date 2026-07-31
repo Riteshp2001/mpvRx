@@ -11,6 +11,7 @@ import android.content.Intent
 import android.os.Environment
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +39,8 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -45,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +74,7 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLibraryType
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
@@ -179,9 +186,26 @@ fun MediaLibraryContent() {
   val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
   val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
   val isFabVisible = remember { mutableStateOf(true) }
+  val isFabExpanded = remember { mutableStateOf(false) }
+  val quickPlayFabDirect by appearancePreferences.quickPlayFabDirect.collectAsState()
   var showFloatingBottomBar by remember { mutableStateOf(false) }
   val animationDuration = 300
   val lastPlayRequestIndex = remember { mutableIntStateOf(-1) }
+
+  val filePicker =
+    rememberLauncherForActivityResult(
+      contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+      uri?.let {
+        runCatching {
+          context.contentResolver.takePersistableUriPermission(
+            it,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+          )
+        }
+        MediaUtils.playFile(it.toString(), context, "open_file")
+      }
+    }
 
   val compressorDialogOpen = rememberSaveable { mutableStateOf(false) }
   val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
@@ -404,55 +428,114 @@ fun MediaLibraryContent() {
     },
     floatingActionButton = {
       if (filteredVideosWithInfo.isNotEmpty()) {
-        TooltipBox(
-          positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-          tooltip = {
-            PlainTooltip {
-              Text(
-                if (mediaType ==
-                  MediaLibraryType.Audio
-                ) {
-                  androidx.compose.ui.res
-                    .stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_audio)
-                } else {
-                  androidx.compose.ui.res
-                    .stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_video)
+        FloatingActionButtonMenu(
+          modifier = Modifier.padding(bottom = (navigationBarHeight - 16.dp).coerceAtLeast(0.dp)),
+          expanded = isFabExpanded.value && !quickPlayFabDirect,
+          button = {
+            TooltipBox(
+              positionProvider =
+                TooltipDefaults.rememberTooltipPositionProvider(
+                  if (isFabExpanded.value && !quickPlayFabDirect) {
+                    TooltipAnchorPosition.Start
+                  } else {
+                    TooltipAnchorPosition.Above
+                  },
+                ),
+              tooltip = {
+                PlainTooltip {
+                  Text(
+                    androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_toggle_menu),
+                  )
+                }
+              },
+              state = rememberTooltipState(),
+            ) {
+              ToggleFloatingActionButton(
+                modifier =
+                  Modifier.animateFloatingActionButton(
+                    visible =
+                      showQuickPlayFab &&
+                        !selectionManager.isInSelectionMode &&
+                        isFabVisible.value &&
+                        !MainScreen.getPermissionDeniedState(),
+                    alignment = Alignment.BottomEnd,
+                  ),
+                checked = isFabExpanded.value && !quickPlayFabDirect,
+                onCheckedChange = {
+                  if (quickPlayFabDirect) {
+                    coroutineScope.launch {
+                      val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
+                      val lastPlayed = recentlyPlayedVideos.firstOrNull()
+                      val targetVideo =
+                        if (lastPlayed != null) {
+                          filteredVideosWithInfo.firstOrNull { it.video.path == lastPlayed.filePath }?.video
+                        } else {
+                          null
+                        }
+
+                      playFromMediaLibrary(targetVideo ?: filteredVideosWithInfo.first().video)
+                    }
+                  } else {
+                    isFabExpanded.value = !isFabExpanded.value
+                  }
                 },
-              )
+              ) {
+                val imageVector by remember {
+                  derivedStateOf {
+                    if (checkedProgress > 0.5f && !quickPlayFabDirect) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
+                  }
+                }
+                Icon(
+                  imageVector = imageVector,
+                  contentDescription = null,
+                  modifier = Modifier.animateIcon({ if (quickPlayFabDirect) 0f else checkedProgress }),
+                )
+              }
             }
           },
-          state = rememberTooltipState(),
         ) {
-          FloatingActionButton(
-            modifier =
-              Modifier
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(bottom = navigationBarHeight)
-                .animateFloatingActionButton(
-                  visible = showQuickPlayFab && !selectionManager.isInSelectionMode && isFabVisible.value,
-                  alignment = Alignment.BottomEnd,
-                ),
-            onClick = {
-              coroutineScope.launch {
-                val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
-                val lastPlayed = recentlyPlayedVideos.firstOrNull()
-                val targetVideo =
-                  if (lastPlayed != null) {
-                    filteredVideosWithInfo.firstOrNull { it.video.path == lastPlayed.filePath }?.video
-                  } else {
-                    null
-                  }
+          if (!quickPlayFabDirect) {
+            FloatingActionButtonMenuItem(
+              onClick = {
+                isFabExpanded.value = false
+                filePicker.launch(arrayOf(if (mediaType == MediaLibraryType.Audio) "audio/*" else "video/*"))
+              },
+              icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
+              text = {
+                Text(
+                  text =
+                    androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_open_file),
+                )
+              },
+            )
 
-                playFromMediaLibrary(targetVideo ?: filteredVideosWithInfo.first().video)
-              }
-            },
-          ) {
-            Icon(
-              Icons.RoundedFilled.PlayArrow,
-              contentDescription =
-                androidx.compose.ui.res.stringResource(
-                  app.gyrolet.mpvrx.R.string.ui_play_recently_played_or_first_video,
-                ),
+            FloatingActionButtonMenuItem(
+              onClick = {
+                isFabExpanded.value = false
+                coroutineScope.launch {
+                  val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
+                  val lastPlayed = recentlyPlayedVideos.firstOrNull()
+                  val targetVideo =
+                    if (lastPlayed != null) {
+                      filteredVideosWithInfo.firstOrNull { it.video.path == lastPlayed.filePath }?.video
+                    } else {
+                      null
+                    }
+
+                  playFromMediaLibrary(targetVideo ?: filteredVideosWithInfo.first().video)
+                }
+              },
+              icon = { Icon(Icons.RoundedFilled.PlayArrow, contentDescription = null) },
+              text = {
+                Text(
+                  text =
+                    if (mediaType == MediaLibraryType.Audio) {
+                      androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_audio)
+                    } else {
+                      androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_video)
+                    },
+                )
+              },
             )
           }
         }
