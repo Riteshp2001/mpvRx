@@ -351,7 +351,7 @@ fun AudioPlayerControls(
   val configuration = LocalConfiguration.current
   val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
   val isTablet = configuration.smallestScreenWidthDp >= 600
-  val isTabletLandscape = !isPortrait && (isTablet || configuration.screenWidthDp >= 600)
+  val isTabletLandscape = !isPortrait && isTablet
 
   Box(
     modifier =
@@ -897,6 +897,8 @@ fun AudioPlayerControls(
       }
     }
 
+    val isTabletPortrait = isPortrait && (isTablet || configuration.screenWidthDp >= 600)
+
     if (isPortrait) {
       Column(
         modifier = Modifier.fillMaxSize(),
@@ -905,7 +907,16 @@ fun AudioPlayerControls(
         headerBar()
         losslessBadge()
         Spacer(modifier = Modifier.height(16.dp))
-        centerVisualizerView(Modifier.weight(1f).fillMaxWidth())
+        val visualizerModifier =
+          if (isTabletPortrait) {
+            Modifier
+              .weight(1f)
+              .fillMaxWidth()
+              .padding(horizontal = 48.dp, vertical = 12.dp)
+          } else {
+            Modifier.weight(1f).fillMaxWidth()
+          }
+        centerVisualizerView(visualizerModifier)
         Spacer(modifier = Modifier.height(16.dp))
         trackMetadataView()
         Spacer(modifier = Modifier.height(16.dp))

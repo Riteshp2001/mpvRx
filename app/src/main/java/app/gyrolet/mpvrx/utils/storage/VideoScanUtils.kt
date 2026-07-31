@@ -514,6 +514,17 @@ object FileTypeUtils {
 
   fun isAudioFile(file: File): Boolean = file.extension.lowercase(Locale.getDefault()) in AUDIO_EXTENSIONS
 
+  fun stripExtension(title: String): String {
+    val dotIndex = title.lastIndexOf('.')
+    if (dotIndex <= 0) return title
+    val ext = title.substring(dotIndex + 1).lowercase(Locale.getDefault())
+    return if (ext in AUDIO_EXTENSIONS || ext in VIDEO_EXTENSIONS || (ext.length in 2..5 && ext.none { it.isWhitespace() })) {
+      title.substring(0, dotIndex)
+    } else {
+      title
+    }
+  }
+
   fun isSupportedMediaFile(
     file: File,
     options: MediaScanOptions,
