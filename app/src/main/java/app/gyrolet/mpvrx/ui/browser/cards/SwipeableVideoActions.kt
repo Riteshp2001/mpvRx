@@ -7,21 +7,22 @@
 
 package app.gyrolet.mpvrx.ui.browser.cards
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,9 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -46,6 +47,7 @@ import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.theme.LocalMotionPolicy
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
@@ -58,10 +60,10 @@ fun SwipeableVideoActions(
   onDelete: () -> Unit,
   content: @Composable () -> Unit,
 ) {
-  val actionWidth = 76.dp
+  val actionWidth = 88.dp
   val density = LocalDensity.current
-  val leftRevealPx = with(density) { (actionWidth * 2).toPx() }
-  val rightDragLimitPx = with(density) { (actionWidth * 2).toPx() }
+  val leftRevealPx = with(density) { actionWidth.toPx() }
+  val rightRevealPx = with(density) { actionWidth.toPx() }
   val thresholdPx = with(density) { 56.dp.toPx() }
   val scope = rememberCoroutineScope()
   val reduceMotion = LocalMotionPolicy.current.reduceMotion
@@ -105,46 +107,54 @@ fun SwipeableVideoActions(
         .clip(shape)
         .background(MaterialTheme.colorScheme.surface),
   ) {
+    // Swipe right → reveal left action (Watched/Unwatch)
     if (offsetX > 0f) {
+      val progress = (offsetX / leftRevealPx).coerceIn(0f, 1f)
       Box(
         modifier = Modifier.matchParentSize(),
         contentAlignment = Alignment.CenterStart,
       ) {
-        SwipeVideoAction(
+        SwipePillAction(
           label = if (isWatched) "Unwatch" else "Watched",
           icon = if (isWatched) Icons.RoundedFilled.RemoveCircle else Icons.RoundedFilled.CheckCircle,
           background = MaterialTheme.colorScheme.primaryContainer,
           contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
           width = actionWidth,
+          progress = progress,
           onClick = null,
         )
       }
     }
 
+    // Swipe left → reveal right actions (Rename + Delete)
     if (offsetX < 0f) {
+      val progress = (abs(offsetX) / rightRevealPx).coerceIn(0f, 1f)
       Row(
         modifier = Modifier.matchParentSize(),
         horizontalArrangement = Arrangement.End,
       ) {
-        SwipeVideoAction(
+        SwipePillAction(
           label = "Rename",
           icon = Icons.RoundedFilled.Edit,
           background = MaterialTheme.colorScheme.secondaryContainer,
           contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
           width = actionWidth,
+          progress = progress,
           onClick = { settle(0f, onRename) },
         )
-        SwipeVideoAction(
+        SwipePillAction(
           label = "Delete",
           icon = Icons.RoundedFilled.Delete,
           background = MaterialTheme.colorScheme.errorContainer,
           contentColor = MaterialTheme.colorScheme.onErrorContainer,
           width = actionWidth,
+          progress = progress,
           onClick = { settle(0f, onDelete) },
         )
       }
     }
 
+    // Draggable content
     Box(
       modifier =
         Modifier
@@ -153,12 +163,12 @@ fun SwipeableVideoActions(
           .background(MaterialTheme.colorScheme.surface)
           .then(
             if (enabled) {
-              Modifier.pointerInput(itemKey, leftRevealPx, rightDragLimitPx) {
+              Modifier.pointerInput(itemKey, leftRevealPx, rightRevealPx) {
                 detectHorizontalDragGestures(
                   onDragStart = { settleJob?.cancel() },
                   onHorizontalDrag = { change, dragAmount ->
                     change.consume()
-                    offsetX = (offsetX + dragAmount).coerceIn(-leftRevealPx, rightDragLimitPx)
+                    offsetX = (offsetX + dragAmount).coerceIn(-leftRevealPx, rightRevealPx)
                   },
                   onDragEnd = {
                     when {
@@ -166,7 +176,7 @@ fun SwipeableVideoActions(
                         val targetWatched = !currentIsWatched
                         settle(0f) { currentOnWatchedChange(targetWatched) }
                       }
-                      offsetX <= -thresholdPx -> settle(-leftRevealPx)
+                      offsetX <= -thresholdPx -> settle(-rightRevealPx)
                       else -> settle(0f)
                     }
                   },
@@ -184,32 +194,45 @@ fun SwipeableVideoActions(
 }
 
 @Composable
-private fun SwipeVideoAction(
+private fun SwipePillAction(
   label: String,
   icon: app.gyrolet.mpvrx.ui.icons.AppIcon,
   background: Color,
   contentColor: Color,
   width: androidx.compose.ui.unit.Dp,
+  progress: Float,
   onClick: (() -> Unit)?,
 ) {
-  Column(
+  val iconScale by animateFloatAsState(
+    targetValue = if (progress > 0.5f) 1f else 0.6f,
+    label = "iconScale",
+  )
+  val alpha by animateFloatAsState(
+    targetValue = progress.coerceIn(0.3f, 1f),
+    label = "alpha",
+  )
+
+  Box(
     modifier =
       Modifier
         .width(width)
         .fillMaxHeight()
+        .graphicsLayer {
+          scaleX = iconScale
+          scaleY = iconScale
+          this.alpha = alpha
+        }
+        .padding(8.dp)
+        .clip(RoundedCornerShape(28.dp))
         .background(background)
-        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-        .padding(horizontal = 4.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center,
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+    contentAlignment = Alignment.Center,
   ) {
-    Icon(icon, contentDescription = label, tint = contentColor)
-    Text(
-      text = label,
-      color = contentColor,
-      style = MaterialTheme.typography.labelSmall,
-      fontWeight = FontWeight.SemiBold,
-      maxLines = 1,
+    Icon(
+      icon,
+      contentDescription = label,
+      tint = contentColor,
+      modifier = Modifier.size(28.dp),
     )
   }
 }

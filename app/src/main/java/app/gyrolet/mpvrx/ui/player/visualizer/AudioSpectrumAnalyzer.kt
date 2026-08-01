@@ -36,23 +36,21 @@ class AudioSpectrumAnalyzer(
     return runCatching {
       features.markCaptureStarted()
 
-      if (audioSessionId > 0) {
-        val manager = VisualizerManager(audioSessionId)
-        manager.start(
-          onWaveform = { waveBytes ->
-            if (waveBytes.isNotEmpty()) {
-              processWaveformData(waveBytes)
-            }
-          },
-          onFFT = { fftBytes ->
-            if (fftBytes.isNotEmpty()) {
-              processFftData(fftBytes)
-            }
-          },
-          onSamplingRate = { rate -> sampleRate = rate },
-        )
-        visualizerManager = manager
-      }
+      val manager = VisualizerManager(audioSessionId)
+      manager.start(
+        onWaveform = { waveBytes ->
+          if (waveBytes.isNotEmpty()) {
+            processWaveformData(waveBytes)
+          }
+        },
+        onFFT = { fftBytes ->
+          if (fftBytes.isNotEmpty()) {
+            processFftData(fftBytes)
+          }
+        },
+        onSamplingRate = { rate -> sampleRate = rate },
+      )
+      visualizerManager = manager
     }
   }
 

@@ -1399,6 +1399,16 @@ class PlayerActivity :
         if (brightness != BRIGHTNESS_NOT_SET) {
           viewModel.changeBrightnessTo(brightness)
         }
+      } else {
+        // Re-sync from system brightness when remember-brightness is off
+        val systemBrightness = runCatching {
+          Settings.System
+            .getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+            .coerceIn(0f, 255f) / 255f
+        }.getOrNull()
+        if (systemBrightness != null) {
+          viewModel.changeBrightnessTo(systemBrightness)
+        }
       }
 
       if (!isInPictureInPictureMode) {

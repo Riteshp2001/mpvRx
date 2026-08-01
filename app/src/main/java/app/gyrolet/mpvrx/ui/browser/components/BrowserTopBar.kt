@@ -433,7 +433,7 @@ private fun SelectionTopBar(
       if (onRestore != null) {
         IconButton(
           onClick = onRestore,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Restore,
@@ -447,7 +447,7 @@ private fun SelectionTopBar(
       if (onPlay != null) {
         IconButton(
           onClick = onPlay,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.PlayArrow,
@@ -463,7 +463,7 @@ private fun SelectionTopBar(
       if (onPin != null) {
         IconButton(
           onClick = onPin,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.PushPin,
@@ -480,7 +480,7 @@ private fun SelectionTopBar(
       if (onAddToPlaylist != null) {
         IconButton(
           onClick = onAddToPlaylist,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.PlaylistAdd,
@@ -498,7 +498,7 @@ private fun SelectionTopBar(
         IconButton(
           onClick = onRename,
           enabled = isSingleSelection,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.DriveFileRenameOutline,
@@ -519,7 +519,7 @@ private fun SelectionTopBar(
         IconButton(
           onClick = onInfo,
           enabled = isSingleSelection,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Info,
@@ -539,7 +539,7 @@ private fun SelectionTopBar(
       if (onShare != null) {
         IconButton(
           onClick = onShare,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Share,
@@ -555,7 +555,7 @@ private fun SelectionTopBar(
       if (onMoveToSecure != null) {
         IconButton(
           onClick = onMoveToSecure,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Lock,
@@ -570,7 +570,7 @@ private fun SelectionTopBar(
       if (onBlacklist != null) {
         IconButton(
           onClick = onBlacklist,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Block,

@@ -18,7 +18,7 @@ void main(){
   vec2 p = s.xy; float seed = s.w;
 
   gl_Position = vec4(p.x/uAspect, p.y, aDummy*0.0, 1.0);
-  gl_PointSize = 1.6 + 1.2 * uEnergy + 1.4 * uBeat;
+  gl_PointSize = 2.8 + 2.0 * uEnergy + 2.0 * uBeat;
 
   float hue = fract(uHue + (fract(seed*7.91)-0.5)*(0.55+0.30*uHigh) + p.y*0.05);
   float sat = clamp(0.45 + 0.45*fract(seed*3.313), 0.0, 0.92);

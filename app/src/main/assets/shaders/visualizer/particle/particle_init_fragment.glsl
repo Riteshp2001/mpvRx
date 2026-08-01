@@ -15,11 +15,11 @@ vec4 spawn(vec2 fc, float t, float seed){
   float fam = fract(seed*13.37);
   vec2 p;
   if (fam < 0.70){
-    float sy = (r3 < 0.42) ? 0.085 : 0.52;   /* cluster near core + full spine */
-    p = vec2(g1*0.0055, g2*sy);
+    float sy = (r3 < 0.42) ? 0.12 : 0.65;   /* cluster near core + full spine */
+    p = vec2(g1*0.008, g2*sy);
   } else {
-    float sx = (r3 < 0.5) ? 0.10 : 0.48;     /* horizontal dust band */
-    p = vec2(g1*sx, g2*(0.006 + 0.045*r4*r4));
+    float sx = (r3 < 0.5) ? 0.14 : 0.60;     /* horizontal dust band */
+    p = vec2(g1*sx, g2*(0.008 + 0.06*r4*r4));
   }
   float life = 1.2 + 3.6*hash12(fc*5.137 + seed*7.7);
   return vec4(p, life, seed);
