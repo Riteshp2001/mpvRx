@@ -24,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.Preference
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 
@@ -72,7 +74,7 @@ fun SecureConfirmDialog(
           colors = CheckboxDefaults.colors(),
         )
         Text(
-          "Don't ask again",
+          stringResource(R.string.secure_folder_dont_ask_again),
           style = MaterialTheme.typography.bodyMedium,
         )
       }

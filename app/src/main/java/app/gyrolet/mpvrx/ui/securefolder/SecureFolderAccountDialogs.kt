@@ -31,6 +31,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -58,22 +60,22 @@ fun ChangePinDialog(
   var newPin by rememberSaveable(isOpen) { mutableStateOf("") }
   var confirmPin by rememberSaveable(isOpen) { mutableStateOf("") }
   var showPin by rememberSaveable(isOpen) { mutableStateOf(false) }
-  var error by rememberSaveable(isOpen) { mutableStateOf<String?>(null) }
+  var errorRes by rememberSaveable(isOpen) { mutableStateOf<Int?>(null) }
 
   fun submit() {
     when (step) {
       AccountDialogStep.VERIFY_CURRENT_PIN -> {
         if (preferences.verifyPin(currentPin)) {
-          error = null
+          errorRes = null
           step = AccountDialogStep.ENTER_NEW
         } else {
-          error = "Incorrect PIN"
+          errorRes = R.string.secure_folder_error_incorrect_pin
         }
       }
       AccountDialogStep.ENTER_NEW -> {
         when {
-          newPin.length < 4 -> error = "PIN must be at least 4 digits"
-          newPin != confirmPin -> error = "PINs don't match"
+          newPin.length < 4 -> errorRes = R.string.secure_folder_error_pin_min_digits
+          newPin != confirmPin -> errorRes = R.string.secure_folder_error_pins_dont_match
           else -> {
             preferences.setPin(newPin)
             onChanged()
@@ -88,7 +90,13 @@ fun ChangePinDialog(
     onDismissRequest = onDismiss,
     icon = { Icon(Icons.RoundedFilled.Lock, contentDescription = null) },
     title = {
-      Text(if (step == AccountDialogStep.VERIFY_CURRENT_PIN) "Confirm current PIN" else "Choose a new PIN")
+      Text(
+        if (step == AccountDialogStep.VERIFY_CURRENT_PIN) {
+          stringResource(R.string.secure_folder_confirm_current_pin)
+        } else {
+          stringResource(R.string.secure_folder_choose_new_pin)
+        }
+      )
     },
     text = {
       Column {
@@ -98,11 +106,11 @@ fun ChangePinDialog(
               value = currentPin,
               onValueChange = {
                 currentPin = it.filter(Char::isDigit).take(8)
-                error = null
+                errorRes = null
               },
               showPin = showPin,
               onToggleShowPin = { showPin = !showPin },
-              label = "Current PIN",
+              label = stringResource(R.string.secure_folder_current_pin),
               onDone = ::submit,
             )
           AccountDialogStep.ENTER_NEW -> {
@@ -110,29 +118,29 @@ fun ChangePinDialog(
               value = newPin,
               onValueChange = {
                 newPin = it.filter(Char::isDigit).take(8)
-                error = null
+                errorRes = null
               },
               showPin = showPin,
               onToggleShowPin = { showPin = !showPin },
-              label = "New PIN",
+              label = stringResource(R.string.secure_folder_new_pin),
             )
             PinTextField(
               value = confirmPin,
               onValueChange = {
                 confirmPin = it.filter(Char::isDigit).take(8)
-                error = null
+                errorRes = null
               },
               showPin = showPin,
               onToggleShowPin = { showPin = !showPin },
-              label = "Confirm new PIN",
+              label = stringResource(R.string.secure_folder_confirm_new_pin),
               onDone = ::submit,
               modifier = Modifier.padding(top = 8.dp),
             )
           }
         }
-        if (error != null) {
+        if (errorRes != null) {
           Text(
-            error!!,
+            stringResource(errorRes!!),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp),
@@ -142,11 +150,17 @@ fun ChangePinDialog(
     },
     confirmButton = {
       Button(onClick = ::submit) {
-        Text(if (step == AccountDialogStep.VERIFY_CURRENT_PIN) "Next" else "Save")
+        Text(
+          if (step == AccountDialogStep.VERIFY_CURRENT_PIN) {
+            stringResource(R.string.secure_folder_next)
+          } else {
+            stringResource(R.string.secure_folder_save)
+          }
+        )
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) { Text("Cancel") }
+      TextButton(onClick = onDismiss) { Text(stringResource(R.string.generic_cancel)) }
     },
   )
 }
@@ -166,21 +180,21 @@ fun ChangeSecurityQuestionDialog(
   var showPin by rememberSaveable(isOpen) { mutableStateOf(false) }
   var question by rememberSaveable(isOpen) { mutableStateOf("") }
   var answer by rememberSaveable(isOpen) { mutableStateOf("") }
-  var error by rememberSaveable(isOpen) { mutableStateOf<String?>(null) }
+  var errorRes by rememberSaveable(isOpen) { mutableStateOf<Int?>(null) }
 
   fun submit() {
     when (step) {
       AccountDialogStep.VERIFY_CURRENT_PIN -> {
         if (preferences.verifyPin(currentPin)) {
-          error = null
+          errorRes = null
           step = AccountDialogStep.ENTER_NEW
         } else {
-          error = "Incorrect PIN"
+          errorRes = R.string.secure_folder_error_incorrect_pin
         }
       }
       AccountDialogStep.ENTER_NEW -> {
         if (question.isBlank() || answer.isBlank()) {
-          error = "Please fill in both fields"
+          errorRes = R.string.secure_folder_error_fill_both_fields
           return
         }
         preferences.setSecurityQuestion(question.trim(), answer)
@@ -194,7 +208,13 @@ fun ChangeSecurityQuestionDialog(
     onDismissRequest = onDismiss,
     icon = { Icon(Icons.RoundedFilled.HelpOutline, contentDescription = null) },
     title = {
-      Text(if (step == AccountDialogStep.VERIFY_CURRENT_PIN) "Confirm current PIN" else "New security question")
+      Text(
+        if (step == AccountDialogStep.VERIFY_CURRENT_PIN) {
+          stringResource(R.string.secure_folder_confirm_current_pin)
+        } else {
+          stringResource(R.string.secure_folder_new_security_question)
+        }
+      )
     },
     text = {
       Column {
@@ -204,33 +224,33 @@ fun ChangeSecurityQuestionDialog(
               value = currentPin,
               onValueChange = {
                 currentPin = it.filter(Char::isDigit).take(8)
-                error = null
+                errorRes = null
               },
               showPin = showPin,
               onToggleShowPin = { showPin = !showPin },
-              label = "Current PIN",
+              label = stringResource(R.string.secure_folder_current_pin),
               onDone = ::submit,
             )
           AccountDialogStep.ENTER_NEW -> {
             OutlinedTextField(
               value = question,
               onValueChange = { question = it },
-              label = { Text("Question") },
+              label = { Text(stringResource(R.string.secure_folder_question)) },
               singleLine = true,
               modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
               value = answer,
               onValueChange = { answer = it },
-              label = { Text("Answer") },
+              label = { Text(stringResource(R.string.secure_folder_answer)) },
               singleLine = true,
               modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
           }
         }
-        if (error != null) {
+        if (errorRes != null) {
           Text(
-            error!!,
+            stringResource(errorRes!!),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp),
@@ -240,11 +260,17 @@ fun ChangeSecurityQuestionDialog(
     },
     confirmButton = {
       Button(onClick = ::submit) {
-        Text(if (step == AccountDialogStep.VERIFY_CURRENT_PIN) "Next" else "Save")
+        Text(
+          if (step == AccountDialogStep.VERIFY_CURRENT_PIN) {
+            stringResource(R.string.secure_folder_next)
+          } else {
+            stringResource(R.string.secure_folder_save)
+          }
+        )
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) { Text("Cancel") }
+      TextButton(onClick = onDismiss) { Text(stringResource(R.string.generic_cancel)) }
     },
   )
 }
@@ -272,7 +298,11 @@ private fun PinTextField(
       IconButton(onClick = onToggleShowPin) {
         Icon(
           if (showPin) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
-          contentDescription = if (showPin) "Hide PIN" else "Show PIN",
+          contentDescription = if (showPin) {
+            stringResource(R.string.secure_folder_hide_pin)
+          } else {
+            stringResource(R.string.secure_folder_show_pin)
+          },
         )
       }
     },

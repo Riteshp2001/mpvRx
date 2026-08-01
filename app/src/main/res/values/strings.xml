@@ -1528,4 +1528,89 @@
   <string name="syncplay_connect">Connect</string>
   <string name="syncplay_connecting">Connecting…</string>
   <string name="syncplay_player_status">Syncplay: %1$s (%2$d users)</string>
+
+  <!-- Secure Folder -->
+  <string name="secure_folder_title">Secure Folder</string>
+  <string name="secure_folder_summary">PIN-protected space for videos you want hidden from the library.</string>
+  <string name="secure_folder_dont_ask_again">Don't ask again</string>
+
+  <!-- Secure Folder Gate / Setup -->
+  <string name="secure_folder_enter_pin">Enter PIN</string>
+  <string name="secure_folder_unlock">Unlock</string>
+  <string name="secure_folder_forgot_pin">Forgot PIN?</string>
+  <string name="secure_folder_setup_title">Set up Secure Folder</string>
+  <string name="secure_folder_setup_subtitle">Choose a PIN and a recovery question.</string>
+  <string name="secure_folder_choose_new_pin">Choose a new PIN</string>
+  <string name="secure_folder_old_pin_invalid">Your old PIN no longer works.</string>
+  <string name="secure_folder_confirm_current_pin">Confirm current PIN</string>
+  <string name="secure_folder_pin">PIN</string>
+  <string name="secure_folder_current_pin">Current PIN</string>
+  <string name="secure_folder_new_pin">New PIN</string>
+  <string name="secure_folder_confirm_new_pin">Confirm new PIN</string>
+  <string name="secure_folder_confirm_pin">Confirm PIN</string>
+  <string name="secure_folder_security_question">Security question</string>
+  <string name="secure_folder_new_security_question">New security question</string>
+  <string name="secure_folder_question">Question</string>
+  <string name="secure_folder_answer">Answer</string>
+  <string name="secure_folder_answer_security_question">Answer your security question</string>
+  <string name="secure_folder_no_question_set">No security question is set.</string>
+  <string name="secure_folder_finish_setup">Finish setup</string>
+  <string name="secure_folder_show_pin">Show PIN</string>
+  <string name="secure_folder_hide_pin">Hide PIN</string>
+  <string name="secure_folder_verify">Verify</string>
+  <string name="secure_folder_next">Next</string>
+  <string name="secure_folder_save">Save</string>
+
+  <!-- Security Questions Presets -->
+  <string name="secure_folder_sq_pet">What was your first pet's name?</string>
+  <string name="secure_folder_sq_mother">What is your mother's maiden name?</string>
+  <string name="secure_folder_sq_school">What was the name of your first school?</string>
+  <string name="secure_folder_sq_city">What city were you born in?</string>
+  <string name="secure_folder_sq_nickname">What was your childhood nickname?</string>
+  <string name="secure_folder_sq_movie">What is your favorite movie?</string>
+
+  <!-- Secure Folder Screen -->
+  <string name="secure_folder_empty_title">Nothing hidden yet</string>
+  <string name="secure_folder_empty_message">Files you move here won't show up anywhere else in the app.</string>
+  <string name="secure_folder_restore_confirm_title">Restore %1$d item(s)?</string>
+  <string name="secure_folder_restore_confirm_subtitle">They'll go back to where they were originally, or Movies/Restored if that folder is gone.</string>
+  <string name="secure_folder_delete_confirm_title">Delete %1$d item(s) forever?</string>
+  <string name="secure_folder_delete_confirm_subtitle">This can't be undone — the files will be permanently removed from your Secure Folder.</string>
+  <string name="secure_folder_hide_entry_title">Hide Secure Folder from Preferences?</string>
+  <string name="secure_folder_hide_entry_subtitle">The "Secure Folder" row will be removed from Preferences. To open it again later, double-tap the app name at the top of the Home screen and enter your PIN.</string>
+  <string name="secure_folder_working_on_it">Working on it…</string>
+  <string name="secure_folder_selected_count">%1$d selected</string>
+  <string name="secure_folder_cancel_selection">Cancel selection</string>
+  <string name="secure_folder_restore">Restore</string>
+  <string name="secure_folder_delete_forever">Delete forever</string>
+  <string name="secure_folder_show_in_preferences">Show in Preferences</string>
+  <string name="secure_folder_hide_from_preferences">Hide from Preferences</string>
+  <string name="secure_folder_change_pin">Change PIN</string>
+  <string name="secure_folder_change_security_question">Change security question</string>
+
+  <!-- Move to Secure Folder & Actions -->
+  <string name="secure_folder_move_to">Move to Secure Folder</string>
+  <string name="secure_folder_moving_progress">Moving to Secure Folder…</string>
+  <string name="secure_folder_move_folders_title">Move %1$d folder(s) to Secure Folder?</string>
+  <string name="secure_folder_move_folders_subtitle">Every video inside will disappear from this list and everywhere else in the app until restored.</string>
+  <string name="secure_folder_move_items_title">Move %1$d item(s) to Secure Folder?</string>
+  <string name="secure_folder_move_items_subtitle">They'll disappear from this list and everywhere else in the app until restored.</string>
+  <string name="secure_folder_moved_success">Moved %1$d file(s) to Secure Folder</string>
+  <string name="secure_folder_moved_partial">Moved %1$d, failed %2$d</string>
+  <string name="secure_folder_move_failed">Failed to move files to Secure Folder</string>
+
+  <!-- Errors & Operation Results -->
+  <string name="secure_folder_error_incorrect_pin">Incorrect PIN</string>
+  <string name="secure_folder_error_pin_min_digits">PIN must be at least 4 digits</string>
+  <string name="secure_folder_error_pins_dont_match">PINs don't match</string>
+  <string name="secure_folder_error_answer_question">Please answer the security question</string>
+  <string name="secure_folder_error_fill_both_fields">Please fill in both fields</string>
+  <string name="secure_folder_error_recovery_no_match">That doesn't match our records</string>
+  <string name="secure_folder_restored_success">Restored %1$d file(s)</string>
+  <string name="secure_folder_restored_partial">Restored %1$d, failed %2$d</string>
+  <string name="secure_folder_restore_failed">Restore failed: %1$s</string>
+  <string name="secure_folder_deleted_success">Deleted %1$d file(s)</string>
+  <string name="secure_folder_deleted_partial">Deleted %1$d, failed %2$d</string>
+  <string name="secure_folder_delete_failed">Delete failed: %1$s</string>
+  <string name="secure_folder_progress_format">%1$d of %2$d · %3$d%%</string>
 </resources>

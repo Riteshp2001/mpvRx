@@ -21,11 +21,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
 
 /**
@@ -89,7 +91,12 @@ fun SecureFolderProgressDialog(
         Text(
           text =
             if (totalFiles > 0) {
-              "${progress.currentFileIndex.coerceAtMost(totalFiles)} of $totalFiles · ${(progress.overallProgress * 100).toInt()}%"
+              stringResource(
+                R.string.secure_folder_progress_format,
+                progress.currentFileIndex.coerceAtMost(totalFiles),
+                totalFiles,
+                (progress.overallProgress * 100).toInt(),
+              )
             } else {
               "${(progress.overallProgress * 100).toInt()}%"
             },
@@ -110,7 +117,7 @@ fun SecureFolderProgressDialog(
           shape = MaterialTheme.shapes.extraLarge,
         ) {
           Text(
-            "Cancel",
+            stringResource(R.string.generic_cancel),
             fontWeight = FontWeight.Medium,
           )
         }
