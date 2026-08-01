@@ -10,6 +10,7 @@ These notes are written in plain English and focus on what changed for real use.
 - **Interactive Audio Visualizers**:
   - **3D Cuboid Warptunnel Visualizer**: Ported native Compose Canvas 3D tunnel visualizer featuring dynamic tunnel radius, touch-steering controls, 3D rotation gestures, pinch-zoom, screen-filling scale, dynamic theme palettes, and interactive reactivity.
   - **OpenGL Blob & Galaxy Visualizers**: High-rate spectrum capture, FFT audio-capture energy processing, tuned frequency envelopes, frame-time-aware interpolation, and responsive beat decay for smooth, jump-free rendering.
+  - **PCM-based Visualizer Pipeline**: New per-bin FFT texture pipeline for enhanced audio spectrum analysis with dual waveform/FFT capture.
 - **Separate Background Playback Controls**: Introduced independent background playback settings for audio vs. video media with notification permission prompts, system brightness restriction to valid ranges, and automatic service cleanup.
 - **Smarter Media Notifications**: Audio notifications now strip file extensions from track titles and fall back to embedded album art when MPV reports no thumbnail.
 - **Uninterrupted Background Music**: Swiping back during audio playback keeps the song playing, the playback service stays alive when reopening the player from a notification, and toggling the background playback setting off no longer pauses active music.
@@ -34,10 +35,12 @@ These notes are written in plain English and focus on what changed for real use.
 - **Display Refresh Rate Auto-Matching**: Automatically adjusts the display refresh rate to match video source frame rates for smooth, tear-free video output.
 - **Anime4K & Vulkan Upscaling**: Added standalone Anime4K Ultra upscaling mode with `gpu-next` Vulkan requirement checks and optimized baseline profiles.
 - **HDR Mode Hardening**: HDR modes are now properly gated by renderer support (GPU Next + Vulkan), colors are restored correctly when HDR is disabled, and your last selected HDR mode is remembered between sessions.
+- **Linear HDR Restored**: Reverted Linear HDR to use mpv-native pipeline without hdr-toys shaders, fixing brightness issues on supported devices.
 - **Robust Player Sessions**: Added an mpv session coordinator that reliably tears down and recovers sessions (no ghost players after crashes), sanitizes the mpv config, and collects player diagnostics.
 - **Negative Brightness Control**: Support for negative brightness adjustment to dim the display below system default minimums.
 - **Instant Video Launch & Startup Optimization**: Offloaded file loading to `Dispatchers.Default` to eliminate UI thread blocking. Deferred cold-start DB init, grammar pre-load, and auto-update checks to cut first-frame time significantly.
 - **Screenshot Timestamps & Templates**: Re-worked screenshot templates (`%F`, `%P`, `%p`, `%wH`, `%wM`, `%wS`, `%wT`) to use exact video playback position instead of wall-clock time.
+- **Audio Decoder Fallback**: Added audio decoder check and fallback for unsupported audio codecs in compressor.
 
 ### 📱 UI & Modern Tablet Dual-Pane Design
 - **Telegram-Style Floating Pill Navbar**: Redesigned bottom navigation bar with a modern floating pill design, smooth sliding indicator animations, and gesture-synced pill motion that follows finger swipes across tabs.
@@ -50,6 +53,7 @@ These notes are written in plain English and focus on what changed for real use.
 - **Navbar & Toolbar Polish**: Fixed floating navbar bottom inset padding, added a smooth animated selection toolbar, and fixed the bottom navbar hiding in the audio library.
 - **Unified Blur Theme Transitions**: Consistent blur-based theme transitions throughout the app.
 - **Rounded Material Symbol Icons**: All app icons unified onto rounded Material Symbols with a cleaner icon pipeline.
+- **Header Theme Toggle**: Single tap on app name/screen title now toggles dark/light theme with circular reveal animation (always enabled).
 
 ### 🌐 Syncplay & Network Streaming
 - **Synchronized Room Playback**: Complete Syncplay client implementation featuring server connections, room creation/joining, MD5 password authentication, latency compensation, protocol version handshakes, and user list sync with background reconnection fixes.
@@ -86,6 +90,16 @@ These notes are written in plain English and focus on what changed for real use.
 - **Toast Notifications for Blocked Audio**: Displays helpful toast alerts when background playback is restricted by notification settings.
 - **Memory Leak & Crash Fixes**: Plugged 5 memory leaks across player activity, main activity, and background services, and fixed audio player back navigation crashes.
 - **Full Multi-Language Localization**: Complete string key synchronization and translations across English, Arabic, German, Spanish, French, Japanese, Brazilian Portuguese, Russian, and Simplified Chinese.
+- **Code Cleanup**: Removed dead code, extracted shared utilities, DRY/SOLID cleanup across codebase.
+
+### 🔒 Secure Folder
+- **PIN Gate & Grid Screen**: Secure Folder now requires PIN authentication before access, with a grid view of secured media.
+- **Biometric Authentication**: Added fingerprint and face unlock support for quick access (when device supports BIOMETRIC_STRONG).
+- **Layout Mode**: Enabled List/Grid layout toggle in Secure Folder sort options.
+- **Back Button Behavior**: Pressing back in selection mode now deselects all items first before navigating back.
+- **Hide Entry Point**: Option to hide Secure Folder from preferences (still accessible via title double-tap).
+- **Don't Ask Again Flags**: Added "don't ask again" options for move, restore, delete, and hide entry point confirmations.
+- **Tablet Responsiveness**: Improved Secure Folder UI for tablet and foldable devices.
 
 ### 🏷️ Branding, Licensing & Cleanup
 - **App Rename**: The app is now branded **mpvRx** (renamed from "MpvRx") across UI, docs, and metadata.
