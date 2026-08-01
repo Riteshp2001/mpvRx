@@ -148,7 +148,11 @@ class SecureFolderViewModel(
   fun verifySecurityAnswerForRecovery(answer: String): Boolean {
     val ok = preferences.verifySecurityAnswer(answer)
     if (ok) {
-      preferences.resetPinAfterRecovery()
+      // Don't clear the old PIN here — it stays valid until finishForgotPinFlow() successfully
+      // persists the new one via preferences.setPin(), which overwrites the old hash/salt
+      // atomically. Clearing it up front would leave isPinSet() == false if the user backs out
+      // or the app is killed on the new-PIN screen, letting anyone set a fresh PIN and open the
+      // existing Secure Folder contents.
       _gateError.value = null
       _gateStep.value = GateStep.FORGOT_PIN_NEW_PIN
     } else {

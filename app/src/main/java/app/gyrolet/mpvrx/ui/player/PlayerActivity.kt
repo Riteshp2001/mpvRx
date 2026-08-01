@@ -170,12 +170,19 @@ class PlayerActivity :
   private val playerObserver by lazy { PlayerObserver(this) }
 
   /**
-   * True when this playback session was launched from the Secure Folder. Files hidden there
-   * should never leave a trail in Recents/playback-history, regardless of how playback later
-   * navigates (single file, auto-playlist, etc.) — this is computed once from the original
-   * intent so it stays correct even after `intent` extras get reused for playlist navigation.
+   * True when the current playback session was launched from the Secure Folder. Files hidden
+   * there should never leave a trail in Recents/playback-history, regardless of how playback
+   * later navigates (single file, auto-playlist, etc.).
+   *
+   * `PlayerActivity` is `singleTask`, so opening a new file while the player is already running
+   * goes through `onNewIntent` (not `onCreate`) and reuses this same instance. This is a `var`
+   * set explicitly in `onCreate` and recomputed from the current intent in `onNewIntent`
+   * whenever genuinely new media is loaded — not a `by lazy` computed once and cached for the
+   * activity's whole lifetime — so a stale value from an earlier, non-secure session can't
+   * survive into a later secure-folder one (or vice versa). Defaults to `false` here since
+   * `intent` isn't safely readable this early (before `onCreate`/`attach`).
    */
-  private val isSecureFolderLaunch by lazy { intent.getStringExtra("launch_source") == "secure_folder" }
+  private var isSecureFolderLaunch = false
 
   // ==================== Dependency Injection ====================
 
@@ -503,6 +510,8 @@ class PlayerActivity :
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    // Read from the actual launch intent now that it's safe to (see isSecureFolderLaunch kdoc).
+    isSecureFolderLaunch = intent.getStringExtra("launch_source") == "secure_folder"
     setContentView(binding.root)
     setupSystemBarsAutoHide()
     setupPipHelper()
@@ -3957,6 +3966,13 @@ class PlayerActivity :
     if (!isBackgroundPlaybackEnabled() && (serviceBound || mediaPlaybackService != null || MediaPlaybackService.isRunning())) {
       endBackgroundPlayback()
     }
+
+    // Recompute from the new intent — this activity is singleTask, so opening a different file
+    // reuses this same instance via onNewIntent instead of a fresh onCreate. Doing this here
+    // (after the notification prev/next and background-resume branches already returned above)
+    // means it only changes when genuinely new media is being loaded, not on every onNewIntent
+    // call, so a stale true/false from the previous file never leaks into the next one.
+    isSecureFolderLaunch = intent.getStringExtra("launch_source") == "secure_folder"
 
     // Check if this intent has playlist information
     val hasPlaylistExtras =
