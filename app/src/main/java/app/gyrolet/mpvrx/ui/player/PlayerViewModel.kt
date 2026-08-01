@@ -1096,7 +1096,6 @@ class PlayerViewModel(
         reconcileHdrModeWithRenderer()
       }
     }
-    AmbientShaderBuilder.prewarmAsync(viewModelScope)
     syncplayManager.playbackStateProvider = { currentSyncplayPlaybackState() }
     syncplayManager.fileInfoProvider = { currentSyncplayFileInfo() }
     syncplayManager.onRemotePause = { shouldPause ->
@@ -5033,10 +5032,7 @@ class PlayerViewModel(
     ambientDebounceJob?.cancel()
     ambientShaderFile?.let { file ->
       runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", file.absolutePath) }
-    }
-    runCatching {
-      host.context.cacheDir.listFiles { _, name -> name.startsWith("ambient_") && name.endsWith(".glsl") }
-        ?.forEach { it.delete() }
+      file.delete()
     }
     ambientShaderFile = null
     // Reset the shader cache and scale tracking so a subsequent enable always
@@ -5417,17 +5413,16 @@ class PlayerViewModel(
       }
       lastCompiledSpec = spec
 
-      // Dual-buffered ambient shader swap (ambient_a.glsl / ambient_b.glsl) prevents
-      // premature deletion of active GLSL files while MPV's render thread processes updates.
-      val slot = if (++ambientShaderSeq % 2 == 0) "a" else "b"
+      // Each reload gets a unique filename so MPV never reuses a cached
+      // compiled shader — incrementing seq guarantees a fresh compile every time.
       val shaderCode = AmbientShaderBuilder.build(spec)
-      val newFile = File(host.context.cacheDir, "ambient_$slot.glsl")
+      val newFile = File(host.context.cacheDir, "ambient_${++ambientShaderSeq}.glsl")
       newFile.writeText(shaderCode)
-      val oldFile = ambientShaderFile
-      MPVLib.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
-      if (oldFile != null && oldFile.exists() && oldFile.absolutePath != newFile.absolutePath) {
+      ambientShaderFile?.let { oldFile ->
         runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
+        oldFile.delete()
       }
+      MPVLib.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
       ambientShaderFile = newFile
     }.onFailure { e ->
       Log.e(TAG, "Failed to update ambient stretch", e)
@@ -5522,7 +5517,6 @@ class PlayerViewModel(
 
     runCatching { syncplayManager.clearPlayerBindings() }
     runCatching { audioEqualizerManager.release() }
-    runCatching { disableAmbientShader() }
 
     super.onCleared()
   }

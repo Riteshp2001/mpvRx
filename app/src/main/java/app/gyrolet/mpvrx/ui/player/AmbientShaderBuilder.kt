@@ -7,13 +7,9 @@
 
 package app.gyrolet.mpvrx.ui.player
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -213,16 +209,12 @@ private const val GOLDEN_ANGLE = 2.399963229728653
 
 private fun glslFloat(value: Double): String {
   val normalized = if (abs(value) < 0.0000005) 0.0 else value
-  val rounded = kotlin.math.round(normalized * 100000000.0) / 100000000.0
-  var s = rounded.toString()
-  if (!s.contains('.')) {
-    s += ".0"
-  } else {
-    while (s.endsWith('0') && s.length > 2 && s[s.length - 2] != '.') {
-      s = s.substring(0, s.length - 1)
-    }
-  }
-  return s
+  val formatted =
+    String
+      .format(Locale.US, "%.8f", normalized)
+      .trimEnd('0')
+      .trimEnd('.')
+  return if (formatted.contains('.')) formatted else "$formatted.0"
 }
 
 private fun buildSpiralTapTable(
@@ -259,19 +251,8 @@ private fun halton(
 }
 
 object AmbientShaderBuilder {
-  private val glowTapCache = ConcurrentHashMap<Int, String>()
-  private val frameGlowTapCache = ConcurrentHashMap<Int, String>()
-
-  fun prewarmAsync(scope: CoroutineScope) {
-    scope.launch(Dispatchers.Default) {
-      getGlowTaps(8)
-      getGlowTaps(18)
-      getGlowTaps(24)
-      getFrameGlowTaps(6)
-      getFrameGlowTaps(8)
-      getFrameGlowTaps(10)
-    }
-  }
+  private val glowTapCache = HashMap<Int, String>()
+  private val frameGlowTapCache = HashMap<Int, String>()
 
   private fun getGlowTaps(samples: Int): String =
     glowTapCache.getOrPut(samples) {
@@ -342,6 +323,8 @@ vec4 hook() {
     avg_color *= fade;
 
     // Debanding via Interleaved Gradient Noise (Jimenez 2014).
+    // Replaces the previous sin-based hash() — uses only fract + dot,
+    // eliminating the last GPU sin() call from this shader.
     vec2 screen_pos = floor(uv * HOOKED_size);
     float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
     avg_color = clamp(avg_color + (ign - 0.5) * 0.004, 0.0, 1.0);
@@ -352,18 +335,8 @@ vec4 hook() {
 
   private fun buildGlow(spec: AmbientGlowShaderSpec): String = buildGlowFull(spec)
 
-  private fun buildGlowFull(spec: AmbientGlowShaderSpec): String {
-    val count = spec.blurSamples.coerceAtLeast(1)
-    val distWValues = (0 until count).joinToString(", ") { index ->
-      val indexNorm = (index.toDouble() + 0.5) / count.toDouble()
-      val radiusNorm = sqrt(indexNorm)
-      val r = radiusNorm * spec.maxRadius
-      val distW = (1.0 / (1.0 + r * 40.0)).coerceAtLeast(0.0).pow(spec.fadeCurve.toDouble())
-      glslFloat(distW)
-    }
-    val invMaxRadius3 = if (spec.maxRadius > 0.001f) glslFloat(3.0 / spec.maxRadius.toDouble()) else "3000.0"
-
-    return """
+  private fun buildGlowFull(spec: AmbientGlowShaderSpec): String =
+    """
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!DESC True Ambient Mode
@@ -375,15 +348,17 @@ vec4 hook() {
 #define BEZEL_DEPTH      ${spec.shared.bezelDepth}
 #define VIGNETTE_STR     ${spec.shared.vignetteStrength}
 #define WARMTH           ${spec.warmth}
+#define FADE_CURVE       ${spec.fadeCurve}
 #define OPACITY          ${spec.shared.opacity}
 #define SCALE_X          ${spec.context.scaleX}
 #define SCALE_Y          ${spec.context.scaleY}
-#define INV_MAX_RADIUS_3 $invMaxRadius3
 
 const float PI  = 3.14159265358979;
 ${getGlowTaps(spec.blurSamples)}
 
-const float DIST_W[$count] = float[$count]($distWValues);
+float rand(vec2 seed) {
+    return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+}
 
 float luma(vec3 rgb) {
     return dot(rgb, vec3(0.2126, 0.7152, 0.0722));
@@ -411,12 +386,9 @@ vec4 hook() {
 
     vec2 edge_origin = clamp(video_uv, 0.0, 1.0);
     float edge_dist = length(video_uv - edge_origin);
-    float edge_fade = exp(-edge_dist * INV_MAX_RADIUS_3);
+    float edge_fade = exp(-edge_dist * (3.0 / max(MAX_RADIUS, 0.001)));
 
-    // Jimenez Interleaved Gradient Noise for jitter rotation (zero GPU sin() calls)
-    vec2 screen_pos = floor(uv * HOOKED_size);
-    float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
-    float jitter = ign * (PI * 2.0);
+    float jitter = rand(uv * HOOKED_size) * (PI * 2.0);
     float jitter_s = sin(jitter);
     float jitter_c = cos(jitter);
     vec2 aspect_fix = vec2(HOOKED_size.y / HOOKED_size.x, 1.0);
@@ -427,6 +399,7 @@ vec4 hook() {
     for (int i = 0; i < BLUR_SAMPLES; i++) {
         vec3 tap = GLOW_TAPS[i];
         vec2 base_offset = tap.xy * MAX_RADIUS;
+        float r = tap.z * MAX_RADIUS;
 
         vec2 offset = vec2(
             base_offset.x * jitter_c - base_offset.y * jitter_s,
@@ -435,7 +408,7 @@ vec4 hook() {
         vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
         vec3 sample_rgb = HOOKED_tex(sample_uv).rgb;
 
-        float dist_w = DIST_W[i];
+        float dist_w = pow(max(1.0 / (1.0 + r * 40.0), 0.0), FADE_CURVE);
         float luma_w = 1.0 + luma(sample_rgb) * 2.0;
         float weight = dist_w * luma_w;
 
@@ -461,7 +434,6 @@ vec4 hook() {
     return mix(edge_pixel, ambient_out, bezel_alpha);
 }
     """.trimIndent()
-  }
 
   private fun buildFrameExtend(spec: AmbientFrameExtendShaderSpec): String = buildFrameExtendFull(spec)
 
@@ -493,13 +465,16 @@ vec4 hook() {
 const float PI = 3.14159265358979;
 ${getFrameGlowTaps(glowSamples)}
 
+float rand(vec2 seed) {
+    return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 float luma(vec3 rgb) {
     return dot(rgb, vec3(0.2126, 0.7152, 0.0722));
 }
 
 float noise_value(vec2 uv) {
-    vec2 screen_pos = floor(uv * HOOKED_size + vec2(11.0, 47.0));
-    return fract(dot(screen_pos, vec2(0.75487766, 0.56984029))) - 0.5;
+    return rand(uv * HOOKED_size + vec2(11.0, 47.0)) - 0.5;
 }
 
 vec3 apply_dither(vec3 rgb, vec2 uv, float flatness) {
@@ -521,9 +496,7 @@ float edge_risk(vec2 edge_origin, vec3 edge, vec2 inward_dir, vec2 ortho_dir) {
 }
 
 vec3 sample_soft_glow(vec2 edge_origin, vec2 uv, float outside_norm) {
-    vec2 screen_pos = floor(uv * HOOKED_size);
-    float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
-    float jitter = ign * (PI * 2.0);
+    float jitter = rand(uv * HOOKED_size) * (PI * 2.0);
     float jitter_s = sin(jitter);
     float jitter_c = cos(jitter);
     float radius = mix(0.016, 0.095, outside_norm);
