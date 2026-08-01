@@ -53,9 +53,9 @@
   <string name="pref_nav_network_title">Afficher l’onglet Réseau</string>
   <string name="pref_nav_network_summary">Afficher ou masquer Réseau dans la barre de navigation inférieure</string>
   <string name="pref_quick_play_fab_title">FAB de lecture rapide</string>
-  <string name="pref_quick_play_fab_summary">Afficher le bouton d\'action flottant de lecture rapide dans les écrans du navigateur</string>
+  <string name="pref_quick_play_fab_summary">Afficher le bouton d\’action flottant de lecture rapide dans les écrans du navigateur</string>
   <string name="pref_quick_play_fab_direct_title">Lecture rapide directe</string>
-  <string name="pref_quick_play_fab_direct_summary">Lire directement la dernière vidéo lue en appuyant sur le bouton au lieu d\'afficher les options</string>
+  <string name="pref_quick_play_fab_direct_summary">Lire directement la dernière vidéo lue en appuyant sur le bouton au lieu d\’afficher les options</string>
   <string name="pref_appearance_nav_style_slide">Glissement</string>
   <string name="pref_appearance_nav_style_fade">Fondu</string>
   <string name="pref_appearance_nav_style_none">Aucun (instantané)</string>
@@ -462,9 +462,9 @@ Suivant : NEXT</string>
   <!-- Background Playback -->
   <string name="background_playback_title">Lecture en arrière-plan</string>
   <string name="pref_audio_background_playback_title">Lecture en arrière-plan (Lecteur Audio)</string>
-  <string name="pref_audio_background_playback_summary">Continuer la lecture audio en quittant le lecteur audio ou en éteignant l\'écran</string>
+  <string name="pref_audio_background_playback_summary">Continuer la lecture audio en quittant le lecteur audio ou en éteignant l\’écran</string>
   <string name="pref_video_background_playback_title">Lecture en arrière-plan (Lecteur Vidéo)</string>
-  <string name="pref_video_background_playback_summary">Continuer la lecture du son de la vidéo en quittant le lecteur vidéo ou en éteignant l\'écran</string>
+  <string name="pref_video_background_playback_summary">Continuer la lecture du son de la vidéo en quittant le lecteur vidéo ou en éteignant l\’écran</string>
   <string name="deselect_all">Tout désélectionner</string>
   <string name="select_all">Tout sélectionner</string>
   <string name="invert_selection">Inverser la sélection</string>
@@ -1010,6 +1010,28 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="search_category_subtitles">Sous-titres</string>
   <string name="search_generated_summary">Configurer l’option %1$s.</string>
   <string name="compressor_reduction_percent">−%1$d%%</string>
+  <string name="compressor_add_preset">Ajouter un préréglage</string>
+  <string name="compressor_default_audio">Audio par défaut</string>
+  <string name="compressor_default_video">Vidéo par défaut</string>
+  <string name="compressor_defaults">Valeurs par défaut</string>
+  <string name="compressor_delete_preset">Supprimer le préréglage</string>
+  <string name="compressor_preset_configs">Configurations des préréglages</string>
+  <string name="compressor_reset_audio_defaults">Réinitialiser l’audio par défaut</string>
+  <string name="compressor_reset_presets">Réinitialiser les préréglages</string>
+  <string name="compressor_reset_video_defaults">Réinitialiser la vidéo par défaut</string>
+  <string name="compressor_settings">Paramètres du compresseur</string>
+  <string name="compressor_show_target_size_presets">Afficher les tailles cibles prédéfinies</string>
+  <string name="compressor_size_ratio">Ratio de taille cible (0 - 1)</string>
+  <string name="compressor_storage_saved">Afficher l’espace total économisé</string>
+  <string name="compressor_target_fps">Fréquence d’images cible</string>
+  <string name="compressor_target_preset_name">Nom du préréglage</string>
+  <string name="compressor_target_preset_size_mb">Taille cible (Mo)</string>
+  <string name="compressor_target_resolution">Résolution cible</string>
+  <string name="compressor_target_size_presets_title">Préréglage de taille cible</string>
+  <string name="compressor_total_saved">Espace total économisé : %1$s</string>
+  <string name="compressor_volume">Volume</string>
+  <string name="compressor_volume_hint" formatted="false">100% est le niveau audio d’origine. Au-dessus de 100%, l’audio est amplifié.</string>
+  <string name="compressor_zero_keeps_original">0 conserve la valeur d’origine.</string>
   <string name="generic_minutes_short">%1$d min</string>
   <string name="player_horizontal_flip_on">Retournement horizontal activé</string>
   <string name="player_horizontal_flip_off">Retournement horizontal désactivé</string>

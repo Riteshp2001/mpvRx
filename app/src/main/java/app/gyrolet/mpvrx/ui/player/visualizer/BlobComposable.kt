@@ -80,7 +80,7 @@ private fun <T> VisualizerOverlay(
     val analyzer = AudioSpectrumAnalyzer(features)
     val job =
       scope.launch(Dispatchers.Default) {
-        while (isActive && analyzer != null) {
+        while (isActive) {
           if (!realAnalyzerActive.get()) {
             realAnalyzerActive.set(analyzer.start(audioSessionId).isSuccess)
           }
@@ -91,7 +91,7 @@ private fun <T> VisualizerOverlay(
     onDispose {
       job.cancel()
       realAnalyzerActive.set(false)
-      analyzer?.stop(resetFeatures = false)
+      analyzer.stop(resetFeatures = false)
     }
   }
 

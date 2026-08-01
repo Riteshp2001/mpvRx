@@ -52,6 +52,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -66,10 +67,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -99,6 +102,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -145,6 +149,8 @@ fun VideoCompressorOverlay(
   val scope = rememberCoroutineScope()
 
   var showInfoDialog by rememberSaveable { mutableStateOf(false) }
+  var showSettings by rememberSaveable { mutableStateOf(false) }
+  var presetEditTarget by remember { mutableStateOf<VideoCompressionPreset?>(null) }
 
   LaunchedEffect(videos.map { it.id to it.uri }) {
     viewModel.loadVideos(context, videos)
@@ -228,15 +234,22 @@ fun VideoCompressorOverlay(
               state = state,
               onClose = ::closeOverlay,
               onShowInfo = { showInfoDialog = true },
+              onShowSettings = { showSettings = true },
               onStart = { viewModel.startCompression(context) },
               onApplyPreset = viewModel::applyPreset,
               onSetTargetSize = viewModel::setTargetSize,
+              onSetTargetSizePreset = viewModel::setTargetSizePreset,
               onSetVideoCodec = viewModel::setVideoCodec,
               onSetResolution = viewModel::setResolution,
               onSetFps = viewModel::setFps,
               onToggleRemoveAudio = viewModel::toggleRemoveAudio,
               onSetAudioBitrate = viewModel::setAudioBitrate,
+              onUpdateAudioVolume = viewModel::updateAudioVolume,
               onSetSaveMode = viewModel::setSaveMode,
+              onEditPreset = { preset ->
+                presetEditTarget = preset
+                showSettings = true
+              },
             )
           }
 
@@ -276,6 +289,28 @@ fun VideoCompressorOverlay(
         }
       }
     }
+  }
+
+  if (showSettings) {
+    CompressorSettingsSheet(
+      state = state,
+      initialPreset = presetEditTarget,
+      onDismiss = {
+        showSettings = false
+        presetEditTarget = null
+      },
+      onToggleShowStorageSaved = viewModel::toggleShowStorageSaved,
+      onToggleShowTargetSizePreset = viewModel::toggleShowTargetSizePreset,
+      onSaveQualityPreset = viewModel::saveQualityPreset,
+      onResetQualityPresets = viewModel::resetQualityPresets,
+      onSaveTargetSizePreset = viewModel::saveTargetSizePreset,
+      onDeleteTargetSizePreset = viewModel::deleteTargetSizePreset,
+      onResetTargetSizePresets = viewModel::resetTargetSizePresets,
+      onSaveDefaultVideoConfig = viewModel::saveDefaultVideoConfig,
+      onResetDefaultVideoConfig = viewModel::resetDefaultVideoConfig,
+      onSaveDefaultAudioConfig = viewModel::saveDefaultAudioConfig,
+      onResetDefaultAudioConfig = viewModel::resetDefaultAudioConfig,
+    )
   }
 
   if (showInfoDialog) {
@@ -351,15 +386,19 @@ private fun CompressorConfigSurface(
   state: VideoCompressorUiState,
   onClose: () -> Unit,
   onShowInfo: () -> Unit,
+  onShowSettings: () -> Unit,
   onStart: () -> Unit,
   onApplyPreset: (VideoCompressionPreset) -> Unit,
   onSetTargetSize: (Float) -> Unit,
+  onSetTargetSizePreset: (Float) -> Unit,
   onSetVideoCodec: (String) -> Unit,
   onSetResolution: (Int) -> Unit,
   onSetFps: (Int) -> Unit,
   onToggleRemoveAudio: () -> Unit,
   onSetAudioBitrate: (Int) -> Unit,
+  onUpdateAudioVolume: (Float) -> Unit,
   onSetSaveMode: (VideoCompressorSaveMode) -> Unit,
+  onEditPreset: (VideoCompressionPreset) -> Unit,
 ) {
   val pagerState = rememberPagerState(pageCount = { 3 })
   val scope = rememberCoroutineScope()
@@ -411,6 +450,14 @@ private fun CompressorConfigSurface(
           }
         },
         actions = {
+          IconButton(onClick = onShowSettings) {
+            Icon(
+              Icons.RoundedFilled.Settings,
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_settings),
+            )
+          }
           IconButton(onClick = onShowInfo) {
             Icon(
               Icons.RoundedFilled.Info,
@@ -480,9 +527,16 @@ private fun CompressorConfigSurface(
                 modifier = Modifier.fillMaxSize(),
               ) { page ->
                 when (page) {
-                  0 -> CompressorPresetsTab(state, onApplyPreset, onSetTargetSize)
+                  0 ->
+                    CompressorPresetsTab(
+                      state = state,
+                      onApplyPreset = onApplyPreset,
+                      onSetTargetSize = onSetTargetSize,
+                      onSetTargetSizePreset = onSetTargetSizePreset,
+                      onEditPreset = onEditPreset,
+                    )
                   1 -> CompressorVideoTab(state, onSetTargetSize, onSetVideoCodec, onSetResolution, onSetFps)
-                  else -> CompressorAudioTab(state, onToggleRemoveAudio, onSetAudioBitrate)
+                  else -> CompressorAudioTab(state, onToggleRemoveAudio, onSetAudioBitrate, onUpdateAudioVolume)
                 }
               }
             }
@@ -521,9 +575,16 @@ private fun CompressorConfigSurface(
               modifier = Modifier.fillMaxSize(),
             ) { page ->
               when (page) {
-                0 -> CompressorPresetsTab(state, onApplyPreset, onSetTargetSize)
+                0 ->
+                  CompressorPresetsTab(
+                    state = state,
+                    onApplyPreset = onApplyPreset,
+                    onSetTargetSize = onSetTargetSize,
+                    onSetTargetSizePreset = onSetTargetSizePreset,
+                    onEditPreset = onEditPreset,
+                  )
                 1 -> CompressorVideoTab(state, onSetTargetSize, onSetVideoCodec, onSetResolution, onSetFps)
-                else -> CompressorAudioTab(state, onToggleRemoveAudio, onSetAudioBitrate)
+                else -> CompressorAudioTab(state, onToggleRemoveAudio, onSetAudioBitrate, onUpdateAudioVolume)
               }
             }
           }
@@ -769,6 +830,8 @@ private fun CompressorPresetsTab(
   state: VideoCompressorUiState,
   onApplyPreset: (VideoCompressionPreset) -> Unit,
   onSetTargetSize: (Float) -> Unit,
+  onSetTargetSizePreset: (Float) -> Unit,
+  onEditPreset: (VideoCompressionPreset) -> Unit,
 ) {
   Column(
     modifier =
@@ -787,9 +850,9 @@ private fun CompressorPresetsTab(
 
     val presets =
       listOf(
-        Triple(VideoCompressionPreset.HIGH, "High", "Optimized bitrate only"),
-        Triple(VideoCompressionPreset.MEDIUM, "Medium", "1080p - 30fps"),
-        Triple(VideoCompressionPreset.LOW, "Low", "720p - 30fps"),
+        Triple(VideoCompressionPreset.HIGH, "High", describeQualityConfig(state.highPresetConfig)),
+        Triple(VideoCompressionPreset.MEDIUM, "Medium", describeQualityConfig(state.mediumPresetConfig)),
+        Triple(VideoCompressionPreset.LOW, "Low", describeQualityConfig(state.lowPresetConfig)),
       )
 
     presets.forEach { (preset, title, subtitle) ->
@@ -830,55 +893,56 @@ private fun CompressorPresetsTab(
           if (state.activePreset == preset) {
             Icon(Icons.RoundedFilled.Check, contentDescription = null)
           }
+          IconButton(onClick = { onEditPreset(preset) }) {
+            Icon(
+              Icons.RoundedFilled.Edit,
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_settings),
+            )
+          }
         }
       }
     }
 
-    val sizePresets =
-      listOf(
-        10f to "Discord / GitHub",
-        25f to "Email",
-        50f to "Stories",
-        100f to "Messenger / Bluesky",
-        500f to "Nitro / Reels",
-        512f to "Twitter / X",
-        2048f to "WhatsApp / Telegram",
-        4096f to "TG Premium / Feed",
-        8192f to "X Premium",
-      ).filter { it.first < (state.originalSize.toFloat() / (1024f * 1024f)) }
+    val originalMb = state.originalSize / (1024f * 1024f)
 
-    if (sizePresets.isNotEmpty()) {
-      Text(
-        androidx.compose.ui.res
-          .stringResource(app.gyrolet.mpvrx.R.string.ui_target_size_presets),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-      )
-      FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        sizePresets.forEach { (size, label) ->
-          FilterChip(
-            selected = state.targetSizeMb == size,
-            onClick = { onSetTargetSize(size) },
-            label = {
-              Text(
-                text =
-                  buildString {
-                    if (size >= 1024) {
-                      append("${(size / 1024).toInt()} GB")
-                    } else {
-                      append("${size.toInt()} MB")
-                    }
-                    append(" - ")
-                    append(label)
-                  },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-              )
-            },
-          )
+    if (state.showTargetSizePreset) {
+      val sizePresets = state.targetSizePresets.filter { it.sizeMb < originalMb }
+
+      if (sizePresets.isNotEmpty()) {
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_target_size_presets),
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.SemiBold,
+        )
+        FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          sizePresets.forEach { preset ->
+            FilterChip(
+              selected = state.targetSizeMb == preset.sizeMb,
+              onClick = { onSetTargetSizePreset(preset.sizeMb) },
+              label = {
+                Text(
+                  text =
+                    buildString {
+                      if (preset.sizeMb >= 1024) {
+                        append("${(preset.sizeMb / 1024).toInt()} GB")
+                      } else {
+                        append("${preset.sizeMb.toInt()} MB")
+                      }
+                      append(" - ")
+                      append(preset.label)
+                    },
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                )
+              },
+            )
+          }
         }
       }
     }
@@ -1079,6 +1143,7 @@ private fun CompressorAudioTab(
   state: VideoCompressorUiState,
   onToggleRemoveAudio: () -> Unit,
   onSetAudioBitrate: (Int) -> Unit,
+  onUpdateAudioVolume: (Float) -> Unit,
 ) {
   Column(
     modifier =
@@ -1139,6 +1204,37 @@ private fun CompressorAudioTab(
             }
           }
         }
+
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.compressor_volume),
+          style = MaterialTheme.typography.labelLarge,
+        )
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Text(
+            text = "${(state.audioVolume * 100).toInt()}%",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.width(48.dp),
+          )
+          Slider(
+            value = state.audioVolume.coerceIn(0f, 2f),
+            onValueChange = onUpdateAudioVolume,
+            valueRange = 0f..2f,
+            steps = 19,
+            modifier = Modifier.weight(1f),
+          )
+        }
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.compressor_volume_hint),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
     }
   }
@@ -1370,6 +1466,14 @@ private fun CompressorResultSurface(
           }
         }
 
+        if (state.showStorageSaved && state.totalSavedBytes > 0L) {
+          Text(
+            stringResource(R.string.compressor_total_saved, state.formattedTotalSaved),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+          )
+        }
+
         ElevatedCard(
           modifier = Modifier.fillMaxWidth(),
           colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -1538,6 +1642,661 @@ private fun CompressorIssueSurface(
       }
     }
   }
+}
+
+private fun describeQualityConfig(config: QualityPresetConfig): String =
+  buildString {
+    if (config.resolutionShortSide > 0) {
+      append("${config.resolutionShortSide}p")
+    }
+    if (config.targetFps > 0) {
+      if (isNotEmpty()) append(" - ")
+      append("${config.targetFps}fps")
+    }
+    if (config.sizeRatio > 0f) {
+      if (isNotEmpty()) append(" - ")
+      append("${(config.sizeRatio * 100).toInt()}% of original size")
+    }
+    if (isEmpty()) append("Optimized bitrate only")
+  }
+
+private fun describeDefaultVideoConfig(config: DefaultVideoConfig): String =
+  buildString {
+    append(config.defaultVideoCodec.substringAfter("/").uppercase(Locale.US))
+    if (config.defaultTargetResolutionHeight > 0) {
+      append(" • ${config.defaultTargetResolutionHeight}p")
+    }
+    if (config.defaultTargetFps > 0) {
+      append(" • ${config.defaultTargetFps}fps")
+    }
+    if (config.defaultSizeRatio > 0f) {
+      append(" • ${(config.defaultSizeRatio * 100).toInt()}% size")
+    }
+  }
+
+private fun describeDefaultAudioConfig(config: DefaultAudioConfig): String =
+  buildString {
+    if (config.defaultRemoveAudio) {
+      append("Remove audio")
+    } else {
+      append("${config.defaultAudioBitrate / 1000}k • ${(config.defaultAudioVolume * 100).toInt()}% volume")
+    }
+  }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompressorSettingsSheet(
+  state: VideoCompressorUiState,
+  initialPreset: VideoCompressionPreset?,
+  onDismiss: () -> Unit,
+  onToggleShowStorageSaved: () -> Unit,
+  onToggleShowTargetSizePreset: () -> Unit,
+  onSaveQualityPreset: (VideoCompressionPreset, QualityPresetConfig) -> Unit,
+  onResetQualityPresets: () -> Unit,
+  onSaveTargetSizePreset: (TargetSizePreset) -> Unit,
+  onDeleteTargetSizePreset: (TargetSizePreset) -> Unit,
+  onResetTargetSizePresets: () -> Unit,
+  onSaveDefaultVideoConfig: (DefaultVideoConfig) -> Unit,
+  onResetDefaultVideoConfig: () -> Unit,
+  onSaveDefaultAudioConfig: (DefaultAudioConfig) -> Unit,
+  onResetDefaultAudioConfig: () -> Unit,
+) {
+  var editingPreset by remember { mutableStateOf<VideoCompressionPreset?>(null) }
+  var editingTargetPreset by remember { mutableStateOf<TargetSizePreset?>(null) }
+  var addingTargetPreset by remember { mutableStateOf(false) }
+  var editingDefaultVideo by remember { mutableStateOf(false) }
+  var editingDefaultAudio by remember { mutableStateOf(false) }
+
+  LaunchedEffect(initialPreset) {
+    if (initialPreset != null) {
+      editingPreset = initialPreset
+    }
+  }
+
+  ModalBottomSheet(
+    onDismissRequest = {
+      editingPreset = null
+      editingTargetPreset = null
+      addingTargetPreset = false
+      editingDefaultVideo = false
+      editingDefaultAudio = false
+      onDismiss()
+    },
+  ) {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState())
+          .padding(horizontal = 20.dp)
+          .padding(bottom = 32.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Text(
+        stringResource(R.string.compressor_settings),
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+      )
+
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(
+          stringResource(R.string.compressor_storage_saved),
+          style = MaterialTheme.typography.bodyLarge,
+        )
+        Switch(checked = state.showStorageSaved, onCheckedChange = { onToggleShowStorageSaved() })
+      }
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(
+          stringResource(R.string.compressor_show_target_size_presets),
+          style = MaterialTheme.typography.bodyLarge,
+        )
+        Switch(checked = state.showTargetSizePreset, onCheckedChange = { onToggleShowTargetSizePreset() })
+      }
+
+      HorizontalDivider()
+
+      Text(
+        stringResource(R.string.compressor_preset_configs),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+      )
+      val presetConfigs =
+        listOf(
+          VideoCompressionPreset.HIGH to state.highPresetConfig,
+          VideoCompressionPreset.MEDIUM to state.mediumPresetConfig,
+          VideoCompressionPreset.LOW to state.lowPresetConfig,
+        )
+      presetConfigs.forEach { (preset, config) ->
+        OutlinedCard(
+          onClick = { editingPreset = preset },
+          modifier = Modifier.fillMaxWidth(),
+          shape = AppShapeScale.largeIncreased,
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text(preset.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+              Text(
+                describeQualityConfig(config),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            Icon(Icons.RoundedFilled.Edit, contentDescription = null)
+          }
+        }
+      }
+      TextButton(onClick = onResetQualityPresets) {
+        Text(stringResource(R.string.compressor_reset_presets))
+      }
+
+      HorizontalDivider()
+
+      Text(
+        stringResource(R.string.ui_target_size_presets),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+      )
+      state.targetSizePresets.forEach { preset ->
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          OutlinedCard(
+            onClick = { editingTargetPreset = preset },
+            modifier = Modifier.weight(1f),
+            shape = AppShapeScale.largeIncreased,
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Column(modifier = Modifier.weight(1f)) {
+                Text(preset.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(
+                  if (preset.sizeMb >= 1024) {
+                    "${(preset.sizeMb / 1024).toInt()} GB"
+                  } else {
+                    "${preset.sizeMb.toInt()} MB"
+                  },
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              Icon(Icons.RoundedFilled.Edit, contentDescription = null)
+            }
+          }
+          IconButton(onClick = { onDeleteTargetSizePreset(preset) }) {
+            Icon(
+              Icons.RoundedFilled.Delete,
+              contentDescription = stringResource(R.string.compressor_delete_preset),
+            )
+          }
+        }
+      }
+      Row(modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = { addingTargetPreset = true }) {
+          Text(stringResource(R.string.compressor_add_preset))
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        TextButton(onClick = onResetTargetSizePresets) {
+          Text(stringResource(R.string.compressor_reset_presets))
+        }
+      }
+
+      HorizontalDivider()
+
+      Text(
+        stringResource(R.string.compressor_defaults),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+      )
+      OutlinedCard(
+        onClick = { editingDefaultVideo = true },
+        modifier = Modifier.fillMaxWidth(),
+        shape = AppShapeScale.largeIncreased,
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Column(modifier = Modifier.weight(1f)) {
+            Text(
+              stringResource(R.string.compressor_default_video),
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Medium,
+            )
+            Text(
+              describeDefaultVideoConfig(state.defaultVideoConfig),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Icon(Icons.RoundedFilled.Edit, contentDescription = null)
+        }
+      }
+      OutlinedCard(
+        onClick = { editingDefaultAudio = true },
+        modifier = Modifier.fillMaxWidth(),
+        shape = AppShapeScale.largeIncreased,
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Column(modifier = Modifier.weight(1f)) {
+            Text(
+              stringResource(R.string.compressor_default_audio),
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Medium,
+            )
+            Text(
+              describeDefaultAudioConfig(state.defaultAudioConfig),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Icon(Icons.RoundedFilled.Edit, contentDescription = null)
+        }
+      }
+      Row(modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = onResetDefaultVideoConfig) {
+          Text(stringResource(R.string.compressor_reset_video_defaults))
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        TextButton(onClick = onResetDefaultAudioConfig) {
+          Text(stringResource(R.string.compressor_reset_audio_defaults))
+        }
+      }
+    }
+  }
+
+  editingPreset?.let { preset ->
+    val config =
+      when (preset) {
+        VideoCompressionPreset.HIGH -> state.highPresetConfig
+        VideoCompressionPreset.MEDIUM -> state.mediumPresetConfig
+        VideoCompressionPreset.LOW -> state.lowPresetConfig
+        VideoCompressionPreset.CUSTOM -> state.highPresetConfig
+      }
+    QualityPresetConfigEditor(
+      title = preset.name,
+      config = config,
+      onDismiss = { editingPreset = null },
+      onSave = { saved ->
+        onSaveQualityPreset(preset, saved)
+        editingPreset = null
+      },
+    )
+  }
+
+  if (editingTargetPreset != null || addingTargetPreset) {
+    TargetSizePresetEditor(
+      preset = editingTargetPreset,
+      onDismiss = {
+        editingTargetPreset = null
+        addingTargetPreset = false
+      },
+      onSave = { saved ->
+        onSaveTargetSizePreset(saved)
+        editingTargetPreset = null
+        addingTargetPreset = false
+      },
+    )
+  }
+
+  if (editingDefaultVideo) {
+    DefaultVideoConfigEditor(
+      config = state.defaultVideoConfig,
+      onDismiss = { editingDefaultVideo = false },
+      onSave = { saved ->
+        onSaveDefaultVideoConfig(saved)
+        editingDefaultVideo = false
+      },
+    )
+  }
+
+  if (editingDefaultAudio) {
+    DefaultAudioConfigEditor(
+      config = state.defaultAudioConfig,
+      onDismiss = { editingDefaultAudio = false },
+      onSave = { saved ->
+        onSaveDefaultAudioConfig(saved)
+        editingDefaultAudio = false
+      },
+    )
+  }
+}
+
+@Composable
+private fun QualityPresetConfigEditor(
+  title: String,
+  config: QualityPresetConfig,
+  onDismiss: () -> Unit,
+  onSave: (QualityPresetConfig) -> Unit,
+) {
+  var resolution by remember(config) { mutableStateOf(config.resolutionShortSide.toString()) }
+  var fps by remember(config) { mutableStateOf(config.targetFps.toString()) }
+  var ratio by remember(config) { mutableStateOf(config.sizeRatio.toString()) }
+  var bitrate by remember(config) { mutableStateOf(config.audioBitrate.toString()) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Edit $title") },
+    text = {
+      Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        OutlinedTextField(
+          value = resolution,
+          onValueChange = { resolution = it.filter { char -> char.isDigit() } },
+          label = { Text(stringResource(R.string.compressor_target_resolution)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+          value = fps,
+          onValueChange = { fps = it.filter { char -> char.isDigit() } },
+          label = { Text(stringResource(R.string.compressor_target_fps)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+          value = ratio,
+          onValueChange = { ratio = it.filter { char -> char.isDigit() || char == '.' } },
+          label = { Text(stringResource(R.string.compressor_size_ratio)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+          value = bitrate,
+          onValueChange = { bitrate = it.filter { char -> char.isDigit() } },
+          label = { Text(stringResource(R.string.ui_audio_bitrate)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+          stringResource(R.string.compressor_zero_keeps_original),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          onSave(
+            QualityPresetConfig(
+              resolutionShortSide = resolution.toIntOrNull() ?: 0,
+              targetFps = fps.toIntOrNull() ?: 0,
+              sizeRatio = ratio.toFloatOrNull() ?: 0f,
+              audioBitrate = bitrate.toIntOrNull() ?: 0,
+            ),
+          )
+        },
+      ) {
+        Text(stringResource(R.string.ui_done))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.ui_close))
+      }
+    },
+  )
+}
+
+@Composable
+private fun TargetSizePresetEditor(
+  preset: TargetSizePreset?,
+  onDismiss: () -> Unit,
+  onSave: (TargetSizePreset) -> Unit,
+) {
+  var name by remember(preset) { mutableStateOf(preset?.label ?: "") }
+  var sizeMb by remember(preset) { mutableStateOf(preset?.sizeMb?.toString() ?: "") }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.compressor_target_size_presets_title)) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedTextField(
+          value = name,
+          onValueChange = { name = it },
+          label = { Text(stringResource(R.string.compressor_target_preset_name)) },
+          singleLine = true,
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+          value = sizeMb,
+          onValueChange = { sizeMb = it.filter { char -> char.isDigit() || char == '.' } },
+          label = { Text(stringResource(R.string.compressor_target_preset_size_mb)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+          modifier = Modifier.fillMaxWidth(),
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        enabled = name.isNotBlank() && (sizeMb.toFloatOrNull() ?: 0f) > 0f,
+        onClick = {
+          onSave(
+            TargetSizePreset(
+              id = preset?.id ?: "custom_${System.currentTimeMillis()}",
+              sizeMb = sizeMb.toFloatOrNull() ?: 0f,
+              label = name.trim(),
+              isCustom = true,
+            ),
+          )
+        },
+      ) {
+        Text(stringResource(R.string.ui_done))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.ui_close))
+      }
+    },
+  )
+}
+
+@Composable
+private fun DefaultVideoConfigEditor(
+  config: DefaultVideoConfig,
+  onDismiss: () -> Unit,
+  onSave: (DefaultVideoConfig) -> Unit,
+) {
+  var codec by remember(config) { mutableStateOf(config.defaultVideoCodec) }
+  var resolution by remember(config) { mutableStateOf(config.defaultTargetResolutionHeight.toString()) }
+  var fps by remember(config) { mutableStateOf(config.defaultTargetFps.toString()) }
+  var ratio by remember(config) { mutableStateOf(config.defaultSizeRatio.toString()) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.compressor_default_video)) },
+    text = {
+      Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          FilterChip(
+            selected = codec == androidx.media3.common.MimeTypes.VIDEO_H265,
+            onClick = { codec = androidx.media3.common.MimeTypes.VIDEO_H265 },
+            label = {
+              Text(
+                stringResource(app.gyrolet.mpvrx.R.string.ui_h_265),
+              )
+            },
+          )
+          FilterChip(
+            selected = codec == androidx.media3.common.MimeTypes.VIDEO_H264,
+            onClick = { codec = androidx.media3.common.MimeTypes.VIDEO_H264 },
+            label = {
+              Text(
+                stringResource(app.gyrolet.mpvrx.R.string.ui_h_264),
+              )
+            },
+          )
+        }
+        OutlinedTextField(
+          value = resolution,
+          onValueChange = { resolution = it.filter { char -> char.isDigit() } },
+          label = { Text(stringResource(R.string.compressor_target_resolution)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+          value = fps,
+          onValueChange = { fps = it.filter { char -> char.isDigit() } },
+          label = { Text(stringResource(R.string.compressor_target_fps)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+          value = ratio,
+          onValueChange = { ratio = it.filter { char -> char.isDigit() || char == '.' } },
+          label = { Text(stringResource(R.string.compressor_size_ratio)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+          stringResource(R.string.compressor_zero_keeps_original),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          onSave(
+            DefaultVideoConfig(
+              defaultVideoCodec = codec,
+              defaultTargetResolutionHeight = resolution.toIntOrNull() ?: 0,
+              defaultTargetFps = fps.toIntOrNull() ?: 0,
+              defaultSizeRatio = ratio.toFloatOrNull() ?: 0f,
+            ),
+          )
+        },
+      ) {
+        Text(stringResource(R.string.ui_done))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.ui_close))
+      }
+    },
+  )
+}
+
+@Composable
+private fun DefaultAudioConfigEditor(
+  config: DefaultAudioConfig,
+  onDismiss: () -> Unit,
+  onSave: (DefaultAudioConfig) -> Unit,
+) {
+  var bitrate by remember(config) { mutableStateOf(config.defaultAudioBitrate.toString()) }
+  var removeAudio by remember(config) { mutableStateOf(config.defaultRemoveAudio) }
+  var volume by remember(config) { mutableFloatStateOf(config.defaultAudioVolume) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.compressor_default_audio)) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedTextField(
+          value = bitrate,
+          onValueChange = { bitrate = it.filter { char -> char.isDigit() } },
+          label = { Text(stringResource(R.string.ui_audio_bitrate)) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          modifier = Modifier.fillMaxWidth(),
+        )
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+          Text(
+            stringResource(R.string.ui_remove_audio),
+            style = MaterialTheme.typography.bodyLarge,
+          )
+          Switch(checked = removeAudio, onCheckedChange = { removeAudio = it })
+        }
+        if (!removeAudio) {
+          Text(
+            stringResource(R.string.compressor_volume),
+            style = MaterialTheme.typography.labelLarge,
+          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Text(
+              text = "${(volume * 100).toInt()}%",
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.width(48.dp),
+            )
+            Slider(
+              value = volume.coerceIn(0f, 2f),
+              onValueChange = { volume = it },
+              valueRange = 0f..2f,
+              steps = 19,
+              modifier = Modifier.weight(1f),
+            )
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          onSave(
+            DefaultAudioConfig(
+              defaultAudioBitrate = bitrate.toIntOrNull() ?: 0,
+              defaultRemoveAudio = removeAudio,
+              defaultAudioVolume = volume,
+            ),
+          )
+        },
+      ) {
+        Text(stringResource(R.string.ui_done))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.ui_close))
+      }
+    },
+  )
 }
 
 @Composable
