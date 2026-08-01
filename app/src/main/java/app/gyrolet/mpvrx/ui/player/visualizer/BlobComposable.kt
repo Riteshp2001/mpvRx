@@ -7,12 +7,8 @@
 
 package app.gyrolet.mpvrx.ui.player.visualizer
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.opengl.GLSurfaceView
 import android.view.ViewGroup
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -24,7 +20,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -76,31 +71,18 @@ private fun <T> VisualizerOverlay(
   val features = remember { AudioFeatures() }
   val scope = rememberCoroutineScope()
   val realAnalyzerActive = remember { AtomicBoolean(false) }
-  var hasRecordPermission by remember {
-    mutableStateOf(
-      ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-        PackageManager.PERMISSION_GRANTED,
-    )
-  }
-  val recordPermissionLauncher =
-    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      hasRecordPermission = granted
-    }
-
-  LaunchedEffect(hasRecordPermission) {
-    if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-  }
+  val audioSessionId = remember { AudioSessionProvider.get(context) }
 
   // Keep the analyzer resilient across player/audio-session changes. Some devices briefly
   // reject Visualizer creation while mpv swaps files; retry without recreating the GL view so
   // the blob keeps its animation state instead of stuttering or snapping to idle.
-  DisposableEffect(hasRecordPermission) {
-    val analyzer = if (hasRecordPermission) AudioSpectrumAnalyzer(features) else null
+  DisposableEffect(Unit) {
+    val analyzer = AudioSpectrumAnalyzer(features)
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive && analyzer != null) {
           if (!realAnalyzerActive.get()) {
-            realAnalyzerActive.set(analyzer.start(0).isSuccess)
+            realAnalyzerActive.set(analyzer.start(audioSessionId).isSuccess)
           }
           delay(if (realAnalyzerActive.get()) 1_000L else 350L)
         }
