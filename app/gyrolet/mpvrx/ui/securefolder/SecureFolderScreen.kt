@@ -63,6 +63,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.serialization.Serializable
 import java.text.DecimalFormat
 import kotlin.math.ln
@@ -180,7 +181,12 @@ data object SecureFolderScreen : Screen {
                   if (isInSelectionMode) {
                     viewModel.toggleSelection(entity.id)
                   } else {
-                    viewModel.handleLongClick(entity.id)
+                    MediaUtils.playFile(
+                      entity.secureFilePath,
+                      context,
+                      launchSource = "secure_folder",
+                      title = entity.fileName,
+                    )
                   }
                 },
                 onLongClick = { viewModel.handleLongClick(entity.id) },
