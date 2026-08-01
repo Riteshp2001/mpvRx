@@ -1586,7 +1586,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="secure_folder_delete_confirm_title">%1$d Element(e) dauerhaft löschen?</string>
   <string name="secure_folder_delete_confirm_subtitle">Dies kann nicht rückgängig gemacht werden — die Dateien werden dauerhaft aus Ihrem Sicheren Ordner entfernt.</string>
   <string name="secure_folder_hide_entry_title">Sicheren Ordner in Einstellungen ausblenden?</string>
-  <string name="secure_folder_hide_entry_subtitle">Die Zeile "Sicherer Ordner" wird aus den Einstellungen entfernt. Um ihn später wieder zu öffnen, tippen Sie doppelt auf den App-Namen oben auf dem Startbildschirm und geben Sie Ihre PIN ein.</string>
+  <string name="secure_folder_hide_entry_subtitle">Die Zeile \"Sicherer Ordner\" wird aus den Einstellungen entfernt. Um ihn später wieder zu öffnen, tippen Sie doppelt auf den App-Namen oben auf dem Startbildschirm und geben Sie Ihre PIN ein.</string>
   <string name="secure_folder_working_on_it">Wird verarbeitet…</string>
   <string name="secure_folder_selected_count">%1$d ausgewählt</string>
   <string name="secure_folder_cancel_selection">Auswahl aufheben</string>

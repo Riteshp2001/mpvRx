@@ -1586,7 +1586,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="secure_folder_delete_confirm_title">Excluir %1$d item(ns) permanentemente?</string>
   <string name="secure_folder_delete_confirm_subtitle">Isso não pode ser desfeito — os arquivos serão removidos permanentemente da sua Pasta Segura.</string>
   <string name="secure_folder_hide_entry_title">Ocultar Pasta Segura das Preferências?</string>
-  <string name="secure_folder_hide_entry_subtitle">A opção "Pasta Segura" será removida das Preferências. Para abri-la novamente mais tarde, toque duas vezes no nome do app no topo da tela inicial e digite seu PIN.</string>
+  <string name="secure_folder_hide_entry_subtitle">A opção \"Pasta Segura\" será removida das Preferências. Para abri-la novamente mais tarde, toque duas vezes no nome do app no topo da tela inicial e digite seu PIN.</string>
   <string name="secure_folder_working_on_it">Processando…</string>
   <string name="secure_folder_selected_count">%1$d selecionado(s)</string>
   <string name="secure_folder_cancel_selection">Cancelar seleção</string>

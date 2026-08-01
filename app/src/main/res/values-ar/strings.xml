@@ -1586,7 +1586,7 @@
   <string name="secure_folder_delete_confirm_title">حذف %1$d عنصر نهائياً؟</string>
   <string name="secure_folder_delete_confirm_subtitle">لا يمكن التراجع عن هذا الإجراء — سيتم حذف الملفات نهائياً من المجلد الآمن.</string>
   <string name="secure_folder_hide_entry_title">إخفاء المجلد الآمن من التفضيلات؟</string>
-  <string name="secure_folder_hide_entry_subtitle">سيتم إزالة صف "المجلد الآمن" من التفضيلات. لفتحه لاحقاً، انقر مرتين على اسم التطبيق في أعلى الشاشة الرئيسية وأدخل رمز PIN.</string>
+  <string name="secure_folder_hide_entry_subtitle">سيتم إزالة صف \"المجلد الآمن\" من التفضيلات. لفتحه لاحقاً، انقر مرتين على اسم التطبيق في أعلى الشاشة الرئيسية وأدخل رمز PIN.</string>
   <string name="secure_folder_working_on_it">جاري العمل…</string>
   <string name="secure_folder_selected_count">تم تحديد %1$d</string>
   <string name="secure_folder_cancel_selection">إلغاء التحديد</string>

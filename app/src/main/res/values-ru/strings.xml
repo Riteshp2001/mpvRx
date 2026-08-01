@@ -1586,7 +1586,7 @@
   <string name="secure_folder_delete_confirm_title">Удалить %1$d объект(ов) навсегда?</string>
   <string name="secure_folder_delete_confirm_subtitle">Это действие нельзя отменить — файлы будут навсегда удалены из Защищенной папки.</string>
   <string name="secure_folder_hide_entry_title">Скрыть Защищенную папку из Настроек?</string>
-  <string name="secure_folder_hide_entry_subtitle">Строка "Защищенная папка" будет удалена из Настроек. Чтобы открыть ее позже, дважды нажмите на название приложения вверху главного экрана и введите PIN-код.</string>
+  <string name="secure_folder_hide_entry_subtitle">Строка \"Защищенная папка\" будет удалена из Настроек. Чтобы открыть ее позже, дважды нажмите на название приложения вверху главного экрана и введите PIN-код.</string>
   <string name="secure_folder_working_on_it">Обработка…</string>
   <string name="secure_folder_selected_count">Выбрано: %1$d</string>
   <string name="secure_folder_cancel_selection">Отменить выбор</string>

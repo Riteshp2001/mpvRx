@@ -1586,7 +1586,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="secure_folder_delete_confirm_title">¿Eliminar %1$d elemento(s) para siempre?</string>
   <string name="secure_folder_delete_confirm_subtitle">Esto no se puede deshacer: los archivos se eliminarán permanentemente de tu Carpeta segura.</string>
   <string name="secure_folder_hide_entry_title">¿Ocultar Carpeta segura de Preferencias?</string>
-  <string name="secure_folder_hide_entry_subtitle">La fila "Carpeta segura" se quitará de Preferencias. Para volver a abrirla más tarde, toca dos veces el nombre de la aplicación en la parte superior de la pantalla de inicio e introduce tu PIN.</string>
+  <string name="secure_folder_hide_entry_subtitle">La fila \"Carpeta segura\" se quitará de Preferencias. Para volver a abrirla más tarde, toca dos veces el nombre de la aplicación en la parte superior de la pantalla de inicio e introduce tu PIN.</string>
   <string name="secure_folder_working_on_it">Procesando…</string>
   <string name="secure_folder_selected_count">%1$d seleccionado(s)</string>
   <string name="secure_folder_cancel_selection">Cancelar selección</string>
