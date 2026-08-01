@@ -441,7 +441,9 @@ fun MediaLibraryContent() {
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
           onMoveToSecureClick = {
-            if (secureFolderPreferences.dontAskBeforeMove.get()) {
+            if (!secureFolderPreferences.isPinSet()) {
+              backstack.add(SecureFolderGateScreen)
+            } else if (secureFolderPreferences.dontAskBeforeMove.get()) {
               moveSelectedToSecureFolder()
             } else {
               moveToSecureConfirmOpen.value = true

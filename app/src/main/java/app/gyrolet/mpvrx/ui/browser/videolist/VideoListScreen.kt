@@ -100,6 +100,7 @@ import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.securefolder.SecureConfirmDialog
+import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -353,7 +354,9 @@ data class VideoListScreen(
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
           onMoveToSecureClick = {
-            if (secureFolderPreferences.dontAskBeforeMove.get()) {
+            if (!secureFolderPreferences.isPinSet()) {
+              backstack.add(SecureFolderGateScreen)
+            } else if (secureFolderPreferences.dontAskBeforeMove.get()) {
               moveSelectedToSecureFolder()
             } else {
               moveToSecureConfirmOpen.value = true

@@ -58,21 +58,17 @@ class SecureFolderViewModel(
 
   enum class GateStep {
     ENTER_PIN, // existing user, asking for PIN
-    SETUP_PIN, // first-time, choosing a new PIN
-    SETUP_SECURITY_QUESTION, // first-time, right after choosing a PIN
+    SETUP, // first-time: PIN + confirm PIN + security question + answer, all in one step
     FORGOT_PIN_QUESTION, // forgot-PIN flow: re-answer the security question
     FORGOT_PIN_NEW_PIN, // forgot-PIN flow: security answer verified, choose a new PIN
   }
 
   private val _gateStep =
-    MutableStateFlow(if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP_PIN)
+    MutableStateFlow(if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP)
   val gateStep: StateFlow<GateStep> = _gateStep.asStateFlow()
 
   private val _gateError = MutableStateFlow<String?>(null)
   val gateError: StateFlow<String?> = _gateError.asStateFlow()
-
-  /** Holds the PIN chosen in [GateStep.SETUP_PIN]/[GateStep.FORGOT_PIN_NEW_PIN] until confirmed. */
-  private var pendingNewPin: String? = null
 
   fun clearGateError() {
     _gateError.value = null
@@ -85,46 +81,27 @@ class SecureFolderViewModel(
     return ok
   }
 
-  /** Step 1 of first-time setup: stash the chosen PIN, move on to the security question. */
-  fun submitNewPin(pin: String) {
-    if (pin.length < 4) {
-      _gateError.value = "PIN must be at least 4 digits"
-      return
-    }
-    pendingNewPin = pin
-    _gateError.value = null
-    _gateStep.value =
-      if (_gateStep.value == GateStep.FORGOT_PIN_NEW_PIN) GateStep.FORGOT_PIN_NEW_PIN else GateStep.SETUP_SECURITY_QUESTION
-  }
-
-  /** Confirms + persists the PIN queued by [submitNewPin] (used by the forgot-PIN "set new PIN" step, no question re-ask needed). */
-  fun confirmPendingPinOnly(): Boolean {
-    val pin = pendingNewPin ?: return false
-    preferences.setPin(pin)
-    pendingNewPin = null
-    _gateError.value = null
-    return true
-  }
-
-  /** Step 2 of first-time setup: persist PIN + security question/answer together. */
-  fun submitSecurityQuestion(
+  /**
+   * First-time setup: PIN and security question/answer are validated and persisted together in
+   * one atomic call — there's no intermediate "pending PIN" state to lose between steps.
+   */
+  fun submitSetup(
+    pin: String,
     question: String,
     answer: String,
-  ) {
-    val pin = pendingNewPin
-    if (pin == null) {
-      _gateError.value = "Something went wrong, please set your PIN again"
-      _gateStep.value = GateStep.SETUP_PIN
-      return
+  ): Boolean {
+    if (pin.length < 4) {
+      _gateError.value = "PIN must be at least 4 digits"
+      return false
     }
     if (question.isBlank() || answer.isBlank()) {
-      _gateError.value = "Please fill in both fields"
-      return
+      _gateError.value = "Please answer the security question"
+      return false
     }
     preferences.setPin(pin)
     preferences.setSecurityQuestion(question, answer)
-    pendingNewPin = null
     _gateError.value = null
+    return true
   }
 
   fun startForgotPinFlow() {
@@ -133,9 +110,20 @@ class SecureFolderViewModel(
   }
 
   fun cancelForgotPinFlow() {
-    pendingNewPin = null
     _gateError.value = null
     _gateStep.value = GateStep.ENTER_PIN
+  }
+
+  /** Forgot-PIN flow's last step: persists the new PIN directly, no security question re-ask needed. */
+  fun finishForgotPinFlow(pin: String): Boolean {
+    if (pin.length < 4) {
+      _gateError.value = "PIN must be at least 4 digits"
+      return false
+    }
+    preferences.setPin(pin)
+    _gateError.value = null
+    _gateStep.value = GateStep.ENTER_PIN
+    return true
   }
 
   fun verifySecurityAnswerForRecovery(answer: String): Boolean {

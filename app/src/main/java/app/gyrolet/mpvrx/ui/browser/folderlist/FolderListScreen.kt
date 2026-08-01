@@ -114,6 +114,7 @@ import app.gyrolet.mpvrx.ui.browser.states.PermissionDeniedState
 import app.gyrolet.mpvrx.ui.browser.videolist.VideoListScreen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
@@ -624,7 +625,9 @@ object FolderListScreen : Screen {
               onInvertSelection = { selectionManager.invertSelection() },
               onDeselectAll = { selectionManager.clear() },
               onMoveToSecureClick = {
-                if (secureFolderPreferences.dontAskBeforeMove.get()) {
+                if (!secureFolderPreferences.isPinSet()) {
+                  backstack.add(SecureFolderGateScreen)
+                } else if (secureFolderPreferences.dontAskBeforeMove.get()) {
                   moveSelectedFoldersToSecureFolder()
                 } else {
                   moveToSecureConfirmOpen.value = true
