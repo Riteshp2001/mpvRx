@@ -90,6 +90,7 @@ fun BrowserTopBar(
   onMoveToSecureClick: (() -> Unit)? = null,
   useRemoveIcon: Boolean = false,
   onAddToPlaylistClick: (() -> Unit)? = null,
+  onRestoreClick: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   forceHeadlineSmall: Boolean = false,
 ) {
@@ -111,10 +112,12 @@ fun BrowserTopBar(
       onInvertSelection = onInvertSelection,
       onDeselectAll = onDeselectAll,
       onMoveToSecure = onMoveToSecureClick,
+      onRestore = onRestoreClick,
       modifier = modifier,
       useRemoveIcon = useRemoveIcon,
       onAddToPlaylist = onAddToPlaylistClick,
       colors = colors,
+      additionalActions = additionalActions,
     )
   } else {
     NormalTopBar(
@@ -272,7 +275,6 @@ private fun NormalTopBar(
       }
     },
     actions = {
-      additionalActions()
       if (onSearchClick != null) {
         IconButton(
           onClick = onSearchClick,
@@ -317,6 +319,7 @@ private fun NormalTopBar(
           )
         }
       }
+      additionalActions()
     },
     modifier = modifier,
   )
@@ -347,7 +350,9 @@ private fun SelectionTopBar(
   useRemoveIcon: Boolean = false,
   onAddToPlaylist: (() -> Unit)? = null,
   onMoveToSecure: (() -> Unit)? = null,
+  onRestore: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
+  additionalActions: @Composable RowScope.() -> Unit = { },
 ) {
   var showDropdown by remember { mutableStateOf(false) }
 
@@ -428,6 +433,20 @@ private fun SelectionTopBar(
       }
     },
     actions = {
+      additionalActions()
+      if (onRestore != null) {
+        IconButton(
+          onClick = onRestore,
+          modifier = Modifier.padding(horizontal = 2.dp),
+        ) {
+          Icon(
+            Icons.RoundedFilled.Restore,
+            contentDescription = stringResource(R.string.secure_folder_restore),
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.secondary,
+          )
+        }
+      }
       // Play icon
       if (onPlay != null) {
         IconButton(
