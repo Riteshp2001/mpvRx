@@ -33,7 +33,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -71,12 +70,12 @@ import kotlin.math.pow
 
 /**
  * The unlocked Secure Folder: a grid of everything currently hidden away, with multi-select
- * for bulk restore/delete, plus a menu action to hide/unhide the "Secure Folder" entry point
- * from the Preferences screen (full wiring happens in Step 5).
+ * for bulk restore/delete, plus overflow-menu actions to hide/unhide the "Secure Folder" entry
+ * point from the Preferences screen and to change the PIN / security question.
  *
- * Confirm-before-destructive-action dialogs and a proper progress dialog land in Step 4 —
- * for now, restore/delete fire directly and a lightweight inline progress bar + snackbar
- * cover feedback so the screen is usable on its own.
+ * Restore and delete-forever go through [SecureConfirmDialog] first (skippable per-action via
+ * "don't ask again"), and a busy operation shows [SecureFolderProgressDialog] instead of the
+ * old inline progress bar.
  */
 @Serializable
 data object SecureFolderScreen : Screen {
@@ -92,11 +91,18 @@ data object SecureFolderScreen : Screen {
     val selectedIds by viewModel.selectedIds.collectAsState()
     val isInSelectionMode by viewModel.isInSelectionMode.collectAsState()
     val isBusy by viewModel.isBusy.collectAsState()
+    val operationProgress by viewModel.operationProgress.collectAsState()
     val operationResult by viewModel.operationResult.collectAsState()
     val isEntryPointHidden by viewModel.preferences.isEntryPointHidden.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val gridState = rememberLazyGridState()
+
+    // Which confirm dialog (if any) is currently open — restore/delete share one flow since
+    // only one bulk action can be pending at a time.
+    var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
+    var changePinOpen by remember { mutableStateOf(false) }
+    var changeSecurityQuestionOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(operationResult) {
       operationResult?.let {
@@ -116,9 +122,23 @@ data object SecureFolderScreen : Screen {
           onBack = { backstack.popSafely() },
           onSelectAll = { viewModel.selectAll() },
           onDeselectAll = { viewModel.clearSelection() },
-          onRestore = { viewModel.restoreSelected() },
-          onDelete = { viewModel.deleteSelectedForever() },
+          onRestoreRequest = {
+            if (viewModel.preferences.dontAskBeforeRestore.get()) {
+              viewModel.restoreSelected()
+            } else {
+              pendingAction = PendingAction.RESTORE
+            }
+          },
+          onDeleteRequest = {
+            if (viewModel.preferences.dontAskBeforeDelete.get()) {
+              viewModel.deleteSelectedForever()
+            } else {
+              pendingAction = PendingAction.DELETE
+            }
+          },
           onToggleEntryPointHidden = { viewModel.toggleEntryPointHidden() },
+          onChangePin = { changePinOpen = true },
+          onChangeSecurityQuestion = { changeSecurityQuestionOpen = true },
         )
       },
       snackbarHost = {
@@ -134,10 +154,6 @@ data object SecureFolderScreen : Screen {
             .padding(padding)
             .windowInsetsPadding(WindowInsets.systemBars),
       ) {
-        if (isBusy) {
-          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-
         if (media.isEmpty()) {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             EmptyState(
@@ -174,8 +190,58 @@ data object SecureFolderScreen : Screen {
         }
       }
     }
+
+    SecureConfirmDialog(
+      isOpen = pendingAction == PendingAction.RESTORE,
+      title = "Restore ${selectedIds.size} item(s)?",
+      subtitle = "They'll go back to where they were originally, or Movies/Restored if that folder is gone.",
+      dontAskAgain = viewModel.preferences.dontAskBeforeRestore,
+      onConfirm = {
+        pendingAction = null
+        viewModel.restoreSelected()
+      },
+      onDismiss = { pendingAction = null },
+    )
+
+    SecureConfirmDialog(
+      isOpen = pendingAction == PendingAction.DELETE,
+      title = "Delete ${selectedIds.size} item(s) forever?",
+      subtitle = "This can't be undone — the files will be permanently removed from your Secure Folder.",
+      dontAskAgain = viewModel.preferences.dontAskBeforeDelete,
+      onConfirm = {
+        pendingAction = null
+        viewModel.deleteSelectedForever()
+      },
+      onDismiss = { pendingAction = null },
+    )
+
+    SecureFolderProgressDialog(
+      isOpen = isBusy,
+      progress = operationProgress,
+      label = "Working on it…",
+      onCancel = { viewModel.cancelCurrentOperation() },
+    )
+
+    ChangePinDialog(
+      isOpen = changePinOpen,
+      preferences = viewModel.preferences,
+      onDismiss = { changePinOpen = false },
+      onChanged = {
+        // No separate ViewModel state to update — SecureFolderPreferences already
+        // persisted the new hash, and the gate re-reads it on next entry.
+      },
+    )
+
+    ChangeSecurityQuestionDialog(
+      isOpen = changeSecurityQuestionOpen,
+      preferences = viewModel.preferences,
+      onDismiss = { changeSecurityQuestionOpen = false },
+      onChanged = {},
+    )
   }
 }
+
+private enum class PendingAction { RESTORE, DELETE }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -188,9 +254,11 @@ private fun SecureFolderTopBar(
   onBack: () -> Unit,
   onSelectAll: () -> Unit,
   onDeselectAll: () -> Unit,
-  onRestore: () -> Unit,
-  onDelete: () -> Unit,
+  onRestoreRequest: () -> Unit,
+  onDeleteRequest: () -> Unit,
   onToggleEntryPointHidden: () -> Unit,
+  onChangePin: () -> Unit,
+  onChangeSecurityQuestion: () -> Unit,
 ) {
   if (isInSelectionMode) {
     TopAppBar(
@@ -204,10 +272,10 @@ private fun SecureFolderTopBar(
         IconButton(onClick = onSelectAll, enabled = !isBusy && selectedCount < totalCount) {
           Icon(Icons.RoundedFilled.SelectAll, contentDescription = "Select all")
         }
-        IconButton(onClick = onRestore, enabled = !isBusy && selectedCount > 0) {
+        IconButton(onClick = onRestoreRequest, enabled = !isBusy && selectedCount > 0) {
           Icon(Icons.RoundedFilled.Restore, contentDescription = "Restore")
         }
-        IconButton(onClick = onDelete, enabled = !isBusy && selectedCount > 0) {
+        IconButton(onClick = onDeleteRequest, enabled = !isBusy && selectedCount > 0) {
           Icon(Icons.RoundedFilled.Delete, contentDescription = "Delete forever", tint = MaterialTheme.colorScheme.error)
         }
       },
@@ -237,6 +305,22 @@ private fun SecureFolderTopBar(
               },
               onClick = {
                 onToggleEntryPointHidden()
+                menuExpanded = false
+              },
+            )
+            DropdownMenuItem(
+              text = { Text("Change PIN") },
+              leadingIcon = { Icon(Icons.RoundedFilled.Lock, contentDescription = null) },
+              onClick = {
+                onChangePin()
+                menuExpanded = false
+              },
+            )
+            DropdownMenuItem(
+              text = { Text("Change security question") },
+              leadingIcon = { Icon(Icons.RoundedFilled.HelpOutline, contentDescription = null) },
+              onClick = {
+                onChangeSecurityQuestion()
                 menuExpanded = false
               },
             )
