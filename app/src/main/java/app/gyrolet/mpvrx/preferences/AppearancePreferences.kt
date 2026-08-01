@@ -42,6 +42,13 @@ class AppearancePreferences(
   val darkMode = preferenceStore.getEnum("dark_mode", DarkMode.System)
   val appTheme = preferenceStore.getEnum("app_theme", AppTheme.Dynamic)
   val amoledMode = preferenceStore.getBoolean("amoled_mode", false)
+  /**
+   * When true, a single tap on the app-name / screen-title header toggles dark/light theme
+   * (with the circular-reveal animation). Off by default — many people tapped the header by
+   * accident (e.g. while trying to double-tap into the Secure Folder) and didn't want the
+   * theme to change every time.
+   */
+  val tapHeaderToChangeTheme = preferenceStore.getBoolean("tap_header_to_change_theme", false)
   val useSystemFont = preferenceStore.getBoolean("use_system_font", false)
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
   val hidePlayerButtonsBackground = preferenceStore.getBoolean("hide_player_buttons_background", false)
