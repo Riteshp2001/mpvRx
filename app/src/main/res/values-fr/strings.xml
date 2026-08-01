@@ -1231,6 +1231,8 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_file_permission_desc_all_files">Requis pour découvrir les fichiers multimédias et de sous-titres sur votre appareil.</string>
   <string name="ui_notification_permission_title">Notifications</string>
   <string name="ui_notification_permission_desc">Optionnel. Requis pour les commandes de lecture, le statut en arrière-plan et les alertes de mise à jour.</string>
+  <string name="ui_audio_record_permission_title">Enregistrement audio</string>
+  <string name="ui_audio_record_permission_desc">Optionnel. Requis pour les visualiseurs audio afin de traiter le spectre et l\'énergie fréquentielle en temps réel.</string>
   <string name="ui_permission_mandatory">Obligatoire</string>
   <string name="ui_permission_optional">Optionnel</string>
   <string name="ui_permission_granted">Accordé</string>

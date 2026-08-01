@@ -112,6 +112,7 @@ enum class Sheets {
   FrameNavigation,
   Equalizer,
   AudioProperties,
+  VisualizerStyle,
 }
 
 enum class Panels {

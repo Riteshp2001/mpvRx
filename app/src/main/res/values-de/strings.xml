@@ -1231,6 +1231,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_file_permission_desc_all_files">Erforderlich, um Medien- und Untertiteldateien auf Ihrem Gerät zu suchen.</string>
   <string name="ui_notification_permission_title">Benachrichtigungen</string>
   <string name="ui_notification_permission_desc">Optional. Erforderlich für Wiedergabesteuerung, Hintergrundstatus und Aktualisierungshinweise.</string>
+  <string name="ui_audio_record_permission_title">Audioaufnahme</string>
+  <string name="ui_audio_record_permission_desc">Optional. Erforderlich für Audio-Visualisierungen zur Echtzeit-Verarbeitung von Spektrum und Frequenzenergie.</string>
   <string name="ui_permission_mandatory">Erforderlich</string>
   <string name="ui_permission_optional">Optional</string>
   <string name="ui_permission_granted">Gewährt</string>

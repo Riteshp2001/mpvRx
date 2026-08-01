@@ -1231,6 +1231,8 @@
   <string name="ui_file_permission_desc_all_files">Требуется для поиска медиафайлов и субтитров на устройстве.</string>
   <string name="ui_notification_permission_title">Уведомления</string>
   <string name="ui_notification_permission_desc">Необязательно. Требуется для управления воспроизведением, работы в фоновом режиме и уведомлений об обновлениях.</string>
+  <string name="ui_audio_record_permission_title">Запись аудио</string>
+  <string name="ui_audio_record_permission_desc">Необязательно. Требуется для аудиовизуализаторов для обработки спектра и частотной энергии в реальном времени.</string>
   <string name="ui_permission_mandatory">Обязательно</string>
   <string name="ui_permission_optional">Необязательно</string>
   <string name="ui_permission_granted">Предоставлено</string>

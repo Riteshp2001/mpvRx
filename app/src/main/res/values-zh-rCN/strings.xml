@@ -1231,6 +1231,8 @@
   <string name="ui_file_permission_desc_all_files">自动搜索设备上的媒体和字幕文件所必需。</string>
   <string name="ui_notification_permission_title">通知</string>
   <string name="ui_notification_permission_desc">可选。用于媒体播放控制、后台状态和更新提醒。</string>
+  <string name="ui_audio_record_permission_title">录制音频</string>
+  <string name="ui_audio_record_permission_desc">可选。用于音频可视化效果实时处理频谱和频率能量。</string>
   <string name="ui_permission_mandatory">必需</string>
   <string name="ui_permission_optional">可选</string>
   <string name="ui_permission_granted">已授权</string>
