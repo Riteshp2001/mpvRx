@@ -7,6 +7,12 @@
 
 package app.gyrolet.mpvrx.ui.player.visualizer
 
+/**
+ * Shared audio features extracted from the live spectrum.
+ *
+ * Written by the analyzer thread, read by renderers on the GL thread.
+ * [FloatArray] fields are snapshot-copied to avoid torn reads.
+ */
 class AudioFeatures {
   @Volatile var energy: Float = 0f
 
@@ -23,6 +29,19 @@ class AudioFeatures {
   @Volatile var active: Boolean = false
 
   @Volatile var lastCaptureNanos: Long = 0L
+
+  /**
+   * Raw magnitude spectrum (512 bins, normalized 0..1).
+   * Updated atomically by swapping the array reference.
+   * Renderers should snapshot this array before using it.
+   */
+  @Volatile var spectrum: FloatArray = FloatArray(512)
+
+  /**
+   * Raw waveform samples (normalized -1..1).
+   * Updated atomically by swapping the array reference.
+   */
+  @Volatile var waveform: FloatArray = FloatArray(512)
 
   fun markCaptureReceived() {
     lastCaptureNanos = System.nanoTime()
@@ -48,6 +67,8 @@ class AudioFeatures {
     centroid = 0.35f
     active = false
     lastCaptureNanos = 0L
+    spectrum = FloatArray(512)
+    waveform = FloatArray(512)
   }
 
   fun decay(

@@ -86,6 +86,9 @@ internal class BlobRenderer(
   @Suppress("LocalVariableName")
   private var uCompositeBackground = -1
 
+  @Suppress("LocalVariableName")
+  private var uSpectrum = -1
+
   private var meshVao = 0
   private var meshVbo = 0
   private var meshEbo = 0
@@ -97,6 +100,8 @@ internal class BlobRenderer(
   private var sceneTarget = RenderTarget.EMPTY
   private var bloomA = RenderTarget.EMPTY
   private var bloomB = RenderTarget.EMPTY
+
+  private var spectrumTexture = 0
 
   private var surfaceWidth = 1
   private var surfaceHeight = 1
@@ -190,6 +195,7 @@ internal class BlobRenderer(
     cacheUniformLocations()
     createMesh()
     createQuad()
+    createSpectrumTexture()
     startNanos = System.nanoTime()
     previousFrameNanos = startNanos
     targetsDirty = true
@@ -344,6 +350,46 @@ internal class BlobRenderer(
     GLES30.glBindVertexArray(0)
   }
 
+  private fun createSpectrumTexture() {
+    val tex = IntArray(1)
+    GLES30.glGenTextures(1, tex, 0)
+    spectrumTexture = tex[0]
+    GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, spectrumTexture)
+    GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
+    GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
+    GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
+    GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
+    GLES30.glTexImage2D(
+      GLES30.GL_TEXTURE_2D,
+      0,
+      GLES30.GL_R32F,
+      512,
+      1,
+      0,
+      GLES30.GL_RED,
+      GLES30.GL_FLOAT,
+      null,
+    )
+    GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0)
+  }
+
+  private fun updateSpectrumTexture(spectrum: FloatArray) {
+    val data = java.nio.FloatBuffer.wrap(spectrum.copyOf(512))
+    GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, spectrumTexture)
+    GLES30.glTexSubImage2D(
+      GLES30.GL_TEXTURE_2D,
+      0,
+      0,
+      0,
+      512,
+      1,
+      GLES30.GL_RED,
+      GLES30.GL_FLOAT,
+      data,
+    )
+    GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0)
+  }
+
   @Suppress("LocalVariableName")
   private fun updateMatrices(time: Float) {
     yaw += (targetYaw - yaw) * 0.065f
@@ -400,6 +446,9 @@ internal class BlobRenderer(
       uBlobIntensity,
       0.38f + audio.energy * 0.28f + audio.beat * 0.22f,
     )
+
+    updateSpectrumTexture(sourceAudio.spectrum)
+    bindTexture(0, spectrumTexture, uSpectrum)
 
     GLES30.glLineWidth(1.2f)
     GLES30.glBindVertexArray(meshVao)
@@ -563,6 +612,7 @@ internal class BlobRenderer(
     uBlobBeat = GLES30.glGetUniformLocation(blobProgram, "uBeat")
     uBlobColor = GLES30.glGetUniformLocation(blobProgram, "uColor")
     uBlobIntensity = GLES30.glGetUniformLocation(blobProgram, "uIntensity")
+    uSpectrum = GLES30.glGetUniformLocation(blobProgram, "uSpectrum")
     uBrightScene = GLES30.glGetUniformLocation(brightProgram, "uScene")
     uBrightThreshold = GLES30.glGetUniformLocation(brightProgram, "uThreshold")
     uBlurImage = GLES30.glGetUniformLocation(blurProgram, "uImage")

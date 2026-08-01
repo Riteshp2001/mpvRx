@@ -10,8 +10,10 @@ uniform float uBass;
 uniform float uMid;
 uniform float uTreble;
 uniform float uBeat;
+uniform sampler2D uSpectrum;
 
 out float vEnergy;
+out float vSpectrum;
 
 vec4 permute(vec4 x) {
     return mod(((x * 34.0) + 1.0) * x, 289.0);
@@ -78,14 +80,23 @@ float snoise(vec3 v) {
 
 void main() {
     vec3 normal = normalize(aPosition);
+
+    // Map vertex position to a spectrum bin (use vertical position for frequency mapping)
+    float specCoord = clamp((normal.y + 1.0) * 0.5, 0.0, 1.0);
+    float specValue = texture(uSpectrum, vec2(specCoord, 0.5)).r;
+
     float slowNoise = snoise(aPosition * (1.65 + uMid * 0.35) + vec3(uTime * 0.22));
     float detailNoise = snoise(aPosition * (4.0 + uTreble * 1.8) - vec3(uTime * 0.34));
     float breathing = 0.014 * sin(uTime * 1.05 + aPosition.y * 3.0);
 
+    // Per-bin spectrum contribution: local displacement driven by the frequency at this vertex's bin
+    float specDisplacement = specValue * 0.18 * (1.0 + uBass * 0.6);
+
     float reaction = 0.025 + uAudio * 0.50 + uBass * 0.24 + uBeat * 0.14;
-    float displacement = (slowNoise * 0.78 + detailNoise * 0.22) * reaction + breathing;
+    float displacement = (slowNoise * 0.78 + detailNoise * 0.22) * reaction + breathing + specDisplacement;
     vec3 position = aPosition * (1.0 + uBass * 0.08 + uBeat * 0.04) + normal * displacement;
 
     vEnergy = clamp(0.38 + uAudio * 0.78 + abs(detailNoise) * uTreble * 0.38, 0.0, 1.5);
+    vSpectrum = specValue;
     gl_Position = uMvp * vec4(position, 1.0);
 }
