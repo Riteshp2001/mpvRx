@@ -126,14 +126,7 @@ internal class ParticleFeedbackRenderer(
 
   private fun updateDynamicPaletteHue() {
     val hsv = FloatArray(3)
-    val composeColor = requestedPalette.primaryColor
-    val argb = Color.argb(
-      (composeColor.alpha * 255).toInt(),
-      (composeColor.red * 255).toInt(),
-      (composeColor.green * 255).toInt(),
-      (composeColor.blue * 255).toInt(),
-    )
-    Color.colorToHSV(argb, hsv)
+    Color.colorToHSV(requestedPalette.primary, hsv)
     hueTarget = hsv[0] / 360f
   }
 

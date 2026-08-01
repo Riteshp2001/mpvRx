@@ -13,6 +13,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
 import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
@@ -25,28 +27,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.koin.java.KoinJavaComponent.inject
 
 /**
  * ViewModel driving both the PIN gate and the unlocked grid of [SecureFolderScreen].
  */
 class SecureFolderViewModel(
   application: Application,
-  val preferences: SecureFolderPreferences,
-  private val repository: SecureFolderRepository,
 ) : AndroidViewModel(application) {
+  val preferences by inject<SecureFolderPreferences>(SecureFolderPreferences::class.java)
+  private val repository by inject<SecureFolderRepository>(SecureFolderRepository::class.java)
+
   companion object {
     private const val TAG = "SecureFolderViewModel"
 
     fun factory(application: Application): ViewModelProvider.Factory =
-      object : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-          val app = application as app.gyrolet.mpvrx.MpvRxApplication
-          return SecureFolderViewModel(
-            application = application,
-            preferences = app.secureFolderPreferences,
-            repository = app.secureFolderRepository,
-          ) as T
+      viewModelFactory {
+        initializer {
+          SecureFolderViewModel(application)
         }
       }
   }
