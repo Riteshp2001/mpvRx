@@ -391,7 +391,7 @@ class MainActivity : AppCompatActivity() {
     CompositionLocalProvider(
       LocalBackStack provides typedBackstack,
     ) {
-      val hasNavEntries = typedBackstack.size > 0
+      val hasNavEntries = typedBackstack.isNotEmpty()
 
       LaunchedEffect(hasNavEntries) {
         if (!hasNavEntries) {

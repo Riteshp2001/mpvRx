@@ -239,25 +239,6 @@ class MPVView(
         MPVLib.command("script-binding", "stats/display-page-$it")
       }
     }
-    // applyUserMpvConf()
-  }
-
-  private fun applyUserMpvConf() {
-    val mpvConfFile = java.io.File(context.filesDir, "mpv.conf")
-    if (!mpvConfFile.exists()) return
-
-    val content = runCatching { mpvConfFile.readText() }.getOrNull() ?: return
-    for (line in content.lines()) {
-      val trimmed = line.trim()
-      if (trimmed.isEmpty() || trimmed.startsWith("#")) continue
-      val eqIndex = trimmed.indexOf('=')
-      if (eqIndex <= 0) continue
-      val key = trimmed.substring(0, eqIndex).trim()
-      val value = trimmed.substring(eqIndex + 1).trim()
-      if (key.isNotBlank() && value.isNotBlank()) {
-        runCatching { MPVLib.setOptionString(key, value) }
-      }
-    }
   }
 
   fun applyOsdSafeAreaMargins(insets: WindowInsetsCompat? = null) {

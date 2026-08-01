@@ -71,6 +71,7 @@ import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.ParsedMediaInfo
 import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
+import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.MPVLib
@@ -525,12 +526,7 @@ class PlayerViewModel(
       val currentPath = path?.takeIf { it.isNotBlank() } ?: streamPath
       val isFileAudioExt =
         currentPath?.let { p ->
-          val ext =
-            p
-              .substringBefore('?')
-              .substringBefore('#')
-              .substringAfterLast('.', "")
-              .lowercase()
+          val ext = p.fileExtension()
           ext in FileTypeUtils.AUDIO_EXTENSIONS
         } ?: false
 
