@@ -7,6 +7,7 @@
 
 package app.gyrolet.mpvrx.ui.securefolder
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -513,6 +514,11 @@ data object SecureFolderScreen : Screen {
           }
         }
       }
+    }
+
+    // Back handler: clear selection first, then go back
+    BackHandler(enabled = isInSelectionMode) {
+      viewModel.clearSelection()
     }
 
     SecureConfirmDialog(
