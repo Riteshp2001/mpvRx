@@ -133,9 +133,10 @@ internal class GalaxyRenderer(
     GLES30.glDisable(GLES30.GL_DEPTH_TEST)
     program =
       GlUtils.createProgram(
-        GlUtils.readAssetText(context, "shaders/visualizer/galaxy_vertex.glsl"),
-        GlUtils.readAssetText(context, "shaders/visualizer/galaxy_fragment.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/galaxy/galaxy_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/galaxy/galaxy_fragment.glsl"),
       )
+
     cacheUniformLocations()
     createStarBuffer()
     applyPalette(force = true)

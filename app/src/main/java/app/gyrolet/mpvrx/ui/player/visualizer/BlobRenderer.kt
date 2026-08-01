@@ -167,24 +167,25 @@ internal class BlobRenderer(
 
     blobProgram =
       GlUtils.createProgram(
-        GlUtils.readAssetText(context, "shaders/visualizer/blob_vertex.glsl"),
-        GlUtils.readAssetText(context, "shaders/visualizer/blob_fragment.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/blob_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/blob_fragment.glsl"),
       )
     brightProgram =
       GlUtils.createProgram(
-        GlUtils.readAssetText(context, "shaders/visualizer/quad_vertex.glsl"),
-        GlUtils.readAssetText(context, "shaders/visualizer/bright_fragment.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/quad_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/bright_fragment.glsl"),
       )
     blurProgram =
       GlUtils.createProgram(
-        GlUtils.readAssetText(context, "shaders/visualizer/quad_vertex.glsl"),
-        GlUtils.readAssetText(context, "shaders/visualizer/blur_fragment.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/quad_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/blur_fragment.glsl"),
       )
     compositeProgram =
       GlUtils.createProgram(
-        GlUtils.readAssetText(context, "shaders/visualizer/quad_vertex.glsl"),
-        GlUtils.readAssetText(context, "shaders/visualizer/composite_fragment.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/quad_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/blob/composite_fragment.glsl"),
       )
+
 
     cacheUniformLocations()
     createMesh()

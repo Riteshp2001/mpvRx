@@ -131,25 +131,26 @@ internal class ParticleFeedbackRenderer(
     GLES30.glDisable(GLES30.GL_DEPTH_TEST)
 
     pInit = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_init_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_init_fragment.glsl")
     )
     pSim = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_sim_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_sim_fragment.glsl")
     )
     pPts = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_point_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_point_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_vertex.glsl"),
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_fragment.glsl")
     )
     pDecay = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_decay_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_decay_fragment.glsl")
     )
     pComp = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle_comp_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_comp_fragment.glsl")
     )
+
 
     cacheUniforms()
     createDummyVao()
