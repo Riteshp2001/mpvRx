@@ -151,6 +151,7 @@ object Icons {
     val LockOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Lock_open) }
     val ListAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.List_alt) }
     val Memory by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Memory) }
+    val Mic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Mic) }
     val MonetizationOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Monetization_on) }
     val MoreTime by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.More_time) }
     val MoreVert by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.More_vert) }
@@ -348,6 +349,7 @@ object Icons {
     val LockOpen get() = Shared.LockOpen
     val ListAlt get() = Shared.ListAlt
     val Memory get() = Shared.Memory
+    val Mic get() = Shared.Mic
     val MonetizationOn get() = Shared.MonetizationOn
     val MoreTime get() = Shared.MoreTime
     val MoreVert get() = Shared.MoreVert

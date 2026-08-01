@@ -1231,6 +1231,8 @@
   <string name="ui_file_permission_desc_all_files">مطلوب لاكتشاف ملفات الوسائط والترجمة على جهازك.</string>
   <string name="ui_notification_permission_title">الإشعارات</string>
   <string name="ui_notification_permission_desc">اختياري. مطلوب لعناصر التحكم في تشغيل الوسائط والحالة في الخلفية وتنبيهات التحديث.</string>
+  <string name="ui_audio_record_permission_title">تسجيل الصوت</string>
+  <string name="ui_audio_record_permission_desc">اختياري. مطلوب للمؤثرات المرئية للصوت لمعالجة الطيف وطاقة التردد في الوقت الفعلي.</string>
   <string name="ui_permission_mandatory">إجباري</string>
   <string name="ui_permission_optional">اختياري</string>
   <string name="ui_permission_granted">مسموح</string>
