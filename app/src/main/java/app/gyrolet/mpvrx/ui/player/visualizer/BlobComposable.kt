@@ -55,6 +55,21 @@ internal fun GalaxyOverlay(
   factory = { ctx, features, p -> GalaxyVisualizerView(ctx, features, p) },
 )
 
+@Composable
+internal fun ParticleOverlay(
+  modifier: Modifier = Modifier,
+  isPlaying: Boolean = false,
+  palette: VisualizerPalette,
+  isSheetOpen: Boolean = false,
+) = VisualizerOverlay(
+  modifier = modifier,
+  isPlaying = isPlaying,
+  palette = palette,
+  isSheetOpen = isSheetOpen,
+  factory = { ctx, features, p -> ParticleVisualizerView(ctx, features, p) },
+)
+
+
 internal interface PaletteConsumer {
   fun updatePalette(value: VisualizerPalette)
 }
@@ -76,13 +91,20 @@ private fun <T> VisualizerOverlay(
   // Keep the analyzer resilient across player/audio-session changes. Some devices briefly
   // reject Visualizer creation while mpv swaps files; retry without recreating the GL view so
   // the blob keeps its animation state instead of stuttering or snapping to idle.
+  // Also detect when the platform silently stops delivering FFT callbacks (e.g. AudioTrack
+  // session swap) and re-create the Visualizer automatically.
   DisposableEffect(Unit) {
     val analyzer = AudioSpectrumAnalyzer(features)
+    val staleThresholdNanos = 2_000_000_000L // 2 seconds without FFT data → stale
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive) {
           if (!realAnalyzerActive.get()) {
             realAnalyzerActive.set(analyzer.start(audioSessionId).isSuccess)
+          } else if (!features.hasRecentCapture(staleThresholdNanos)) {
+            // Visualizer attached but stopped delivering data — tear down and retry
+            realAnalyzerActive.set(false)
+            analyzer.stop(resetFeatures = false)
           }
           delay(if (realAnalyzerActive.get()) 1_000L else 350L)
         }

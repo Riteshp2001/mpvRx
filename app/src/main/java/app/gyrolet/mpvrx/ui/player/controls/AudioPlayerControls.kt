@@ -111,7 +111,9 @@ import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.visualizer.BlobOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.CuboidOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.GalaxyOverlay
+import app.gyrolet.mpvrx.ui.player.visualizer.ParticleOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.VisualizerPalette
+
 import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import `is`.xyz.mpv.MPVLib
@@ -482,7 +484,15 @@ fun AudioPlayerControls(
                     isSheetOpen = isSheetOpen,
                     modifier = Modifier.fillMaxSize(),
                   )
+                AudioVisualizerStyle.Particle ->
+                  ParticleOverlay(
+                    isPlaying = isPlaying,
+                    palette = palette,
+                    isSheetOpen = isSheetOpen,
+                    modifier = Modifier.fillMaxSize(),
+                  )
               }
+
             }
           } else {
             val coverShape = RoundedCornerShape(32.dp)
