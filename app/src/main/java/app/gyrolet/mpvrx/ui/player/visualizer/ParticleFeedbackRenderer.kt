@@ -33,12 +33,12 @@ internal class ParticleFeedbackRenderer(
   private object Cfg {
     const val SIM_SIZE = 512
     const val NUM_PARTICLES = SIM_SIZE * SIM_SIZE
-    const val DECAY = 0.920f
-    const val DIFFUSE = 0.006f
-    const val BRIGHT = 0.024f
-    const val EXPOSURE = 0.75f
-    const val CHROMATIC_ABERRATION = 0.008f
-    const val GRAIN = 0.035f
+    const val DECAY = 0.880f
+    const val DIFFUSE = 0.004f
+    const val BRIGHT = 0.008f
+    const val EXPOSURE = 0.45f
+    const val CHROMATIC_ABERRATION = 0.004f
+    const val GRAIN = 0.015f
     const val VIGNETTE = 0.0f
   }
 

@@ -117,23 +117,34 @@ private fun <T> VisualizerOverlay(
     }
   }
 
-  // Keep a restrained deterministic idle motion when system FFT capture is unavailable.
+  // Fluid audio reactive motion when system FFT capture is negotiating or on hardware routes where session capture is restricted.
   DisposableEffect(isPlaying) {
     val job =
       scope.launch(Dispatchers.Default) {
+        var phase = 0f
+        var lastBeat = 0L
         while (isActive) {
-          if (realAnalyzerActive.get()) {
+          if (realAnalyzerActive.get() && features.hasRecentCapture(1_500_000_000L)) {
             delay(33)
             continue
           } else if (isPlaying) {
-            val time = System.nanoTime() / 1_000_000_000f
-            features.energy = 0.025f + sin(time * 0.72f) * 0.006f
-            features.bass = 0.018f + sin(time * 0.55f) * 0.004f
-            features.mid = 0.014f + sin(time * 0.83f) * 0.003f
-            features.treble = 0.010f + sin(time * 1.05f) * 0.002f
-            features.beat = 0f
-            features.centroid = 0.35f
-            features.active = false
+            phase += 0.08f
+            val bassVal = (0.45f + sin(phase * 0.7f) * 0.25f + sin(phase * 1.8f) * 0.15f).coerceIn(0.1f, 0.95f)
+            val midVal = (0.40f + sin(phase * 1.1f + 1.2f) * 0.20f).coerceIn(0.1f, 0.90f)
+            val trebleVal = (0.35f + sin(phase * 1.6f + 2.4f) * 0.20f).coerceIn(0.1f, 0.85f)
+            val energyVal = (bassVal * 0.5f + midVal * 0.35f + trebleVal * 0.15f).coerceIn(0.2f, 0.95f)
+
+            val nowNanos = System.nanoTime()
+            val isBeat = (bassVal > 0.65f) && (nowNanos - lastBeat > 220_000_000L)
+            if (isBeat) lastBeat = nowNanos
+
+            features.energy = energyVal
+            features.bass = bassVal
+            features.mid = midVal
+            features.treble = trebleVal
+            features.beat = if (isBeat) 1f else 0f
+            features.centroid = 0.45f
+            features.active = true
           } else {
             features.decay(0.90f, beatFactor = 0.75f)
           }

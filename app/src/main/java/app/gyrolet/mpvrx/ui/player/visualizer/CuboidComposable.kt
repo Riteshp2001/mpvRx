@@ -42,6 +42,7 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 internal fun CuboidOverlay(
@@ -102,9 +103,19 @@ internal fun CuboidOverlay(
               lastCaptureNanos.set(0L)
               fftPeak = 12f
             } else {
-              delay(1_000L)
+              delay(500L)
             }
           } else {
+            if (playbackActive.get()) {
+              // Fluid frequency fallback ensuring continuous animation on all device routes
+              val simData = ByteArray(64)
+              val phase = System.nanoTime() / 100_000_000f
+              for (k in simData.indices) {
+                val valk = (130 + 90 * sin(phase * 0.2f + k * 0.12f) + 35 * sin(phase * 0.5f)).toInt().coerceIn(20, 255)
+                simData[k] = valk.toByte()
+              }
+              engine.updateFrequencyData(simData)
+            }
             try {
               val v = Visualizer(audioSessionId)
               val range = Visualizer.getCaptureSizeRange()

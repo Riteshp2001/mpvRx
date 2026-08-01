@@ -8,39 +8,26 @@
 package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.media.audiofx.Visualizer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlin.math.hypot
 import kotlin.math.sqrt
 
 /**
- * Dual-engine audio spectrum analyzer for mpvRx.
+ * Audio spectrum analyzer for mpvRx using [android.media.audiofx.Visualizer].
  *
- * Combines real-time [AudioTrack] audio session FFT and Waveform capture with background PCM pipeline
- * processing ([PCMRepository] + [FFTProcessor]).
- *
- * Requires 0 permissions (`RECORD_AUDIO` not needed for app-owned session IDs) and provides
- * guaranteed 60 FPS audio visualization across Speaker, Wired Headphones, Bluetooth headsets, and USB DACs.
+ * Captures live time-domain PCM waveforms and frequency-domain FFT bytes from the output mix / session ID
+ * to drive [AudioFeatures] for 60 FPS visualizer rendering.
  */
 class AudioSpectrumAnalyzer(
   val features: AudioFeatures = AudioFeatures(),
-  private val pcmRepository: PCMRepository = PCMRepository(),
 ) {
-  val fftProcessor = FFTProcessor(pcmRepository, features)
-  val audioDecoder = AudioDecoder(pcmRepository)
   private var visualizerManager: VisualizerManager? = null
-  private val scope = CoroutineScope(Dispatchers.Default)
 
   @Synchronized
   fun start(audioSessionId: Int): Result<Unit> {
     stop(resetFeatures = false)
     return runCatching {
-      // 1. Start background PCM pipeline
-      audioDecoder.startCapture(scope)
-      fftProcessor.start(scope)
       features.markCaptureStarted()
 
-      // 2. Attach live FFT & Waveform capture to the AudioTrack session ID if available
       if (audioSessionId > 0) {
         val manager = VisualizerManager(audioSessionId)
         manager.start(
@@ -61,15 +48,13 @@ class AudioSpectrumAnalyzer(
   }
 
   /**
-   * Processes live time-domain waveform byte arrays captured from [VisualizerManager].
+   * Processes live time-domain waveform byte arrays.
    */
   fun processWaveformData(waveform: ByteArray) {
     if (waveform.isEmpty()) return
-    val pcmSamples = FloatArray(waveform.size)
     var sumSq = 0f
     for (i in waveform.indices) {
       val sample = ((waveform[i].toInt() and 0xFF) - 128) / 128f
-      pcmSamples[i] = sample
       sumSq += sample * sample
     }
     val rms = sqrt(sumSq / waveform.size)
@@ -78,18 +63,15 @@ class AudioSpectrumAnalyzer(
     features.energy = (features.energy * 0.3f + rmsBoosted * 0.7f).coerceIn(0f, 1f)
     features.active = true
     features.markCaptureReceived()
-
-    pcmRepository.pushSamples(pcmSamples)
   }
 
   /**
-   * Processes live FFT byte arrays captured from [VisualizerManager].
+   * Processes live FFT byte arrays.
    */
   fun processFftData(fft: ByteArray) {
     if (fft.size < 8) return
     val captureSize = fft.size
     val halfSize = captureSize / 2
-    val pcmSimulated = FloatArray(FFTProcessor.FFT_SIZE)
 
     var bassSum = 0f
     var midSum = 0f
@@ -108,10 +90,6 @@ class AudioSpectrumAnalyzer(
       val imaginary = fft[imagIndex].toInt().toFloat()
       val mag = hypot(real, imaginary) / 128f
 
-      if (k < pcmSimulated.size) {
-        pcmSimulated[k] = mag.coerceIn(-1f, 1f)
-      }
-
       when {
         k < 8 -> { bassSum += mag; bassCount++ }
         k < 64 -> { midSum += mag; midCount++ }
@@ -120,30 +98,25 @@ class AudioSpectrumAnalyzer(
       k++
     }
 
-    val bass = if (bassCount > 0) (bassSum / bassCount * 3.8f).coerceIn(0f, 1f) else 0f
-    val mid = if (midCount > 0) (midSum / midCount * 4.2f).coerceIn(0f, 1f) else 0f
-    val treble = if (trebleCount > 0) (trebleSum / trebleCount * 4.8f).coerceIn(0f, 1f) else 0f
+    val bass = if (bassCount > 0) (bassSum / bassCount * 2.2f).coerceIn(0f, 1f) else 0f
+    val mid = if (midCount > 0) (midSum / midCount * 2.5f).coerceIn(0f, 1f) else 0f
+    val treble = if (trebleCount > 0) (trebleSum / trebleCount * 2.8f).coerceIn(0f, 1f) else 0f
     val energy = (bass * 0.5f + mid * 0.35f + treble * 0.15f).coerceIn(0f, 1f)
 
-    // Instantly update AudioFeatures for GL renderers & Canvas views
-    features.bass = bass
-    features.mid = mid
-    features.treble = treble
-    features.energy = maxOf(features.energy, energy)
-    features.beat = if (bass > 0.30f) 1f else 0f
+    // Smooth natural audio feature response
+    features.bass = features.bass * 0.3f + bass * 0.7f
+    features.mid = features.mid * 0.3f + mid * 0.7f
+    features.treble = features.treble * 0.3f + treble * 0.7f
+    features.energy = features.energy * 0.3f + energy * 0.7f
+    features.beat = if (bass > 0.35f) 1f else 0f
     features.active = true
     features.markCaptureReceived()
-
-    // Forward samples to PCM repository
-    pcmRepository.pushSamples(pcmSimulated)
   }
 
   @Synchronized
   fun stop(resetFeatures: Boolean = true) {
     visualizerManager?.release()
     visualizerManager = null
-    audioDecoder.stopCapture()
-    fftProcessor.stop()
     if (resetFeatures) {
       features.reset()
     } else {
@@ -153,8 +126,7 @@ class AudioSpectrumAnalyzer(
 }
 
 /**
- * Lightweight manager attached to app-owned AudioTrack session IDs.
- * Does not require RECORD_AUDIO permission.
+ * Lightweight manager attached to AudioTrack session IDs or global session 0.
  */
 class VisualizerManager(
   private val sessionId: Int,
@@ -164,7 +136,8 @@ class VisualizerManager(
   fun start(onWaveform: (ByteArray) -> Unit, onFFT: (ByteArray) -> Unit) {
     release()
     runCatching {
-      visualizer = Visualizer(sessionId).apply {
+      val v = runCatching { Visualizer(0) }.getOrElse { Visualizer(sessionId) }
+      visualizer = v.apply {
         captureSize = Visualizer.getCaptureSizeRange()[1]
         scalingMode = Visualizer.SCALING_MODE_NORMALIZED
         enabled = false
