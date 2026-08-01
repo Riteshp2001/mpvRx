@@ -15,8 +15,8 @@ vec3 hsv2rgb(vec3 c){
 
 vec3 trailCol(vec2 uv){
   vec3 c = texture(uTrail, uv).rgb;
-  c += textureLod(uTrail, uv, 2.0).rgb * 0.055;  /* soft bloom */
-  c += textureLod(uTrail, uv, 4.0).rgb * 0.045;
+  c += textureLod(uTrail, uv, 2.0).rgb * 0.035;  /* soft bloom */
+  c += textureLod(uTrail, uv, 4.0).rgb * 0.025;
   return c;
 }
 
@@ -34,27 +34,27 @@ void main(){
   col.r = trailCol(uv + ca).r;
   col.g = trailCol(uv).g;
   col.b = trailCol(uv - ca).b;
-  /* procedural core flare + anamorphic streaks */
+  /* procedural core flare + anamorphic streaks (toned down for balanced brightness) */
   float rr = dot(d,d);
   vec3 fl = vec3(0.0);
-  fl += vec3(0.00055 / (rr + 0.0009));                      /* hot core */
-  fl.r += streak(d.x*0.90, d.y, 4.0e-5, 9.0) * 0.42;        /* thin horizontal, chroma-spread */
-  fl.g += streak(d.x*1.00, d.y, 4.0e-5, 9.0) * 0.42;
-  fl.b += streak(d.x*1.12, d.y, 4.0e-5, 9.0) * 0.42;
-  fl += vec3(streak(d.x, d.y, 4.5e-3, 6.0) * 0.045);        /* wide soft band */
-  fl += vec3(streak(d.y, d.x, 3.0e-5, 18.0) * 0.055);       /* faint vertical beam */
+  fl += vec3(0.00015 / (rr + 0.002));                       /* balanced core */
+  fl.r += streak(d.x*0.90, d.y, 4.0e-5, 9.0) * 0.18;        /* thin horizontal */
+  fl.g += streak(d.x*1.00, d.y, 4.0e-5, 9.0) * 0.18;
+  fl.b += streak(d.x*1.12, d.y, 4.0e-5, 9.0) * 0.18;
+  fl += vec3(streak(d.x, d.y, 4.5e-3, 6.0) * 0.025);        /* wide soft band */
+  fl += vec3(streak(d.y, d.x, 3.0e-5, 18.0) * 0.030);       /* faint vertical beam */
   vec3 ftint = mix(vec3(1.0), hsv2rgb(vec3(uHue, 0.55, 1.0)), 0.12);
   col += fl * uFlare * ftint;
   /* tonemap */
   col = 1.0 - exp(-col * uExposure);
-  /* vignette */
-  vec2 vd = uv - 0.5; vd.x *= mix(1.0, uAspect, 0.6);
-  col *= 1.0 - uVig * smoothstep(0.35, 1.1, length(vd)*1.6);
-  /* film grain (pre-gamma so it lives in the blacks like the reference) */
+  /* film grain */
   vec2 gs = gl_FragCoord.xy + vec2(fract(uFrame*0.7131)*311.7, fract(uFrame*0.3719)*173.3);
   vec3 g = vec3(hash12(gs), hash12(gs + 19.19), hash12(gs + 47.47)) - 0.5;
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  col += g * (uGrain * (0.16 + 0.55*lum));
+  col += g * (uGrain * (0.10 + 0.35*lum));
   col = pow(max(col, vec3(0.0)), vec3(0.4545));
-  o = vec4(col, 1.0);
+  
+  /* Transparent background output */
+  float alpha = clamp(lum * 2.2, 0.0, 1.0);
+  o = vec4(col, alpha);
 }

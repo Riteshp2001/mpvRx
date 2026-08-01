@@ -54,16 +54,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.presentation.components.ExposedTextDropDownMenu
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.utils.LocalBackStack
-import app.gyrolet.mpvrx.ui.utils.popSafely
-import app.gyrolet.mpvrx.ui.utils.replaceTop
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.serialization.Serializable
-
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.Screen
@@ -74,6 +64,7 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.utils.replaceTop
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
 
 /** Preset security question resource IDs — no free-text question, only the answer is typed. */
@@ -254,7 +245,7 @@ private fun SetupContent(
   error: String?,
   onSubmit: (pin: String, question: String, answer: String) -> Unit,
 ) {
-  val presets = SECURITY_QUESTION_PRESET_RES_IDS.map { stringResource(it) }
+  val presets = SECURITY_QUESTION_PRESET_RES_IDS.map { stringResource(it) }.toImmutableList()
   var pin by rememberSaveable { mutableStateOf("") }
   var confirmPin by rememberSaveable { mutableStateOf("") }
   var showPin by rememberSaveable { mutableStateOf(false) }
