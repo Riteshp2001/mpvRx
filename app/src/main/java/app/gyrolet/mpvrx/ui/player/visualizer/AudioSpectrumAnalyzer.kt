@@ -11,11 +11,12 @@ import android.media.audiofx.Visualizer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlin.math.hypot
+import kotlin.math.sqrt
 
 /**
  * Dual-engine audio spectrum analyzer for mpvRx.
  *
- * Combines real-time [AudioTrack] audio session FFT capture with background PCM pipeline
+ * Combines real-time [AudioTrack] audio session FFT and Waveform capture with background PCM pipeline
  * processing ([PCMRepository] + [FFTProcessor]).
  *
  * Requires 0 permissions (`RECORD_AUDIO` not needed for app-owned session IDs) and provides
@@ -39,17 +40,46 @@ class AudioSpectrumAnalyzer(
       fftProcessor.start(scope)
       features.markCaptureStarted()
 
-      // 2. Attach live FFT capture to the AudioTrack session ID if available
+      // 2. Attach live FFT & Waveform capture to the AudioTrack session ID if available
       if (audioSessionId > 0) {
         val manager = VisualizerManager(audioSessionId)
-        manager.start { fftBytes ->
-          if (fftBytes.isNotEmpty()) {
-            processFftData(fftBytes)
-          }
-        }
+        manager.start(
+          onWaveform = { waveBytes ->
+            if (waveBytes.isNotEmpty()) {
+              processWaveformData(waveBytes)
+            }
+          },
+          onFFT = { fftBytes ->
+            if (fftBytes.isNotEmpty()) {
+              processFftData(fftBytes)
+            }
+          },
+        )
         visualizerManager = manager
       }
     }
+  }
+
+  /**
+   * Processes live time-domain waveform byte arrays captured from [VisualizerManager].
+   */
+  fun processWaveformData(waveform: ByteArray) {
+    if (waveform.isEmpty()) return
+    val pcmSamples = FloatArray(waveform.size)
+    var sumSq = 0f
+    for (i in waveform.indices) {
+      val sample = ((waveform[i].toInt() and 0xFF) - 128) / 128f
+      pcmSamples[i] = sample
+      sumSq += sample * sample
+    }
+    val rms = sqrt(sumSq / waveform.size)
+    val rmsBoosted = (rms * 3.5f).coerceIn(0f, 1f)
+
+    features.energy = (features.energy * 0.3f + rmsBoosted * 0.7f).coerceIn(0f, 1f)
+    features.active = true
+    features.markCaptureReceived()
+
+    pcmRepository.pushSamples(pcmSamples)
   }
 
   /**
@@ -90,17 +120,18 @@ class AudioSpectrumAnalyzer(
       k++
     }
 
-    val bass = if (bassCount > 0) (bassSum / bassCount * 1.6f).coerceIn(0f, 1f) else 0f
-    val mid = if (midCount > 0) (midSum / midCount * 1.8f).coerceIn(0f, 1f) else 0f
-    val treble = if (trebleCount > 0) (trebleSum / trebleCount * 2.0f).coerceIn(0f, 1f) else 0f
+    val bass = if (bassCount > 0) (bassSum / bassCount * 3.8f).coerceIn(0f, 1f) else 0f
+    val mid = if (midCount > 0) (midSum / midCount * 4.2f).coerceIn(0f, 1f) else 0f
+    val treble = if (trebleCount > 0) (trebleSum / trebleCount * 4.8f).coerceIn(0f, 1f) else 0f
     val energy = (bass * 0.5f + mid * 0.35f + treble * 0.15f).coerceIn(0f, 1f)
 
-    // Instantly update AudioFeatures for GL renderers
+    // Instantly update AudioFeatures for GL renderers & Canvas views
     features.bass = bass
     features.mid = mid
     features.treble = treble
-    features.energy = energy
-    features.beat = if (bass > 0.35f) 1f else 0f
+    features.energy = maxOf(features.energy, energy)
+    features.beat = if (bass > 0.30f) 1f else 0f
+    features.active = true
     features.markCaptureReceived()
 
     // Forward samples to PCM repository
@@ -130,7 +161,7 @@ class VisualizerManager(
 ) {
   private var visualizer: Visualizer? = null
 
-  fun start(onFFT: (ByteArray) -> Unit) {
+  fun start(onWaveform: (ByteArray) -> Unit, onFFT: (ByteArray) -> Unit) {
     release()
     runCatching {
       visualizer = Visualizer(sessionId).apply {
@@ -143,7 +174,9 @@ class VisualizerManager(
               visualizer: Visualizer?,
               waveform: ByteArray?,
               samplingRate: Int,
-            ) = Unit
+            ) {
+              waveform?.let(onWaveform)
+            }
 
             override fun onFftDataCapture(
               visualizer: Visualizer?,
@@ -154,7 +187,7 @@ class VisualizerManager(
             }
           },
           Visualizer.getMaxCaptureRate(),
-          false,
+          true,
           true,
         )
         enabled = true
