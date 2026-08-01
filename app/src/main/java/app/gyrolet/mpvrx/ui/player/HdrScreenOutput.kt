@@ -57,7 +57,6 @@ enum class HdrScreenMode(
     titleRes = R.string.hdr_mode_linear,
     shortTitleRes = R.string.hdr_mode_linear_short,
     descriptionRes = R.string.hdr_mode_linear_description,
-    hdrToysProfile = HdrToysProfile.LINEAR,
   ),
   ;
 

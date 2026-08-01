@@ -579,7 +579,7 @@ data object SecureFolderScreen : Screen {
       onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
       isFolderView = true,
       enableViewModeOptions = false,
-      enableLayoutModeOptions = false,
+      enableLayoutModeOptions = true,
     )
   }
 }

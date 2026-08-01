@@ -323,23 +323,6 @@ object AppearancePreferencesScreen : Screen {
                       )
                     },
                   )
-
-                  PreferenceDivider()
-
-                  val tapHeaderToChangeTheme by preferences.tapHeaderToChangeTheme.collectAsState()
-                  SwitchPreference(
-                    value = tapHeaderToChangeTheme,
-                    onValueChange = preferences.tapHeaderToChangeTheme::set,
-                    title = {
-                      Text(text = "Tap header to change theme")
-                    },
-                    summary = {
-                      Text(
-                        text = "Tapping the app name / screen title toggles dark and light theme. Off by default.",
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                  )
                 }
               }
             }
