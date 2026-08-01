@@ -11,5 +11,7 @@ void main(){
   c += texture(uTrail, vUv + vec2(-uTexel.x, 0.0)).rgb * uDiff;
   c += texture(uTrail, vUv + vec2(0.0,  uTexel.y)).rgb * uDiff;
   c += texture(uTrail, vUv + vec2(0.0, -uTexel.y)).rgb * uDiff;
-  o = vec4(c * uDecay, 1.0);
+  vec3 decayed = c * uDecay;
+  float alpha = clamp(dot(decayed, vec3(0.333)) * 2.0, 0.0, 1.0);
+  o = vec4(decayed, alpha);
 }
