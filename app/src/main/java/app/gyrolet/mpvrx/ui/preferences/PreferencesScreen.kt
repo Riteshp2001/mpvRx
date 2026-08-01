@@ -52,15 +52,19 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
 
 private data class SettingsDestination(
   val title: String,
@@ -189,6 +193,8 @@ object PreferencesScreen : Screen {
   @Composable
   private fun settingsSections(): List<SettingsSection> {
     val colorScheme = MaterialTheme.colorScheme
+    val secureFolderPreferences = koinInject<SecureFolderPreferences>()
+    val isSecureFolderEntryHidden by secureFolderPreferences.isEntryPointHidden.collectAsState()
     return listOf(
       SettingsSection(
         title = stringResource(R.string.pref_section_appearance),
@@ -264,13 +270,23 @@ object PreferencesScreen : Screen {
         title = stringResource(R.string.pref_section_storage),
         tint = colorScheme.onSurfaceVariant,
         items =
-          listOf(
+          listOfNotNull(
             SettingsDestination(
               title = stringResource(R.string.pref_folders_title),
               summary = "Media library folders, hidden paths, fonts, and subtitle directories.",
               icon = Icons.RoundedFilled.Folder,
               screen = FoldersPreferencesScreen,
             ),
+            if (!isSecureFolderEntryHidden) {
+              SettingsDestination(
+                title = "Secure Folder",
+                summary = "PIN-protected space for videos you want hidden from the library.",
+                icon = Icons.RoundedFilled.Lock,
+                screen = SecureFolderGateScreen,
+              )
+            } else {
+              null
+            },
           ),
       ),
       SettingsSection(

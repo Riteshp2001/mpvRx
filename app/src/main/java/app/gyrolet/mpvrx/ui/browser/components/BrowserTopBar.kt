@@ -86,6 +86,8 @@ fun BrowserTopBar(
   onDeselectAll: (() -> Unit)? = null,
   additionalActions: @Composable RowScope.() -> Unit = { },
   onTitleLongPress: (() -> Unit)? = null,
+  onTitleDoubleTap: (() -> Unit)? = null,
+  onMoveToSecureClick: (() -> Unit)? = null,
   useRemoveIcon: Boolean = false,
   onAddToPlaylistClick: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
@@ -108,6 +110,7 @@ fun BrowserTopBar(
       onSelectAll = onSelectAll,
       onInvertSelection = onInvertSelection,
       onDeselectAll = onDeselectAll,
+      onMoveToSecure = onMoveToSecureClick,
       modifier = modifier,
       useRemoveIcon = useRemoveIcon,
       onAddToPlaylist = onAddToPlaylistClick,
@@ -123,6 +126,7 @@ fun BrowserTopBar(
       additionalActions = additionalActions,
       modifier = modifier,
       onTitleLongPress = onTitleLongPress,
+      onTitleDoubleTap = onTitleDoubleTap,
       colors = colors,
       forceHeadlineSmall = forceHeadlineSmall,
     )
@@ -143,11 +147,13 @@ private fun NormalTopBar(
   additionalActions: @Composable RowScope.() -> Unit,
   modifier: Modifier = Modifier,
   onTitleLongPress: (() -> Unit)?,
+  onTitleDoubleTap: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   forceHeadlineSmall: Boolean = false,
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
+  val tapHeaderToChangeTheme by preferences.tapHeaderToChangeTheme.collectAsState()
   val darkTheme = isSystemInDarkTheme()
   val themeTransition = LocalThemeTransitionState.current
   val coroutineScope = rememberCoroutineScope()
@@ -194,9 +200,11 @@ private fun NormalTopBar(
         Modifier
           .onGloballyPositioned { coordinates ->
             titleBounds.value = coordinates.boundsInWindow()
-          }.pointerInput(onTitleLongPress) {
+          }.pointerInput(onTitleLongPress, onTitleDoubleTap) {
             detectTapGestures(
               onTap = { localOffset ->
+                // Feature is opt-in and off by default — see AppearancePreferences.tapHeaderToChangeTheme.
+                if (!tapHeaderToChangeTheme) return@detectTapGestures
                 // Don't allow theme change if animation is in progress
                 if (themeTransition?.isAnimating == true) return@detectTapGestures
 
@@ -213,6 +221,12 @@ private fun NormalTopBar(
                   toggleDarkMode()
                 }
               },
+              onDoubleTap =
+                if (onTitleDoubleTap != null) {
+                  { onTitleDoubleTap() }
+                } else {
+                  null
+                },
               onLongPress =
                 if (onTitleLongPress != null) {
                   { onTitleLongPress() }
@@ -334,6 +348,7 @@ private fun SelectionTopBar(
   modifier: Modifier = Modifier,
   useRemoveIcon: Boolean = false,
   onAddToPlaylist: (() -> Unit)? = null,
+  onMoveToSecure: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
 ) {
   var showDropdown by remember { mutableStateOf(false) }
@@ -532,6 +547,21 @@ private fun SelectionTopBar(
             contentDescription =
               androidx.compose.ui.res
                 .stringResource(app.gyrolet.mpvrx.R.string.ui_copy_path),
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.secondary,
+          )
+        }
+      }
+
+      // Move to Secure Folder icon
+      if (onMoveToSecure != null) {
+        IconButton(
+          onClick = onMoveToSecure,
+          modifier = Modifier.padding(horizontal = 2.dp),
+        ) {
+          Icon(
+            Icons.RoundedFilled.Lock,
+            contentDescription = "Move to Secure Folder",
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )

@@ -1231,6 +1231,8 @@
   <string name="ui_file_permission_desc_all_files">端末上のメディアファイルや字幕ファイルを検出するために必要です。</string>
   <string name="ui_notification_permission_title">通知</string>
   <string name="ui_notification_permission_desc">任意。再生コントロール、バックグラウンド状態、更新アラートに必要です。</string>
+  <string name="ui_audio_record_permission_title">音声の録音</string>
+  <string name="ui_audio_record_permission_desc">任意。オーディオビジュアルライザーがリアルタイムのスペクトルと周波数エネルギーを処理するために必要です。</string>
   <string name="ui_permission_mandatory">必須</string>
   <string name="ui_permission_optional">任意</string>
   <string name="ui_permission_granted">許可済み</string>

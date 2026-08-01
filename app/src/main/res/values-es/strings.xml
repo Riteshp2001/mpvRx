@@ -1231,6 +1231,8 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_file_permission_desc_all_files">Requerido para descubrir archivos de medios y subtítulos en tu dispositivo.</string>
   <string name="ui_notification_permission_title">Notificaciones</string>
   <string name="ui_notification_permission_desc">Opcional. Requerido para controles de reproducción, estado en segundo plano y alertas de actualización.</string>
+  <string name="ui_audio_record_permission_title">Grabación de audio</string>
+  <string name="ui_audio_record_permission_desc">Opcional. Requerido para visualizadores de audio para procesar el espectro y la energía de frecuencia en tiempo real.</string>
   <string name="ui_permission_mandatory">Obligatorio</string>
   <string name="ui_permission_optional">Opcional</string>
   <string name="ui_permission_granted">Concedido</string>

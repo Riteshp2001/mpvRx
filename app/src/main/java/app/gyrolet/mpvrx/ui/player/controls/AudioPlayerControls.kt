@@ -25,10 +25,12 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -58,6 +60,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -423,15 +426,17 @@ fun AudioPlayerControls(
       }
     }
 
+    @OptIn(ExperimentalFoundationApi::class)
     val centerVisualizerView = @Composable { visualizerModifier: Modifier ->
       BoxWithConstraints(
         modifier =
           visualizerModifier
             .clipToBounds()
-            .clickable(
+            .combinedClickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = null,
               onClick = { viewModel.toggleAudioVisualizer() },
+              onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
             ),
         contentAlignment = Alignment.Center,
       ) {
@@ -862,7 +867,10 @@ fun AudioPlayerControls(
                 },
             )
           }
-          ReactiveIconButton(onClick = { viewModel.toggleAudioVisualizer() }) {
+          ReactiveIconButton(
+            onClick = { viewModel.toggleAudioVisualizer() },
+            onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+          ) {
             Icon(
               imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
               contentDescription = null,
@@ -1274,10 +1282,12 @@ private fun formatSec(totalSeconds: Long): String {
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ReactiveIconButton(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  onLongClick: (() -> Unit)? = null,
   enabled: Boolean = true,
   content: @Composable () -> Unit,
 ) {
@@ -1291,20 +1301,49 @@ private fun ReactiveIconButton(
     label = "reactive_icon_button_scale",
   )
 
-  IconButton(
-    onClick = {
-      haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-      onClick()
-    },
-    enabled = enabled,
-    interactionSource = interactionSource,
-    modifier =
-      modifier.graphicsLayer {
-        scaleX = scale
-        scaleY = scale
+  if (onLongClick != null) {
+    Box(
+      modifier =
+        modifier
+          .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+          }
+          .clip(CircleShape)
+          .combinedClickable(
+            interactionSource = interactionSource,
+            indication = ripple(bounded = false, radius = 24.dp),
+            enabled = enabled,
+            onClick = {
+              haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+              onClick()
+            },
+            onLongClick = {
+              haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+              onLongClick()
+            },
+          )
+          .padding(8.dp),
+      contentAlignment = Alignment.Center,
+    ) {
+      content()
+    }
+  } else {
+    IconButton(
+      onClick = {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onClick()
       },
-  ) {
-    content()
+      enabled = enabled,
+      interactionSource = interactionSource,
+      modifier =
+        modifier.graphicsLayer {
+          scaleX = scale
+          scaleY = scale
+        },
+    ) {
+      content()
+    }
   }
 }
 

@@ -16,12 +16,14 @@ import app.gyrolet.mpvrx.database.dao.NetworkConnectionDao
 import app.gyrolet.mpvrx.database.dao.PlaybackStateDao
 import app.gyrolet.mpvrx.database.dao.PlaylistDao
 import app.gyrolet.mpvrx.database.dao.RecentlyPlayedDao
+import app.gyrolet.mpvrx.database.dao.SecureMediaDao
 import app.gyrolet.mpvrx.database.dao.VideoMetadataDao
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistItemEntity
 import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
+import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
 import app.gyrolet.mpvrx.database.entities.VideoMetadataEntity
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 
@@ -34,8 +36,9 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
     PlaylistEntity::class,
     PlaylistItemEntity::class,
     DirectoryScanEntity::class,
+    SecureMediaEntity::class,
   ],
-  version = 10,
+  version = 11,
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class)
@@ -51,4 +54,6 @@ abstract class MpvRxDatabase : RoomDatabase() {
   abstract fun playlistDao(): PlaylistDao
 
   abstract fun directoryScanDao(): DirectoryScanDao
+
+  abstract fun secureMediaDao(): SecureMediaDao
 }

@@ -1241,6 +1241,8 @@
   <string name="ui_file_permission_desc_all_files">Required to discover media and subtitle files on your device.</string>
   <string name="ui_notification_permission_title">Notifications</string>
   <string name="ui_notification_permission_desc">Optional. Required for media playback controls, background status, and update alerts.</string>
+  <string name="ui_audio_record_permission_title">Record Audio</string>
+  <string name="ui_audio_record_permission_desc">Optional. Required for audio visualizers to process real-time spectrum and frequency energy.</string>
   <string name="ui_permission_mandatory">Mandatory</string>
   <string name="ui_permission_optional">Optional</string>
   <string name="ui_permission_granted">Granted</string>

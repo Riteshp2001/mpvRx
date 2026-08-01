@@ -151,6 +151,7 @@ object Icons {
     val LockOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Lock_open) }
     val ListAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.List_alt) }
     val Memory by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Memory) }
+    val Mic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Mic) }
     val MonetizationOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Monetization_on) }
     val MoreTime by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.More_time) }
     val MoreVert by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.More_vert) }
@@ -173,6 +174,11 @@ object Icons {
     ) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add_circle) }
     val SmartDisplay by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Smart_display) }
     val Videocam by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Videocam) }
+    val Visibility by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Visibility) }
+    val VisibilityOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Visibility_off) }
+    val Backspace by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Backspace) }
+    val SelectAll by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Select_all) }
+    val HelpOutline by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Help) }
     val PlaylistAdd by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Playlist_add) }
     val PlaylistPlay get() = PlayArrow
     val PushPin by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Push_pin) }
@@ -348,6 +354,7 @@ object Icons {
     val LockOpen get() = Shared.LockOpen
     val ListAlt get() = Shared.ListAlt
     val Memory get() = Shared.Memory
+    val Mic get() = Shared.Mic
     val MonetizationOn get() = Shared.MonetizationOn
     val MoreTime get() = Shared.MoreTime
     val MoreVert get() = Shared.MoreVert
@@ -364,6 +371,11 @@ object Icons {
     val PlaylistAddCircle get() = Shared.PlaylistAddCircle
     val SmartDisplay get() = Shared.SmartDisplay
     val Videocam get() = Shared.Videocam
+    val Visibility get() = Shared.Visibility
+    val VisibilityOff get() = Shared.VisibilityOff
+    val Backspace get() = Shared.Backspace
+    val SelectAll get() = Shared.SelectAll
+    val HelpOutline get() = Shared.HelpOutline
     val PlaylistAdd get() = Shared.PlaylistAdd
     val PlaylistPlay get() = Shared.PlaylistPlay
     val PushPin get() = Shared.PushPin

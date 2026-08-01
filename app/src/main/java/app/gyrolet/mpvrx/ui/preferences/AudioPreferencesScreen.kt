@@ -322,29 +322,6 @@ object AudioPreferencesScreen : Screen {
               )
 
               PreferenceDivider()
-              val videoBackgroundPlayback by preferences.backgroundPlayback.collectAsState()
-              SwitchPreference(
-                value = videoBackgroundPlayback,
-                onValueChange = { enabled ->
-                  preferences.backgroundPlayback.set(enabled)
-                  if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                      PackageManager.PERMISSION_GRANTED
-                    ) {
-                      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                  }
-                },
-                title = { Text(stringResource(R.string.pref_video_background_playback_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_video_background_playback_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
               val audioChannel by preferences.audioChannels.collectAsState()
               ListPreference(
                 value = audioChannel,
