@@ -54,7 +54,6 @@ internal fun CuboidOverlay(
 
   // Use the shared audio analyzer instead of creating a duplicate Visualizer
   val sharedAnalyzer = remember { AudioSpectrumAnalyzer() }
-  val audioSessionId = remember { AudioSessionProvider.get(context) }
 
   val isDark = androidx.compose.foundation.isSystemInDarkTheme()
 
@@ -79,8 +78,9 @@ internal fun CuboidOverlay(
     val staleThresholdNanos = 2_000_000_000L
     val job =
       scope.launch(Dispatchers.Default) {
-        // Start the shared analyzer
-        sharedAnalyzer.start(audioSessionId)
+        // Start the shared analyzer with a fresh session id (handles audio routing changes)
+        val freshSessionId = AudioSessionProvider.get(context)
+        sharedAnalyzer.start(freshSessionId)
         visualizerActive.set(true)
 
         var fftPeak = 12f
@@ -88,8 +88,9 @@ internal fun CuboidOverlay(
           if (playbackActive.get() && sharedAnalyzer.features.active) {
             // Check if data is still flowing
             if (!sharedAnalyzer.features.hasRecentCapture(staleThresholdNanos)) {
-              // Stale — restart
-              sharedAnalyzer.start(audioSessionId)
+              // Stale — restart with a fresh session id
+              val retrySessionId = AudioSessionProvider.get(context)
+              sharedAnalyzer.start(retrySessionId)
               fftPeak = 12f
               delay(500L)
               continue

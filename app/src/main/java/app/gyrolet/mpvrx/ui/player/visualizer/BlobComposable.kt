@@ -86,13 +86,14 @@ private fun <T> VisualizerOverlay(
   val features = remember { AudioFeatures() }
   val scope = rememberCoroutineScope()
   val realAnalyzerActive = remember { AtomicBoolean(false) }
-  val audioSessionId = remember { AudioSessionProvider.get(context) }
 
   // Keep the analyzer resilient across player/audio-session changes. Some devices briefly
   // reject Visualizer creation while mpv swaps files; retry without recreating the GL view so
   // the blob keeps its animation state instead of stuttering or snapping to idle.
   // Also detect when the platform silently stops delivering FFT callbacks (e.g. AudioTrack
   // session swap) and re-create the Visualizer automatically.
+  // A fresh session id is fetched on each retry so that audio-routing changes
+  // (headphone connect/disconnect) are picked up without restarting the composable.
   DisposableEffect(Unit) {
     val analyzer = AudioSpectrumAnalyzer(features)
     val staleThresholdNanos = 2_000_000_000L // 2 seconds without FFT data → stale
@@ -100,7 +101,8 @@ private fun <T> VisualizerOverlay(
       scope.launch(Dispatchers.Default) {
         while (isActive) {
           if (!realAnalyzerActive.get()) {
-            realAnalyzerActive.set(analyzer.start(audioSessionId).isSuccess)
+            val sessionId = AudioSessionProvider.get(context)
+            realAnalyzerActive.set(analyzer.start(sessionId).isSuccess)
           } else if (!features.hasRecentCapture(staleThresholdNanos)) {
             // Visualizer attached but stopped delivering data — tear down and retry
             realAnalyzerActive.set(false)
