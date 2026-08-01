@@ -94,6 +94,12 @@ data object SecureFolderGateScreen : Screen {
     val gateStep by viewModel.gateStep.collectAsState()
     val gateError by viewModel.gateError.collectAsState()
 
+    // Re-check the persisted PIN state every time this screen is entered, so a previously
+    // completed setup is never re-shown (see SecureFolderViewModel.refreshGateStep).
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+      viewModel.refreshGateStep()
+    }
+
     Scaffold(
       topBar = {
         TopAppBar(

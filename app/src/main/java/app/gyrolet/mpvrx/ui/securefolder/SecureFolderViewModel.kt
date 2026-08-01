@@ -74,6 +74,22 @@ class SecureFolderViewModel(
     _gateError.value = null
   }
 
+  /**
+   * Re-syncs [gateStep] with the current persisted PIN state.
+   *
+   * [_gateStep] is only seeded once, when the ViewModel is first constructed. If this same
+   * ViewModel instance survives across multiple visits to [SecureFolderGateScreen] (e.g. the
+   * ViewModelStoreOwner isn't recreated per visit), a stale SETUP step could keep being shown
+   * even after a PIN has already been saved — asking the user to "set up" the Secure Folder
+   * again every time they open it. The gate screen calls this on every entry so the step
+   * always reflects [SecureFolderPreferences.isPinSet] rather than a cached value. Mid-flow
+   * states (forgot-PIN) are left alone since those aren't driven by isPinSet().
+   */
+  fun refreshGateStep() {
+    if (_gateStep.value == GateStep.FORGOT_PIN_QUESTION || _gateStep.value == GateStep.FORGOT_PIN_NEW_PIN) return
+    _gateStep.value = if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP
+  }
+
   /** Called from ENTER_PIN. On success the caller (Gate screen) navigates to the grid. */
   fun verifyPin(pin: String): Boolean {
     val ok = preferences.verifyPin(pin)
@@ -101,6 +117,9 @@ class SecureFolderViewModel(
     preferences.setPin(pin)
     preferences.setSecurityQuestion(question, answer)
     _gateError.value = null
+    // Keep gateStep consistent with isPinSet() now that a PIN exists, in case this ViewModel
+    // instance is revisited later (see refreshGateStep()) instead of being recreated.
+    _gateStep.value = GateStep.ENTER_PIN
     return true
   }
 

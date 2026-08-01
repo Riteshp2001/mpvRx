@@ -7,6 +7,7 @@
 
 package app.gyrolet.mpvrx.ui.securefolder
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -51,11 +52,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
+import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
@@ -64,8 +70,13 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
 import java.text.DecimalFormat
+import kotlin.math.roundToInt
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -104,6 +115,9 @@ data object SecureFolderScreen : Screen {
     var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
     var changePinOpen by remember { mutableStateOf(false) }
     var changeSecurityQuestionOpen by remember { mutableStateOf(false) }
+    // Confirmed separately from restore/delete since it's not a destructive data action, but
+    // still needs a heads-up: once hidden, the only way back in is the header double-tap.
+    var hideEntryPointConfirmOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(operationResult) {
       operationResult?.let {
@@ -137,7 +151,14 @@ data object SecureFolderScreen : Screen {
               pendingAction = PendingAction.DELETE
             }
           },
-          onToggleEntryPointHidden = { viewModel.toggleEntryPointHidden() },
+          onToggleEntryPointHidden = {
+            if (isEntryPointHidden) {
+              // Un-hiding needs no confirmation — it only makes the entry more visible again.
+              viewModel.toggleEntryPointHidden()
+            } else {
+              hideEntryPointConfirmOpen = true
+            }
+          },
           onChangePin = { changePinOpen = true },
           onChangeSecurityQuestion = { changeSecurityQuestionOpen = true },
         )
@@ -220,6 +241,20 @@ data object SecureFolderScreen : Screen {
       },
       onDismiss = { pendingAction = null },
     )
+
+    if (hideEntryPointConfirmOpen) {
+      app.gyrolet.mpvrx.presentation.components.ConfirmDialog(
+        title = "Hide Secure Folder from Preferences?",
+        subtitle =
+          "The \"Secure Folder\" row will be removed from Preferences. To open it again later, " +
+            "double-tap the app name at the top of the Home screen and enter your PIN.",
+        onConfirm = {
+          viewModel.toggleEntryPointHidden()
+          hideEntryPointConfirmOpen = false
+        },
+        onCancel = { hideEntryPointConfirmOpen = false },
+      )
+    }
 
     SecureFolderProgressDialog(
       isOpen = isBusy,
@@ -346,6 +381,72 @@ private fun SecureMediaCard(
   onClick: () -> Unit,
   onLongClick: () -> Unit,
 ) {
+  // Secure files live in app-private storage, outside MediaStore, so they aren't backed by a
+  // real Video row anywhere. ThumbnailRepository only needs a local file path though (it uses
+  // MediaMetadataRetriever.setDataSource(video.path) for anything without a "://" scheme), so
+  // a minimal Video wrapper around the secure file path lets us reuse the same thumbnail
+  // pipeline/cache as every other screen instead of building a separate one.
+  val thumbnailRepository = koinInject<ThumbnailRepository>()
+  val isAudio = entity.mimeType.startsWith("audio/")
+  val video =
+    remember(entity.id, entity.secureFilePath) {
+      Video(
+        id = entity.id,
+        title = entity.fileName,
+        displayName = entity.fileName,
+        path = entity.secureFilePath,
+        uri = android.net.Uri.fromFile(java.io.File(entity.secureFilePath)),
+        duration = 0L,
+        durationFormatted = "",
+        size = entity.fileSize,
+        sizeFormatted = "",
+        dateModified = entity.dateHidden,
+        dateAdded = entity.dateHidden,
+        mimeType = entity.mimeType,
+        bucketId = "",
+        bucketDisplayName = "",
+        width = 0,
+        height = 0,
+        fps = 0f,
+        resolution = "--",
+        isAudio = isAudio,
+      )
+    }
+
+  val thumbWidthPx = with(LocalDensity.current) { 160.dp.roundToPx() }
+  val aspect = if (isAudio) 1f else 16f / 9f
+  val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
+
+  val thumbnailKey =
+    remember(video.id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx) {
+      thumbnailRepository.thumbnailKey(video, thumbWidthPx, thumbHeightPx)
+    }
+
+  var thumbnail by
+    remember(thumbnailKey) {
+      mutableStateOf(thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx))
+    }
+
+  LaunchedEffect(thumbnailKey) {
+    thumbnailRepository.thumbnailReadyKeys
+      .filter { key -> thumbnailRepository.isThumbnailKeyForVideo(key, video) }
+      .collect {
+        thumbnail =
+          withContext(Dispatchers.IO) {
+            thumbnailRepository.getCachedThumbnail(video, thumbWidthPx, thumbHeightPx)
+          }
+      }
+  }
+
+  LaunchedEffect(thumbnailKey) {
+    if (thumbnail == null && !isAudio) {
+      thumbnail =
+        withContext(Dispatchers.IO) {
+          thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+        }
+    }
+  }
+
   Card(
     modifier =
       Modifier
@@ -369,29 +470,51 @@ private fun SecureMediaCard(
   ) {
     Box(modifier = Modifier.fillMaxSize()) {
       Column(
-        modifier = Modifier.fillMaxSize().padding(8.dp),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
       ) {
-        Icon(
-          if (entity.mimeType.startsWith("image/")) Icons.RoundedFilled.CameraAlt else Icons.RoundedFilled.Movie,
-          contentDescription = null,
-          modifier = Modifier.size(36.dp),
-          tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-          entity.fileName,
-          style = MaterialTheme.typography.labelSmall,
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
-          textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-          modifier = Modifier.padding(top = 6.dp),
-        )
-        Text(
-          formatFileSize(entity.fileSize),
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Box(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .aspectRatio(aspect)
+              .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+          contentAlignment = Alignment.Center,
+        ) {
+          thumbnail?.let {
+            Image(
+              bitmap = it.asImageBitmap(),
+              contentDescription = entity.fileName,
+              modifier = Modifier.matchParentSize(),
+              contentScale = ContentScale.Crop,
+            )
+          } ?: run {
+            Icon(
+              if (entity.mimeType.startsWith("image/")) Icons.RoundedFilled.CameraAlt else Icons.RoundedFilled.Movie,
+              contentDescription = null,
+              modifier = Modifier.size(36.dp),
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+        }
+
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(8.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          Text(
+            entity.fileName,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+          )
+          Text(
+            formatFileSize(entity.fileSize),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
       }
 
       if (isInSelectionMode) {

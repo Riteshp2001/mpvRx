@@ -10,6 +10,7 @@ package app.gyrolet.mpvrx.ui.browser.folderlist
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -356,7 +357,19 @@ object FolderListScreen : Screen {
           app.gyrolet.mpvrx.repository.MediaFileRepository
             .getVideosForBuckets(context, selectedIds)
         if (allVideos.isNotEmpty()) {
-          secureFolderRepository.moveIn(context, allVideos)
+          val result = secureFolderRepository.moveIn(context, allVideos)
+          result
+            .onSuccess { batch ->
+              val message =
+                if (batch.failedIds.isEmpty()) {
+                  "Moved ${batch.succeededIds.size} file(s) to Secure Folder"
+                } else {
+                  "Moved ${batch.succeededIds.size}, failed ${batch.failedIds.size}"
+                }
+              Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+              Toast.makeText(context, "Failed to move files to Secure Folder", Toast.LENGTH_SHORT).show()
+            }
         }
         moveToSecureProgressOpen.value = false
         selectionManager.clear()
@@ -543,6 +556,7 @@ object FolderListScreen : Screen {
               onSettingsClick = {
                 backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
               },
+              onTitleDoubleTap = { backstack.add(SecureFolderGateScreen) },
               onRenameClick = null,
               isSingleSelection = selectionManager.isSingleSelection,
               onInfoClick = null,

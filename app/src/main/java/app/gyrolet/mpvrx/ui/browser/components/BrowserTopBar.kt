@@ -153,6 +153,7 @@ private fun NormalTopBar(
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
+  val tapHeaderToChangeTheme by preferences.tapHeaderToChangeTheme.collectAsState()
   val darkTheme = isSystemInDarkTheme()
   val themeTransition = LocalThemeTransitionState.current
   val coroutineScope = rememberCoroutineScope()
@@ -202,6 +203,8 @@ private fun NormalTopBar(
           }.pointerInput(onTitleLongPress, onTitleDoubleTap) {
             detectTapGestures(
               onTap = { localOffset ->
+                // Feature is opt-in and off by default — see AppearancePreferences.tapHeaderToChangeTheme.
+                if (!tapHeaderToChangeTheme) return@detectTapGestures
                 // Don't allow theme change if animation is in progress
                 if (themeTransition?.isAnimating == true) return@detectTapGestures
 

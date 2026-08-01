@@ -9,6 +9,7 @@ package app.gyrolet.mpvrx.ui.browser.videolist
 
 import android.content.Intent
 import android.os.Environment
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.core.spring
@@ -249,10 +250,22 @@ data class VideoListScreen(
       if (selectedVideos.isEmpty()) return
       moveToSecureProgressOpen.value = true
       coroutineScope.launch {
-        secureFolderRepository.moveIn(context, selectedVideos)
+        val result = secureFolderRepository.moveIn(context, selectedVideos)
         moveToSecureProgressOpen.value = false
         selectionManager.clear()
         viewModel.refresh()
+        result
+          .onSuccess { batch ->
+            val message =
+              if (batch.failedIds.isEmpty()) {
+                "Moved ${batch.succeededIds.size} file(s) to Secure Folder"
+              } else {
+                "Moved ${batch.succeededIds.size}, failed ${batch.failedIds.size}"
+              }
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+          }.onFailure {
+            Toast.makeText(context, "Failed to move files to Secure Folder", Toast.LENGTH_SHORT).show()
+          }
       }
     }
 
