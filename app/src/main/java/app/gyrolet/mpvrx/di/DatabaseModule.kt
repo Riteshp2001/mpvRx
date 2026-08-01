@@ -553,6 +553,34 @@ val MIGRATION_9_10 =
     }
   }
 
+/**
+ * Migration from version 10 to version 11
+ *
+ * Changes:
+ * - Adds secure_media table for the Secure Folder feature (hidden, app-private media)
+ */
+val MIGRATION_10_11 =
+  object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `secure_media` (
+          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          `originalPath` TEXT NOT NULL,
+          `secureFilePath` TEXT NOT NULL,
+          `fileName` TEXT NOT NULL,
+          `fileSize` INTEGER NOT NULL,
+          `mimeType` TEXT NOT NULL,
+          `dateHidden` INTEGER NOT NULL
+        )
+        """.trimIndent(),
+      )
+      db.execSQL(
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_secure_media_secureFilePath` ON `secure_media` (`secureFilePath`)",
+      )
+    }
+  }
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -577,6 +605,7 @@ val DatabaseModule =
           MIGRATION_7_8,
           MIGRATION_8_9,
           MIGRATION_9_10,
+          MIGRATION_10_11,
         ).fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }
@@ -611,6 +640,16 @@ val DatabaseModule =
     single {
       PlaylistRepository(
         playlistDao = get<MpvRxDatabase>().playlistDao(),
+      )
+    }
+
+    single {
+      get<MpvRxDatabase>().secureMediaDao()
+    }
+
+    single {
+      app.gyrolet.mpvrx.database.repository.SecureFolderRepository(
+        dao = get<MpvRxDatabase>().secureMediaDao(),
       )
     }
   }

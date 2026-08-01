@@ -66,6 +66,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -73,6 +74,7 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
@@ -97,6 +99,8 @@ import app.gyrolet.mpvrx.ui.browser.selection.rememberSelectionManager
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.securefolder.SecureConfirmDialog
+import app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -232,6 +236,25 @@ data class VideoListScreen(
     val showPrivateSpaceCompletionDialog = rememberSaveable { mutableStateOf(false) }
     val privateSpaceMovedCount = remember { mutableIntStateOf(0) }
 
+    // Move-to-Secure-Folder state
+    val secureFolderRepository = koinInject<SecureFolderRepository>()
+    val secureFolderPreferences = koinInject<SecureFolderPreferences>()
+    val moveToSecureConfirmOpen = rememberSaveable { mutableStateOf(false) }
+    val moveToSecureProgressOpen = rememberSaveable { mutableStateOf(false) }
+    val secureFolderProgress by secureFolderRepository.progress.collectAsState()
+
+    fun moveSelectedToSecureFolder() {
+      val selectedVideos = selectionManager.getSelectedItems()
+      if (selectedVideos.isEmpty()) return
+      moveToSecureProgressOpen.value = true
+      coroutineScope.launch {
+        secureFolderRepository.moveIn(context, selectedVideos)
+        moveToSecureProgressOpen.value = false
+        selectionManager.clear()
+        viewModel.refresh()
+      }
+    }
+
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
 
     // FAB visibility state
@@ -329,6 +352,13 @@ data class VideoListScreen(
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
+          onMoveToSecureClick = {
+            if (secureFolderPreferences.dontAskBeforeMove.get()) {
+              moveSelectedToSecureFolder()
+            } else {
+              moveToSecureConfirmOpen.value = true
+            }
+          },
           onAddToPlaylistClick =
             if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
               { addToPlaylistDialogOpen.value = true }
@@ -673,6 +703,26 @@ data class VideoListScreen(
           selectionManager.clear()
           viewModel.refresh()
         },
+      )
+
+      // Move to Secure Folder — confirm (skippable via "don't ask again"), then progress
+      SecureConfirmDialog(
+        isOpen = moveToSecureConfirmOpen.value,
+        title = "Move ${selectionManager.selectedCount} item(s) to Secure Folder?",
+        subtitle = "They'll disappear from this list and everywhere else in the app until restored.",
+        dontAskAgain = secureFolderPreferences.dontAskBeforeMove,
+        onConfirm = {
+          moveToSecureConfirmOpen.value = false
+          moveSelectedToSecureFolder()
+        },
+        onDismiss = { moveToSecureConfirmOpen.value = false },
+      )
+
+      SecureFolderProgressDialog(
+        isOpen = moveToSecureProgressOpen.value,
+        progress = secureFolderProgress,
+        label = "Moving to Secure Folder…",
+        onCancel = { secureFolderRepository.cancelOperation() },
       )
     }
   }

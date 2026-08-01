@@ -169,6 +169,14 @@ class PlayerActivity :
    */
   private val playerObserver by lazy { PlayerObserver(this) }
 
+  /**
+   * True when this playback session was launched from the Secure Folder. Files hidden there
+   * should never leave a trail in Recents/playback-history, regardless of how playback later
+   * navigates (single file, auto-playlist, etc.) — this is computed once from the original
+   * intent so it stays correct even after `intent` extras get reused for playlist navigation.
+   */
+  private val isSecureFolderLaunch by lazy { intent.getStringExtra("launch_source") == "secure_folder" }
+
   // ==================== Dependency Injection ====================
 
   /**
@@ -3848,6 +3856,13 @@ class PlayerActivity :
           MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
         }.getOrDefault(0)
 
+      // Secure Folder playback should never surface in Recents/playback-history — that would
+      // defeat the point of hiding the file in the first place.
+      if (isSecureFolderLaunch) {
+        Log.d(TAG, "Skipping recently-played save for secure_folder launch: $filePath")
+        return@runCatching
+      }
+
       RecentlyPlayedOps.addRecentlyPlayed(
         filePath = filePath,
         fileName = fileName,
@@ -5328,6 +5343,11 @@ class PlayerActivity :
         }.getOrDefault(0)
 
       val historyPlaylistId = playlistId?.takeUnless(::isAllVideosPlaylist)
+
+      if (isSecureFolderLaunch) {
+        Log.d(TAG, "Skipping recently-played save (playlist nav) for secure_folder launch: $filePath")
+        return@runCatching
+      }
 
       RecentlyPlayedOps.addRecentlyPlayed(
         filePath = filePath,
