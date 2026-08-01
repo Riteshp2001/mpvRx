@@ -146,9 +146,7 @@ class MPVView(
       if (!hdrScreenOutputEnabled) {
         HdrScreenMode.OFF
       } else {
-        decoderPreferences.hdrScreenMode.get().let { saved ->
-          if (saved == HdrScreenMode.OFF) decoderPreferences.lastHdrMode.get() else saved
-        }
+        decoderPreferences.hdrScreenMode.get()
       }
     val hdrPipelineReady = true
     applyHdrScreenOutputOptions(

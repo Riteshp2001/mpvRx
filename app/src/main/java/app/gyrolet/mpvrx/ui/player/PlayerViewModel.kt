@@ -4898,19 +4898,16 @@ class PlayerViewModel(
     mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
 
   private fun initialHdrScreenMode(): HdrScreenMode {
-    val savedMode =
-      decoderPreferences.hdrScreenMode.get().let { mode ->
-        if (mode == HdrScreenMode.OFF) decoderPreferences.lastHdrMode.get() else mode
-      }
-    val resolvedMode =
-      if (savedMode == HdrScreenMode.LINEAR &&
-        !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
-      ) HdrScreenMode.defaultEnabledMode else savedMode
-    return if (resolvedMode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) {
-      HdrScreenMode.defaultEnabledMode
-    } else {
-      resolvedMode
+    if (!decoderPreferences.hdrScreenOutput.get()) {
+      return HdrScreenMode.OFF
     }
+    val savedMode = decoderPreferences.hdrScreenMode.get()
+    if (savedMode == HdrScreenMode.OFF) {
+      return HdrScreenMode.OFF
+    }
+    return if (savedMode == HdrScreenMode.LINEAR &&
+      !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
+    ) HdrScreenMode.defaultEnabledMode else savedMode
   }
 
   private fun reconcileHdrModeWithRenderer() {

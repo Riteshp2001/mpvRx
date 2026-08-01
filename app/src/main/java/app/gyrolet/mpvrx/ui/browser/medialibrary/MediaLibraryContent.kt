@@ -431,6 +431,7 @@ fun MediaLibraryContent() {
             backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
           },
           onTitleDoubleTap = { backstack.add(SecureFolderGateScreen) },
+          onTitleLongPress = { backstack.add(SecureFolderGateScreen) },
           isSingleSelection = selectionManager.isSingleSelection,
           onInfoClick = {
             if (selectionManager.isSingleSelection) {

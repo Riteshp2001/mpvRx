@@ -557,6 +557,7 @@ object FolderListScreen : Screen {
                 backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
               },
               onTitleDoubleTap = { backstack.add(SecureFolderGateScreen) },
+              onTitleLongPress = { backstack.add(SecureFolderGateScreen) },
               onRenameClick = null,
               isSingleSelection = selectionManager.isSingleSelection,
               onInfoClick = null,
