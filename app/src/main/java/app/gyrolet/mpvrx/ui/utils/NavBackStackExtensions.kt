@@ -8,6 +8,7 @@
 package app.gyrolet.mpvrx.ui.utils
 
 import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 
 /**
  * Pops the current entry without ever leaving the NavDisplay with an empty stack.
@@ -28,8 +29,7 @@ fun NavBackStack<*>.popSafely(): Boolean {
  * shouldn't remain in the back stack once its job is done — otherwise pressing back from the
  * destination screen would land back on the gate instead of whatever was open before it.
  */
-@Suppress("UNCHECKED_CAST")
-fun <T : Any> NavBackStack<T>.replaceTop(screen: T) {
+fun <T : NavKey> NavBackStack<T>.replaceTop(screen: T) {
   if (isEmpty()) {
     add(screen)
   } else {
