@@ -112,7 +112,6 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
 import app.gyrolet.mpvrx.ui.utils.popSafely
-import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.OpenDocumentTreeContract
@@ -602,19 +601,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 if (videosToShare.isNotEmpty()) {
                   MediaUtils.shareVideos(context, videosToShare)
                 }
-              }
-            },
-            onCopyClick = {
-              val selectedPaths =
-                selectedItems
-                  .map { item ->
-                    when (item) {
-                      is FileSystemItem.Folder -> item.path
-                      is FileSystemItem.VideoFile -> item.video.path
-                    }
-                  }.distinct()
-              if (selectedPaths.isNotEmpty()) {
-                SafeClipboard.copyPlainText(context, "Selected paths", selectedPaths.joinToString("\n"))
               }
             },
             onPlayClick = {

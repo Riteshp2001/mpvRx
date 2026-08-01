@@ -355,12 +355,6 @@ data class PlaylistDetailScreen(
               } else {
                 null
               },
-            onCopyClick = {
-              val selectedPaths = selectionManager.getSelectedItems().map { it.video.path }.distinct()
-              if (selectedPaths.isNotEmpty()) {
-                SafeClipboard.copyPlainText(context, "Selected paths", selectedPaths.joinToString("\n"))
-              }
-            },
             onPlayClick = null, // Don't show play icon in selection mode for playlist
             onSelectAll = { selectionManager.selectAll() },
             onInvertSelection = { selectionManager.invertSelection() },

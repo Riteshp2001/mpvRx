@@ -118,7 +118,6 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
-import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.MediaSearchEngine
@@ -570,12 +569,6 @@ object FolderListScreen : Screen {
                   if (allVideos.isNotEmpty()) {
                     MediaUtils.shareVideos(context, allVideos)
                   }
-                }
-              },
-              onCopyClick = {
-                val selectedPaths = selectionManager.getSelectedItems().map { it.path }.distinct()
-                if (selectedPaths.isNotEmpty()) {
-                  SafeClipboard.copyPlainText(context, "Selected folder paths", selectedPaths.joinToString("\n"))
                 }
               },
               onPlayClick = {

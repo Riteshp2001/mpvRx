@@ -101,7 +101,6 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
-import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
@@ -446,12 +445,6 @@ fun MediaLibraryContent() {
             }
           },
           onShareClick = { selectionManager.shareSelected() },
-          onCopyClick = {
-            val selectedPaths = selectionManager.getSelectedItems().map { it.path }.distinct()
-            if (selectedPaths.isNotEmpty()) {
-              SafeClipboard.copyPlainText(context, "Selected paths", selectedPaths.joinToString("\n"))
-            }
-          },
           onPlayClick = { selectionManager.playSelected() },
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
