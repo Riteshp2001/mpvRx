@@ -224,23 +224,6 @@ object FolderListScreen : Screen {
     val moveToSecureProgressOpen = rememberSaveable { mutableStateOf(false) }
     val secureFolderProgress by secureFolderRepository.progress.collectAsState()
 
-    fun moveSelectedFoldersToSecureFolder() {
-      val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-      if (selectedIds.isEmpty()) return
-      moveToSecureProgressOpen.value = true
-      coroutineScope.launch {
-        val allVideos =
-          app.gyrolet.mpvrx.repository.MediaFileRepository
-            .getVideosForBuckets(context, selectedIds)
-        if (allVideos.isNotEmpty()) {
-          secureFolderRepository.moveIn(context, allVideos)
-        }
-        moveToSecureProgressOpen.value = false
-        selectionManager.clear()
-        viewModel.refresh()
-      }
-    }
-
     // Search state
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearching by rememberSaveable { mutableStateOf(false) }
@@ -362,6 +345,23 @@ object FolderListScreen : Screen {
         onDeleteItems = { folders, _ -> deleteFolders(folders) },
         onOperationComplete = { viewModel.refresh() },
       )
+
+    fun moveSelectedFoldersToSecureFolder() {
+      val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
+      if (selectedIds.isEmpty()) return
+      moveToSecureProgressOpen.value = true
+      coroutineScope.launch {
+        val allVideos =
+          app.gyrolet.mpvrx.repository.MediaFileRepository
+            .getVideosForBuckets(context, selectedIds)
+        if (allVideos.isNotEmpty()) {
+          secureFolderRepository.moveIn(context, allVideos)
+        }
+        moveToSecureProgressOpen.value = false
+        selectionManager.clear()
+        viewModel.refresh()
+      }
+    }
 
     val treePickerLauncher =
       rememberLauncherForActivityResult(
