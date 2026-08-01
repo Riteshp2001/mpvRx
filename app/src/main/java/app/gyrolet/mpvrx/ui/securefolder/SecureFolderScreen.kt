@@ -155,6 +155,8 @@ data object SecureFolderScreen : Screen {
             if (isEntryPointHidden) {
               // Un-hiding needs no confirmation — it only makes the entry more visible again.
               viewModel.toggleEntryPointHidden()
+            } else if (viewModel.preferences.dontAskBeforeHideEntryPoint.get()) {
+              viewModel.toggleEntryPointHidden()
             } else {
               hideEntryPointConfirmOpen = true
             }
@@ -242,19 +244,19 @@ data object SecureFolderScreen : Screen {
       onDismiss = { pendingAction = null },
     )
 
-    if (hideEntryPointConfirmOpen) {
-      app.gyrolet.mpvrx.presentation.components.ConfirmDialog(
-        title = "Hide Secure Folder from Preferences?",
-        subtitle =
-          "The \"Secure Folder\" row will be removed from Preferences. To open it again later, " +
-            "double-tap the app name at the top of the Home screen and enter your PIN.",
-        onConfirm = {
-          viewModel.toggleEntryPointHidden()
-          hideEntryPointConfirmOpen = false
-        },
-        onCancel = { hideEntryPointConfirmOpen = false },
-      )
-    }
+    SecureConfirmDialog(
+      isOpen = hideEntryPointConfirmOpen,
+      title = "Hide Secure Folder from Preferences?",
+      subtitle =
+        "The \"Secure Folder\" row will be removed from Preferences. To open it again later, " +
+          "double-tap the app name at the top of the Home screen and enter your PIN.",
+      dontAskAgain = viewModel.preferences.dontAskBeforeHideEntryPoint,
+      onConfirm = {
+        viewModel.toggleEntryPointHidden()
+        hideEntryPointConfirmOpen = false
+      },
+      onDismiss = { hideEntryPointConfirmOpen = false },
+    )
 
     SecureFolderProgressDialog(
       isOpen = isBusy,

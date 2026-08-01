@@ -84,6 +84,7 @@ class SecureFolderPreferences(
   val dontAskBeforeMove = preferenceStore.getBoolean("secure_folder_dont_ask_move", false)
   val dontAskBeforeRestore = preferenceStore.getBoolean("secure_folder_dont_ask_restore", false)
   val dontAskBeforeDelete = preferenceStore.getBoolean("secure_folder_dont_ask_delete", false)
+  val dontAskBeforeHideEntryPoint = preferenceStore.getBoolean("secure_folder_dont_ask_hide_entry_point", false)
 
   /** Full reset — used for testing/debug or a future "reset Secure Folder" action. */
   fun resetAll() {
@@ -95,5 +96,6 @@ class SecureFolderPreferences(
     dontAskBeforeMove.delete()
     dontAskBeforeRestore.delete()
     dontAskBeforeDelete.delete()
+    dontAskBeforeHideEntryPoint.delete()
   }
 }

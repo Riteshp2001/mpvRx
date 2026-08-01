@@ -60,6 +60,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.ui.utils.replaceTop
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
 
@@ -132,7 +133,7 @@ data object SecureFolderGateScreen : Screen {
                 error = gateError,
                 onSubmit = { pin ->
                   if (viewModel.verifyPin(pin)) {
-                    backstack.add(SecureFolderScreen)
+                    backstack.replaceTop(SecureFolderScreen)
                   }
                 },
                 onForgotPin = { viewModel.startForgotPinFlow() },
@@ -143,7 +144,7 @@ data object SecureFolderGateScreen : Screen {
                 error = gateError,
                 onSubmit = { pin, question, answer ->
                   if (viewModel.submitSetup(pin, question, answer)) {
-                    backstack.add(SecureFolderScreen)
+                    backstack.replaceTop(SecureFolderScreen)
                   }
                 },
               )
