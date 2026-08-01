@@ -4870,12 +4870,7 @@ class PlayerViewModel(
     val nextMode =
       if (_hdrScreenMode.value == HdrScreenMode.OFF) {
         val lastMode = decoderPreferences.lastHdrMode.get()
-        val targetMode = if (lastMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else lastMode
-        if (targetMode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-          HdrScreenMode.defaultEnabledMode
-        } else {
-          targetMode
-        }
+        if (lastMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else lastMode
       } else {
         HdrScreenMode.OFF
       }
@@ -4883,25 +4878,19 @@ class PlayerViewModel(
   }
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
-    val resolvedMode =
-      if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-        HdrScreenMode.defaultEnabledMode
-      } else {
-        mode
-      }
-    val pipelineReady = isHdrScreenOutputAvailable(resolvedMode)
+    val pipelineReady = isHdrScreenOutputAvailable(mode)
 
-    _hdrScreenMode.value = resolvedMode
-    _isHdrScreenOutputEnabled.value = pipelineReady && resolvedMode != HdrScreenMode.OFF
-    decoderPreferences.hdrScreenMode.set(resolvedMode)
-    decoderPreferences.hdrScreenOutput.set(resolvedMode != HdrScreenMode.OFF)
-    if (resolvedMode != HdrScreenMode.OFF) {
-      decoderPreferences.lastHdrMode.set(resolvedMode)
+    _hdrScreenMode.value = mode
+    _isHdrScreenOutputEnabled.value = pipelineReady && mode != HdrScreenMode.OFF
+    decoderPreferences.hdrScreenMode.set(mode)
+    decoderPreferences.hdrScreenOutput.set(mode != HdrScreenMode.OFF)
+    if (mode != HdrScreenMode.OFF) {
+      decoderPreferences.lastHdrMode.set(mode)
     }
-    applyHdrScreenOutput(resolvedMode)
+    applyHdrScreenOutput(mode)
     playerUpdate.value =
       PlayerUpdates.ShowText(
-        host.context.getString(R.string.hdr_screen_output_update, host.context.getString(resolvedMode.shortTitleRes)),
+        host.context.getString(R.string.hdr_screen_output_update, host.context.getString(mode.shortTitleRes)),
       )
   }
 
@@ -4909,10 +4898,6 @@ class PlayerViewModel(
     mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
 
   private fun initialHdrScreenMode(): HdrScreenMode {
-    val hdrOutputEnabled = decoderPreferences.hdrScreenOutput.get()
-    if (!hdrOutputEnabled) {
-      return HdrScreenMode.OFF
-    }
     val savedMode =
       decoderPreferences.hdrScreenMode.get().let { mode ->
         if (mode == HdrScreenMode.OFF) decoderPreferences.lastHdrMode.get() else mode
@@ -4921,7 +4906,7 @@ class PlayerViewModel(
       if (savedMode == HdrScreenMode.LINEAR &&
         !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
       ) HdrScreenMode.defaultEnabledMode else savedMode
-    return if (resolvedMode == HdrScreenMode.OFF) {
+    return if (resolvedMode == HdrScreenMode.OFF && decoderPreferences.hdrScreenOutput.get()) {
       HdrScreenMode.defaultEnabledMode
     } else {
       resolvedMode
