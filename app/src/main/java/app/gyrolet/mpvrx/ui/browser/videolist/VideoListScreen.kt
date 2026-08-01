@@ -106,7 +106,6 @@ import app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
-import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
@@ -358,12 +357,6 @@ data class VideoListScreen(
             }
           },
           onShareClick = { selectionManager.shareSelected() },
-          onCopyClick = {
-            val selectedPaths = selectionManager.getSelectedItems().map { it.path }.distinct()
-            if (selectedPaths.isNotEmpty()) {
-              SafeClipboard.copyPlainText(context, "Selected paths", selectedPaths.joinToString("\n"))
-            }
-          },
           onPlayClick = { selectionManager.playSelected() },
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
