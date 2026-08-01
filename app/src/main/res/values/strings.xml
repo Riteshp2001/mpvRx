@@ -1560,6 +1560,12 @@
   <string name="secure_folder_verify">Verify</string>
   <string name="secure_folder_next">Next</string>
   <string name="secure_folder_save">Save</string>
+  <string name="secure_folder_use_fingerprint">Use Fingerprint</string>
+  <string name="secure_folder_enable_fingerprint">Enable Fingerprint</string>
+  <string name="secure_folder_disable_fingerprint">Disable Fingerprint</string>
+  <string name="secure_folder_use_face_unlock">Use Face Unlock</string>
+  <string name="secure_folder_enable_face_unlock">Enable Face Unlock</string>
+  <string name="secure_folder_disable_face_unlock">Disable Face Unlock</string>
 
   <!-- Security Questions Presets -->
   <string name="secure_folder_sq_pet">What was your first pet\'s name?</string>

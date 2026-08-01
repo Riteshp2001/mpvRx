@@ -1573,6 +1573,12 @@
   <string name="secure_folder_verify">验证</string>
   <string name="secure_folder_next">下一步</string>
   <string name="secure_folder_save">保存</string>
+  <string name="secure_folder_use_fingerprint">使用指纹</string>
+  <string name="secure_folder_enable_fingerprint">启用指纹</string>
+  <string name="secure_folder_disable_fingerprint">禁用指纹</string>
+  <string name="secure_folder_use_face_unlock">使用面部解锁</string>
+  <string name="secure_folder_enable_face_unlock">启用面部解锁</string>
+  <string name="secure_folder_disable_face_unlock">禁用面部解锁</string>
   <string name="secure_folder_sq_pet">您的第一只宠物的名字是什么？</string>
   <string name="secure_folder_sq_mother">您母亲的婚前姓氏是什么？</string>
   <string name="secure_folder_sq_school">您就读的第一所学校叫什么名字？</string>

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -65,6 +66,10 @@ import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.utils.replaceTop
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
@@ -99,6 +104,40 @@ data object SecureFolderGateScreen : Screen {
 
     val gateStep by viewModel.gateStep.collectAsState()
     val gateError by viewModel.gateError.collectAsState()
+
+    // Biometric authentication
+    val biometricManager = BiometricManager.from(context)
+    val canAuthenticateBiometric = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+    val canAuthenticateDeviceCredential = biometricManager.canAuthenticate(BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
+    val isBiometricAvailable = canAuthenticateBiometric || canAuthenticateDeviceCredential
+    val isBiometricEnabled = viewModel.isBiometricEnabled()
+
+    fun showBiometricPrompt() {
+      val fragmentActivity = context as? FragmentActivity ?: return
+      val executor = ContextCompat.getMainExecutor(context)
+      val callback = object : BiometricPrompt.AuthenticationCallback() {
+        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+          super.onAuthenticationSucceeded(result)
+          backstack.replaceTop(SecureFolderScreen)
+        }
+        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+          super.onAuthenticationError(errorCode, errString)
+        }
+        override fun onAuthenticationFailed() {
+          super.onAuthenticationFailed()
+        }
+      }
+      val biometricPrompt = BiometricPrompt(fragmentActivity, executor, callback)
+      val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
+        .setTitle(context.getString(R.string.secure_folder_title))
+        .setSubtitle(context.getString(R.string.secure_folder_enter_pin))
+      if (canAuthenticateBiometric) {
+        promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+      } else {
+        promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+      }
+      biometricPrompt.authenticate(promptInfoBuilder.build())
+    }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
       viewModel.refreshGateStep()
@@ -147,6 +186,10 @@ data object SecureFolderGateScreen : Screen {
                       }
                     },
                     onForgotPin = { viewModel.startForgotPinFlow() },
+                    isBiometricAvailable = isBiometricAvailable,
+                    isBiometricEnabled = isBiometricEnabled,
+                    canAuthenticateBiometric = canAuthenticateBiometric,
+                    onBiometricClick = { showBiometricPrompt() },
                   )
 
                 SecureFolderViewModel.GateStep.SETUP ->
@@ -188,6 +231,10 @@ private fun EnterPinContent(
   error: String?,
   onSubmit: (String) -> Unit,
   onForgotPin: () -> Unit,
+  isBiometricAvailable: Boolean,
+  isBiometricEnabled: Boolean,
+  canAuthenticateBiometric: Boolean,
+  onBiometricClick: () -> Unit,
 ) {
   var pin by rememberSaveable { mutableStateOf("") }
   var showPin by rememberSaveable { mutableStateOf(false) }
@@ -265,6 +312,32 @@ private fun EnterPinContent(
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
       )
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (isBiometricAvailable && isBiometricEnabled && pin.isEmpty()) {
+      OutlinedButton(
+        onClick = onBiometricClick,
+        modifier = Modifier.fillMaxWidth().height(54.dp),
+        shape = AppShapeScale.large,
+      ) {
+        Icon(
+          imageVector = Icons.RoundedFilled.Fingerprint,
+          contentDescription = null,
+          modifier = Modifier.size(24.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = if (canAuthenticateBiometric) {
+            stringResource(R.string.secure_folder_use_fingerprint)
+          } else {
+            stringResource(R.string.secure_folder_use_face_unlock)
+          },
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.Bold,
+        )
+      }
     }
 
     Spacer(modifier = Modifier.height(8.dp))

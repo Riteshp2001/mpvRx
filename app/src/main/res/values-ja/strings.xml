@@ -1573,6 +1573,12 @@
   <string name="secure_folder_verify">確認</string>
   <string name="secure_folder_next">次へ</string>
   <string name="secure_folder_save">保存</string>
+  <string name="secure_folder_use_fingerprint">指紋を使用</string>
+  <string name="secure_folder_enable_fingerprint">指紋を有効にする</string>
+  <string name="secure_folder_disable_fingerprint">指紋を無効にする</string>
+  <string name="secure_folder_use_face_unlock">顔認証を使用</string>
+  <string name="secure_folder_enable_face_unlock">顔認証を有効にする</string>
+  <string name="secure_folder_disable_face_unlock">顔認証を無効にする</string>
   <string name="secure_folder_sq_pet">最初に飼ったペットの名前は？</string>
   <string name="secure_folder_sq_mother">母親の旧姓は？</string>
   <string name="secure_folder_sq_school">最初に通った学校の名前は？</string>

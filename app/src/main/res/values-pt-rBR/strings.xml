@@ -1573,6 +1573,12 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="secure_folder_verify">Verificar</string>
   <string name="secure_folder_next">Avançar</string>
   <string name="secure_folder_save">Salvar</string>
+  <string name="secure_folder_use_fingerprint">Usar digital</string>
+  <string name="secure_folder_enable_fingerprint">Ativar digital</string>
+  <string name="secure_folder_disable_fingerprint">Desativar digital</string>
+  <string name="secure_folder_use_face_unlock">Usar desbloqueio facial</string>
+  <string name="secure_folder_enable_face_unlock">Ativar desbloqueio facial</string>
+  <string name="secure_folder_disable_face_unlock">Desativar desbloqueio facial</string>
   <string name="secure_folder_sq_pet">Qual era o nome do seu primeiro animal de estimação?</string>
   <string name="secure_folder_sq_mother">Qual é o nome de solteira da sua mãe?</string>
   <string name="secure_folder_sq_school">Qual era o nome da sua primeira escola?</string>

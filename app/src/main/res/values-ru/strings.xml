@@ -1573,6 +1573,12 @@
   <string name="secure_folder_verify">Проверить</string>
   <string name="secure_folder_next">Далее</string>
   <string name="secure_folder_save">Сохранить</string>
+  <string name="secure_folder_use_fingerprint">Использовать отпечаток пальца</string>
+  <string name="secure_folder_enable_fingerprint">Включить отпечаток пальца</string>
+  <string name="secure_folder_disable_fingerprint">Отключить отпечаток пальца</string>
+  <string name="secure_folder_use_face_unlock">Использовать распознавание лица</string>
+  <string name="secure_folder_enable_face_unlock">Включить распознавание лица</string>
+  <string name="secure_folder_disable_face_unlock">Отключить распознавание лица</string>
   <string name="secure_folder_sq_pet">Как звали вашего первого питомца?</string>
   <string name="secure_folder_sq_mother">Какова девичья фамилия вашей матери?</string>
   <string name="secure_folder_sq_school">Как называлась ваша первая школа?</string>

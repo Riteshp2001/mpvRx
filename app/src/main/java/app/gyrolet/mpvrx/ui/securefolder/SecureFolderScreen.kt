@@ -219,7 +219,13 @@ data object SecureFolderScreen : Screen {
           isInSelectionMode = isInSelectionMode,
           selectedCount = selectedIds.size,
           totalCount = media.size,
-          onBackClick = { backstack.popSafely() },
+          onBackClick = {
+            if (isInSelectionMode) {
+              viewModel.clearSelection()
+            } else {
+              backstack.popSafely()
+            }
+          },
           onCancelSelection = { viewModel.clearSelection() },
           onSortClick = { sortDialogOpen = true },
           onSelectAll = { viewModel.selectAll() },
@@ -292,6 +298,27 @@ data object SecureFolderScreen : Screen {
                     leadingIcon = { Icon(Icons.RoundedFilled.HelpOutline, contentDescription = null) },
                     onClick = {
                       changeSecurityQuestionOpen = true
+                      menuExpanded = false
+                    },
+                  )
+                  DropdownMenuItem(
+                    text = {
+                      Text(
+                        if (viewModel.isBiometricEnabled()) {
+                          stringResource(R.string.secure_folder_disable_fingerprint)
+                        } else {
+                          stringResource(R.string.secure_folder_enable_fingerprint)
+                        }
+                      )
+                    },
+                    leadingIcon = {
+                      Icon(
+                        Icons.RoundedFilled.Fingerprint,
+                        contentDescription = null,
+                      )
+                    },
+                    onClick = {
+                      viewModel.setBiometricEnabled(!viewModel.isBiometricEnabled())
                       menuExpanded = false
                     },
                   )
@@ -556,6 +583,8 @@ data object SecureFolderScreen : Screen {
       onSortTypeChange = { browserPreferences.videoSortType.set(it) },
       onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
       isFolderView = true,
+      enableViewModeOptions = false,
+      enableLayoutModeOptions = false,
     )
   }
 }

@@ -1573,6 +1573,12 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="secure_folder_verify">Überprüfen</string>
   <string name="secure_folder_next">Weiter</string>
   <string name="secure_folder_save">Speichern</string>
+  <string name="secure_folder_use_fingerprint">Fingerabdruck verwenden</string>
+  <string name="secure_folder_enable_fingerprint">Fingerabdruck aktivieren</string>
+  <string name="secure_folder_disable_fingerprint">Fingerabdruck deaktivieren</string>
+  <string name="secure_folder_use_face_unlock">Gesichtsentsperrung verwenden</string>
+  <string name="secure_folder_enable_face_unlock">Gesichtsentsperrung aktivieren</string>
+  <string name="secure_folder_disable_face_unlock">Gesichtsentsperrung deaktivieren</string>
   <string name="secure_folder_sq_pet">Wie hieß Ihr erstes Haustier?</string>
   <string name="secure_folder_sq_mother">Wie ist der Mädchenname Ihrer Mutter?</string>
   <string name="secure_folder_sq_school">Wie hieß Ihre erste Schule?</string>

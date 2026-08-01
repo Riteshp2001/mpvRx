@@ -203,6 +203,19 @@ class SecureFolderViewModel(
     _selectedIds.value = all - _selectedIds.value
   }
 
+  // ============================================================================
+  // Biometric authentication
+  // ============================================================================
+  fun isBiometricEnabled(): Boolean = preferences.isBiometricEnabled.get()
+
+  fun setBiometricEnabled(enabled: Boolean) {
+    preferences.isBiometricEnabled.set(enabled)
+  }
+
+  fun verifyBiometricPin(pin: String): Boolean {
+    return verifyPin(pin)
+  }
+
   /** Toggles whether the "Secure Folder" entry point is hidden from the Preferences screen. */
   fun toggleEntryPointHidden() {
     preferences.isEntryPointHidden.set(!preferences.isEntryPointHidden.get())
