@@ -955,7 +955,7 @@
   <string name="hdr_mode_bt2020_description">使用 hdr-toys 色域映射进行 BT.2020 / BT.1886 转换</string>
   <string name="hdr_mode_linear">线性 HDR</string>
   <string name="hdr_mode_linear_short">线性</string>
-  <string name="hdr_mode_linear_description">不使用 hdr-toys 着色器的高质量 mpv HDR 输出</string>
+  <string name="hdr_mode_linear_description">通过 hdr-toys 的 Astra 和 Bottosson 着色器链实现的线性 HDR</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s 模式输出</string>
   <string name="pref_section_support">支持</string>
   <string name="pref_section_updates">更新</string>

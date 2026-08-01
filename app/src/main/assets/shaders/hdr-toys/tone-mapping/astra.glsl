@@ -62,17 +62,23 @@
 //!MAXIMUM 1.0
 0.6
 
-//!PARAM auto_exposure_limit_negtive
+//!PARAM auto_exposure_limit_negative
 //!TYPE float
 //!MINIMUM 0.0
 //!MAXIMUM 5.0
 2.3
 
-//!PARAM auto_exposure_limit_postive
+//!PARAM auto_exposure_limit_positive
 //!TYPE float
 //!MINIMUM 0.0
 //!MAXIMUM 5.0
 0.0
+
+//!PARAM auto_exposure_limit_input
+//!TYPE uint
+//!MINIMUM 0
+//!MAXIMUM 1
+1
 
 //!PARAM shadow_weight
 //!TYPE float
@@ -133,6 +139,12 @@
 //!MINIMUM 0.0
 //!MAXIMUM 2.0
 0.33
+
+//!PARAM temporal_stable_scene_change
+//!TYPE uint
+//!MINIMUM 0
+//!MAXIMUM 1
+1
 
 //!PARAM enable_metering
 //!TYPE uint
@@ -1003,8 +1015,18 @@ void hook() {
     float avg_pred = temporal_predict(METRIC_AVG, count);
 
     // Detect scene changes by comparing current raw values against predictions
-    bool scene_changed = is_scene_changed(max_current, min_current, avg_current,
-                                          max_pred, min_pred, avg_pred);
+    bool scene_changed = false;
+
+    if (temporal_stable_scene_change > 0) {
+        scene_changed = is_scene_changed(
+            max_current,
+            min_current,
+            avg_current,
+            max_pred,
+            min_pred,
+            avg_pred
+        );
+    }
 
     // Update temporal history with current frame
     temporal_prepend();
@@ -1168,8 +1190,13 @@ float get_ev(float avg_i, float max_i, float min_i) {
 
     float ev = log2(anchor / average);
 
-    float ev_limit_neg = min(auto_exposure_limit_negtive, log2(maximum / average));
-    float ev_limit_pos = min(auto_exposure_limit_postive, log2(average / minimum));
+    float ev_limit_neg = auto_exposure_limit_negative;
+    float ev_limit_pos = auto_exposure_limit_positive;
+
+    if (auto_exposure_limit_input > 0) {
+        ev_limit_neg = min(ev_limit_neg, log2(maximum / average));
+        ev_limit_pos = min(ev_limit_pos, log2(average / minimum));
+    }
 
     return clamp(ev, -ev_limit_neg, ev_limit_pos);
 }

@@ -955,7 +955,7 @@
   <string name="hdr_mode_bt2020_description">Преобразование BT.2020 / BT.1886 с отображением гаммы hdr-toys</string>
   <string name="hdr_mode_linear">Линейный HDR</string>
   <string name="hdr_mode_linear_short">Линейный</string>
-  <string name="hdr_mode_linear_description">Высококачественный HDR-вывод mpv без шейдеров hdr-toys</string>
+  <string name="hdr_mode_linear_description">Линейный HDR-конвейер через шейдеры Astra и Bottosson от hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR — вывод в режиме %1$s</string>
   <string name="pref_section_support">Поддержка</string>
   <string name="pref_section_updates">Обновления</string>

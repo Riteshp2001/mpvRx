@@ -57,6 +57,7 @@ enum class HdrScreenMode(
     titleRes = R.string.hdr_mode_linear,
     shortTitleRes = R.string.hdr_mode_linear_short,
     descriptionRes = R.string.hdr_mode_linear_description,
+    hdrToysProfile = HdrToysProfile.LINEAR,
   ),
   ;
 
@@ -84,7 +85,6 @@ internal fun hdrScreenOutputSettings(
 
   return when (activeMode) {
     HdrScreenMode.OFF -> offSettings()
-    HdrScreenMode.LINEAR -> linearHdrSettings(hdrEnabled = true)
     else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
   }
 }

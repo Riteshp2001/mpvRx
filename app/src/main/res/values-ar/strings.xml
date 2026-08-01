@@ -955,7 +955,7 @@
   <string name="hdr_mode_bt2020_description">تحويل BT.2020 / BT.1886 باستخدام تعيين نطاق الألوان من hdr-toys</string>
   <string name="hdr_mode_linear">HDR خطي</string>
   <string name="hdr_mode_linear_short">خطي</string>
-  <string name="hdr_mode_linear_description">إخراج HDR عالي الجودة من mpv دون تأثيرات hdr-toys</string>
+  <string name="hdr_mode_linear_description">إخراج HDR الخطي عبر سلسلة تأثيرات hdr-toys من Astra وBottosson</string>
   <string name="hdr_mode_output_diagnostic">HDR - إخراج وضع %1$s</string>
   <string name="pref_section_support">الدعم</string>
   <string name="pref_section_updates">التحديثات</string>

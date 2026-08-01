@@ -955,7 +955,7 @@
   <string name="hdr_mode_bt2020_description">hdr-toysの色域マッピングを使用したBT.2020 / BT.1886変換</string>
   <string name="hdr_mode_linear">リニアHDR</string>
   <string name="hdr_mode_linear_short">リニア</string>
-  <string name="hdr_mode_linear_description">hdr-toysシェーダーを使わない高品質なmpv HDR出力</string>
+  <string name="hdr_mode_linear_description">hdr-toys の Astra および Bottosson シェーダーによるリニア HDR パイプライン</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$sモード出力</string>
   <string name="pref_section_support">サポート</string>
   <string name="pref_section_updates">アップデート</string>
