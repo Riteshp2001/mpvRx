@@ -162,6 +162,11 @@ class MPVView(
     )
     MPVLib.setOptionString("hwdec-codecs", "all")
 
+    // Enable direct rendering for hardware decoding (reduces memory copies)
+    MPVLib.setOptionString("vd-lavc-dr", "yes")
+    // Queue extra frames to absorb decode jitter on 4K content
+    MPVLib.setOptionString("vd-lavc-queue", "yes")
+
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
     }
@@ -199,6 +204,11 @@ class MPVView(
     val preciseSeek = playerPreferences.usePreciseSeeking.get()
     MPVLib.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
     MPVLib.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
+
+    // Use audio-based video sync for better frame pacing with 4K HDR content.
+    // This prevents timing jitter when the display refresh rate doesn't perfectly
+    // match the video frame rate (e.g., 24fps content on 60Hz display).
+    MPVLib.setOptionString("video-sync", "audio")
 
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
     applyAnime4KShaders(backend.vo, backend.gpuApi)

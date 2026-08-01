@@ -85,6 +85,7 @@ internal fun hdrScreenOutputSettings(
 
   return when (activeMode) {
     HdrScreenMode.OFF -> offSettings()
+    HdrScreenMode.LINEAR -> linearHdrSettings(hdrEnabled = true)
     else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
   }
 }
