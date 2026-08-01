@@ -69,10 +69,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLibraryType
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
@@ -213,6 +215,25 @@ fun MediaLibraryContent() {
   val operationType = remember { mutableStateOf<CopyPasteOps.OperationType?>(null) }
   val progressDialogOpen = rememberSaveable { mutableStateOf(false) }
   val operationProgress by CopyPasteOps.operationProgress.collectAsState()
+
+  // Move-to-Secure-Folder state
+  val secureFolderRepository = koinInject<SecureFolderRepository>()
+  val secureFolderPreferences = koinInject<SecureFolderPreferences>()
+  val moveToSecureConfirmOpen = rememberSaveable { mutableStateOf(false) }
+  val moveToSecureProgressOpen = rememberSaveable { mutableStateOf(false) }
+  val secureFolderProgress by secureFolderRepository.progress.collectAsState()
+
+  fun moveSelectedToSecureFolder() {
+    val selectedVideos = selectionManager.getSelectedItems()
+    if (selectedVideos.isEmpty()) return
+    moveToSecureProgressOpen.value = true
+    coroutineScope.launch {
+      secureFolderRepository.moveIn(context, selectedVideos)
+      moveToSecureProgressOpen.value = false
+      selectionManager.clear()
+      viewModel.refresh()
+    }
+  }
   val treePickerLauncher =
     rememberLauncherForActivityResult(OpenDocumentTreeContract()) { uri ->
       if (uri == null) {
@@ -419,6 +440,13 @@ fun MediaLibraryContent() {
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
+          onMoveToSecureClick = {
+            if (secureFolderPreferences.dontAskBeforeMove.get()) {
+              moveSelectedToSecureFolder()
+            } else {
+              moveToSecureConfirmOpen.value = true
+            }
+          },
           onAddToPlaylistClick =
             if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
               { addToPlaylistDialogOpen.value = true }
@@ -794,5 +822,25 @@ fun MediaLibraryContent() {
         )
       }
     }
+
+    // Move to Secure Folder — confirm (skippable via "don't ask again"), then progress
+    app.gyrolet.mpvrx.ui.securefolder.SecureConfirmDialog(
+      isOpen = moveToSecureConfirmOpen.value,
+      title = "Move ${selectionManager.selectedCount} item(s) to Secure Folder?",
+      subtitle = "They'll disappear from this list and everywhere else in the app until restored.",
+      dontAskAgain = secureFolderPreferences.dontAskBeforeMove,
+      onConfirm = {
+        moveToSecureConfirmOpen.value = false
+        moveSelectedToSecureFolder()
+      },
+      onDismiss = { moveToSecureConfirmOpen.value = false },
+    )
+
+    app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog(
+      isOpen = moveToSecureProgressOpen.value,
+      progress = secureFolderProgress,
+      label = "Moving to Secure Folder…",
+      onCancel = { secureFolderRepository.cancelOperation() },
+    )
   }
 }
