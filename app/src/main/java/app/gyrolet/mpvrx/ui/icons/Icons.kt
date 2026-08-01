@@ -316,6 +316,7 @@ object Icons {
     val FileUpload get() = Shared.FileUpload
     val FitScreen get() = Shared.FitScreen
     val Flip get() = Shared.Flip
+    val Fingerprint get() = Shared.Fingerprint
     val Folder get() = Shared.Folder
     val FolderOff get() = Shared.FolderOff
     val FolderOpen get() = Shared.FolderOpen
