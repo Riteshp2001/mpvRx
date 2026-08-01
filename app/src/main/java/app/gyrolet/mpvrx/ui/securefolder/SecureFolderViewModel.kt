@@ -13,6 +13,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
 import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
@@ -24,76 +27,58 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
+import org.koin.java.KoinJavaComponent.inject
 
 /**
- * Backs both [SecureFolderGateScreen] (PIN setup/entry/forgot-PIN) and [SecureFolderScreen]
- * (grid + selection + restore/delete).
- *
- * Kept as a single ViewModel since the gate and the grid share the same lifecycle scope
- * (entering a correct PIN just swaps which composable is shown), following how
- * FolderListViewModel/VideoListViewModel are already scoped per-screen-group in this repo.
+ * ViewModel driving both the PIN gate and the unlocked grid of [SecureFolderScreen].
  */
 class SecureFolderViewModel(
   application: Application,
-) : AndroidViewModel(application),
-  KoinComponent {
-  private val repository: SecureFolderRepository by inject()
-  val preferences: SecureFolderPreferences by inject()
+) : AndroidViewModel(application) {
+  val preferences by inject<SecureFolderPreferences>(SecureFolderPreferences::class.java)
+  private val repository by inject<SecureFolderRepository>(SecureFolderRepository::class.java)
 
   companion object {
     private const val TAG = "SecureFolderViewModel"
 
-    fun factory(application: Application) =
-      object : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = SecureFolderViewModel(application) as T
+    fun factory(application: Application): ViewModelProvider.Factory =
+      viewModelFactory {
+        initializer {
+          SecureFolderViewModel(application)
+        }
       }
   }
 
   // ============================================================================
-  // Gate state (PIN setup / entry / forgot-PIN)
+  // Gate state
   // ============================================================================
 
   enum class GateStep {
-    ENTER_PIN, // existing user, asking for PIN
-    SETUP, // first-time: PIN + confirm PIN + security question + answer, all in one step
-    FORGOT_PIN_QUESTION, // forgot-PIN flow: re-answer the security question
-    FORGOT_PIN_NEW_PIN, // forgot-PIN flow: security answer verified, choose a new PIN
+    ENTER_PIN,
+    SETUP,
+    FORGOT_PIN_QUESTION,
+    FORGOT_PIN_NEW_PIN,
   }
 
   private val _gateStep =
-    MutableStateFlow(if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP)
+    MutableStateFlow(
+      if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP
+    )
   val gateStep: StateFlow<GateStep> = _gateStep.asStateFlow()
 
   private val _gateError = MutableStateFlow<String?>(null)
   val gateError: StateFlow<String?> = _gateError.asStateFlow()
 
-  fun clearGateError() {
-    _gateError.value = null
-  }
-
-  /**
-   * Re-syncs [gateStep] with the current persisted PIN state.
-   *
-   * [_gateStep] is only seeded once, when the ViewModel is first constructed. If this same
-   * ViewModel instance survives across multiple visits to [SecureFolderGateScreen] (e.g. the
-   * ViewModelStoreOwner isn't recreated per visit), a stale SETUP step could keep being shown
-   * even after a PIN has already been saved — asking the user to "set up" the Secure Folder
-   * again every time they open it. The gate screen calls this on every entry so the step
-   * always reflects [SecureFolderPreferences.isPinSet] rather than a cached value. Mid-flow
-   * states (forgot-PIN) are left alone since those aren't driven by isPinSet().
-   */
+  /** Re-evaluates whether the PIN is set, keeping [gateStep] up-to-date across entries. */
   fun refreshGateStep() {
-    if (_gateStep.value == GateStep.FORGOT_PIN_QUESTION || _gateStep.value == GateStep.FORGOT_PIN_NEW_PIN) return
+    _gateError.value = null
     _gateStep.value = if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP
   }
 
   /** Called from ENTER_PIN. On success the caller (Gate screen) navigates to the grid. */
   fun verifyPin(pin: String): Boolean {
     val ok = preferences.verifyPin(pin)
-    _gateError.value = if (ok) null else "Incorrect PIN"
+    _gateError.value = if (ok) null else getApplication<Application>().getString(R.string.secure_folder_error_incorrect_pin)
     return ok
   }
 
@@ -107,11 +92,11 @@ class SecureFolderViewModel(
     answer: String,
   ): Boolean {
     if (pin.length < 4) {
-      _gateError.value = "PIN must be at least 4 digits"
+      _gateError.value = getApplication<Application>().getString(R.string.secure_folder_error_pin_min_digits)
       return false
     }
     if (question.isBlank() || answer.isBlank()) {
-      _gateError.value = "Please answer the security question"
+      _gateError.value = getApplication<Application>().getString(R.string.secure_folder_error_answer_question)
       return false
     }
     preferences.setPin(pin)
@@ -136,7 +121,7 @@ class SecureFolderViewModel(
   /** Forgot-PIN flow's last step: persists the new PIN directly, no security question re-ask needed. */
   fun finishForgotPinFlow(pin: String): Boolean {
     if (pin.length < 4) {
-      _gateError.value = "PIN must be at least 4 digits"
+      _gateError.value = getApplication<Application>().getString(R.string.secure_folder_error_pin_min_digits)
       return false
     }
     preferences.setPin(pin)
@@ -156,7 +141,7 @@ class SecureFolderViewModel(
       _gateError.value = null
       _gateStep.value = GateStep.FORGOT_PIN_NEW_PIN
     } else {
-      _gateError.value = "That doesn't match our records"
+      _gateError.value = getApplication<Application>().getString(R.string.secure_folder_error_recovery_no_match)
     }
     return ok
   }
@@ -238,17 +223,17 @@ class SecureFolderViewModel(
             .onSuccess { batch ->
               _operationResult.value =
                 if (batch.failedIds.isEmpty()) {
-                  "Restored ${batch.succeededIds.size} file(s)"
+                  getApplication<Application>().getString(R.string.secure_folder_restored_success, batch.succeededIds.size)
                 } else {
-                  "Restored ${batch.succeededIds.size}, failed ${batch.failedIds.size}"
+                  getApplication<Application>().getString(R.string.secure_folder_restored_partial, batch.succeededIds.size, batch.failedIds.size)
                 }
             }.onFailure { e ->
               Log.e(TAG, "Restore failed", e)
-              _operationResult.value = "Restore failed: ${e.message}"
+              _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_restore_failed, e.message ?: "")
             }
         }.onFailure { e ->
           Log.e(TAG, "Restore threw", e)
-          _operationResult.value = "Restore failed: ${e.message}"
+          _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_restore_failed, e.message ?: "")
         }
         _selectedIds.value = emptySet()
         _isBusy.value = false
@@ -270,17 +255,17 @@ class SecureFolderViewModel(
             .onSuccess { batch ->
               _operationResult.value =
                 if (batch.failedIds.isEmpty()) {
-                  "Deleted ${batch.succeededIds.size} file(s)"
+                  getApplication<Application>().getString(R.string.secure_folder_deleted_success, batch.succeededIds.size)
                 } else {
-                  "Deleted ${batch.succeededIds.size}, failed ${batch.failedIds.size}"
+                  getApplication<Application>().getString(R.string.secure_folder_deleted_partial, batch.succeededIds.size, batch.failedIds.size)
                 }
             }.onFailure { e ->
               Log.e(TAG, "Delete failed", e)
-              _operationResult.value = "Delete failed: ${e.message}"
+              _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_delete_failed, e.message ?: "")
             }
         }.onFailure { e ->
           Log.e(TAG, "Delete threw", e)
-          _operationResult.value = "Delete failed: ${e.message}"
+          _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_delete_failed, e.message ?: "")
         }
         _selectedIds.value = emptySet()
         _isBusy.value = false

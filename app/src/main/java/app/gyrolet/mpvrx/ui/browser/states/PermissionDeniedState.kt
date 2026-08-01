@@ -110,13 +110,6 @@ private fun checkNotificationPermission(context: Context): Boolean {
   }
 }
 
-private fun checkAudioPermission(context: Context): Boolean {
-  return ContextCompat.checkSelfPermission(
-    context,
-    android.Manifest.permission.RECORD_AUDIO,
-  ) == PackageManager.PERMISSION_GRANTED
-}
-
 @SuppressLint("UseKtx")
 @Composable
 fun PermissionDeniedState(
@@ -132,13 +125,11 @@ fun PermissionDeniedState(
 
   var isFileGranted by remember { mutableStateOf(checkFilePermission(context)) }
   var isNotificationGranted by remember { mutableStateOf(checkNotificationPermission(context)) }
-  var isAudioGranted by remember { mutableStateOf(checkAudioPermission(context)) }
 
   // Initial check on composition
   LaunchedEffect(Unit) {
     isFileGranted = checkFilePermission(context)
     isNotificationGranted = checkNotificationPermission(context)
-    isAudioGranted = checkAudioPermission(context)
   }
 
   // Re-check permissions whenever activity resumes from system settings or permission dialogs
@@ -147,7 +138,6 @@ fun PermissionDeniedState(
       if (event == Lifecycle.Event.ON_RESUME) {
         isFileGranted = checkFilePermission(context)
         isNotificationGranted = checkNotificationPermission(context)
-        isAudioGranted = checkAudioPermission(context)
       }
     }
     lifecycleOwner.lifecycle.addObserver(observer)
@@ -166,22 +156,6 @@ fun PermissionDeniedState(
       if (activity != null && !activity.shouldShowRequestPermissionRationale(android.Manifest.permission.POST_NOTIFICATIONS)) {
         val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
           putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-        }
-        runCatching { context.startActivity(intent) }
-      }
-    }
-  }
-
-  // Launcher for audio permission prompt
-  val audioLauncher = rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.RequestPermission(),
-  ) { granted ->
-    isAudioGranted = granted || checkAudioPermission(context)
-    if (!granted) {
-      val activity = context as? Activity
-      if (activity != null && !activity.shouldShowRequestPermissionRationale(android.Manifest.permission.RECORD_AUDIO)) {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-          data = Uri.parse("package:${context.packageName}")
         }
         runCatching { context.startActivity(intent) }
       }
@@ -314,19 +288,6 @@ fun PermissionDeniedState(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Section 3: Record Audio for Visualizers
-            PermissionSectionCard(
-              title = stringResource(R.string.ui_audio_record_permission_title),
-              description = stringResource(R.string.ui_audio_record_permission_desc),
-              isGranted = isAudioGranted,
-              icon = Icons.RoundedFilled.Mic,
-              onClick = {
-                if (!isAudioGranted) {
-                  audioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                }
-              },
-            )
           }
 
           Column(

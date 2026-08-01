@@ -561,7 +561,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.RoundedFilled.Lock,
-            contentDescription = "Move to Secure Folder",
+            contentDescription = stringResource(R.string.secure_folder_move_to),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )

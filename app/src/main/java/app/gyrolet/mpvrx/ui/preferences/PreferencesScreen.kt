@@ -279,8 +279,8 @@ object PreferencesScreen : Screen {
             ),
             if (!isSecureFolderEntryHidden) {
               SettingsDestination(
-                title = "Secure Folder",
-                summary = "PIN-protected space for videos you want hidden from the library.",
+                title = stringResource(R.string.secure_folder_title),
+                summary = stringResource(R.string.secure_folder_summary),
                 icon = Icons.RoundedFilled.Lock,
                 screen = SecureFolderGateScreen,
               )

@@ -373,6 +373,9 @@ class PlayerActivity :
   private var intentSubtitleJob: Job? = null
   private var mediaLoadJob: Job? = null
   private var eofAdvanceJob: Job? = null
+  // Keep the old video decoder detached until mpv has completed the replacement load.
+  // Reattaching it as part of `loadfile` can make the old and new outputs overlap.
+  private var restoreVideoTrackAfterFileLoad = false
 
   @Volatile private var isAdvancingAtEof = false
 
@@ -3143,6 +3146,10 @@ class PlayerActivity :
         eofAdvanceJob = null
         isAdvancingAtEof = false
         isReady = true
+        if (restoreVideoTrackAfterFileLoad) {
+          restoreVideoTrackAfterFileLoad = false
+          MPVLib.setPropertyString("vid", "auto")
+        }
         if (playWhenFileLoaded) {
           playWhenFileLoaded = false
           requestAudioFocus()
@@ -4095,8 +4102,10 @@ class PlayerActivity :
           }
 
           withContext(Dispatchers.Main) { requestAudioFocus() }
-          val videoMode = if (disableVideoOnFallback) "no" else "auto"
-          MPVLib.command("loadfile", playableUri, "replace", "-1", "vid=$videoMode,pause=no")
+          // Tear down the outgoing video track before replacing the file.
+          restoreVideoTrackAfterFileLoad = !disableVideoOnFallback
+          MPVLib.setPropertyString("vid", "no")
+          MPVLib.command("loadfile", playableUri, "replace", "-1", "pause=no")
           MPVLib.setPropertyBoolean("pause", false)
         } catch (error: CancellationException) {
           throw error

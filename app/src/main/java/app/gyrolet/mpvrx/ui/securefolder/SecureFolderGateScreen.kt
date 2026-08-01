@@ -54,6 +54,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ExposedTextDropDownMenu
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -62,17 +64,18 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.utils.replaceTop
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
 
-/** Preset security questions — no free-text question, only the answer is typed. */
-val SECURITY_QUESTION_PRESETS =
+/** Preset security question resource IDs — no free-text question, only the answer is typed. */
+val SECURITY_QUESTION_PRESET_RES_IDS =
   persistentListOf(
-    "What was your first pet's name?",
-    "What is your mother's maiden name?",
-    "What was the name of your first school?",
-    "What city were you born in?",
-    "What was your childhood nickname?",
-    "What is your favorite movie?",
+    R.string.secure_folder_sq_pet,
+    R.string.secure_folder_sq_mother,
+    R.string.secure_folder_sq_school,
+    R.string.secure_folder_sq_city,
+    R.string.secure_folder_sq_nickname,
+    R.string.secure_folder_sq_movie,
   )
 
 /**
@@ -104,10 +107,10 @@ data object SecureFolderGateScreen : Screen {
     Scaffold(
       topBar = {
         TopAppBar(
-          title = { Text("Secure Folder") },
+          title = { Text(stringResource(R.string.secure_folder_title)) },
           navigationIcon = {
             IconButton(onClick = { backstack.popSafely() }) {
-              Icon(Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
+              Icon(Icons.RoundedFilled.ArrowBack, contentDescription = null)
             }
           },
           colors = TopAppBarDefaults.topAppBarColors(),
@@ -159,8 +162,8 @@ data object SecureFolderGateScreen : Screen {
 
             SecureFolderViewModel.GateStep.FORGOT_PIN_NEW_PIN ->
               ChoosePinContent(
-                title = "Choose a new PIN",
-                subtitle = "Your old PIN no longer works.",
+                title = stringResource(R.string.secure_folder_choose_new_pin),
+                subtitle = stringResource(R.string.secure_folder_old_pin_invalid),
                 error = gateError,
                 onSubmit = { pin -> viewModel.finishForgotPinFlow(pin) },
               )
@@ -196,7 +199,7 @@ private fun EnterPinContent(
       tint = MaterialTheme.colorScheme.primary,
     )
     Text(
-      "Enter PIN",
+      stringResource(R.string.secure_folder_enter_pin),
       style = MaterialTheme.typography.headlineSmall,
       modifier = Modifier.padding(top = 16.dp, bottom = 24.dp),
     )
@@ -223,11 +226,11 @@ private fun EnterPinContent(
       enabled = pin.isNotEmpty(),
       modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
     ) {
-      Text("Unlock")
+      Text(stringResource(R.string.secure_folder_unlock))
     }
 
     TextButton(onClick = onForgotPin, modifier = Modifier.padding(top = 4.dp)) {
-      Text("Forgot PIN?")
+      Text(stringResource(R.string.secure_folder_forgot_pin))
     }
   }
 }
@@ -242,12 +245,17 @@ private fun SetupContent(
   error: String?,
   onSubmit: (pin: String, question: String, answer: String) -> Unit,
 ) {
+  val presets = SECURITY_QUESTION_PRESET_RES_IDS.map { stringResource(it) }.toImmutableList()
   var pin by rememberSaveable { mutableStateOf("") }
   var confirmPin by rememberSaveable { mutableStateOf("") }
   var showPin by rememberSaveable { mutableStateOf(false) }
-  var question by rememberSaveable { mutableStateOf(SECURITY_QUESTION_PRESETS.first()) }
+  var question by rememberSaveable(presets) { mutableStateOf(presets.first()) }
   var answer by rememberSaveable { mutableStateOf("") }
-  var validationError by remember { mutableStateOf<String?>(null) }
+  var validationErrorRes by remember { mutableStateOf<Int?>(null) }
+
+  val errPinMin = stringResource(R.string.secure_folder_error_pin_min_digits)
+  val errPinsMatch = stringResource(R.string.secure_folder_error_pins_dont_match)
+  val errAnswerSq = stringResource(R.string.secure_folder_error_answer_question)
 
   Column(
     modifier =
@@ -265,12 +273,12 @@ private fun SetupContent(
       tint = MaterialTheme.colorScheme.primary,
     )
     Text(
-      "Set up Secure Folder",
+      stringResource(R.string.secure_folder_setup_title),
       style = MaterialTheme.typography.headlineSmall,
       modifier = Modifier.padding(top = 16.dp),
     )
     Text(
-      "Choose a PIN and a recovery question.",
+      stringResource(R.string.secure_folder_setup_subtitle),
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       textAlign = TextAlign.Center,
@@ -281,29 +289,29 @@ private fun SetupContent(
       value = pin,
       onValueChange = {
         pin = it.filter(Char::isDigit).take(8)
-        validationError = null
+        validationErrorRes = null
       },
       showPin = showPin,
       onToggleShowPin = { showPin = !showPin },
-      label = "New PIN",
+      label = stringResource(R.string.secure_folder_new_pin),
     )
 
     PinField(
       value = confirmPin,
       onValueChange = {
         confirmPin = it.filter(Char::isDigit).take(8)
-        validationError = null
+        validationErrorRes = null
       },
       showPin = showPin,
       onToggleShowPin = { showPin = !showPin },
-      label = "Confirm PIN",
+      label = stringResource(R.string.secure_folder_confirm_pin),
       modifier = Modifier.padding(top = 12.dp),
     )
 
     ExposedTextDropDownMenu(
       selectedValue = question,
-      options = SECURITY_QUESTION_PRESETS,
-      label = "Security question",
+      options = presets,
+      label = stringResource(R.string.secure_folder_security_question),
       onValueChangedEvent = { question = it },
       modifier = Modifier.padding(top = 20.dp),
     )
@@ -312,14 +320,14 @@ private fun SetupContent(
       value = answer,
       onValueChange = {
         answer = it
-        validationError = null
+        validationErrorRes = null
       },
-      label = { Text("Answer") },
+      label = { Text(stringResource(R.string.secure_folder_answer)) },
       singleLine = true,
       modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
     )
 
-    val shownError = validationError ?: error
+    val shownError = if (validationErrorRes != null) stringResource(validationErrorRes!!) else error
     if (shownError != null) {
       Text(
         shownError,
@@ -332,15 +340,15 @@ private fun SetupContent(
     Button(
       onClick = {
         when {
-          pin.length < 4 -> validationError = "PIN must be at least 4 digits"
-          pin != confirmPin -> validationError = "PINs don't match"
-          answer.isBlank() -> validationError = "Please answer the security question"
+          pin.length < 4 -> validationErrorRes = R.string.secure_folder_error_pin_min_digits
+          pin != confirmPin -> validationErrorRes = R.string.secure_folder_error_pins_dont_match
+          answer.isBlank() -> validationErrorRes = R.string.secure_folder_error_answer_question
           else -> onSubmit(pin, question, answer)
         }
       },
       modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
     ) {
-      Text("Finish setup")
+      Text(stringResource(R.string.secure_folder_finish_setup))
     }
   }
 }
@@ -355,7 +363,7 @@ private fun ChoosePinContent(
   var pin by rememberSaveable { mutableStateOf("") }
   var confirmPin by rememberSaveable { mutableStateOf("") }
   var showPin by rememberSaveable { mutableStateOf(false) }
-  var mismatchError by remember { mutableStateOf<String?>(null) }
+  var mismatchErrorRes by remember { mutableStateOf<Int?>(null) }
 
   Column(
     modifier =
@@ -385,26 +393,26 @@ private fun ChoosePinContent(
       value = pin,
       onValueChange = {
         pin = it.filter(Char::isDigit).take(8)
-        mismatchError = null
+        mismatchErrorRes = null
       },
       showPin = showPin,
       onToggleShowPin = { showPin = !showPin },
-      label = "New PIN",
+      label = stringResource(R.string.secure_folder_new_pin),
     )
 
     PinField(
       value = confirmPin,
       onValueChange = {
         confirmPin = it.filter(Char::isDigit).take(8)
-        mismatchError = null
+        mismatchErrorRes = null
       },
       showPin = showPin,
       onToggleShowPin = { showPin = !showPin },
-      label = "Confirm PIN",
+      label = stringResource(R.string.secure_folder_confirm_pin),
       modifier = Modifier.padding(top = 12.dp),
     )
 
-    val shownError = mismatchError ?: error
+    val shownError = if (mismatchErrorRes != null) stringResource(mismatchErrorRes!!) else error
     if (shownError != null) {
       Text(
         shownError,
@@ -417,14 +425,14 @@ private fun ChoosePinContent(
     Button(
       onClick = {
         when {
-          pin.length < 4 -> mismatchError = "PIN must be at least 4 digits"
-          pin != confirmPin -> mismatchError = "PINs don't match"
+          pin.length < 4 -> mismatchErrorRes = R.string.secure_folder_error_pin_min_digits
+          pin != confirmPin -> mismatchErrorRes = R.string.secure_folder_error_pins_dont_match
           else -> onSubmit(pin)
         }
       },
       modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
     ) {
-      Text("Continue")
+      Text(stringResource(R.string.secure_folder_next))
     }
   }
 }
@@ -454,13 +462,13 @@ private fun SecurityQuestionAnswerContent(
       tint = MaterialTheme.colorScheme.primary,
     )
     Text(
-      "Answer your security question",
+      stringResource(R.string.secure_folder_answer_security_question),
       style = MaterialTheme.typography.headlineSmall,
       textAlign = TextAlign.Center,
       modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
     )
     Text(
-      question.ifBlank { "No security question is set." },
+      question.ifBlank { stringResource(R.string.secure_folder_no_question_set) },
       style = MaterialTheme.typography.bodyLarge,
       textAlign = TextAlign.Center,
       modifier = Modifier.padding(bottom = 24.dp),
@@ -469,7 +477,7 @@ private fun SecurityQuestionAnswerContent(
     OutlinedTextField(
       value = answer,
       onValueChange = { answer = it },
-      label = { Text("Answer") },
+      label = { Text(stringResource(R.string.secure_folder_answer)) },
       singleLine = true,
       modifier = Modifier.fillMaxWidth(),
     )
@@ -488,11 +496,11 @@ private fun SecurityQuestionAnswerContent(
       enabled = answer.isNotBlank(),
       modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
     ) {
-      Text("Verify")
+      Text(stringResource(R.string.secure_folder_verify))
     }
 
     OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-      Text("Cancel")
+      Text(stringResource(R.string.generic_cancel))
     }
   }
 }
@@ -508,7 +516,7 @@ private fun PinField(
   showPin: Boolean,
   onToggleShowPin: () -> Unit,
   modifier: Modifier = Modifier,
-  label: String = "PIN",
+  label: String = stringResource(R.string.secure_folder_pin),
   onDone: () -> Unit = {},
 ) {
   OutlinedTextField(
@@ -523,7 +531,11 @@ private fun PinField(
       IconButton(onClick = onToggleShowPin) {
         Icon(
           if (showPin) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
-          contentDescription = if (showPin) "Hide PIN" else "Show PIN",
+          contentDescription = if (showPin) {
+            stringResource(R.string.secure_folder_hide_pin)
+          } else {
+            stringResource(R.string.secure_folder_show_pin)
+          },
         )
       }
     },

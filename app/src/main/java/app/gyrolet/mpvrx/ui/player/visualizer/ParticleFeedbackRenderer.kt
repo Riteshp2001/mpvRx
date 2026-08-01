@@ -8,13 +8,12 @@
 package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.content.Context
+import android.graphics.Color
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
-import java.nio.FloatBuffer
 import java.util.Random
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
-import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.log2
 import kotlin.math.max
@@ -29,22 +28,20 @@ internal class ParticleFeedbackRenderer(
   private val audioSmoother = AudioReactiveSmoother()
 
   @Volatile private var requestedPalette = palette
-
   @Volatile private var reducedMotionEnabled = reducedMotion
 
   private object Cfg {
     const val SIM_SIZE = 512
     const val NUM_PARTICLES = SIM_SIZE * SIM_SIZE
-    const val DECAY = 0.930f
-    const val DIFFUSE = 0.008f
-    const val BRIGHT = 0.042f
-    const val EXPOSURE = 1.05f
-    const val CHROMATIC_ABERRATION = 0.012f
-    const val GRAIN = 0.075f
-    const val VIGNETTE = 0.50f
+    const val DECAY = 0.920f
+    const val DIFFUSE = 0.006f
+    const val BRIGHT = 0.016f // Reduced for balanced brightness
+    const val EXPOSURE = 0.70f // Toned down exposure
+    const val CHROMATIC_ABERRATION = 0.008f
+    const val GRAIN = 0.035f
+    const val VIGNETTE = 0.20f
   }
 
-  private val paletteHues = floatArrayOf(0.52f, 0.58f, 0.63f, 0.06f, 0.09f, 0.78f)
   private val random = Random()
 
   private var bassSmoothed = 0.10f
@@ -58,7 +55,7 @@ internal class ParticleFeedbackRenderer(
   private var hueCurrent = 0.55f
   private var hueTarget = 0.55f
   private var lastHueSwitchSeconds = 0f
-  private var flareSmoothed = 0.3f
+  private var flareSmoothed = 0.2f
 
   private var pInit = 0
   private var pSim = 0
@@ -120,41 +117,49 @@ internal class ParticleFeedbackRenderer(
 
   fun updatePalette(palette: VisualizerPalette) {
     requestedPalette = palette
+    updateDynamicPaletteHue()
   }
 
   fun setReducedMotion(reducedMotion: Boolean) {
     reducedMotionEnabled = reducedMotion
   }
 
+  private fun updateDynamicPaletteHue() {
+    val hsv = FloatArray(3)
+    Color.colorToHSV(requestedPalette.primary, hsv)
+    hueTarget = hsv[0] / 360f
+  }
+
   override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
     GLES30.glDisable(GLES30.GL_CULL_FACE)
     GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+    GLES30.glClearColor(0f, 0f, 0f, 0f)
 
     pInit = GlUtils.createProgram(
       GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_init_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_init_fragment.glsl"),
     )
     pSim = GlUtils.createProgram(
       GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_sim_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_sim_fragment.glsl"),
     )
     pPts = GlUtils.createProgram(
       GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_fragment.glsl"),
     )
     pDecay = GlUtils.createProgram(
       GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_decay_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_decay_fragment.glsl"),
     )
     pComp = GlUtils.createProgram(
       GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_comp_fragment.glsl")
+      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_comp_fragment.glsl"),
     )
-
 
     cacheUniforms()
     createDummyVao()
     createSimPingPong()
+    updateDynamicPaletteHue()
 
     // Initialize particles state
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, simFbo[0])
@@ -243,8 +248,10 @@ internal class ParticleFeedbackRenderer(
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[trailSrc])
     GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)
 
-    /* 5. Composite Pass to Screen */
+    /* 5. Composite Pass to Screen with Transparent Background */
     GLES30.glViewport(0, 0, viewportWidth, viewportHeight)
+    GLES30.glClearColor(0f, 0f, 0f, 0f)
+    GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
     GLES30.glUseProgram(pComp)
     GLES30.glUniform1i(uCompTrail, 0)
     GLES30.glUniform1f(uCompAspect, aspect)
@@ -290,13 +297,9 @@ internal class ParticleFeedbackRenderer(
         beatSmoothed = 1f
         lastBeatNanos = nowNanos
         beatCount++
-        if ((beatCount % 8 == 0 || (nowSec - lastHueSwitchSeconds) > 9f) && (nowSec - lastHueSwitchSeconds) > 3.5f) {
-          hueTarget = paletteHues[random.nextInt(paletteHues.size)]
-          lastHueSwitchSeconds = nowSec
-        }
       }
     } else {
-      // Idle motion when paused/inactive
+      // Idle motion when paused
       bassSmoothed = 0.10f + 0.05f * kotlin.math.sin(nowSec * 0.7f)
       midSmoothed = 0.08f
       highSmoothed = 0.05f
@@ -308,7 +311,7 @@ internal class ParticleFeedbackRenderer(
     if (dh > 0.5f) dh -= 1f
     if (dh < -0.5f) dh += 1f
     hueCurrent = (hueCurrent + dh * (1f - exp(-dt * 1.1f)) + 1f) % 1f
-    flareSmoothed = 0.28f + 1.9f * bassSmoothed.pow(1.4f) + 1.1f * beatSmoothed
+    flareSmoothed = 0.18f + 1.2f * bassSmoothed.pow(1.4f) + 0.8f * beatSmoothed
   }
 
   private fun smoothVal(cur: Float, target: Float, dt: Float, upRate: Float, dnRate: Float): Float {
@@ -373,7 +376,7 @@ internal class ParticleFeedbackRenderer(
       GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0, GLES30.GL_TEXTURE_2D, trailTex[i], 0)
       GlUtils.checkFramebuffer("TrailFbo[$i]")
 
-      GLES30.glClearColor(0f, 0f, 0f, 1f)
+      GLES30.glClearColor(0f, 0f, 0f, 0f)
       GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
       GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[i])
       GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)

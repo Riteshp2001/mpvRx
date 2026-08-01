@@ -374,8 +374,7 @@ class MPVView(
     )
 
   private fun setupAudioOptions() {
-    // Route audio through the audiotrack AO with an app-owned session id so the visualizer FFT
-    // can attach to our own session without needing the RECORD_AUDIO permission.
+    // Route audio through the audiotrack AO for PCM audio pipeline visualization.
     MPVLib.setOptionString("ao", "audiotrack")
     MPVLib.setOptionString("audiotrack-session-id", AudioSessionProvider.get(context).toString())
     // Disable MPV's automatic audio selection

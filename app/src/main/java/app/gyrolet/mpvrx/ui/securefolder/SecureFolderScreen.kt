@@ -56,9 +56,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
@@ -182,8 +184,8 @@ data object SecureFolderScreen : Screen {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             EmptyState(
               icon = Icons.RoundedFilled.Lock,
-              title = "Nothing hidden yet",
-              message = "Files you move here won't show up anywhere else in the app.",
+              title = stringResource(R.string.secure_folder_empty_title),
+              message = stringResource(R.string.secure_folder_empty_message),
             )
           }
         } else {
@@ -222,8 +224,8 @@ data object SecureFolderScreen : Screen {
 
     SecureConfirmDialog(
       isOpen = pendingAction == PendingAction.RESTORE,
-      title = "Restore ${selectedIds.size} item(s)?",
-      subtitle = "They'll go back to where they were originally, or Movies/Restored if that folder is gone.",
+      title = stringResource(R.string.secure_folder_restore_confirm_title, selectedIds.size),
+      subtitle = stringResource(R.string.secure_folder_restore_confirm_subtitle),
       dontAskAgain = viewModel.preferences.dontAskBeforeRestore,
       onConfirm = {
         pendingAction = null
@@ -234,8 +236,8 @@ data object SecureFolderScreen : Screen {
 
     SecureConfirmDialog(
       isOpen = pendingAction == PendingAction.DELETE,
-      title = "Delete ${selectedIds.size} item(s) forever?",
-      subtitle = "This can't be undone — the files will be permanently removed from your Secure Folder.",
+      title = stringResource(R.string.secure_folder_delete_confirm_title, selectedIds.size),
+      subtitle = stringResource(R.string.secure_folder_delete_confirm_subtitle),
       dontAskAgain = viewModel.preferences.dontAskBeforeDelete,
       onConfirm = {
         pendingAction = null
@@ -246,10 +248,8 @@ data object SecureFolderScreen : Screen {
 
     SecureConfirmDialog(
       isOpen = hideEntryPointConfirmOpen,
-      title = "Hide Secure Folder from Preferences?",
-      subtitle =
-        "The \"Secure Folder\" row will be removed from Preferences. To open it again later, " +
-          "double-tap the app name at the top of the Home screen and enter your PIN.",
+      title = stringResource(R.string.secure_folder_hide_entry_title),
+      subtitle = stringResource(R.string.secure_folder_hide_entry_subtitle),
       dontAskAgain = viewModel.preferences.dontAskBeforeHideEntryPoint,
       onConfirm = {
         viewModel.toggleEntryPointHidden()
@@ -261,7 +261,7 @@ data object SecureFolderScreen : Screen {
     SecureFolderProgressDialog(
       isOpen = isBusy,
       progress = operationProgress,
-      label = "Working on it…",
+      label = stringResource(R.string.secure_folder_working_on_it),
       onCancel = { viewModel.cancelCurrentOperation() },
     )
 
@@ -305,41 +305,49 @@ private fun SecureFolderTopBar(
 ) {
   if (isInSelectionMode) {
     TopAppBar(
-      title = { Text("$selectedCount selected") },
+      title = { Text(stringResource(R.string.secure_folder_selected_count, selectedCount)) },
       navigationIcon = {
         IconButton(onClick = onDeselectAll) {
-          Icon(Icons.RoundedFilled.Close, contentDescription = "Cancel selection")
+          Icon(Icons.RoundedFilled.Close, contentDescription = stringResource(R.string.secure_folder_cancel_selection))
         }
       },
       actions = {
         IconButton(onClick = onSelectAll, enabled = !isBusy && selectedCount < totalCount) {
-          Icon(Icons.RoundedFilled.SelectAll, contentDescription = "Select all")
+          Icon(Icons.RoundedFilled.SelectAll, contentDescription = stringResource(R.string.select_all))
         }
         IconButton(onClick = onRestoreRequest, enabled = !isBusy && selectedCount > 0) {
-          Icon(Icons.RoundedFilled.Restore, contentDescription = "Restore")
+          Icon(Icons.RoundedFilled.Restore, contentDescription = stringResource(R.string.secure_folder_restore))
         }
         IconButton(onClick = onDeleteRequest, enabled = !isBusy && selectedCount > 0) {
-          Icon(Icons.RoundedFilled.Delete, contentDescription = "Delete forever", tint = MaterialTheme.colorScheme.error)
+          Icon(Icons.RoundedFilled.Delete, contentDescription = stringResource(R.string.secure_folder_delete_forever), tint = MaterialTheme.colorScheme.error)
         }
       },
     )
   } else {
     var menuExpanded by remember { mutableStateOf(false) }
     TopAppBar(
-      title = { Text("Secure Folder") },
+      title = { Text(stringResource(R.string.secure_folder_title)) },
       navigationIcon = {
         IconButton(onClick = onBack) {
-          Icon(Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
+          Icon(Icons.RoundedFilled.ArrowBack, contentDescription = null)
         }
       },
       actions = {
         Box {
           IconButton(onClick = { menuExpanded = true }) {
-            Icon(Icons.RoundedFilled.MoreVert, contentDescription = "More options")
+            Icon(Icons.RoundedFilled.MoreVert, contentDescription = null)
           }
           DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
             DropdownMenuItem(
-              text = { Text(if (isEntryPointHidden) "Show in Preferences" else "Hide from Preferences") },
+              text = {
+                Text(
+                  if (isEntryPointHidden) {
+                    stringResource(R.string.secure_folder_show_in_preferences)
+                  } else {
+                    stringResource(R.string.secure_folder_hide_from_preferences)
+                  }
+                )
+              },
               leadingIcon = {
                 Icon(
                   if (isEntryPointHidden) Icons.RoundedFilled.Visibility else Icons.RoundedFilled.VisibilityOff,
@@ -352,7 +360,7 @@ private fun SecureFolderTopBar(
               },
             )
             DropdownMenuItem(
-              text = { Text("Change PIN") },
+              text = { Text(stringResource(R.string.secure_folder_change_pin)) },
               leadingIcon = { Icon(Icons.RoundedFilled.Lock, contentDescription = null) },
               onClick = {
                 onChangePin()
@@ -360,7 +368,7 @@ private fun SecureFolderTopBar(
               },
             )
             DropdownMenuItem(
-              text = { Text("Change security question") },
+              text = { Text(stringResource(R.string.secure_folder_change_security_question)) },
               leadingIcon = { Icon(Icons.RoundedFilled.HelpOutline, contentDescription = null) },
               onClick = {
                 onChangeSecurityQuestion()

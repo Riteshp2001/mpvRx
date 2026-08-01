@@ -66,10 +66,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
@@ -237,13 +239,13 @@ fun MediaLibraryContent() {
         .onSuccess { batch ->
           val message =
             if (batch.failedIds.isEmpty()) {
-              "Moved ${batch.succeededIds.size} file(s) to Secure Folder"
+              context.getString(R.string.secure_folder_moved_success, batch.succeededIds.size)
             } else {
-              "Moved ${batch.succeededIds.size}, failed ${batch.failedIds.size}"
+              context.getString(R.string.secure_folder_moved_partial, batch.succeededIds.size, batch.failedIds.size)
             }
           Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }.onFailure {
-          Toast.makeText(context, "Failed to move files to Secure Folder", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, context.getString(R.string.secure_folder_move_failed), Toast.LENGTH_SHORT).show()
         }
     }
   }
@@ -841,8 +843,8 @@ fun MediaLibraryContent() {
     // Move to Secure Folder — confirm (skippable via "don't ask again"), then progress
     app.gyrolet.mpvrx.ui.securefolder.SecureConfirmDialog(
       isOpen = moveToSecureConfirmOpen.value,
-      title = "Move ${selectionManager.selectedCount} item(s) to Secure Folder?",
-      subtitle = "They'll disappear from this list and everywhere else in the app until restored.",
+      title = stringResource(R.string.secure_folder_move_items_title, selectionManager.selectedCount),
+      subtitle = stringResource(R.string.secure_folder_move_items_subtitle),
       dontAskAgain = secureFolderPreferences.dontAskBeforeMove,
       onConfirm = {
         moveToSecureConfirmOpen.value = false
@@ -854,7 +856,7 @@ fun MediaLibraryContent() {
     app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog(
       isOpen = moveToSecureProgressOpen.value,
       progress = secureFolderProgress,
-      label = "Moving to Secure Folder…",
+      label = stringResource(R.string.secure_folder_moving_progress),
       onCancel = { secureFolderRepository.cancelOperation() },
     )
   }
