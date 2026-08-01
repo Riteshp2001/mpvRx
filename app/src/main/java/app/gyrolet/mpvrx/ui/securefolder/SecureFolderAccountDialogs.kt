@@ -51,7 +51,7 @@ fun ChangePinDialog(
   isOpen: Boolean,
   preferences: SecureFolderPreferences,
   onDismiss: () -> Unit,
-  onChanged: () -> Unit,
+  onChanged: () -> Unit = {},
 ) {
   if (!isOpen) return
 
@@ -102,7 +102,7 @@ fun ChangePinDialog(
       Column {
         when (step) {
           AccountDialogStep.VERIFY_CURRENT_PIN ->
-            PinTextField(
+            PinField(
               value = currentPin,
               onValueChange = {
                 currentPin = it.filter(Char::isDigit).take(8)
@@ -114,7 +114,7 @@ fun ChangePinDialog(
               onDone = ::submit,
             )
           AccountDialogStep.ENTER_NEW -> {
-            PinTextField(
+            PinField(
               value = newPin,
               onValueChange = {
                 newPin = it.filter(Char::isDigit).take(8)
@@ -124,7 +124,7 @@ fun ChangePinDialog(
               onToggleShowPin = { showPin = !showPin },
               label = stringResource(R.string.secure_folder_new_pin),
             )
-            PinTextField(
+            PinField(
               value = confirmPin,
               onValueChange = {
                 confirmPin = it.filter(Char::isDigit).take(8)
@@ -171,7 +171,7 @@ fun ChangeSecurityQuestionDialog(
   isOpen: Boolean,
   preferences: SecureFolderPreferences,
   onDismiss: () -> Unit,
-  onChanged: () -> Unit,
+  onChanged: () -> Unit = {},
 ) {
   if (!isOpen) return
 
@@ -220,7 +220,7 @@ fun ChangeSecurityQuestionDialog(
       Column {
         when (step) {
           AccountDialogStep.VERIFY_CURRENT_PIN ->
-            PinTextField(
+            PinField(
               value = currentPin,
               onValueChange = {
                 currentPin = it.filter(Char::isDigit).take(8)
@@ -275,37 +275,4 @@ fun ChangeSecurityQuestionDialog(
   )
 }
 
-/** Small local PIN field — [SecureFolderGateScreen]'s `PinField` is `private`, so this mirrors it rather than reaching across files. */
-@Composable
-private fun PinTextField(
-  value: String,
-  onValueChange: (String) -> Unit,
-  showPin: Boolean,
-  onToggleShowPin: () -> Unit,
-  label: String,
-  modifier: Modifier = Modifier,
-  onDone: () -> Unit = {},
-) {
-  OutlinedTextField(
-    value = value,
-    onValueChange = onValueChange,
-    label = { Text(label) },
-    singleLine = true,
-    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
-    keyboardActions = KeyboardActions(onDone = { onDone() }),
-    visualTransformation = if (showPin) VisualTransformation.None else PasswordVisualTransformation(),
-    trailingIcon = {
-      IconButton(onClick = onToggleShowPin) {
-        Icon(
-          if (showPin) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
-          contentDescription = if (showPin) {
-            stringResource(R.string.secure_folder_hide_pin)
-          } else {
-            stringResource(R.string.secure_folder_show_pin)
-          },
-        )
-      }
-    },
-    modifier = modifier.fillMaxWidth(),
-  )
-}
+

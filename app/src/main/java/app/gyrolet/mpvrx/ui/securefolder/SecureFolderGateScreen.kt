@@ -726,7 +726,7 @@ private fun SecurityQuestionAnswerContent(
  * reveal/hide the digits (masked by default via [PasswordVisualTransformation]).
  */
 @Composable
-private fun PinField(
+internal fun PinField(
   value: String,
   onValueChange: (String) -> Unit,
   showPin: Boolean,

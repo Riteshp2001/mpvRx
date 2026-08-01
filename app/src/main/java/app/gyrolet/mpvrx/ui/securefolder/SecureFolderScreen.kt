@@ -72,9 +72,6 @@ import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.sort.SortUtils
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
-import java.text.DecimalFormat
-import kotlin.math.ln
-import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
@@ -170,7 +167,7 @@ data object SecureFolderScreen : Screen {
               duration = 0L,
               durationFormatted = "",
               size = entity.fileSize,
-              sizeFormatted = formatFileSize(entity.fileSize),
+              sizeFormatted = MediaUtils.formatFileSize(entity.fileSize),
               dateModified = entity.dateHidden,
               dateAdded = entity.dateHidden,
               mimeType = entity.mimeType,
@@ -565,14 +562,12 @@ data object SecureFolderScreen : Screen {
       isOpen = changePinOpen,
       preferences = viewModel.preferences,
       onDismiss = { changePinOpen = false },
-      onChanged = {},
     )
 
     ChangeSecurityQuestionDialog(
       isOpen = changeSecurityQuestionOpen,
       preferences = viewModel.preferences,
       onDismiss = { changeSecurityQuestionOpen = false },
-      onChanged = {},
     )
 
     VideoSortDialog(
@@ -591,11 +586,6 @@ data object SecureFolderScreen : Screen {
 
 private enum class PendingAction { RESTORE, DELETE }
 
-private fun formatFileSize(bytes: Long): String {
-  if (bytes <= 0) return "0 B"
-  val units = arrayOf("B", "KB", "MB", "GB")
-  val digitGroups = (ln(bytes.toDouble()) / ln(1024.0)).toInt().coerceIn(0, units.size - 1)
-  return "${DecimalFormat("#,##0.#").format(bytes / 1024.0.pow(digitGroups))} ${units[digitGroups]}"
-}
+
 
 
