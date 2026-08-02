@@ -991,11 +991,11 @@ class PlayerViewModel(
   private val _frameExtendGlowMix = MutableStateFlow(playerPreferences.ambientExtendGlowMix.get())
   val frameExtendGlowMix: StateFlow<Float> = _frameExtendGlowMix.asStateFlow()
 
-  private var lastAmbientScaleX = -1.0
-  private var lastAmbientScaleY = -1.0
+  @Volatile private var lastAmbientScaleX = -1.0
+  @Volatile private var lastAmbientScaleY = -1.0
   private var ambientDebounceJob: kotlinx.coroutines.Job? = null
   private var ambientShaderSeq = 0
-  private var ambientShaderFile: java.io.File? = null
+  @Volatile private var ambientShaderFile: java.io.File? = null
 
   /**
    * Caches the [AmbientShaderSpec] that was last compiled into a GLSL file.
@@ -1006,8 +1006,11 @@ class PlayerViewModel(
    * Using the spec data class (instead of the raw GLSL String) as the cache
    * key avoids allocating the multi-KB shader string and running
    * buildSpiralTapTable trig math before the early-return guard fires.
+   *
+   * @Volatile: written on renderPrepDispatcher (background), read and nulled on
+   * the main thread in disableAmbientShader() / restartAmbientIfActive().
    */
-  private var lastCompiledSpec: AmbientShaderSpec? = null
+  @Volatile private var lastCompiledSpec: AmbientShaderSpec? = null
 
   /**
    * Latest device thermal headroom reading ([0f] = at thermal limit, [1f] = cool).
