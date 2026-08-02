@@ -5398,7 +5398,16 @@ class PlayerViewModel(
       val shaderCode = AmbientShaderBuilder.build(spec)
       val newFile = File(host.context.cacheDir, "ambient_${++ambientShaderSeq}.glsl")
       // Blocking file write — dispatched to IO pool to avoid stalling renderPrepDispatcher.
-      withContext(kotlinx.coroutines.Dispatchers.IO) { newFile.writeText(shaderCode) }
+      // Catch CancellationException here: IO is not preemptible, so the write always
+      // completes fully even when the job is cancelled mid-flight. Without this guard,
+      // the file would be written but never tracked or deleted (disk leak on every
+      // superseded debounced update — fast slider drags, orientation flips, etc.).
+      try {
+        withContext(kotlinx.coroutines.Dispatchers.IO) { newFile.writeText(shaderCode) }
+      } catch (e: kotlinx.coroutines.CancellationException) {
+        newFile.delete() // Orphan cleanup — job cancelled after write completed.
+        throw e
+      }
       ambientShaderFile?.let { oldFile ->
         runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
         oldFile.delete()
@@ -5406,6 +5415,10 @@ class PlayerViewModel(
       MPVLib.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
       ambientShaderFile = newFile
     }.onFailure { e ->
+      // runCatching catches Throwable including CancellationException — rethrow it so
+      // structured concurrency is not broken and debounce cancellation does not log
+      // spurious "Failed to update ambient stretch" stack traces that would mask real errors.
+      if (e is kotlinx.coroutines.CancellationException) throw e
       Log.e(TAG, "Failed to update ambient stretch", e)
     }
   }
