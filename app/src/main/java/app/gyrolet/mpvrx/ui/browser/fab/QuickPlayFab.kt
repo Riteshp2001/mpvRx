@@ -22,6 +22,7 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,13 +64,9 @@ fun QuickPlayFab(
   val coroutineScope = rememberCoroutineScope()
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
-  var hasRecentlyPlayed by remember { mutableStateOf(false) }
+  val lastPlayedEntity by RecentlyPlayedOps.observeLastPlayedEntity().collectAsState(initial = null)
+  val hasRecentlyPlayed = lastPlayedEntity != null
   var isPressed by remember { mutableStateOf(false) }
-
-  // Check for recently played videos on composition
-  LaunchedEffect(Unit) {
-    hasRecentlyPlayed = RecentlyPlayedOps.hasRecentlyPlayed()
-  }
 
   // Pulse animation scale
   val scale by animateFloatAsState(
@@ -101,15 +98,21 @@ fun QuickPlayFab(
       onClick = {
         isPressed = true
         coroutineScope.launch {
-          val lastPlayedEntity = RecentlyPlayedOps.getLastPlayedEntity()
-          if (lastPlayedEntity != null) {
+          val validEntity = RecentlyPlayedOps.getLastPlayedEntity()
+          if (validEntity != null) {
             MediaUtils.playFile(
-              source = lastPlayedEntity.filePath,
+              source = validEntity.filePath,
               context = context,
               launchSource = "quick_play_fab",
-              title = lastPlayedEntity.videoTitle?.takeIf { it.isNotBlank() }
-                ?: lastPlayedEntity.fileName.takeIf { it.isNotBlank() },
+              title = validEntity.videoTitle?.takeIf { it.isNotBlank() }
+                ?: validEntity.fileName.takeIf { it.isNotBlank() },
             )
+          } else {
+            android.widget.Toast.makeText(
+              context,
+              R.string.toast_file_not_found,
+              android.widget.Toast.LENGTH_SHORT,
+            ).show()
           }
           isPressed = false
         }

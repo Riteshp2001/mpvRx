@@ -266,6 +266,7 @@
   <string name="pref_audio_drc_title">Dynamic range compression (DRC)</string>
   <string name="pref_audio_drc_summary">Compress audio dynamic range to boost quiet dialogue and tame loud sounds</string>
   <string name="pref_audio_effects">Audio processing</string>
+  <string name="toast_file_not_found">File no longer exists</string>
   <string name="pref_music_visualizer_title">Music visualizer</string>
   <string name="pref_music_visualizer_summary">Show an audio-reactive visualizer while playing music</string>
   <string name="pref_audio_visualizer_style_title">Visualizer style</string>

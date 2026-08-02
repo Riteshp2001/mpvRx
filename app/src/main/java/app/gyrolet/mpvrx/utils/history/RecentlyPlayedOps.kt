@@ -126,6 +126,16 @@ object RecentlyPlayedOps {
   suspend fun getRecentlyPlayedCount(): Int = repository.getRecentlyPlayedCount()
 
   @OptIn(ExperimentalCoroutinesApi::class)
+  fun observeLastPlayedEntity(): Flow<RecentlyPlayedEntity?> =
+    repository
+      .observeLastPlayed()
+      .mapLatest { _ ->
+        if (!preferences.enableRecentlyPlayed.get()) null
+        else getLastPlayedEntity()
+      }.distinctUntilChanged()
+      .flowOn(Dispatchers.IO)
+
+  @OptIn(ExperimentalCoroutinesApi::class)
   fun observeLastPlayedPath(): Flow<String?> =
     repository
       .observeLastPlayedForHighlight()

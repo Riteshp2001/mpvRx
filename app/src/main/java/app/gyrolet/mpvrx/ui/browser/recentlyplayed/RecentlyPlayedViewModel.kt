@@ -150,6 +150,7 @@ class RecentlyPlayedViewModel(
             if (file.exists()) {
               createVideoFromFilePath(filePath, file, entity?.videoTitle)
             } else {
+              recentlyPlayedRepository.deleteByFilePath(filePath)
               null
             }
           }
