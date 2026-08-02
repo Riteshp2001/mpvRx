@@ -64,6 +64,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -379,6 +381,7 @@ private fun TelegramPillNavigationBar(
   )
 
   val density = LocalDensity.current
+  val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
   BoxWithConstraints(modifier = modifier) {
     val totalWidth = maxWidth
@@ -414,7 +417,7 @@ private fun TelegramPillNavigationBar(
                 .width(itemWidth)
                 .height(56.dp)
                 .graphicsLayer {
-                  translationX = itemWidthPx * animatedIndex
+                  translationX = if (isRtl) -itemWidthPx * animatedIndex else itemWidthPx * animatedIndex
                 }.clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer),
           )

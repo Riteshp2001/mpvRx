@@ -12,7 +12,9 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
+import android.media.MediaScannerConnection
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
@@ -40,6 +42,7 @@ class App :
   private var startedActivityCount = 0
 
   companion object {
+    private const val TAG = "App"
     private const val LAUNCH_SCAN_PREFS = "launch_media_scan"
     private const val LAST_LAUNCH_SCAN_MS = "last_launch_scan_ms"
     private const val LAUNCH_SCAN_INTERVAL_MS = 24L * 60L * 60L * 1000L
@@ -87,7 +90,7 @@ class App :
           PackageManager.DONT_KILL_APP,
         )
       }.onFailure { error ->
-        Log.e("App", "Failed to initialize MediaInfoActivityAlias setting on launch", error)
+        Log.e(TAG, "Failed to initialize MediaInfoActivityAlias setting on launch", error)
       }
     }
 
@@ -156,24 +159,24 @@ class App :
   private fun triggerMediaScanOnLaunch() {
     try {
       if (!shouldRunLaunchMediaScan()) {
-        android.util.Log.d("App", "Skipped launch media scan; last scan was recent")
+        Log.d(TAG, "Skipped launch media scan; last scan was recent")
         return
       }
 
-      val externalStorage = android.os.Environment.getExternalStorageDirectory()
+      val externalStorage = Environment.getExternalStorageDirectory()
 
-      android.media.MediaScannerConnection.scanFile(
+      MediaScannerConnection.scanFile(
         this,
         arrayOf(externalStorage.absolutePath),
         null,
       ) { path, _ ->
-        android.util.Log.d("App", "Launch media scan completed for: $path")
+        Log.d(TAG, "Launch media scan completed for: $path")
         MediaLibraryEvents.notifyChanged()
       }
 
-      android.util.Log.d("App", "Triggered media scan on app launch")
+      Log.d(TAG, "Triggered media scan on app launch")
     } catch (error: Exception) {
-      android.util.Log.e("App", "Failed to trigger media scan on launch", error)
+      Log.e(TAG, "Failed to trigger media scan on launch", error)
     }
   }
 

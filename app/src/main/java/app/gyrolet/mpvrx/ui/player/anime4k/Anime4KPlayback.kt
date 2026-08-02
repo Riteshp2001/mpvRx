@@ -80,11 +80,12 @@ internal fun selectRuntimeStableAnime4K(
 
   // Runtime pressure guard:
   // If renderer starts falling behind for sustained periods, aggressively lower Anime4K load.
+  // Lowered thresholds for 4K HDR content which requires faster reaction to prevent stutter.
   val highRuntimeLoad =
-    droppedFrames >= 45 ||
-      delayedFrames >= 60 ||
-      mistimedFrames >= 100 ||
-      voRenderMs >= 18.0
+    droppedFrames >= 15 ||
+      delayedFrames >= 25 ||
+      mistimedFrames >= 40 ||
+      voRenderMs >= 12.0
 
   if (!highRuntimeLoad) {
     return staticSelection

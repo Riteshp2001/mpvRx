@@ -1126,6 +1126,7 @@ class VideoCompressorViewModel(
     state: VideoCompressorUiState,
     queueIndex: Int,
     queueSize: Int,
+    forceRemoveAudio: Boolean = false,
   ): File? {
     val inputUri = state.sourceUri ?: return null
     val outputDir = File(context.cacheDir, "compressed_videos")
@@ -1147,6 +1148,7 @@ class VideoCompressorViewModel(
         videoCodec = state.videoCodec,
         targetResolution = state.targetResolutionHeight,
         targetFps = state.targetFps,
+        removeAudio = state.removeAudio || forceRemoveAudio,
         sourceWidth = state.originalWidth,
         sourceHeight = state.originalHeight,
         sourceFps = state.originalFps,
@@ -1259,7 +1261,7 @@ class VideoCompressorViewModel(
     }
 
     val audioEffects =
-      if (!state.removeAudio && state.audioVolume != 1.0f) {
+      if (!plan.removeAudio && state.audioVolume != 1.0f) {
         listOf(GainProcessor(ConstantGainProvider(state.audioVolume)))
       } else {
         emptyList()
@@ -1269,7 +1271,7 @@ class VideoCompressorViewModel(
       EditedMediaItem
         .Builder(MediaItem.fromUri(inputUri))
         .setEffects(Effects(audioEffects, videoEffects))
-        .setRemoveAudio(state.removeAudio)
+        .setRemoveAudio(plan.removeAudio)
         .build()
 
     var hdrMode = Composition.HDR_MODE_KEEP_HDR
@@ -1320,6 +1322,36 @@ class VideoCompressorViewModel(
                 exportException: ExportException,
               ) {
                 activeTransformer = null
+                val logStr = exportException.stackTraceToString()
+                val isAudioDecoderError =
+                  exportException.codecInfo?.isVideo == false ||
+                    logStr.contains("AudioDecoder", ignoreCase = true) ||
+                    logStr.contains("audio/eac3", ignoreCase = true) ||
+                    logStr.contains("audio/ac3", ignoreCase = true) ||
+                    logStr.contains("audio/dts", ignoreCase = true) ||
+                    (exportException.message?.contains("AudioDecoder", ignoreCase = true) == true)
+
+                if (!plan.removeAudio && isAudioDecoderError && !forceRemoveAudio) {
+                  _uiState.update {
+                    it.copy(
+                      warnings = it.warnings + listOf("Audio decoding is not supported on this device. Retried compression with audio muted."),
+                    )
+                  }
+                  if (continuation.isActive) {
+                    viewModelScope.launch {
+                      val retryResult = compressSingleVideo(
+                        context = context,
+                        state = state,
+                        queueIndex = queueIndex,
+                        queueSize = queueSize,
+                        forceRemoveAudio = true,
+                      )
+                      continuation.resume(retryResult)
+                    }
+                  }
+                  return
+                }
+
                 _uiState.update {
                   val isCodecError =
                     exportException.errorCode == ExportException.ERROR_CODE_DECODER_INIT_FAILED ||
@@ -1329,6 +1361,8 @@ class VideoCompressorViewModel(
                     when {
                       isMuxerError && Build.MANUFACTURER.equals("HUAWEI", ignoreCase = true) ->
                         "This issue may be caused by your specific device. Try restarting the device."
+                      isAudioDecoderError ->
+                        "The audio codec of this video is not supported by your device hardware. Enable 'Remove Audio' to compress."
                       isCodecError ->
                         "This video codec is not supported by your device hardware."
                       else ->
@@ -1393,6 +1427,35 @@ class VideoCompressorViewModel(
       }.onFailure { error ->
         progressJob.cancel()
         activeTransformer = null
+        val logStr = error.stackTraceToString()
+        val isAudioDecoderError =
+          logStr.contains("AudioDecoder", ignoreCase = true) ||
+            logStr.contains("audio/eac3", ignoreCase = true) ||
+            logStr.contains("audio/ac3", ignoreCase = true) ||
+            logStr.contains("audio/dts", ignoreCase = true) ||
+            (error.message?.contains("AudioDecoder", ignoreCase = true) == true)
+
+        if (!plan.removeAudio && isAudioDecoderError && !forceRemoveAudio) {
+          _uiState.update {
+            it.copy(
+              warnings = it.warnings + listOf("Audio decoding is not supported on this device. Retried compression with audio muted."),
+            )
+          }
+          if (continuation.isActive) {
+            viewModelScope.launch {
+              val retryResult = compressSingleVideo(
+                context = context,
+                state = state,
+                queueIndex = queueIndex,
+                queueSize = queueSize,
+                forceRemoveAudio = true,
+              )
+              continuation.resume(retryResult)
+            }
+          }
+          return@suspendCancellableCoroutine
+        }
+
         _uiState.update {
           it.copy(
             isCompressing = false,
@@ -1426,9 +1489,39 @@ class VideoCompressorViewModel(
     val outputVideoMimeType: String,
     val outputHeight: Int,
     val outputFps: Int,
+    val removeAudio: Boolean,
     val warnings: List<String>,
     val blockingError: String?,
   )
+
+  private fun getAudioTrackMimeType(context: Context, uri: Uri): String? {
+    val extractor = MediaExtractor()
+    return try {
+      extractor.setDataSource(context, uri, null)
+      for (i in 0 until extractor.trackCount) {
+        val format = extractor.getTrackFormat(i)
+        val mime = format.getString(MediaFormat.KEY_MIME)
+        if (mime?.startsWith("audio/") == true) {
+          return mime
+        }
+      }
+      null
+    } catch (_: Exception) {
+      null
+    } finally {
+      extractor.release()
+    }
+  }
+
+  private fun isAudioDecoderSupported(mimeType: String): Boolean {
+    return runCatching {
+      val list = MediaCodecList(MediaCodecList.ALL_CODECS)
+      list.codecInfos.any { info ->
+        if (info.isEncoder) return@any false
+        info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }
+      }
+    }.getOrDefault(false)
+  }
 
   private fun getVideoTrackInfo(context: Context, uri: Uri): VideoTrackInfo? {
     val extractor = MediaExtractor()
@@ -1467,6 +1560,7 @@ class VideoCompressorViewModel(
     videoCodec: String,
     targetResolution: Int,
     targetFps: Int,
+    removeAudio: Boolean,
     sourceWidth: Int,
     sourceHeight: Int,
     sourceFps: Float,
@@ -1474,7 +1568,23 @@ class VideoCompressorViewModel(
     var outputMime = videoCodec
     var outputHeight = targetResolution
     var outputFps = targetFps
+    var effectiveRemoveAudio = removeAudio
     val warnings = mutableListOf<String>()
+
+    if (!effectiveRemoveAudio) {
+      val audioMime = getAudioTrackMimeType(getApplication(), inputUri)
+      if (!audioMime.isNullOrBlank() && !isAudioDecoderSupported(audioMime)) {
+        effectiveRemoveAudio = true
+        val codecLabel = when (audioMime.lowercase(Locale.US)) {
+          "audio/eac3" -> "E-AC-3 (Dolby Digital Plus)"
+          "audio/ac3" -> "AC-3 (Dolby Digital)"
+          "audio/ac4" -> "AC-4"
+          "audio/vnd.dts", "audio/vnd.dts.hd" -> "DTS"
+          else -> audioMime.substringAfter("/").uppercase(Locale.US)
+        }
+        warnings.add("Audio format ($codecLabel) is not supported for decoding on this device. Audio has been muted for compression.")
+      }
+    }
 
     val sourceInfo = getVideoTrackInfo(getApplication(), inputUri)
     val sourceMime = sourceInfo?.mimeType
@@ -1496,6 +1606,7 @@ class VideoCompressorViewModel(
           outputVideoMimeType = outputMime,
           outputHeight = outputHeight,
           outputFps = outputFps,
+          removeAudio = effectiveRemoveAudio,
           warnings = warnings,
           blockingError =
             "This device cannot decode ${resolvedWidth}x${resolvedHeight}@${resolvedFps.toInt()}fps " +
@@ -1562,6 +1673,7 @@ class VideoCompressorViewModel(
             outputVideoMimeType = outputMime,
             outputHeight = outputHeight,
             outputFps = outputFps,
+            removeAudio = effectiveRemoveAudio,
             warnings = warnings,
             blockingError =
               "This device cannot encode any of the required configurations. " +
@@ -1575,6 +1687,7 @@ class VideoCompressorViewModel(
       outputVideoMimeType = outputMime,
       outputHeight = outputHeight,
       outputFps = outputFps,
+      removeAudio = effectiveRemoveAudio,
       warnings = warnings,
       blockingError = null,
     )

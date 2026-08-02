@@ -79,6 +79,11 @@ class SecureFolderPreferences(
   val isEntryPointHidden = preferenceStore.getBoolean("secure_folder_entry_hidden", false)
 
   // ============================================================================
+  // Biometric authentication
+  // ============================================================================
+  val isBiometricEnabled = preferenceStore.getBoolean("secure_folder_biometric_enabled", false)
+
+  // ============================================================================
   // Don't-ask-again flags for SecureConfirmDialog (Step 4)
   // ============================================================================
   val dontAskBeforeMove = preferenceStore.getBoolean("secure_folder_dont_ask_move", false)
@@ -93,6 +98,7 @@ class SecureFolderPreferences(
     securityAnswerHash.delete()
     securityAnswerSalt.delete()
     isEntryPointHidden.delete()
+    isBiometricEnabled.delete()
     dontAskBeforeMove.delete()
     dontAskBeforeRestore.delete()
     dontAskBeforeDelete.delete()

@@ -306,6 +306,8 @@ fun VideoSortDialog(
   onSortOrderChange: (SortOrder) -> Unit,
   isDualPane: Boolean = false,
   isFolderView: Boolean = true,
+  enableViewModeOptions: Boolean = true,
+  enableLayoutModeOptions: Boolean = true,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -429,63 +431,67 @@ fun VideoSortDialog(
       }
     },
     viewModeSelector =
-      MultiViewModeSelector(
-        label = "View Mode",
-        options =
-          listOf(
-            ViewModeOption(
-              label = "Folder",
-              icon = Icons.RoundedFilled.ViewModule,
-              isSelected = folderViewMode == FolderViewMode.AlbumView,
-              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
+      if (enableViewModeOptions)
+        MultiViewModeSelector(
+          label = "View Mode",
+          options =
+            listOf(
+              ViewModeOption(
+                label = "Folder",
+                icon = Icons.RoundedFilled.ViewModule,
+                isSelected = folderViewMode == FolderViewMode.AlbumView,
+                onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
+              ),
+              ViewModeOption(
+                label = "Tree",
+                icon = Icons.RoundedFilled.AccountTree,
+                isSelected = folderViewMode == FolderViewMode.FileManager,
+                onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
+              ),
+              ViewModeOption(
+                label = "Library",
+                icon = Icons.RoundedFilled.VideoLibrary,
+                isSelected = folderViewMode == FolderViewMode.MediaLibrary,
+                onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
+              ),
             ),
-            ViewModeOption(
-              label = "Tree",
-              icon = Icons.RoundedFilled.AccountTree,
-              isSelected = folderViewMode == FolderViewMode.FileManager,
-              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
-            ),
-            ViewModeOption(
-              label = "Library",
-              icon = Icons.RoundedFilled.VideoLibrary,
-              isSelected = folderViewMode == FolderViewMode.MediaLibrary,
-              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
-            ),
-          ),
-      ),
+        )
+      else null,
     layoutModeSelector =
-      ViewModeSelector(
-        label = "Layout",
-        firstOptionLabel = "List",
-        secondOptionLabel = "Grid",
-        firstOptionIcon = Icons.RoundedFilled.ViewList,
-        secondOptionIcon = Icons.RoundedFilled.GridView,
-        isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
-        onViewModeChange = { isFirstOption ->
-          val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
-          if (isFolderView) {
-            browserPreferences.folderViewVideoLayoutMode.set(newLayout)
-            if (!separateFolderVideoLayout) {
-              browserPreferences.folderViewFolderLayoutMode.set(newLayout)
-            }
-          } else {
-            browserPreferences.mediaLayoutMode.set(newLayout)
-          }
-        },
-        checkboxLabel = if (isFolderView) "Only for video list" else null,
-        isCheckboxChecked = separateFolderVideoLayout,
-        onCheckboxChange =
-          if (isFolderView) {
-            { checked ->
-              browserPreferences.separateFolderVideoLayout.set(checked)
-              if (!checked) {
-                browserPreferences.folderViewFolderLayoutMode.set(browserPreferences.folderViewVideoLayoutMode.get())
+      if (enableLayoutModeOptions)
+        ViewModeSelector(
+          label = "Layout",
+          firstOptionLabel = "List",
+          secondOptionLabel = "Grid",
+          firstOptionIcon = Icons.RoundedFilled.ViewList,
+          secondOptionIcon = Icons.RoundedFilled.GridView,
+          isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
+          onViewModeChange = { isFirstOption ->
+            val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
+            if (isFolderView) {
+              browserPreferences.folderViewVideoLayoutMode.set(newLayout)
+              if (!separateFolderVideoLayout) {
+                browserPreferences.folderViewFolderLayoutMode.set(newLayout)
               }
+            } else {
+              browserPreferences.mediaLayoutMode.set(newLayout)
             }
-          } else {
-            null
           },
-      ),
+          checkboxLabel = if (isFolderView) "Only for video list" else null,
+          isCheckboxChecked = separateFolderVideoLayout,
+          onCheckboxChange =
+            if (isFolderView) {
+              { checked ->
+                browserPreferences.separateFolderVideoLayout.set(checked)
+                if (!checked) {
+                  browserPreferences.folderViewFolderLayoutMode.set(browserPreferences.folderViewVideoLayoutMode.get())
+                }
+              }
+            } else {
+              null
+            },
+        )
+      else null,
     visibilityToggles =
       buildList {
         add(

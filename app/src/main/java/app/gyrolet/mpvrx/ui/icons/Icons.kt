@@ -98,6 +98,7 @@ object Icons {
     val FileUpload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_upload) }
     val FitScreen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fit_screen) }
     val Flip by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Flip) }
+    val Fingerprint by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fingerprint) }
     val Folder by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder) }
     val FolderOff by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder_off) }
     val FolderOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Folder_open) }
@@ -315,6 +316,7 @@ object Icons {
     val FileUpload get() = Shared.FileUpload
     val FitScreen get() = Shared.FitScreen
     val Flip get() = Shared.Flip
+    val Fingerprint get() = Shared.Fingerprint
     val Folder get() = Shared.Folder
     val FolderOff get() = Shared.FolderOff
     val FolderOpen get() = Shared.FolderOpen

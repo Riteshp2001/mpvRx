@@ -955,7 +955,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="hdr_mode_bt2020_description">Conversion BT.2020 / BT.1886 avec le gamut mapping de hdr-toys</string>
   <string name="hdr_mode_linear">HDR linéaire</string>
   <string name="hdr_mode_linear_short">Linéaire</string>
-  <string name="hdr_mode_linear_description">Sortie HDR mpv de haute qualité sans shaders hdr-toys</string>
+  <string name="hdr_mode_linear_description">Pipeline HDR linéaire via la chaîne de shaders Astra et Bottosson de hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR - Sortie du mode %1$s</string>
   <string name="pref_section_support">Assistance</string>
   <string name="pref_section_updates">Mises à jour</string>
@@ -1573,6 +1573,12 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="secure_folder_verify">Vérifier</string>
   <string name="secure_folder_next">Suivant</string>
   <string name="secure_folder_save">Enregistrer</string>
+  <string name="secure_folder_use_fingerprint">Utiliser l\'empreinte digitale</string>
+  <string name="secure_folder_enable_fingerprint">Activer l\'empreinte digitale</string>
+  <string name="secure_folder_disable_fingerprint">Désactiver l\'empreinte digitale</string>
+  <string name="secure_folder_use_face_unlock">Utiliser le déverrouillage facial</string>
+  <string name="secure_folder_enable_face_unlock">Activer le déverrouillage facial</string>
+  <string name="secure_folder_disable_face_unlock">Désactiver le déverrouillage facial</string>
   <string name="secure_folder_sq_pet">Quel était le nom de votre premier animal de compagnie ?</string>
   <string name="secure_folder_sq_mother">Quel est le nom de jeune fille de votre mère ?</string>
   <string name="secure_folder_sq_school">Quel était le nom de votre première école ?</string>

@@ -77,7 +77,6 @@ fun BrowserTopBar(
   isSingleSelection: Boolean = false,
   onInfoClick: (() -> Unit)? = null,
   onShareClick: (() -> Unit)? = null,
-  onCopyClick: (() -> Unit)? = null,
   onPlayClick: (() -> Unit)? = null,
   onPinClick: (() -> Unit)? = null,
   onBlacklistClick: (() -> Unit)? = null,
@@ -90,6 +89,7 @@ fun BrowserTopBar(
   onMoveToSecureClick: (() -> Unit)? = null,
   useRemoveIcon: Boolean = false,
   onAddToPlaylistClick: (() -> Unit)? = null,
+  onRestoreClick: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   forceHeadlineSmall: Boolean = false,
 ) {
@@ -103,7 +103,6 @@ fun BrowserTopBar(
       isSingleSelection = isSingleSelection,
       onInfo = onInfoClick,
       onShare = onShareClick,
-      onCopy = onCopyClick,
       onPlay = onPlayClick,
       onPin = onPinClick,
       onBlacklist = onBlacklistClick,
@@ -111,10 +110,12 @@ fun BrowserTopBar(
       onInvertSelection = onInvertSelection,
       onDeselectAll = onDeselectAll,
       onMoveToSecure = onMoveToSecureClick,
+      onRestore = onRestoreClick,
       modifier = modifier,
       useRemoveIcon = useRemoveIcon,
       onAddToPlaylist = onAddToPlaylistClick,
       colors = colors,
+      additionalActions = additionalActions,
     )
   } else {
     NormalTopBar(
@@ -153,7 +154,6 @@ private fun NormalTopBar(
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
-  val tapHeaderToChangeTheme by preferences.tapHeaderToChangeTheme.collectAsState()
   val darkTheme = isSystemInDarkTheme()
   val themeTransition = LocalThemeTransitionState.current
   val coroutineScope = rememberCoroutineScope()
@@ -203,8 +203,6 @@ private fun NormalTopBar(
           }.pointerInput(onTitleLongPress, onTitleDoubleTap) {
             detectTapGestures(
               onTap = { localOffset ->
-                // Feature is opt-in and off by default — see AppearancePreferences.tapHeaderToChangeTheme.
-                if (!tapHeaderToChangeTheme) return@detectTapGestures
                 // Don't allow theme change if animation is in progress
                 if (themeTransition?.isAnimating == true) return@detectTapGestures
 
@@ -274,7 +272,6 @@ private fun NormalTopBar(
       }
     },
     actions = {
-      additionalActions()
       if (onSearchClick != null) {
         IconButton(
           onClick = onSearchClick,
@@ -319,6 +316,7 @@ private fun NormalTopBar(
           )
         }
       }
+      additionalActions()
     },
     modifier = modifier,
   )
@@ -338,7 +336,6 @@ private fun SelectionTopBar(
   isSingleSelection: Boolean,
   onInfo: (() -> Unit)?,
   onShare: (() -> Unit)?,
-  onCopy: (() -> Unit)?,
   onPlay: (() -> Unit)?,
   onPin: (() -> Unit)?,
   onBlacklist: (() -> Unit)?,
@@ -349,7 +346,9 @@ private fun SelectionTopBar(
   useRemoveIcon: Boolean = false,
   onAddToPlaylist: (() -> Unit)? = null,
   onMoveToSecure: (() -> Unit)? = null,
+  onRestore: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
+  additionalActions: @Composable RowScope.() -> Unit = { },
 ) {
   var showDropdown by remember { mutableStateOf(false) }
 
@@ -430,11 +429,25 @@ private fun SelectionTopBar(
       }
     },
     actions = {
+      additionalActions()
+      if (onRestore != null) {
+        IconButton(
+          onClick = onRestore,
+          modifier = Modifier.padding(horizontal = 1.dp),
+        ) {
+          Icon(
+            Icons.RoundedFilled.Restore,
+            contentDescription = stringResource(R.string.secure_folder_restore),
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.secondary,
+          )
+        }
+      }
       // Play icon
       if (onPlay != null) {
         IconButton(
           onClick = onPlay,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.PlayArrow,
@@ -450,7 +463,7 @@ private fun SelectionTopBar(
       if (onPin != null) {
         IconButton(
           onClick = onPin,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.PushPin,
@@ -467,7 +480,7 @@ private fun SelectionTopBar(
       if (onAddToPlaylist != null) {
         IconButton(
           onClick = onAddToPlaylist,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.PlaylistAdd,
@@ -485,7 +498,7 @@ private fun SelectionTopBar(
         IconButton(
           onClick = onRename,
           enabled = isSingleSelection,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.DriveFileRenameOutline,
@@ -506,7 +519,7 @@ private fun SelectionTopBar(
         IconButton(
           onClick = onInfo,
           enabled = isSingleSelection,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Info,
@@ -526,7 +539,7 @@ private fun SelectionTopBar(
       if (onShare != null) {
         IconButton(
           onClick = onShare,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Share,
@@ -537,27 +550,12 @@ private fun SelectionTopBar(
         }
       }
 
-      if (onCopy != null) {
-        IconButton(
-          onClick = onCopy,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.RoundedFilled.ContentCopy,
-            contentDescription =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_copy_path),
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
-        }
-      }
 
       // Move to Secure Folder icon
       if (onMoveToSecure != null) {
         IconButton(
           onClick = onMoveToSecure,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Lock,
@@ -572,7 +570,7 @@ private fun SelectionTopBar(
       if (onBlacklist != null) {
         IconButton(
           onClick = onBlacklist,
-          modifier = Modifier.padding(horizontal = 2.dp),
+          modifier = Modifier.padding(horizontal = 1.dp),
         ) {
           Icon(
             Icons.RoundedFilled.Block,

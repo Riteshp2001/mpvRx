@@ -961,7 +961,7 @@
   <string name="hdr_mode_bt2020_description">BT.2020 / BT.1886 conversion using hdr-toys gamut mapping</string>
   <string name="hdr_mode_linear">Linear HDR</string>
   <string name="hdr_mode_linear_short">Linear</string>
-  <string name="hdr_mode_linear_description">High-quality mpv HDR output without hdr-toys shaders</string>
+  <string name="hdr_mode_linear_description">Linear light HDR pipeline with hdr-toys Astra and Bottosson shaders</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s Mode Output</string>
   <string name="pref_section_support">Support</string>
   <string name="pref_section_updates">Updates</string>
@@ -1560,6 +1560,12 @@
   <string name="secure_folder_verify">Verify</string>
   <string name="secure_folder_next">Next</string>
   <string name="secure_folder_save">Save</string>
+  <string name="secure_folder_use_fingerprint">Use Fingerprint</string>
+  <string name="secure_folder_enable_fingerprint">Enable Fingerprint</string>
+  <string name="secure_folder_disable_fingerprint">Disable Fingerprint</string>
+  <string name="secure_folder_use_face_unlock">Use Face Unlock</string>
+  <string name="secure_folder_enable_face_unlock">Enable Face Unlock</string>
+  <string name="secure_folder_disable_face_unlock">Disable Face Unlock</string>
 
   <!-- Security Questions Presets -->
   <string name="secure_folder_sq_pet">What was your first pet\'s name?</string>

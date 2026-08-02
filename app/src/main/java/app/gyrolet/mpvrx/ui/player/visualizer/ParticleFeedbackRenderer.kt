@@ -33,13 +33,13 @@ internal class ParticleFeedbackRenderer(
   private object Cfg {
     const val SIM_SIZE = 512
     const val NUM_PARTICLES = SIM_SIZE * SIM_SIZE
-    const val DECAY = 0.920f
-    const val DIFFUSE = 0.006f
-    const val BRIGHT = 0.016f // Reduced for balanced brightness
-    const val EXPOSURE = 0.70f // Toned down exposure
-    const val CHROMATIC_ABERRATION = 0.008f
-    const val GRAIN = 0.035f
-    const val VIGNETTE = 0.20f
+    const val DECAY = 0.880f
+    const val DIFFUSE = 0.004f
+    const val BRIGHT = 0.008f
+    const val EXPOSURE = 0.45f
+    const val CHROMATIC_ABERRATION = 0.004f
+    const val GRAIN = 0.015f
+    const val VIGNETTE = 0.0f
   }
 
   private val random = Random()
@@ -54,8 +54,7 @@ internal class ParticleFeedbackRenderer(
   private var beatCount = 0
   private var hueCurrent = 0.55f
   private var hueTarget = 0.55f
-  private var lastHueSwitchSeconds = 0f
-  private var flareSmoothed = 0.2f
+  private var flareSmoothed = 0.15f
 
   private var pInit = 0
   private var pSim = 0
@@ -110,6 +109,9 @@ internal class ParticleFeedbackRenderer(
   private var uCompCA = -1
   private var uCompExposure = -1
   private var uCompVig = -1
+  private var uCompIsDarkTheme = -1
+  private var uCompPrimaryColor = -1
+  private var uCompSecondaryColor = -1
 
   private var previousFrameNanos = 0L
   private var elapsedSeconds = 0f
@@ -248,10 +250,20 @@ internal class ParticleFeedbackRenderer(
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[trailSrc])
     GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)
 
-    /* 5. Composite Pass to Screen with Transparent Background */
+    /* 5. Composite Pass to Screen with Dynamic Colors & Theme Adaptation */
+    val primaryRgb = requestedPalette.primaryRgb()
+    val secondaryRgb = requestedPalette.secondaryRgb()
+    val bgRgb = requestedPalette.backgroundRgb()
+    val bgLuminance = 0.299f * bgRgb[0] + 0.587f * bgRgb[1] + 0.114f * bgRgb[2]
+    val isDarkTheme = if (bgLuminance < 0.5f) 1.0f else 0.0f
+
     GLES30.glViewport(0, 0, viewportWidth, viewportHeight)
     GLES30.glClearColor(0f, 0f, 0f, 0f)
     GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
+
+    GLES30.glEnable(GLES30.GL_BLEND)
+    GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
+
     GLES30.glUseProgram(pComp)
     GLES30.glUniform1i(uCompTrail, 0)
     GLES30.glUniform1f(uCompAspect, aspect)
@@ -262,8 +274,12 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1f(uCompCA, Cfg.CHROMATIC_ABERRATION)
     GLES30.glUniform1f(uCompExposure, Cfg.EXPOSURE)
     GLES30.glUniform1f(uCompVig, Cfg.VIGNETTE)
+    GLES30.glUniform1f(uCompIsDarkTheme, isDarkTheme)
+    GLES30.glUniform3f(uCompPrimaryColor, primaryRgb[0], primaryRgb[1], primaryRgb[2])
+    GLES30.glUniform3f(uCompSecondaryColor, secondaryRgb[0], secondaryRgb[1], secondaryRgb[2])
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
 
+    GLES30.glDisable(GLES30.GL_BLEND)
     GLES30.glBindVertexArray(0)
   }
 
@@ -281,37 +297,37 @@ internal class ParticleFeedbackRenderer(
     )
 
     if (sourceAudio.active) {
-      val bassTarget = (audio.bass * 1.45f).coerceAtMost(1f)
-      val midTarget = (audio.mid * 1.65f).coerceAtMost(1f)
-      val highTarget = (audio.treble * 2.0f).coerceAtMost(1f)
-      val energyTarget = (audio.energy * 1.20f).coerceAtMost(1f)
+      val bassTarget = (audio.bass * 1.6f).coerceAtMost(1f)
+      val midTarget = (audio.mid * 1.8f).coerceAtMost(1f)
+      val highTarget = (audio.treble * 2.2f).coerceAtMost(1f)
+      val energyTarget = (audio.energy * 1.4f).coerceAtMost(1f)
 
-      bassSmoothed = smoothVal(bassSmoothed, bassTarget, dt, 22f, 5f)
-      midSmoothed = smoothVal(midSmoothed, midTarget, dt, 14f, 4.5f)
-      highSmoothed = smoothVal(highSmoothed, highTarget, dt, 18f, 6f)
-      energySmoothed = smoothVal(energySmoothed, energyTarget, dt, 9f, 3.2f)
+      bassSmoothed = smoothVal(bassSmoothed, bassTarget, dt, 24f, 6f)
+      midSmoothed = smoothVal(midSmoothed, midTarget, dt, 16f, 5f)
+      highSmoothed = smoothVal(highSmoothed, highTarget, dt, 20f, 7f)
+      energySmoothed = smoothVal(energySmoothed, energyTarget, dt, 11f, 4f)
 
       bassAvg += (bassTarget - bassAvg) * (1f - exp(-dt * 0.8f))
       val nowNanos = System.nanoTime()
-      if (bassTarget > bassAvg * 1.30f + 0.05f && (nowNanos - lastBeatNanos) > 170_000_000L) {
+      if (bassTarget > bassAvg * 1.25f + 0.04f && (nowNanos - lastBeatNanos) > 160_000_000L) {
         beatSmoothed = 1f
         lastBeatNanos = nowNanos
         beatCount++
       }
     } else {
-      // Idle motion when paused
-      bassSmoothed = 0.10f + 0.05f * kotlin.math.sin(nowSec * 0.7f)
-      midSmoothed = 0.08f
-      highSmoothed = 0.05f
-      energySmoothed = 0.10f + 0.03f * kotlin.math.sin(nowSec * 0.45f)
+      // Fluid continuous fallback motion when audio features are starting up
+      bassSmoothed = 0.12f + 0.06f * kotlin.math.sin(nowSec * 0.8f)
+      midSmoothed = 0.09f + 0.04f * kotlin.math.cos(nowSec * 1.1f)
+      highSmoothed = 0.06f + 0.03f * kotlin.math.sin(nowSec * 1.4f)
+      energySmoothed = 0.12f + 0.05f * kotlin.math.sin(nowSec * 0.6f)
     }
 
     beatSmoothed *= exp(-dt * 5.5f)
     var dh = hueTarget - hueCurrent
     if (dh > 0.5f) dh -= 1f
     if (dh < -0.5f) dh += 1f
-    hueCurrent = (hueCurrent + dh * (1f - exp(-dt * 1.1f)) + 1f) % 1f
-    flareSmoothed = 0.18f + 1.2f * bassSmoothed.pow(1.4f) + 0.8f * beatSmoothed
+    hueCurrent = (hueCurrent + dh * (1f - exp(-dt * 1.2f)) + 1f) % 1f
+    flareSmoothed = 0.15f + 1.1f * bassSmoothed.pow(1.4f) + 0.7f * beatSmoothed
   }
 
   private fun smoothVal(cur: Float, target: Float, dt: Float, upRate: Float, dnRate: Float): Float {
@@ -417,5 +433,8 @@ internal class ParticleFeedbackRenderer(
     uCompCA = GLES30.glGetUniformLocation(pComp, "uCA")
     uCompExposure = GLES30.glGetUniformLocation(pComp, "uExposure")
     uCompVig = GLES30.glGetUniformLocation(pComp, "uVig")
+    uCompIsDarkTheme = GLES30.glGetUniformLocation(pComp, "uIsDarkTheme")
+    uCompPrimaryColor = GLES30.glGetUniformLocation(pComp, "uPrimaryColor")
+    uCompSecondaryColor = GLES30.glGetUniformLocation(pComp, "uSecondaryColor")
   }
 }

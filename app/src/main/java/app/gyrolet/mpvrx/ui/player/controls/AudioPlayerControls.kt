@@ -120,6 +120,7 @@ import app.gyrolet.mpvrx.ui.player.visualizer.VisualizerPalette
 import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import `is`.xyz.mpv.MPVLib
+import app.gyrolet.mpvrx.utils.media.fileExtension
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
@@ -189,13 +190,7 @@ fun AudioPlayerControls(
   val isLosslessCodecOrExt =
     remember(audioCodec, mediaPath) {
       val codec = audioCodec?.lowercase().orEmpty()
-      val ext =
-        mediaPath
-          ?.substringBefore('?')
-          ?.substringBefore('#')
-          ?.substringAfterLast('.', "")
-          ?.lowercase()
-          .orEmpty()
+      val ext = mediaPath?.fileExtension().orEmpty()
       codec.contains("flac") ||
         codec.contains("alac") ||
         codec.contains("pcm") ||

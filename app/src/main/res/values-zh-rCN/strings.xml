@@ -955,7 +955,7 @@
   <string name="hdr_mode_bt2020_description">使用 hdr-toys 色域映射进行 BT.2020 / BT.1886 转换</string>
   <string name="hdr_mode_linear">线性 HDR</string>
   <string name="hdr_mode_linear_short">线性</string>
-  <string name="hdr_mode_linear_description">不使用 hdr-toys 着色器的高质量 mpv HDR 输出</string>
+  <string name="hdr_mode_linear_description">通过 hdr-toys 的 Astra 和 Bottosson 着色器链实现的线性 HDR</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s 模式输出</string>
   <string name="pref_section_support">支持</string>
   <string name="pref_section_updates">更新</string>
@@ -1573,6 +1573,12 @@
   <string name="secure_folder_verify">验证</string>
   <string name="secure_folder_next">下一步</string>
   <string name="secure_folder_save">保存</string>
+  <string name="secure_folder_use_fingerprint">使用指纹</string>
+  <string name="secure_folder_enable_fingerprint">启用指纹</string>
+  <string name="secure_folder_disable_fingerprint">禁用指纹</string>
+  <string name="secure_folder_use_face_unlock">使用面部解锁</string>
+  <string name="secure_folder_enable_face_unlock">启用面部解锁</string>
+  <string name="secure_folder_disable_face_unlock">禁用面部解锁</string>
   <string name="secure_folder_sq_pet">您的第一只宠物的名字是什么？</string>
   <string name="secure_folder_sq_mother">您母亲的婚前姓氏是什么？</string>
   <string name="secure_folder_sq_school">您就读的第一所学校叫什么名字？</string>

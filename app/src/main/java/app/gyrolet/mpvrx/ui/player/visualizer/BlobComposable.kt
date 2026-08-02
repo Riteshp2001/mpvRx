@@ -7,8 +7,12 @@
 
 package app.gyrolet.mpvrx.ui.player.visualizer
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.opengl.GLSurfaceView
 import android.view.ViewGroup
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -69,7 +74,6 @@ internal fun ParticleOverlay(
   factory = { ctx, features, p -> ParticleVisualizerView(ctx, features, p) },
 )
 
-
 internal interface PaletteConsumer {
   fun updatePalette(value: VisualizerPalette)
 }
@@ -86,25 +90,31 @@ private fun <T> VisualizerOverlay(
   val features = remember { AudioFeatures() }
   val scope = rememberCoroutineScope()
   val realAnalyzerActive = remember { AtomicBoolean(false) }
-  val audioSessionId = remember { AudioSessionProvider.get(context) }
+  var hasRecordPermission by remember {
+    mutableStateOf(
+      ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+        PackageManager.PERMISSION_GRANTED,
+    )
+  }
+  val recordPermissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      hasRecordPermission = granted
+    }
+
+  LaunchedEffect(hasRecordPermission) {
+    if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+  }
 
   // Keep the analyzer resilient across player/audio-session changes. Some devices briefly
   // reject Visualizer creation while mpv swaps files; retry without recreating the GL view so
   // the blob keeps its animation state instead of stuttering or snapping to idle.
-  // Also detect when the platform silently stops delivering FFT callbacks (e.g. AudioTrack
-  // session swap) and re-create the Visualizer automatically.
-  DisposableEffect(Unit) {
-    val analyzer = AudioSpectrumAnalyzer(features)
-    val staleThresholdNanos = 2_000_000_000L // 2 seconds without FFT data → stale
+  DisposableEffect(hasRecordPermission) {
+    val analyzer = if (hasRecordPermission) AudioSpectrumAnalyzer(features) else null
     val job =
       scope.launch(Dispatchers.Default) {
-        while (isActive) {
+        while (isActive && analyzer != null) {
           if (!realAnalyzerActive.get()) {
-            realAnalyzerActive.set(analyzer.start(audioSessionId).isSuccess)
-          } else if (!features.hasRecentCapture(staleThresholdNanos)) {
-            // Visualizer attached but stopped delivering data — tear down and retry
-            realAnalyzerActive.set(false)
-            analyzer.stop(resetFeatures = false)
+            realAnalyzerActive.set(analyzer.start(0).isSuccess)
           }
           delay(if (realAnalyzerActive.get()) 1_000L else 350L)
         }
@@ -113,7 +123,7 @@ private fun <T> VisualizerOverlay(
     onDispose {
       job.cancel()
       realAnalyzerActive.set(false)
-      analyzer.stop(resetFeatures = false)
+      analyzer?.stop(resetFeatures = false)
     }
   }
 

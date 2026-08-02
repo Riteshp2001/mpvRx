@@ -90,6 +90,8 @@ import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.JellyfinSessionReporter
+import app.gyrolet.mpvrx.utils.media.fileExtension
+import app.gyrolet.mpvrx.utils.media.resolveSeekMode
 import app.gyrolet.mpvrx.utils.media.M3UParseResult
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
@@ -256,13 +258,8 @@ class PlayerActivity :
     val extension =
       sequenceOf(fileName, currentPlayableUri)
         .filterNotNull()
-        .map { value ->
-          value
-            .substringBefore('?')
-            .substringBefore('#')
-            .substringAfterLast('.', "")
-            .lowercase()
-        }.firstOrNull { it in FileTypeUtils.AUDIO_EXTENSIONS || it in FileTypeUtils.VIDEO_EXTENSIONS }
+        .map { it.fileExtension() }
+        .firstOrNull { it in FileTypeUtils.AUDIO_EXTENSIONS || it in FileTypeUtils.VIDEO_EXTENSIONS }
     if (extension != null) return extension in FileTypeUtils.AUDIO_EXTENSIONS
     return isKnownAudioLaunch(intent)
   }
@@ -1401,6 +1398,16 @@ class PlayerActivity :
         val brightness = playerPreferences.defaultBrightness.get()
         if (brightness != BRIGHTNESS_NOT_SET) {
           viewModel.changeBrightnessTo(brightness)
+        }
+      } else {
+        // Re-sync from system brightness when remember-brightness is off
+        val systemBrightness = runCatching {
+          Settings.System
+            .getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+            .coerceIn(0f, 255f) / 255f
+        }.getOrNull()
+        if (systemBrightness != null) {
+          viewModel.changeBrightnessTo(systemBrightness)
         }
       }
 

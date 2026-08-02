@@ -955,7 +955,7 @@
   <string name="hdr_mode_bt2020_description">Преобразование BT.2020 / BT.1886 с отображением гаммы hdr-toys</string>
   <string name="hdr_mode_linear">Линейный HDR</string>
   <string name="hdr_mode_linear_short">Линейный</string>
-  <string name="hdr_mode_linear_description">Высококачественный HDR-вывод mpv без шейдеров hdr-toys</string>
+  <string name="hdr_mode_linear_description">Линейный HDR-конвейер через шейдеры Astra и Bottosson от hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR — вывод в режиме %1$s</string>
   <string name="pref_section_support">Поддержка</string>
   <string name="pref_section_updates">Обновления</string>
@@ -1573,6 +1573,12 @@
   <string name="secure_folder_verify">Проверить</string>
   <string name="secure_folder_next">Далее</string>
   <string name="secure_folder_save">Сохранить</string>
+  <string name="secure_folder_use_fingerprint">Использовать отпечаток пальца</string>
+  <string name="secure_folder_enable_fingerprint">Включить отпечаток пальца</string>
+  <string name="secure_folder_disable_fingerprint">Отключить отпечаток пальца</string>
+  <string name="secure_folder_use_face_unlock">Использовать распознавание лица</string>
+  <string name="secure_folder_enable_face_unlock">Включить распознавание лица</string>
+  <string name="secure_folder_disable_face_unlock">Отключить распознавание лица</string>
   <string name="secure_folder_sq_pet">Как звали вашего первого питомца?</string>
   <string name="secure_folder_sq_mother">Какова девичья фамилия вашей матери?</string>
   <string name="secure_folder_sq_school">Как называлась ваша первая школа?</string>

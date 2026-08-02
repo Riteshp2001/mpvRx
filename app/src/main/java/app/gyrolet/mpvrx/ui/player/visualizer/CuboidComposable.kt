@@ -11,7 +11,11 @@
 
 package app.gyrolet.mpvrx.ui.player.visualizer
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.media.audiofx.Visualizer
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,22 +25,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.max
@@ -56,7 +56,23 @@ internal fun CuboidOverlay(
   val renderLoopActive = remember { AtomicBoolean(true) }
   val playbackActive = remember { AtomicBoolean(isPlaying) }
   val frequencyData = remember { ByteArray(2048) }
-  val audioSessionId = remember { AudioSessionProvider.get(context) }
+
+  var hasRecordPermission by remember {
+    mutableStateOf(
+      ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+        PackageManager.PERMISSION_GRANTED,
+    )
+  }
+  val recordPermissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      hasRecordPermission = granted
+    }
+
+  LaunchedEffect(hasRecordPermission) {
+    if (!hasRecordPermission) {
+      runCatching { recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
+    }
+  }
 
   val isDark = androidx.compose.foundation.isSystemInDarkTheme()
 
@@ -73,96 +89,62 @@ internal fun CuboidOverlay(
     if (!isPlaying) engine.clearAudioData()
   }
 
-  val scope = rememberCoroutineScope()
-  val visualizerActive = remember { AtomicBoolean(false) }
+  DisposableEffect(hasRecordPermission) {
+    var visualizer: Visualizer? = null
+    var fftPeak = 12f
+    if (hasRecordPermission) {
+      try {
+        val v = Visualizer(0)
+        val range = Visualizer.getCaptureSizeRange()
+        v.captureSize = min(range[1], 2048)
+        v.scalingMode = Visualizer.SCALING_MODE_NORMALIZED
+        v.setDataCaptureListener(
+          object : Visualizer.OnDataCaptureListener {
+            override fun onWaveFormDataCapture(
+              v: Visualizer?,
+              w: ByteArray?,
+              sr: Int,
+            ) {}
 
-  // mpv creates its AudioTrack lazily, so the session may briefly not exist yet; retry until
-  // the FFT capture attaches without recreating the engine.
-  // Also detect when the platform silently stops delivering FFT callbacks (e.g. AudioTrack
-  // session swap) and re-create the Visualizer automatically.
-  DisposableEffect(Unit) {
-    val visualizer = AtomicReference<Visualizer?>(null)
-    val lastCaptureNanos = java.util.concurrent.atomic.AtomicLong(0L)
-    val staleThresholdNanos = 2_000_000_000L // 2 seconds without FFT data → stale
-    val job =
-      scope.launch(Dispatchers.Default) {
-        var fftPeak = 12f
-        while (isActive) {
-          if (visualizerActive.get()) {
-            // Check if data is still flowing
-            val capturedAt = lastCaptureNanos.get()
-            val stale = capturedAt != 0L && System.nanoTime() - capturedAt > staleThresholdNanos
-            if (stale) {
-              // Visualizer attached but stopped delivering data — tear down and retry
-              visualizerActive.set(false)
-              visualizer.getAndSet(null)?.let { old ->
-                runCatching { old.enabled = false }
-                runCatching { old.release() }
-              }
-              lastCaptureNanos.set(0L)
-              fftPeak = 12f
-            } else {
-              delay(1_000L)
-            }
-          } else {
-            try {
-              val v = Visualizer(audioSessionId)
-              val range = Visualizer.getCaptureSizeRange()
-              v.captureSize = min(range[1], 2048)
-              v.scalingMode = Visualizer.SCALING_MODE_NORMALIZED
-              v.setDataCaptureListener(
-                object : Visualizer.OnDataCaptureListener {
-                  override fun onWaveFormDataCapture(
-                    v: Visualizer?,
-                    w: ByteArray?,
-                    sr: Int,
-                  ) {}
-
-                  override fun onFftDataCapture(
-                    v: Visualizer?,
-                    fft: ByteArray?,
-                    sr: Int,
-                  ) {
-                    if (playbackActive.get() && fft != null && fft.size >= 8) {
-                      synchronized(frequencyData) {
-                        val len = min(fft.size / 2, frequencyData.size)
-                        for (k in 0 until len) {
-                          val real = fft[k * 2].toInt().toFloat()
-                          val imag = fft[k * 2 + 1].toInt().toFloat()
-                          val magnitude = hypot(real.toDouble(), imag.toDouble()).toFloat()
-                          fftPeak = max(12f, max(magnitude, fftPeak * 0.992f))
-                          val normalized =
-                            (ln(1f + magnitude) / ln(1f + fftPeak) * 255f).toInt().coerceIn(0, 255)
-                          frequencyData[k] = normalized.toByte()
-                        }
-                      }
-                      engine.updateFrequencyData(frequencyData.copyOf(min(fft.size / 2, frequencyData.size)))
-                      lastCaptureNanos.set(System.nanoTime())
-                    }
+            override fun onFftDataCapture(
+              v: Visualizer?,
+              fft: ByteArray?,
+              sr: Int,
+            ) {
+              if (playbackActive.get() && fft != null && fft.size >= 8) {
+                synchronized(frequencyData) {
+                  val len = min(fft.size / 2, frequencyData.size)
+                  for (k in 0 until len) {
+                    val real = fft[k * 2].toInt().toFloat()
+                    val imag = fft[k * 2 + 1].toInt().toFloat()
+                    val magnitude = hypot(real.toDouble(), imag.toDouble()).toFloat()
+                    fftPeak = max(12f, max(magnitude, fftPeak * 0.992f))
+                    val normalized =
+                      (ln(1f + magnitude) / ln(1f + fftPeak) * 255f).toInt().coerceIn(0, 255)
+                    frequencyData[k] = normalized.toByte()
                   }
-                },
-                Visualizer.getMaxCaptureRate(),
-                false,
-                true,
-              )
-              v.enabled = true
-              visualizer.set(v)
-              visualizerActive.set(true)
-              lastCaptureNanos.set(System.nanoTime())
-            } catch (_: Throwable) {
-              visualizer.getAndSet(null)?.let { runCatching { it.release() } }
-              delay(500L)
+                }
+                engine.updateFrequencyData(frequencyData.copyOf(min(fft.size / 2, frequencyData.size)))
+              }
             }
-          }
-        }
+          },
+          Visualizer.getMaxCaptureRate(),
+          false,
+          true,
+        )
+        v.enabled = true
+        visualizer = v
+      } catch (_: Throwable) {
+        visualizer = null
       }
+    }
 
     onDispose {
-      job.cancel()
-      visualizerActive.set(false)
-      visualizer.getAndSet(null)?.let { runCatching { it.release() } }
       renderLoopActive.set(false)
       engine.clearAudioData()
+      try {
+        visualizer?.release()
+      } catch (_: Throwable) {}
       engine.release()
     }
   }
@@ -170,7 +152,7 @@ internal fun CuboidOverlay(
   var engineW by remember { mutableStateOf(1) }
   var engineH by remember { mutableStateOf(1) }
 
-  LaunchedEffect(engineW, engineH, palette) {
+  LaunchedEffect(engineW, engineH, palette, hasRecordPermission) {
     if (engineW < 2 || engineH < 2) return@LaunchedEffect
     renderLoopActive.set(true)
     engine.init(engineW, engineH)

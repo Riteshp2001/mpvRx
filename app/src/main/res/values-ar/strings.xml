@@ -955,7 +955,7 @@
   <string name="hdr_mode_bt2020_description">تحويل BT.2020 / BT.1886 باستخدام تعيين نطاق الألوان من hdr-toys</string>
   <string name="hdr_mode_linear">HDR خطي</string>
   <string name="hdr_mode_linear_short">خطي</string>
-  <string name="hdr_mode_linear_description">إخراج HDR عالي الجودة من mpv دون تأثيرات hdr-toys</string>
+  <string name="hdr_mode_linear_description">إخراج HDR الخطي عبر سلسلة تأثيرات hdr-toys من Astra وBottosson</string>
   <string name="hdr_mode_output_diagnostic">HDR - إخراج وضع %1$s</string>
   <string name="pref_section_support">الدعم</string>
   <string name="pref_section_updates">التحديثات</string>
@@ -1573,6 +1573,12 @@
   <string name="secure_folder_verify">التحقق</string>
   <string name="secure_folder_next">التالي</string>
   <string name="secure_folder_save">حفظ</string>
+  <string name="secure_folder_use_fingerprint">استخدام بصمة الإصبع</string>
+  <string name="secure_folder_enable_fingerprint">تفعيل بصمة الإصبع</string>
+  <string name="secure_folder_disable_fingerprint">تعطيل بصمة الإصبع</string>
+  <string name="secure_folder_use_face_unlock">استخدام فتح الوجه</string>
+  <string name="secure_folder_enable_face_unlock">تفعيل فتح الوجه</string>
+  <string name="secure_folder_disable_face_unlock">تعطيل فتح الوجه</string>
   <string name="secure_folder_sq_pet">ما هو اسم أول حيوان أليف لك؟</string>
   <string name="secure_folder_sq_mother">ما هو اسم عائلة والدتك قبل الزواج؟</string>
   <string name="secure_folder_sq_school">ما هو اسم أول مدرسة ارتدتها؟</string>

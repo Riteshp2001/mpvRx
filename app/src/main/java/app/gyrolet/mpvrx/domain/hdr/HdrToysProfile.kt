@@ -26,7 +26,7 @@ enum class HdrToysProfile(
         "hdr-toys/gamut-mapping/bottosson.glsl",
         "hdr-toys/transfer-function/bt1886.glsl",
       ),
-    shaderOptions = listOf("auto_exposure_limit_postive" to "1.02"),
+    shaderOptions = listOf("auto_exposure_limit_positive" to "1.02"),
   ),
   BT_2100_HLG(
     configSection = "bt.2100-hlg",
@@ -50,6 +50,25 @@ enum class HdrToysProfile(
         "hdr-toys/transfer-function/bt1886_inv.glsl",
         "hdr-toys/gamut-mapping/bottosson.glsl",
         "hdr-toys/transfer-function/bt1886.glsl",
+      ),
+  ),
+  LINEAR(
+    configSection = "linear",
+    targetPrim = "bt.2020",
+    targetTrc = "linear",
+    shaderPaths =
+      listOf(
+        "hdr-toys/utils/clip_black.glsl",
+        "hdr-toys/utils/clip_alpha.glsl",
+        "hdr-toys/tone-mapping/astra.glsl",
+        "hdr-toys/gamut-mapping/bottosson.glsl",
+        "hdr-toys/transfer-function/bt1886.glsl",
+      ),
+    shaderOptions =
+      listOf(
+        "spatial_stable_iterations" to "0",
+        "temporal_stable_window" to "0",
+        "enable_metering" to "1",
       ),
   ),
   ;

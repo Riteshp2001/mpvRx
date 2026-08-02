@@ -23,6 +23,7 @@ import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.utils.media.resolveSeekMode
 import `is`.xyz.mpv.MPVLib
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -58,10 +59,7 @@ class MPVPipHelper(
           context: Context?,
           intent: Intent?,
         ) {
-          // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
-          val duration = MPVLib.getPropertyInt("duration") ?: 0
-          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || duration < 120
-          val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
+          val seekMode = resolveSeekMode(playerPreferences)
           when (intent?.getIntExtra(PIP_INTENT_ACTION, 0)) {
             PIP_PLAY -> MPVLib.setPropertyBoolean("pause", false)
             PIP_PAUSE -> MPVLib.setPropertyBoolean("pause", true)

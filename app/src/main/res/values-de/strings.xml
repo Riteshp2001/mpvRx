@@ -955,7 +955,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="hdr_mode_bt2020_description">BT.2020-/BT.1886-Konvertierung mit hdr-toys-Farbraumabbildung</string>
   <string name="hdr_mode_linear">Lineares HDR</string>
   <string name="hdr_mode_linear_short">Linear</string>
-  <string name="hdr_mode_linear_description">Hochwertige mpv-HDR-Ausgabe ohne hdr-toys-Shader</string>
+  <string name="hdr_mode_linear_description">Lineare HDR-Pipeline über die Astra- und Bottosson-Shader von hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR – Ausgabe im Modus %1$s</string>
   <string name="pref_section_support">Support</string>
   <string name="pref_section_updates">Updates</string>
@@ -1573,6 +1573,12 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="secure_folder_verify">Überprüfen</string>
   <string name="secure_folder_next">Weiter</string>
   <string name="secure_folder_save">Speichern</string>
+  <string name="secure_folder_use_fingerprint">Fingerabdruck verwenden</string>
+  <string name="secure_folder_enable_fingerprint">Fingerabdruck aktivieren</string>
+  <string name="secure_folder_disable_fingerprint">Fingerabdruck deaktivieren</string>
+  <string name="secure_folder_use_face_unlock">Gesichtsentsperrung verwenden</string>
+  <string name="secure_folder_enable_face_unlock">Gesichtsentsperrung aktivieren</string>
+  <string name="secure_folder_disable_face_unlock">Gesichtsentsperrung deaktivieren</string>
   <string name="secure_folder_sq_pet">Wie hieß Ihr erstes Haustier?</string>
   <string name="secure_folder_sq_mother">Wie ist der Mädchenname Ihrer Mutter?</string>
   <string name="secure_folder_sq_school">Wie hieß Ihre erste Schule?</string>
