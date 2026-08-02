@@ -235,7 +235,7 @@ fun FolderPickerDialog(
         ) {
           if (showStorageRoot) {
             // Show storage volumes
-            items(storageVolumes) { volume ->
+            items(storageVolumes, key = { StorageVolumeUtils.getVolumePath(it) ?: it.toString() }) { volume ->
               val volumePath = StorageVolumeUtils.getVolumePath(volume)
               if (volumePath != null) {
                 StorageVolumeItem(
@@ -262,7 +262,7 @@ fun FolderPickerDialog(
             }
           } else {
             // Show folders
-            items(folders) { folder ->
+            items(folders, key = { it.absolutePath }) { folder ->
               FolderItem(
                 folder = folder,
                 onClick = { selectedPath = folder.absolutePath },

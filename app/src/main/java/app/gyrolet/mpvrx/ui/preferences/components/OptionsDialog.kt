@@ -56,7 +56,7 @@ fun <T> OptionsDialog(
               .PaddingValues(vertical = 8.dp),
           modifier = Modifier.selectableGroup(),
         ) {
-          items(options) { option ->
+          items(options, key = { it.toString() }) { option ->
             Row(
               modifier =
                 Modifier

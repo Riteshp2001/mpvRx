@@ -19,6 +19,10 @@ import com.hierynomus.smbj.SmbConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.share.DiskShare
 import fi.iki.elonen.NanoHTTPD
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
@@ -34,6 +38,7 @@ import java.util.concurrent.TimeUnit
  * that don't support it natively
  */
 class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
+  private val proxyScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
   companion object {
     private const val TAG = "NetworkStreamingProxy"
     private val sharedWebDavHttpClient: OkHttpClient by lazy { OkHttpClient() }
@@ -83,7 +88,7 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     mimeType: String = "video/mp4",
   ): String {
     activeStreams.remove(streamId)?.let { existing ->
-      runBlocking {
+      proxyScope.launch {
         runCatching { existing.client.disconnect() }
       }
     }
@@ -109,7 +114,7 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
    */
   fun unregisterStream(streamId: String) {
     activeStreams.remove(streamId)?.let { streamInfo ->
-      runBlocking {
+      proxyScope.launch {
         try {
           streamInfo.client.disconnect()
         } catch (e: Exception) {

@@ -810,13 +810,14 @@ class MediaPlaybackService :
     if (identifier.isBlank()) return
 
     playbackStateSaveJob?.cancel()
-    runCatching {
-      runBlocking(Dispatchers.IO) {
-        persistPlaybackState(identifier)
+    playbackStateSaveJob =
+      serviceScope.launch(Dispatchers.IO) {
+        runCatching {
+          persistPlaybackState(identifier)
+        }.onFailure { error ->
+          Log.e(TAG, "Error force-saving playback state", error)
+        }
       }
-    }.onFailure { error ->
-      Log.e(TAG, "Error force-saving playback state", error)
-    }
   }
 
   private suspend fun persistPlaybackState(identifier: String) {

@@ -1198,7 +1198,7 @@ class PlayerActivity :
           addAction(Intent.ACTION_SCREEN_ON)
           addAction(Intent.ACTION_USER_PRESENT)
         }
-      registerReceiver(screenStateReceiver, filter)
+      ContextCompat.registerReceiver(this, screenStateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
       screenStateReceiverRegistered = true
     }.onFailure { e ->
       Log.e(TAG, "Error registering screen state receiver", e)
@@ -1386,7 +1386,7 @@ class PlayerActivity :
 
       if (!noisyReceiverRegistered) {
         val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
-        registerReceiver(noisyReceiver, filter)
+        ContextCompat.registerReceiver(this, noisyReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         noisyReceiverRegistered = true
       }
 
@@ -3620,7 +3620,7 @@ class PlayerActivity :
     }
 
     if (immediate) {
-      kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO + kotlinx.coroutines.NonCancellable, block = saveBlock)
+      lifecycleScope.launch(Dispatchers.IO + kotlinx.coroutines.NonCancellable, block = saveBlock)
     } else {
       // Launch new save job and track it
       savePlaybackStateJob = lifecycleScope.launch(Dispatchers.IO, block = saveBlock)

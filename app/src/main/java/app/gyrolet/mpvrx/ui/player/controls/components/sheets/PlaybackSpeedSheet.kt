@@ -141,7 +141,7 @@ fun PlaybackSpeedSheet(
           contentPadding = PaddingValues(end = MaterialTheme.spacing.small),
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-          items(speedPresets) { presetSpeed ->
+          items(speedPresets, key = { it }) { presetSpeed ->
             val isDefault = defaultPresets.any { kotlin.math.abs(it - presetSpeed) < 0.001f }
 
             FilterChip(

@@ -221,7 +221,7 @@ fun BulkAiRenameDialog(
               modifier = Modifier.height(320.dp),
               verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-              items(previewItems) { item ->
+              items(previewItems, key = { it.video.id }) { item ->
                 val key = item.video.id.toString()
                 val checked = checkedState[key] ?: true
                 val editedName = editedNames[key] ?: item.suggestedName

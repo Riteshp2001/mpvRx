@@ -49,7 +49,6 @@ fun HdrScreenOutputPanel(
 ) {
   val mode by viewModel.hdrScreenMode.collectAsState()
   val pipelineReady by viewModel.isHdrScreenOutputPipelineReady.collectAsState()
-  val isLinearHdrAvailable by viewModel.isLinearHdrAvailable.collectAsState()
 
   DraggablePanel(
     modifier = modifier,
@@ -89,7 +88,7 @@ fun HdrScreenOutputPanel(
         HdrModeOption(
           mode = option,
           selected = mode == option,
-          enabled = pipelineReady && (option != HdrScreenMode.LINEAR || isLinearHdrAvailable),
+          enabled = pipelineReady,
           onClick = { viewModel.setHdrScreenMode(option) },
         )
       }

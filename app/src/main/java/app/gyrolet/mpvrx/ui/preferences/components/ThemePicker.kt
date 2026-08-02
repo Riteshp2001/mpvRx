@@ -64,7 +64,7 @@ fun ThemePicker(
       contentPadding = PaddingValues(horizontal = 12.dp),
       horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      items(AppTheme.entries) { theme ->
+      items(AppTheme.entries, key = { it.name }) { theme ->
         ThemePreviewCard(
           theme = theme,
           isSelected = theme == currentTheme,
