@@ -371,11 +371,6 @@ class MPVView(
     MPVLib.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
     // Prevent automatic volume normalization when downmixing multi-channel audio
     MPVLib.setOptionString("audio-normalize-downmix", "no")
-
-    // Volume normalization using dynamic audio normalization filter
-    if (audioPreferences.volumeNormalization.get()) {
-      MPVLib.setOptionString("af", "dynaudnorm")
-    }
   }
 
   // Setup

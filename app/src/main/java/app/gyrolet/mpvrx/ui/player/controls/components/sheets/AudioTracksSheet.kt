@@ -101,11 +101,41 @@ fun AudioTracksSheet(
                     if (it == AudioChannels.ReverseStereo) {
                       MPVLib.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
                     } else {
-                      MPVLib.setPropertyString(AudioChannels.ReverseStereo.property, "")
+                      MPVLib.setPropertyString(it.property, it.value)
                     }
-                    MPVLib.setPropertyString(it.property, it.value)
                   },
                   label = { Text(text = stringResource(id = it.title)) },
+                  leadingIcon = null,
+                )
+              }
+            }
+
+            val volumeNormalization by audioPreferences.volumeNormalization.collectAsState()
+            val drcEnabled by audioPreferences.drcEnabled.collectAsState()
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Text(
+              text = stringResource(id = R.string.pref_audio_effects),
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.smaller))
+            LazyRow(
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+            ) {
+              item {
+                FilterChip(
+                  selected = volumeNormalization,
+                  onClick = { audioPreferences.volumeNormalization.set(!volumeNormalization) },
+                  label = { Text(text = stringResource(id = R.string.pref_audio_volume_normalization_title)) },
+                  leadingIcon = null,
+                )
+              }
+              item {
+                FilterChip(
+                  selected = drcEnabled,
+                  onClick = { audioPreferences.drcEnabled.set(!drcEnabled) },
+                  label = { Text(text = stringResource(id = R.string.pref_audio_drc_title)) },
                   leadingIcon = null,
                 )
               }

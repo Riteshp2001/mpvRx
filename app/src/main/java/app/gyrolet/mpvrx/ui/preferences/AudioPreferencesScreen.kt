@@ -299,6 +299,20 @@ object AudioPreferencesScreen : Screen {
               )
 
               PreferenceDivider()
+              val drcEnabled by preferences.drcEnabled.collectAsState()
+              SwitchPreference(
+                value = drcEnabled,
+                onValueChange = { preferences.drcEnabled.set(it) },
+                title = { Text(stringResource(R.string.pref_audio_drc_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_audio_drc_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
               val audioBackgroundPlayback by preferences.audioBackgroundPlayback.collectAsState()
               SwitchPreference(
                 value = audioBackgroundPlayback,

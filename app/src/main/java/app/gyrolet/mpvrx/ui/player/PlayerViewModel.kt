@@ -26,6 +26,7 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
+import java.io.File
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -37,6 +38,7 @@ import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayFile
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayPlaybackState
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
@@ -624,29 +626,64 @@ class PlayerViewModel(
     }
   }
 
-  private fun updateMpvAfProperty(state: EqualizerState) {
-    if (!state.isEnabled) {
-      MPVLib.setPropertyString("af", "")
-      return
+  private fun getCustomMpvAf(): String {
+    val confFile = File(host.context.filesDir, "mpv.conf")
+    val text = if (confFile.exists()) {
+      runCatching { confFile.readText() }.getOrDefault("")
+    } else {
+      advancedPreferences.mpvConf.get()
     }
-    val freqs = listOf(60, 230, 910, 3600, 14000)
+    if (text.isBlank()) return ""
+    val afFilters = text.lines()
+      .map { it.trim() }
+      .filter { !it.startsWith("#") && (it.startsWith("af=") || it.startsWith("af =") || it.startsWith("af-add=") || it.startsWith("af-add =") || it.startsWith("af-append=") || it.startsWith("af-append =")) }
+      .map { line -> line.substringAfter("=").trim() }
+      .filter { it.isNotBlank() }
+    return afFilters.joinToString(",")
+  }
+
+  private fun updateMpvAfProperty(state: EqualizerState) {
     val filterList = mutableListOf<String>()
 
-    // Apply pre-amp attenuation for positive gains to prevent clipping distortion
-    val maxGain = state.bandGains.maxOrNull() ?: 0
-    if (maxGain > 0) {
-      filterList.add("volume=volume=${-maxGain}dB")
+    // 1. Preserve custom af filters from mpv.conf
+    val customAf = getCustomMpvAf()
+    if (customAf.isNotBlank()) {
+      filterList.add(customAf)
     }
 
-    for (i in 0 until 5) {
-      val gain = state.bandGains.getOrElse(i) { 0 }
-      if (gain != 0) {
-        filterList.add("equalizer=f=${freqs[i]}:width_type=o:width=1.5:g=$gain")
+    // 2. Dynamic Range Compression (DRC) / Night Mode
+    if (audioPreferences.drcEnabled.get()) {
+      filterList.add("lavfi=[acompressor=threshold=-20dB:ratio=4:attack=5:release=50:makeup=2]")
+    }
+
+    // 3. Volume Normalization (dynaudnorm)
+    if (audioPreferences.volumeNormalization.get()) {
+      filterList.add("dynaudnorm")
+    }
+
+    // 4. Reverse Stereo filter
+    if (audioPreferences.audioChannels.get() == AudioChannels.ReverseStereo) {
+      filterList.add("pan=[stereo|c0=c1|c1=c0]")
+    }
+
+    // 5. Equalizer filters (if enabled)
+    if (state.isEnabled) {
+      val maxGain = state.bandGains.maxOrNull() ?: 0
+      if (maxGain > 0) {
+        filterList.add("volume=volume=${-maxGain}dB")
+      }
+      val freqs = listOf(60, 230, 910, 3600, 14000)
+      for (i in 0 until 5) {
+        val gain = state.bandGains.getOrElse(i) { 0 }
+        if (gain != 0) {
+          filterList.add("equalizer=f=${freqs[i]}:width_type=o:width=1.5:g=$gain")
+        }
+      }
+      if (state.volumeBoostDb > 0) {
+        filterList.add("volume=volume=${state.volumeBoostDb}dB")
       }
     }
-    if (state.volumeBoostDb > 0) {
-      filterList.add("volume=volume=${state.volumeBoostDb}dB")
-    }
+
     val afString = filterList.joinToString(",")
     MPVLib.setPropertyString("af", afString)
   }
@@ -1247,6 +1284,16 @@ class PlayerViewModel(
         }.onFailure { e ->
           Log.e(TAG, "Error setting volume-max: $maxVol", e)
         }
+      }
+    // Observe audio effect changes to update mpv af filters
+    viewModelScope.launch(playbackStateDispatcher) {
+      combine(
+        audioPreferences.volumeNormalization.changes(),
+        audioPreferences.drcEnabled.changes(),
+        audioPreferences.audioChannels.changes(),
+      ) { _, _, _ -> }.collect {
+        if (!_isMpvCoreReady.value) return@collect
+        applyEqualizerMpvFilters(immediate = true)
       }
     }
 
