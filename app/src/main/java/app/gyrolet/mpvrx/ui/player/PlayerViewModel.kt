@@ -4999,7 +4999,7 @@ class PlayerViewModel(
     playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
     if (_isAmbientEnabled.value) {
       lastAmbientScaleX = -1.0 // Force rewrite
-      updateAmbientStretch()
+      scheduleAmbientUpdate(0)
       playerUpdate.value = PlayerUpdates.ShowText(host.context.getString(R.string.player_ambience_on))
     } else {
       disableAmbientShader()
@@ -5293,7 +5293,7 @@ class PlayerViewModel(
     }
   }
 
-  fun updateAmbientStretch() {
+  suspend fun updateAmbientStretch() {
     if (!_isAmbientEnabled.value) return
 
     runCatching {
@@ -5397,7 +5397,8 @@ class PlayerViewModel(
       // compiled shader — incrementing seq guarantees a fresh compile every time.
       val shaderCode = AmbientShaderBuilder.build(spec)
       val newFile = File(host.context.cacheDir, "ambient_${++ambientShaderSeq}.glsl")
-      newFile.writeText(shaderCode)
+      // Blocking file write — dispatched to IO pool to avoid stalling renderPrepDispatcher.
+      withContext(kotlinx.coroutines.Dispatchers.IO) { newFile.writeText(shaderCode) }
       ambientShaderFile?.let { oldFile ->
         runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
         oldFile.delete()
