@@ -33,8 +33,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -142,17 +141,9 @@ fun EqualizerSheet(
           letterSpacing = 2.sp,
           fontWeight = FontWeight.SemiBold,
         )
-        Switch(
+        IconSwitch(
           checked = state.isEnabled,
           onCheckedChange = onEnabledChanged,
-          colors =
-            SwitchDefaults.colors(
-              checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-              checkedTrackColor = MaterialTheme.colorScheme.primary,
-              uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-              uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-              uncheckedBorderColor = MaterialTheme.colorScheme.outline,
-            ),
           modifier = Modifier.scale(0.8f),
         )
       }

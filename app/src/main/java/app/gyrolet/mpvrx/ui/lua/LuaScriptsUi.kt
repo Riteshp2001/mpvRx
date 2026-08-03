@@ -25,7 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -216,7 +216,7 @@ fun LuaRuntimeStatusCard(
         )
       }
 
-      Switch(
+      IconSwitch(
         checked = enabled,
         onCheckedChange = onEnabledChange,
         enabled = hasStorageLocation,
@@ -392,7 +392,7 @@ fun LuaScriptToggleCard(
         )
       }
 
-      Switch(
+      IconSwitch(
         checked = selected,
         onCheckedChange = { onToggle() },
       )

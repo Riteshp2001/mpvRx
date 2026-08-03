@@ -48,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -527,7 +528,7 @@ object AboutScreen : Screen {
                     color = cs.outline,
                   )
                 }
-                androidx.compose.material3.Switch(
+                IconSwitch(
                   checked = isAutoUpdateEnabled,
                   onCheckedChange = { updateViewModel.toggleAutoUpdate(it) },
                 )

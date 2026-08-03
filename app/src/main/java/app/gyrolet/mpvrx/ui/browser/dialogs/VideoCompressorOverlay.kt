@@ -79,7 +79,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -1172,7 +1172,7 @@ private fun CompressorAudioTab(
           .stringResource(app.gyrolet.mpvrx.R.string.ui_remove_audio),
         style = MaterialTheme.typography.bodyLarge,
       )
-      Switch(checked = state.removeAudio, onCheckedChange = { onToggleRemoveAudio() })
+      IconSwitch(checked = state.removeAudio, onCheckedChange = { onToggleRemoveAudio() })
     }
 
     AnimatedVisibility(visible = !state.removeAudio) {
@@ -1749,7 +1749,7 @@ private fun CompressorSettingsSheet(
           stringResource(R.string.compressor_storage_saved),
           style = MaterialTheme.typography.bodyLarge,
         )
-        Switch(checked = state.showStorageSaved, onCheckedChange = { onToggleShowStorageSaved() })
+        IconSwitch(checked = state.showStorageSaved, onCheckedChange = { onToggleShowStorageSaved() })
       }
       Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1760,7 +1760,7 @@ private fun CompressorSettingsSheet(
           stringResource(R.string.compressor_show_target_size_presets),
           style = MaterialTheme.typography.bodyLarge,
         )
-        Switch(checked = state.showTargetSizePreset, onCheckedChange = { onToggleShowTargetSizePreset() })
+        IconSwitch(checked = state.showTargetSizePreset, onCheckedChange = { onToggleShowTargetSizePreset() })
       }
 
       HorizontalDivider()
@@ -2249,7 +2249,7 @@ private fun DefaultAudioConfigEditor(
             stringResource(R.string.ui_remove_audio),
             style = MaterialTheme.typography.bodyLarge,
           )
-          Switch(checked = removeAudio, onCheckedChange = { removeAudio = it })
+          IconSwitch(checked = removeAudio, onCheckedChange = { removeAudio = it })
         }
         if (!removeAudio) {
           Text(
@@ -2351,7 +2351,7 @@ private fun CompressorInfoDialog(
             androidx.compose.ui.res
               .stringResource(app.gyrolet.mpvrx.R.string.ui_show_bitrate),
           )
-          Switch(checked = state.showBitrate, onCheckedChange = { onToggleShowBitrate() })
+          IconSwitch(checked = state.showBitrate, onCheckedChange = { onToggleShowBitrate() })
         }
         if (state.showBitrate) {
           Row(
@@ -2363,7 +2363,7 @@ private fun CompressorInfoDialog(
               androidx.compose.ui.res
                 .stringResource(app.gyrolet.mpvrx.R.string.ui_use_mbps),
             )
-            Switch(checked = state.useMbps, onCheckedChange = { onToggleBitrateUnit() })
+            IconSwitch(checked = state.useMbps, onCheckedChange = { onToggleBitrateUnit() })
           }
         }
         Row(
@@ -2375,7 +2375,7 @@ private fun CompressorInfoDialog(
             androidx.compose.ui.res
               .stringResource(app.gyrolet.mpvrx.R.string.ui_preserve_metadata),
           )
-          Switch(checked = state.preserveMetadata, onCheckedChange = { onTogglePreserveMetadata() })
+          IconSwitch(checked = state.preserveMetadata, onCheckedChange = { onTogglePreserveMetadata() })
         }
         HorizontalDivider()
         Text(
