@@ -26,7 +26,6 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
-import java.io.File
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -1285,6 +1284,7 @@ class PlayerViewModel(
           Log.e(TAG, "Error setting volume-max: $maxVol", e)
         }
       }
+    }
     // Observe audio effect changes to update mpv af filters
     viewModelScope.launch(playbackStateDispatcher) {
       combine(
