@@ -340,6 +340,33 @@ class CuboidWarptunnelEngine {
     pixelBuffer.fill(0x00000000)
   }
 
+  private fun blendPixel(
+    px: Int,
+    py: Int,
+    r: Int,
+    g: Int,
+    b: Int,
+    alpha: Float,
+  ) {
+    val w = renderWidth
+    val h = renderHeight
+    if (px !in 0 until w || py !in 0 until h || pixelBuffer.isEmpty()) return
+    val idx = py * w + px
+    val existing = pixelBuffer[idx]
+    val exA = (existing ushr 24) and 0xFF
+    val exR = (existing ushr 16) and 0xFF
+    val exG = (existing ushr 8) and 0xFF
+    val exB = existing and 0xFF
+
+    val aFactor = alpha.coerceIn(0f, 1f)
+    val newR = min(255, exR + (r * aFactor).toInt())
+    val newG = min(255, exG + (g * aFactor).toInt())
+    val newB = min(255, exB + (b * aFactor).toInt())
+    val newA = min(255, exA + (255 * aFactor).toInt())
+
+    pixelBuffer[idx] = (newA shl 24) or (newR shl 16) or (newG shl 8) or newB
+  }
+
   private fun lineLocked(
     x1: Int,
     y1: Int,
@@ -370,20 +397,13 @@ class CuboidWarptunnelEngine {
     val cr = r.coerceIn(0, 255)
     val cg = g.coerceIn(0, 255)
     val cb = b.coerceIn(0, 255)
-    // Opaque lines over transparent background
-    val colorInt = 0xFF000000.toInt() or (cr shl 16) or (cg shl 8) or cb
 
     var iterations = 0
     val maxIter = max(w, h) * 4
 
     while (iterations < maxIter) {
       iterations++
-      if (lx in 0 until w && ly in 0 until h) {
-        val idx = ly * w + lx
-        if (idx in pixelBuffer.indices) {
-          pixelBuffer[idx] = colorInt
-        }
-      }
+      blendPixel(lx, ly, cr, cg, cb, 0.92f)
       if (lx == lx2 && ly == ly2) break
       val e2 = 2 * err
       if (e2 > -dx) {
@@ -401,33 +421,48 @@ class CuboidWarptunnelEngine {
     if (data == null || data.isEmpty()) return AudioFeatureFrame.Silence
     val safeData = data.copyOf(min(data.size, 256))
     val len = safeData.size.coerceAtLeast(1)
-    var bass = 0f
-    var mid = 0f
-    var treble = 0f
-    var energy = 0f
+    var subBass = 0f; var bass = 0f; var lowMid = 0f
+    var mid = 0f; var highMid = 0f; var treble = 0f; var energy = 0f
+
+    val subBassLimit = max(2, len / 16)
     val bassLimit = max(4, len / 8)
-    val midLimit = max(4, len / 4)
+    val lowMidLimit = max(6, len / 5)
+    val midLimit = max(8, len / 3)
+    val highMidLimit = max(12, (len * 2) / 3)
+
     for (index in safeData.indices) {
       val magnitude = ((safeData[index].toInt() and 0xFF) / 255f).coerceIn(0f, 1f)
       val weighted = magnitude * magnitude
       when {
+        index < subBassLimit -> subBass += weighted
         index < bassLimit -> bass += weighted
+        index < lowMidLimit -> lowMid += weighted
         index < midLimit -> mid += weighted
+        index < highMidLimit -> highMid += weighted
         else -> treble += weighted
       }
       energy += weighted
     }
+    val subBassNorm = (subBass / subBassLimit.coerceAtLeast(1)).coerceIn(0f, 1f)
     val bassNorm = (bass / bassLimit.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val lowMidNorm = (lowMid / lowMidLimit.coerceAtLeast(1)).coerceIn(0f, 1f)
     val midNorm = (mid / midLimit.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val highMidNorm = (highMid / highMidLimit.coerceAtLeast(1)).coerceIn(0f, 1f)
     val trebleNorm = (treble / (len / 2).coerceAtLeast(1)).coerceIn(0f, 1f)
     val energyNorm = (energy / len.toFloat()).coerceIn(0f, 1f)
+    val flux = (bassNorm * 0.5f + midNorm * 0.5f)
+
     return AudioFeatureFrame(
       energy = energyNorm,
+      subBass = subBassNorm,
       bass = bassNorm,
+      lowMid = lowMidNorm,
       mid = midNorm,
+      highMid = highMidNorm,
       treble = trebleNorm,
       centroid = 0.35f + bassNorm * 0.15f + trebleNorm * 0.1f,
-      beat = if (energyNorm > 0.25f && bassNorm > 0.4f) 1f else 0f,
+      beat = if (energyNorm > 0.22f && bassNorm > 0.35f) 1f else 0f,
+      spectralFlux = flux,
     )
   }
 

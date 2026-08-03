@@ -71,16 +71,28 @@ internal class GalaxyRenderer(
   private var uEnergy = -1
 
   @Suppress("LocalVariableName")
+  private var uSubBass = -1
+
+  @Suppress("LocalVariableName")
   private var uBass = -1
 
   @Suppress("LocalVariableName")
+  private var uLowMid = -1
+
+  @Suppress("LocalVariableName")
   private var uMid = -1
+
+  @Suppress("LocalVariableName")
+  private var uHighMid = -1
 
   @Suppress("LocalVariableName")
   private var uTreble = -1
 
   @Suppress("LocalVariableName")
   private var uBeat = -1
+
+  @Suppress("LocalVariableName")
+  private var uFlux = -1
 
   @Suppress("LocalVariableName")
   private var uViewportHeight = -1
@@ -173,11 +185,15 @@ internal class GalaxyRenderer(
       audioSmoother.update(
         AudioFeatureFrame(
           energy = sourceAudio.energy,
+          subBass = sourceAudio.subBass,
           bass = sourceAudio.bass,
+          lowMid = sourceAudio.lowMid,
           mid = sourceAudio.mid,
+          highMid = sourceAudio.highMid,
           treble = sourceAudio.treble,
           centroid = sourceAudio.centroid,
           beat = sourceAudio.beat,
+          spectralFlux = sourceAudio.spectralFlux,
         ),
         frameMs / MILLISECONDS_PER_SECOND,
       )
@@ -197,10 +213,14 @@ internal class GalaxyRenderer(
     GLES30.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
     GLES30.glUniform1f(uTime, time)
     GLES30.glUniform1f(uEnergy, audio.energy)
+    GLES30.glUniform1f(uSubBass, audio.subBass)
     GLES30.glUniform1f(uBass, audio.bass)
+    GLES30.glUniform1f(uLowMid, audio.lowMid)
     GLES30.glUniform1f(uMid, audio.mid)
+    GLES30.glUniform1f(uHighMid, audio.highMid)
     GLES30.glUniform1f(uTreble, audio.treble)
     GLES30.glUniform1f(uBeat, audio.beat)
+    GLES30.glUniform1f(uFlux, audio.spectralFlux)
     GLES30.glUniform1f(uViewportHeight, surfaceHeight.toFloat())
     GLES30.glUniform1f(uReducedMotion, if (reducedMotionEnabled) 1f else 0f)
     GLES30.glUniform3f(uPrimaryColor, primaryR, primaryG, primaryB)
@@ -350,10 +370,14 @@ internal class GalaxyRenderer(
     uMvp = GLES30.glGetUniformLocation(program, "uMvp")
     uTime = GLES30.glGetUniformLocation(program, "uTime")
     uEnergy = GLES30.glGetUniformLocation(program, "uEnergy")
+    uSubBass = GLES30.glGetUniformLocation(program, "uSubBass")
     uBass = GLES30.glGetUniformLocation(program, "uBass")
+    uLowMid = GLES30.glGetUniformLocation(program, "uLowMid")
     uMid = GLES30.glGetUniformLocation(program, "uMid")
+    uHighMid = GLES30.glGetUniformLocation(program, "uHighMid")
     uTreble = GLES30.glGetUniformLocation(program, "uTreble")
     uBeat = GLES30.glGetUniformLocation(program, "uBeat")
+    uFlux = GLES30.glGetUniformLocation(program, "uFlux")
     uViewportHeight = GLES30.glGetUniformLocation(program, "uViewportHeight")
     uReducedMotion = GLES30.glGetUniformLocation(program, "uReducedMotion")
     uPrimaryColor = GLES30.glGetUniformLocation(program, "uPrimaryColor")

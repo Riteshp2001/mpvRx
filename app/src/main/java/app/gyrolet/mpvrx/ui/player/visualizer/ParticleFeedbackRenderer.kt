@@ -46,10 +46,14 @@ internal class ParticleFeedbackRenderer(
 
   private val random = Random()
 
+  private var subBassSmoothed = 0.08f
   private var bassSmoothed = 0.10f
+  private var lowMidSmoothed = 0.08f
   private var midSmoothed = 0.08f
+  private var highMidSmoothed = 0.06f
   private var highSmoothed = 0.05f
   private var energySmoothed = 0.10f
+  private var fluxSmoothed = 0.05f
   private var beatSmoothed = 0f
   private var bassAvg = 0.25f
   private var lastBeatNanos = 0L
@@ -82,19 +86,28 @@ internal class ParticleFeedbackRenderer(
   private var uSimState = -1
   private var uSimTime = -1
   private var uSimDt = -1
+  private var uSimSubBass = -1
   private var uSimBass = -1
+  private var uSimLowMid = -1
   private var uSimMid = -1
+  private var uSimHighMid = -1
   private var uSimHigh = -1
   private var uSimBeat = -1
   private var uSimEnergy = -1
+  private var uSimFlux = -1
 
   private var uPtsState = -1
   private var uPtsSimSize = -1
   private var uPtsAspect = -1
+  private var uPtsViewportHeight = -1
   private var uPtsHue = -1
   private var uPtsEnergy = -1
   private var uPtsBeat = -1
+  private var uPtsSubBass = -1
+  private var uPtsBass = -1
+  private var uPtsMid = -1
   private var uPtsHigh = -1
+  private var uPtsFlux = -1
   private var uPtsBright = -1
 
   private var uDecayTrail = -1
@@ -207,11 +220,15 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1i(uSimState, 0)
     GLES30.glUniform1f(uSimTime, elapsedSeconds)
     GLES30.glUniform1f(uSimDt, dtSeconds)
+    GLES30.glUniform1f(uSimSubBass, subBassSmoothed)
     GLES30.glUniform1f(uSimBass, bassSmoothed)
+    GLES30.glUniform1f(uSimLowMid, lowMidSmoothed)
     GLES30.glUniform1f(uSimMid, midSmoothed)
+    GLES30.glUniform1f(uSimHighMid, highMidSmoothed)
     GLES30.glUniform1f(uSimHigh, highSmoothed)
     GLES30.glUniform1f(uSimBeat, beatSmoothed)
     GLES30.glUniform1f(uSimEnergy, energySmoothed)
+    GLES30.glUniform1f(uSimFlux, fluxSmoothed)
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
     simSrc = nextSim
 
@@ -237,10 +254,15 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1i(uPtsState, 0)
     GLES30.glUniform1i(uPtsSimSize, Cfg.SIM_SIZE)
     GLES30.glUniform1f(uPtsAspect, aspect)
+    GLES30.glUniform1f(uPtsViewportHeight, viewportHeight.toFloat())
     GLES30.glUniform1f(uPtsHue, hueCurrent)
     GLES30.glUniform1f(uPtsEnergy, energySmoothed)
     GLES30.glUniform1f(uPtsBeat, beatSmoothed)
+    GLES30.glUniform1f(uPtsSubBass, subBassSmoothed)
+    GLES30.glUniform1f(uPtsBass, bassSmoothed)
+    GLES30.glUniform1f(uPtsMid, midSmoothed)
     GLES30.glUniform1f(uPtsHigh, highSmoothed)
+    GLES30.glUniform1f(uPtsFlux, fluxSmoothed)
     GLES30.glUniform1f(uPtsBright, Cfg.BRIGHT)
     GLES30.glDrawArrays(GLES30.GL_POINTS, 0, Cfg.NUM_PARTICLES)
     GLES30.glDisable(GLES30.GL_BLEND)
@@ -289,39 +311,55 @@ internal class ParticleFeedbackRenderer(
     val audio = audioSmoother.update(
       AudioFeatureFrame(
         energy = sourceAudio.energy,
+        subBass = sourceAudio.subBass,
         bass = sourceAudio.bass,
+        lowMid = sourceAudio.lowMid,
         mid = sourceAudio.mid,
+        highMid = sourceAudio.highMid,
         treble = sourceAudio.treble,
         centroid = sourceAudio.centroid,
         beat = sourceAudio.beat,
+        spectralFlux = sourceAudio.spectralFlux,
       ),
       dt,
     )
 
     if (sourceAudio.active) {
+      val subBassTarget = (audio.subBass * 1.5f).coerceAtMost(1f)
       val bassTarget = (audio.bass * 1.6f).coerceAtMost(1f)
+      val lowMidTarget = (audio.lowMid * 1.7f).coerceAtMost(1f)
       val midTarget = (audio.mid * 1.8f).coerceAtMost(1f)
+      val highMidTarget = (audio.highMid * 2.0f).coerceAtMost(1f)
       val highTarget = (audio.treble * 2.2f).coerceAtMost(1f)
       val energyTarget = (audio.energy * 1.4f).coerceAtMost(1f)
+      val fluxTarget = (audio.spectralFlux * 1.8f).coerceAtMost(1f)
 
+      subBassSmoothed = smoothVal(subBassSmoothed, subBassTarget, dt, 26f, 7f)
       bassSmoothed = smoothVal(bassSmoothed, bassTarget, dt, 24f, 6f)
+      lowMidSmoothed = smoothVal(lowMidSmoothed, lowMidTarget, dt, 20f, 6f)
       midSmoothed = smoothVal(midSmoothed, midTarget, dt, 16f, 5f)
+      highMidSmoothed = smoothVal(highMidSmoothed, highMidTarget, dt, 18f, 6f)
       highSmoothed = smoothVal(highSmoothed, highTarget, dt, 20f, 7f)
       energySmoothed = smoothVal(energySmoothed, energyTarget, dt, 11f, 4f)
+      fluxSmoothed = smoothVal(fluxSmoothed, fluxTarget, dt, 30f, 8f)
 
       bassAvg += (bassTarget - bassAvg) * (1f - exp(-dt * 0.8f))
       val nowNanos = System.nanoTime()
-      if (bassTarget > bassAvg * 1.25f + 0.04f && (nowNanos - lastBeatNanos) > 160_000_000L) {
+      if (sourceAudio.beat > 0.5f || (bassTarget > bassAvg * 1.25f + 0.04f && (nowNanos - lastBeatNanos) > 160_000_000L)) {
         beatSmoothed = 1f
         lastBeatNanos = nowNanos
         beatCount++
       }
     } else {
       // Fluid continuous fallback motion when audio features are starting up
+      subBassSmoothed = 0.10f + 0.05f * kotlin.math.sin(nowSec * 0.7f)
       bassSmoothed = 0.12f + 0.06f * kotlin.math.sin(nowSec * 0.8f)
+      lowMidSmoothed = 0.10f + 0.05f * kotlin.math.cos(nowSec * 0.95f)
       midSmoothed = 0.09f + 0.04f * kotlin.math.cos(nowSec * 1.1f)
+      highMidSmoothed = 0.07f + 0.035f * kotlin.math.sin(nowSec * 1.25f)
       highSmoothed = 0.06f + 0.03f * kotlin.math.sin(nowSec * 1.4f)
       energySmoothed = 0.12f + 0.05f * kotlin.math.sin(nowSec * 0.6f)
+      fluxSmoothed = 0.04f + 0.02f * kotlin.math.cos(nowSec * 1.6f)
     }
 
     beatSmoothed *= exp(-dt * 5.5f)
@@ -406,19 +444,28 @@ internal class ParticleFeedbackRenderer(
     uSimState = GLES30.glGetUniformLocation(pSim, "uState")
     uSimTime = GLES30.glGetUniformLocation(pSim, "uTime")
     uSimDt = GLES30.glGetUniformLocation(pSim, "uDt")
+    uSimSubBass = GLES30.glGetUniformLocation(pSim, "uSubBass")
     uSimBass = GLES30.glGetUniformLocation(pSim, "uBass")
+    uSimLowMid = GLES30.glGetUniformLocation(pSim, "uLowMid")
     uSimMid = GLES30.glGetUniformLocation(pSim, "uMid")
+    uSimHighMid = GLES30.glGetUniformLocation(pSim, "uHighMid")
     uSimHigh = GLES30.glGetUniformLocation(pSim, "uHigh")
     uSimBeat = GLES30.glGetUniformLocation(pSim, "uBeat")
     uSimEnergy = GLES30.glGetUniformLocation(pSim, "uEnergy")
+    uSimFlux = GLES30.glGetUniformLocation(pSim, "uFlux")
 
     uPtsState = GLES30.glGetUniformLocation(pPts, "uState")
     uPtsSimSize = GLES30.glGetUniformLocation(pPts, "uSimSize")
     uPtsAspect = GLES30.glGetUniformLocation(pPts, "uAspect")
+    uPtsViewportHeight = GLES30.glGetUniformLocation(pPts, "uViewportHeight")
     uPtsHue = GLES30.glGetUniformLocation(pPts, "uHue")
     uPtsEnergy = GLES30.glGetUniformLocation(pPts, "uEnergy")
     uPtsBeat = GLES30.glGetUniformLocation(pPts, "uBeat")
+    uPtsSubBass = GLES30.glGetUniformLocation(pPts, "uSubBass")
+    uPtsBass = GLES30.glGetUniformLocation(pPts, "uBass")
+    uPtsMid = GLES30.glGetUniformLocation(pPts, "uMid")
     uPtsHigh = GLES30.glGetUniformLocation(pPts, "uHigh")
+    uPtsFlux = GLES30.glGetUniformLocation(pPts, "uFlux")
     uPtsBright = GLES30.glGetUniformLocation(pPts, "uBright")
 
     uDecayTrail = GLES30.glGetUniformLocation(pDecay, "uTrail")

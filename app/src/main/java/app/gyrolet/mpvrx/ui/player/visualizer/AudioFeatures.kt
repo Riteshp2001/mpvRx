@@ -18,13 +18,21 @@ package app.gyrolet.mpvrx.ui.player.visualizer
 class AudioFeatures {
   @Volatile var energy: Float = 0f
 
+  @Volatile var subBass: Float = 0f
+
   @Volatile var bass: Float = 0f
 
+  @Volatile var lowMid: Float = 0f
+
   @Volatile var mid: Float = 0f
+
+  @Volatile var highMid: Float = 0f
 
   @Volatile var treble: Float = 0f
 
   @Volatile var beat: Float = 0f
+
+  @Volatile var spectralFlux: Float = 0f
 
   @Volatile var centroid: Float = 0.35f
 
@@ -38,6 +46,12 @@ class AudioFeatures {
    * Renderers should snapshot this array before using it.
    */
   @Volatile var spectrum: FloatArray = FloatArray(512)
+
+  /**
+   * Logarithmically grouped spectrum bands (64 bands, normalized 0..1).
+   * Maps 20Hz-20kHz according to human auditory perception.
+   */
+  @Volatile var logSpectrum: FloatArray = FloatArray(64)
 
   /**
    * Raw waveform samples (normalized -1..1).
@@ -62,14 +76,19 @@ class AudioFeatures {
 
   fun reset() {
     energy = 0f
+    subBass = 0f
     bass = 0f
+    lowMid = 0f
     mid = 0f
+    highMid = 0f
     treble = 0f
     beat = 0f
+    spectralFlux = 0f
     centroid = 0.35f
     active = false
     lastCaptureNanos = 0L
     spectrum = FloatArray(512)
+    logSpectrum = FloatArray(64)
     waveform = FloatArray(512)
   }
 
@@ -77,10 +96,14 @@ class AudioFeatures {
     factor: Float,
     beatFactor: Float = factor,
   ) {
+    subBass *= factor
     bass *= factor
+    lowMid *= factor
     mid *= factor
+    highMid *= factor
     treble *= factor
     energy *= factor
+    spectralFlux *= factor
     beat *= beatFactor
     active = false
   }

@@ -20,13 +20,14 @@ void main() {
         uPrimaryColor * vStarColorWeights.x
         + uSecondaryColor * vStarColorWeights.y
         + uTertiaryColor * vStarColorWeights.z;
-    // A luminous core with a coloured halo gives the particle field depth instead of
-    // rendering as a flat cloud of equally bright dots.
-    float softEdge = 1.0 - smoothstep(0.06, 1.0, radiusSquared);
-    float hotCore = 1.0 - smoothstep(0.0, 0.16, radiusSquared);
-    float halo = 1.0 - smoothstep(0.10, 0.72, radiusSquared);
-    vec3 color = mix(themeColor * 0.78, uTertiaryColor, halo * 0.22);
-    color = mix(color, vec3(1.0), hotCore * 0.46);
-    float alpha = softEdge * clamp(vBrightness * (0.82 + halo * 0.24), 0.0, 1.45);
+
+    // Multi-stage anti-aliased radial falloff for stellar particles
+    float softEdge = 1.0 - smoothstep(0.65, 1.0, radiusSquared);
+    float hotCore = 1.0 - smoothstep(0.0, 0.14, radiusSquared);
+    float halo = 1.0 - smoothstep(0.08, 0.75, radiusSquared);
+
+    vec3 color = mix(themeColor * 0.85, uTertiaryColor, halo * 0.25);
+    color = mix(color, vec3(1.0), hotCore * 0.55);
+    float alpha = softEdge * clamp(vBrightness * (0.85 + halo * 0.28), 0.0, 1.5);
     fragColor = vec4(color * vBrightness, alpha);
 }

@@ -13,19 +13,23 @@ import kotlin.math.exp
 
 internal data class AudioFeatureFrame(
   val energy: Float,
+  val subBass: Float,
   val bass: Float,
+  val lowMid: Float,
   val mid: Float,
+  val highMid: Float,
   val treble: Float,
   val centroid: Float,
   val beat: Float,
+  val spectralFlux: Float,
 ) {
   companion object {
-    val Silence = AudioFeatureFrame(0f, 0f, 0f, 0f, 0.35f, 0f)
+    val Silence = AudioFeatureFrame(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0.35f, 0f, 0f)
   }
 }
 
 /**
- * Converts the lower-rate Android Visualizer callbacks into continuous, frame-rate-independent
+ * Converts lower-rate Audio Visualizer callbacks into continuous, frame-rate-independent
  * motion. Fast attacks retain musical transients while slower releases avoid twitchy geometry.
  */
 internal class AudioReactiveSmoother {
@@ -38,12 +42,16 @@ internal class AudioReactiveSmoother {
     val dt = deltaSeconds.coerceIn(1f / 240f, 1f / 20f)
     current =
       AudioFeatureFrame(
-        energy = approach(current.energy, target.energy, dt, 0.075f, 0.28f),
-        bass = approach(current.bass, target.bass, dt, 0.060f, 0.24f),
-        mid = approach(current.mid, target.mid, dt, 0.090f, 0.30f),
-        treble = approach(current.treble, target.treble, dt, 0.120f, 0.34f),
-        centroid = approach(current.centroid, target.centroid, dt, 0.32f, 0.42f),
-        beat = approach(current.beat, target.beat, dt, 0.035f, 0.18f),
+        energy = approach(current.energy, target.energy, dt, 0.050f, 0.22f),
+        subBass = approach(current.subBass, target.subBass, dt, 0.040f, 0.20f),
+        bass = approach(current.bass, target.bass, dt, 0.045f, 0.20f),
+        lowMid = approach(current.lowMid, target.lowMid, dt, 0.055f, 0.22f),
+        mid = approach(current.mid, target.mid, dt, 0.065f, 0.24f),
+        highMid = approach(current.highMid, target.highMid, dt, 0.080f, 0.26f),
+        treble = approach(current.treble, target.treble, dt, 0.090f, 0.28f),
+        centroid = approach(current.centroid, target.centroid, dt, 0.250f, 0.38f),
+        beat = approach(current.beat, target.beat, dt, 0.020f, 0.14f),
+        spectralFlux = approach(current.spectralFlux, target.spectralFlux, dt, 0.025f, 0.16f),
       )
     return current
   }

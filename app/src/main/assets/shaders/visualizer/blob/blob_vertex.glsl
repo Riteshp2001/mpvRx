@@ -6,10 +6,14 @@ layout(location = 0) in vec3 aPosition;
 uniform mat4 uMvp;
 uniform float uTime;
 uniform float uAudio;
+uniform float uSubBass;
 uniform float uBass;
+uniform float uLowMid;
 uniform float uMid;
+uniform float uHighMid;
 uniform float uTreble;
 uniform float uBeat;
+uniform float uFlux;
 uniform sampler2D uSpectrum;
 
 out float vEnergy;
@@ -81,22 +85,24 @@ float snoise(vec3 v) {
 void main() {
     vec3 normal = normalize(aPosition);
 
-    // Map vertex position to a spectrum bin (use vertical position for frequency mapping)
-    float specCoord = clamp((normal.y + 1.0) * 0.5, 0.0, 1.0);
+    // Map spherical coordinates smoothly around equator to avoid polar artifacts
+    float phi = atan(normal.z, normal.x); // -PI to PI
+    float specCoord = clamp((phi / 3.14159265 + 1.0) * 0.5, 0.0, 1.0);
     float specValue = texture(uSpectrum, vec2(specCoord, 0.5)).r;
 
-    float slowNoise = snoise(aPosition * (1.65 + uMid * 0.35) + vec3(uTime * 0.22));
-    float detailNoise = snoise(aPosition * (4.0 + uTreble * 1.8) - vec3(uTime * 0.34));
-    float breathing = 0.014 * sin(uTime * 1.05 + aPosition.y * 3.0);
+    float slowNoise = snoise(aPosition * (1.7 + uMid * 0.45) + vec3(uTime * 0.24));
+    float detailNoise = snoise(aPosition * (4.2 + uTreble * 2.2) - vec3(uTime * 0.38));
+    float breathing = 0.016 * sin(uTime * 1.1 + aPosition.y * 3.2);
 
-    // Per-bin spectrum contribution: local displacement driven by the frequency at this vertex's bin
-    float specDisplacement = specValue * 0.18 * (1.0 + uBass * 0.6);
+    float specDisplacement = specValue * 0.22 * (1.0 + uBass * 0.7);
+    float shockwave = sin(length(aPosition) * 5.0 - uTime * 6.0) * (uBeat * 0.08 + uFlux * 0.05);
 
-    float reaction = 0.025 + uAudio * 0.50 + uBass * 0.24 + uBeat * 0.14;
-    float displacement = (slowNoise * 0.78 + detailNoise * 0.22) * reaction + breathing + specDisplacement;
-    vec3 position = aPosition * (1.0 + uBass * 0.08 + uBeat * 0.04) + normal * displacement;
+    float reaction = 0.025 + uAudio * 0.52 + uBass * 0.26 + uSubBass * 0.18 + uBeat * 0.16;
+    float displacement = (slowNoise * 0.75 + detailNoise * 0.25) * reaction + breathing + specDisplacement + shockwave;
 
-    vEnergy = clamp(0.38 + uAudio * 0.78 + abs(detailNoise) * uTreble * 0.38, 0.0, 1.5);
+    vec3 position = aPosition * (1.0 + uSubBass * 0.06 + uBass * 0.09 + uBeat * 0.05) + normal * displacement;
+
+    vEnergy = clamp(0.38 + uAudio * 0.82 + abs(detailNoise) * uTreble * 0.42, 0.0, 1.6);
     vSpectrum = specValue;
     gl_Position = uMvp * vec4(position, 1.0);
 }

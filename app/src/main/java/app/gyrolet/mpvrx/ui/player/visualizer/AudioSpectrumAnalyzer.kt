@@ -56,21 +56,33 @@ class AudioSpectrumAnalyzer(
     }
   }
 
+  private val prevSpectrum = FloatArray(512)
+  private var peakEnergyTracker = 0.25f
+  private var avgFluxTracker = 0.05f
+
   /**
    * Processes live time-domain waveform byte arrays.
+   * Applies Hann windowing to RMS energy computation.
    * Energy is blended with FFT energy to avoid flickering from callback ordering.
    */
   fun processWaveformData(waveform: ByteArray) {
     if (waveform.isEmpty()) return
+    val count = waveform.size.coerceAtMost(512)
     var sumSq = 0f
-    val samples = FloatArray(waveform.size.coerceAtMost(512))
-    for (i in samples.indices) {
+    val samples = FloatArray(count)
+    val tau = (2.0 * Math.PI).toFloat()
+
+    for (i in 0 until count) {
       val sample = ((waveform[i].toInt() and 0xFF) - 128) / 128f
+      // Hann window to smooth boundary discontinuities
+      val window = 0.5f * (1f - kotlin.math.cos(tau * i / (count - 1)))
+      val windowedSample = sample * window
       samples[i] = sample
-      sumSq += sample * sample
+      sumSq += windowedSample * windowedSample
     }
-    val rms = sqrt(sumSq / waveform.size)
-    val rmsBoosted = (rms * 3.5f).coerceIn(0f, 1f)
+    val rms = sqrt(sumSq / count)
+    // Scale RMS with AGC tracker
+    val rmsBoosted = (rms / (peakEnergyTracker * 0.5f + 0.05f)).coerceIn(0f, 1f)
 
     // Atomically swap the waveform array so renderers see a consistent snapshot
     features.waveform = samples
@@ -88,8 +100,8 @@ class AudioSpectrumAnalyzer(
 
   /**
    * Processes live FFT byte arrays.
-   * Computes bass/mid/treble with frequency-aware band boundaries,
-   * spectral centroid from magnitude-weighted frequency, and debounced beat detection.
+   * Computes sub-bass, bass, low-mid, mid, high-mid, and treble bands with frequency-aware cutoffs,
+   * 64 logarithmic spectrum bands, spectral flux for transient beat detection, and AGC.
    */
   fun processFftData(fft: ByteArray) {
     if (fft.size < 8) return
@@ -98,27 +110,32 @@ class AudioSpectrumAnalyzer(
     val nyquist = sampleRate / 2f
     val binHz = nyquist / halfSize
 
-    // Frequency-aware band boundaries (Hz)
-    val bassCutoffHz = 150f
-    val midCutoffHz = 2000f
-    val bassCutoffBin = (bassCutoffHz / binHz).toInt().coerceIn(2, halfSize)
-    val midCutoffBin = (midCutoffHz / binHz).toInt().coerceIn(bassCutoffBin + 1, halfSize)
+    // Frequency-aware band cutoffs (Hz)
+    val subBassCutoffBin = (60f / binHz).toInt().coerceIn(1, halfSize)
+    val bassCutoffBin = (250f / binHz).toInt().coerceIn(subBassCutoffBin + 1, halfSize)
+    val lowMidCutoffBin = (500f / binHz).toInt().coerceIn(bassCutoffBin + 1, halfSize)
+    val midCutoffBin = (2000f / binHz).toInt().coerceIn(lowMidCutoffBin + 1, halfSize)
+    val highMidCutoffBin = (6000f / binHz).toInt().coerceIn(midCutoffBin + 1, halfSize)
 
-    var bassSum = 0f
-    var midSum = 0f
-    var trebleSum = 0f
-    var bassCount = 0
-    var midCount = 0
-    var trebleCount = 0
+    var subBassSum = 0f; var subBassCount = 0
+    var bassSum = 0f; var bassCount = 0
+    var lowMidSum = 0f; var lowMidCount = 0
+    var midSum = 0f; var midCount = 0
+    var highMidSum = 0f; var highMidCount = 0
+    var trebleSum = 0f; var trebleCount = 0
 
-    // For spectral centroid computation
     var weightedFreqSum = 0f
     var magSum = 0f
-
-    // For spectral flux (onset detection)
     var spectralFlux = 0f
 
     val spectrumData = FloatArray(512)
+    val logSpectrumData = FloatArray(64)
+    val logBinCounts = IntArray(64)
+
+    val minLogHz = 20f
+    val maxLogHz = nyquist.coerceAtMost(20000f)
+    val logRatio = kotlin.math.ln(maxLogHz / minLogHz)
+
     var k = 1
     while (k < halfSize && k < 512) {
       val realIndex = k * 2
@@ -127,50 +144,102 @@ class AudioSpectrumAnalyzer(
 
       val real = fft[realIndex].toInt().toFloat()
       val imaginary = fft[imagIndex].toInt().toFloat()
-      val mag = (hypot(real, imaginary) / 128f).coerceIn(0f, 1f)
+      val rawMag = hypot(real, imaginary) / 128f
 
-      spectrumData[k] = mag
+      spectrumData[k] = rawMag
 
-      // Accumulate for spectral centroid
-      val freqHz = k * binHz
-      weightedFreqSum += freqHz * mag
-      magSum += mag
-
-      when {
-        k < bassCutoffBin -> { bassSum += mag; bassCount++ }
-        k < midCutoffBin -> { midSum += mag; midCount++ }
-        else -> { trebleSum += mag; trebleCount++ }
+      // Spectral flux (positive difference from previous frame)
+      val diff = rawMag - prevSpectrum[k]
+      if (diff > 0f) {
+        spectralFlux += diff
       }
+      prevSpectrum[k] = rawMag
+
+      val freqHz = k * binHz
+      weightedFreqSum += freqHz * rawMag
+      magSum += rawMag
+
+      // Frequency band accumulation
+      when {
+        k < subBassCutoffBin -> { subBassSum += rawMag; subBassCount++ }
+        k < bassCutoffBin -> { bassSum += rawMag; bassCount++ }
+        k < lowMidCutoffBin -> { lowMidSum += rawMag; lowMidCount++ }
+        k < midCutoffBin -> { midSum += rawMag; midCount++ }
+        k < highMidCutoffBin -> { highMidSum += rawMag; highMidCount++ }
+        else -> { trebleSum += rawMag; trebleCount++ }
+      }
+
+      // Logarithmic band mapping
+      if (freqHz in minLogHz..maxLogHz) {
+        val logIndex = ((kotlin.math.ln(freqHz / minLogHz) / logRatio) * 63.99f).toInt().coerceIn(0, 63)
+        logSpectrumData[logIndex] += rawMag
+        logBinCounts[logIndex]++
+      }
+
       k++
     }
-    // Atomically swap the spectrum array so renderers see a consistent snapshot
+
+    // Averaging and AGC normalization for 64 logarithmic spectrum bands
+    var frameMaxMag = 0.01f
+    for (i in 0 until 64) {
+      if (logBinCounts[i] > 0) {
+        logSpectrumData[i] /= logBinCounts[i]
+      }
+      if (logSpectrumData[i] > frameMaxMag) {
+        frameMaxMag = logSpectrumData[i]
+      }
+    }
+
+    // Adaptive peak energy tracking for Automatic Gain Control (AGC)
+    peakEnergyTracker = if (frameMaxMag > peakEnergyTracker) {
+      peakEnergyTracker * 0.7f + frameMaxMag * 0.3f
+    } else {
+      (peakEnergyTracker * 0.995f).coerceAtLeast(0.15f)
+    }
+    val agcScale = 1.0f / peakEnergyTracker
+
+    for (i in 0 until 64) {
+      logSpectrumData[i] = (logSpectrumData[i] * agcScale).coerceIn(0f, 1f)
+    }
+    for (i in spectrumData.indices) {
+      spectrumData[i] = (spectrumData[i] * agcScale).coerceIn(0f, 1f)
+    }
+
     features.spectrum = spectrumData
+    features.logSpectrum = logSpectrumData
 
-    val bass = if (bassCount > 0) (bassSum / bassCount * 2.2f).coerceIn(0f, 1f) else 0f
-    val mid = if (midCount > 0) (midSum / midCount * 2.5f).coerceIn(0f, 1f) else 0f
-    val treble = if (trebleCount > 0) (trebleSum / trebleCount * 2.8f).coerceIn(0f, 1f) else 0f
-    val fftEnergy = (bass * 0.5f + mid * 0.35f + treble * 0.15f).coerceIn(0f, 1f)
+    val subBass = if (subBassCount > 0) (subBassSum / subBassCount * agcScale * 1.5f).coerceIn(0f, 1f) else 0f
+    val bass = if (bassCount > 0) (bassSum / bassCount * agcScale * 1.4f).coerceIn(0f, 1f) else 0f
+    val lowMid = if (lowMidCount > 0) (lowMidSum / lowMidCount * agcScale * 1.3f).coerceIn(0f, 1f) else 0f
+    val mid = if (midCount > 0) (midSum / midCount * agcScale * 1.2f).coerceIn(0f, 1f) else 0f
+    val highMid = if (highMidCount > 0) (highMidSum / highMidCount * agcScale * 1.1f).coerceIn(0f, 1f) else 0f
+    val treble = if (trebleCount > 0) (trebleSum / trebleCount * agcScale * 1.0f).coerceIn(0f, 1f) else 0f
 
-    // Spectral centroid: 0.0 = all low freq, 1.0 = all high freq
+    val fftEnergy = (subBass * 0.25f + bass * 0.35f + lowMid * 0.15f + mid * 0.15f + treble * 0.10f).coerceIn(0f, 1f)
+
     val centroid = if (magSum > 0.001f) {
       (weightedFreqSum / magSum / nyquist).coerceIn(0f, 1f)
     } else {
       features.centroid
     }
 
-    // Beat detection with debounce
+    // Adaptive Spectral Flux beat & onset detection
+    avgFluxTracker = avgFluxTracker * 0.92f + spectralFlux * 0.08f
     val now = System.nanoTime()
     val beatMs = (now - lastBeatNanos) / 1_000_000L
-    val beatDetected = bass > 0.35f && beatMs > BEAT_DEBOUNCE_MS
+    val fluxThreshold = (avgFluxTracker * 1.35f + 0.12f).coerceAtLeast(0.18f)
+    val beatDetected = (spectralFlux > fluxThreshold || subBass > 0.45f) && beatMs > BEAT_DEBOUNCE_MS
     if (beatDetected) lastBeatNanos = now
 
-    // Smooth natural audio feature response
-    features.bass = features.bass * 0.3f + bass * 0.7f
-    features.mid = features.mid * 0.3f + mid * 0.7f
-    features.treble = features.treble * 0.3f + treble * 0.7f
+    features.subBass = features.subBass * 0.2f + subBass * 0.8f
+    features.bass = features.bass * 0.2f + bass * 0.8f
+    features.lowMid = features.lowMid * 0.2f + lowMid * 0.8f
+    features.mid = features.mid * 0.2f + mid * 0.8f
+    features.highMid = features.highMid * 0.2f + highMid * 0.8f
+    features.treble = features.treble * 0.2f + treble * 0.8f
+    features.spectralFlux = features.spectralFlux * 0.3f + spectralFlux * 0.7f
     features.centroid = features.centroid * 0.6f + centroid * 0.4f
 
-    // Blend FFT energy with existing waveform energy
     val currentWaveformEnergy = features.energy
     features.energy = if (currentWaveformEnergy > 0.01f) {
       (currentWaveformEnergy * ENERGY_WAVEFORM_WEIGHT + fftEnergy * ENERGY_FFT_WEIGHT).coerceIn(0f, 1f)

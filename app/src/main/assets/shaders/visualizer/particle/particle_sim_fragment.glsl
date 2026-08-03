@@ -46,6 +46,7 @@ float snoise(vec3 v){
   m = m*m;
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
+
 vec2 curl(vec2 p, float t){
   float e = 0.04;
   float n1 = snoise(vec3(p.x, p.y+e, t));
@@ -54,6 +55,7 @@ vec2 curl(vec2 p, float t){
   float n4 = snoise(vec3(p.x-e, p.y, t));
   return vec2(n1-n2, n4-n3) / (2.0*e);
 }
+
 vec4 spawn(vec2 fc, float t, float seed){
   float r1 = hash12(fc*1.373 + fract(t*0.731)*77.7 + seed*91.7);
   float r2 = hash12(fc*2.719 + fract(t*0.377)*55.5 + seed*17.3);
@@ -70,12 +72,12 @@ vec4 spawn(vec2 fc, float t, float seed){
     float sx = (r3 < 0.5) ? 0.14 : 0.60;
     p = vec2(g1*sx, g2*(0.008 + 0.06*r4*r4));
   }
-  float life = 1.2 + 3.6*hash12(fc*5.137 + seed*7.7);
+  float life = 1.4 + 3.8*hash12(fc*5.137 + seed*7.7);
   return vec4(p, life, seed);
 }
 
 uniform highp sampler2D uState;
-uniform float uTime, uDt, uBass, uMid, uHigh, uBeat, uEnergy;
+uniform float uTime, uDt, uSubBass, uBass, uLowMid, uMid, uHighMid, uTreble, uBeat, uEnergy, uFlux;
 out vec4 o;
 
 void main(){
@@ -83,27 +85,41 @@ void main(){
   vec4 s = texelFetch(uState, tc, 0);
   vec2 p = s.xy; float life = s.z; float seed = s.w;
   life -= uDt;
-  if (life <= 0.0 || abs(p.x) > 3.2 || abs(p.y) > 2.0 || any(isnan(p))){
+  if (life <= 0.0 || abs(p.x) > 3.4 || abs(p.y) > 2.2 || any(isnan(p))){
     o = spawn(gl_FragCoord.xy, uTime, seed);
     return;
   }
   float fam = fract(seed*13.37);
-  float bandK = (fam < 0.70) ? 1.0 : 0.30;
+  float bandK = (fam < 0.70) ? 1.0 : 0.35;
   vec2 v = vec2(0.0);
-  /* large slow arcs */
-  v += curl(p*1.7 + vec2(seed*4.7, seed*2.9), uTime*0.05 + seed*3.1) * 0.0011 * bandK;
-  /* fine feathering, mids raise turbulence */
-  v += curl(p*6.0 + vec2(seed*9.1, -seed*6.3), uTime*0.15) * 0.0013 * (0.5 + 1.4*uMid) * bandK;
+
+  /* Large slow arcs */
+  v += curl(p*1.6 + vec2(seed*4.7, seed*2.9), uTime*0.05 + seed*3.1) * 0.0012 * bandK;
+
+  /* Fine feathering, mids raise turbulence */
+  float turbulenceScale = 0.5 + 1.6*uMid + 1.2*uLowMid;
+  v += curl(p*6.2 + vec2(seed*9.1, -seed*6.3), uTime*(0.15 + 0.10*uHighMid)) * 0.0014 * turbulenceScale * bandK;
+
+  /* Sub-bass and bass expansion */
   if (fam < 0.70){
-    v.x += sign(p.x + 1e-5) * 0.0005 * (0.25 + uEnergy);
-    v.y += sign(p.y + 1e-5) * 0.0007 * (0.25 + 0.9*uBass);
+    v.x += sign(p.x + 1e-5) * 0.0005 * (0.25 + uEnergy + uSubBass * 0.5);
+    v.y += sign(p.y + 1e-5) * 0.0007 * (0.25 + 0.9*uBass + 0.6*uSubBass);
   } else {
-    v.x += sign(p.x + 1e-5) * (0.0014 + 0.008*uBass);
+    v.x += sign(p.x + 1e-5) * (0.0014 + 0.009*uBass + 0.005*uSubBass);
   }
-  /* beat: radial burst from the core */
+
+  /* High frequency shimmer micro-jitter */
+  if (uTreble > 0.25) {
+    float jitterAngle = hash12(p * 11.3 + vec2(uTime * 17.0, seed * 3.7)) * 6.28318;
+    v += vec2(cos(jitterAngle), sin(jitterAngle)) * 0.0004 * (uTreble - 0.25);
+  }
+
+  /* Beat & transient spectral flux: radial burst from core */
   float r = length(p) + 1e-4;
-  v += (p/r) * (uBeat*uBeat) * 0.028 * exp(-r*3.0);
-  float sp = 0.55 + 0.9*fract(seed*5.19);
+  float beatForce = (uBeat * 1.4 + uFlux * 0.8);
+  v += (p/r) * (beatForce * beatForce) * 0.032 * exp(-r * 2.5);
+
+  float sp = 0.55 + 0.95*fract(seed*5.19);
   p += v * sp * (uDt*60.0);
   o = vec4(p, life, seed);
 }

@@ -44,16 +44,28 @@ internal class BlobRenderer(
   private var uBlobAudio = -1
 
   @Suppress("LocalVariableName")
+  private var uBlobSubBass = -1
+
+  @Suppress("LocalVariableName")
   private var uBlobBass = -1
 
   @Suppress("LocalVariableName")
+  private var uBlobLowMid = -1
+
+  @Suppress("LocalVariableName")
   private var uBlobMid = -1
+
+  @Suppress("LocalVariableName")
+  private var uBlobHighMid = -1
 
   @Suppress("LocalVariableName")
   private var uBlobTreble = -1
 
   @Suppress("LocalVariableName")
   private var uBlobBeat = -1
+
+  @Suppress("LocalVariableName")
+  private var uBlobFlux = -1
 
   @Suppress("LocalVariableName")
   private var uBlobColor = -1
@@ -250,20 +262,28 @@ internal class BlobRenderer(
       audioSmoother.update(
         AudioFeatureFrame(
           energy = sourceAudio.energy,
+          subBass = sourceAudio.subBass,
           bass = sourceAudio.bass,
+          lowMid = sourceAudio.lowMid,
           mid = sourceAudio.mid,
+          highMid = sourceAudio.highMid,
           treble = sourceAudio.treble,
           centroid = sourceAudio.centroid,
           beat = sourceAudio.beat,
+          spectralFlux = sourceAudio.spectralFlux,
         ),
         deltaSeconds,
       )
     audio.energy = smoothed.energy
+    audio.subBass = smoothed.subBass
     audio.bass = smoothed.bass
+    audio.lowMid = smoothed.lowMid
     audio.mid = smoothed.mid
+    audio.highMid = smoothed.highMid
     audio.treble = smoothed.treble
     audio.centroid = smoothed.centroid
     audio.beat = smoothed.beat
+    audio.spectralFlux = smoothed.spectralFlux
     audio.active = sourceAudio.active
   }
 
@@ -405,7 +425,7 @@ internal class BlobRenderer(
       if (reducedMotionEnabled) {
         1.20f + audio.energy * 0.025f
       } else {
-        1.15f + audio.energy * 0.12f + audio.bass * 0.09f + audio.beat * 0.06f
+        1.15f + audio.energy * 0.12f + audio.bass * 0.09f + audio.subBass * 0.06f + audio.beat * 0.06f
       }
     val scale = pinchScale * reactiveScale
     Matrix.scaleM(model, 0, scale, scale, scale)
@@ -416,7 +436,7 @@ internal class BlobRenderer(
   private fun updateColor(time: Float) {
     val drift = if (reducedMotionEnabled) 0f else (kotlin.math.sin(time * 0.24f) + 1f) * 0.08f
     val spectralMix = (audio.centroid * 0.72f + audio.treble * 0.18f + drift).coerceIn(0f, 1f)
-    val beatMix = (audio.beat * 0.68f).coerceIn(0f, 1f)
+    val beatMix = (audio.beat * 0.68f + audio.spectralFlux * 0.32f).coerceIn(0f, 1f)
     val targetR = lerp(lerp(primaryRgb[0], secondaryRgb[0], spectralMix), tertiaryRgb[0], beatMix)
     val targetG = lerp(lerp(primaryRgb[1], secondaryRgb[1], spectralMix), tertiaryRgb[1], beatMix)
     val targetB = lerp(lerp(primaryRgb[2], secondaryRgb[2], spectralMix), tertiaryRgb[2], beatMix)
@@ -439,10 +459,14 @@ internal class BlobRenderer(
     GLES30.glUniformMatrix4fv(uBlobMvp, 1, false, mvp, 0)
     GLES30.glUniform1f(uBlobTime, time)
     GLES30.glUniform1f(uBlobAudio, max(audio.energy, 0.035f))
+    GLES30.glUniform1f(uBlobSubBass, audio.subBass)
     GLES30.glUniform1f(uBlobBass, audio.bass)
+    GLES30.glUniform1f(uBlobLowMid, audio.lowMid)
     GLES30.glUniform1f(uBlobMid, audio.mid)
+    GLES30.glUniform1f(uBlobHighMid, audio.highMid)
     GLES30.glUniform1f(uBlobTreble, audio.treble)
     GLES30.glUniform1f(uBlobBeat, audio.beat)
+    GLES30.glUniform1f(uBlobFlux, audio.spectralFlux)
     GLES30.glUniform3f(uBlobColor, smoothR, smoothG, smoothB)
     GLES30.glUniform1f(
       uBlobIntensity,
@@ -452,7 +476,7 @@ internal class BlobRenderer(
     updateSpectrumTexture(sourceAudio.spectrum)
     bindTexture(0, spectrumTexture, uSpectrum)
 
-    GLES30.glLineWidth(1.2f)
+    GLES30.glLineWidth(1.4f)
     GLES30.glBindVertexArray(meshVao)
     GLES30.glDrawElements(GLES30.GL_LINES, lineIndexCount, GLES30.GL_UNSIGNED_INT, 0)
     GLES30.glBindVertexArray(0)
@@ -608,10 +632,14 @@ internal class BlobRenderer(
     uBlobMvp = GLES30.glGetUniformLocation(blobProgram, "uMvp")
     uBlobTime = GLES30.glGetUniformLocation(blobProgram, "uTime")
     uBlobAudio = GLES30.glGetUniformLocation(blobProgram, "uAudio")
+    uBlobSubBass = GLES30.glGetUniformLocation(blobProgram, "uSubBass")
     uBlobBass = GLES30.glGetUniformLocation(blobProgram, "uBass")
+    uBlobLowMid = GLES30.glGetUniformLocation(blobProgram, "uLowMid")
     uBlobMid = GLES30.glGetUniformLocation(blobProgram, "uMid")
+    uBlobHighMid = GLES30.glGetUniformLocation(blobProgram, "uHighMid")
     uBlobTreble = GLES30.glGetUniformLocation(blobProgram, "uTreble")
     uBlobBeat = GLES30.glGetUniformLocation(blobProgram, "uBeat")
+    uBlobFlux = GLES30.glGetUniformLocation(blobProgram, "uFlux")
     uBlobColor = GLES30.glGetUniformLocation(blobProgram, "uColor")
     uBlobIntensity = GLES30.glGetUniformLocation(blobProgram, "uIntensity")
     uSpectrum = GLES30.glGetUniformLocation(blobProgram, "uSpectrum")
