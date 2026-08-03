@@ -34,8 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -612,33 +611,10 @@ private fun IncludeSubsToggle(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.Start,
   ) {
-    Switch(
+    IconSwitch(
       checked = includeSubs,
       onCheckedChange = setIncludeSubs,
       modifier = Modifier.scale(0.8f),
-      thumbContent = {
-        Crossfade(
-          targetState = includeSubs,
-          animationSpec = tween(durationMillis = 200),
-          label = "SwitchIconAnimation",
-        ) { isChecked ->
-          if (isChecked) {
-            Icon(
-              Icons.RoundedFilled.Check,
-              contentDescription = null,
-              modifier = Modifier.size(SwitchDefaults.IconSize),
-              tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-          } else {
-            Icon(
-              Icons.RoundedFilled.Close,
-              contentDescription = null,
-              modifier = Modifier.size(SwitchDefaults.IconSize),
-              tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-        }
-      },
     )
     Text(
       text = stringResource(R.string.player_sheets_frame_navigation_include_subtitles),

@@ -27,8 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -193,33 +192,10 @@ private fun ZoomVideoSheet(
       Row(
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        Switch(
+        IconSwitch(
           checked = panAndZoomEnabled,
           onCheckedChange = onPanAndZoomToggle,
           modifier = Modifier.scale(0.8f),
-          thumbContent = {
-            Crossfade(
-              targetState = panAndZoomEnabled,
-              animationSpec = tween(durationMillis = 200),
-              label = "SwitchIconAnimation",
-            ) { isChecked ->
-              if (isChecked) {
-                Icon(
-                  Icons.RoundedFilled.Check,
-                  contentDescription = null,
-                  modifier = Modifier.size(SwitchDefaults.IconSize),
-                  tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-              } else {
-                Icon(
-                  Icons.RoundedFilled.Close,
-                  contentDescription = null,
-                  modifier = Modifier.size(SwitchDefaults.IconSize),
-                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
-            }
-          },
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(

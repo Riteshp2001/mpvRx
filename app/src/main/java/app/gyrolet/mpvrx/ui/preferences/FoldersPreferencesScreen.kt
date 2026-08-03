@@ -40,7 +40,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -361,7 +361,7 @@ private fun NoMediaPreferenceCard(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-      Switch(
+      IconSwitch(
         checked = includeNoMediaFolders,
         onCheckedChange = onIncludeNoMediaFoldersChanged,
       )

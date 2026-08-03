@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
@@ -314,7 +315,7 @@ fun YtdlpPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
-            Switch(
+            IconSwitch(
               checked = writeSubs,
               onCheckedChange = { ytdlPreferences.writeSubs.set(it) },
             )
@@ -343,7 +344,7 @@ fun YtdlpPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
-            Switch(
+            IconSwitch(
               checked = writeAutoSubs,
               onCheckedChange = { ytdlPreferences.writeAutoSubs.set(it) },
             )
