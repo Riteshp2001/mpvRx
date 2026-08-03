@@ -361,7 +361,7 @@ private fun NetworkBrowserContent(
       ) {
         EmptyState(
           icon = Icons.RoundedFilled.Search,
-          title = stringResource(R.string.ui_no_videos),
+          title = stringResource(R.string.settings_search_title),
           message = "No items match '$searchQuery'",
         )
       }
@@ -403,7 +403,6 @@ private fun NetworkBrowserContent(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         listState = listState,
-        gridState = gridState,
         modifier = modifier.fillMaxSize(),
       ) {
         val scrollbarLabels =
