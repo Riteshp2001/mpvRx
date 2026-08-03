@@ -61,6 +61,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -267,6 +268,12 @@ object AboutScreen : Screen {
                       contentColor = btnContent,
                     ),
                 ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.Code,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                  )
+                  Spacer(modifier = Modifier.width(8.dp))
                   Text(
                     text = stringResource(id = R.string.pref_about_oss_libraries),
                     style = MaterialTheme.typography.titleMedium,
@@ -294,6 +301,12 @@ object AboutScreen : Screen {
                       contentColor = btnContent,
                     ),
                 ) {
+                  Icon(
+                    painter = painterResource(id = R.drawable.ic_github),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                  )
+                  Spacer(modifier = Modifier.width(8.dp))
                   Text(
                     text =
                       androidx.compose.ui.res
