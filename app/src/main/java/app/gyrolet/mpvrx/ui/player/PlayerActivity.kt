@@ -3068,23 +3068,6 @@ class PlayerActivity :
         if (!mpvInitialized || player.isExiting || isFinishing) return
         scheduleVideoParamRefresh(reloadShaders = false)
       }
-      "container-fps" -> {
-        if (!mpvInitialized || player.isExiting || isFinishing) return
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && value > 0.0) {
-          try {
-            val surface = player.holder?.surface
-            if (surface != null && surface.isValid) {
-              surface.setFrameRate(
-                value.toFloat(),
-                android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
-              )
-              android.util.Log.i(TAG, "Set display refresh rate to ${value}Hz")
-            }
-          } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to set frame rate", e)
-          }
-        }
-      }
       "sub-scale" -> {
         if (isSecondarySubtitleActive()) {
           val primaryPosition = subtitlesPreferences.subPos.get()

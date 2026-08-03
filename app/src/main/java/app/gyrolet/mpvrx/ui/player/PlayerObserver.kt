@@ -18,8 +18,7 @@ class PlayerObserver(
   private fun shouldBypassUiThread(property: String): Boolean =
     property == "video-params/aspect" ||
       property == "video-params/w" ||
-      property == "video-params/h" ||
-      property == "container-fps"
+      property == "video-params/h"
 
   override fun eventProperty(property: String) {
     if (activity.player.isExiting) return

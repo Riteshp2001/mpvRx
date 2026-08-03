@@ -4943,8 +4943,12 @@ class PlayerViewModel(
       )
   }
 
+  @Suppress("UnusedParameter")
   private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean =
-    mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
+    // All HDR modes are gated on the GPU Next + Vulkan renderer, matching
+    // MPVView.initOptions. On other renderers the pipeline falls back to safe
+    // defaults (same as 1.4.1) instead of running the heavy HDR path on 4K.
+    isLinearHdrAvailable.value
 
   private fun initialHdrScreenMode(): HdrScreenMode {
     if (!decoderPreferences.hdrScreenOutput.get()) {
