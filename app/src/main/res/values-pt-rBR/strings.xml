@@ -1063,6 +1063,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="btn_label_background_playback">Reprodução em segundo plano</string>
   <string name="btn_label_ambient">Modo ambiente</string>
   <string name="btn_label_time_network">Hora + Rede</string>
+  <string name="btn_label_equalizer">Equalizador</string>
   <string name="btn_label_none">Nenhum</string>
   <string name="media_info_tab_overview">Visão geral</string>
   <string name="media_info_tab_video">Vídeo</string>

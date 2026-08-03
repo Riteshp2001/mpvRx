@@ -1063,6 +1063,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="btn_label_background_playback">Lecture en arrière-plan</string>
   <string name="btn_label_ambient">Mode ambiant</string>
   <string name="btn_label_time_network">Horaire + Réseau</string>
+  <string name="btn_label_equalizer">Égaliseur</string>
   <string name="btn_label_none">Aucun</string>
   <string name="media_info_tab_overview">Vue d’ensemble</string>
   <string name="media_info_tab_video">Vidéo</string>

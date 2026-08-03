@@ -250,7 +250,8 @@ fun PlayerSheets(
         onSelect = onSelectAudio,
         onAddAudioTrack = { audioPicker.launch(arrayOf("*/*")) },
         onOpenDelayPanel = { onOpenPanel(Panels.AudioDelay) },
-        onDismissRequest,
+        onOpenEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
+        onDismissRequest = onDismissRequest,
       )
     }
 
@@ -279,6 +280,7 @@ fun PlayerSheets(
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
         onEnterLuaScriptsPanel = { onOpenPanel(Panels.LuaScripts) },
+        onEnterEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
         anime4KUiState = anime4KUiState,
         onAnime4KModeSelected = viewModel::selectAnime4KMode,
       )

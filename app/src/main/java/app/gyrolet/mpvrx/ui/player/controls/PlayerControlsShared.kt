@@ -656,6 +656,15 @@ fun RenderPlayerButton(
       )
     }
 
+    PlayerButton.EQUALIZER -> {
+      ControlsButton(
+        Icons.RoundedFilled.Equalizer,
+        onClick = { onOpenSheet(Sheets.Equalizer) },
+        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
     PlayerButton.CURRENT_CHAPTER -> {
       if (isPortrait) {
       } else {

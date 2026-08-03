@@ -1063,6 +1063,7 @@
   <string name="btn_label_background_playback">后台播放</string>
   <string name="btn_label_ambient">环境光模式</string>
   <string name="btn_label_time_network">时间 + 网络</string>
+  <string name="btn_label_equalizer">均衡器</string>
   <string name="btn_label_none">无</string>
   <string name="media_info_tab_overview">概览</string>
   <string name="media_info_tab_video">视频</string>

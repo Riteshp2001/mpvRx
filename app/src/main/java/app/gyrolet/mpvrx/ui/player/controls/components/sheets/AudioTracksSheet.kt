@@ -50,6 +50,7 @@ fun AudioTracksSheet(
   onSelect: (TrackNode) -> Unit,
   onAddAudioTrack: () -> Unit,
   onOpenDelayPanel: () -> Unit,
+  onOpenEqualizerSheet: (() -> Unit)? = null,
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -62,6 +63,11 @@ fun AudioTracksSheet(
         stringResource(R.string.player_sheets_add_ext_audio),
         onAddAudioTrack,
         actions = {
+          if (onOpenEqualizerSheet != null) {
+            IconButton(onClick = onOpenEqualizerSheet) {
+              Icon(Icons.RoundedFilled.Equalizer, stringResource(R.string.btn_label_equalizer))
+            }
+          }
           IconButton(onClick = onOpenDelayPanel) {
             Icon(Icons.RoundedFilled.AvTimer, null)
           }

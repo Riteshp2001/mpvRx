@@ -1062,7 +1062,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="btn_label_custom_skip">Benutzerdefinierter Sprung</string>
   <string name="btn_label_background_playback">Hintergrundwiedergabe</string>
   <string name="btn_label_ambient">Umgebungsmodus</string>
-  <string name="btn_label_time_network">Zeit + Netzwerk</string>
+  <string name="btn_label_time_network">Uhrzeit + Netzwerk</string>
+  <string name="btn_label_equalizer">Equalizer</string>
   <string name="btn_label_none">Keine</string>
   <string name="media_info_tab_overview">Übersicht</string>
   <string name="media_info_tab_video">Video</string>

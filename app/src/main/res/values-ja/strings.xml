@@ -1063,6 +1063,7 @@
   <string name="btn_label_background_playback">バックグラウンド再生</string>
   <string name="btn_label_ambient">アンビエントモード</string>
   <string name="btn_label_time_network">時刻 + ネットワーク</string>
+  <string name="btn_label_equalizer">イコライザー</string>
   <string name="btn_label_none">なし</string>
   <string name="media_info_tab_overview">概要</string>
   <string name="media_info_tab_video">動画</string>

@@ -1063,6 +1063,7 @@
   <string name="btn_label_background_playback">التشغيل في الخلفية</string>
   <string name="btn_label_ambient">وضع الإضاءة المحيطية</string>
   <string name="btn_label_time_network">الوقت + الشبكة</string>
+  <string name="btn_label_equalizer">موازن الصوت</string>
   <string name="btn_label_none">بلا</string>
   <string name="media_info_tab_overview">نظرة عامة</string>
   <string name="media_info_tab_video">الفيديو</string>

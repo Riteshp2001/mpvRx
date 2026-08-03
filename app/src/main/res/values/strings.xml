@@ -1073,6 +1073,7 @@
   <string name="btn_label_background_playback">Background Playback</string>
   <string name="btn_label_ambient">Ambience Mode</string>
   <string name="btn_label_time_network">Time + Network</string>
+  <string name="btn_label_equalizer">Equalizer</string>
   <string name="btn_label_none">None</string>
   <string name="media_info_tab_overview">Overview</string>
   <string name="media_info_tab_video">Video</string>
