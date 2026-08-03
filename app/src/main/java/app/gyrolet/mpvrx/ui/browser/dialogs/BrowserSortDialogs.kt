@@ -20,6 +20,7 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.FolderSortType
 import app.gyrolet.mpvrx.preferences.FolderViewMode
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
+import app.gyrolet.mpvrx.preferences.NetworkSortType
 import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.preferences.VideoSortType
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -871,6 +872,164 @@ fun FileSystemSortDialog(
                 }
                 browserPreferences.manualGridColumnsEnabled.set(enabled)
               },
+            ),
+          )
+        }
+      },
+  )
+}
+
+@Composable
+fun NetworkSortDialog(
+  isOpen: Boolean,
+  onDismiss: () -> Unit,
+) {
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val networkSortType by browserPreferences.networkSortType.collectAsState()
+  val networkSortOrder by browserPreferences.networkSortOrder.collectAsState()
+  val networkLayoutMode by browserPreferences.networkLayoutMode.collectAsState()
+  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
+  val showSizeChip by browserPreferences.showSizeChip.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
+  val showExtensionField by browserPreferences.showExtensionField.collectAsState()
+  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
+  val manualGridColumnsEnabled by browserPreferences.manualGridColumnsEnabled.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  val isTablet = configuration.smallestScreenWidthDp >= 600
+  val maxColumns = if (isTablet || isLandscape) 8 else 4
+
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
+
+  val videoGridColumnSelector =
+    if (networkLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
+      GridColumnSelector(
+        label = "Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        currentValue = videoGridColumns.coerceIn(1, maxColumns),
+        onValueChange = {
+          if (isLandscape) {
+            browserPreferences.videoGridColumnsLandscape.set(it)
+          } else {
+            browserPreferences.videoGridColumnsPortrait.set(it)
+          }
+        },
+        valueRange = 1f..maxColumns.toFloat(),
+        steps = maxColumns - 2,
+      )
+    } else {
+      null
+    }
+
+  SortDialog(
+    isOpen = isOpen,
+    onDismiss = onDismiss,
+    title = stringResource(R.string.sort_view_options),
+    sortType = networkSortType.displayName,
+    onSortTypeChange = { typeName ->
+      NetworkSortType.entries.find { it.displayName == typeName }?.let {
+        browserPreferences.networkSortType.set(it)
+      }
+    },
+    sortOrderAsc = networkSortOrder.isAscending,
+    onSortOrderChange = { isAsc ->
+      browserPreferences.networkSortOrder.set(
+        if (isAsc) SortOrder.Ascending else SortOrder.Descending,
+      )
+    },
+    types =
+      listOf(
+        NetworkSortType.Title.displayName,
+        NetworkSortType.Date.displayName,
+        NetworkSortType.Size.displayName,
+      ),
+    icons =
+      listOf(
+        Icons.RoundedFilled.Title,
+        Icons.RoundedFilled.CalendarToday,
+        Icons.RoundedFilled.SwapVert,
+      ),
+    getLabelForType = { type, _ ->
+      when (type) {
+        NetworkSortType.Title.displayName -> Pair("A-Z", "Z-A")
+        NetworkSortType.Date.displayName -> Pair("Oldest", "Newest")
+        NetworkSortType.Size.displayName -> Pair("Smallest", "Largest")
+        else -> Pair("Asc", "Desc")
+      }
+    },
+    showSortOptions = true,
+    layoutModeSelector =
+      ViewModeSelector(
+        label = "Layout",
+        firstOptionLabel = "List",
+        secondOptionLabel = "Grid",
+        firstOptionIcon = Icons.RoundedFilled.ViewList,
+        secondOptionIcon = Icons.RoundedFilled.GridView,
+        isFirstOptionSelected = networkLayoutMode == MediaLayoutMode.LIST,
+        onViewModeChange = { isFirstOption ->
+          browserPreferences.networkLayoutMode.set(
+            if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID,
+          )
+        },
+      ),
+    videoGridColumnSelector = videoGridColumnSelector,
+    enableLayoutModeOptions = true,
+    visibilityToggles =
+      buildList {
+        add(
+          VisibilityToggle(
+            label = "Thumbnails",
+            checked = showVideoThumbnails,
+            onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Full Name",
+            checked = unlimitedNameLines,
+            onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Extension",
+            checked = showExtensionField,
+            onCheckedChange = { browserPreferences.showExtensionField.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Size",
+            checked = showSizeChip,
+            onCheckedChange = { browserPreferences.showSizeChip.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = "Date",
+            checked = showDateChip,
+            onCheckedChange = { browserPreferences.showDateChip.set(it) },
+          ),
+        )
+        if (networkLayoutMode == MediaLayoutMode.GRID) {
+          add(
+            VisibilityToggle(
+              label = "Manual Grid Columns",
+              checked = manualGridColumnsEnabled,
+              onCheckedChange = { enabled ->
+                browserPreferences.manualGridColumnsEnabled.set(enabled)
+              },
+            ),
+          )
+          add(
+            VisibilityToggle(
+              label = "Center Titles",
+              checked = centerGridTitles,
+              onCheckedChange = { browserPreferences.centerGridTitles.set(it) },
             ),
           )
         }

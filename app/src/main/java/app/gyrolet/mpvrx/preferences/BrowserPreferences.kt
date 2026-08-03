@@ -33,6 +33,11 @@ class BrowserPreferences(
   val videoSortType = preferenceStore.getEnum("video_sort_type", VideoSortType.Title)
   val videoSortOrder = preferenceStore.getEnum("video_sort_order", SortOrder.Ascending)
 
+  // Network sorting preferences
+  val networkSortType = preferenceStore.getEnum("network_sort_type", NetworkSortType.Title)
+  val networkSortOrder = preferenceStore.getEnum("network_sort_order", SortOrder.Ascending)
+  val networkLayoutMode = preferenceStore.getEnum("network_layout_mode", MediaLayoutMode.LIST)
+
   val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.AlbumView)
   val dualPaneForTablet = preferenceStore.getBoolean("dual_pane_for_tablet", true)
 
@@ -152,6 +157,24 @@ enum class VideoSortType {
       when (this) {
         Title -> "Title"
         Duration -> "Duration"
+        Date -> "Date"
+        Size -> "Size"
+      }
+}
+
+/**
+ * Network sorting options
+ */
+enum class NetworkSortType {
+  Title,
+  Date,
+  Size,
+  ;
+
+  val displayName: String
+    get() =
+      when (this) {
+        Title -> "Title"
         Date -> "Date"
         Size -> "Size"
       }

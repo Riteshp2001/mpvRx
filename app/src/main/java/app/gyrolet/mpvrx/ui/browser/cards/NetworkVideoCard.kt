@@ -59,6 +59,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.text.style.TextAlign
+
 @Composable
 fun NetworkVideoCard(
   file: NetworkFile,
@@ -67,6 +70,7 @@ fun NetworkVideoCard(
   modifier: Modifier = Modifier,
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
+  isGridMode: Boolean = false,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -74,7 +78,13 @@ fun NetworkVideoCard(
 
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
+  val showExtensionField by browserPreferences.showExtensionField.collectAsState()
+  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val showNetworkThumbs by appearancePreferences.showNetworkThumbnails.collectAsState()
+  val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
+
+  val displayThumb = showVideoThumbnails && showNetworkThumbs
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
   val thumbSizeDp = 64.dp
@@ -82,8 +92,8 @@ fun NetworkVideoCard(
   val thumbSizePx = with(density) { thumbSizeDp.roundToPx() }
 
   val thumbnailKey =
-    remember(file.path, thumbSizePx, showNetworkThumbs) {
-      if (showNetworkThumbs) {
+    remember(file.path, thumbSizePx, displayThumb) {
+      if (displayThumb) {
         thumbnailRepository.thumbnailKeyForNetworkPath(file.path, thumbSizePx, thumbSizePx)
       } else {
         null
@@ -106,14 +116,16 @@ fun NetworkVideoCard(
   }
 
   // On-demand generation
-  LaunchedEffect(thumbnailKey, showNetworkThumbs) {
-    if (thumbnailKey == null || !showNetworkThumbs) return@LaunchedEffect
+  LaunchedEffect(thumbnailKey, displayThumb) {
+    if (thumbnailKey == null || !displayThumb) return@LaunchedEffect
     if (thumbnail != null) return@LaunchedEffect
     thumbnail =
       withContext(Dispatchers.IO) {
         thumbnailRepository.getThumbnailForNetworkPath(file.path, thumbSizePx, thumbSizePx, connection)
       }
   }
+
+  val displayName = if (showExtensionField) file.name else file.name.substringBeforeLast('.', file.name)
 
   Card(
     modifier =
@@ -125,71 +137,62 @@ fun NetworkVideoCard(
         ),
     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
   ) {
-    Row(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .background(
-            if (isSelected) {
-              MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
-            } else {
-              Color.Transparent
-            },
-          ).padding(16.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      // Square thumbnail
-      Box(
+    if (isGridMode) {
+      Column(
         modifier =
           Modifier
-            .size(thumbSizeDp)
-            .clip(AppShapeScale.medium)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(
-              onClick = onClick,
-              onLongClick = onLongClick,
-            ),
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .background(
+              if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f) else Color.Transparent,
+            ).padding(8.dp),
+        horizontalAlignment = if (centerGridTitles) Alignment.CenterHorizontally else Alignment.Start,
       ) {
-        if (thumbnail != null) {
-          Image(
-            bitmap = thumbnail!!.asImageBitmap(),
-            contentDescription =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.Crop,
-          )
-        } else {
-          Icon(
-            Icons.RoundedFilled.PlayArrow,
-            contentDescription =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
+        Box(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .aspectRatio(16f / 9f)
+              .clip(AppShapeScale.medium)
+              .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+          contentAlignment = Alignment.Center,
+        ) {
+          if (thumbnail != null) {
+            Image(
+              bitmap = thumbnail!!.asImageBitmap(),
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+              modifier = Modifier.matchParentSize(),
+              contentScale = ContentScale.Crop,
+            )
+          } else {
+            Icon(
+              Icons.RoundedFilled.PlayArrow,
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+              modifier = Modifier.size(48.dp),
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
         }
-      }
-      Spacer(modifier = Modifier.width(16.dp))
-      Column(
-        modifier = Modifier.weight(1f),
-      ) {
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-          file.name,
+          displayName,
           style = MaterialTheme.typography.titleSmall,
           color = MaterialTheme.colorScheme.onSurface,
           maxLines = maxLines,
           overflow = TextOverflow.Ellipsis,
+          textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
+          modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(4.dp))
         FlowRow(
           horizontalArrangement =
-            androidx.compose.foundation.layout.Arrangement
-              .spacedBy(4.dp),
+            if (centerGridTitles) androidx.compose.foundation.layout.Arrangement.Center
+            else androidx.compose.foundation.layout.Arrangement.Start,
           verticalArrangement =
-            androidx.compose.foundation.layout.Arrangement
-              .spacedBy(4.dp),
+            androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
         ) {
           if (showSizeChip && file.size > 0) {
             Text(
@@ -204,7 +207,7 @@ fun NetworkVideoCard(
               color = MaterialTheme.colorScheme.onSurface,
             )
           }
-          if (file.lastModified > 0) {
+          if (showDateChip && file.lastModified > 0) {
             Text(
               formatDate(file.lastModified),
               style = MaterialTheme.typography.labelSmall,
@@ -216,6 +219,102 @@ fun NetworkVideoCard(
                   ).padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
+          }
+        }
+      }
+    } else {
+      Row(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .background(
+              if (isSelected) {
+                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
+              } else {
+                Color.Transparent
+              },
+            ).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        // Square thumbnail
+        Box(
+          modifier =
+            Modifier
+              .size(thumbSizeDp)
+              .clip(AppShapeScale.medium)
+              .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+              .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+              ),
+          contentAlignment = Alignment.Center,
+        ) {
+          if (thumbnail != null) {
+            Image(
+              bitmap = thumbnail!!.asImageBitmap(),
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+              modifier = Modifier.matchParentSize(),
+              contentScale = ContentScale.Crop,
+            )
+          } else {
+            Icon(
+              Icons.RoundedFilled.PlayArrow,
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+              modifier = Modifier.size(48.dp),
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(
+          modifier = Modifier.weight(1f),
+        ) {
+          Text(
+            displayName,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+          )
+          Spacer(modifier = Modifier.height(4.dp))
+          FlowRow(
+            horizontalArrangement =
+              androidx.compose.foundation.layout.Arrangement
+                .spacedBy(4.dp),
+            verticalArrangement =
+              androidx.compose.foundation.layout.Arrangement
+                .spacedBy(4.dp),
+          ) {
+            if (showSizeChip && file.size > 0) {
+              Text(
+                formatFileSize(file.size),
+                style = MaterialTheme.typography.labelSmall,
+                modifier =
+                  Modifier
+                    .background(
+                      MaterialTheme.colorScheme.surfaceContainerHigh,
+                      AppShapeScale.small,
+                    ).padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+            }
+            if (showDateChip && file.lastModified > 0) {
+              Text(
+                formatDate(file.lastModified),
+                style = MaterialTheme.typography.labelSmall,
+                modifier =
+                  Modifier
+                    .background(
+                      MaterialTheme.colorScheme.surfaceContainerHigh,
+                      AppShapeScale.small,
+                    ).padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+            }
           }
         }
       }

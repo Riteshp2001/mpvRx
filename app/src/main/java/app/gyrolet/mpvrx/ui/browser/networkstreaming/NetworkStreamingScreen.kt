@@ -95,31 +95,99 @@ object NetworkStreamingScreen : Screen {
       onExpandedChange = {},
     )
 
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var isSearching by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    val filteredConnections =
+      remember(connections, searchQuery) {
+        if (searchQuery.isBlank()) {
+          connections
+        } else {
+          connections.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+              it.host.contains(searchQuery, ignoreCase = true) ||
+              it.protocol.displayName.contains(searchQuery, ignoreCase = true)
+          }
+        }
+      }
+
+    androidx.activity.compose.BackHandler(enabled = isSearching) {
+      isSearching = false
+      searchQuery = ""
+    }
+
     Scaffold(
       topBar = {
-        BrowserTopBar(
-          title = stringResource(R.string.ui_network),
-          isInSelectionMode = false,
-          selectedCount = 0,
-          totalCount = 0,
-          onBackClick = null, // No back button for network screen (root tab)
-          onCancelSelection = { },
-          onSortClick = null,
-          // Search functionality disabled for production
-          onSearchClick = null,
-          onSettingsClick = {
-            backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
-          },
-          onDeleteClick = null,
-          onRenameClick = null,
-          isSingleSelection = false,
-          onInfoClick = null,
-          onShareClick = null,
-          onPlayClick = null,
-          onSelectAll = null,
-          onInvertSelection = null,
-          onDeselectAll = null,
-        )
+        if (isSearching) {
+          SearchBar(
+            inputField = {
+              SearchBarDefaults.InputField(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onSearch = { },
+                expanded = false,
+                onExpandedChange = { },
+                placeholder = {
+                  Text(stringResource(R.string.settings_search_title))
+                },
+                leadingIcon = {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.Search,
+                    contentDescription = stringResource(R.string.settings_search_title),
+                  )
+                },
+                trailingIcon = {
+                  IconButton(
+                    onClick = {
+                      isSearching = false
+                      searchQuery = ""
+                    },
+                  ) {
+                    Icon(
+                      imageVector = Icons.RoundedFilled.Close,
+                      contentDescription = stringResource(R.string.generic_cancel),
+                    )
+                  }
+                },
+                modifier = Modifier.focusRequester(focusRequester),
+              )
+            },
+            expanded = false,
+            onExpandedChange = { },
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp,
+          ) {
+            // Empty search bar content
+          }
+        } else {
+          BrowserTopBar(
+            title = stringResource(R.string.ui_network),
+            isInSelectionMode = false,
+            selectedCount = 0,
+            totalCount = connections.size,
+            onBackClick = null, // No back button for network screen (root tab)
+            onCancelSelection = { },
+            onSortClick = null,
+            onSearchClick = { isSearching = true },
+            onSettingsClick = {
+              backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
+            },
+            onDeleteClick = null,
+            onRenameClick = null,
+            isSingleSelection = false,
+            onInfoClick = null,
+            onShareClick = null,
+            onPlayClick = null,
+            onSelectAll = null,
+            onInvertSelection = null,
+            onDeselectAll = null,
+          )
+        }
       },
       floatingActionButton = {
         val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
@@ -232,7 +300,7 @@ object NetworkStreamingScreen : Screen {
                       .stringResource(app.gyrolet.mpvrx.R.string.ui_no_network_connections),
                   style = MaterialTheme.typography.titleMedium,
                   fontWeight = FontWeight.Bold,
-                  color = MaterialTheme.colorScheme.onSurface, // a
+                  color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -247,8 +315,47 @@ object NetworkStreamingScreen : Screen {
               }
             }
           }
+        } else if (filteredConnections.isEmpty()) {
+          item {
+            Card(
+              modifier = Modifier.fillMaxWidth(),
+              colors =
+                CardDefaults.cardColors(
+                  containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+              Column(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Search,
+                  contentDescription = null,
+                  modifier = Modifier.size(48.dp),
+                  tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                  text = "No matching connections",
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = FontWeight.Bold,
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                  text = "No network connections match '$searchQuery'",
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  textAlign = TextAlign.Center,
+                )
+              }
+            }
+          }
         } else {
-          items(connections, key = { it.id }) { connection ->
+          items(filteredConnections, key = { it.id }) { connection ->
             val status = connectionStatuses[connection.id]
             NetworkConnectionCard(
               connection = connection,
@@ -259,13 +366,12 @@ object NetworkStreamingScreen : Screen {
               onEdit = { conn -> editingConnection = conn },
               onDelete = { conn -> viewModel.deleteConnection(conn) },
               onBrowse = { conn ->
-                // Navigate to browser screen if connected
                 if (status?.isConnected == true) {
                   backstack.add(
                     NetworkBrowserScreen(
                       connectionId = conn.id,
                       connectionName = conn.name,
-                      currentPath = "/", // Always start at root - conn.path is already included in connection
+                      currentPath = "/",
                     ),
                   )
                 }
