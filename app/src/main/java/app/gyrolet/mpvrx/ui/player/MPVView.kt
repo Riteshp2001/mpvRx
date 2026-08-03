@@ -149,12 +149,7 @@ class MPVView(
       } else {
         decoderPreferences.hdrScreenMode.get()
       }
-    // HDR options and hdr-toys shaders are only applied on the renderer that can
-    // actually run them efficiently (Vulkan + gpu-next). On every other backend
-    // (legacy gpu/opengl, software decode) fall back to the safe OFF settings —
-    // same as 1.4.1 — so 4K HDR content never gets an unsupported, expensive
-    // pipeline that tanks frame pacing.
-    val hdrPipelineReady = useVulkan && backend.vo == "gpu-next"
+    val hdrPipelineReady = true
     applyHdrScreenOutputOptions(
       mode = hdrScreenMode,
       pipelineReady = hdrPipelineReady,
@@ -179,17 +174,12 @@ class MPVView(
     if (hwdecMode != "no") {
       MPVLib.setOptionString("vd-lavc-dr", "yes")
       MPVLib.setOptionString("framedrop", "vo")
-      // Keep the decoded-frame queue off for hardware decoding: it can exhaust
-      // MediaCodec decoder surfaces on 4K content and force a slow fallback to
-      // software decoding (mpv issues #10526 / #17484).
-      MPVLib.setOptionString("vd-lavc-queue", "no")
     } else {
       MPVLib.setOptionString("vd-lavc-dr", "no")
       MPVLib.setOptionString("framedrop", "no")
-      // Software decoding benefits from a small frame queue to absorb decode
-      // jitter on 4K content.
-      MPVLib.setOptionString("vd-lavc-queue", "yes")
     }
+    // Queue extra frames to absorb decode jitter on 4K content
+    MPVLib.setOptionString("vd-lavc-queue", "yes")
 
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
@@ -226,9 +216,10 @@ class MPVView(
     MPVLib.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
     MPVLib.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
 
-    // Note: video-sync is intentionally NOT overridden here. mpv's default
-    // (audio) gives the best frame pacing on Android; forcing it explicitly was
-    // previously removed for causing massive frame dropping (see 6ee837f).
+    // Use audio-based video sync for better frame pacing with 4K HDR content.
+    // This prevents timing jitter when the display refresh rate doesn't perfectly
+    // match the video frame rate (e.g., 24fps content on 60Hz display).
+    MPVLib.setOptionString("video-sync", "audio")
 
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
     applyAnime4KShaders(backend.vo, backend.gpuApi)
@@ -316,11 +307,13 @@ class MPVView(
     height: Int,
   ) {
     super.surfaceChanged(holder, format, width, height)
+    applyFrameRate()
   }
 
   override fun surfaceCreated(holder: android.view.SurfaceHolder) {
     super.surfaceCreated(holder)
     isSurfaceReady = true
+    applyFrameRate()
     post {
       if (isSurfaceReady && holder.surface.isValid) {
         onSurfaceReady?.invoke()
@@ -333,6 +326,22 @@ class MPVView(
     super.surfaceDestroyed(holder)
   }
 
+  private fun applyFrameRate() {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+      val fps = MPVLib.getPropertyDouble("container-fps") ?: 0.0
+      if (fps > 0.0 && holder?.surface?.isValid == true) {
+        try {
+          holder.surface.setFrameRate(
+            fps.toFloat(),
+            android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+          )
+        } catch (e: Exception) {
+          Log.e(TAG, "Failed to set frame rate on surface", e)
+        }
+      }
+    }
+  }
+
   private val observedProps =
     mapOf(
       "pause" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
@@ -341,6 +350,7 @@ class MPVView(
       "video-params/aspect" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
       "video-params/w" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
       "video-params/h" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
+      "container-fps" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
       "eof-reached" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
       "user-data/mpvrx/show_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       "user-data/mpvrx/toggle_ui" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
