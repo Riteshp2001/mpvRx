@@ -315,6 +315,12 @@ object PreferencesScreen : Screen {
               icon = Icons.Alternatives.AdvancedSettings,
               screen = AdvancedPreferencesScreen,
             ),
+            SettingsDestination(
+              title = stringResource(R.string.pref_codecs_title),
+              summary = stringResource(R.string.pref_codecs_summary),
+              icon = Icons.RoundedFilled.Memory,
+              screen = CodecCapabilitiesScreen,
+            ),
           ),
       ),
       SettingsSection(

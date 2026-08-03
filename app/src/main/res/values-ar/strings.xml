@@ -288,6 +288,9 @@
   <string name="pref_audio_volume_boost_cap">حد تعزيز مستوى الصوت</string>
   <string name="pref_advanced">متقدم</string>
   <string name="pref_advanced_summary">موقع الإعداد، mpv.conf</string>
+  <string name="pref_codecs_title">الترميزات المدعومة</string>
+  <string name="pref_codecs_summary">التسريع العتادي مقابل فك التشفير البرمجي على هذا الجهاز</string>
+
   <string name="pref_section_app_language">لغة التطبيق</string>
   <string name="pref_app_language_title">اللغة</string>
   <string name="pref_app_language_system_default">إعداد النظام الافتراضي</string>
@@ -1625,4 +1628,36 @@
   <string name="secure_folder_deleted_partial">تم حذف %1$d، وفشل %2$d</string>
   <string name="secure_folder_delete_failed">فشل الحذف: %1$s</string>
   <string name="secure_folder_progress_format">%1$d من %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d عتادي • %2$d فك تشفير برمجي</string>
+  <string name="pref_codecs_banner_title">فك التشفير العتادي مقابل البرمجي</string>
+  <string name="pref_codecs_banner_desc">تقوم أدوات فك التشفير العتادية (⚡) بفك تشفير الفيديو مباشرة على معالج الفيديو/الرسوميات، مما يستهلك طاقة أقل. بينما تعمل البرمجية (💻) على المعالج الرئيسي مما يزيد من استهلاك البطارية والحرارة.</string>
+  <string name="pref_codecs_core_title">حالة ترميزات الفيديو الأساسية</string>
+  <string name="pref_codecs_search_placeholder">البحث عن اسم الترميز أو التنسيق أو MIME...</string>
+  <string name="pref_codecs_filter_all">الكل (%d)</string>
+  <string name="pref_codecs_filter_hardware">عتادي ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">برمجي 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">فيديو (%d)</string>
+  <string name="pref_codecs_filter_audio">صوت (%d)</string>
+  <string name="pref_codecs_list_header">قائمة أدوات فك التشفير التفصيلية (%d)</string>
+  <string name="pref_codecs_empty">لم يتم العثور على ترميزات مطابقة.</string>
+  <string name="pref_codecs_badge_hardware">⚡ عتادي</string>
+  <string name="pref_codecs_badge_software">💻 برمجي</string>
+  <string name="pref_codecs_badge_hw_short">⚡ عتادي</string>
+  <string name="pref_codecs_badge_sw_short">💻 برمجي</string>
+  <string name="pref_codecs_no_decoder">لم يتم الإبلاغ عن أداة فك تشفير</string>
+  <string name="pref_codecs_max_limit">الحد الأقصى: %s</string>
+  <string name="pref_codecs_max_resolution">أقصى دقة: %s</string>
+  <string name="pref_codecs_mime_type">نوع MIME: %s</string>
+  <string name="pref_codecs_canonical_name">الاسم المعتمد: %s</string>
+  <string name="pref_codecs_max_instances">أقصى عدد جلسات متزامنة: %d</string>
+  <string name="pref_codecs_supported_profiles">الأنماط المدعومة:</string>
+  <string name="pref_codecs_hdr_tag">HDR 10 بت</string>
+  <string name="pref_codecs_report_copied">تم نسخ تقرير الترميزات إلى الحافظة</string>
+  <string name="pref_codecs_bitrate_range">نطاق معدل البت: %s</string>
+  <string name="pref_codecs_sample_rates">معدلات العينات المدعومة:</string>
+  <string name="pref_codecs_max_channels">أقصى عدد قنوات: %d</string>
+  <string name="pref_codecs_color_formats">تنسيقات الألوان المدعومة:</string>
+  <string name="pref_codecs_hardware_features">ميزات العتاد:</string>
+  <string name="pref_codecs_min_resolution">أدنى دقة: %s</string>
+  <string name="pref_codecs_alignment">محاذاة البكسل: %1$dx%2$d</string>
 </resources>

@@ -1139,6 +1139,15 @@ object SearchablePreferences {
           screen = AdvancedPreferencesScreen,
         ),
       )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_codecs_title,
+          summaryRes = R.string.pref_codecs_summary,
+          keywords = listOf("codec", "codecs", "hardware", "software", "decoder", "decoding", "av1", "hevc", "h264", "vp9", "hardware acceleration", "gpu", "cpu", "battery", "heating", "media", "mime"),
+          category = "Advanced",
+          screen = CodecCapabilitiesScreen,
+        ),
+      )
 
       // AI / Intelligence
       add(
