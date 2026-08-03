@@ -45,7 +45,7 @@ fun VisualizerStyleSheet(
           ),
       )
       LazyColumn {
-        items(AudioVisualizerStyle.entries) { style ->
+        items(AudioVisualizerStyle.entries, key = { it.name }) { style ->
           AudioTrackRow(
             title = stringResource(style.title),
             isSelected = selectedStyle == style,

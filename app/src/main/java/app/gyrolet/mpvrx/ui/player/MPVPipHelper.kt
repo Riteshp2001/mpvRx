@@ -30,6 +30,8 @@ import `is`.xyz.mpv.MPVLib
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
+import androidx.core.content.ContextCompat
+
 private const val PIP_INTENTS_FILTER = "pip_action"
 private const val PIP_INTENT_ACTION = "pip_action_code"
 private const val PIP_PLAY = 1
@@ -73,11 +75,7 @@ class MPVPipHelper(
       }
 
     val filter = IntentFilter(PIP_INTENTS_FILTER)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-      activity.registerReceiver(pipReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-    } else {
-      activity.registerReceiver(pipReceiver, filter)
-    }
+    ContextCompat.registerReceiver(activity, pipReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
   }
 
   private fun unregisterPipReceiver() {

@@ -58,7 +58,7 @@ fun SyncplaySheet(
 
         Text(stringResource(R.string.syncplay_users_in_room), style = MaterialTheme.typography.titleMedium)
         LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-          items(state.users) { user ->
+          items(state.users, key = { it }) { user ->
             Text("- $user", modifier = Modifier.padding(vertical = 4.dp))
           }
         }

@@ -225,7 +225,7 @@ object FoldersPreferencesScreen : Screen {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            items(blacklistedFoldersList) { folderPath ->
+            items(blacklistedFoldersList, key = { it }) { folderPath ->
               BlacklistedFolderItem(
                 folderPath = folderPath,
                 isSelected = selectionState.isSelected(folderPath),
@@ -496,7 +496,7 @@ private fun AddFolderDialog(
         Text(stringResource(R.string.pref_folders_no_folders))
       } else {
         LazyColumn(modifier = Modifier.fillMaxWidth().height(400.dp)) {
-          items(availableFolders) { folder ->
+          items(availableFolders, key = { it.path }) { folder ->
             Row(
               modifier =
                 Modifier

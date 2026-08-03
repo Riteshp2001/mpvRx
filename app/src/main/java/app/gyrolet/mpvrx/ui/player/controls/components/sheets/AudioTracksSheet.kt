@@ -77,7 +77,7 @@ fun AudioTracksSheet(
       )
 
       LazyColumn {
-        items(tracks) {
+        items(tracks, key = { it.id }) {
           AudioTrackRow(
             title = getTrackTitle(it),
             isSelected = it.isSelected,
@@ -101,7 +101,7 @@ fun AudioTracksSheet(
             LazyRow(
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
             ) {
-              items(AudioChannels.entries) {
+              items(AudioChannels.entries, key = { it.name }) {
                 FilterChip(
                   selected = audioChannels == it,
                   onClick = {
