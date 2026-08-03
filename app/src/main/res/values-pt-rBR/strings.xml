@@ -288,6 +288,9 @@ Próximo: NEXT</string>
   <string name="pref_audio_volume_boost_cap">Limite de aumento de volume</string>
   <string name="pref_advanced">Avançado</string>
   <string name="pref_advanced_summary">Local da configuração, mpv.conf</string>
+  <string name="pref_codecs_title">Codecs Suportados</string>
+  <string name="pref_codecs_summary">Aceleração por hardware vs. decodificação por software neste dispositivo</string>
+
   <string name="pref_section_app_language">Idioma do aplicativo</string>
   <string name="pref_app_language_title">Idioma</string>
   <string name="pref_app_language_system_default">Padrão do sistema</string>
@@ -1063,6 +1066,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="btn_label_background_playback">Reprodução em segundo plano</string>
   <string name="btn_label_ambient">Modo ambiente</string>
   <string name="btn_label_time_network">Hora + Rede</string>
+  <string name="btn_label_equalizer">Equalizador</string>
   <string name="btn_label_none">Nenhum</string>
   <string name="media_info_tab_overview">Visão geral</string>
   <string name="media_info_tab_video">Vídeo</string>
@@ -1624,4 +1628,36 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="secure_folder_deleted_partial">%1$d excluído(s), %2$d falhou(aram)</string>
   <string name="secure_folder_delete_failed">Falha ao excluir: %1$s</string>
   <string name="secure_folder_progress_format">%1$d de %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d Hardware • %2$d Decodificadores por Software</string>
+  <string name="pref_codecs_banner_title">Decodificação por Hardware vs. Software</string>
+  <string name="pref_codecs_banner_desc">Decodificadores por hardware (⚡) processam o vídeo diretamente nos chips VPU/GPU. Os por software (💻) usam o CPU, aumentando o consumo de bateria e aquecimento em 4K.</string>
+  <string name="pref_codecs_core_title">Status dos Principais Codecs de Vídeo</string>
+  <string name="pref_codecs_search_placeholder">Pesquisar nome do codec, formato ou MIME...</string>
+  <string name="pref_codecs_filter_all">Todos (%d)</string>
+  <string name="pref_codecs_filter_hardware">Hardware ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">Software 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">Vídeo (%d)</string>
+  <string name="pref_codecs_filter_audio">Áudio (%d)</string>
+  <string name="pref_codecs_list_header">Lista Detalhada de Decodificadores (%d)</string>
+  <string name="pref_codecs_empty">Nenhum codec correspondente encontrado.</string>
+  <string name="pref_codecs_badge_hardware">⚡ Hardware</string>
+  <string name="pref_codecs_badge_software">💻 Software</string>
+  <string name="pref_codecs_badge_hw_short">⚡ HW</string>
+  <string name="pref_codecs_badge_sw_short">💻 SW</string>
+  <string name="pref_codecs_no_decoder">Nenhum decodificador informado</string>
+  <string name="pref_codecs_max_limit">Limite Máx: %s</string>
+  <string name="pref_codecs_max_resolution">Resolução Máxima: %s</string>
+  <string name="pref_codecs_mime_type">Tipo MIME: %s</string>
+  <string name="pref_codecs_canonical_name">Nome Canônico: %s</string>
+  <string name="pref_codecs_max_instances">Instâncias Simultâneas Máximas: %d</string>
+  <string name="pref_codecs_supported_profiles">Perfis Suportados:</string>
+  <string name="pref_codecs_hdr_tag">HDR 10-Bit</string>
+  <string name="pref_codecs_report_copied">Relatório de codecs copiado para a área de transferência</string>
+  <string name="pref_codecs_bitrate_range">Faixa de Taxa de Bits: %s</string>
+  <string name="pref_codecs_sample_rates">Taxas de Amostragem Suportadas:</string>
+  <string name="pref_codecs_max_channels">Canais Máximos: %d</string>
+  <string name="pref_codecs_color_formats">Formatos de Cor Suportados:</string>
+  <string name="pref_codecs_hardware_features">Recursos de Hardware:</string>
+  <string name="pref_codecs_min_resolution">Resolução Mínima: %s</string>
+  <string name="pref_codecs_alignment">Alinhamento de Pixels: %1$dx%2$d</string>
 </resources>

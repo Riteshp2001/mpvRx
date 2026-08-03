@@ -288,6 +288,9 @@
   <string name="pref_audio_volume_boost_cap">Предел усиления громкости</string>
   <string name="pref_advanced">Расширенные</string>
   <string name="pref_advanced_summary">Расположение конфигурации, mpv.conf</string>
+  <string name="pref_codecs_title">Поддерживаемые кодеки</string>
+  <string name="pref_codecs_summary">Аппаратное ускорение и программное декодирование на этом устройстве</string>
+
   <string name="pref_section_app_language">Язык приложения</string>
   <string name="pref_app_language_title">Язык</string>
   <string name="pref_app_language_system_default">Как в системе</string>
@@ -1063,6 +1066,7 @@
   <string name="btn_label_background_playback">Фоновое воспроизведение</string>
   <string name="btn_label_ambient">Режим подсветки</string>
   <string name="btn_label_time_network">Время + Сеть</string>
+  <string name="btn_label_equalizer">Эквалайзер</string>
   <string name="btn_label_none">Нет</string>
   <string name="media_info_tab_overview">Обзор</string>
   <string name="media_info_tab_video">Видео</string>
@@ -1624,4 +1628,36 @@
   <string name="secure_folder_deleted_partial">Удалено %1$d, ошибка %2$d</string>
   <string name="secure_folder_delete_failed">Ошибка удаления: %1$s</string>
   <string name="secure_folder_progress_format">%1$d из %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d аппаратных • %2$d программных декодеров</string>
+  <string name="pref_codecs_banner_title">Аппаратное и программное декодирование</string>
+  <string name="pref_codecs_banner_desc">Аппаратные декодеры (⚡) декодируют видео непосредственно на VPU/GPU, расходуя минимум энергии. Программные декодеры (💻) работают на ЦП, вызывая нагрев и разряд батареи при воспроизведении 4K или высоких битрейтов.</string>
+  <string name="pref_codecs_core_title">Статус основных видеокодеков</string>
+  <string name="pref_codecs_search_placeholder">Поиск кодека, формата или MIME...</string>
+  <string name="pref_codecs_filter_all">Все (%d)</string>
+  <string name="pref_codecs_filter_hardware">Аппаратные ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">Программные 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">Видео (%d)</string>
+  <string name="pref_codecs_filter_audio">Аудио (%d)</string>
+  <string name="pref_codecs_list_header">Подробный список декодеров (%d)</string>
+  <string name="pref_codecs_empty">Кодеки по текущему запросу не найдены.</string>
+  <string name="pref_codecs_badge_hardware">⚡ Аппаратный</string>
+  <string name="pref_codecs_badge_software">💻 Программный</string>
+  <string name="pref_codecs_badge_hw_short">⚡ HW</string>
+  <string name="pref_codecs_badge_sw_short">💻 SW</string>
+  <string name="pref_codecs_no_decoder">Декодер не обнаружен</string>
+  <string name="pref_codecs_max_limit">Макс. предел: %s</string>
+  <string name="pref_codecs_max_resolution">Макс. разрешение: %s</string>
+  <string name="pref_codecs_mime_type">Тип MIME: %s</string>
+  <string name="pref_codecs_canonical_name">Каноническое имя: %s</string>
+  <string name="pref_codecs_max_instances">Макс. одновременных экземпляров: %d</string>
+  <string name="pref_codecs_supported_profiles">Поддерживаемые профили:</string>
+  <string name="pref_codecs_hdr_tag">10-бит HDR</string>
+  <string name="pref_codecs_report_copied">Отчет о кодеках скопирован в буфер обмена</string>
+  <string name="pref_codecs_bitrate_range">Диапазон битрейта: %s</string>
+  <string name="pref_codecs_sample_rates">Поддерживаемые частоты дискретизации:</string>
+  <string name="pref_codecs_max_channels">Макс. каналов: %d</string>
+  <string name="pref_codecs_color_formats">Поддерживаемые форматы цвета:</string>
+  <string name="pref_codecs_hardware_features">Аппаратные функции:</string>
+  <string name="pref_codecs_min_resolution">Мин. разрешение: %s</string>
+  <string name="pref_codecs_alignment">Выравнивание пикселей: %1$dx%2$d</string>
 </resources>

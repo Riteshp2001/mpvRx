@@ -288,6 +288,9 @@
   <string name="pref_audio_volume_boost_cap">音量ブースト上限</string>
   <string name="pref_advanced">詳細設定</string>
   <string name="pref_advanced_summary">設定の場所、mpv.conf</string>
+  <string name="pref_codecs_title">対応コーデック</string>
+  <string name="pref_codecs_summary">このデバイスのハードウェアアクセラレーションとソフトウェアデコード対応状況</string>
+
   <string name="pref_section_app_language">アプリの言語</string>
   <string name="pref_app_language_title">言語</string>
   <string name="pref_app_language_system_default">システムのデフォルト</string>
@@ -1063,6 +1066,7 @@
   <string name="btn_label_background_playback">バックグラウンド再生</string>
   <string name="btn_label_ambient">アンビエントモード</string>
   <string name="btn_label_time_network">時刻 + ネットワーク</string>
+  <string name="btn_label_equalizer">イコライザー</string>
   <string name="btn_label_none">なし</string>
   <string name="media_info_tab_overview">概要</string>
   <string name="media_info_tab_video">動画</string>
@@ -1624,4 +1628,36 @@
   <string name="secure_folder_deleted_partial">%1$d件削除、%2$d件失敗</string>
   <string name="secure_folder_delete_failed">削除に失敗しました: %1$s</string>
   <string name="secure_folder_progress_format">%1$d / %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d ハードウェア • %2$d ソフトウェアデコーダー</string>
+  <string name="pref_codecs_banner_title">ハードウェア vs ソフトウェアデコード</string>
+  <string name="pref_codecs_banner_desc">ハードウェアデコーダー (⚡) は専用の VPU/GPU チップで直接処理し、省電力です。ソフトウェアデコーダー (💻) は CPU で実行されるため、4K などの再生時にバッテリー消費と発熱が増加します。</string>
+  <string name="pref_codecs_core_title">主要ビデオコーデックのステータス</string>
+  <string name="pref_codecs_search_placeholder">コーデック名、フォーマット、MIMEを検索...</string>
+  <string name="pref_codecs_filter_all">すべて (%d)</string>
+  <string name="pref_codecs_filter_hardware">ハードウェア ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">ソフトウェア 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">動画 (%d)</string>
+  <string name="pref_codecs_filter_audio">音声 (%d)</string>
+  <string name="pref_codecs_list_header">デコーダー詳細リスト (%d)</string>
+  <string name="pref_codecs_empty">該当するコーデックが見つかりません。</string>
+  <string name="pref_codecs_badge_hardware">⚡ ハードウェア</string>
+  <string name="pref_codecs_badge_software">💻 ソフトウェア</string>
+  <string name="pref_codecs_badge_hw_short">⚡ HW</string>
+  <string name="pref_codecs_badge_sw_short">💻 SW</string>
+  <string name="pref_codecs_no_decoder">デコーダーが報告されていません</string>
+  <string name="pref_codecs_max_limit">最大上限: %s</string>
+  <string name="pref_codecs_max_resolution">最大解像度: %s</string>
+  <string name="pref_codecs_mime_type">MIMEタイプ: %s</string>
+  <string name="pref_codecs_canonical_name">標準名: %s</string>
+  <string name="pref_codecs_max_instances">最大同時インスタンス数: %d</string>
+  <string name="pref_codecs_supported_profiles">対応プロファイル:</string>
+  <string name="pref_codecs_hdr_tag">10-Bit HDR</string>
+  <string name="pref_codecs_report_copied">コーデックレポートをクリップボードにコピーしました</string>
+  <string name="pref_codecs_bitrate_range">ビットレート範囲: %s</string>
+  <string name="pref_codecs_sample_rates">対応サンプリングレート:</string>
+  <string name="pref_codecs_max_channels">最大チャンネル数: %d</string>
+  <string name="pref_codecs_color_formats">対応カラーフォーマット:</string>
+  <string name="pref_codecs_hardware_features">ハードウェア機能:</string>
+  <string name="pref_codecs_min_resolution">最小解像度: %s</string>
+  <string name="pref_codecs_alignment">ピクセルアライメント: %1$dx%2$d</string>
 </resources>

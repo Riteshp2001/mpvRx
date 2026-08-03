@@ -1,8 +1,10 @@
 /*
- * SPDX-License-Identifier: CC-BY-NC-4.0
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
- * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  */
 
 package app.gyrolet.mpvrx.preferences
@@ -46,6 +48,7 @@ enum class PlayerButton(
   BACKGROUND_PLAYBACK(Icons.RoundedFilled.Headset),
   AMBIENT_MODE(Icons.RoundedFilled.BlurOff),
   TIME_NETWORK(Icons.RoundedFilled.AccessTime),
+  EQUALIZER(Icons.RoundedFilled.Equalizer),
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 
@@ -92,5 +95,6 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.BACKGROUND_PLAYBACK -> stringResource(R.string.btn_label_background_playback)
     PlayerButton.AMBIENT_MODE -> stringResource(R.string.btn_label_ambient)
     PlayerButton.TIME_NETWORK -> stringResource(R.string.btn_label_time_network)
+    PlayerButton.EQUALIZER -> stringResource(R.string.btn_label_equalizer)
     PlayerButton.NONE -> stringResource(R.string.btn_label_none)
   }

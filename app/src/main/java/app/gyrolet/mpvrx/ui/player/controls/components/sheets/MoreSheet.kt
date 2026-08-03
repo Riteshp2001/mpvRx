@@ -1,8 +1,10 @@
 /*
- * SPDX-License-Identifier: CC-BY-NC-4.0
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
- * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  */
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
@@ -68,6 +70,7 @@ fun MoreSheet(
   onDismissRequest: () -> Unit,
   onEnterFiltersPanel: () -> Unit,
   onEnterLuaScriptsPanel: () -> Unit,
+  onEnterEqualizerSheet: (() -> Unit)? = null,
   anime4KUiState: Anime4KUiState,
   onAnime4KModeSelected: (Anime4KManager.Mode) -> Unit,
   modifier: Modifier = Modifier,
@@ -126,6 +129,17 @@ fun MoreSheet(
                   onDismissRequest = { isSleepTimerDialogShown = false },
                   onTimeSelect = onStartTimer,
                 )
+              }
+            }
+          }
+          if (onEnterEqualizerSheet != null) {
+            TextButton(onClick = onEnterEqualizerSheet) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              ) {
+                Icon(imageVector = Icons.RoundedFilled.Equalizer, contentDescription = null)
+                Text(text = stringResource(id = R.string.btn_label_equalizer))
               }
             }
           }

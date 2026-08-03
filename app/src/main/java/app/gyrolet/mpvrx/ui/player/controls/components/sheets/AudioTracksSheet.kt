@@ -1,8 +1,10 @@
 /*
- * SPDX-License-Identifier: CC-BY-NC-4.0
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
- * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  */
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
@@ -50,6 +52,7 @@ fun AudioTracksSheet(
   onSelect: (TrackNode) -> Unit,
   onAddAudioTrack: () -> Unit,
   onOpenDelayPanel: () -> Unit,
+  onOpenEqualizerSheet: (() -> Unit)? = null,
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -62,6 +65,11 @@ fun AudioTracksSheet(
         stringResource(R.string.player_sheets_add_ext_audio),
         onAddAudioTrack,
         actions = {
+          if (onOpenEqualizerSheet != null) {
+            IconButton(onClick = onOpenEqualizerSheet) {
+              Icon(Icons.RoundedFilled.Equalizer, stringResource(R.string.btn_label_equalizer))
+            }
+          }
           IconButton(onClick = onOpenDelayPanel) {
             Icon(Icons.RoundedFilled.AvTimer, null)
           }
@@ -101,11 +109,41 @@ fun AudioTracksSheet(
                     if (it == AudioChannels.ReverseStereo) {
                       MPVLib.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
                     } else {
-                      MPVLib.setPropertyString(AudioChannels.ReverseStereo.property, "")
+                      MPVLib.setPropertyString(it.property, it.value)
                     }
-                    MPVLib.setPropertyString(it.property, it.value)
                   },
                   label = { Text(text = stringResource(id = it.title)) },
+                  leadingIcon = null,
+                )
+              }
+            }
+
+            val volumeNormalization by audioPreferences.volumeNormalization.collectAsState()
+            val drcEnabled by audioPreferences.drcEnabled.collectAsState()
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Text(
+              text = stringResource(id = R.string.pref_audio_effects),
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.smaller))
+            LazyRow(
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+            ) {
+              item {
+                FilterChip(
+                  selected = volumeNormalization,
+                  onClick = { audioPreferences.volumeNormalization.set(!volumeNormalization) },
+                  label = { Text(text = stringResource(id = R.string.pref_audio_volume_normalization_title)) },
+                  leadingIcon = null,
+                )
+              }
+              item {
+                FilterChip(
+                  selected = drcEnabled,
+                  onClick = { audioPreferences.drcEnabled.set(!drcEnabled) },
+                  label = { Text(text = stringResource(id = R.string.pref_audio_drc_title)) },
                   leadingIcon = null,
                 )
               }

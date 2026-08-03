@@ -1,8 +1,10 @@
 /*
- * SPDX-License-Identifier: CC-BY-NC-4.0
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * This work is licensed under Creative Commons Attribution-NonCommercial 4.0 International License.
- * To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  */
 
 package app.gyrolet.mpvrx.ui.preferences
@@ -293,6 +295,20 @@ object AudioPreferencesScreen : Screen {
                 summary = {
                   Text(
                     stringResource(R.string.pref_audio_volume_normalization_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+              val drcEnabled by preferences.drcEnabled.collectAsState()
+              SwitchPreference(
+                value = drcEnabled,
+                onValueChange = { preferences.drcEnabled.set(it) },
+                title = { Text(stringResource(R.string.pref_audio_drc_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_audio_drc_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

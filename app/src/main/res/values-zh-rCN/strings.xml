@@ -288,6 +288,9 @@
   <string name="pref_audio_volume_boost_cap">音量增强上限</string>
   <string name="pref_advanced">高级</string>
   <string name="pref_advanced_summary">配置位置、mpv.conf</string>
+  <string name="pref_codecs_title">支持的编解码器</string>
+  <string name="pref_codecs_summary">此设备上的硬件加速与软件解码支持情况</string>
+
   <string name="pref_section_app_language">应用语言</string>
   <string name="pref_app_language_title">语言</string>
   <string name="pref_app_language_system_default">跟随系统</string>
@@ -1063,6 +1066,7 @@
   <string name="btn_label_background_playback">后台播放</string>
   <string name="btn_label_ambient">环境光模式</string>
   <string name="btn_label_time_network">时间 + 网络</string>
+  <string name="btn_label_equalizer">均衡器</string>
   <string name="btn_label_none">无</string>
   <string name="media_info_tab_overview">概览</string>
   <string name="media_info_tab_video">视频</string>
@@ -1624,4 +1628,36 @@
   <string name="secure_folder_deleted_partial">已删除 %1$d 个，%2$d 个失败</string>
   <string name="secure_folder_delete_failed">删除失败：%1$s</string>
   <string name="secure_folder_progress_format">%1$d / %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d 个硬件解码器 • %2$d 个软件解码器</string>
+  <string name="pref_codecs_banner_title">硬件解码与软件解码</string>
+  <string name="pref_codecs_banner_desc">硬件解码器 (⚡) 直接在专用 VPU/GPU 芯片上解码视频，功耗极低。软件解码器 (💻) 在 CPU 上运行，在播放 4K 或高码率视频（如无硬解支持的 AV1）时可能导致发热和电池快耗。</string>
+  <string name="pref_codecs_core_title">核心视频编解码器状态</string>
+  <string name="pref_codecs_search_placeholder">搜索编解码器名称、格式或 MIME...</string>
+  <string name="pref_codecs_filter_all">全部 (%d)</string>
+  <string name="pref_codecs_filter_hardware">硬件解码 ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">软件解码 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">视频 (%d)</string>
+  <string name="pref_codecs_filter_audio">音频 (%d)</string>
+  <string name="pref_codecs_list_header">解码器详细列表 (%d)</string>
+  <string name="pref_codecs_empty">未找到匹配的编解码器。</string>
+  <string name="pref_codecs_badge_hardware">⚡ 硬件解码</string>
+  <string name="pref_codecs_badge_software">💻 软件解码</string>
+  <string name="pref_codecs_badge_hw_short">⚡ 硬解</string>
+  <string name="pref_codecs_badge_sw_short">💻 软解</string>
+  <string name="pref_codecs_no_decoder">未报告解码器</string>
+  <string name="pref_codecs_max_limit">最大限制：%s</string>
+  <string name="pref_codecs_max_resolution">最高分辨率：%s</string>
+  <string name="pref_codecs_mime_type">MIME 类型：%s</string>
+  <string name="pref_codecs_canonical_name">规范名称：%s</string>
+  <string name="pref_codecs_max_instances">最大并发实例数：%d</string>
+  <string name="pref_codecs_supported_profiles">支持的配置文件：</string>
+  <string name="pref_codecs_hdr_tag">10位 HDR</string>
+  <string name="pref_codecs_report_copied">编解码器报告已复制到剪贴板</string>
+  <string name="pref_codecs_bitrate_range">码率范围：%s</string>
+  <string name="pref_codecs_sample_rates">支持的采样率：</string>
+  <string name="pref_codecs_max_channels">最大声道数：%d</string>
+  <string name="pref_codecs_color_formats">支持的颜色格式：</string>
+  <string name="pref_codecs_hardware_features">硬件特性：</string>
+  <string name="pref_codecs_min_resolution">最低分辨率：%s</string>
+  <string name="pref_codecs_alignment">像素对齐：%1$dx%2$d</string>
 </resources>

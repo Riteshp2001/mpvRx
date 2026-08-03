@@ -288,6 +288,9 @@ Suivant : NEXT</string>
   <string name="pref_audio_volume_boost_cap">Limite d’amplification du volume</string>
   <string name="pref_advanced">Avancé</string>
   <string name="pref_advanced_summary">Emplacement de configuration, mpv.conf</string>
+  <string name="pref_codecs_title">Codecs pris en charge</string>
+  <string name="pref_codecs_summary">Accélération matérielle et décodage logiciel sur cet appareil</string>
+
   <string name="pref_section_app_language">Langue de l’application</string>
   <string name="pref_app_language_title">Langue</string>
   <string name="pref_app_language_system_default">Langue du système</string>
@@ -1063,6 +1066,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="btn_label_background_playback">Lecture en arrière-plan</string>
   <string name="btn_label_ambient">Mode ambiant</string>
   <string name="btn_label_time_network">Horaire + Réseau</string>
+  <string name="btn_label_equalizer">Égaliseur</string>
   <string name="btn_label_none">Aucun</string>
   <string name="media_info_tab_overview">Vue d’ensemble</string>
   <string name="media_info_tab_video">Vidéo</string>
@@ -1624,4 +1628,36 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="secure_folder_deleted_partial">%1$d supprimé(s), %2$d échoué(s)</string>
   <string name="secure_folder_delete_failed">Échec de la suppression : %1$s</string>
   <string name="secure_folder_progress_format">%1$d sur %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d matériels • %2$d décodeurs logiciels</string>
+  <string name="pref_codecs_banner_title">Décodage matériel ou logiciel</string>
+  <string name="pref_codecs_banner_desc">"Les décodeurs matériels (⚡) décodent le flux directement sur les puces VPU/GPU dédiées. Les décodeurs logiciels (💻) s'exécutent sur le processeur (CPU), augmentant la consommation de batterie et la chauffe lors de la lecture 4K."</string>
+  <string name="pref_codecs_core_title">Statut des codecs vidéo principaux</string>
+  <string name="pref_codecs_search_placeholder">Rechercher nom de codec, format ou MIME...</string>
+  <string name="pref_codecs_filter_all">Tous (%d)</string>
+  <string name="pref_codecs_filter_hardware">Matériel ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">Logiciel 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">Vidéo (%d)</string>
+  <string name="pref_codecs_filter_audio">Audio (%d)</string>
+  <string name="pref_codecs_list_header">Liste détaillée des décodeurs (%d)</string>
+  <string name="pref_codecs_empty">Aucun codec correspondant trouvé.</string>
+  <string name="pref_codecs_badge_hardware">⚡ Matériel</string>
+  <string name="pref_codecs_badge_software">💻 Logiciel</string>
+  <string name="pref_codecs_badge_hw_short">⚡ HW</string>
+  <string name="pref_codecs_badge_sw_short">💻 SW</string>
+  <string name="pref_codecs_no_decoder">Aucun décodeur signalé</string>
+  <string name="pref_codecs_max_limit">Limite max : %s</string>
+  <string name="pref_codecs_max_resolution">Résolution max : %s</string>
+  <string name="pref_codecs_mime_type">Type MIME : %s</string>
+  <string name="pref_codecs_canonical_name">Nom canonique : %s</string>
+  <string name="pref_codecs_max_instances">Instances simultanées max : %d</string>
+  <string name="pref_codecs_supported_profiles">Profils pris en charge :</string>
+  <string name="pref_codecs_hdr_tag">HDR 10 bits</string>
+  <string name="pref_codecs_report_copied">Rapport sur les codecs copié dans le presse-papiers</string>
+  <string name="pref_codecs_bitrate_range">Plage de débit : %s</string>
+  <string name="pref_codecs_sample_rates">"Taux d'échantillonnage pris en charge :"</string>
+  <string name="pref_codecs_max_channels">Canaux max : %d</string>
+  <string name="pref_codecs_color_formats">Formats de couleur pris en charge :</string>
+  <string name="pref_codecs_hardware_features">Fonctionnalités matérielles :</string>
+  <string name="pref_codecs_min_resolution">Résolution min : %s</string>
+  <string name="pref_codecs_alignment">Alignement des pixels : %1$dx%2$d</string>
 </resources>
