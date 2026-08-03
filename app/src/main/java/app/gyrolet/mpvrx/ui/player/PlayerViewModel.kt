@@ -4199,6 +4199,7 @@ class PlayerViewModel(
 
   fun setVideoZoom(zoom: Float) {
     _videoZoom.value = zoom
+    runCatching { MPVLib.setPropertyDouble("video-zoom", zoom.toDouble()) }
   }
 
   // Video pan (for pan & zoom feature)
