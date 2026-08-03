@@ -339,7 +339,16 @@ fun PlayerControls(
           viewModel.unpause()
         },
         decoder = decoder,
-        onUpdateDecoder = { MPVLib.setPropertyString("hwdec", it.value) },
+        onUpdateDecoder = { mode ->
+          MPVLib.setPropertyString("hwdec", mode.value)
+          if (mode.value == "no") {
+            MPVLib.setPropertyString("vd-lavc-dr", "no")
+            MPVLib.setPropertyString("framedrop", "no")
+          } else {
+            MPVLib.setPropertyString("vd-lavc-dr", "yes")
+            MPVLib.setPropertyString("framedrop", "vo")
+          }
+        },
         speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
         onSpeedChange = { MPVLib.setPropertyFloat("speed", it.toFixed(2)) },
         onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
@@ -1774,7 +1783,16 @@ fun PlayerControls(
         viewModel.unpause()
       },
       decoder = decoder,
-      onUpdateDecoder = { MPVLib.setPropertyString("hwdec", it.value) },
+      onUpdateDecoder = { mode ->
+        MPVLib.setPropertyString("hwdec", mode.value)
+        if (mode.value == "no") {
+          MPVLib.setPropertyString("vd-lavc-dr", "no")
+          MPVLib.setPropertyString("framedrop", "no")
+        } else {
+          MPVLib.setPropertyString("vd-lavc-dr", "yes")
+          MPVLib.setPropertyString("framedrop", "vo")
+        }
+      },
       speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
       onSpeedChange = { MPVLib.setPropertyFloat("speed", it.toFixed(2)) },
       onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },

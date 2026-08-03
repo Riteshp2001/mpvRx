@@ -1089,14 +1089,17 @@ private fun CodecDetailCard(codec: CodecCapabilitiesInfo) {
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Column(modifier = Modifier.weight(1f)) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
+          FlowRow(
+            verticalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+          ) {
             Text(
               text = codec.formatName,
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(modifier = Modifier.width(6.dp))
+
             Box(
               modifier = Modifier
                 .clip(CircleShape)
@@ -1121,6 +1124,31 @@ private fun CodecDetailCard(codec: CodecCapabilitiesInfo) {
                 },
               )
             }
+
+            Surface(
+              color = if (codec.isHardware) {
+                MaterialTheme.colorScheme.primaryContainer
+              } else {
+                MaterialTheme.colorScheme.tertiaryContainer
+              },
+              shape = RoundedCornerShape(12.dp),
+            ) {
+              Text(
+                text = if (codec.isHardware) {
+                  stringResource(R.string.pref_codecs_badge_hw_short)
+                } else {
+                  stringResource(R.string.pref_codecs_badge_sw_short)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (codec.isHardware) {
+                  MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                  MaterialTheme.colorScheme.onTertiaryContainer
+                },
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+              )
+            }
           }
 
           Spacer(modifier = Modifier.height(2.dp))
@@ -1137,43 +1165,14 @@ private fun CodecDetailCard(codec: CodecCapabilitiesInfo) {
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Surface(
-            color = if (codec.isHardware) {
-              MaterialTheme.colorScheme.primaryContainer
-            } else {
-              MaterialTheme.colorScheme.tertiaryContainer
-            },
-            shape = RoundedCornerShape(12.dp),
-          ) {
-            Text(
-              text = if (codec.isHardware) {
-                stringResource(R.string.pref_codecs_badge_hw_short)
-              } else {
-                stringResource(R.string.pref_codecs_badge_sw_short)
-              },
-              style = MaterialTheme.typography.labelSmall,
-              fontWeight = FontWeight.Bold,
-              color = if (codec.isHardware) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-              } else {
-                MaterialTheme.colorScheme.onTertiaryContainer
-              },
-              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-          }
-
-          Spacer(modifier = Modifier.width(6.dp))
-
-          Icon(
-            imageVector = Icons.RoundedFilled.Close,
-            contentDescription = "Toggle Details",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-              .size(18.dp)
-              .rotate(arrowRotation),
-          )
-        }
+        Icon(
+          imageVector = Icons.RoundedFilled.KeyboardArrowDown,
+          contentDescription = "Toggle Details",
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .size(24.dp)
+            .rotate(arrowRotation),
+        )
       }
 
       if (codec.maxResolution != null) {
