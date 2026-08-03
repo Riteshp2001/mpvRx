@@ -288,6 +288,9 @@ Siguiente: NEXT</string>
   <string name="pref_audio_volume_boost_cap">Límite de amplificación de volumen</string>
   <string name="pref_advanced">Avanzado</string>
   <string name="pref_advanced_summary">Ubicación de configuración, mpv.conf</string>
+  <string name="pref_codecs_title">Códecs compatibles</string>
+  <string name="pref_codecs_summary">Aceleración por hardware frente a decodificación por software en este dispositivo</string>
+
   <string name="pref_section_app_language">Idioma de la aplicación</string>
   <string name="pref_app_language_title">Idioma</string>
   <string name="pref_app_language_system_default">Predeterminado del sistema</string>
@@ -1625,4 +1628,36 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="secure_folder_deleted_partial">Se han eliminado %1$d, fallaron %2$d</string>
   <string name="secure_folder_delete_failed">Error al eliminar: %1$s</string>
   <string name="secure_folder_progress_format">%1$d de %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d por hardware • %2$d decodificadores por software</string>
+  <string name="pref_codecs_banner_title">Decodificación por hardware frente a software</string>
+  <string name="pref_codecs_banner_desc">Los decodificadores por hardware (⚡) procesan el video directamente en la VPU/GPU consumiendo mínima energía. Los de software (💻) usan la CPU, aumentando el consumo de batería y temperatura en 4K.</string>
+  <string name="pref_codecs_core_title">Estado de códecs de video principales</string>
+  <string name="pref_codecs_search_placeholder">Buscar nombre de códec, formato o MIME...</string>
+  <string name="pref_codecs_filter_all">Todos (%d)</string>
+  <string name="pref_codecs_filter_hardware">Hardware ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">Software 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">Video (%d)</string>
+  <string name="pref_codecs_filter_audio">Audio (%d)</string>
+  <string name="pref_codecs_list_header">Lista detallada de decodificadores (%d)</string>
+  <string name="pref_codecs_empty">No se encontraron códecs coincidentes.</string>
+  <string name="pref_codecs_badge_hardware">⚡ Hardware</string>
+  <string name="pref_codecs_badge_software">💻 Software</string>
+  <string name="pref_codecs_badge_hw_short">⚡ HW</string>
+  <string name="pref_codecs_badge_sw_short">💻 SW</string>
+  <string name="pref_codecs_no_decoder">No se informó decodificador</string>
+  <string name="pref_codecs_max_limit">Límite máx.: %s</string>
+  <string name="pref_codecs_max_resolution">Resolución máx.: %s</string>
+  <string name="pref_codecs_mime_type">Tipo MIME: %s</string>
+  <string name="pref_codecs_canonical_name">Nombre canónico: %s</string>
+  <string name="pref_codecs_max_instances">Instancias simultáneas máx.: %d</string>
+  <string name="pref_codecs_supported_profiles">Perfiles compatibles:</string>
+  <string name="pref_codecs_hdr_tag">HDR de 10 bits</string>
+  <string name="pref_codecs_report_copied">Informe de códecs copiado al portapapeles</string>
+  <string name="pref_codecs_bitrate_range">Rango de tasa de bits: %s</string>
+  <string name="pref_codecs_sample_rates">Tasas de muestreo compatibles:</string>
+  <string name="pref_codecs_max_channels">Canales máx.: %d</string>
+  <string name="pref_codecs_color_formats">Formatos de color compatibles:</string>
+  <string name="pref_codecs_hardware_features">Características de hardware:</string>
+  <string name="pref_codecs_min_resolution">Resolución mín.: %s</string>
+  <string name="pref_codecs_alignment">Alineación de píxeles: %1$dx%2$d</string>
 </resources>

@@ -288,6 +288,9 @@ Weiter: NEXT</string>
   <string name="pref_audio_volume_boost_cap">Grenze der Lautstärkeverstärkung</string>
   <string name="pref_advanced">Erweitert</string>
   <string name="pref_advanced_summary">Konfigurationsort, mpv.conf</string>
+  <string name="pref_codecs_title">Unterstützte Codecs</string>
+  <string name="pref_codecs_summary">Hardwarebeschleunigung vs. Software-Dekodierung auf diesem Gerät</string>
+
   <string name="pref_section_app_language">App-Sprache</string>
   <string name="pref_app_language_title">Sprache</string>
   <string name="pref_app_language_system_default">Systemstandard</string>
@@ -1625,4 +1628,36 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="secure_folder_deleted_partial">%1$d gelöscht, %2$d fehlgeschlagen</string>
   <string name="secure_folder_delete_failed">Löschen fehlgeschlagen: %1$s</string>
   <string name="secure_folder_progress_format">%1$d von %2$d · %3$d%%</string>
+  <string name="pref_codecs_decoders_summary">%1$d Hardware • %2$d Software-Decoder</string>
+  <string name="pref_codecs_banner_title">Hardware- vs. Software-Dekodierung</string>
+  <string name="pref_codecs_banner_desc">Hardware-Decoder (⚡) dekodieren Video direkt auf VPU/GPU-Chips mit minimalem Stromverbrauch. Software-Decoder (💻) laufen auf CPU-Kernen, was bei 4K oder hoher Bitrate zu Akkuverbrauch und Erwärmung führt.</string>
+  <string name="pref_codecs_core_title">Status der Haupt-Videocodecs</string>
+  <string name="pref_codecs_search_placeholder">Codec-Name, Format oder MIME suchen...</string>
+  <string name="pref_codecs_filter_all">Alle (%d)</string>
+  <string name="pref_codecs_filter_hardware">Hardware ⚡ (%d)</string>
+  <string name="pref_codecs_filter_software">Software 💻 (%d)</string>
+  <string name="pref_codecs_filter_video">Video (%d)</string>
+  <string name="pref_codecs_filter_audio">Audio (%d)</string>
+  <string name="pref_codecs_list_header">Detaillierte Decoder-Liste (%d)</string>
+  <string name="pref_codecs_empty">Keine passenden Codecs gefunden.</string>
+  <string name="pref_codecs_badge_hardware">⚡ Hardware</string>
+  <string name="pref_codecs_badge_software">💻 Software</string>
+  <string name="pref_codecs_badge_hw_short">⚡ HW</string>
+  <string name="pref_codecs_badge_sw_short">💻 SW</string>
+  <string name="pref_codecs_no_decoder">Kein Decoder gemeldet</string>
+  <string name="pref_codecs_max_limit">Max. Limit: %s</string>
+  <string name="pref_codecs_max_resolution">Max. Auflösung: %s</string>
+  <string name="pref_codecs_mime_type">MIME-Typ: %s</string>
+  <string name="pref_codecs_canonical_name">Kanonischer Name: %s</string>
+  <string name="pref_codecs_max_instances">Max. gleichzeitige Instanzen: %d</string>
+  <string name="pref_codecs_supported_profiles">Unterstützte Profile:</string>
+  <string name="pref_codecs_hdr_tag">10-Bit HDR</string>
+  <string name="pref_codecs_report_copied">Codec-Bericht in Zwischenablage kopiert</string>
+  <string name="pref_codecs_bitrate_range">Bitratenbereich: %s</string>
+  <string name="pref_codecs_sample_rates">Unterstützte Abtastraten:</string>
+  <string name="pref_codecs_max_channels">Max. Kanäle: %d</string>
+  <string name="pref_codecs_color_formats">Unterstützte Farbformate:</string>
+  <string name="pref_codecs_hardware_features">Hardware-Funktionen:</string>
+  <string name="pref_codecs_min_resolution">Min. Auflösung: %s</string>
+  <string name="pref_codecs_alignment">Pixelausrichtung: %1$dx%2$d</string>
 </resources>
