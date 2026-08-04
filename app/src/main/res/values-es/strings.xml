@@ -1589,6 +1589,11 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="secure_folder_sq_city">¿En qué ciudad naciste?</string>
   <string name="secure_folder_sq_nickname">¿Cuál era tu apodo de la infancia?</string>
   <string name="secure_folder_sq_movie">¿Cuál es tu película favorita?</string>
+  <string name="secure_folder_add_files">Añadir archivos</string>
+  <string name="secure_folder_add_files_title">Seleccionar archivos para añadir</string>
+  <string name="secure_folder_add_files_button">Añadir %1$d a Carpeta segura</string>
+  <string name="secure_folder_add_files_empty_title">No se encontraron vídeos</string>
+  <string name="secure_folder_add_files_empty_message">No hay vídeos disponibles para añadir en este momento.</string>
   <string name="secure_folder_empty_title">Nada oculto todavía</string>
   <string name="secure_folder_empty_message">Los archivos que muevas aquí no aparecerán en ningún otro lugar de la aplicación.</string>
   <string name="secure_folder_restore_confirm_title">¿Restaurar %1$d elemento(s)?</string>

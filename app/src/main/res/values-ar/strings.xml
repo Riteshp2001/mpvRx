@@ -1589,6 +1589,11 @@
   <string name="secure_folder_sq_city">في أي مدينة ولدت؟</string>
   <string name="secure_folder_sq_nickname">ما هو لقب طفولتك؟</string>
   <string name="secure_folder_sq_movie">ما هو فيلمك المفضل؟</string>
+  <string name="secure_folder_add_files">إضافة ملفات</string>
+  <string name="secure_folder_add_files_title">تحديد الملفات للإضافة</string>
+  <string name="secure_folder_add_files_button">إضافة %1$d إلى المجلد الآمن</string>
+  <string name="secure_folder_add_files_empty_title">لم يتم العثور على مقاطع فيديو</string>
+  <string name="secure_folder_add_files_empty_message">لا توجد مقاطع فيديو متاحة للإضافة الآن.</string>
   <string name="secure_folder_empty_title">لا يوجد شيء مخفي بعد</string>
   <string name="secure_folder_empty_message">الملفات التي تنقلها إلى هنا لن تظهر في أي مكان آخر في التطبيق.</string>
   <string name="secure_folder_restore_confirm_title">استعادة %1$d عنصر؟</string>

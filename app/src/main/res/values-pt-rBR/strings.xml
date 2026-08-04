@@ -1589,6 +1589,11 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="secure_folder_sq_city">Em qual cidade você nasceu?</string>
   <string name="secure_folder_sq_nickname">Qual era o seu apelido de infância?</string>
   <string name="secure_folder_sq_movie">Qual é o seu filme favorito?</string>
+  <string name="secure_folder_add_files">Adicionar arquivos</string>
+  <string name="secure_folder_add_files_title">Selecionar arquivos para adicionar</string>
+  <string name="secure_folder_add_files_button">Adicionar %1$d à Pasta Segura</string>
+  <string name="secure_folder_add_files_empty_title">Nenhum vídeo encontrado</string>
+  <string name="secure_folder_add_files_empty_message">No momento não há vídeos disponíveis para adicionar.</string>
   <string name="secure_folder_empty_title">Nada oculto ainda</string>
   <string name="secure_folder_empty_message">Os arquivos movidos para cá não aparecerão em nenhum outro lugar do aplicativo.</string>
   <string name="secure_folder_restore_confirm_title">Restaurar %1$d item(ns)?</string>

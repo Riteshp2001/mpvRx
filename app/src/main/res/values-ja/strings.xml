@@ -1589,6 +1589,11 @@
   <string name="secure_folder_sq_city">生まれた街の名前は？</string>
   <string name="secure_folder_sq_nickname">子供の頃のニックネームは？</string>
   <string name="secure_folder_sq_movie">一番好きな映画は？</string>
+  <string name="secure_folder_add_files">ファイルを追加</string>
+  <string name="secure_folder_add_files_title">追加するファイルを選択</string>
+  <string name="secure_folder_add_files_button">%1$d件を安全なフォルダに追加</string>
+  <string name="secure_folder_add_files_empty_title">動画が見つかりません</string>
+  <string name="secure_folder_add_files_empty_message">現在追加できる動画がありません。</string>
   <string name="secure_folder_empty_title">非表示のファイルはありません</string>
   <string name="secure_folder_empty_message">ここへ移動したファイルは、アプリ内の他の場所には表示されなくなります。</string>
   <string name="secure_folder_restore_confirm_title">%1$d件のアイテムを元に戻しますか？</string>

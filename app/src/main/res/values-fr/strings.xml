@@ -1589,6 +1589,11 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="secure_folder_sq_city">Dans quelle ville êtes-vous né(e) ?</string>
   <string name="secure_folder_sq_nickname">Quel était votre surnom d\'enfance ?</string>
   <string name="secure_folder_sq_movie">Quel est votre film préféré ?</string>
+  <string name="secure_folder_add_files">Ajouter des fichiers</string>
+  <string name="secure_folder_add_files_title">Sélectionner des fichiers à ajouter</string>
+  <string name="secure_folder_add_files_button">Ajouter %1$d au Dossier sécurisé</string>
+  <string name="secure_folder_add_files_empty_title">Aucune vidéo trouvée</string>
+  <string name="secure_folder_add_files_empty_message">Aucune vidéo disponible à ajouter pour le moment.</string>
   <string name="secure_folder_empty_title">Rien de masqué pour l\'instant</string>
   <string name="secure_folder_empty_message">Les fichiers déplacés ici n\'apparaîtront nulle part ailleurs dans l\'application.</string>
   <string name="secure_folder_restore_confirm_title">Restaurer %1$d élément(s) ?</string>

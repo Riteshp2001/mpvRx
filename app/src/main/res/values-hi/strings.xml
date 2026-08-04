@@ -1498,6 +1498,11 @@
   <string name="secure_folder_sq_city">आप किस शहर में पैदा हुए थे?</string>
   <string name="secure_folder_sq_nickname">बचपन में आपका उपनाम क्या था?</string>
   <string name="secure_folder_sq_movie">आपकी पसंदीदा फिल्म कौन सी है?</string>
+  <string name="secure_folder_add_files">फाइलें जोड़ें</string>
+  <string name="secure_folder_add_files_title">जोड़ने के लिए फाइलें चुनें</string>
+  <string name="secure_folder_add_files_button">सिक्योर फोल्डर में %1$d जोड़ें</string>
+  <string name="secure_folder_add_files_empty_title">कोई वीडियो नहीं मिला</string>
+  <string name="secure_folder_add_files_empty_message">अभी जोड़ने के लिए कोई वीडियो उपलब्ध नहीं है।</string>
   <string name="secure_folder_empty_title">अभी तक कुछ भी छुपाया नहीं गया</string>
   <string name="secure_folder_empty_message">आप यहां जो फाइलें ले जाएंगे, वे ऐप में और कहीं नहीं दिखेंगी।</string>
   <string name="secure_folder_restore_confirm_title">%1$d आइटम रीस्टोर करें?</string>

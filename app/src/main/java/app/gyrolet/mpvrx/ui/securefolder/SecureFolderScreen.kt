@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -331,6 +332,15 @@ data object SecureFolderScreen : Screen {
       snackbarHost = {
         SnackbarHost(snackbarHostState) { data ->
           Snackbar(snackbarData = data)
+        }
+      },
+      floatingActionButton = {
+        if (!isInSelectionMode) {
+          ExtendedFloatingActionButton(
+            onClick = { backstack.add(SecureFolderAddFilesScreen) },
+            icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
+            text = { Text(stringResource(R.string.secure_folder_add_files)) },
+          )
         }
       },
     ) { padding ->

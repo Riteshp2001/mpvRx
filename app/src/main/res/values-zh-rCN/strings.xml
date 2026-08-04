@@ -1589,6 +1589,11 @@
   <string name="secure_folder_sq_city">您在哪个城市出生？</string>
   <string name="secure_folder_sq_nickname">您小时候的绰号是什么？</string>
   <string name="secure_folder_sq_movie">您最喜欢的电影是什么？</string>
+  <string name="secure_folder_add_files">添加文件</string>
+  <string name="secure_folder_add_files_title">选择要添加的文件</string>
+  <string name="secure_folder_add_files_button">添加 %1$d 个到安全文件夹</string>
+  <string name="secure_folder_add_files_empty_title">未找到视频</string>
+  <string name="secure_folder_add_files_empty_message">目前没有可添加的视频。</string>
   <string name="secure_folder_empty_title">暂无隐藏内容</string>
   <string name="secure_folder_empty_message">移动到这里的文件不会出现在应用中的其他任何地方。</string>
   <string name="secure_folder_restore_confirm_title">恢复 %1$d 个项目？</string>

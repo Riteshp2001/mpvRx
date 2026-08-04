@@ -1583,6 +1583,11 @@
   <string name="secure_folder_sq_movie">What is your favorite movie?</string>
 
   <!-- Secure Folder Screen -->
+  <string name="secure_folder_add_files">Add files</string>
+  <string name="secure_folder_add_files_title">Select Files to Add</string>
+  <string name="secure_folder_add_files_button">Add %1$d to Secure Folder</string>
+  <string name="secure_folder_add_files_empty_title">No videos found</string>
+  <string name="secure_folder_add_files_empty_message">There are no videos available to add right now.</string>
   <string name="secure_folder_empty_title">Nothing hidden yet</string>
   <string name="secure_folder_empty_message">Files you move here won\'t show up anywhere else in the app.</string>
   <string name="secure_folder_restore_confirm_title">Restore %1$d item(s)?</string>

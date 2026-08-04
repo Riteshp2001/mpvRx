@@ -1589,6 +1589,11 @@
   <string name="secure_folder_sq_city">В каком городе вы родились?</string>
   <string name="secure_folder_sq_nickname">Каково было ваше детское прозвище?</string>
   <string name="secure_folder_sq_movie">Какой ваш любимый фильм?</string>
+  <string name="secure_folder_add_files">Добавить файлы</string>
+  <string name="secure_folder_add_files_title">Выберите файлы для добавления</string>
+  <string name="secure_folder_add_files_button">Добавить %1$d в Защищенную папку</string>
+  <string name="secure_folder_add_files_empty_title">Видео не найдено</string>
+  <string name="secure_folder_add_files_empty_message">Сейчас нет доступных видео для добавления.</string>
   <string name="secure_folder_empty_title">Пока ничего не скрыто</string>
   <string name="secure_folder_empty_message">Перемещенные сюда файлы не будут отображаться нигде в приложении.</string>
   <string name="secure_folder_restore_confirm_title">Восстановить %1$d объект(ов)?</string>
