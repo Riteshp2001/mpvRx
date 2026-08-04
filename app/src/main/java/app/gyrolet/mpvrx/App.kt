@@ -16,6 +16,9 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.media.MediaScannerConnection
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.di.DatabaseModule
@@ -138,7 +141,24 @@ class App :
   override fun onActivityCreated(
     activity: Activity,
     savedInstanceState: Bundle?,
-  ) = Unit
+  ) {
+    if (activity.javaClass.name.contains("leakcanary", ignoreCase = true)) {
+      val rootView = activity.findViewById<View>(android.R.id.content)
+      rootView?.let { view ->
+        ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+          val statusBarInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+          val navBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+          v.setPadding(
+            v.paddingLeft,
+            statusBarInsets.top,
+            v.paddingRight,
+            navBarInsets.bottom,
+          )
+          insets
+        }
+      }
+    }
+  }
 
   override fun onActivityResumed(activity: Activity) = Unit
 
