@@ -95,6 +95,7 @@ private enum class AppLanguage(
   German("de"),
   Spanish("es"),
   French("fr"),
+  Hindi("hi"),
   Japanese("ja"),
   PortugueseBrazil("pt-BR"),
   Russian("ru"),
