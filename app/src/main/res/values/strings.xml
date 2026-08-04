@@ -1201,6 +1201,12 @@
   <string name="ui_try_a_different_search_term">Try a different search term</string>
   <string name="ui_no_videos_in_playlist">No videos in playlist</string>
   <string name="ui_add_videos_to_get_started">Add videos to get started</string>
+  <string name="playlist_add_videos">Add videos</string>
+  <string name="playlist_add_videos_title">Select Videos to Add</string>
+  <string name="playlist_add_videos_button">Add %1$d to Playlist</string>
+  <string name="playlist_add_videos_empty_title">No videos found</string>
+  <string name="playlist_add_videos_empty_message">There are no videos available to add right now.</string>
+  <string name="playlist_add_videos_success">Added %1$d file(s) to playlist</string>
   <string name="ui_saved">Saved</string>
   <string name="ui_stream_url">Stream URL</string>
   <string name="ui_remove_from_playlist">Remove from Playlist</string>

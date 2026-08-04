@@ -1186,6 +1186,12 @@
   <string name="ui_try_a_different_search_term">別の検索語をお試しください</string>
   <string name="ui_no_videos_in_playlist">プレイリストに動画がありません</string>
   <string name="ui_add_videos_to_get_started">動画を追加して始めましょう</string>
+  <string name="playlist_add_videos">動画を追加</string>
+  <string name="playlist_add_videos_title">追加する動画を選択</string>
+  <string name="playlist_add_videos_button">%1$d件をプレイリストに追加</string>
+  <string name="playlist_add_videos_empty_title">動画が見つかりません</string>
+  <string name="playlist_add_videos_empty_message">現在追加できる動画がありません。</string>
+  <string name="playlist_add_videos_success">%1$d件をプレイリストに追加しました</string>
   <string name="ui_saved">保存済み</string>
   <string name="ui_stream_url">ストリームURL</string>
   <string name="ui_remove_from_playlist">プレイリストから削除</string>

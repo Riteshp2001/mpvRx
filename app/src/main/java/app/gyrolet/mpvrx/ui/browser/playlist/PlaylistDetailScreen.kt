@@ -34,6 +34,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -470,7 +471,15 @@ data class PlaylistDetailScreen(
           )
         }
       },
-      floatingActionButton = { },
+      floatingActionButton = {
+        if (!isSearching && !isReorderMode && !selectionManager.isInSelectionMode) {
+          ExtendedFloatingActionButton(
+            onClick = { backStack.add(PlaylistAddVideosScreen(playlistId)) },
+            icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
+            text = { Text(stringResource(R.string.playlist_add_videos)) },
+          )
+        }
+      },
     ) { padding ->
       // Show "no results" message when searching with no results
       if (isSearching && filteredVideoItems.isEmpty() && searchQuery.isNotBlank()) {

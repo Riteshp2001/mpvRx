@@ -206,6 +206,10 @@ class PlaylistDetailViewModel(
     playlistRepository.removeItemsFromPlaylist(itemsToRemove)
   }
 
+  suspend fun addVideosToPlaylist(videos: List<Video>) {
+    playlistRepository.addItemsToPlaylist(playlistId, videos.map { it.path to it.displayName })
+  }
+
   suspend fun updatePlayHistory(
     filePath: String,
     position: Long = 0,
