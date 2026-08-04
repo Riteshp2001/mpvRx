@@ -91,7 +91,7 @@ fun HdrScreenOutputPanel(
         HdrModeOption(
           mode = option,
           selected = mode == option,
-          enabled = pipelineReady,
+          enabled = pipelineReady && (option != HdrScreenMode.LINEAR || isLinearHdrAvailable),
           onClick = { viewModel.setHdrScreenMode(option) },
         )
       }

@@ -24,7 +24,7 @@ class DecoderPreferences(
   val useVulkan = preferenceStore.getBoolean("use_vulkan", false)
   val hdrScreenOutput = preferenceStore.getBoolean("hdr_screen_output", false)
   val hdrScreenMode = preferenceStore.getEnum("hdr_screen_mode", HdrScreenMode.OFF)
-  val lastHdrMode = preferenceStore.getEnum("hdr_last_selected_mode", HdrScreenMode.LINEAR)
+  val lastHdrMode = preferenceStore.getEnum("hdr_last_selected_mode", HdrScreenMode.BT_2020)
 
   /** Boost SDR content into the HDR range when using the Linear HDR pipeline. */
   val boostSdrToHdr = preferenceStore.getBoolean("boost_sdr_to_hdr", false)
