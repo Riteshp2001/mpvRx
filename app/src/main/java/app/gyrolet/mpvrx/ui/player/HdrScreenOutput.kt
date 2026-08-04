@@ -67,8 +67,7 @@ enum class HdrScreenMode(
     val selectableModes = listOf(BT_2100_PQ, BT_2100_HLG, BT_2020, LINEAR)
 
     /** Mode activated when the user first enables HDR from the toggle button. */
-    // The lightest hdr-toys profile; it also works on the legacy GPU renderer.
-    val defaultEnabledMode = BT_2020
+    val defaultEnabledMode = LINEAR
   }
 }
 
