@@ -1186,6 +1186,12 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_try_a_different_search_term">Anderen Suchbegriff versuchen</string>
   <string name="ui_no_videos_in_playlist">Keine Videos in der Wiedergabeliste</string>
   <string name="ui_add_videos_to_get_started">Videos hinzufügen, um zu beginnen</string>
+  <string name="playlist_add_videos">Videos hinzufügen</string>
+  <string name="playlist_add_videos_title">Videos zum Hinzufügen auswählen</string>
+  <string name="playlist_add_videos_button">%1$d zur Wiedergabeliste hinzufügen</string>
+  <string name="playlist_add_videos_empty_title">Keine Videos gefunden</string>
+  <string name="playlist_add_videos_empty_message">Derzeit sind keine Videos zum Hinzufügen verfügbar.</string>
+  <string name="playlist_add_videos_success">%1$d Datei(en) zur Wiedergabeliste hinzugefügt</string>
   <string name="ui_saved">Gespeichert</string>
   <string name="ui_stream_url">Stream-URL</string>
   <string name="ui_remove_from_playlist">Aus Wiedergabeliste entfernen</string>
@@ -1589,6 +1595,11 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="secure_folder_sq_city">In welcher Stadt wurden Sie geboren?</string>
   <string name="secure_folder_sq_nickname">Wie lautete Ihr Spitzname in der Kindheit?</string>
   <string name="secure_folder_sq_movie">Was ist Ihr Lieblingsfilm?</string>
+  <string name="secure_folder_add_files">Dateien hinzufügen</string>
+  <string name="secure_folder_add_files_title">Dateien zum Hinzufügen auswählen</string>
+  <string name="secure_folder_add_files_button">%1$d zum Sicheren Ordner hinzufügen</string>
+  <string name="secure_folder_add_files_empty_title">Keine Videos gefunden</string>
+  <string name="secure_folder_add_files_empty_message">Derzeit sind keine Videos zum Hinzufügen verfügbar.</string>
   <string name="secure_folder_empty_title">Noch nichts versteckt</string>
   <string name="secure_folder_empty_message">Dateien, die Sie hierher verschieben, werden nirgendwo sonst in der App angezeigt.</string>
   <string name="secure_folder_restore_confirm_title">%1$d Element(e) wiederherstellen?</string>

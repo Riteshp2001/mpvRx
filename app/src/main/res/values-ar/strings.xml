@@ -1186,6 +1186,12 @@
   <string name="ui_try_a_different_search_term">جرّب عبارة بحث مختلفة</string>
   <string name="ui_no_videos_in_playlist">لا توجد مقاطع فيديو في قائمة التشغيل</string>
   <string name="ui_add_videos_to_get_started">أضف مقاطع فيديو للبدء</string>
+  <string name="playlist_add_videos">إضافة مقاطع فيديو</string>
+  <string name="playlist_add_videos_title">تحديد مقاطع الفيديو للإضافة</string>
+  <string name="playlist_add_videos_button">إضافة %1$d إلى قائمة التشغيل</string>
+  <string name="playlist_add_videos_empty_title">لم يتم العثور على مقاطع فيديو</string>
+  <string name="playlist_add_videos_empty_message">لا توجد مقاطع فيديو متاحة للإضافة الآن.</string>
+  <string name="playlist_add_videos_success">تمت إضافة %1$d ملف(ات) إلى قائمة التشغيل</string>
   <string name="ui_saved">تم الحفظ</string>
   <string name="ui_stream_url">رابط البث</string>
   <string name="ui_remove_from_playlist">إزالة من قائمة التشغيل</string>
@@ -1589,6 +1595,11 @@
   <string name="secure_folder_sq_city">في أي مدينة ولدت؟</string>
   <string name="secure_folder_sq_nickname">ما هو لقب طفولتك؟</string>
   <string name="secure_folder_sq_movie">ما هو فيلمك المفضل؟</string>
+  <string name="secure_folder_add_files">إضافة ملفات</string>
+  <string name="secure_folder_add_files_title">تحديد الملفات للإضافة</string>
+  <string name="secure_folder_add_files_button">إضافة %1$d إلى المجلد الآمن</string>
+  <string name="secure_folder_add_files_empty_title">لم يتم العثور على مقاطع فيديو</string>
+  <string name="secure_folder_add_files_empty_message">لا توجد مقاطع فيديو متاحة للإضافة الآن.</string>
   <string name="secure_folder_empty_title">لا يوجد شيء مخفي بعد</string>
   <string name="secure_folder_empty_message">الملفات التي تنقلها إلى هنا لن تظهر في أي مكان آخر في التطبيق.</string>
   <string name="secure_folder_restore_confirm_title">استعادة %1$d عنصر؟</string>

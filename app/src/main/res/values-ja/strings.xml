@@ -1186,6 +1186,12 @@
   <string name="ui_try_a_different_search_term">別の検索語をお試しください</string>
   <string name="ui_no_videos_in_playlist">プレイリストに動画がありません</string>
   <string name="ui_add_videos_to_get_started">動画を追加して始めましょう</string>
+  <string name="playlist_add_videos">動画を追加</string>
+  <string name="playlist_add_videos_title">追加する動画を選択</string>
+  <string name="playlist_add_videos_button">%1$d件をプレイリストに追加</string>
+  <string name="playlist_add_videos_empty_title">動画が見つかりません</string>
+  <string name="playlist_add_videos_empty_message">現在追加できる動画がありません。</string>
+  <string name="playlist_add_videos_success">%1$d件をプレイリストに追加しました</string>
   <string name="ui_saved">保存済み</string>
   <string name="ui_stream_url">ストリームURL</string>
   <string name="ui_remove_from_playlist">プレイリストから削除</string>
@@ -1589,6 +1595,11 @@
   <string name="secure_folder_sq_city">生まれた街の名前は？</string>
   <string name="secure_folder_sq_nickname">子供の頃のニックネームは？</string>
   <string name="secure_folder_sq_movie">一番好きな映画は？</string>
+  <string name="secure_folder_add_files">ファイルを追加</string>
+  <string name="secure_folder_add_files_title">追加するファイルを選択</string>
+  <string name="secure_folder_add_files_button">%1$d件を安全なフォルダに追加</string>
+  <string name="secure_folder_add_files_empty_title">動画が見つかりません</string>
+  <string name="secure_folder_add_files_empty_message">現在追加できる動画がありません。</string>
   <string name="secure_folder_empty_title">非表示のファイルはありません</string>
   <string name="secure_folder_empty_message">ここへ移動したファイルは、アプリ内の他の場所には表示されなくなります。</string>
   <string name="secure_folder_restore_confirm_title">%1$d件のアイテムを元に戻しますか？</string>
