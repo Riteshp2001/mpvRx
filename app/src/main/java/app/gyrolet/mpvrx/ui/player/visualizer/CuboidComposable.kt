@@ -51,6 +51,7 @@ internal fun CuboidOverlay(
   isPlaying: Boolean = false,
   palette: VisualizerPalette,
   isSheetOpen: Boolean = false,
+  volumeScale: Float = 1f,
 ) {
   val context = LocalContext.current
   val engine = remember { CuboidWarptunnelEngine() }
@@ -58,6 +59,10 @@ internal fun CuboidOverlay(
   val renderLoopActive = remember { AtomicBoolean(true) }
   val playbackActive = remember { AtomicBoolean(isPlaying) }
   val frequencyData = remember { ByteArray(2048) }
+
+  LaunchedEffect(volumeScale) {
+    engine.volumeScale = volumeScale
+  }
 
   var hasRecordPermission by remember {
     mutableStateOf(

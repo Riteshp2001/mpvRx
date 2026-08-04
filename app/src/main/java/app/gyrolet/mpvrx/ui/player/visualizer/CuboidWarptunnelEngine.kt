@@ -119,6 +119,9 @@ class CuboidWarptunnelEngine {
   @Volatile
   private var frequencyData: ByteArray? = null
 
+  @Volatile
+  var volumeScale: Float = 1f
+
   private var pixelBuffer: IntArray = IntArray(0)
   private var bitmap: Bitmap? = null
   private var circleHolder = mutableListOf<CircleObj>()
@@ -453,16 +456,16 @@ class CuboidWarptunnelEngine {
     val flux = (bassNorm * 0.5f + midNorm * 0.5f)
 
     return AudioFeatureFrame(
-      energy = energyNorm,
-      subBass = subBassNorm,
-      bass = bassNorm,
-      lowMid = lowMidNorm,
-      mid = midNorm,
-      highMid = highMidNorm,
-      treble = trebleNorm,
+      energy = energyNorm * volumeScale,
+      subBass = subBassNorm * volumeScale,
+      bass = bassNorm * volumeScale,
+      lowMid = lowMidNorm * volumeScale,
+      mid = midNorm * volumeScale,
+      highMid = highMidNorm * volumeScale,
+      treble = trebleNorm * volumeScale,
       centroid = 0.35f + bassNorm * 0.15f + trebleNorm * 0.1f,
       beat = if (energyNorm > 0.22f && bassNorm > 0.35f) 1f else 0f,
-      spectralFlux = flux,
+      spectralFlux = flux * volumeScale,
     )
   }
 

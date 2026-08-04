@@ -40,11 +40,13 @@ internal fun BlobOverlay(
   isPlaying: Boolean = false,
   palette: VisualizerPalette,
   isSheetOpen: Boolean = false,
+  volumeScale: Float = 1f,
 ) = VisualizerOverlay(
   modifier = modifier,
   isPlaying = isPlaying,
   palette = palette,
   isSheetOpen = isSheetOpen,
+  volumeScale = volumeScale,
   factory = { ctx, features, p -> BlobVisualizerView(ctx, features, p) },
 )
 
@@ -54,11 +56,13 @@ internal fun GalaxyOverlay(
   isPlaying: Boolean = false,
   palette: VisualizerPalette,
   isSheetOpen: Boolean = false,
+  volumeScale: Float = 1f,
 ) = VisualizerOverlay(
   modifier = modifier,
   isPlaying = isPlaying,
   palette = palette,
   isSheetOpen = isSheetOpen,
+  volumeScale = volumeScale,
   factory = { ctx, features, p -> GalaxyVisualizerView(ctx, features, p) },
 )
 
@@ -68,11 +72,13 @@ internal fun ParticleOverlay(
   isPlaying: Boolean = false,
   palette: VisualizerPalette,
   isSheetOpen: Boolean = false,
+  volumeScale: Float = 1f,
 ) = VisualizerOverlay(
   modifier = modifier,
   isPlaying = isPlaying,
   palette = palette,
   isSheetOpen = isSheetOpen,
+  volumeScale = volumeScale,
   factory = { ctx, features, p -> ParticleVisualizerView(ctx, features, p) },
 )
 
@@ -86,6 +92,7 @@ private fun <T> VisualizerOverlay(
   isPlaying: Boolean = false,
   palette: VisualizerPalette,
   isSheetOpen: Boolean = false,
+  volumeScale: Float = 1f,
   factory: (android.content.Context, AudioFeatures, VisualizerPalette) -> T,
 ) where T : GLSurfaceView, T : PaletteConsumer {
   val context = LocalContext.current
@@ -102,6 +109,10 @@ private fun <T> VisualizerOverlay(
     rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
       hasRecordPermission = granted
     }
+
+  LaunchedEffect(volumeScale) {
+    features.volumeScale = volumeScale
+  }
 
   LaunchedEffect(hasRecordPermission) {
     if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)

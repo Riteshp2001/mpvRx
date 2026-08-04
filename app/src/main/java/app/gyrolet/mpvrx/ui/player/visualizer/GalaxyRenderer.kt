@@ -184,16 +184,16 @@ internal class GalaxyRenderer(
     val audio =
       audioSmoother.update(
         AudioFeatureFrame(
-          energy = sourceAudio.energy,
-          subBass = sourceAudio.subBass,
-          bass = sourceAudio.bass,
-          lowMid = sourceAudio.lowMid,
-          mid = sourceAudio.mid,
-          highMid = sourceAudio.highMid,
-          treble = sourceAudio.treble,
-          centroid = sourceAudio.centroid,
-          beat = sourceAudio.beat,
-          spectralFlux = sourceAudio.spectralFlux,
+          energy = sourceAudio.scaledEnergy(),
+          subBass = sourceAudio.scaledSubBass(),
+          bass = sourceAudio.scaledBass(),
+          lowMid = sourceAudio.scaledLowMid(),
+          mid = sourceAudio.scaledMid(),
+          highMid = sourceAudio.scaledHighMid(),
+          treble = sourceAudio.scaledTreble(),
+          centroid = sourceAudio.scaledCentroid(),
+          beat = sourceAudio.scaledBeat(),
+          spectralFlux = sourceAudio.scaledSpectralFlux(),
         ),
         frameMs / MILLISECONDS_PER_SECOND,
       )

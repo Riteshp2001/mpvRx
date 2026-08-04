@@ -310,16 +310,16 @@ internal class ParticleFeedbackRenderer(
   private fun updateAudioAnalysis(dt: Float, nowSec: Float) {
     val audio = audioSmoother.update(
       AudioFeatureFrame(
-        energy = sourceAudio.energy,
-        subBass = sourceAudio.subBass,
-        bass = sourceAudio.bass,
-        lowMid = sourceAudio.lowMid,
-        mid = sourceAudio.mid,
-        highMid = sourceAudio.highMid,
-        treble = sourceAudio.treble,
-        centroid = sourceAudio.centroid,
-        beat = sourceAudio.beat,
-        spectralFlux = sourceAudio.spectralFlux,
+        energy = sourceAudio.scaledEnergy(),
+        subBass = sourceAudio.scaledSubBass(),
+        bass = sourceAudio.scaledBass(),
+        lowMid = sourceAudio.scaledLowMid(),
+        mid = sourceAudio.scaledMid(),
+        highMid = sourceAudio.scaledHighMid(),
+        treble = sourceAudio.scaledTreble(),
+        centroid = sourceAudio.scaledCentroid(),
+        beat = sourceAudio.scaledBeat(),
+        spectralFlux = sourceAudio.scaledSpectralFlux(),
       ),
       dt,
     )
@@ -345,7 +345,7 @@ internal class ParticleFeedbackRenderer(
 
       bassAvg += (bassTarget - bassAvg) * (1f - exp(-dt * 0.8f))
       val nowNanos = System.nanoTime()
-      if (sourceAudio.beat > 0.5f || (bassTarget > bassAvg * 1.25f + 0.04f && (nowNanos - lastBeatNanos) > 160_000_000L)) {
+      if (sourceAudio.scaledBeat() > 0.5f || (bassTarget > bassAvg * 1.25f + 0.04f && (nowNanos - lastBeatNanos) > 160_000_000L)) {
         beatSmoothed = 1f
         lastBeatNanos = nowNanos
         beatCount++

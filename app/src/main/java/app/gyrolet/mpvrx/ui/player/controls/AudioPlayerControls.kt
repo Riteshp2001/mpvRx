@@ -309,9 +309,11 @@ fun AudioPlayerControls(
       }
     }
 
-  val isPlaying = paused == false
-  val currentPosSec = if (precisePosition > 0f) precisePosition else position?.toFloat() ?: 0f
-  val currentDurSec = if (preciseDuration > 0f) preciseDuration else duration?.toFloat() ?: 0f
+   val isPlaying = paused == false
+   val currentPosSec = if (precisePosition > 0f) precisePosition else position?.toFloat() ?: 0f
+   val currentDurSec = if (preciseDuration > 0f) preciseDuration else duration?.toFloat() ?: 0f
+   val currentVolumePercent by viewModel.currentVolumePercent.collectAsState()
+   val volumeScale = currentVolumePercent / 100f
 
   val repeatMode by viewModel.repeatMode.collectAsState()
   val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
@@ -464,36 +466,40 @@ fun AudioPlayerControls(
               modifier = Modifier.fillMaxSize(),
               contentAlignment = Alignment.Center,
             ) {
-              when (audioVisualizerStyle) {
-                AudioVisualizerStyle.Galaxy ->
-                  GalaxyOverlay(
-                    isPlaying = isPlaying,
-                    palette = palette,
-                    isSheetOpen = isSheetOpen,
-                    modifier = Modifier.fillMaxSize(),
-                  )
-                AudioVisualizerStyle.Blob ->
-                  BlobOverlay(
-                    isPlaying = isPlaying,
-                    palette = palette,
-                    isSheetOpen = isSheetOpen,
-                    modifier = Modifier.fillMaxSize(),
-                  )
-                AudioVisualizerStyle.Cuboid ->
-                  CuboidOverlay(
-                    isPlaying = isPlaying,
-                    palette = palette,
-                    isSheetOpen = isSheetOpen,
-                    modifier = Modifier.fillMaxSize(),
-                  )
-                AudioVisualizerStyle.Particle ->
-                  ParticleOverlay(
-                    isPlaying = isPlaying,
-                    palette = palette,
-                    isSheetOpen = isSheetOpen,
-                    modifier = Modifier.fillMaxSize(),
-                  )
-              }
+               when (audioVisualizerStyle) {
+                 AudioVisualizerStyle.Galaxy ->
+                   GalaxyOverlay(
+                     isPlaying = isPlaying,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
+                     volumeScale = volumeScale,
+                     modifier = Modifier.fillMaxSize(),
+                   )
+                 AudioVisualizerStyle.Blob ->
+                   BlobOverlay(
+                     isPlaying = isPlaying,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
+                     volumeScale = volumeScale,
+                     modifier = Modifier.fillMaxSize(),
+                   )
+                 AudioVisualizerStyle.Cuboid ->
+                   CuboidOverlay(
+                     isPlaying = isPlaying,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
+                     volumeScale = volumeScale,
+                     modifier = Modifier.fillMaxSize(),
+                   )
+                 AudioVisualizerStyle.Particle ->
+                   ParticleOverlay(
+                     isPlaying = isPlaying,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
+                     volumeScale = volumeScale,
+                     modifier = Modifier.fillMaxSize(),
+                   )
+               }
 
             }
           } else {

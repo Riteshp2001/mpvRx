@@ -40,6 +40,8 @@ class AudioFeatures {
 
   @Volatile var lastCaptureNanos: Long = 0L
 
+  @Volatile var volumeScale: Float = 1f
+
   /**
    * Raw magnitude spectrum (512 bins, normalized 0..1).
    * Updated atomically by swapping the array reference.
@@ -58,6 +60,57 @@ class AudioFeatures {
    * Updated atomically by swapping the array reference.
    */
   @Volatile var waveform: FloatArray = FloatArray(512)
+
+  /**
+   * Returns the energy value scaled by [volumeScale].
+   * When volume is 0% the visualizer stays dormant; at 100% it reacts at full amplitude.
+   */
+  fun scaledEnergy(): Float = energy * volumeScale
+
+  /**
+   * Returns the subBass value scaled by [volumeScale].
+   */
+  fun scaledSubBass(): Float = subBass * volumeScale
+
+  /**
+   * Returns the bass value scaled by [volumeScale].
+   */
+  fun scaledBass(): Float = bass * volumeScale
+
+  /**
+   * Returns the lowMid value scaled by [volumeScale].
+   */
+  fun scaledLowMid(): Float = lowMid * volumeScale
+
+  /**
+   * Returns the mid value scaled by [volumeScale].
+   */
+  fun scaledMid(): Float = mid * volumeScale
+
+  /**
+   * Returns the highMid value scaled by [volumeScale].
+   */
+  fun scaledHighMid(): Float = highMid * volumeScale
+
+  /**
+   * Returns the treble value scaled by [volumeScale].
+   */
+  fun scaledTreble(): Float = treble * volumeScale
+
+  /**
+   * Returns the beat value scaled by [volumeScale].
+   */
+  fun scaledBeat(): Float = beat * volumeScale
+
+  /**
+   * Returns the spectralFlux value scaled by [volumeScale].
+   */
+  fun scaledSpectralFlux(): Float = spectralFlux * volumeScale
+
+  /**
+   * Returns the centroid value scaled by [volumeScale].
+   */
+  fun scaledCentroid(): Float = centroid * volumeScale
 
   fun markCaptureReceived() {
     lastCaptureNanos = System.nanoTime()
@@ -87,6 +140,7 @@ class AudioFeatures {
     centroid = 0.35f
     active = false
     lastCaptureNanos = 0L
+    volumeScale = 1f
     spectrum = FloatArray(512)
     logSpectrum = FloatArray(64)
     waveform = FloatArray(512)

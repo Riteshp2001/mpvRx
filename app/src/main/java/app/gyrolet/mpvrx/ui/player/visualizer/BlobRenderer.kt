@@ -258,19 +258,20 @@ internal class BlobRenderer(
   }
 
   private fun updateSmoothedAudio(deltaSeconds: Float) {
+    val sa = sourceAudio
     val smoothed =
       audioSmoother.update(
         AudioFeatureFrame(
-          energy = sourceAudio.energy,
-          subBass = sourceAudio.subBass,
-          bass = sourceAudio.bass,
-          lowMid = sourceAudio.lowMid,
-          mid = sourceAudio.mid,
-          highMid = sourceAudio.highMid,
-          treble = sourceAudio.treble,
-          centroid = sourceAudio.centroid,
-          beat = sourceAudio.beat,
-          spectralFlux = sourceAudio.spectralFlux,
+          energy = sa.scaledEnergy(),
+          subBass = sa.scaledSubBass(),
+          bass = sa.scaledBass(),
+          lowMid = sa.scaledLowMid(),
+          mid = sa.scaledMid(),
+          highMid = sa.scaledHighMid(),
+          treble = sa.scaledTreble(),
+          centroid = sa.scaledCentroid(),
+          beat = sa.scaledBeat(),
+          spectralFlux = sa.scaledSpectralFlux(),
         ),
         deltaSeconds,
       )
@@ -395,8 +396,15 @@ internal class BlobRenderer(
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0)
   }
 
-  private fun updateSpectrumTexture(spectrum: FloatArray) {
-    val data = java.nio.FloatBuffer.wrap(spectrum.copyOf(512))
+   private fun updateSpectrumTexture(
+     spectrum: FloatArray,
+     volumeScale: Float,
+   ) {
+     val data = java.nio.FloatBuffer.wrap(spectrum.copyOf(512).also { scaled ->
+       for (i in scaled.indices) {
+         scaled[i] *= volumeScale
+       }
+     })
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, spectrumTexture)
     GLES30.glTexSubImage2D(
       GLES30.GL_TEXTURE_2D,
@@ -473,8 +481,8 @@ internal class BlobRenderer(
       0.38f + audio.energy * 0.28f + audio.beat * 0.22f,
     )
 
-    updateSpectrumTexture(sourceAudio.spectrum)
-    bindTexture(0, spectrumTexture, uSpectrum)
+     updateSpectrumTexture(sourceAudio.spectrum, sourceAudio.volumeScale)
+     bindTexture(0, spectrumTexture, uSpectrum)
 
     GLES30.glLineWidth(1.4f)
     GLES30.glBindVertexArray(meshVao)
