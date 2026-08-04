@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Environment
 import android.util.AttributeSet
 import android.util.Log
@@ -219,6 +220,9 @@ class MPVView(
     setupSubtitlesOptions()
     setupAudioOptions()
     YtdlpManager.setupMpvOptions(context, ytdlPreferences, subtitlesPreferences)
+
+    val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+    updateScriptOptsForOrientation(isPortrait)
   }
 
   override fun observeProperties() {
@@ -227,6 +231,9 @@ class MPVView(
 
   override fun postInitOptions() {
     applyOsdSafeAreaMargins()
+
+    val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+    updateScriptOptsForOrientation(isPortrait)
 
     when (decoderPreferences.debanding.get()) {
       Debanding.None -> {}
@@ -240,6 +247,15 @@ class MPVView(
         MPVLib.command("script-binding", "stats/display-page-$it")
       }
     }
+  }
+
+  fun updateScriptOptsForOrientation(isPortrait: Boolean) {
+    val statsFontSize = if (isPortrait) 5 else 8
+    val consoleFontSize = if (isPortrait) 8 else 12
+    MPVLib.setOptionString(
+      "script-opts-append",
+      "stats-font_size=$statsFontSize,console-font_size=$consoleFontSize",
+    )
   }
 
   fun applyOsdSafeAreaMargins(insets: WindowInsetsCompat? = null) {
