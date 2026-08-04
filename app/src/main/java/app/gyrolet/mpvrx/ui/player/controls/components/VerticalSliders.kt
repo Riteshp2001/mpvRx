@@ -55,6 +55,7 @@ fun VerticalSlider(
   colorEnd: Color = MaterialTheme.colorScheme.primary,
 ) {
   val coercedValue = value.coerceIn(range)
+  val gradientBrush = remember(colorStart, colorEnd) { Brush.verticalGradient(listOf(colorStart, colorEnd)) }
   Box(
     modifier =
       modifier
@@ -74,7 +75,7 @@ fun VerticalSlider(
         .fillMaxWidth()
         .fillMaxHeight(targetHeight.coerceAtLeast(0.05f)) // Keep a tiny amount visible
         .clip(AppShapeScale.largeIncreased)
-        .background(Brush.verticalGradient(listOf(colorStart, colorEnd))),
+        .background(gradientBrush),
     )
     if (overflowRange != null && overflowValue != null) {
       val overflowHeight by animateFloatAsState(
@@ -103,6 +104,7 @@ fun VerticalSlider(
   colorEnd: Color = MaterialTheme.colorScheme.primary,
 ) {
   val coercedValue = value.coerceIn(range)
+  val gradientBrush = remember(colorStart, colorEnd) { Brush.verticalGradient(listOf(colorStart, colorEnd)) }
   Box(
     modifier =
       modifier
@@ -122,7 +124,7 @@ fun VerticalSlider(
         .fillMaxWidth()
         .fillMaxHeight(targetHeight.coerceAtLeast(0.05f))
         .clip(AppShapeScale.largeIncreased)
-        .background(Brush.verticalGradient(listOf(colorStart, colorEnd))),
+        .background(gradientBrush),
     )
     if (overflowRange != null && overflowValue != null) {
       val overflowHeight by animateFloatAsState(
@@ -148,6 +150,8 @@ fun BrightnessSlider(
   modifier: Modifier = Modifier,
 ) {
   val coercedBrightness = brightness.coerceIn(-negativeRange.endInclusive, positiveRange.endInclusive)
+  val percentInt = (coercedBrightness * 100).toInt()
+  val percentText = remember(percentInt) { "$percentInt%" }
   Surface(
     modifier = modifier,
     shape = AppShapeScale.extraLarge,
@@ -160,7 +164,7 @@ fun BrightnessSlider(
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
       Text(
-        "${(coercedBrightness * 100).toInt()}%",
+        text = percentText,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
@@ -211,9 +215,12 @@ fun VolumeSlider(
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
       val boostVolume = mpvVolume - 100
-      val textStr = getVolumeSliderText(volume, mpvVolume, boostVolume, percentage, displayAsPercentage)
+      val volumeText = remember(volume, mpvVolume, boostVolume, percentage, displayAsPercentage) {
+        val textStr = getVolumeSliderText(volume, mpvVolume, boostVolume, percentage, displayAsPercentage)
+        textStr + if (displayAsPercentage && !textStr.contains('%')) "%" else ""
+      }
       Text(
-        textStr + if (displayAsPercentage && !textStr.contains('%')) "%" else "",
+        text = volumeText,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,

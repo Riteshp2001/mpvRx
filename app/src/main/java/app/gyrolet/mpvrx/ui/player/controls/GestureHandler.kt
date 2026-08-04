@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -1379,10 +1380,7 @@ fun MovingChevron(onFinished: () -> Unit) {
     onFinished()
   }
 
-  val startOffset = -15f
-  val currentOffset = startOffset * (1f - progress.value)
-  val alpha = 1f - progress.value
-
+  val startOffsetDp = -15.dp
   Icon(
     imageVector = Icons.RoundedFilled.KeyboardArrowRight,
     contentDescription = null,
@@ -1390,12 +1388,10 @@ fun MovingChevron(onFinished: () -> Unit) {
     modifier =
       Modifier
         .size(48.dp)
-        .alpha(alpha)
-        .layout { measurable, constraints ->
-          val placeable = measurable.measure(constraints)
-          layout(placeable.width, placeable.height) {
-            placeable.placeRelative(x = currentOffset.dp.roundToPx(), y = 0)
-          }
+        .graphicsLayer {
+          val p = 1f - progress.value
+          alpha = p
+          translationX = startOffsetDp.toPx() * p
         },
   )
 }

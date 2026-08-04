@@ -964,7 +964,13 @@ class MediaPlaybackService :
         Log.e(TAG, "Error releasing media session", e)
       }
 
+      thumbnail?.let {
+        if (!it.isRecycled) it.recycle()
+      }
       thumbnail = null
+      lastPaletteThumbnail?.let {
+        if (!it.isRecycled) it.recycle()
+      }
       lastPaletteThumbnail = null
 
       Log.d(TAG, "Service cleanup completed")
