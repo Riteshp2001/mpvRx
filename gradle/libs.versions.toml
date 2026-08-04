@@ -42,6 +42,7 @@ kotlinTest = "2.3.21"
 curlAndroid = "8.18.0"
 googleCast = "22.3.1"
 androidxBiometric = "1.2.0-alpha05"
+leakcanary = "2.14"
 
 [libraries]
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
@@ -110,6 +111,7 @@ jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 llamatik = { module = "com.llamatik:library", version.ref = "llamatik" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "androidxBiometric" }
+leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
 
 [bundles]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel"]
