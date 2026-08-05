@@ -129,6 +129,7 @@ data class VideoListScreen(
   val folderName: String,
   @kotlinx.serialization.Transient val onBack: (() -> Unit)? = null,
   val isDualPane: Boolean = false,
+  val isAudio: Boolean = false,
 ) : Screen {
   @OptIn(ExperimentalMaterial3ExpressiveApi::class)
   @Composable
@@ -147,8 +148,8 @@ data class VideoListScreen(
     // ViewModel
     val viewModel: VideoListViewModel =
       viewModel(
-        key = "VideoListViewModel_$bucketId",
-        factory = VideoListViewModel.factory(context.applicationContext as android.app.Application, bucketId),
+        key = "VideoListViewModel_${bucketId}_${isAudio}",
+        factory = VideoListViewModel.factory(context.applicationContext as android.app.Application, bucketId, isAudio),
       )
     val videos by viewModel.videos.collectAsState()
     val videosWithPlaybackInfo by viewModel.videosWithPlaybackInfo.collectAsState()

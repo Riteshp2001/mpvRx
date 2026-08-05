@@ -44,6 +44,7 @@ data class FolderWithNewCount(
 
 class FolderListViewModel(
   application: Application,
+  private val audioOnly: Boolean = false,
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val foldersPreferences: FoldersPreferences by inject()
@@ -87,14 +88,16 @@ class FolderListViewModel(
   private var newCountJob: Job? = null
   private var cacheWriteJob: Job? = null
 
-  companion object {
+    companion object {
     private const val TAG = "FolderListViewModel"
 
-    fun factory(application: Application) =
-      object : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = FolderListViewModel(application) as T
-      }
+    fun factory(
+      application: Application,
+      audioOnly: Boolean = false,
+    ) = object : ViewModelProvider.Factory {
+      @Suppress("UNCHECKED_CAST")
+      override fun <T : ViewModel> create(modelClass: Class<T>): T = FolderListViewModel(application, audioOnly) as T
+    }
   }
 
   init {
@@ -344,6 +347,33 @@ class FolderListViewModel(
   private fun loadVideoFolders(forceFileSystemCheck: Boolean = false) {
     currentScanJob?.cancel()
 
+    if (audioOnly) {
+      currentScanJob =
+        viewModelScope.launch(Dispatchers.IO) {
+          try {
+            _isLoading.value = _allVideoFolders.value.isEmpty()
+            _scanStatus.value = "Reading music library..."
+            val folders =
+              MediaFileRepository.getAllAudioFolders(
+                context = getApplication(),
+                minimumAudioDurationSeconds = browserPreferences.minimumAudioDurationSeconds.get(),
+              )
+            _allVideoFolders.value = folders
+            _videoFolders.value = folders
+            _isLoading.value = false
+            _hasCompletedInitialLoad.value = true
+          } catch (e: Exception) {
+            Log.e(TAG, "Error loading audio folders", e)
+            _hasCompletedInitialLoad.value = true
+          } finally {
+            _isLoading.value = false
+            _isEnriching.value = false
+            _scanStatus.value = null
+          }
+        }
+      return
+    }
+
     currentScanJob =
       viewModelScope.launch(Dispatchers.IO) {
         try {
@@ -361,6 +391,7 @@ class FolderListViewModel(
                 if (!hasExistingData) _scanStatus.value = "Found $count folders"
               },
               forceFileSystemCheck = forceFileSystemCheck,
+              includeAudioOverride = browserPreferences.includeAudioBrowser.get(),
             )
           // This is the important latency boundary: never wait for a filesystem walk.
           _allVideoFolders.value = mediaStoreFolders

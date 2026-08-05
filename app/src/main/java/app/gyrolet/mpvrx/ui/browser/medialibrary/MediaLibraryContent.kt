@@ -114,7 +114,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MediaLibraryContent() {
+fun MediaLibraryContent(forceAudio: Boolean = false) {
   val context = LocalContext.current
   val coroutineScope = rememberCoroutineScope()
   val backstack = LocalBackStack.current
@@ -140,7 +140,7 @@ fun MediaLibraryContent() {
   val includeAudioBrowser by browserPreferences.includeAudioBrowser.collectAsState()
   val savedMediaType by browserPreferences.mediaLibraryType.collectAsState()
   val playlistMode by playerPreferences.playlistMode.collectAsState()
-  val mediaType = if (includeAudioBrowser) savedMediaType else MediaLibraryType.Video
+  val mediaType = if (forceAudio) MediaLibraryType.Audio else if (includeAudioBrowser) savedMediaType else MediaLibraryType.Video
   val sortedVideosWithInfo =
     remember(videosWithPlaybackInfo, videoSortType, videoSortOrder) {
       val infoById = videosWithPlaybackInfo.associateBy { it.video.path }
@@ -294,8 +294,8 @@ fun MediaLibraryContent() {
     }
   }
 
-  LaunchedEffect(includeAudioBrowser, savedMediaType) {
-    if (!includeAudioBrowser && savedMediaType != MediaLibraryType.Video) {
+  LaunchedEffect(includeAudioBrowser, savedMediaType, forceAudio) {
+    if (!forceAudio && !includeAudioBrowser && savedMediaType != MediaLibraryType.Video) {
       browserPreferences.mediaLibraryType.set(MediaLibraryType.Video)
     }
   }
@@ -419,8 +419,12 @@ fun MediaLibraryContent() {
       } else {
         BrowserTopBar(
           title =
-            androidx.compose.ui.res
-              .stringResource(app.gyrolet.mpvrx.R.string.pref_media_library_section),
+            if (forceAudio) {
+              androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_music)
+            } else {
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.pref_media_library_section)
+            },
           isInSelectionMode = selectionManager.isInSelectionMode,
           selectedCount = selectionManager.selectedCount,
           totalCount = filteredVideosWithInfo.size,
@@ -595,7 +599,7 @@ fun MediaLibraryContent() {
             .fillMaxSize()
             .padding(padding),
       ) {
-        if (includeAudioBrowser) {
+        if (includeAudioBrowser && !forceAudio) {
           SingleChoiceSegmentedButtonRow(
             modifier =
               Modifier
@@ -730,6 +734,7 @@ fun MediaLibraryContent() {
         onSortTypeChange = { browserPreferences.videoSortType.set(it) },
         onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
         isFolderView = false,
+        enableViewModeOptions = !forceAudio,
       )
     }
 

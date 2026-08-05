@@ -1671,4 +1671,7 @@
   <string name="pref_codecs_hardware_features">Аппаратные функции:</string>
   <string name="pref_codecs_min_resolution">Мин. разрешение: %s</string>
   <string name="pref_codecs_alignment">Выравнивание пикселей: %1$dx%2$d</string>
+  <string name="ui_music">Music</string>
+  <string name="pref_nav_music_title">Show Music tab</string>
+  <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
 </resources>

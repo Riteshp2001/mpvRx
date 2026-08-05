@@ -81,6 +81,7 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
+import app.gyrolet.mpvrx.ui.browser.medialibrary.MediaLibraryContent
 import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistScreen
 import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
@@ -96,6 +97,7 @@ import org.koin.compose.koinInject
 object MainScreen : Screen {
   internal enum class MainTab {
     HOME,
+    MUSIC,
     RECENTS,
     PLAYLISTS,
     NETWORK,
@@ -151,6 +153,7 @@ object MainScreen : Screen {
     val navAnimStyle by playerPreferences.navAnimStyle.collectAsState()
     val animSpeed by playerPreferences.animationSpeed.collectAsState()
     val showHomeTab by appearancePreferences.showHomeTab.collectAsState()
+    val showMusicTab by appearancePreferences.showMusicTab.collectAsState()
     val showRecentsTab by appearancePreferences.showRecentsTab.collectAsState()
     val showPlaylistsTab by appearancePreferences.showPlaylistsTab.collectAsState()
     val showNetworkTab by appearancePreferences.showNetworkTab.collectAsState()
@@ -165,12 +168,13 @@ object MainScreen : Screen {
         showPlaylistsTab,
         showNetworkTab,
       ) {
-        buildList {
-          if (showHomeTab) add(MainTab.HOME)
-          if (showRecentsTab) add(MainTab.RECENTS)
-          if (showPlaylistsTab) add(MainTab.PLAYLISTS)
-          if (showNetworkTab) add(MainTab.NETWORK)
-        }
+      buildList {
+        if (showHomeTab) add(MainTab.HOME)
+        if (showMusicTab) add(MainTab.MUSIC)
+        if (showRecentsTab) add(MainTab.RECENTS)
+        if (showPlaylistsTab) add(MainTab.PLAYLISTS)
+        if (showNetworkTab) add(MainTab.NETWORK)
+      }
       }
 
     val scope = rememberCoroutineScope()
@@ -284,6 +288,7 @@ LaunchedEffect(visibleTabs) {
               val tab = visibleTabs[page]
               when (tab) {
                 MainTab.HOME -> FolderListScreen.Content()
+                MainTab.MUSIC -> MediaLibraryContent(forceAudio = true)
                 MainTab.RECENTS -> RecentlyPlayedScreen.Content()
                 MainTab.PLAYLISTS -> PlaylistScreen.Content()
                 MainTab.NETWORK -> NetworkStreamingScreen.Content()
@@ -477,6 +482,13 @@ private fun TelegramPillNavigationBar(
                         tint = contentColor,
                         modifier = Modifier.size(22.dp),
                       )
+                    MainScreen.MainTab.MUSIC ->
+                      Icon(
+                        Icons.RoundedFilled.Audiotrack,
+                        contentDescription = stringResource(R.string.ui_music),
+                        tint = contentColor,
+                        modifier = Modifier.size(22.dp),
+                      )
                     MainScreen.MainTab.RECENTS ->
                       Icon(
                         Icons.RoundedFilled.History,
@@ -501,14 +513,15 @@ private fun TelegramPillNavigationBar(
                   }
                 }
                 Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                  text =
-                    when (tab) {
-                      MainScreen.MainTab.HOME -> "Home"
-                      MainScreen.MainTab.RECENTS -> "Recents"
-                      MainScreen.MainTab.PLAYLISTS -> "Playlists"
-                      MainScreen.MainTab.NETWORK -> "Network"
-                    },
+                  Text(
+                    text =
+                      when (tab) {
+                        MainScreen.MainTab.HOME -> "Home"
+                        MainScreen.MainTab.MUSIC -> "Music"
+                        MainScreen.MainTab.RECENTS -> "Recents"
+                        MainScreen.MainTab.PLAYLISTS -> "Playlists"
+                        MainScreen.MainTab.NETWORK -> "Network"
+                      },
                   style = MaterialTheme.typography.labelSmall,
                   fontWeight = if (progress > 0.5f) FontWeight.Bold else FontWeight.Medium,
                   color = contentColor,

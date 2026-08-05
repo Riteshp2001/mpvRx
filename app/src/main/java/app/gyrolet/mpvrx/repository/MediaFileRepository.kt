@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.repository
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.domain.browser.FileSystemItem
@@ -140,18 +141,178 @@ object MediaFileRepository : KoinComponent {
     context: Context,
     onProgress: ((Int) -> Unit)? = null,
     forceFileSystemCheck: Boolean = false,
+    includeAudioOverride: Boolean? = null,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
       FolderViewScanner
         .getAllVideoFolders(
           context = context,
-          options = currentScanOptions(),
+          options = currentScanOptions(includeAudioOverride),
           forceFileSystemCheck = forceFileSystemCheck,
         ).also { onProgress?.invoke(it.size) }
     }
 
   suspend fun getIndexedNoMediaFolders(): List<VideoFolder> =
     FolderViewScanner.getIndexedNoMediaFolders(currentScanOptions(), database.directoryScanDao())
+
+  /**
+   * Scans MediaStore for all audio (music) files and groups them by parent folder.
+   * Powers the dedicated Music tab so audio is kept separate from the video browser.
+   */
+  suspend fun getAllAudioFolders(
+    context: Context,
+    minimumAudioDurationSeconds: Int = 0,
+  ): List<VideoFolder> =
+    withContext(Dispatchers.IO) {
+      val aggregates = linkedMapOf<String, AudioFolderAggregate>()
+      try {
+        val projection =
+          arrayOf(
+            MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.DATE_MODIFIED,
+          )
+        context.contentResolver
+          .query(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            null,
+          )?.use { cursor ->
+            val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+            val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+            while (cursor.moveToNext()) {
+              val path = cursor.getString(dataColumn)
+              val file = File(path)
+              if (!file.exists()) continue
+              val durationMs = cursor.getLong(durationColumn)
+              if (minimumAudioDurationSeconds > 0 && durationMs / 1000 < minimumAudioDurationSeconds) continue
+              val parentPath = file.parent ?: continue
+              val key = normalizeAudioFolderKey(parentPath)
+              val aggregate = aggregates.getOrPut(key) { AudioFolderAggregate(path = parentPath) }
+              aggregate.size += cursor.getLong(sizeColumn)
+              aggregate.duration += durationMs
+              aggregate.lastModified = maxOf(aggregate.lastModified, cursor.getLong(dateColumn))
+              aggregate.count += 1
+            }
+          }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error scanning for audio folders", e)
+      }
+      aggregates.values
+        .map { agg ->
+          VideoFolder(
+            bucketId = agg.path,
+            name = leafName(agg.path),
+            path = agg.path,
+            videoCount = agg.count,
+            totalSize = agg.size,
+            totalDuration = agg.duration,
+            lastModified = agg.lastModified,
+          )
+        }.sortedBy { it.name.lowercase(Locale.getDefault()) }
+    }
+
+  /**
+   * Searches MediaStore audio by title/artist/album/display name for the Music tab search.
+   */
+  suspend fun searchAudio(
+    context: Context,
+    query: String,
+    limit: Int = 50,
+  ): List<Video> =
+    withContext(Dispatchers.IO) {
+      val results = mutableListOf<Video>()
+      try {
+        val like = "%${query.trim()}%"
+        val selection =
+          "${MediaStore.Audio.Media.TITLE} LIKE ? OR " +
+            "${MediaStore.Audio.Media.ARTIST} LIKE ? OR " +
+            "${MediaStore.Audio.Media.ALBUM} LIKE ? OR " +
+            "${MediaStore.Audio.Media.DISPLAY_NAME} LIKE ?"
+        val projection =
+          arrayOf(
+            MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.DISPLAY_NAME,
+            MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.DATE_MODIFIED,
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.ALBUM,
+          )
+        context.contentResolver
+          .query(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            arrayOf(like, like, like, like),
+            "${MediaStore.Audio.Media.TITLE} ASC",
+          )?.use { cursor ->
+            val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val displayColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+            val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+            val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+            var guard = 0
+            while (cursor.moveToNext() && guard < limit) {
+              guard++
+              val path = cursor.getString(dataColumn)
+              val file = File(path)
+              if (!file.exists()) continue
+              val durationMs = cursor.getLong(durationColumn)
+              val title = cursor.getString(titleColumn) ?: file.nameWithoutExtension
+              val displayName = cursor.getString(displayColumn) ?: file.name
+              val folderPath = file.parent ?: ""
+              val folderName = file.parentFile?.name ?: ""
+              results +=
+                Video(
+                  id = path.hashCode().toLong(),
+                  title = title,
+                  displayName = displayName,
+                  path = path,
+                  uri = Uri.fromFile(file),
+                  duration = durationMs,
+                  durationFormatted = formatDuration(durationMs),
+                  size = cursor.getLong(sizeColumn),
+                  sizeFormatted = formatFileSize(cursor.getLong(sizeColumn)),
+                  dateModified = cursor.getLong(dateColumn),
+                  dateAdded = cursor.getLong(dateColumn),
+                  mimeType = FileTypeUtils.getMimeTypeFromExtension(file.extension.lowercase()),
+                  bucketId = folderPath,
+                  bucketDisplayName = folderName,
+                  width = 0,
+                  height = 0,
+                  fps = 0f,
+                  resolution = "",
+                  isAudio = true,
+                )
+            }
+          }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error searching audio", e)
+      }
+      results
+    }
+
+  private data class AudioFolderAggregate(
+    val path: String,
+    var size: Long = 0L,
+    var duration: Long = 0L,
+    var lastModified: Long = 0L,
+    var count: Int = 0,
+  )
+
+  private fun normalizeAudioFolderKey(path: String): String =
+    path.replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
+
+  private fun leafName(path: String): String =
+    path.replace('\\', '/').trimEnd('/').substringAfterLast('/')
 
   fun scanNoMediaFoldersIncrementally(
     context: Context,

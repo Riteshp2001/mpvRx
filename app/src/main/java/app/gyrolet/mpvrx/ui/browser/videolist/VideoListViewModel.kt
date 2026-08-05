@@ -52,6 +52,7 @@ data class VideoWithPlaybackInfo(
 class VideoListViewModel(
   application: Application,
   private val bucketId: String,
+  private val includeAudio: Boolean = false,
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
@@ -146,6 +147,7 @@ class VideoListViewModel(
             getApplication(),
             bucketId,
             forceFileSystemCheck = forceFileSystemCheck,
+            includeAudioOverride = if (includeAudio) true else null,
           )
 
         // Enrich with metadata only if chips are enabled
@@ -183,6 +185,7 @@ class VideoListViewModel(
               getApplication(),
               bucketId,
               forceFileSystemCheck = true,
+              includeAudioOverride = if (includeAudio) true else null,
             )
 
           // Enrich retry list if needed
@@ -392,13 +395,15 @@ class VideoListViewModel(
     }
   }
 
-  companion object {
+    companion object {
     fun factory(
       application: Application,
       bucketId: String,
+      includeAudio: Boolean = false,
     ) = object : ViewModelProvider.Factory {
       @Suppress("UNCHECKED_CAST")
-      override fun <T : ViewModel> create(modelClass: Class<T>): T = VideoListViewModel(application, bucketId) as T
+      override fun <T : ViewModel> create(modelClass: Class<T>): T =
+        VideoListViewModel(application, bucketId, includeAudio) as T
     }
   }
 }

@@ -706,6 +706,7 @@ object AppearancePreferencesScreen : Screen {
           item {
             PreferenceCard {
               val showHomeTab by preferences.showHomeTab.collectAsState()
+              val showMusicTab by preferences.showMusicTab.collectAsState()
               val showRecentsTab by preferences.showRecentsTab.collectAsState()
               val showPlaylistsTab by preferences.showPlaylistsTab.collectAsState()
               val showNetworkTab by preferences.showNetworkTab.collectAsState()
@@ -717,6 +718,20 @@ object AppearancePreferencesScreen : Screen {
                 summary = {
                   Text(
                     text = stringResource(id = R.string.pref_nav_home_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              SwitchPreference(
+                value = showMusicTab,
+                onValueChange = preferences.showMusicTab::set,
+                title = { Text(text = stringResource(id = R.string.pref_nav_music_title)) },
+                summary = {
+                  Text(
+                    text = stringResource(id = R.string.pref_nav_music_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

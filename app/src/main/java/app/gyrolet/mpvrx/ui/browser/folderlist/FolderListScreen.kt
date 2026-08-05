@@ -153,7 +153,7 @@ object FolderListScreen : Screen {
 
   @OptIn(ExperimentalMaterial3ExpressiveApi::class)
   @Composable
-  private fun MediaStoreFolderListContent() {
+  internal fun MediaStoreFolderListContent(audioOnly: Boolean = false) {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -162,7 +162,8 @@ object FolderListScreen : Screen {
     // ViewModels and preferences
     val viewModel: FolderListViewModel =
       viewModel(
-        factory = FolderListViewModel.factory(context.applicationContext as android.app.Application),
+        key = if (audioOnly) "MusicListViewModel" else "FolderListViewModel",
+        factory = FolderListViewModel.factory(context.applicationContext as android.app.Application, audioOnly),
       )
     val browserPreferences = koinInject<BrowserPreferences>()
     val gesturePreferences = koinInject<GesturePreferences>()
@@ -237,13 +238,26 @@ object FolderListScreen : Screen {
     val foldersBlacklistedMessage = stringResource(app.gyrolet.mpvrx.R.string.pref_folders_blacklisted)
 
     // Search logic
-    LaunchedEffect(searchQuery, isSearching) {
+    LaunchedEffect(searchQuery, isSearching, audioOnly) {
       if (isSearching && searchQuery.isNotBlank()) {
         delay(250)
         isSearchLoading = true
         try {
-          val results = searchFoldersAndVideos(context, searchQuery)
-          searchResults = results
+          searchResults =
+            if (audioOnly) {
+              app.gyrolet.mpvrx.repository.MediaFileRepository
+                .searchAudio(context, searchQuery)
+                .map { audio ->
+                  FileSystemItem.VideoFile(
+                    name = audio.displayName,
+                    path = audio.path,
+                    lastModified = audio.dateModified,
+                    video = audio,
+                  )
+                }
+            } else {
+              searchFoldersAndVideos(context, searchQuery)
+            }
         } catch (e: Exception) {
           Log.e("FolderListScreen", "Error during search", e)
           searchResults = emptyList()
@@ -810,7 +824,7 @@ object FolderListScreen : Screen {
                         } else {
                           backstack.add(
                             app.gyrolet.mpvrx.ui.browser.videolist
-                              .VideoListScreen(folder.bucketId, folder.name),
+                              .VideoListScreen(folder.bucketId, folder.name, isAudio = audioOnly),
                           )
                         }
                       },
@@ -849,7 +863,7 @@ object FolderListScreen : Screen {
                       } else {
                         backstack.add(
                           app.gyrolet.mpvrx.ui.browser.videolist
-                            .VideoListScreen(folder.bucketId, folder.name),
+                            .VideoListScreen(folder.bucketId, folder.name, isAudio = audioOnly),
                         )
                       }
                     }
@@ -934,6 +948,7 @@ object FolderListScreen : Screen {
                 bucketId = selectedFolderBucketId!!,
                 folderName = selectedFolderName.orEmpty(),
                 isDualPane = true,
+                isAudio = audioOnly,
                 onBack = {
                   selectedFolderBucketId = null
                   selectedFolderName = null

@@ -3771,7 +3771,11 @@ class PlayerActivity :
     MPVLib.setPropertyDouble("video-zoom", state.videoZoom.toDouble())
     viewModel.setVideoZoom(state.videoZoom)
 
-    if (playerPreferences.savePositionOnQuit.get() && state.lastPosition != 0) {
+    if (playerPreferences.savePositionOnQuit.get() &&
+      state.lastPosition != 0 &&
+      !viewModel.isAudioOnly.value &&
+      !isCurrentMediaKnownAudio()
+    ) {
       MPVLib.setPropertyInt("time-pos", state.lastPosition)
     }
   }
