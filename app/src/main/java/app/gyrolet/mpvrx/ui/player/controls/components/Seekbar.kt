@@ -138,6 +138,8 @@ private fun normalizedReadAheadValue(
   return safeBufferPosition.coerceIn(safePlayedPosition, duration)
 }
 
+private val segmentDrawPath = ThreadLocal.withInitial { Path() }
+
 private fun DrawScope.drawSeekbarTrackSegments(
   segments: List<SeekbarTrackSegment>,
   playedPx: Float,
@@ -150,7 +152,7 @@ private fun DrawScope.drawSeekbarTrackSegments(
 ) {
   val outerRadius = trackHeight / 2f
   val innerRadius = 2.dp.toPx()
-  val reusablePath = Path()
+  val reusablePath = segmentDrawPath.get() ?: Path().also { segmentDrawPath.set(it) }
 
   fun drawPiece(
     startX: Float,
@@ -1361,6 +1363,8 @@ fun VideoTimer(
   textColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
   onClick: () -> Unit = {},
 ) {
+  val seconds = value.toInt()
+  val timeText = remember(seconds, isInverted) { Utils.prettyTime(seconds, isInverted) }
   val interactionSource = remember { MutableInteractionSource() }
   Text(
     modifier =
@@ -1371,7 +1375,7 @@ fun VideoTimer(
           onClick = onClick,
         ).padding(horizontal = 4.dp)
         .wrapContentHeight(Alignment.CenterVertically),
-    text = Utils.prettyTime(value.toInt(), isInverted),
+    text = timeText,
     color = textColor,
     textAlign = TextAlign.Center,
     style = MaterialTheme.typography.labelSmall,

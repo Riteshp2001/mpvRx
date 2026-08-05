@@ -91,6 +91,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -219,7 +220,8 @@ class PlayerViewModel(
         state.copy(videoWidth = width ?: 0)
       }.combine(MPVLib.propInt["video-params/h"]) { state, height ->
         state.copy(videoHeight = height ?: 0)
-      }.stateIn(
+      }.distinctUntilChanged()
+      .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = initialAnime4KUiState,

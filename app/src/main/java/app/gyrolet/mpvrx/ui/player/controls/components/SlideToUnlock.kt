@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -82,9 +83,9 @@ fun SlideToUnlock(
     Box(
       modifier =
         Modifier
-          .matchParentSize()
-          .padding(start = 55.dp)
-          .alpha(if (maxOffset > 0f) 1f - (offsetX.value / maxOffset).coerceIn(0f, 1f) else 1f),
+          .graphicsLayer {
+            alpha = if (maxOffset > 0f) 1f - (offsetX.value / maxOffset).coerceIn(0f, 1f) else 1f
+          },
       contentAlignment = Alignment.Center,
     ) {
       Text(

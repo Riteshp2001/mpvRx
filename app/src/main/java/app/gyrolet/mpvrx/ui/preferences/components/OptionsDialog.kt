@@ -39,8 +39,6 @@ fun <T> OptionsDialog(
   onDismiss: () -> Unit,
   optionLabel: @Composable (T) -> String,
 ) {
-  val configuration = LocalConfiguration.current
-
   AlertDialog(
     onDismissRequest = onDismiss,
     title = {
@@ -58,7 +56,7 @@ fun <T> OptionsDialog(
               .PaddingValues(vertical = 8.dp),
           modifier = Modifier.selectableGroup(),
         ) {
-          items(options, key = { it.toString() }) { option ->
+          items(options, key = { option -> option?.hashCode() ?: System.identityHashCode(option) }) { option ->
             Row(
               modifier =
                 Modifier

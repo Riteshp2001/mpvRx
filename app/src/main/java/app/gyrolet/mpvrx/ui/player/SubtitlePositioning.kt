@@ -22,6 +22,9 @@ private val subtitlesPreferences by lazy {
   GlobalContext.get().get<SubtitlesPreferences>()
 }
 
+private val HTML_TAG_REGEX = Regex("<[^>]*>")
+private val ASS_TAG_REGEX = Regex("[{][^}]*[}]")
+
 fun clampSubtitlePosition(position: Int): Int = position.coerceIn(MIN_SUBTITLE_POSITION, MAX_SUBTITLE_POSITION)
 
 /**
@@ -59,7 +62,7 @@ fun getSubtitleHitboxBounds(
 
       var totalLines = 0
       for (line in explicitLines) {
-        val stripped = line.replace(Regex("<[^>]*>"), "").replace(Regex("[{][^}]*[}]"), "")
+        val stripped = line.replace(HTML_TAG_REGEX, "").replace(ASS_TAG_REGEX, "")
         totalLines +=
           if (stripped.isEmpty()) 1 else ((stripped.length + charsPerLine - 1) / charsPerLine).coerceAtLeast(1)
       }
