@@ -4921,7 +4921,12 @@ class PlayerViewModel(
     val nextMode =
       if (_hdrScreenMode.value == HdrScreenMode.OFF) {
         val lastMode = decoderPreferences.lastHdrMode.get()
-        if (lastMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else lastMode
+        val targetMode = if (lastMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else lastMode
+        if (targetMode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
+          HdrScreenMode.defaultEnabledMode
+        } else {
+          targetMode
+        }
       } else {
         HdrScreenMode.OFF
       }
@@ -4929,19 +4934,25 @@ class PlayerViewModel(
   }
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
-    val pipelineReady = isHdrScreenOutputAvailable(mode)
+    val resolvedMode =
+      if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
+        HdrScreenMode.defaultEnabledMode
+      } else {
+        mode
+      }
+    val pipelineReady = isHdrScreenOutputAvailable(resolvedMode)
 
-    _hdrScreenMode.value = mode
-    _isHdrScreenOutputEnabled.value = pipelineReady && mode != HdrScreenMode.OFF
-    decoderPreferences.hdrScreenMode.set(mode)
-    decoderPreferences.hdrScreenOutput.set(mode != HdrScreenMode.OFF)
-    if (mode != HdrScreenMode.OFF) {
-      decoderPreferences.lastHdrMode.set(mode)
+    _hdrScreenMode.value = resolvedMode
+    _isHdrScreenOutputEnabled.value = pipelineReady && resolvedMode != HdrScreenMode.OFF
+    decoderPreferences.hdrScreenMode.set(resolvedMode)
+    decoderPreferences.hdrScreenOutput.set(resolvedMode != HdrScreenMode.OFF)
+    if (resolvedMode != HdrScreenMode.OFF) {
+      decoderPreferences.lastHdrMode.set(resolvedMode)
     }
-    applyHdrScreenOutput(mode)
+    applyHdrScreenOutput(resolvedMode)
     playerUpdate.value =
       PlayerUpdates.ShowText(
-        host.context.getString(R.string.hdr_screen_output_update, host.context.getString(mode.shortTitleRes)),
+        host.context.getString(R.string.hdr_screen_output_update, host.context.getString(resolvedMode.shortTitleRes)),
       )
   }
 

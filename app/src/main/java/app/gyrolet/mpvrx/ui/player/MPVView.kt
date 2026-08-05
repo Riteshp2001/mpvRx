@@ -143,13 +143,19 @@ class MPVView(
     MPVLib.setOptionString("gpu-context", backend.gpuContext)
 
     val hdrScreenOutputEnabled = decoderPreferences.hdrScreenOutput.get()
+    val isLinearAvailable = useVulkan && backend.vo == "gpu-next"
     val hdrScreenMode =
       if (!hdrScreenOutputEnabled) {
         HdrScreenMode.OFF
       } else {
-        decoderPreferences.hdrScreenMode.get()
+        val mode = decoderPreferences.hdrScreenMode.get()
+        if (mode == HdrScreenMode.LINEAR && !isLinearAvailable) {
+          HdrScreenMode.defaultEnabledMode
+        } else {
+          mode
+        }
       }
-    val hdrPipelineReady = true
+    val hdrPipelineReady = hdrScreenMode != HdrScreenMode.LINEAR || isLinearAvailable
     applyHdrScreenOutputOptions(
       mode = hdrScreenMode,
       pipelineReady = hdrPipelineReady,

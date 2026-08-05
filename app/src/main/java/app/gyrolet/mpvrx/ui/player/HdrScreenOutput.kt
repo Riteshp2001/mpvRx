@@ -86,7 +86,7 @@ internal fun hdrScreenOutputSettings(
 
   return when (activeMode) {
     HdrScreenMode.OFF -> offSettings()
-    HdrScreenMode.LINEAR -> linearHdrSettings(hdrEnabled = true)
+    HdrScreenMode.LINEAR -> linearHdrSettings(hdrEnabled = true, boostSdrToHdr = boostSdrToHdr)
     else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
   }
 }
@@ -124,11 +124,14 @@ private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>>
     "glsl-shader-opts" to profile.shaderOptionsValue,
   )
 
-private fun linearHdrSettings(hdrEnabled: Boolean): List<Pair<String, String>> =
+private fun linearHdrSettings(
+  hdrEnabled: Boolean,
+  boostSdrToHdr: Boolean = false,
+): List<Pair<String, String>> =
   listOf(
     "target-colorspace-hint" to if (hdrEnabled) "yes" else "no",
     "tone-mapping-visualize" to "no",
-    "inverse-tone-mapping" to if (hdrEnabled) "yes" else "no",
+    "inverse-tone-mapping" to if (hdrEnabled && boostSdrToHdr) "yes" else "no",
     "tone-mapping" to "clip",
     "gamut-mapping-mode" to if (hdrEnabled) "clip" else "auto",
     "hdr-compute-peak" to if (hdrEnabled) "yes" else "auto",
