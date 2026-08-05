@@ -47,9 +47,9 @@ enum class ControlsAnimationStyle(
   val displayName: String,
 ) {
   Default("Default"),
-  Elastic("Elastic Bounce"),
   Cinematic("Cinematic Scale"),
-  SlideUp("Slide Up"),
+  FluidExpand("Fluid Expand"),
+  SpringBounce("Gentle Bounce"),
   Minimal("Minimal Fade"),
   None("None"),
 }
@@ -121,13 +121,18 @@ fun buildControlsEnterH(
           ),
         )
 
-    style == ControlsAnimationStyle.SlideUp ->
-      slideInVertically(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 420f)) { it } +
-        fadeIn(spring(stiffness = AppMotion.Spatial.Snappy.stiffness))
+    style == ControlsAnimationStyle.FluidExpand ->
+      scaleIn(
+        spring(
+          dampingRatio = Spring.DampingRatioLowBouncy,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        ),
+        initialScale = 0.88f,
+      ) + fadeIn(spring(stiffness = AppMotion.Spatial.Expressive.stiffness))
 
-    style == ControlsAnimationStyle.Elastic ->
+    style == ControlsAnimationStyle.SpringBounce ->
       slideInHorizontally(
-        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 420f),
+        spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = 380f),
         offsetX,
       ) + fadeIn(spring(stiffness = AppMotion.Spatial.Snappy.stiffness))
 
@@ -176,23 +181,16 @@ fun buildControlsExitH(
           ),
         )
 
-    style == ControlsAnimationStyle.SlideUp ->
-      slideOutVertically(
+    style == ControlsAnimationStyle.FluidExpand ->
+      scaleOut(
         spring(
-          dampingRatio = AppMotion.Spatial.Standard.dampingRatio,
-          stiffness = AppMotion.Spatial.Standard.stiffness,
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
         ),
-      ) {
-        -it
-      } +
-        fadeOut(
-          spring(
-            dampingRatio = AppMotion.Spatial.Standard.dampingRatio,
-            stiffness = AppMotion.Spatial.Standard.stiffness,
-          ),
-        )
+        targetScale = 0.88f,
+      ) + fadeOut(spring(stiffness = AppMotion.Spatial.Expressive.stiffness))
 
-    style == ControlsAnimationStyle.Elastic ->
+    style == ControlsAnimationStyle.SpringBounce ->
       slideOutHorizontally(
         spring(
           dampingRatio = AppMotion.Spatial.Standard.dampingRatio,
@@ -257,14 +255,18 @@ fun buildControlsEnterV(
           ),
         )
 
-    style == ControlsAnimationStyle.SlideUp ->
-      slideInVertically(
-        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 420f),
-      ) { it } + fadeIn(spring(stiffness = AppMotion.Spatial.Snappy.stiffness))
+    style == ControlsAnimationStyle.FluidExpand ->
+      scaleIn(
+        spring(
+          dampingRatio = Spring.DampingRatioLowBouncy,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        ),
+        initialScale = 0.88f,
+      ) + fadeIn(spring(stiffness = AppMotion.Spatial.Expressive.stiffness))
 
-    style == ControlsAnimationStyle.Elastic ->
+    style == ControlsAnimationStyle.SpringBounce ->
       slideInVertically(
-        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 420f),
+        spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = 380f),
         offsetY,
       ) + fadeIn(spring(stiffness = AppMotion.Spatial.Snappy.stiffness))
 
@@ -313,23 +315,16 @@ fun buildControlsExitV(
           ),
         )
 
-    style == ControlsAnimationStyle.SlideUp ->
-      slideOutVertically(
+    style == ControlsAnimationStyle.FluidExpand ->
+      scaleOut(
         spring(
-          dampingRatio = AppMotion.Spatial.Standard.dampingRatio,
-          stiffness = AppMotion.Spatial.Standard.stiffness,
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
         ),
-      ) {
-        -it
-      } +
-        fadeOut(
-          spring(
-            dampingRatio = AppMotion.Spatial.Standard.dampingRatio,
-            stiffness = AppMotion.Spatial.Standard.stiffness,
-          ),
-        )
+        targetScale = 0.88f,
+      ) + fadeOut(spring(stiffness = AppMotion.Spatial.Expressive.stiffness))
 
-    style == ControlsAnimationStyle.Elastic ->
+    style == ControlsAnimationStyle.SpringBounce ->
       slideOutVertically(
         spring(
           dampingRatio = AppMotion.Spatial.Standard.dampingRatio,

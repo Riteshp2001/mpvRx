@@ -706,8 +706,8 @@ fun PlayerControls(
 
           AnimatedVisibility(
             shouldShowPlayerUpdate,
-            enter = fadeIn(playerControlsEnterAnimationSpec()),
-            exit = fadeOut(playerControlsExitAnimationSpec()),
+            enter = buildControlsEnterV(controlsAnimStyle, reduceMotion, enterMs) { -it },
+            exit = buildControlsExitV(controlsAnimStyle, reduceMotion, exitMs) { -it },
             modifier =
               Modifier
                 .then(
@@ -902,12 +902,12 @@ fun PlayerControls(
 
           AnimatedVisibility(
             visible = showLandscapeLeftCustomButtons,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { -it },
+            exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { -it },
             modifier =
               navigationStartPaddingModifier.constrainAs(customLeftButtonsRef) {
                 start.linkTo(parent.start, spacing.large)
-                bottom.linkTo(bottomRightControls.top, spacing.medium)
+                bottom.linkTo(bottomLeftControls.top, spacing.medium)
                 width = Dimension.preferredWrapContent
                 height = Dimension.wrapContent
               },
@@ -963,8 +963,8 @@ fun PlayerControls(
 
           AnimatedVisibility(
             visible = showLandscapeRightCustomButtons,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
+            exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
             modifier =
               navigationEndPaddingModifier
                 .constrainAs(customRightButtonsRef) {
@@ -1027,8 +1027,8 @@ fun PlayerControls(
 
           AnimatedVisibility(
             visible = showPortraitCustomButtons,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = buildControlsEnterV(controlsAnimStyle, reduceMotion, enterMs) { it },
+            exit = buildControlsExitV(controlsAnimStyle, reduceMotion, exitMs) { it },
             modifier =
               navigationHorizontalPaddingModifier
                 .constrainAs(customButtonsPortraitRef) {
@@ -1092,8 +1092,8 @@ fun PlayerControls(
 
           AnimatedVisibility(
             visible = controlsShown && areControlsLocked,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = buildControlsEnterV(controlsAnimStyle, reduceMotion, enterMs) { it },
+            exit = buildControlsExitV(controlsAnimStyle, reduceMotion, exitMs) { it },
             modifier =
               Modifier
                 .constrainAs(unlockControlsButton) {
@@ -1114,8 +1114,8 @@ fun PlayerControls(
 
           AnimatedVisibility(
             visible = skipChipVisible,
-            enter = fadeIn(playerControlsEnterAnimationSpec()),
-            exit = fadeOut(playerControlsExitAnimationSpec()),
+            enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
+            exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
             modifier =
               navigationEndPaddingModifier
                 .constrainAs(skipSegmentChip) {
@@ -1162,8 +1162,8 @@ fun PlayerControls(
 
           AnimatedVisibility(
             visible = controlsShown && !areControlsLocked && !areSlidersShown,
-            enter = fadeIn(playerControlsEnterAnimationSpec()),
-            exit = fadeOut(playerControlsExitAnimationSpec()),
+            enter = buildControlsEnterV(controlsAnimStyle, reduceMotion, enterMs) { 0 },
+            exit = buildControlsExitV(controlsAnimStyle, reduceMotion, exitMs) { 0 },
             modifier =
               Modifier.constrainAs(playerPauseButton) {
                 start.linkTo(parent.absoluteLeft)
