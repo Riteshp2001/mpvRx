@@ -15,7 +15,9 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -25,6 +27,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -33,6 +37,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -72,7 +77,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -90,6 +97,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -97,6 +105,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -133,7 +146,7 @@ import java.util.Locale
 @Composable
 private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? {
   val context = LocalContext.current
-  var bitmap by remember(pathOrUri) { mutableStateOf<Bitmap?>(null) }
+  var bitmap by remember { mutableStateOf<Bitmap?>(null) }
   LaunchedEffect(pathOrUri) {
     if (pathOrUri.isNullOrBlank()) {
       bitmap = null
@@ -164,6 +177,35 @@ private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? {
     }
   }
   return bitmap
+}
+
+@Composable
+private fun CoverArtCardImage(bitmap: Bitmap?) {
+  if (bitmap != null) {
+    Image(
+      bitmap = bitmap.asImageBitmap(),
+      contentDescription = null,
+      contentScale = ContentScale.Crop,
+      modifier = Modifier.fillMaxSize(),
+    )
+  } else {
+    Box(
+      modifier = Modifier.fillMaxSize(),
+      contentAlignment = Alignment.Center,
+    ) {
+      Icon(
+        imageVector = Icons.RoundedFilled.Audiotrack,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(64.dp),
+      )
+    }
+  }
+}
+
+private enum class CoverSwipeDirection {
+  NEXT,
+  PREV,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -425,6 +467,30 @@ fun AudioPlayerControls(
       }
     }
 
+    val animatableOffsetX = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    var activeCoverOverride by remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(albumArtBitmap) {
+      if (albumArtBitmap != null) {
+        activeCoverOverride = null
+      }
+    }
+
+    val nextItem = remember(filteredPlaylist, mediaPath) {
+      val idx = filteredPlaylist.indexOfFirst { it.isPlaying || it.path == mediaPath || it.uri.toString() == mediaPath }
+      if (idx in 0 until filteredPlaylist.lastIndex) filteredPlaylist[idx + 1] else null
+    }
+
+    val prevItem = remember(filteredPlaylist, mediaPath) {
+      val idx = filteredPlaylist.indexOfFirst { it.isPlaying || it.path == mediaPath || it.uri.toString() == mediaPath }
+      if (idx > 0) filteredPlaylist[idx - 1] else null
+    }
+
+    val nextCoverBitmap = rememberAudioAlbumArt(nextItem?.let { it.path.ifBlank { it.uri.toString() } })
+    val prevCoverBitmap = rememberAudioAlbumArt(prevItem?.let { it.path.ifBlank { it.uri.toString() } })
+
     @OptIn(ExperimentalFoundationApi::class)
     val centerVisualizerView = @Composable { visualizerModifier: Modifier ->
       BoxWithConstraints(
@@ -439,6 +505,9 @@ fun AudioPlayerControls(
             ),
         contentAlignment = Alignment.Center,
       ) {
+        val containerWidthPx = constraints.maxWidth.toFloat()
+        val currentOffset = animatableOffsetX.value
+
         AnimatedContent(
           targetState = showVisualizer,
           transitionSpec = {
@@ -500,49 +569,113 @@ fun AudioPlayerControls(
                      modifier = Modifier.fillMaxSize(),
                    )
                }
-
             }
           } else {
             val coverShape = RoundedCornerShape(32.dp)
+            val density = LocalDensity.current
+            val gap = with(density) { 24.dp.toPx() }
+            val stride = containerWidthPx + gap
+
             Box(
-              modifier = Modifier.fillMaxSize(),
+              modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(showVisualizer, containerWidthPx) {
+                  if (showVisualizer || containerWidthPx <= 0f) return@pointerInput
+                  detectHorizontalDragGestures(
+                    onDragStart = {
+                      coroutineScope.launch { animatableOffsetX.snapTo(0f) }
+                    },
+                    onDragEnd = {
+                      val threshold = containerWidthPx * 0.25f
+                      val dragVal = animatableOffsetX.value
+                      coroutineScope.launch {
+                        if (dragVal < -threshold) {
+                          haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                          animatableOffsetX.animateTo(
+                            targetValue = -stride,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
+                          )
+                          activeCoverOverride = nextCoverBitmap ?: albumArtBitmap
+                          animatableOffsetX.snapTo(0f)
+                          if (viewModel.hasPlaylistSupport()) {
+                            viewModel.playNext()
+                          } else {
+                            runCatching { MPVLib.command("playlist-next") }
+                          }
+                        } else if (dragVal > threshold) {
+                          haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                          animatableOffsetX.animateTo(
+                            targetValue = stride,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
+                          )
+                          activeCoverOverride = prevCoverBitmap ?: albumArtBitmap
+                          animatableOffsetX.snapTo(0f)
+                          if (viewModel.hasPlaylistSupport()) {
+                            viewModel.playPrevious()
+                          } else {
+                            runCatching { MPVLib.command("playlist-prev") }
+                          }
+                        } else {
+                          animatableOffsetX.animateTo(
+                            targetValue = 0f,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
+                          )
+                        }
+                      }
+                    },
+                    onDragCancel = {
+                      coroutineScope.launch {
+                        animatableOffsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f))
+                      }
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                      change.consume()
+                      coroutineScope.launch {
+                        animatableOffsetX.snapTo(animatableOffsetX.value + dragAmount)
+                      }
+                    }
+                  )
+                },
               contentAlignment = Alignment.Center,
             ) {
-              Surface(
-                modifier =
-                  Modifier
+              // 1. Previous Cover Art Card (Visible when dragging right -> currentOffset > 0)
+              if (currentOffset > 0f) {
+                Surface(
+                  modifier = Modifier
                     .aspectRatio(1f)
+                    .offset { IntOffset((-stride + currentOffset).roundToInt(), 0) }
                     .clip(coverShape),
+                  shape = coverShape,
+                  color = Color.Transparent,
+                ) {
+                  CoverArtCardImage(bitmap = prevCoverBitmap)
+                }
+              }
+
+              // 2. Next Cover Art Card (Visible when dragging left -> currentOffset < 0)
+              if (currentOffset < 0f) {
+                Surface(
+                  modifier = Modifier
+                    .aspectRatio(1f)
+                    .offset { IntOffset((stride + currentOffset).roundToInt(), 0) }
+                    .clip(coverShape),
+                  shape = coverShape,
+                  color = Color.Transparent,
+                ) {
+                  CoverArtCardImage(bitmap = nextCoverBitmap)
+                }
+              }
+
+              // 3. Current Cover Art Card
+              Surface(
+                modifier = Modifier
+                  .aspectRatio(1f)
+                  .offset { IntOffset(currentOffset.roundToInt(), 0) }
+                  .clip(coverShape),
                 shape = coverShape,
                 color = Color.Transparent,
               ) {
-                Crossfade(
-                  targetState = albumArtBitmap,
-                  animationSpec = tween(300),
-                  label = "cover_crossfade",
-                  modifier = Modifier.fillMaxSize(),
-                ) { currentBitmap ->
-                  if (currentBitmap != null) {
-                    Image(
-                      bitmap = currentBitmap.asImageBitmap(),
-                      contentDescription = null,
-                      contentScale = ContentScale.Crop,
-                      modifier = Modifier.fillMaxSize(),
-                    )
-                  } else {
-                    Box(
-                      modifier = Modifier.fillMaxSize(),
-                      contentAlignment = Alignment.Center,
-                    ) {
-                      Icon(
-                        imageVector = Icons.RoundedFilled.Audiotrack,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(64.dp),
-                      )
-                    }
-                  }
-                }
+                CoverArtCardImage(bitmap = activeCoverOverride ?: albumArtBitmap)
               }
             }
           }
