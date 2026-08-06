@@ -278,6 +278,8 @@
   <string name="pref_audio_visualizer_style_galaxy">Галактика</string>
   <string name="pref_audio_visualizer_style_cuboid">Кубоид</string>
   <string name="pref_audio_visualizer_galaxy_credit">Вдохновлено работой Zain Raza на CodePen</string>
+  <string name="pref_audio_ambient_mode_title">Эмбиент режим</string>
+  <string name="pref_audio_ambient_mode_summary">Отображать динамические цветовые градиенты на основе обложки альбома в плеере (отключается при включенном визуализаторе)</string>
   <string name="pref_audio_channels">Аудиоканалы</string>
   <string name="pref_audio_channels_auto">Авто</string>
   <string name="pref_audio_channels_auto_safe">Безопасный авто</string>

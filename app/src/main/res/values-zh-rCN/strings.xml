@@ -278,6 +278,8 @@
   <string name="pref_audio_visualizer_style_galaxy">星系</string>
   <string name="pref_audio_visualizer_style_cuboid">长方体</string>
   <string name="pref_audio_visualizer_galaxy_credit">灵感来自 CodePen 上的 Zain Raza</string>
+  <string name="pref_audio_ambient_mode_title">氛围模式</string>
+  <string name="pref_audio_ambient_mode_summary">在音乐播放器中显示基于专辑封面生成的动态色彩渐变（可视化效果开启时禁用）</string>
   <string name="pref_audio_channels">音频声道</string>
   <string name="pref_audio_channels_auto">自动</string>
   <string name="pref_audio_channels_auto_safe">安全自动</string>

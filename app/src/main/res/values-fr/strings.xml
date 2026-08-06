@@ -278,6 +278,8 @@ Suivant : NEXT</string>
   <string name="pref_audio_visualizer_style_galaxy">Galaxie</string>
   <string name="pref_audio_visualizer_style_cuboid">Cuboïde</string>
   <string name="pref_audio_visualizer_galaxy_credit">Inspiré par Zain Raza sur CodePen</string>
+  <string name="pref_audio_ambient_mode_title">Mode ambiant</string>
+  <string name="pref_audio_ambient_mode_summary">Afficher des dégradés de couleurs dynamiques issus de la pochette d\'album dans le lecteur de musique (désactivé lorsque le visualiseur est actif)</string>
   <string name="pref_audio_channels">Canaux audio</string>
   <string name="pref_audio_channels_auto">Automatique</string>
   <string name="pref_audio_channels_auto_safe">Automatique sécurisé</string>
