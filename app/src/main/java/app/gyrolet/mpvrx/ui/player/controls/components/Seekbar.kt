@@ -152,7 +152,18 @@ private fun DrawScope.drawSeekbarTrackSegments(
 ) {
   val outerRadius = trackHeight / 2f
   val innerRadius = 2.dp.toPx()
+  val cornerOuter = CornerRadius(outerRadius)
+  val cornerInner = CornerRadius(innerRadius)
+  val cornerZero = CornerRadius.Zero
   val reusablePath = segmentDrawPath.get() ?: Path().also { segmentDrawPath.set(it) }
+
+  fun cornerFor(radius: Float): CornerRadius =
+    when {
+      radius == outerRadius -> cornerOuter
+      radius == innerRadius -> cornerInner
+      radius == 0f -> cornerZero
+      else -> CornerRadius(radius)
+    }
 
   fun drawPiece(
     startX: Float,
@@ -162,6 +173,8 @@ private fun DrawScope.drawSeekbarTrackSegments(
     rightRadius: Float,
   ) {
     if (endX - startX < 0.5f) return
+    val cLeft = cornerFor(leftRadius)
+    val cRight = cornerFor(rightRadius)
     reusablePath.reset()
     reusablePath.addRoundRect(
       androidx.compose.ui.geometry.RoundRect(
@@ -169,10 +182,10 @@ private fun DrawScope.drawSeekbarTrackSegments(
         top = centerY - outerRadius,
         right = endX,
         bottom = centerY + outerRadius,
-        topLeftCornerRadius = CornerRadius(leftRadius),
-        bottomLeftCornerRadius = CornerRadius(leftRadius),
-        topRightCornerRadius = CornerRadius(rightRadius),
-        bottomRightCornerRadius = CornerRadius(rightRadius),
+        topLeftCornerRadius = cLeft,
+        bottomLeftCornerRadius = cLeft,
+        topRightCornerRadius = cRight,
+        bottomRightCornerRadius = cRight,
       ),
     )
     drawPath(reusablePath, color)

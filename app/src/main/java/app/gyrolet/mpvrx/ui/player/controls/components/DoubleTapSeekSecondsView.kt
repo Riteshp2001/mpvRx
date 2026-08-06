@@ -18,9 +18,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -65,21 +65,21 @@ fun DoubleTapSeekTriangles(
         modifier.scale(scaleX = -1f, scaleY = 1f)
       },
   ) {
-    DoubleTapArrow(alpha1.value)
-    DoubleTapArrow(alpha2.value)
-    DoubleTapArrow(alpha3.value)
+    DoubleTapArrow(alphaProvider = { alpha1.value })
+    DoubleTapArrow(alphaProvider = { alpha2.value })
+    DoubleTapArrow(alphaProvider = { alpha3.value })
   }
 }
 
 @Composable
-private fun DoubleTapArrow(alpha: Float) {
+private fun DoubleTapArrow(alphaProvider: () -> Float) {
   Icon(
     imageVector = Icons.RoundedFilled.PlayArrow,
     contentDescription = null,
     modifier =
       Modifier
         .size(18.dp)
-        .alpha(alpha = alpha),
+        .graphicsLayer { alpha = alphaProvider() },
     tint = Color.White,
   )
 }

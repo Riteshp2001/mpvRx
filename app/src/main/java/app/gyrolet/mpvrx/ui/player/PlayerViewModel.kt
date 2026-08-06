@@ -1182,7 +1182,10 @@ class PlayerViewModel(
         runCatching {
           val time = MPVLib.getPropertyDouble("time-pos")
           if (time != null) {
-            _precisePosition.value = time.toFloat()
+            val posFloat = time.toFloat()
+            if (_precisePosition.value != posFloat) {
+              _precisePosition.value = posFloat
+            }
             maybeAutoSkipIntro(time)
           }
         }.onFailure { error ->
@@ -1192,8 +1195,8 @@ class PlayerViewModel(
         }
         val intervalMs =
           when {
-            paused == false && (seekBarVisibleForPolling || controlsVisibleForPolling) -> 50L
-            paused == false -> 500L // was 250 ms — halved to reduce idle CPU wake-ups
+            paused == true -> 1000L // Reduce polling frequency when paused to conserve CPU/battery
+            seekBarVisibleForPolling || controlsVisibleForPolling -> 50L
             else -> 500L
           }
         delay(intervalMs)
