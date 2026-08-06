@@ -78,8 +78,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -368,6 +371,8 @@ fun AudioPlayerControls(
   val abLoop by viewModel.abLoopState.collectAsState()
   val abLoopA = abLoop.a
   val abLoopB = abLoop.b
+
+  var addToPlaylistDialogOpen by rememberSaveable { mutableStateOf(false) }
 
   val playerPreferences = koinInject<PlayerPreferences>()
   val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
@@ -721,158 +726,176 @@ fun AudioPlayerControls(
         val trackText = if (playlistInfo != null) "Track $playlistInfo" else "Audio Media"
 
         Row(
+          modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-          Text(
-            text = trackText,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-          )
-          Text(
-            text = "|",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-          )
-
-          // 4. Playback Speed (left of A-B Loop)
-          Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier =
-              Modifier
-                .height(30.dp)
-                .clip(CircleShape)
-                .clickable(onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(4.dp),
-              modifier = Modifier.padding(horizontal = 10.dp),
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Speed,
-                contentDescription = stringResource(R.string.ui_playback_speed),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
-              )
-              Text(
-                text = String.format("%.2fx", playbackSpeed ?: 1f),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-            }
-          }
+            Text(
+              text = trackText,
+              style = MaterialTheme.typography.labelLarge,
+              color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+              text = "|",
+              style = MaterialTheme.typography.labelLarge,
+              color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            )
 
-          AnimatedContent(
-            targetState = abLoop.isExpanded,
-            transitionSpec = {
-              (fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(250)))
-                .togetherWith(fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(250)))
-            },
-            label = "AudioABLoopExpand",
-          ) { expanded ->
-            if (expanded) {
+            // 4. Playback Speed (left of A-B Loop)
+            Surface(
+              shape = CircleShape,
+              color = MaterialTheme.colorScheme.surfaceVariant,
+              modifier =
+                Modifier
+                  .height(30.dp)
+                  .clip(CircleShape)
+                  .clickable(onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
+            ) {
               Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(horizontal = 10.dp),
               ) {
-                Surface(
-                  shape = CircleShape,
-                  color =
-                    if (abLoopA !=
-                      null
-                    ) {
-                      MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                      MaterialTheme.colorScheme.surfaceVariant
-                    },
-                  modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopA() }),
-                ) {
-                  Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                    Text(
-                      text = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
-                      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                      color =
-                        if (abLoopA !=
-                          null
-                        ) {
-                          MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                          MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                  }
-                }
-                Surface(
-                  shape = CircleShape,
-                  color = MaterialTheme.colorScheme.surfaceVariant,
-                  modifier =
-                    Modifier.size(30.dp).clip(CircleShape).clickable(onClick = {
-                      viewModel.clearABLoop()
-                      viewModel.toggleABLoopExpanded()
-                    }),
-                ) {
-                  Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                      imageVector = Icons.RoundedFilled.Close,
-                      contentDescription = "Clear A-B Loop",
-                      tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                      modifier = Modifier.size(16.dp),
-                    )
-                  }
-                }
-                Surface(
-                  shape = CircleShape,
-                  color =
-                    if (abLoopB !=
-                      null
-                    ) {
-                      MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                      MaterialTheme.colorScheme.surfaceVariant
-                    },
-                  modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopB() }),
-                ) {
-                  Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                    Text(
-                      text = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
-                      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                      color =
-                        if (abLoopB !=
-                          null
-                        ) {
-                          MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                          MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                  }
-                }
-              }
-            } else {
-              Surface(
-                shape = CircleShape,
-                color = Color.Transparent,
-                modifier = Modifier.clip(CircleShape).clickable(onClick = viewModel::toggleABLoopExpanded),
-              ) {
-                AbLoopIcon(
-                  modifier = Modifier.size(30.dp),
-                  tint =
-                    if (abLoopA != null ||
-                      abLoopB != null
-                    ) {
-                      MaterialTheme.colorScheme.primary
-                    } else {
-                      MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                  isASet = abLoopA != null,
-                  isBSet = abLoopB != null,
+                Icon(
+                  imageVector = Icons.RoundedFilled.Speed,
+                  contentDescription = stringResource(R.string.ui_playback_speed),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  modifier = Modifier.size(16.dp),
+                )
+                Text(
+                  text = String.format("%.2fx", playbackSpeed ?: 1f),
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
               }
             }
+
+            AnimatedContent(
+              targetState = abLoop.isExpanded,
+              transitionSpec = {
+                (fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(250)))
+                  .togetherWith(fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(250)))
+              },
+              label = "AudioABLoopExpand",
+            ) { expanded ->
+              if (expanded) {
+                Row(
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+                ) {
+                  Surface(
+                    shape = CircleShape,
+                    color =
+                      if (abLoopA !=
+                        null
+                      ) {
+                        MaterialTheme.colorScheme.primaryContainer
+                      } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                      },
+                    modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopA() }),
+                  ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
+                      Text(
+                        text = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color =
+                          if (abLoopA !=
+                            null
+                          ) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                          } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                          },
+                      )
+                    }
+                  }
+                  Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier =
+                      Modifier.size(30.dp).clip(CircleShape).clickable(onClick = {
+                        viewModel.clearABLoop()
+                        viewModel.toggleABLoopExpanded()
+                      }),
+                  ) {
+                    Box(contentAlignment = Alignment.Center) {
+                      Icon(
+                        imageVector = Icons.RoundedFilled.Close,
+                        contentDescription = "Clear A-B Loop",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                      )
+                    }
+                  }
+                  Surface(
+                    shape = CircleShape,
+                    color =
+                      if (abLoopB !=
+                        null
+                      ) {
+                        MaterialTheme.colorScheme.primaryContainer
+                      } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                      },
+                    modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopB() }),
+                  ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
+                      Text(
+                        text = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color =
+                          if (abLoopB !=
+                            null
+                          ) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                          } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                          },
+                      )
+                    }
+                  }
+                }
+              } else {
+                Surface(
+                  shape = CircleShape,
+                  color = Color.Transparent,
+                  modifier = Modifier.clip(CircleShape).clickable(onClick = viewModel::toggleABLoopExpanded),
+                ) {
+                  AbLoopIcon(
+                    modifier = Modifier.size(30.dp),
+                    tint =
+                      if (abLoopA != null ||
+                        abLoopB != null
+                      ) {
+                        MaterialTheme.colorScheme.primary
+                      } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                      },
+                    isASet = abLoopA != null,
+                    isBSet = abLoopB != null,
+                  )
+                }
+              }
+            }
+          }
+
+          ReactiveIconButton(
+            onClick = { addToPlaylistDialogOpen = true },
+            modifier = Modifier.size(40.dp),
+          ) {
+            Icon(
+              imageVector = Icons.RoundedFilled.PlaylistAdd,
+              contentDescription = stringResource(R.string.ui_add_to_playlist),
+              tint = MaterialTheme.colorScheme.onSurface,
+              modifier = Modifier.size(32.dp),
+            )
           }
         }
       }
@@ -1178,6 +1201,43 @@ fun AudioPlayerControls(
           bottomActionRow()
         }
       }
+    }
+
+    if (addToPlaylistDialogOpen && !mediaPath.isNullOrBlank()) {
+      val displayTitle = remember(lastValidTitle, displayArtist) {
+        cleanSongTitle(lastValidTitle, displayArtist)
+      }
+      val videoForPlaylist =
+        remember(mediaPath, displayTitle) {
+          Video(
+            id = mediaPath.hashCode().toLong(),
+            title = displayTitle,
+            displayName = displayTitle,
+            path = mediaPath,
+            uri = Uri.parse(mediaPath),
+            duration = duration?.toLong() ?: 0L,
+            durationFormatted = "",
+            size = 0L,
+            sizeFormatted = "",
+            dateModified = 0L,
+            dateAdded = 0L,
+            mimeType = "audio/*",
+            bucketId = "",
+            bucketDisplayName = "",
+            width = 0,
+            height = 0,
+            fps = 0f,
+            resolution = "",
+            isAudio = true,
+          )
+        }
+
+      AddToPlaylistDialog(
+        isOpen = true,
+        videos = listOf(videoForPlaylist),
+        onDismiss = { addToPlaylistDialogOpen = false },
+        onSuccess = { addToPlaylistDialogOpen = false },
+      )
     }
   }
 }
