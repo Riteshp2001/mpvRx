@@ -30,6 +30,7 @@ class AudioPreferences(
   val audioBlobEnabled = preferenceStore.getBoolean("audio_blob_enabled", true)
   val audioVisualizerStyle = preferenceStore.getEnum("audio_visualizer_style", AudioVisualizerStyle.Blob)
   val audioOrientation = preferenceStore.getEnum("audio_player_orientation", AudioPlayerOrientation.Auto)
+  val audioAmbientMode = preferenceStore.getBoolean("audio_ambient_mode", true)
 
   init {
     // Consolidate the old audio-only screen-lock switch into the single global setting.

@@ -235,6 +235,20 @@ object AudioPreferencesScreen : Screen {
               )
 
               PreferenceDivider()
+              val audioAmbientMode by preferences.audioAmbientMode.collectAsState()
+              SwitchPreference(
+                value = audioAmbientMode,
+                onValueChange = { preferences.audioAmbientMode.set(it) },
+                title = { Text(stringResource(R.string.pref_audio_ambient_mode_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_audio_ambient_mode_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
               val preferredLanguages by preferences.preferredLanguages.collectAsState()
               TextFieldPreference(
                 value = preferredLanguages,

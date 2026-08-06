@@ -259,7 +259,7 @@
   <string name="pref_subtitles_clear_downloads_confirmation">Are you sure you want to delete all downloaded subtitles? This action cannot be undone.</string>
   <string name="toast_subtitles_cleared">Subtitle downloads cleared</string>
   <string name="pref_audio">Audio</string>
-  <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
+  <string name="pref_audio_summary">Ambient mode, visualizer style, audio channels, pitch correction</string>
   <string name="pref_audio_orientation_title">Audio player orientation</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
   <string name="pref_audio_pitch_correction_summary">Prevents the audio from becoming high-pitched at faster speeds and low-pitched at slower speeds</string>
@@ -278,6 +278,8 @@
   <string name="pref_audio_visualizer_style_particle">Particles</string>
 
   <string name="pref_audio_visualizer_galaxy_credit">Inspired by Zain Raza on CodePen</string>
+  <string name="pref_audio_ambient_mode_title">Ambient Mode</string>
+  <string name="pref_audio_ambient_mode_summary">Display dynamic color gradients derived from album cover art in music player (disabled when visualizer is active)</string>
   <string name="pref_audio_channels">Audio channels</string>
   <string name="pref_audio_channels_auto">Auto</string>
   <string name="pref_audio_channels_auto_safe">Auto Safe</string>
