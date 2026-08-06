@@ -230,6 +230,7 @@ fun AudioPlayerControls(
 
   val audioCodec by MPVLib.propString["audio-codec-name"].collectAsState()
   val sampleRate by MPVLib.propInt["audio-params/samplerate"].collectAsState()
+  val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
 
   val isLosslessCodecOrExt =
     remember(audioCodec, mediaPath) {
@@ -735,6 +736,36 @@ fun AudioPlayerControls(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
           )
+
+          // 4. Playback Speed (left of A-B Loop)
+          Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier =
+              Modifier
+                .height(30.dp)
+                .clip(CircleShape)
+                .clickable(onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(4.dp),
+              modifier = Modifier.padding(horizontal = 10.dp),
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Speed,
+                contentDescription = stringResource(R.string.ui_playback_speed),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+              )
+              Text(
+                text = String.format("%.2fx", playbackSpeed ?: 1f),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          }
+
           AnimatedContent(
             targetState = abLoop.isExpanded,
             transitionSpec = {
