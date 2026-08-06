@@ -482,11 +482,12 @@ vec4 hook() {
 
     // In Linear HDR: glow is still in perceptual space here — convert to linear
     // and scale to 203-nit reference budget before applying GLOW_INTENSITY.
-    // 0.08 was too dim (~2-5 nits after reductions): invisible on OLED HDR.
-    // 0.28 * GLOW_INTENSITY (default 1.2-1.5) ≈ 0.34-0.42 linear ≈ 70-85 nits
-    // at the video edge.  Adjust GLOW_INTENSITY in the Ambient panel as needed.
+    // Unlike YouTube mode, Glow applies edge_fade + vignette AFTER this scale,
+    // reducing effective brightness by ~50-70%.  0.45 base compensates for that:
+    //   0.45 * GLOW_INTENSITY (1.2-1.5) * avg_linear (0.42) * 203 ≈ 46-58 nits
+    //   at the video boundary — nicely visible on HDR OLED.
 #if IS_LINEAR_HDR
-    vec3 glow = to_linear(acc_color / max(acc_weight, 1e-5)) * 0.28 * GLOW_INTENSITY;
+    vec3 glow = to_linear(acc_color / max(acc_weight, 1e-5)) * 0.45 * GLOW_INTENSITY;
 #else
     vec3 glow = (acc_color / max(acc_weight, 1e-5)) * GLOW_INTENSITY;
 #endif
