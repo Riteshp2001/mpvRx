@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,6 +29,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -253,13 +255,24 @@ object RecentlyPlayedScreen : Screen {
               },
               state = rememberTooltipState(),
             ) {
+              val fabSurfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHigh
+              val fabPrimaryContainer = MaterialTheme.colorScheme.primaryContainer
+              val fabBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
               ToggleFloatingActionButton(
                 modifier =
                   Modifier
                     .animateFloatingActionButton(
                       visible = showQuickPlayFab && !selectionManager.isInSelectionMode && isFabVisible.value,
                       alignment = Alignment.BottomEnd,
-                    ),
+                    ).border(1.dp, fabBorderColor, CircleShape),
+                containerColor = { progress ->
+                  androidx.compose.ui.graphics.lerp(
+                    fabSurfaceContainerHigh,
+                    fabPrimaryContainer,
+                    progress,
+                  )
+                },
+                containerCornerRadius = { 28.dp },
                 checked = isFabExpanded.value && !quickPlayFabDirect,
                 onCheckedChange = {
                   if (quickPlayFabDirect) {

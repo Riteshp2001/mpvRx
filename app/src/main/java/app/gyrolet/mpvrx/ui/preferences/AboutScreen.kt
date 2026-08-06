@@ -22,6 +22,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -57,10 +61,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -73,6 +79,7 @@ import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity.Companion.collectDeviceInfo
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -80,6 +87,7 @@ import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.update.UpdateViewModel
+import kotlin.math.sin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 
@@ -153,19 +161,23 @@ object AboutScreen : Screen {
       },
     ) { paddingValues ->
       val cs = MaterialTheme.colorScheme
-      val colorPrimary = cs.primaryContainer
-      val colorTertiary = cs.tertiaryContainer
-      val transition = rememberInfiniteTransition()
-      val fraction by transition.animateFloat(
+      val cornerRadius = 28.dp
+
+      // Header gets a static background image tinted per-theme, plus a light twinkle-star overlay.
+      val headerScrimColor =
+        androidx.compose.ui.graphics.lerp(Color.Black, cs.primary, 0.35f).copy(alpha = 0.45f)
+      val sparkleTransition = rememberInfiniteTransition()
+      val sparkleTwinkle by sparkleTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec =
           infiniteRepeatable(
-            animation = tween(durationMillis = 5000),
+            animation = tween(durationMillis = 2400),
             repeatMode = RepeatMode.Reverse,
           ),
       )
-      val cornerRadius = 28.dp
+      val sparklePositions =
+        remember { listOf(0.55f to 0.18f, 0.78f to 0.42f, 0.92f to 0.22f, 0.68f to 0.62f) }
 
       Column(
         modifier =
@@ -175,42 +187,68 @@ object AboutScreen : Screen {
       ) {
         PreferenceCard {
           Box(
-            modifier =
-              Modifier
-                .drawWithCache {
-                  val cx = size.width - size.width * fraction
-                  val cy = size.height * fraction
+            modifier = Modifier.clip(RoundedCornerShape(cornerRadius)),
+          ) {
+            Image(
+              painter = painterResource(id = R.drawable.about_header_bg),
+              contentDescription = null,
+              modifier = Modifier.matchParentSize(),
+              contentScale = ContentScale.Crop,
+            )
+            Box(
+              modifier =
+                Modifier
+                  .matchParentSize()
+                  .background(headerScrimColor),
+            )
+            Box(
+              modifier =
+                Modifier
+                  .matchParentSize()
+                  .drawWithCache {
+                    onDrawBehind {
+                      sparklePositions.forEachIndexed { index, (fx, fy) ->
+                        val phase = (sparkleTwinkle + index * 0.27f) % 1f
+                        val twinkleAlpha = 0.25f + 0.55f * sin(phase * Math.PI).toFloat()
+                        drawCircle(
+                          color = Color.White.copy(alpha = twinkleAlpha.coerceIn(0f, 1f)),
+                          radius = 1.6.dp.toPx(),
+                          center = Offset(size.width * fx, size.height * fy),
+                        )
+                      }
+                    }
+                  },
+            )
 
-                  val gradient =
-                    Brush.radialGradient(
-                      colors = listOf(colorPrimary, colorTertiary),
-                      center = Offset(cx, cy),
-                      radius = 800f,
-                    )
-
-                  onDrawBehind {
-                    drawRoundRect(
-                      brush = gradient,
-                      cornerRadius =
-                        CornerRadius(
-                          cornerRadius.toPx(),
-                          cornerRadius.toPx(),
+            Column(modifier = Modifier.padding(16.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                  modifier = Modifier.size(80.dp),
+                  contentAlignment = Alignment.Center,
+                ) {
+                  Box(
+                    modifier =
+                      Modifier
+                        .size(80.dp)
+                        .background(
+                          Brush.radialGradient(
+                            colors = listOf(cs.primary.copy(alpha = 0.45f), Color.Transparent),
+                          ),
+                          CircleShape,
                         ),
+                  )
+                  Box(
+                    modifier = Modifier.size(64.dp),
+                  ) {
+                    AndroidView(
+                      modifier = Modifier.matchParentSize(),
+                      factory = { ctx ->
+                        ImageView(ctx).apply {
+                          setImageResource(R.mipmap.ic_launcher)
+                        }
+                      },
                     )
                   }
-                }.padding(16.dp),
-          ) {
-            Column {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(64.dp)) {
-                  AndroidView(
-                    modifier = Modifier.matchParentSize(),
-                    factory = { ctx ->
-                      ImageView(ctx).apply {
-                        setImageResource(R.mipmap.ic_launcher)
-                      }
-                    },
-                  )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -222,13 +260,13 @@ object AboutScreen : Screen {
                         .stringResource(app.gyrolet.mpvrx.R.string.app_name),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = cs.onPrimaryContainer,
+                    color = Color.White,
                   )
                   Spacer(Modifier.height(4.dp))
                   Text(
                     text = "v$versionName $buildType",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onPrimaryContainer.copy(alpha = 0.85f),
+                    color = Color.White.copy(alpha = 0.7f),
                   )
                   Spacer(Modifier.height(8.dp))
                   Surface(
@@ -254,14 +292,16 @@ object AboutScreen : Screen {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
               ) {
-                val btnContainer = cs.primary
-                val btnContent = cs.onPrimary
+                val btnContainer = cs.surfaceContainerHigh.copy(alpha = 0.6f)
+                val btnContent = cs.primary
+                val btnModifier =
+                  Modifier
+                    .weight(1f)
+                    .height(56.dp)
+                    .border(1.dp, cs.primary.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
                 Button(
                   onClick = { backstack.add(LibrariesScreen) },
-                  modifier =
-                    Modifier
-                      .weight(1f)
-                      .height(56.dp),
+                  modifier = btnModifier,
                   shape = RoundedCornerShape(16.dp),
                   colors =
                     ButtonDefaults.buttonColors(
@@ -270,7 +310,7 @@ object AboutScreen : Screen {
                     ),
                 ) {
                   Icon(
-                    imageVector = Icons.RoundedFilled.Code,
+                    painter = painterResource(id = R.drawable.ic_library_cube),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                   )
@@ -291,10 +331,7 @@ object AboutScreen : Screen {
                       ),
                     )
                   },
-                  modifier =
-                    Modifier
-                      .weight(1f)
-                      .height(56.dp),
+                  modifier = btnModifier,
                   shape = RoundedCornerShape(16.dp),
                   colors =
                     ButtonDefaults.buttonColors(
@@ -320,27 +357,43 @@ object AboutScreen : Screen {
 
               Spacer(modifier = Modifier.height(20.dp))
 
-              Column(
-                modifier =
-                  Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                      SafeClipboard.copyPlainText(context, "mpvrx_device_info", collectDeviceInfo())
-                    },
-              ) {
+              val deviceInfoModifier =
+                Modifier
+                  .fillMaxWidth()
+                  .clickable {
+                    SafeClipboard.copyPlainText(context, "mpvrx_device_info", collectDeviceInfo())
+                  }.background(
+                    cs.surfaceContainerHigh.copy(alpha = 0.5f),
+                    RoundedCornerShape(16.dp),
+                  ).border(
+                    1.dp,
+                    cs.outline.copy(alpha = 0.3f),
+                    RoundedCornerShape(16.dp),
+                  ).padding(vertical = 12.dp, horizontal = 16.dp)
+              Column(modifier = deviceInfoModifier) {
                 Row(
                   verticalAlignment = Alignment.CenterVertically,
                   modifier = Modifier.padding(bottom = 8.dp),
                 ) {
-                  Icon(
-                    imageVector = Icons.RoundedFilled.Info,
-                    contentDescription =
-                      androidx.compose.ui.res.stringResource(
-                        app.gyrolet.mpvrx.R.string.ui_device_info,
-                      ),
-                    modifier = Modifier.size(20.dp),
-                    tint = cs.onPrimaryContainer,
-                  )
+                  Surface(
+                    shape = CircleShape,
+                    color = cs.primary,
+                  ) {
+                    Box(
+                      modifier = Modifier.size(28.dp),
+                      contentAlignment = Alignment.Center,
+                    ) {
+                      Icon(
+                        imageVector = Icons.RoundedFilled.Info,
+                        contentDescription =
+                          androidx.compose.ui.res.stringResource(
+                            app.gyrolet.mpvrx.R.string.ui_device_info,
+                          ),
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.White,
+                      )
+                    }
+                  }
                   Spacer(modifier = Modifier.width(8.dp))
                   Text(
                     text =
@@ -351,11 +404,31 @@ object AboutScreen : Screen {
                     color = cs.onPrimaryContainer,
                   )
                 }
-                Text(
-                  text = collectDeviceInfo(),
-                  style = MaterialTheme.typography.bodySmall,
-                  color = cs.onPrimaryContainer.copy(alpha = 0.85f),
-                )
+                val deviceInfoLines =
+                  remember { collectDeviceInfo().lines().filter { it.isNotBlank() } }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                  deviceInfoLines.forEach { line ->
+                    val parts = line.split(":", limit = 2)
+                    val label = parts.getOrNull(0)?.trim().orEmpty()
+                    val value = parts.getOrNull(1)?.trim().orEmpty()
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                      Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                      )
+                      Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = cs.onSurface,
+                      )
+                    }
+                  }
+                }
               }
             }
           }
@@ -368,12 +441,22 @@ object AboutScreen : Screen {
         PreferenceCard {
           Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(
-                imageVector = Icons.RoundedFilled.MonetizationOn,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = cs.error,
-              )
+              Surface(
+                shape = CircleShape,
+                color = cs.primary.copy(alpha = 0.18f),
+              ) {
+                Box(
+                  modifier = Modifier.size(36.dp),
+                  contentAlignment = Alignment.Center,
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.Coffee,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = cs.primary,
+                  )
+                }
+              }
               Spacer(Modifier.width(10.dp))
               Text(
                 text =
@@ -396,8 +479,11 @@ object AboutScreen : Screen {
             Spacer(Modifier.height(14.dp))
             Surface(
               shape = RoundedCornerShape(12.dp),
-              color = cs.primaryContainer.copy(alpha = 0.4f),
-              modifier = Modifier.fillMaxWidth(),
+              color = cs.surfaceContainerHigh.copy(alpha = 0.6f),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .border(1.dp, cs.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
             ) {
               Row(
                 modifier =
@@ -473,12 +559,12 @@ object AboutScreen : Screen {
               shape = RoundedCornerShape(12.dp),
               colors =
                 ButtonDefaults.buttonColors(
-                  containerColor = cs.error,
-                  contentColor = cs.onError,
+                  containerColor = cs.primary,
+                  contentColor = cs.onPrimary,
                 ),
               elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
             ) {
-              Icon(Icons.RoundedFilled.MonetizationOn, null, modifier = Modifier.size(18.dp))
+              Icon(Icons.RoundedFilled.Favorite, null, modifier = Modifier.size(18.dp))
               Spacer(Modifier.width(8.dp))
               Text(
                 androidx.compose.ui.res
