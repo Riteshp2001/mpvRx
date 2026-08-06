@@ -681,6 +681,12 @@ private fun RecentItemsContent(
                 is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}_${item.timestamp}"
               }
             },
+            contentType = { index ->
+              when (recentItems[index]) {
+                is RecentlyPlayedItem.VideoItem -> "video_item"
+                is RecentlyPlayedItem.PlaylistItem -> "playlist_item"
+              }
+            },
             span = { index ->
               val item = recentItems[index]
               val itemSpan =
