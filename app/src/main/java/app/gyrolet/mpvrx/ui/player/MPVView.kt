@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Environment
 import android.util.AttributeSet
 import android.util.Log
@@ -246,6 +247,22 @@ class MPVView(
         MPVLib.command("script-binding", "stats/display-page-$it")
       }
     }
+
+    applyStatisticsOsdScale()
+  }
+
+  /**
+   * mpv's native stats OSD (statistics pages 1-5 and the Console page) is rendered at a fixed
+   * fraction of the window height. In portrait the window is much taller, so the overlay looks
+   * oversized and overflows the narrow width. Page 6 is a custom Compose overlay and scales
+   * correctly on its own. To keep the native stats overlay reasonable in portrait we shrink it
+   * via osd-scale (subtitles are unaffected, they use sub-scale/sub-font-size).
+   */
+  fun applyStatisticsOsdScale() {
+    val isPortrait =
+      resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+    val scale = if (isPortrait) PORTRAIT_STATS_OSD_SCALE else 1.0
+    runCatching { MPVLib.setPropertyDouble("osd-scale", scale) }
   }
 
   fun applyOsdSafeAreaMargins(insets: WindowInsetsCompat? = null) {
@@ -655,5 +672,14 @@ class MPVView(
           "gpu-next and Vulkan disabled: use gpu/opengl"
         },
     )
+  }
+
+  companion object {
+    /**
+     * OSD scale applied while in portrait so the native stats overlay (pages 1-5 and Console)
+     * does not overflow the narrow width. Tuned to compensate for osd-scale-by-window growing
+     * the OSD with the taller portrait window height.
+     */
+    const val PORTRAIT_STATS_OSD_SCALE = 0.6
   }
 }
