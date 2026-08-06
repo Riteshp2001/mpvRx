@@ -315,9 +315,15 @@ vec3 to_linear(vec3 c)     { return c * c; }
 // 20 pseudo-random scatter points, 60% fewer texture fetches per ambient pixel.
 ${youtubeTapTable}
 
+// Colour math is mediump (fp16) — cheaper on mobile, no perceptual quality loss.
+// UV coordinate variables below are explicitly highp (fp32): on 1080p+ screens
+// mediump step size (~0.001) is coarser than a pixel (~0.0004), causing the
+// video_uv remapping to jump in 2-3 pixel blocks and damage fine video lines.
+precision mediump float;
+
 vec4 hook() {
-    vec2 uv = HOOKED_pos;
-    vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
+    highp vec2 uv = HOOKED_pos;
+    highp vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
     // Return video pixel if inside video bounds
     if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
@@ -354,7 +360,7 @@ vec4 hook() {
 #endif
 
     // Smooth fade based on distance from video edge
-    vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
+    highp vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
     float dist = length(video_uv - edge_uv);
     float fade = exp(-dist * 2.5);
     avg_color *= fade;
@@ -362,7 +368,7 @@ vec4 hook() {
     // Debanding via Interleaved Gradient Noise (Jimenez 2014).
     // Replaces the previous sin-based hash() — uses only fract + dot,
     // eliminating the last GPU sin() call from this shader.
-    vec2 screen_pos = floor(uv * HOOKED_size);
+    highp vec2 screen_pos = floor(uv * HOOKED_size);
     float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
     avg_color = clamp(avg_color + (ign - 0.5) * 0.004, 0.0, 1.0);
 
@@ -420,15 +426,19 @@ vec3 apply_warmth(vec3 rgb, float amount) {
 }
 
 vec4 hook() {
-    vec2 uv = HOOKED_pos;
-    vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
+    // Coordinate variables are highp (fp32) to prevent mediump fp16 step
+    // quantization on 1080p+ displays — mediump precision (~1/1024) is coarser
+    // than a pixel on a full-HD screen (~1/2400), causing staircase aliasing
+    // on video lines.  Colour accumulators (acc_color etc.) stay in mediump.
+    highp vec2 uv = HOOKED_pos;
+    highp vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
     if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
         video_uv.y >= 0.0 && video_uv.y <= 1.0) {
         return HOOKED_tex(video_uv);
     }
 
-    vec2 edge_origin = clamp(video_uv, 0.0, 1.0);
+    highp vec2 edge_origin = clamp(video_uv, 0.0, 1.0);
     float edge_dist = length(video_uv - edge_origin);
     float edge_fade = exp(-edge_dist * (3.0 / max(MAX_RADIUS, 0.001)));
 
@@ -451,7 +461,7 @@ vec4 hook() {
             base_offset.x * jitter_c - base_offset.y * jitter_s,
             base_offset.x * jitter_s + base_offset.y * jitter_c
         ) * aspect_fix;
-        vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
+        highp vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
         // In Linear HDR mode: convert to perceptual space so luma weighting
         // and saturation math operate on visually uniform values, not raw
         // energy-linear values where highlights dominate by 40x.
@@ -507,7 +517,11 @@ vec4 hook() {
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!DESC Frame Extend Ambient Mode
-precision mediump float;
+// Frame Extend UV coords thread through multiple helper functions (edge_risk,
+// trace_anchor_strip, sample_predictive_fill, sample_soft_glow).  Promoting
+// only local variables is impractical here, so elevate the global float
+// precision to highp (fp32) to prevent staircase aliasing at 1080p+.
+precision highp float;
 
 #define EXTEND_STEPS      $extendSteps
 #define GLOW_SAMPLES      $glowSamples
