@@ -67,6 +67,7 @@ object Icons {
     val Close by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Close) }
     val CloudDownload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Cloud_download) }
     val Code by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Code) }
+    val Coffee by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Coffee) }
     val ContentCopy by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Content_copy) }
     val ContentPaste by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Content_paste) }
     val CreateNewFolder by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Create_new_folder) }
@@ -92,6 +93,7 @@ object Icons {
     val ExpandMore by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Expand_more) }
     val FastForward by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fast_forward) }
     val FastRewind by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fast_rewind) }
+    val Favorite by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Favorite) }
     val FeaturedPlayList by lazy(
       LazyThreadSafetyMode.NONE,
     ) { AppIcon(MaterialSymbols.RoundedFilled.Featured_play_list) }
@@ -136,6 +138,7 @@ object Icons {
     val Home by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Home) }
     val Info by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Info) }
     val InsertDriveFile by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Description) }
+    val Inventory2 by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Inventory_2) }
     val KeyboardArrowDown by lazy(
       LazyThreadSafetyMode.NONE,
     ) { AppIcon(MaterialSymbols.RoundedFilled.Keyboard_arrow_down) }
@@ -303,6 +306,7 @@ object Icons {
     val Close get() = Shared.Close
     val CloudDownload get() = Shared.CloudDownload
     val Code get() = Shared.Code
+    val Coffee get() = Shared.Coffee
     val ContentCopy get() = Shared.ContentCopy
     val ContentPaste get() = Shared.ContentPaste
     val CreateNewFolder get() = Shared.CreateNewFolder
@@ -322,6 +326,7 @@ object Icons {
     val ExpandMore get() = Shared.ExpandMore
     val FastForward get() = Shared.FastForward
     val FastRewind get() = Shared.FastRewind
+    val Favorite get() = Shared.Favorite
     val FeaturedPlayList get() = Shared.FeaturedPlayList
     val FileDownload get() = Shared.FileDownload
     val FileOpen get() = Shared.FileOpen
@@ -356,6 +361,7 @@ object Icons {
     val Home get() = Shared.Home
     val Info get() = Shared.Info
     val InsertDriveFile get() = Shared.InsertDriveFile
+    val Inventory2 get() = Shared.Inventory2
     val KeyboardArrowDown get() = Shared.KeyboardArrowDown
     val KeyboardArrowLeft get() = Shared.KeyboardArrowLeft
     val KeyboardArrowRight get() = Shared.KeyboardArrowRight

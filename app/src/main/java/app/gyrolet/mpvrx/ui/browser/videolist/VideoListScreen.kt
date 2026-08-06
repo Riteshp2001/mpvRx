@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButton
@@ -400,7 +402,10 @@ data class VideoListScreen(
             },
             state = rememberTooltipState(),
           ) {
+            val fabBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+            val fabContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             FloatingActionButton(
+              containerColor = fabContainerColor,
               modifier =
                 Modifier
                   .windowInsetsPadding(WindowInsets.systemBars)
@@ -408,7 +413,8 @@ data class VideoListScreen(
                   .animateFloatingActionButton(
                     visible = showQuickPlayFab && !selectionManager.isInSelectionMode && isFabVisible.value,
                     alignment = Alignment.BottomEnd,
-                  ),
+                  ).border(1.dp, fabBorderColor, CircleShape),
+              shape = CircleShape,
               onClick = {
                 coroutineScope.launch {
                   val folderPath =

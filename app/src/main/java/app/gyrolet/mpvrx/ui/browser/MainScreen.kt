@@ -33,6 +33,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.Color
@@ -556,6 +557,7 @@ private fun ExpressivePillNavigationBar(
           Row(
             modifier =
               Modifier
+<<<<<<< HEAD
                 .padding(horizontal = animatedPadding)
                 .animateContentSize(
                   animationSpec =
@@ -611,6 +613,22 @@ private fun ExpressivePillNavigationBar(
                   modifier = Modifier.size(22.dp),
                 )
             }
+=======
+                .width(itemWidth)
+                .height(56.dp)
+                .graphicsLayer {
+                  val currentPos =
+                    pagerPositionFloatProvider().coerceIn(
+                      0f,
+                      (visibleTabs.size - 1).coerceAtLeast(0).toFloat(),
+                    )
+                  translationX = if (isRtl) -itemWidthPx * currentPos else itemWidthPx * currentPos
+                }.clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), CircleShape),
+          )
+        }
+>>>>>>> c92b591b (Add aurora theme + home,about,fab changes)
 
             AnimatedVisibility(
               visible = isSelected,
