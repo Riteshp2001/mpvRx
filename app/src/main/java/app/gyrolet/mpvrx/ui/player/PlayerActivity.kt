@@ -2819,7 +2819,6 @@ class PlayerActivity :
     val isPortrait = newConfig.orientation == Configuration.ORIENTATION_PORTRAIT
     viewModel.onOrientationChanged(isPortrait)
     if (isReady) {
-      player.applyStatisticsOsdScale()
       handleConfigurationChange()
     }
   }
