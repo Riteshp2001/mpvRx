@@ -81,6 +81,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -450,7 +451,8 @@ fun PlayerControls(
         modifier =
           Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = -brightness))
+            .graphicsLayer { alpha = -brightness }
+            .background(Color.Black)
             .zIndex(0f),
       )
     }

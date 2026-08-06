@@ -112,6 +112,10 @@ fun GestureHandler(
   val subtitlesPreferences = koinInject<SubtitlesPreferences>()
   val context = LocalContext.current
   val subtitleTracks by viewModel.subtitleTracks.collectAsState(emptyList())
+  val videoAspectState by MPVLib.propDouble["video-params/aspect"].collectAsState()
+  val videoZoomState by MPVLib.propDouble["video-zoom"].collectAsState()
+  val videoPanYState by MPVLib.propDouble["video-pan-y"].collectAsState()
+  val subUseMarginsState by MPVLib.propString["sub-use-margins"].collectAsState()
 
   fun getSubtitleScreenY(
     subPos: Int,
@@ -124,11 +128,11 @@ fun GestureHandler(
       activeSubTrack?.codec?.contains("ass", ignoreCase = true) == true ||
         activeSubTrack?.codec?.contains("ssa", ignoreCase = true) == true
     val overrideAss = subtitlesPreferences.overrideAssSubs.get()
-    val subUseMargins = MPVLib.getPropertyString("sub-use-margins") != "no"
+    val subUseMargins = subUseMarginsState != "no"
     val renderInVideoFrame = (isActiveSubAss && !overrideAss) || !subUseMargins
 
     if (renderInVideoFrame) {
-      val va = MPVLib.getPropertyDouble("video-params/aspect")?.toFloat()
+      val va = videoAspectState?.toFloat()
       if (va != null && va > 0f) {
         val sa = width / height
         val videoHeight =
@@ -137,9 +141,9 @@ fun GestureHandler(
           } else {
             height
           }
-        val zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
+        val zoom = videoZoomState?.toFloat() ?: 0f
         val videoScale = 2f.pow(zoom)
-        val videoPanY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
+        val videoPanY = videoPanYState?.toFloat() ?: 0f
         val screenCenterY = height / 2f
         val subtitleScreenY = screenCenterY + (subPos / 100f - 0.5f + videoPanY) * videoHeight * videoScale
         return subtitleScreenY.coerceIn(0f, height)

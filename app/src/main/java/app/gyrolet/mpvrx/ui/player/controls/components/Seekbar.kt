@@ -152,7 +152,18 @@ private fun DrawScope.drawSeekbarTrackSegments(
 ) {
   val outerRadius = trackHeight / 2f
   val innerRadius = 2.dp.toPx()
+  val cornerOuter = CornerRadius(outerRadius)
+  val cornerInner = CornerRadius(innerRadius)
+  val cornerZero = CornerRadius.Zero
   val reusablePath = segmentDrawPath.get() ?: Path().also { segmentDrawPath.set(it) }
+
+  fun cornerFor(radius: Float): CornerRadius =
+    when {
+      radius == outerRadius -> cornerOuter
+      radius == innerRadius -> cornerInner
+      radius == 0f -> cornerZero
+      else -> CornerRadius(radius)
+    }
 
   fun drawPiece(
     startX: Float,
@@ -162,6 +173,8 @@ private fun DrawScope.drawSeekbarTrackSegments(
     rightRadius: Float,
   ) {
     if (endX - startX < 0.5f) return
+    val cLeft = cornerFor(leftRadius)
+    val cRight = cornerFor(rightRadius)
     reusablePath.reset()
     reusablePath.addRoundRect(
       androidx.compose.ui.geometry.RoundRect(
@@ -169,10 +182,10 @@ private fun DrawScope.drawSeekbarTrackSegments(
         top = centerY - outerRadius,
         right = endX,
         bottom = centerY + outerRadius,
-        topLeftCornerRadius = CornerRadius(leftRadius),
-        bottomLeftCornerRadius = CornerRadius(leftRadius),
-        topRightCornerRadius = CornerRadius(rightRadius),
-        bottomRightCornerRadius = CornerRadius(rightRadius),
+        topLeftCornerRadius = cLeft,
+        bottomLeftCornerRadius = cLeft,
+        topRightCornerRadius = cRight,
+        bottomRightCornerRadius = cRight,
       ),
     )
     drawPath(reusablePath, color)
@@ -286,7 +299,7 @@ fun SeekbarWithTimers(
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
       SeekbarContent(
-        position = if (isUserInteracting) userPosition else animatedPosition.value,
+        positionProvider = { if (isUserInteracting) userPosition else animatedPosition.value },
         committedPosition = committedPosition,
         duration = duration,
         chapters = chapters,
@@ -351,7 +364,7 @@ fun SeekbarWithTimers(
       )
 
       SeekbarContent(
-        position = if (isUserInteracting) userPosition else animatedPosition.value,
+        positionProvider = { if (isUserInteracting) userPosition else animatedPosition.value },
         committedPosition = committedPosition,
         duration = duration,
         chapters = chapters,
@@ -388,7 +401,7 @@ fun SeekbarWithTimers(
 
 @Composable
 private fun SeekbarContent(
-  position: Float,
+  positionProvider: () -> Float,
   committedPosition: Float,
   duration: Float,
   chapters: ImmutableList<Segment>,
@@ -421,8 +434,9 @@ private fun SeekbarContent(
       .takeIf { it.isFinite() }
       ?.coerceIn(seekerRange)
       ?: seekerRange.start
+  val currentPos = positionProvider()
   val safeThumbPosition =
-    position
+    currentPos
       .takeIf { it.isFinite() }
       ?.coerceIn(seekerRange)
       ?: safeCommittedPosition
@@ -442,11 +456,11 @@ private fun SeekbarContent(
       SeekbarStyle.Standard -> 8.dp
       SeekbarStyle.Wavy -> 8.dp
     }
-  var latestInteractionPosition by remember { mutableFloatStateOf(position) }
+  var latestInteractionPosition by remember { mutableFloatStateOf(currentPos) }
 
-  LaunchedEffect(position, isUserInteracting) {
+  LaunchedEffect(currentPos, isUserInteracting) {
     if (!isUserInteracting) {
-      latestInteractionPosition = position
+      latestInteractionPosition = currentPos
     }
   }
 
@@ -497,7 +511,7 @@ private fun SeekbarContent(
       when (seekbarStyle) {
         SeekbarStyle.Standard -> {
           StandardSeekbar(
-            position = position,
+            positionProvider = positionProvider,
             duration = duration,
             chapters = chapters,
             isPaused = paused,
@@ -511,7 +525,7 @@ private fun SeekbarContent(
         }
         SeekbarStyle.Wavy -> {
           SquigglySeekbar(
-            position = position,
+            positionProvider = positionProvider,
             duration = duration,
             chapters = chapters,
             isPaused = paused,
@@ -527,7 +541,7 @@ private fun SeekbarContent(
         }
         SeekbarStyle.Thick -> {
           StandardSeekbar(
-            position = position,
+            positionProvider = positionProvider,
             duration = duration,
             chapters = chapters,
             isPaused = paused,
@@ -541,7 +555,7 @@ private fun SeekbarContent(
         }
         SeekbarStyle.Slim -> {
           SlimSeekbar(
-            position = position,
+            positionProvider = positionProvider,
             duration = duration,
             chapters = chapters,
             isPaused = paused,
@@ -770,7 +784,7 @@ fun SeekThumbnailPreviewBubble(
 
 @Composable
 private fun SquigglySeekbar(
-  position: Float,
+  positionProvider: () -> Float,
   duration: Float,
   chapters: ImmutableList<Segment>,
   isPaused: Boolean,
@@ -788,7 +802,7 @@ private fun SquigglySeekbar(
   val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
 
   val isInteracting = isScrubbing
-  val thumbVisibility by animateFloatAsState(
+  val thumbVisibilityState = animateFloatAsState(
     targetValue = if (isInteracting) 0f else 1f,
     animationSpec =
       spring(
@@ -877,8 +891,9 @@ private fun SquigglySeekbar(
         .fillMaxWidth()
         .height(48.dp),
   ) {
+    val currentPosition = positionProvider()
     val strokeWidth = 5.dp.toPx()
-    val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
+    val progress = if (duration > 0f) (currentPosition / duration).coerceIn(0f, 1f) else 0f
     val totalWidth = size.width
     val totalProgressPx = totalWidth * progress
     val centerY = size.height / 2f
@@ -1033,6 +1048,7 @@ private fun SquigglySeekbar(
     )
 
     // Vertical Bar Thumb
+    val thumbVisibility = thumbVisibilityState.value
     val barHalfHeight = (lineAmplitude + strokeWidth) * thumbVisibility
     val barWidth = 5.dp.toPx()
 
@@ -1086,7 +1102,7 @@ private fun SquigglySeekbar(
 
 @Composable
 private fun SlimSeekbar(
-  position: Float,
+  positionProvider: () -> Float,
   duration: Float,
   chapters: ImmutableList<Segment>,
   isPaused: Boolean,
@@ -1139,7 +1155,8 @@ private fun SlimSeekbar(
   val chapterStarts = remember(chapters) { chapters.map(Segment::start) }
 
   Canvas(modifier = modifier.fillMaxWidth().height(48.dp)) {
-    val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
+    val currentPosition = positionProvider()
+    val progress = if (duration > 0f) (currentPosition / duration).coerceIn(0f, 1f) else 0f
     val totalWidth = size.width
     val playedPx = totalWidth * progress
     val centerY = size.height / 2f
@@ -1205,7 +1222,7 @@ fun SeekbarStylePreview(
 
   if (style == SeekbarStyle.Wavy) {
     SquigglySeekbar(
-      position = previewProgress * 100f,
+      positionProvider = { previewProgress * 100f },
       duration = 100f,
       chapters = persistentListOf(),
       isPaused = false,
@@ -1395,6 +1412,33 @@ fun StandardSeekbar(
   loopEnd: Float? = null,
   bufferDuration: Float? = null,
   modifier: Modifier = Modifier,
+) = StandardSeekbar(
+  positionProvider = { position },
+  duration = duration,
+  chapters = chapters,
+  isPaused = isPaused,
+  isScrubbing = isScrubbing,
+  seekbarStyle = seekbarStyle,
+  interactionSource = interactionSource,
+  loopStart = loopStart,
+  loopEnd = loopEnd,
+  bufferDuration = bufferDuration,
+  modifier = modifier,
+)
+
+@Composable
+fun StandardSeekbar(
+  positionProvider: () -> Float,
+  duration: Float,
+  chapters: ImmutableList<Segment>,
+  isPaused: Boolean = false,
+  isScrubbing: Boolean = false,
+  seekbarStyle: SeekbarStyle = SeekbarStyle.Standard,
+  interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+  loopStart: Float? = null,
+  loopEnd: Float? = null,
+  bufferDuration: Float? = null,
+  modifier: Modifier = Modifier,
 ) {
   val primaryColor = MaterialTheme.colorScheme.primary
   val isPressed by interactionSource.collectIsPressedAsState()
@@ -1453,10 +1497,11 @@ fun StandardSeekbar(
   )
 
   Canvas(modifier = modifier.fillMaxWidth().height(thumbHeight)) {
+    val currentPosition = positionProvider()
     val safeDuration = duration.takeIf { it.isFinite() && it > 0f } ?: 0f
     val playedFraction =
       if (safeDuration > 0f) {
-        position.takeIf { it.isFinite() }?.div(safeDuration)?.coerceIn(0f, 1f) ?: 0f
+        currentPosition.takeIf { it.isFinite() }?.div(safeDuration)?.coerceIn(0f, 1f) ?: 0f
       } else {
         0f
       }

@@ -1447,6 +1447,7 @@ private fun FileSystemBrowserContent(
                 items(
                   items = items.filterIsInstance<FileSystemItem.Folder>(),
                   key = { it.path },
+                  contentType = { "folder_item" },
                   span = { GridItemSpan(spansInfo.folderSpan) },
                 ) { folder ->
                   val folderModel =
@@ -1481,6 +1482,7 @@ private fun FileSystemBrowserContent(
                 items(
                   items = items.filterIsInstance<FileSystemItem.VideoFile>(),
                   key = { "${it.video.id}_${it.video.path}" },
+                  contentType = { "video_item" },
                   span = { GridItemSpan(spansInfo.videoSpan) },
                 ) { videoFile ->
                   VideoCard(
@@ -1555,6 +1557,7 @@ private fun FileSystemBrowserContent(
               items(
                 items = items.filterIsInstance<FileSystemItem.Folder>(),
                 key = { it.path },
+                contentType = { "folder_item" },
               ) { folder ->
                 val folderModel =
                   app.gyrolet.mpvrx.domain.media.model.VideoFolder(
@@ -1588,6 +1591,7 @@ private fun FileSystemBrowserContent(
               items(
                 items = items.filterIsInstance<FileSystemItem.VideoFile>(),
                 key = { "${it.video.id}_${it.video.path}" },
+                contentType = { "video_item" },
               ) { videoFile ->
                 VideoCard(
                   video = videoFile.video,
