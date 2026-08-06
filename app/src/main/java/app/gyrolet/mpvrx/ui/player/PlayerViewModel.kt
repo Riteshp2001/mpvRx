@@ -4950,6 +4950,9 @@ class PlayerViewModel(
       decoderPreferences.lastHdrMode.set(resolvedMode)
     }
     applyHdrScreenOutput(resolvedMode)
+    // Ambient shader encodes IS_LINEAR_HDR at compile time — regenerate it so the
+    // new mode (linear vs SDR/hdr-toys) is immediately reflected in the GLSL output.
+    restartAmbientIfActive()
     playerUpdate.value =
       PlayerUpdates.ShowText(
         host.context.getString(R.string.hdr_screen_output_update, host.context.getString(resolvedMode.shortTitleRes)),
@@ -5522,7 +5525,7 @@ class PlayerViewModel(
     fadeCurve: Float,
     opacity: Float,
   ): AmbientShaderSpec {
-    val context = AmbientRenderContext(scaleX = sx, scaleY = sy)
+    val context = AmbientRenderContext(scaleX = sx, scaleY = sy, isLinearHdr = _hdrScreenMode.value == HdrScreenMode.LINEAR)
     val shared =
       AmbientSharedShaderConfig(
         bezelDepth = if (_ambientVisualMode.value == AmbientVisualMode.FRAME_EXTEND) bezelDepth else 0f,
