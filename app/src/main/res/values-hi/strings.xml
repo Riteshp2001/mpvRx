@@ -270,6 +270,8 @@
   <string name="pref_audio_visualizer_style_cuboid">Cuboid</string>
   <string name="pref_audio_visualizer_style_particle">Particles</string>
   <string name="pref_audio_visualizer_galaxy_credit">Zain Raza (CodePen) से प्रेरित</string>
+  <string name="pref_audio_ambient_mode_title">एम्बिएंट मोड</string>
+  <string name="pref_audio_ambient_mode_summary">म्यूजिक प्लेयर में एल्बम कवर आर्ट से बने गतिशील रंग ग्रेडिएंट प्रदर्शित करें (विज़ुअलाइज़र सक्रिय होने पर अक्षम)</string>
   <string name="pref_audio_channels">ऑडियो चैनल</string>
   <string name="pref_audio_channels_auto">ऑटो</string>
   <string name="pref_audio_channels_auto_safe">ऑटो सेफ</string>

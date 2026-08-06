@@ -14,6 +14,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -78,9 +79,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import androidx.palette.graphics.Palette
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem
@@ -91,6 +94,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
@@ -405,11 +411,91 @@ fun AudioPlayerControls(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
 
+  val ambientModeEnabled by audioPreferences.audioAmbientMode.collectAsState()
+
+  val ambientColors by produceState<Pair<Color, Color>?>(
+    initialValue = null,
+    key1 = albumArtBitmap,
+    key2 = ambientModeEnabled,
+  ) {
+    if (!ambientModeEnabled || albumArtBitmap == null) {
+      value = null
+      return@produceState
+    }
+    withContext(Dispatchers.Default) {
+      runCatching {
+        val palette = Palette.from(albumArtBitmap).maximumColorCount(16).generate()
+        val vibrant = palette.getVibrantColor(
+          palette.getDominantColor(
+            palette.getMutedColor(0)
+          )
+        )
+        val darkVibrant = palette.getDarkVibrantColor(
+          palette.getDarkMutedColor(vibrant)
+        )
+        if (vibrant == 0 && darkVibrant == 0) return@runCatching null
+
+        val topColor = Color(if (vibrant != 0) vibrant else darkVibrant).copy(alpha = 0.50f)
+        val bottomColor = Color(if (darkVibrant != 0) darkVibrant else vibrant).copy(alpha = 0.30f)
+        Pair(topColor, bottomColor)
+      }.onSuccess { colors ->
+        value = colors
+      }.onFailure {
+        value = null
+      }
+    }
+  }
+
+  val targetTopColor = if (ambientModeEnabled && !showVisualizer) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
+  val targetBottomColor = if (ambientModeEnabled && !showVisualizer) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
+
+  val animatedAmbientTop: Color by animateColorAsState(
+    targetValue = targetTopColor,
+    animationSpec = tween(durationMillis = 800),
+    label = "ambient_top_color",
+  )
+
+  val animatedAmbientBottom: Color by animateColorAsState(
+    targetValue = targetBottomColor,
+    animationSpec = tween(durationMillis = 800),
+    label = "ambient_bottom_color",
+  )
+
   Box(
     modifier =
       modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
+        .drawWithCache {
+          if (ambientModeEnabled && !showVisualizer && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
+            val topColor = animatedAmbientTop
+            val bottomColor = animatedAmbientBottom
+            val radialGradient = Brush.radialGradient(
+              colors = listOf(
+                topColor,
+                bottomColor,
+                Color.Transparent,
+              ),
+              center = Offset(size.width * 0.5f, size.height * 0.25f),
+              radius = size.width * 1.3f,
+            )
+            val linearGradient = Brush.verticalGradient(
+              colors = listOf(
+                topColor.copy(alpha = topColor.alpha * 0.65f),
+                bottomColor.copy(alpha = bottomColor.alpha * 0.35f),
+                Color.Transparent,
+              ),
+              startY = 0f,
+              endY = size.height * 0.80f,
+            )
+            onDrawBehind {
+              drawRect(radialGradient)
+              drawRect(linearGradient)
+            }
+          } else {
+            onDrawBehind {}
+          }
+        }
         .windowInsetsPadding(WindowInsets.safeDrawing)
         .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp),
   ) {

@@ -278,6 +278,8 @@ Weiter: NEXT</string>
   <string name="pref_audio_visualizer_style_galaxy">Galaxie</string>
   <string name="pref_audio_visualizer_style_cuboid">Quader</string>
   <string name="pref_audio_visualizer_galaxy_credit">Inspiriert von Zain Raza auf CodePen</string>
+  <string name="pref_audio_ambient_mode_title">Ambient-Modus</string>
+  <string name="pref_audio_ambient_mode_summary">Dynamische Farbverläufe aus dem Album-Cover im Musikplayer anzeigen (deaktiviert, wenn der Visualizer aktiv ist)</string>
   <string name="pref_audio_channels">Audiokanäle</string>
   <string name="pref_audio_channels_auto">Automatisch</string>
   <string name="pref_audio_channels_auto_safe">Automatisch sicher</string>
