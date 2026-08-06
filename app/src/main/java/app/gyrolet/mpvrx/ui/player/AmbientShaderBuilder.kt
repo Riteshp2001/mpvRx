@@ -350,10 +350,11 @@ vec4 hook() {
 
 #if IS_LINEAR_HDR
     // Reference white in gpu-next linear light = 1.0 = 203 nits.
-    // Target ambient brightness: ~10-20 nits → 0.05-0.10 linear.
-    // 0.08 chosen for clear visibility without overpowering HDR content.
-    // Convert from perceptual averaging space back to linear before scaling.
-    avg_color = to_linear(avg_color) * 0.08;
+    // 0.08 was too conservative (~2-5 nits after edge_fade): invisible on OLED.
+    // 0.40 targets ~70-85 nits at the video edge for a mid-bright scene:
+    //   avg perceptual ~0.65 → to_linear = 0.42 → 0.42 * 0.40 * 203 ≈ 34 nits base,
+    //   before edge falloff.  Adjust down if content is too bright on your display.
+    avg_color = to_linear(avg_color) * 0.40;
 #else
     // SDR / hdr-toys mode: values are already gamma-encoded, scale normally.
     avg_color *= 0.30;
@@ -481,9 +482,11 @@ vec4 hook() {
 
     // In Linear HDR: glow is still in perceptual space here — convert to linear
     // and scale to 203-nit reference budget before applying GLOW_INTENSITY.
-    // In SDR/hdr-toys: pass through as-is; GLOW_INTENSITY is the user scale.
+    // 0.08 was too dim (~2-5 nits after reductions): invisible on OLED HDR.
+    // 0.28 * GLOW_INTENSITY (default 1.2-1.5) ≈ 0.34-0.42 linear ≈ 70-85 nits
+    // at the video edge.  Adjust GLOW_INTENSITY in the Ambient panel as needed.
 #if IS_LINEAR_HDR
-    vec3 glow = to_linear(acc_color / max(acc_weight, 1e-5)) * 0.08 * GLOW_INTENSITY;
+    vec3 glow = to_linear(acc_color / max(acc_weight, 1e-5)) * 0.28 * GLOW_INTENSITY;
 #else
     vec3 glow = (acc_color / max(acc_weight, 1e-5)) * GLOW_INTENSITY;
 #endif
@@ -608,10 +611,11 @@ vec3 sample_soft_glow(vec2 edge_origin, vec2 uv, float outside_norm) {
     }
 
     // In Linear HDR: result is in perceptual space — convert back to linear.
-    // The 0.08 scale targets ~16 nits (comfortable ambient brightness).
+    // 0.08 was too dim; 0.28 gives ~55-70 nits at the video edge on mid-bright HDR
+    // content.  This path is the fallback glow when frame-extend confidence is low.
     // In SDR/hdr-toys: pass through; callers blend this with the extend path.
 #if IS_LINEAR_HDR
-    return to_linear(acc / max(acc_weight, 1e-5)) * 0.08;
+    return to_linear(acc / max(acc_weight, 1e-5)) * 0.28;
 #else
     return acc / max(acc_weight, 1e-5);
 #endif
