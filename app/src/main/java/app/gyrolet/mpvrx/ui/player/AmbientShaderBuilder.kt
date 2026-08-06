@@ -18,6 +18,14 @@ import kotlin.math.sqrt
 data class AmbientRenderContext(
   val scaleX: Double,
   val scaleY: Double,
+  /**
+   * True when mpv is running in Linear HDR mode (target-colorspace-hint=yes on Vulkan
+   * gpu-next swapchain).  HOOKED_tex samples are raw linear-light values where reference
+   * white = 1.0 = 203 nits.  The ambient shader must work in perceptual space for its
+   * blur/saturation math, then convert back to linear at the correct nit budget before
+   * output — otherwise the glow is 40× too dark and effectively invisible.
+   */
+  val isLinearHdr: Boolean = false,
 )
 
 data class AmbientSharedShaderConfig(
@@ -289,16 +297,33 @@ object AmbientShaderBuilder {
 //!BIND HOOKED
 //!DESC YouTube-Style Ambient Mode
 
-#define SCALE_X    ${spec.context.scaleX}
-#define SCALE_Y    ${spec.context.scaleY}
+#define SCALE_X       ${spec.context.scaleX}
+#define SCALE_Y       ${spec.context.scaleY}
+// IS_LINEAR_HDR=1 → Vulkan gpu-next linear swapchain (target-colorspace-hint=yes).
+// HOOKED_tex values are raw linear-light where 1.0 = 203 nits.  We must work in
+// perceptual space (sqrt ≈ γ0.5) for colour averaging so bright highlights do not
+// overwhelm dark colours, then convert back to linear and scale to ~0.08 linear
+// (≈16 nits) for a visible but non-blinding ambient glow.
+#define IS_LINEAR_HDR ${if (spec.context.isLinearHdr) 1 else 0}
+
+#if IS_LINEAR_HDR
+vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
+vec3 to_linear(vec3 c)     { return c * c; }
+#endif
 
 // 8 Halton(2,3) positions precomputed in Kotlin — better spatial coverage than
 // 20 pseudo-random scatter points, 60% fewer texture fetches per ambient pixel.
-$youtubeTapTable
+${youtubeTapTable}
+
+// Colour math is mediump (fp16) — cheaper on mobile, no perceptual quality loss.
+// UV coordinate variables below are explicitly highp (fp32): on 1080p+ screens
+// mediump step size (~0.001) is coarser than a pixel (~0.0004), causing the
+// video_uv remapping to jump in 2-3 pixel blocks and damage fine video lines.
+precision mediump float;
 
 vec4 hook() {
-    vec2 uv = HOOKED_pos;
-    vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
+    highp vec2 uv = HOOKED_pos;
+    highp vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
     // Return video pixel if inside video bounds
     if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
@@ -306,10 +331,16 @@ vec4 hook() {
         return HOOKED_tex(video_uv);
     }
 
-    // Sample 8 well-distributed positions across the entire video frame
+    // Sample 8 well-distributed positions across the entire video frame.
+    // In Linear HDR mode: convert to perceptual space before averaging so that
+    // bright linear highlights do not dominate dark colours in the blend.
     vec3 avg_color = vec3(0.0);
     for (int i = 0; i < 8; i++) {
+#if IS_LINEAR_HDR
+        avg_color += to_perceptual(HOOKED_tex(YOUTUBE_TAPS[i]).rgb);
+#else
         avg_color += HOOKED_tex(YOUTUBE_TAPS[i]).rgb;
+#endif
     }
     avg_color /= 8.0;
 
@@ -317,11 +348,20 @@ vec4 hook() {
     float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
     avg_color = mix(vec3(luma), avg_color, 1.3); // 30% saturation boost
 
-    // Increased brightness for more visible glow
+#if IS_LINEAR_HDR
+    // Reference white in gpu-next linear light = 1.0 = 203 nits.
+    // 0.08 was too conservative (~2-5 nits after edge_fade): invisible on OLED.
+    // 0.40 targets ~70-85 nits at the video edge for a mid-bright scene:
+    //   avg perceptual ~0.65 → to_linear = 0.42 → 0.42 * 0.40 * 203 ≈ 34 nits base,
+    //   before edge falloff.  Adjust down if content is too bright on your display.
+    avg_color = to_linear(avg_color) * 0.40;
+#else
+    // SDR / hdr-toys mode: values are already gamma-encoded, scale normally.
     avg_color *= 0.30;
+#endif
 
     // Smooth fade based on distance from video edge
-    vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
+    highp vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
     float dist = length(video_uv - edge_uv);
     float fade = exp(-dist * 2.5);
     avg_color *= fade;
@@ -329,7 +369,7 @@ vec4 hook() {
     // Debanding via Interleaved Gradient Noise (Jimenez 2014).
     // Replaces the previous sin-based hash() — uses only fract + dot,
     // eliminating the last GPU sin() call from this shader.
-    vec2 screen_pos = floor(uv * HOOKED_size);
+    highp vec2 screen_pos = floor(uv * HOOKED_size);
     float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
     avg_color = clamp(avg_color + (ign - 0.5) * 0.004, 0.0, 1.0);
 
@@ -357,6 +397,16 @@ precision mediump float;
 #define OPACITY          ${spec.shared.opacity}
 #define SCALE_X          ${spec.context.scaleX}
 #define SCALE_Y          ${spec.context.scaleY}
+// IS_LINEAR_HDR=1 → Vulkan gpu-next linear swapchain (target-colorspace-hint=yes).
+// Samples from HOOKED_tex are raw linear-light (1.0 = 203 nits).  Convert to
+// perceptual space (sqrt) for accumulation/saturation math, then back to linear
+// (x²) and scale to ~0.08 linear (≈16 nits) on output so the glow is visible.
+#define IS_LINEAR_HDR    ${if (spec.context.isLinearHdr) 1 else 0}
+
+#if IS_LINEAR_HDR
+vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
+vec3 to_linear(vec3 c)     { return c * c; }
+#endif
 
 const float PI  = 3.14159265358979;
 ${getGlowTaps(spec.blurSamples)}
@@ -377,15 +427,19 @@ vec3 apply_warmth(vec3 rgb, float amount) {
 }
 
 vec4 hook() {
-    vec2 uv = HOOKED_pos;
-    vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
+    // Coordinate variables are highp (fp32) to prevent mediump fp16 step
+    // quantization on 1080p+ displays — mediump precision (~1/1024) is coarser
+    // than a pixel on a full-HD screen (~1/2400), causing staircase aliasing
+    // on video lines.  Colour accumulators (acc_color etc.) stay in mediump.
+    highp vec2 uv = HOOKED_pos;
+    highp vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
     if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
         video_uv.y >= 0.0 && video_uv.y <= 1.0) {
         return HOOKED_tex(video_uv);
     }
 
-    vec2 edge_origin = clamp(video_uv, 0.0, 1.0);
+    highp vec2 edge_origin = clamp(video_uv, 0.0, 1.0);
     float edge_dist = length(video_uv - edge_origin);
     float edge_fade = exp(-edge_dist * (3.0 / max(MAX_RADIUS, 0.001)));
 
@@ -408,8 +462,15 @@ vec4 hook() {
             base_offset.x * jitter_c - base_offset.y * jitter_s,
             base_offset.x * jitter_s + base_offset.y * jitter_c
         ) * aspect_fix;
-        vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
+        highp vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
+        // In Linear HDR mode: convert to perceptual space so luma weighting
+        // and saturation math operate on visually uniform values, not raw
+        // energy-linear values where highlights dominate by 40x.
+#if IS_LINEAR_HDR
+        vec3 sample_rgb = to_perceptual(HOOKED_tex(sample_uv).rgb);
+#else
         vec3 sample_rgb = HOOKED_tex(sample_uv).rgb;
+#endif
 
         float dist_w = pow(max(1.0 / (1.0 + r * 40.0), 0.0), FADE_CURVE);
         float luma_w = 1.0 + luma(sample_rgb) * 2.0;
@@ -419,7 +480,16 @@ vec4 hook() {
         acc_weight += weight;
     }
 
+    // In Linear HDR: glow is still in perceptual space here — convert to linear
+    // and scale to 203-nit reference budget before applying GLOW_INTENSITY.
+    // 0.08 was too dim (~2-5 nits after reductions): invisible on OLED HDR.
+    // 0.28 * GLOW_INTENSITY (default 1.2-1.5) ≈ 0.34-0.42 linear ≈ 70-85 nits
+    // at the video edge.  Adjust GLOW_INTENSITY in the Ambient panel as needed.
+#if IS_LINEAR_HDR
+    vec3 glow = to_linear(acc_color / max(acc_weight, 1e-5)) * 0.28 * GLOW_INTENSITY;
+#else
     vec3 glow = (acc_color / max(acc_weight, 1e-5)) * GLOW_INTENSITY;
+#endif
     glow = adjust_saturation(glow, SAT_BOOST);
     glow = apply_warmth(glow, WARMTH);
     glow *= edge_fade;
@@ -450,7 +520,11 @@ vec4 hook() {
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!DESC Frame Extend Ambient Mode
-precision mediump float;
+// Frame Extend UV coords thread through multiple helper functions (edge_risk,
+// trace_anchor_strip, sample_predictive_fill, sample_soft_glow).  Promoting
+// only local variables is impractical here, so elevate the global float
+// precision to highp (fp32) to prevent staircase aliasing at 1080p+.
+precision highp float;
 
 #define EXTEND_STEPS      $extendSteps
 #define GLOW_SAMPLES      $glowSamples
@@ -465,6 +539,15 @@ precision mediump float;
 #define OPACITY           ${spec.shared.opacity}
 #define SCALE_X           ${spec.context.scaleX}
 #define SCALE_Y           ${spec.context.scaleY}
+// IS_LINEAR_HDR=1 → Vulkan gpu-next linear swapchain (target-colorspace-hint=yes).
+// The fallback soft-glow uses perceptual (sqrt) sampling for correct brightness;
+// the predictive-fill path extends real edge colours and is already linear-correct.
+#define IS_LINEAR_HDR     ${if (spec.context.isLinearHdr) 1 else 0}
+
+#if IS_LINEAR_HDR
+vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
+vec3 to_linear(vec3 c)     { return c * c; }
+#endif
 
 const float PI = 3.14159265358979;
 ${getFrameGlowTaps(glowSamples)}
@@ -515,13 +598,27 @@ vec3 sample_soft_glow(vec2 edge_origin, vec2 uv, float outside_norm) {
             base_offset.x * jitter_s + base_offset.y * jitter_c
         ) * aspect_fix;
         vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
+        // Linear HDR: sample in perceptual space so luma weighting is perceptually
+        // uniform; the result is converted back to linear at the call-site below.
+#if IS_LINEAR_HDR
+        vec3 sample_rgb = to_perceptual(HOOKED_tex(sample_uv).rgb);
+#else
         vec3 sample_rgb = HOOKED_tex(sample_uv).rgb;
+#endif
         float weight = (1.15 - fi) * (0.8 + luma(sample_rgb));
         acc += sample_rgb * weight;
         acc_weight += weight;
     }
 
+    // In Linear HDR: result is in perceptual space — convert back to linear.
+    // 0.08 was too dim; 0.28 gives ~55-70 nits at the video edge on mid-bright HDR
+    // content.  This path is the fallback glow when frame-extend confidence is low.
+    // In SDR/hdr-toys: pass through; callers blend this with the extend path.
+#if IS_LINEAR_HDR
+    return to_linear(acc / max(acc_weight, 1e-5)) * 0.28;
+#else
     return acc / max(acc_weight, 1e-5);
+#endif
 }
 
 vec4 trace_anchor_strip(vec2 anchor_uv, vec3 anchor_edge, vec2 inward_dir, vec2 ortho_dir, float outside_norm) {
