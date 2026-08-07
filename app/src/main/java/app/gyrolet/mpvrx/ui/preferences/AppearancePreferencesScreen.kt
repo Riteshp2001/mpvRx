@@ -483,15 +483,19 @@ object AppearancePreferencesScreen : Screen {
                     text = stringResource(id = R.string.pref_appearance_watched_threshold_title),
                   )
                 },
-                valueRange = 50f..100f,
-                valueSteps = 9,
+                valueRange = 0f..100f,
+                valueSteps = 20,
                 summary = {
                   Text(
                     text =
-                      stringResource(
-                        id = R.string.pref_appearance_watched_threshold_summary,
-                        watchedThreshold,
-                      ),
+                      if (watchedThreshold == 0) {
+                        stringResource(R.string.pref_appearance_watched_threshold_summary_infinite)
+                      } else {
+                        stringResource(
+                          id = R.string.pref_appearance_watched_threshold_summary,
+                          watchedThreshold,
+                        )
+                      },
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

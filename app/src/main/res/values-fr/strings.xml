@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">Faire défiler automatiquement jusqu’à la dernière vidéo lue à l’ouverture des listes de vidéos</string>
   <string name="pref_appearance_watched_threshold_title">Seuil de visionnage</string>
   <string name="pref_appearance_watched_threshold_summary">Marquer la vidéo comme vue lorsque la lecture atteint %d%%</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">Ne jamais marquer comme vu (Infiniment)</string>
   <string name="pref_tree_flatten_depth_title">Compression du chemin de l’arborescence</string>
   <string name="pref_tree_flatten_depth_summary">%1$s ignoré(s) par étape de navigation pour les dossiers à enfant unique</string>
   <string name="ytdl_audio_quality_title">Qualité audio yt-dlp</string>

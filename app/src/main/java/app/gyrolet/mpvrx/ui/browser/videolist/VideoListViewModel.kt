@@ -251,11 +251,8 @@ class VideoListViewModel(
             null
           }
 
-        // Check if video is old and unplayed
-        // Video is old if it's been more than threshold days since it was added/modified
-        // Video is unplayed if there's no playback state record
-        val isOldAndUnplayed = playbackState == null
-
+        // Check if the video has been watched (reached the watched threshold).
+        // A threshold of 0 ("Infinitely") means it is never considered watched by progress.
         val isWatched =
           playbackState?.hasBeenWatched == true ||
             if (playbackState != null && video.duration > 0) {
@@ -263,10 +260,14 @@ class VideoListViewModel(
               val timeRemaining = playbackState.timeRemaining.toLong()
               val watched = durationSeconds - timeRemaining
               val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-              progressValue >= (watchedThreshold / 100f)
+              watchedThreshold > 0 && progressValue >= (watchedThreshold / 100f)
             } else {
               false
             }
+
+        // "NEW" badge shows while the video is recent AND not yet watched. It is removed
+        // once the video is watched to the configured threshold percentage.
+        val isOldAndUnplayed = !isWatched
 
         VideoWithPlaybackInfo(
           video = video,

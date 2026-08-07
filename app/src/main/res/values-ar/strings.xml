@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">التمرير تلقائيًا إلى آخر فيديو تم تشغيله عند فتح قوائم الفيديو</string>
   <string name="pref_appearance_watched_threshold_title">حد المشاهدة</string>
   <string name="pref_appearance_watched_threshold_summary">وضع علامة تمت المشاهدة عند وصول التشغيل إلى %d%%</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">عدم وضع علامة تمت المشاهدة تلقائيًا (لانهائي)</string>
   <string name="pref_tree_flatten_depth_title">ضغط مسار الشجرة</string>
   <string name="pref_tree_flatten_depth_summary">تم تخطي %1$s في كل خطوة تنقل للمجلدات ذات العنصر الوحيد</string>
   <string name="ytdl_audio_quality_title">جودة صوت yt-dlp</string>

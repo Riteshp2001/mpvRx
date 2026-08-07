@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">Beim Öffnen von Videolisten automatisch zum zuletzt abgespielten Video scrollen</string>
   <string name="pref_appearance_watched_threshold_title">Gesehen-Schwellenwert</string>
   <string name="pref_appearance_watched_threshold_summary">Video als gesehen markieren, wenn die Wiedergabe %d%% erreicht</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">Nie automatisch als gesehen markieren (Unendlich)</string>
   <string name="pref_tree_flatten_depth_title">Baumpfad-Komprimierung</string>
   <string name="pref_tree_flatten_depth_summary">%1$s pro Navigationsschritt bei Ordnern mit nur einem Unterordner übersprungen</string>
   <string name="ytdl_audio_quality_title">yt-dlp-Audioqualität</string>

@@ -75,6 +75,9 @@ object MediaFileRepository : KoinComponent {
       if (showNewLabels) {
         playbackStateRepository
           .getAllPlaybackStates()
+          // Only treat a video as "played" (and drop its NEW badge) once it has
+          // actually been watched to the threshold. Threshold 0 keeps the badge.
+          .filter { it.hasBeenWatched }
           .mapTo(mutableSetOf()) { it.mediaTitle }
       } else {
         emptySet()

@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">Rolar automaticamente até o último vídeo reproduzido ao abrir listas de vídeos</string>
   <string name="pref_appearance_watched_threshold_title">Limite de assistido</string>
   <string name="pref_appearance_watched_threshold_summary">Marcar o vídeo como assistido quando a reprodução atingir %d%%</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">Nunca marcar como assistido automaticamente (Infinitamente)</string>
   <string name="pref_tree_flatten_depth_title">Compressão do caminho em árvore</string>
   <string name="pref_tree_flatten_depth_summary">%1$s ignorado(s) por etapa de navegação em pastas com um único item filho</string>
   <string name="ytdl_audio_quality_title">Qualidade de áudio do yt-dlp</string>

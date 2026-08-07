@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">Автоматически прокручивать к последнему воспроизведённому видео при открытии списка</string>
   <string name="pref_appearance_watched_threshold_title">Порог просмотра</string>
   <string name="pref_appearance_watched_threshold_summary">Отмечать видео как просмотренное при достижении %d%% воспроизведения</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">Никогда не отмечать как просмотренное (бесконечно)</string>
   <string name="pref_tree_flatten_depth_title">Сжатие пути дерева</string>
   <string name="pref_tree_flatten_depth_summary">Пропущено %1$s за шаг навигации для папок с единственным дочерним элементом</string>
   <string name="ytdl_audio_quality_title">Качество аудио yt-dlp</string>

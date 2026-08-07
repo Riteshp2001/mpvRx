@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">Desplazarse automáticamente al último vídeo reproducido al abrir las listas de vídeos</string>
   <string name="pref_appearance_watched_threshold_title">Umbral de visto</string>
   <string name="pref_appearance_watched_threshold_summary">Marcar el vídeo como visto cuando la reproducción alcance el %d%%</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">Nunca marcar como visto automáticamente (Infinitamente)</string>
   <string name="pref_tree_flatten_depth_title">Compresión de rutas del árbol</string>
   <string name="pref_tree_flatten_depth_summary">Se omiten %1$s por paso de navegación en carpetas con un solo elemento hijo</string>
   <string name="ytdl_audio_quality_title">Calidad de audio de yt-dlp</string>

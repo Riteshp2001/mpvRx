@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">打开视频列表时自动滚动到上次播放的视频</string>
   <string name="pref_appearance_watched_threshold_title">已观看阈值</string>
   <string name="pref_appearance_watched_threshold_summary">播放进度达到 %d%% 时将视频标记为已观看</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">永不自动标记为已观看（无限）</string>
   <string name="pref_tree_flatten_depth_title">树路径压缩</string>
   <string name="pref_tree_flatten_depth_summary">对于仅有一个子项的文件夹，每次导航跳过 %1$s</string>
   <string name="ytdl_audio_quality_title">yt-dlp 音频质量</string>

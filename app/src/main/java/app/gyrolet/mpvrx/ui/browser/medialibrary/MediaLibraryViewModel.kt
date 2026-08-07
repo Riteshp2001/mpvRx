@@ -110,18 +110,22 @@ class MediaLibraryViewModel(
           }
 
         val videoAge = currentTime - (video.dateModified * 1000)
-        val isOldAndUnplayed = playbackState == null && videoAge <= thresholdMillis
 
         val isWatched =
           if (playbackState != null && video.duration > 0) {
             val durationSeconds = video.duration / 1000
             val watched = durationSeconds - playbackState.timeRemaining.toLong()
             val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-            val calculatedWatched = progressValue >= (watchedThreshold / 100f)
+            // Threshold 0 ("Infinitely") means never considered watched by progress.
+            val calculatedWatched = watchedThreshold > 0 && progressValue >= (watchedThreshold / 100f)
             playbackState.hasBeenWatched || calculatedWatched
           } else {
             false
           }
+
+        // "NEW" badge shows while the video is recent AND not yet watched. Removed once
+        // watched to the configured threshold percentage (0 = infinite, never removed).
+        val isOldAndUnplayed = !isWatched && videoAge <= thresholdMillis
 
         VideoWithPlaybackInfo(
           video = video,

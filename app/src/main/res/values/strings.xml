@@ -66,6 +66,7 @@
   <string name="pref_appearance_auto_scroll_summary">Automatically scroll to the last played video when opening video lists</string>
   <string name="pref_appearance_watched_threshold_title">Watched threshold</string>
   <string name="pref_appearance_watched_threshold_summary">Mark video as watched when playback reaches %d%%</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">Never auto-mark as watched (Infinitely)</string>
   <string name="pref_tree_flatten_depth_title">Tree path compression</string>
   <string name="pref_tree_flatten_depth_summary">%1$s skipped per navigation step for single-child folders</string>
   <string name="ytdl_audio_quality_title">yt-dlp audio quality</string>

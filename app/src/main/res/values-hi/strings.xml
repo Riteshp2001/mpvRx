@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">वीडियो लिस्ट खोलने पर आखिरी चलाई गई वीडियो तक अपने आप स्क्रॉल करें</string>
   <string name="pref_appearance_watched_threshold_title">देखा गया थ्रेशोल्ड</string>
   <string name="pref_appearance_watched_threshold_summary">प्लेबैक %d%% तक पहुंचने पर वीडियो को देखा गया मार्क करें</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">कभी स्वतः देखा गया मार्क न करें (अनंत)</string>
   <string name="pref_tree_flatten_depth_title">ट्री पाथ कम्प्रेशन</string>
   <string name="pref_tree_flatten_depth_summary">सिंगल-चाइल्ड फोल्डर्स के लिए हर नेविगेशन स्टेप में %1$s छोड़े गए</string>
   <string name="ytdl_audio_quality_title">yt-dlp ऑडियो क्वालिटी</string>

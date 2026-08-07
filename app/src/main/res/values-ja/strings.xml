@@ -64,6 +64,7 @@
   <string name="pref_appearance_auto_scroll_summary">動画リストを開いたとき、最後に再生した動画へ自動的にスクロールします</string>
   <string name="pref_appearance_watched_threshold_title">視聴済みのしきい値</string>
   <string name="pref_appearance_watched_threshold_summary">再生が%d%%に達したら動画を視聴済みにします</string>
+  <string name="pref_appearance_watched_threshold_summary_infinite">自動で視聴済みにしない（無限）</string>
   <string name="pref_tree_flatten_depth_title">ツリーパスの圧縮</string>
   <string name="pref_tree_flatten_depth_summary">子が1つだけのフォルダーでは、ナビゲーションごとに%1$sを省略します</string>
   <string name="ytdl_audio_quality_title">yt-dlpの音声品質</string>

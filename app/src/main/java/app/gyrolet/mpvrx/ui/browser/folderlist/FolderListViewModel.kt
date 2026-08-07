@@ -243,6 +243,7 @@ class FolderListViewModel(
 
           val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
           val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
+          val watchedThreshold = browserPreferences.watchedThreshold.get()
           val currentTime = System.currentTimeMillis()
 
           val foldersWithCounts =
@@ -260,10 +261,19 @@ class FolderListViewModel(
                     val videoAge = currentTime - (video.dateModified * 1000)
                     val isRecent = videoAge <= thresholdMillis
 
-                    // Check if video has been played
-                    // A video is considered "played" if it has any playback state
+                    // A video counts as "unplayed" until it has been watched to the
+                    // configured threshold. Threshold 0 ("Infinitely") keeps it unplayed.
                     val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
-                    val isUnplayed = playbackState == null
+                    val isUnplayed =
+                      if (playbackState != null && video.duration > 0) {
+                        val durationSeconds = video.duration / 1000
+                        val watched = durationSeconds - playbackState.timeRemaining.toLong()
+                        val progressValue =
+                          (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+                        watchedThreshold <= 0 || progressValue < (watchedThreshold / 100f)
+                      } else {
+                        playbackState == null
+                      }
 
                     isRecent && isUnplayed
                   }
