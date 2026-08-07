@@ -41,6 +41,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +60,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -76,6 +79,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -232,6 +236,18 @@ fun AudioPlayerControls(
   val position by MPVLib.propInt["time-pos"].collectAsState()
   val precisePosition by viewModel.precisePosition.collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
+
+  var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
+  var wasLyricsActiveBeforeLandscape by rememberSaveable { mutableStateOf(false) }
+  var isLyricsFullscreen by remember { mutableStateOf(false) }
+  var lastUserInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+  val resetInactivityTimer = {
+    lastUserInteractionTime = System.currentTimeMillis()
+    if (isLyricsFullscreen) {
+      isLyricsFullscreen = false
+    }
+  }
 
   val currentPath by MPVLib.propString["path"].collectAsState()
   val currentStreamFilename by MPVLib.propString["stream-open-filename"].collectAsState()
@@ -410,6 +426,30 @@ fun AudioPlayerControls(
   val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
+  val isTabletPortrait = isPortrait && isTablet
+
+  LaunchedEffect(isTabletLandscape) {
+    if (isTabletLandscape) {
+      if (showInPlaceLyrics) {
+        wasLyricsActiveBeforeLandscape = true
+        showInPlaceLyrics = false
+      }
+    } else {
+      if (wasLyricsActiveBeforeLandscape) {
+        showInPlaceLyrics = true
+        wasLyricsActiveBeforeLandscape = false
+      }
+    }
+  }
+
+  LaunchedEffect(showInPlaceLyrics, isPlaying, isTabletLandscape, lastUserInteractionTime) {
+    if (showInPlaceLyrics && !isTabletLandscape && isPlaying) {
+      kotlinx.coroutines.delay(5000L)
+      isLyricsFullscreen = true
+    } else {
+      isLyricsFullscreen = false
+    }
+  }
 
   val ambientModeEnabled by audioPreferences.audioAmbientMode.collectAsState()
 
@@ -446,8 +486,8 @@ fun AudioPlayerControls(
     }
   }
 
-  val targetTopColor = if (ambientModeEnabled && !showVisualizer) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
-  val targetBottomColor = if (ambientModeEnabled && !showVisualizer) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
+  val targetTopColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
+  val targetBottomColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
 
   val animatedAmbientTop: Color by animateColorAsState(
     targetValue = targetTopColor,
@@ -467,7 +507,7 @@ fun AudioPlayerControls(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
         .drawWithCache {
-          if (ambientModeEnabled && !showVisualizer && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
+          if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics) && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
             val topColor = animatedAmbientTop
             val bottomColor = animatedAmbientBottom
             val radialGradient = Brush.radialGradient(
@@ -600,28 +640,36 @@ fun AudioPlayerControls(
         val containerWidthPx = constraints.maxWidth.toFloat()
         val currentOffset = animatableOffsetX.value
 
-        AnimatedContent(
-          targetState = showVisualizer,
-          transitionSpec = {
-            if (targetState) {
-              (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                scaleIn(animationSpec = tween(350, easing = FastOutSlowInEasing), initialScale = 0.90f))
-                .togetherWith(
-                  fadeOut(animationSpec = tween(280)) +
-                    scaleOut(animationSpec = tween(280), targetScale = 1.06f),
-                )
-            } else {
-              (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                scaleIn(animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f), initialScale = 0.88f))
-                .togetherWith(
-                  fadeOut(animationSpec = tween(280)) +
-                    scaleOut(animationSpec = tween(280), targetScale = 1.06f),
-                )
-            }
-          },
-          label = "visualizer_toggle",
-          modifier = Modifier.fillMaxSize(),
-        ) { isVisualizerActive ->
+        if (showInPlaceLyrics && !isTabletLandscape) {
+          app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
+            viewModel = viewModel,
+            modifier = Modifier.fillMaxSize(),
+            isLyricsFullscreen = isLyricsFullscreen,
+            onTap = resetInactivityTimer,
+          )
+        } else {
+          AnimatedContent(
+            targetState = showVisualizer,
+            transitionSpec = {
+              if (targetState) {
+                (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                  scaleIn(animationSpec = tween(350, easing = FastOutSlowInEasing), initialScale = 0.90f))
+                  .togetherWith(
+                    fadeOut(animationSpec = tween(280)) +
+                      scaleOut(animationSpec = tween(280), targetScale = 1.06f),
+                  )
+              } else {
+                (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                  scaleIn(animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f), initialScale = 0.88f))
+                  .togetherWith(
+                    fadeOut(animationSpec = tween(280)) +
+                      scaleOut(animationSpec = tween(280), targetScale = 1.06f),
+                  )
+              }
+            },
+            label = "visualizer_toggle",
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait) 0.65f else 1.0f),
+          ) { isVisualizerActive ->
           if (isVisualizerActive) {
             Box(
               modifier = Modifier.fillMaxSize(),
@@ -774,6 +822,7 @@ fun AudioPlayerControls(
         }
       }
     }
+    }
 
     val trackMetadataView = @Composable {
       Column(
@@ -836,7 +885,7 @@ fun AudioPlayerControls(
             // 4. Playback Speed (left of A-B Loop)
             Surface(
               shape = CircleShape,
-              color = MaterialTheme.colorScheme.surfaceVariant,
+              color = Color.Transparent,
               modifier =
                 Modifier
                   .height(30.dp)
@@ -1109,22 +1158,31 @@ fun AudioPlayerControls(
         Row(
           modifier =
             Modifier
-              .clip(
-                RoundedCornerShape(50),
-              ).background(
+              .clip(CircleShape)
+              .background(
                 MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
-              ).padding(horizontal = 12.dp, vertical = 4.dp),
+              )
+              .widthIn(max = 188.dp)
+              .horizontalScroll(rememberScrollState())
+              .padding(horizontal = 8.dp, vertical = 4.dp),
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-          ReactiveIconButton(onClick = viewModel::toggleShuffle, enabled = playlistModeEnabled) {
+          ReactiveIconButton(
+            onClick = viewModel::toggleShuffle,
+            enabled = playlistModeEnabled,
+            modifier = Modifier.size(40.dp),
+          ) {
             Icon(
               imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
               contentDescription = null,
               tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
-          ReactiveIconButton(onClick = viewModel::cycleRepeatMode) {
+          ReactiveIconButton(
+            onClick = viewModel::cycleRepeatMode,
+            modifier = Modifier.size(40.dp),
+          ) {
             Icon(
               imageVector =
                 when (repeatMode) {
@@ -1146,6 +1204,7 @@ fun AudioPlayerControls(
           ReactiveIconButton(
             onClick = { viewModel.toggleAudioVisualizer() },
             onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+            modifier = Modifier.size(40.dp),
           ) {
             Icon(
               imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
@@ -1153,14 +1212,29 @@ fun AudioPlayerControls(
               tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
-          ReactiveIconButton(onClick = {
-            val act = context as? PlayerActivity
-            if (act != null) {
-              act.toggleAudioBackgroundPlayback()
-            } else {
-              audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
+          if (!isTabletLandscape) {
+            ReactiveIconButton(
+              onClick = { showInPlaceLyrics = !showInPlaceLyrics },
+              modifier = Modifier.size(40.dp),
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Lyrics,
+                contentDescription = "Lyrics",
+                tint = if (showInPlaceLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+              )
             }
-          }) {
+          }
+          ReactiveIconButton(
+            onClick = {
+              val act = context as? PlayerActivity
+              if (act != null) {
+                act.toggleAudioBackgroundPlayback()
+              } else {
+                audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
+              }
+            },
+            modifier = Modifier.size(40.dp),
+          ) {
             Icon(
               imageVector = Icons.RoundedFilled.Headset,
               contentDescription = stringResource(R.string.btn_label_background_playback),
@@ -1195,30 +1269,45 @@ fun AudioPlayerControls(
 
     if (isPortrait) {
       Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+          .fillMaxSize()
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+          ) { resetInactivityTimer() },
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        headerBar()
-        losslessBadge()
-        Spacer(modifier = Modifier.height(16.dp))
-        val visualizerModifier =
-          if (isTabletPortrait) {
-            Modifier
-              .weight(1f)
-              .fillMaxWidth()
-              .padding(horizontal = 48.dp, vertical = 12.dp)
-          } else {
-            Modifier.weight(1f).fillMaxWidth()
+        androidx.compose.animation.AnimatedVisibility(
+          visible = !isLyricsFullscreen,
+          enter = fadeIn(animationSpec = tween(300)) + androidx.compose.animation.expandVertically(animationSpec = tween(300)),
+          exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.shrinkVertically(animationSpec = tween(300)),
+        ) {
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            headerBar()
+            losslessBadge()
+            Spacer(modifier = Modifier.height(16.dp))
           }
+        }
+
+        val visualizerModifier = Modifier.weight(1f).fillMaxWidth()
         centerVisualizerView(visualizerModifier)
-        Spacer(modifier = Modifier.height(16.dp))
-        trackMetadataView()
-        Spacer(modifier = Modifier.height(16.dp))
-        seekbarView()
-        Spacer(modifier = Modifier.height(16.dp))
-        playbackControlsRow()
-        Spacer(modifier = Modifier.height(24.dp))
-        bottomActionRow()
+
+        androidx.compose.animation.AnimatedVisibility(
+          visible = !isLyricsFullscreen,
+          enter = fadeIn(animationSpec = tween(300)) + androidx.compose.animation.expandVertically(animationSpec = tween(300)),
+          exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.shrinkVertically(animationSpec = tween(300)),
+        ) {
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(16.dp))
+            trackMetadataView()
+            Spacer(modifier = Modifier.height(16.dp))
+            seekbarView()
+            Spacer(modifier = Modifier.height(16.dp))
+            playbackControlsRow()
+            Spacer(modifier = Modifier.height(24.dp))
+            bottomActionRow()
+          }
+        }
       }
     } else if (isTabletLandscape) {
       Row(
@@ -1264,6 +1353,7 @@ fun AudioPlayerControls(
           DualPaneSidePanel(
             viewModel = viewModel,
             playlist = filteredPlaylist,
+            initialLyricsActive = wasLyricsActiveBeforeLandscape,
           )
         }
       }
@@ -1332,16 +1422,55 @@ fun AudioPlayerControls(
 private fun DualPaneSidePanel(
   viewModel: PlayerViewModel,
   playlist: List<PlaylistItem>,
+  initialLyricsActive: Boolean = false,
 ) {
-  Box(
+  var selectedTab by remember(initialLyricsActive) { mutableIntStateOf(if (initialLyricsActive) 1 else 0) }
+
+  Column(
     modifier = Modifier
       .fillMaxSize()
       .padding(16.dp),
   ) {
-    UpNextPlaylistContent(
-      viewModel = viewModel,
-      playlist = playlist,
-    )
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 12.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      androidx.compose.material3.FilterChip(
+        selected = selectedTab == 0,
+        onClick = { selectedTab = 0 },
+        label = { Text(stringResource(R.string.player_up_next_title), fontWeight = FontWeight.Bold) },
+        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+          selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+          selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+      )
+      androidx.compose.material3.FilterChip(
+        selected = selectedTab == 1,
+        onClick = { selectedTab = 1 },
+        label = { Text(stringResource(R.string.player_lyrics_title), fontWeight = FontWeight.Bold) },
+        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+          selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+          selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+      )
+    }
+
+    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+      if (selectedTab == 0) {
+        UpNextPlaylistContent(
+          viewModel = viewModel,
+          playlist = playlist,
+        )
+      } else {
+        app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
+          viewModel = viewModel,
+          showTitleHeader = false,
+        )
+      }
+    }
   }
 }
 

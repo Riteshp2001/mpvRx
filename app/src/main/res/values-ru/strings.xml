@@ -1678,4 +1678,9 @@
   <string name="ui_music">Music</string>
   <string name="pref_nav_music_title">Show Music tab</string>
   <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="player_up_next_title">Плейлист</string>
+  <string name="player_lyrics_title">Текст песни</string>
+  <string name="lyrics_source_embedded">Встроенный</string>
+  <string name="lyrics_source_online">Онлайн</string>
+  <string name="lyrics_source_local">Локальный (.lrc)</string>
 </resources>
