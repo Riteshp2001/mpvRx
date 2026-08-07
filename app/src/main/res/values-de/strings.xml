@@ -1678,4 +1678,9 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_music">Music</string>
   <string name="pref_nav_music_title">Show Music tab</string>
   <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="player_up_next_title">Wiedergabeliste</string>
+  <string name="player_lyrics_title">Songtext</string>
+  <string name="lyrics_source_embedded">Eingebettet</string>
+  <string name="lyrics_source_online">Online</string>
+  <string name="lyrics_source_local">Lokal (.lrc)</string>
 </resources>

@@ -629,7 +629,7 @@ class PlayerViewModel(
 
     val duration = MPVLib.getPropertyInt("duration") ?: 0
 
-    lyricsUiState.value = lyricsUiState.value.copy(isLoading = true, errorMessage = null)
+    lyricsUiState.value = lyricsUiState.value.copy(isLoading = true, errorMessage = null, syncOffsetMs = 0)
 
     viewModelScope.launch(Dispatchers.IO) {
       val result = lyricsRepository.loadLyricsForTrack(
@@ -642,7 +642,7 @@ class PlayerViewModel(
       val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
         syncedLines = result.activeLyrics?.synced,
         positionMs = (precisePosition.value * 1000).toLong(),
-        offsetMs = lyricsUiState.value.syncOffsetMs,
+        offsetMs = 0,
       )
       lyricsUiState.value = lyricsUiState.value.copy(
         isLoading = false,
@@ -652,6 +652,7 @@ class PlayerViewModel(
         activeLineIndex = activeIndex,
         selectedSource = result.selectedSource,
         availableSources = result.availableSources,
+        syncOffsetMs = 0,
       )
     }
   }

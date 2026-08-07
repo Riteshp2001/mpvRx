@@ -1678,4 +1678,9 @@
   <string name="ui_music">Music</string>
   <string name="pref_nav_music_title">Show Music tab</string>
   <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="player_up_next_title">قائمة التشغيل</string>
+  <string name="player_lyrics_title">كلمات الأغاني</string>
+  <string name="lyrics_source_embedded">مضمنة</string>
+  <string name="lyrics_source_online">عبر الإنترنت</string>
+  <string name="lyrics_source_local">محلي (.lrc)</string>
 </resources>

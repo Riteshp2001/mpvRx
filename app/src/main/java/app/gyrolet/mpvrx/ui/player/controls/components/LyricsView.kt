@@ -48,8 +48,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
 import app.gyrolet.mpvrx.domain.lyrics.SyncedLine
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
@@ -132,7 +134,7 @@ fun LyricsView(
             onClick = { viewModel.switchLyricsSource(LyricsSourceType.EMBEDDED) },
             label = {
               Text(
-                if (state.embeddedLyrics?.sourceType == LyricsSourceType.LOCAL) "Local (.lrc)" else "Embedded",
+                if (state.embeddedLyrics?.sourceType == LyricsSourceType.LOCAL) stringResource(R.string.lyrics_source_local) else stringResource(R.string.lyrics_source_embedded),
                 fontWeight = FontWeight.Bold,
               )
             },
@@ -147,7 +149,7 @@ fun LyricsView(
           selected = state.selectedSource == LyricsSourceType.ONLINE,
           onClick = { viewModel.switchLyricsSource(LyricsSourceType.ONLINE) },
           label = {
-            Text("Online", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.lyrics_source_online), fontWeight = FontWeight.Bold)
           },
           colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -231,8 +233,8 @@ fun LyricsView(
                   label = "LineTranslationY",
                 )
 
-                val activeColor = MaterialTheme.colorScheme.primary
-                val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                val activeColor = Color.White
+                val inactiveColor = Color.White.copy(alpha = 0.45f)
 
                 val lineColor by animateColorAsState(
                   targetValue = if (isActiveLine) activeColor else inactiveColor,

@@ -234,6 +234,7 @@ fun AudioPlayerControls(
   val preciseDuration by viewModel.preciseDuration.collectAsState()
 
   var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
+  var wasLyricsActiveBeforeLandscape by rememberSaveable { mutableStateOf(false) }
 
   val currentPath by MPVLib.propString["path"].collectAsState()
   val currentStreamFilename by MPVLib.propString["stream-open-filename"].collectAsState()
@@ -415,7 +416,15 @@ fun AudioPlayerControls(
 
   LaunchedEffect(isTabletLandscape) {
     if (isTabletLandscape) {
-      showInPlaceLyrics = false
+      if (showInPlaceLyrics) {
+        wasLyricsActiveBeforeLandscape = true
+        showInPlaceLyrics = false
+      }
+    } else {
+      if (wasLyricsActiveBeforeLandscape) {
+        showInPlaceLyrics = true
+        wasLyricsActiveBeforeLandscape = false
+      }
     }
   }
 
@@ -1288,6 +1297,7 @@ fun AudioPlayerControls(
           DualPaneSidePanel(
             viewModel = viewModel,
             playlist = filteredPlaylist,
+            initialLyricsActive = wasLyricsActiveBeforeLandscape,
           )
         }
       }
@@ -1356,8 +1366,9 @@ fun AudioPlayerControls(
 private fun DualPaneSidePanel(
   viewModel: PlayerViewModel,
   playlist: List<PlaylistItem>,
+  initialLyricsActive: Boolean = false,
 ) {
-  var selectedTab by remember { mutableIntStateOf(0) }
+  var selectedTab by remember(initialLyricsActive) { mutableIntStateOf(if (initialLyricsActive) 1 else 0) }
 
   Column(
     modifier = Modifier
@@ -1374,7 +1385,7 @@ private fun DualPaneSidePanel(
       androidx.compose.material3.FilterChip(
         selected = selectedTab == 0,
         onClick = { selectedTab = 0 },
-        label = { Text("Playlist", fontWeight = FontWeight.Bold) },
+        label = { Text(stringResource(R.string.player_up_next_title), fontWeight = FontWeight.Bold) },
         colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
           selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
           selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1383,7 +1394,7 @@ private fun DualPaneSidePanel(
       androidx.compose.material3.FilterChip(
         selected = selectedTab == 1,
         onClick = { selectedTab = 1 },
-        label = { Text("Lyrics", fontWeight = FontWeight.Bold) },
+        label = { Text(stringResource(R.string.player_lyrics_title), fontWeight = FontWeight.Bold) },
         colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
           selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
           selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,

@@ -1678,4 +1678,9 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="ui_music">Music</string>
   <string name="pref_nav_music_title">Show Music tab</string>
   <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="player_up_next_title">Lista de reprodução</string>
+  <string name="player_lyrics_title">Letra</string>
+  <string name="lyrics_source_embedded">Embutida</string>
+  <string name="lyrics_source_online">Online</string>
+  <string name="lyrics_source_local">Local (.lrc)</string>
 </resources>

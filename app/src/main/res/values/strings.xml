@@ -1676,4 +1676,9 @@
   <string name="pref_codecs_hardware_features">Hardware Features:</string>
   <string name="pref_codecs_min_resolution">Min Resolution: %s</string>
   <string name="pref_codecs_alignment">Pixel Alignment: %1$dx%2$d</string>
+  <string name="player_up_next_title">Playlist</string>
+  <string name="player_lyrics_title">Lyrics</string>
+  <string name="lyrics_source_embedded">Embedded</string>
+  <string name="lyrics_source_online">Online</string>
+  <string name="lyrics_source_local">Local (.lrc)</string>
 </resources>
