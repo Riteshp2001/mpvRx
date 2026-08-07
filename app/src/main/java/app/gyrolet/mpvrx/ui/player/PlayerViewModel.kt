@@ -21,6 +21,7 @@ import android.os.BatteryManager
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
+import android.view.WindowManager
 import android.util.Log
 import android.util.LruCache
 import android.view.inputmethod.InputMethodManager
@@ -3863,13 +3864,43 @@ class PlayerViewModel(
     brightnessSliderTimestamp.value = System.currentTimeMillis()
   }
 
+  /**
+   * Resets the window brightness to follow the system. Used when "remember brightness"
+   * is disabled so playback adheres to the device's current brightness (including
+   * auto-brightness) instead of being forced to the manual SCREEN_BRIGHTNESS value,
+   * which is wrong/dimmer when auto-brightness is active.
+   */
+  fun resetBrightnessToSystem() {
+    val systemBrightness =
+      runCatching {
+        Settings.System
+          .getFloat(host.hostContentResolver, Settings.System.SCREEN_BRIGHTNESS)
+          .coerceIn(0f, 255f) / 255f
+      }.getOrNull() ?: 0f
+    currentBrightness.value = systemBrightness
+    runCatching {
+      host.hostWindow.attributes =
+        host.hostWindow.attributes.apply {
+          screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        }
+    }
+  }
+
   fun changeVolumeBy(
     change: Int,
     showUi: Boolean = false,
   ) {
+    val isAudio = host.isCurrentMediaKnownAudio() || isAudioOnly.value
     val currentSystemVolume = syncCurrentSystemVolume()
     val mpvVolume = MPVLib.getPropertyInt("volume") ?: 100
-    val absoluteMaxVolume = volumeBoostCap ?: (audioPreferences.volumeBoostCap.get() + 100)
+    // Audio playback must not apply gain boost (>100%). Boost is a video-only feature,
+    // so cap the maximum at 100 for audio.
+    val absoluteMaxVolume =
+      if (isAudio) {
+        100
+      } else {
+        volumeBoostCap ?: (audioPreferences.volumeBoostCap.get() + 100)
+      }
 
     if (currentSystemVolume < maxVolume && mpvVolume > 100) {
       changeMPVVolumeTo(100)

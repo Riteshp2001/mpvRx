@@ -1407,15 +1407,10 @@ class PlayerActivity :
           viewModel.changeBrightnessTo(brightness)
         }
       } else {
-        // Re-sync from system brightness when remember-brightness is off
-        val systemBrightness = runCatching {
-          Settings.System
-            .getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
-            .coerceIn(0f, 255f) / 255f
-        }.getOrNull()
-        if (systemBrightness != null) {
-          viewModel.changeBrightnessTo(systemBrightness)
-        }
+        // Adhere to the system brightness (including auto-brightness). Do not force the
+        // manual SCREEN_BRIGHTNESS value onto the window, which dims the screen when
+        // auto-brightness is active.
+        viewModel.resetBrightnessToSystem()
       }
 
       if (!isInPictureInPictureMode) {
