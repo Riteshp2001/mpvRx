@@ -377,7 +377,7 @@ Siguiente: NEXT</string>
   <string name="player_sheets_sub_override_ass">Modificar subtítulos ASS/SSA</string>
   <string name="player_sheets_sub_override_ass_subtitle">Forzar la modificación del formato de subtítulos ASS/SSA</string>
   <string name="player_sheets_sub_scale_by_window">Escalar según la ventana</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Escalar los subtítulos según el tamaño de la ventana y usar los márgenes del vídeo</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Escala el tamaño de los subtítulos con la ventana y los coloca dentro de los márgenes seguros del vídeo</string>
   <string name="player_sheets_sub_blend_with_video">Mezclar subtítulos con el vídeo</string>
   <string name="player_sheets_sub_blend_with_video_summary">Cuando el modo ambiente esté activo, dibujar los subtítulos con el vídeo en lugar de sobre el área ambiente</string>
   <string name="player_sheets_sub_scale">Escala</string>

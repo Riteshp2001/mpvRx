@@ -377,7 +377,7 @@
   <string name="player_sheets_sub_override_ass">تجاوز ترجمة ASS/SSA</string>
   <string name="player_sheets_sub_override_ass_subtitle">فرض تجاوز تنسيق ترجمة ASS/SSA</string>
   <string name="player_sheets_sub_scale_by_window">التحجيم حسب النافذة</string>
-  <string name="player_sheets_sub_scale_by_window_summary">تحجيم الترجمة حسب حجم النافذة واستخدام هوامش الفيديو</string>
+  <string name="player_sheets_sub_scale_by_window_summary">يحجّم حجم الترجمة مع حجم النافذة ويضعها داخل الهوامش الآمنة للفيديو</string>
   <string name="player_sheets_sub_blend_with_video">دمج الترجمة مع الفيديو</string>
   <string name="player_sheets_sub_blend_with_video_summary">عند تفعيل الوضع المحيطي، ارسم الترجمة مع الفيديو بدلًا من فوق المنطقة المحيطية</string>
   <string name="player_sheets_sub_scale">التحجيم</string>

@@ -375,7 +375,7 @@
   <string name="player_sheets_sub_override_ass">ASS/SSA सबटाइटल ओवरराइड करें</string>
   <string name="player_sheets_sub_override_ass_subtitle">ASS/SSA सबटाइटल फॉर्मेटिंग को जबरदस्ती ओवरराइड करें</string>
   <string name="player_sheets_sub_scale_by_window">विंडो के हिसाब से स्केल करें</string>
-  <string name="player_sheets_sub_scale_by_window_summary">विंडो साइज़ के हिसाब से सबटाइटल स्केल करें और वीडियो मार्जिन इस्तेमाल करें</string>
+  <string name="player_sheets_sub_scale_by_window_summary">विंडो के साइज़ के साथ सबटाइटल का साइज़ बदलें और उन्हें वीडियो के सुरक्षित मार्जिन (safe-area) में रखें</string>
   <string name="player_sheets_sub_blend_with_video">सबटाइटल को वीडियो के साथ ब्लेंड करें</string>
   <string name="player_sheets_sub_blend_with_video_summary">एम्बिएंट मोड ऑन होने पर, एम्बिएंट एरिया की बजाय सबटाइटल को वीडियो के साथ बनाएं</string>
   <string name="player_sheets_sub_scale">स्केल</string>

@@ -377,7 +377,7 @@ Próximo: NEXT</string>
   <string name="player_sheets_sub_override_ass">Substituir legendas ASS/SSA</string>
   <string name="player_sheets_sub_override_ass_subtitle">Forçar substituição da formatação de legendas ASS/SSA</string>
   <string name="player_sheets_sub_scale_by_window">Dimensionar pela janela</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Dimensionar legendas pelo tamanho da janela e usar as margens do vídeo</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Dimensiona o tamanho da legenda com a janela e as posiciona nas margens seguras do vídeo</string>
   <string name="player_sheets_sub_blend_with_video">Misturar legendas com o vídeo</string>
   <string name="player_sheets_sub_blend_with_video_summary">Quando o modo ambiente estiver ativado, desenhar as legendas junto ao vídeo em vez de sobre a área ambiente</string>
   <string name="player_sheets_sub_scale">Escala</string>

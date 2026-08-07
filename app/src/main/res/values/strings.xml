@@ -384,7 +384,7 @@
   <string name="player_sheets_sub_override_ass">Override ASS/SSA subtitles</string>
   <string name="player_sheets_sub_override_ass_subtitle">Force override ASS/SSA subtitle formatting</string>
   <string name="player_sheets_sub_scale_by_window">Scale by window</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Scale subtitles by window size and use video margins</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Scale subtitle size with the window; keep subtitles inside the video\'s safe-area margins</string>
   <string name="player_sheets_sub_blend_with_video">Blend subtitles with video</string>
   <string name="player_sheets_sub_blend_with_video_summary">When ambient mode is on, draw subtitles with the video instead of over the ambient area</string>
   <string name="player_sheets_sub_scale">Scale</string>

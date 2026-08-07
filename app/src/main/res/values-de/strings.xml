@@ -377,7 +377,7 @@ Weiter: NEXT</string>
   <string name="player_sheets_sub_override_ass">ASS/SSA-Untertitel überschreiben</string>
   <string name="player_sheets_sub_override_ass_subtitle">Formatierung von ASS/SSA-Untertiteln zwangsweise überschreiben</string>
   <string name="player_sheets_sub_scale_by_window">An Fenster skalieren</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Untertitel entsprechend der Fenstergröße skalieren und Videoränder verwenden</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Skaliert die Untertitelgröße mit dem Fenster und platziert sie in den sicheren Rändern des Videos</string>
   <string name="player_sheets_sub_blend_with_video">Untertitel mit Video mischen</string>
   <string name="player_sheets_sub_blend_with_video_summary">Bei aktiviertem Umgebungsmodus Untertitel zusammen mit dem Video statt über dem Umgebungsbereich zeichnen</string>
   <string name="player_sheets_sub_scale">Skalierung</string>

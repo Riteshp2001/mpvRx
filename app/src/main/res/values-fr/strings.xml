@@ -377,7 +377,7 @@ Suivant : NEXT</string>
   <string name="player_sheets_sub_override_ass">Remplacer les sous-titres ASS/SSA</string>
   <string name="player_sheets_sub_override_ass_subtitle">Forcer le remplacement de la mise en forme ASS/SSA</string>
   <string name="player_sheets_sub_scale_by_window">Mise à l’échelle selon la fenêtre</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Mettre les sous-titres à l’échelle selon la taille de la fenêtre et utiliser les marges de la vidéo</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Redimensionne la taille des sous-titres avec la fenêtre et les place dans les marges de sécurité de la vidéo</string>
   <string name="player_sheets_sub_blend_with_video">Fusionner les sous-titres avec la vidéo</string>
   <string name="player_sheets_sub_blend_with_video_summary">Lorsque le mode ambiant est activé, dessiner les sous-titres avec la vidéo plutôt que sur la zone ambiante</string>
   <string name="player_sheets_sub_scale">Échelle</string>

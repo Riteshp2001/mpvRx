@@ -377,7 +377,7 @@
   <string name="player_sheets_sub_override_ass">覆盖 ASS/SSA 字幕</string>
   <string name="player_sheets_sub_override_ass_subtitle">强制覆盖 ASS/SSA 字幕格式</string>
   <string name="player_sheets_sub_scale_by_window">按窗口缩放</string>
-  <string name="player_sheets_sub_scale_by_window_summary">根据窗口大小缩放字幕并使用视频边距</string>
+  <string name="player_sheets_sub_scale_by_window_summary">随窗口缩放字幕大小，并将其置于视频的安全边距内</string>
   <string name="player_sheets_sub_blend_with_video">将字幕与视频混合</string>
   <string name="player_sheets_sub_blend_with_video_summary">环境模式开启时，将字幕绘制在视频中，而不是环境区域上方</string>
   <string name="player_sheets_sub_scale">缩放</string>

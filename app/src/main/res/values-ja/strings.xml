@@ -377,7 +377,7 @@
   <string name="player_sheets_sub_override_ass">ASS/SSA字幕を上書き</string>
   <string name="player_sheets_sub_override_ass_subtitle">ASS/SSA字幕の書式を強制的に上書きします</string>
   <string name="player_sheets_sub_scale_by_window">ウィンドウに合わせて拡大縮小</string>
-  <string name="player_sheets_sub_scale_by_window_summary">ウィンドウサイズに合わせて字幕を拡大縮小し、動画の余白を使用します</string>
+  <string name="player_sheets_sub_scale_by_window_summary">ウィンドウサイズに合わせて字幕のサイズを拡大縮小し、動画のセーフエリア（余白）内に配置します</string>
   <string name="player_sheets_sub_blend_with_video">字幕を動画と合成</string>
   <string name="player_sheets_sub_blend_with_video_summary">アンビエントモード時、字幕をアンビエント領域の上ではなく動画と一緒に描画します</string>
   <string name="player_sheets_sub_scale">倍率</string>
