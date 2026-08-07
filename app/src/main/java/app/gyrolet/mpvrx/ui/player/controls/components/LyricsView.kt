@@ -122,13 +122,13 @@ fun LyricsView(
         Spacer(modifier = Modifier.height(4.dp))
       }
 
-      // Source Switcher Row (Show "Embedded" ONLY IF embedded lyrics are present)
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        if (hasEmbedded) {
+      // Source Switcher Row (Show ONLY IF embedded/local lyrics are present)
+      if (hasEmbedded) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
           FilterChip(
             selected = state.selectedSource == LyricsSourceType.EMBEDDED || state.selectedSource == LyricsSourceType.LOCAL,
             onClick = { viewModel.switchLyricsSource(LyricsSourceType.EMBEDDED) },
@@ -143,31 +143,30 @@ fun LyricsView(
               selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ),
           )
-        }
 
-        FilterChip(
-          selected = state.selectedSource == LyricsSourceType.ONLINE,
-          onClick = { viewModel.switchLyricsSource(LyricsSourceType.ONLINE) },
-          label = {
-            Text(stringResource(R.string.lyrics_source_online), fontWeight = FontWeight.Bold)
-          },
-          colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-          ),
-        )
-
-        if (state.isLoading) {
-          Spacer(modifier = Modifier.width(6.dp))
-          CircularProgressIndicator(
-            modifier = Modifier.size(16.dp),
-            strokeWidth = 2.dp,
-            color = MaterialTheme.colorScheme.primary,
+          FilterChip(
+            selected = state.selectedSource == LyricsSourceType.ONLINE,
+            onClick = { viewModel.switchLyricsSource(LyricsSourceType.ONLINE) },
+            label = {
+              Text(stringResource(R.string.lyrics_source_online), fontWeight = FontWeight.Bold)
+            },
+            colors = FilterChipDefaults.filterChipColors(
+              selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+              selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
           )
-        }
-      }
 
-      Spacer(modifier = Modifier.height(4.dp))
+          if (state.isLoading) {
+            Spacer(modifier = Modifier.width(6.dp))
+            CircularProgressIndicator(
+              modifier = Modifier.size(16.dp),
+              strokeWidth = 2.dp,
+              color = MaterialTheme.colorScheme.primary,
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+      }
 
       // Edge-to-Edge Synced Lyrics Scroll Area
       Box(
