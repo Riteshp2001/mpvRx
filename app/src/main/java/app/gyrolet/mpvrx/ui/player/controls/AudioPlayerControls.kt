@@ -41,6 +41,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +60,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -1155,22 +1158,31 @@ fun AudioPlayerControls(
         Row(
           modifier =
             Modifier
-              .clip(
-                RoundedCornerShape(50),
-              ).background(
+              .clip(CircleShape)
+              .background(
                 MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
-              ).padding(horizontal = 12.dp, vertical = 4.dp),
+              )
+              .widthIn(max = 188.dp)
+              .horizontalScroll(rememberScrollState())
+              .padding(horizontal = 8.dp, vertical = 4.dp),
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-          ReactiveIconButton(onClick = viewModel::toggleShuffle, enabled = playlistModeEnabled) {
+          ReactiveIconButton(
+            onClick = viewModel::toggleShuffle,
+            enabled = playlistModeEnabled,
+            modifier = Modifier.size(40.dp),
+          ) {
             Icon(
               imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
               contentDescription = null,
               tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
-          ReactiveIconButton(onClick = viewModel::cycleRepeatMode) {
+          ReactiveIconButton(
+            onClick = viewModel::cycleRepeatMode,
+            modifier = Modifier.size(40.dp),
+          ) {
             Icon(
               imageVector =
                 when (repeatMode) {
@@ -1192,6 +1204,7 @@ fun AudioPlayerControls(
           ReactiveIconButton(
             onClick = { viewModel.toggleAudioVisualizer() },
             onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+            modifier = Modifier.size(40.dp),
           ) {
             Icon(
               imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
@@ -1199,28 +1212,34 @@ fun AudioPlayerControls(
               tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
-          ReactiveIconButton(onClick = {
-            val act = context as? PlayerActivity
-            if (act != null) {
-              act.toggleAudioBackgroundPlayback()
-            } else {
-              audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
-            }
-          }) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Headset,
-              contentDescription = stringResource(R.string.btn_label_background_playback),
-              tint = if (backgroundPlaybackEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
           if (!isTabletLandscape) {
-            ReactiveIconButton(onClick = { showInPlaceLyrics = !showInPlaceLyrics }) {
+            ReactiveIconButton(
+              onClick = { showInPlaceLyrics = !showInPlaceLyrics },
+              modifier = Modifier.size(40.dp),
+            ) {
               Icon(
                 imageVector = Icons.RoundedFilled.Lyrics,
                 contentDescription = "Lyrics",
                 tint = if (showInPlaceLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
+          }
+          ReactiveIconButton(
+            onClick = {
+              val act = context as? PlayerActivity
+              if (act != null) {
+                act.toggleAudioBackgroundPlayback()
+              } else {
+                audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
+              }
+            },
+            modifier = Modifier.size(40.dp),
+          ) {
+            Icon(
+              imageVector = Icons.RoundedFilled.Headset,
+              contentDescription = stringResource(R.string.btn_label_background_playback),
+              tint = if (backgroundPlaybackEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
           }
         }
         if (!isTabletLandscape) {
