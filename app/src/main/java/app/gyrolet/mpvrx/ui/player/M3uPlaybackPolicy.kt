@@ -14,6 +14,8 @@ import java.net.URI
 object M3uPlaybackPolicy {
   private val networkSchemes =
     setOf("http", "https", "ftp", "ftps", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh")
+  private val m3uMimeTypes =
+    setOf("application/x-mpegurl", "application/vnd.apple.mpegurl", "audio/x-mpegurl", "video/x-mpegurl")
 
   fun shouldExpandInApp(
     playableUri: String,
@@ -28,7 +30,8 @@ object M3uPlaybackPolicy {
 
     // Remote M3U/HLS URLs often need mpv's own HTTP stack, ytdl hook, cookies,
     // headers, redirects, and stream-specific playlist handling.
-    return !isNetworkUri(originalUri) && !isNetworkUri(playableUri)
+    // For IPTV-style links, we should still expand them in-app even when they are remote.
+    return true
   }
 
   internal fun looksLikeM3uForPlayback(
@@ -41,6 +44,9 @@ object M3uPlaybackPolicy {
     return candidates.any(::hasM3uMarker) ||
       mimeType?.lowercase()?.let { type ->
         type.contains("mpegurl") || type.contains("x-mpegurl") || type.contains("vnd.apple.mpegurl")
+      } == true ||
+      mimeType?.lowercase()?.let { type ->
+        m3uMimeTypes.contains(type)
       } == true
   }
 

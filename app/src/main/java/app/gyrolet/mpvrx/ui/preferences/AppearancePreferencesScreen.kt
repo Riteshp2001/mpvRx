@@ -473,10 +473,12 @@ object AppearancePreferencesScreen : Screen {
               PreferenceDivider()
 
               val watchedThreshold by browserPreferences.watchedThreshold.collectAsState()
+              val effectiveThreshold = watchedThreshold.coerceAtLeast(0)
+              val thresholdDisplayValue = if (effectiveThreshold == 0) 0f else effectiveThreshold.toFloat()
               SliderPreference(
-                value = watchedThreshold.toFloat(),
+                value = thresholdDisplayValue,
                 onValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
-                sliderValue = watchedThreshold.toFloat(),
+                sliderValue = thresholdDisplayValue,
                 onSliderValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
                 title = {
                   Text(
@@ -488,12 +490,12 @@ object AppearancePreferencesScreen : Screen {
                 summary = {
                   Text(
                     text =
-                      if (watchedThreshold == 0) {
+                      if (effectiveThreshold == 0) {
                         stringResource(R.string.pref_appearance_watched_threshold_summary_infinite)
                       } else {
                         stringResource(
                           id = R.string.pref_appearance_watched_threshold_summary,
-                          watchedThreshold,
+                          effectiveThreshold,
                         )
                       },
                     color = MaterialTheme.colorScheme.outline,
