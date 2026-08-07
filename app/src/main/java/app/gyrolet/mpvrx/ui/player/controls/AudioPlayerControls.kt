@@ -413,6 +413,7 @@ fun AudioPlayerControls(
   val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
+  val isTabletPortrait = isPortrait && isTablet
 
   LaunchedEffect(isTabletLandscape) {
     if (isTabletLandscape) {
@@ -643,7 +644,7 @@ fun AudioPlayerControls(
               }
             },
             label = "visualizer_toggle",
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait) 0.65f else 1.0f),
           ) { isVisualizerActive ->
           if (isVisualizerActive) {
             Box(
@@ -1234,15 +1235,7 @@ fun AudioPlayerControls(
         headerBar()
         losslessBadge()
         Spacer(modifier = Modifier.height(16.dp))
-        val visualizerModifier =
-          if (isTabletPortrait) {
-            Modifier
-              .weight(1f)
-              .fillMaxWidth()
-              .padding(horizontal = 48.dp, vertical = 12.dp)
-          } else {
-            Modifier.weight(1f).fillMaxWidth()
-          }
+        val visualizerModifier = Modifier.weight(1f).fillMaxWidth()
         centerVisualizerView(visualizerModifier)
         Spacer(modifier = Modifier.height(16.dp))
         trackMetadataView()

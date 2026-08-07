@@ -165,7 +165,7 @@ fun LyricsView(
             )
           }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(14.dp))
       }
 
       // Edge-to-Edge Synced Lyrics Scroll Area
@@ -368,7 +368,7 @@ fun LyricsView(
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp),
+            .padding(top = 14.dp, bottom = 4.dp),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
