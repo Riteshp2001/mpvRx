@@ -1473,6 +1473,7 @@
   <string name="oss_androidx_constraintlayout_description">Гибкий менеджер компоновки для интерфейсов Android.</string>
   <string name="oss_androidx_documentfile_description">Уровень абстракции для доступа к хранилищу документов.</string>
   <string name="oss_androidx_media_description">API Android для медиасеансов и воспроизведения.</string>
+  <string name="oss_androidx_palette_description">Извлекает доминирующие и яркие цветовые палитры из изображений.</string>
   <string name="oss_androidx_preference_description">Интерфейс и хранение данных для экранов настроек приложения.</string>
   <string name="oss_androidx_profile_installer_description">Предварительно загружает классы и методы для ускорения запуска приложения.</string>
   <string name="oss_google_material_description">Компоненты Material Design и библиотека тем.</string>

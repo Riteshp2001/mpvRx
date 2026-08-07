@@ -33,6 +33,7 @@ androidxAppcompat = "1.7.1"
 composeConstraintLayout = "1.1.1"
 androidxMedia = "1.8.0"
 androidxDocumentfile = "1.1.0"
+androidxPalette = "1.0.0"
 composePrefs = "2.2.0"
 desugarJdkLibs = "2.1.5"
 fsaf = "1.1.3"
@@ -68,6 +69,7 @@ mediasession = { group = "androidx.media", name = "media", version.ref = "androi
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidxDocumentfile" }
+androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "androidxPalette" }
 seeker = { module = "com.github.abdallahmehiz:seeker", version.ref = "seeker" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlinTest" }
 mediainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"

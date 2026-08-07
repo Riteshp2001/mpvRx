@@ -1473,6 +1473,7 @@
   <string name="oss_androidx_constraintlayout_description">مدير تخطيط مرن لواجهات Android.</string>
   <string name="oss_androidx_documentfile_description">طبقة تجريد للوصول إلى تخزين المستندات.</string>
   <string name="oss_androidx_media_description">واجهات جلسات الوسائط والتشغيل في Android.</string>
+  <string name="oss_androidx_palette_description">يستخرج لوحات ألوان مهيمنة ونابضة بالحياة من الصور.</string>
   <string name="oss_androidx_preference_description">واجهة وتخزين لشاشات تفضيلات التطبيق.</string>
   <string name="oss_androidx_profile_installer_description">يجلب الفئات والطرائق مسبقًا لتسريع بدء تشغيل التطبيق.</string>
   <string name="oss_google_material_description">مكوّنات Material Design ومكتبة السمات.</string>

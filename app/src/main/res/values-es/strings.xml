@@ -1473,6 +1473,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="oss_androidx_constraintlayout_description">Gestor de diseño flexible para interfaces Android.</string>
   <string name="oss_androidx_documentfile_description">Capa de abstracción para acceder al almacenamiento de documentos.</string>
   <string name="oss_androidx_media_description">API de sesión multimedia y reproducción de Android.</string>
+  <string name="oss_androidx_palette_description">Extrae paletas de colores dominantes y vibrantes de las imágenes.</string>
   <string name="oss_androidx_preference_description">Interfaz y almacenamiento para pantallas de preferencias de la aplicación.</string>
   <string name="oss_androidx_profile_installer_description">Precarga clases y métodos para acelerar el inicio de la aplicación.</string>
   <string name="oss_google_material_description">Componentes de Material Design y biblioteca de temas.</string>

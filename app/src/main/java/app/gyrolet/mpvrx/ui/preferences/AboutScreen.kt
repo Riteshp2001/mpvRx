@@ -980,6 +980,13 @@ private val OPEN_SOURCE_LIBRARIES =
       url = "https://developer.android.com/jetpack/androidx/releases/media",
     ),
     OpenSourceLibrary(
+      name = "AndroidX Palette",
+      artifact = "androidx.palette:palette-ktx",
+      descriptionRes = R.string.oss_androidx_palette_description,
+      license = "Apache-2.0",
+      url = "https://developer.android.com/jetpack/androidx/releases/palette",
+    ),
+    OpenSourceLibrary(
       name = "AndroidX Preference",
       artifact = "androidx.preference:preference-ktx",
       descriptionRes = R.string.oss_androidx_preference_description,

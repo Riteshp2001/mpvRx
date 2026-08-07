@@ -1419,6 +1419,7 @@
   <string name="oss_androidx_constraintlayout_description">Android इंटरफेस के लिए फ्लेक्सिबल लेआउट मैनेजर।</string>
   <string name="oss_androidx_documentfile_description">डॉक्यूमेंट स्टोरेज एक्सेस के लिए एब्स्ट्रैक्शन लेयर।</string>
   <string name="oss_androidx_media_description">Android मीडिया सेशन और प्लेबैक API।</string>
+  <string name="oss_androidx_palette_description">तस्वीरों से प्रमुख और जीवंत रंग पैलेट निकालता है।</string>
   <string name="oss_androidx_preference_description">ऐप प्रेफरेंस स्क्रीन के लिए UI और स्टोरेज।</string>
   <string name="oss_androidx_profile_installer_description">तेज़ ऐप स्टार्टअप के लिए क्लास और मेथड पहले से लोड करता है।</string>
   <string name="oss_google_material_description">Material Design कंपोनेंट और थीमिंग लाइब्रेरी।</string>

@@ -1473,6 +1473,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="oss_androidx_constraintlayout_description">Flexibler Layout-Manager für Android-Oberflächen.</string>
   <string name="oss_androidx_documentfile_description">Abstraktionsschicht für den Dokumentenspeicherzugriff.</string>
   <string name="oss_androidx_media_description">Android-APIs für Mediensitzungen und Wiedergabe.</string>
+  <string name="oss_androidx_palette_description">Extrahiert dominante und lebendige Farbpaletten aus Bildern.</string>
   <string name="oss_androidx_preference_description">UI und Speicherung für App-Einstellungsbildschirme.</string>
   <string name="oss_androidx_profile_installer_description">Lädt Klassen und Methoden vorab für einen schnelleren App-Start.</string>
   <string name="oss_google_material_description">Material-Design-Komponenten und Designbibliothek.</string>

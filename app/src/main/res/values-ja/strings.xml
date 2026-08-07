@@ -1473,6 +1473,7 @@
   <string name="oss_androidx_constraintlayout_description">Androidインターフェース向け柔軟なレイアウトマネージャー。</string>
   <string name="oss_androidx_documentfile_description">ドキュメントストレージアクセスの抽象化レイヤー。</string>
   <string name="oss_androidx_media_description">Androidのメディアセッションおよび再生API。</string>
+  <string name="oss_androidx_palette_description">画像から支配的で鮮やかなカラーパレットを抽出します。</string>
   <string name="oss_androidx_preference_description">アプリ設定画面向けUIとストレージ。</string>
   <string name="oss_androidx_profile_installer_description">アプリ起動を高速化するためクラスとメソッドを事前取得します。</string>
   <string name="oss_google_material_description">Material Designコンポーネントとテーマライブラリ。</string>

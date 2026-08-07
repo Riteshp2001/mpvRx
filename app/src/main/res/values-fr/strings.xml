@@ -1473,6 +1473,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="oss_androidx_constraintlayout_description">Gestionnaire de disposition flexible pour les interfaces Android.</string>
   <string name="oss_androidx_documentfile_description">Couche d’abstraction pour l’accès au stockage de documents.</string>
   <string name="oss_androidx_media_description">API Android de session multimédia et de lecture.</string>
+  <string name="oss_androidx_palette_description">Extrait les palettes de couleurs dominantes et vibrantes des images.</string>
   <string name="oss_androidx_preference_description">Interface et stockage pour les écrans de préférences de l’application.</string>
   <string name="oss_androidx_profile_installer_description">Précharge les classes et méthodes pour accélérer le démarrage de l’application.</string>
   <string name="oss_google_material_description">Composants Material Design et bibliothèque de thèmes.</string>

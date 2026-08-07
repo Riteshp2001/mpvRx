@@ -1473,6 +1473,7 @@
   <string name="oss_androidx_constraintlayout_description">用于 Android 界面的灵活布局管理器。</string>
   <string name="oss_androidx_documentfile_description">用于文档存储访问的抽象层。</string>
   <string name="oss_androidx_media_description">Android 媒体会话和播放 API。</string>
+  <string name="oss_androidx_palette_description">从图像中提取主要和鲜明的调色板。</string>
   <string name="oss_androidx_preference_description">用于应用偏好设置页面的 UI 和存储。</string>
   <string name="oss_androidx_profile_installer_description">预取类和方法以加快应用启动速度。</string>
   <string name="oss_google_material_description">Material Design 组件和主题库。</string>

@@ -208,7 +208,7 @@ dependencies {
   implementation(libs.androidx.compose.animation.graphics)
   implementation(libs.mediasession)
   implementation(libs.androidx.documentfile)
-  implementation("androidx.palette:palette-ktx:1.0.0")
+  implementation(libs.androidx.palette)
 
   implementation(platform(libs.koin.bom))
   implementation(libs.bundles.koin)

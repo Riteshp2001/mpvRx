@@ -1499,6 +1499,7 @@
   <string name="oss_androidx_constraintlayout_description">Flexible layout manager for Android interfaces.</string>
   <string name="oss_androidx_documentfile_description">Abstraction layer for document storage access.</string>
   <string name="oss_androidx_media_description">Android media session and playback APIs.</string>
+  <string name="oss_androidx_palette_description">Extracts dominant and vibrant color palettes from images.</string>
   <string name="oss_androidx_preference_description">UI and storage for app preference screens.</string>
   <string name="oss_androidx_profile_installer_description">Prefetches classes and methods for faster app startup.</string>
   <string name="oss_google_material_description">Material Design components and theming library.</string>
