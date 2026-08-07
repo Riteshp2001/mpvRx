@@ -882,7 +882,7 @@ fun AudioPlayerControls(
             // 4. Playback Speed (left of A-B Loop)
             Surface(
               shape = CircleShape,
-              color = MaterialTheme.colorScheme.surfaceVariant,
+              color = Color.Transparent,
               modifier =
                 Modifier
                   .height(30.dp)
