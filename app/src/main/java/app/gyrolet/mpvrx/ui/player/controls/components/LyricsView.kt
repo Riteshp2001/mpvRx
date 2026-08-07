@@ -11,6 +11,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +64,8 @@ fun LyricsView(
   viewModel: PlayerViewModel,
   modifier: Modifier = Modifier,
   showTitleHeader: Boolean = false,
+  isLyricsFullscreen: Boolean = false,
+  onTap: (() -> Unit)? = null,
 ) {
   val state by viewModel.lyricsUiState.collectAsState()
   val precisePosition by viewModel.precisePosition.collectAsState()
@@ -73,7 +76,7 @@ fun LyricsView(
   }
 
   // Auto-scroll to active line
-  LaunchedEffect(state.activeLineIndex) {
+  LaunchedEffect(state.activeLineIndex, isLyricsFullscreen) {
     if (state.activeLineIndex >= 0) {
       val targetItem = (state.activeLineIndex - 2).coerceAtLeast(0)
       runCatching {
@@ -85,7 +88,12 @@ fun LyricsView(
   val hasEmbedded = state.embeddedLyrics != null && state.embeddedLyrics?.isValid() == true
 
   Surface(
-    modifier = modifier.fillMaxSize(),
+    modifier = modifier
+      .fillMaxSize()
+      .clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+      ) { onTap?.invoke() },
     color = Color.Transparent,
   ) {
     Column(
@@ -250,8 +258,11 @@ fun LyricsView(
                     }
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
-                      val targetSeconds = line.time / 1000f
-                      MPVLib.command("seek", targetSeconds.toString(), "absolute+exact")
+                      onTap?.invoke()
+                      if (!isLyricsFullscreen) {
+                        val targetSeconds = line.time / 1000f
+                        MPVLib.command("seek", targetSeconds.toString(), "absolute+exact")
+                      }
                     }
                     .padding(vertical = 4.dp, horizontal = 6.dp),
                 ) {

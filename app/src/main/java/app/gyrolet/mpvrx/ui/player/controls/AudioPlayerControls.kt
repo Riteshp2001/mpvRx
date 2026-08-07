@@ -76,6 +76,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -235,6 +236,15 @@ fun AudioPlayerControls(
 
   var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
   var wasLyricsActiveBeforeLandscape by rememberSaveable { mutableStateOf(false) }
+  var isLyricsFullscreen by remember { mutableStateOf(false) }
+  var lastUserInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+  val resetInactivityTimer = {
+    lastUserInteractionTime = System.currentTimeMillis()
+    if (isLyricsFullscreen) {
+      isLyricsFullscreen = false
+    }
+  }
 
   val currentPath by MPVLib.propString["path"].collectAsState()
   val currentStreamFilename by MPVLib.propString["stream-open-filename"].collectAsState()
@@ -426,6 +436,15 @@ fun AudioPlayerControls(
         showInPlaceLyrics = true
         wasLyricsActiveBeforeLandscape = false
       }
+    }
+  }
+
+  LaunchedEffect(showInPlaceLyrics, isPlaying, isTabletLandscape, lastUserInteractionTime) {
+    if (showInPlaceLyrics && !isTabletLandscape && isPlaying) {
+      kotlinx.coroutines.delay(5000L)
+      isLyricsFullscreen = true
+    } else {
+      isLyricsFullscreen = false
     }
   }
 
@@ -622,6 +641,8 @@ fun AudioPlayerControls(
           app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
             viewModel = viewModel,
             modifier = Modifier.fillMaxSize(),
+            isLyricsFullscreen = isLyricsFullscreen,
+            onTap = resetInactivityTimer,
           )
         } else {
           AnimatedContent(
@@ -1229,22 +1250,45 @@ fun AudioPlayerControls(
 
     if (isPortrait) {
       Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+          .fillMaxSize()
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+          ) { resetInactivityTimer() },
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        headerBar()
-        losslessBadge()
-        Spacer(modifier = Modifier.height(16.dp))
+        androidx.compose.animation.AnimatedVisibility(
+          visible = !isLyricsFullscreen,
+          enter = fadeIn(animationSpec = tween(300)) + androidx.compose.animation.expandVertically(animationSpec = tween(300)),
+          exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.shrinkVertically(animationSpec = tween(300)),
+        ) {
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            headerBar()
+            losslessBadge()
+            Spacer(modifier = Modifier.height(16.dp))
+          }
+        }
+
         val visualizerModifier = Modifier.weight(1f).fillMaxWidth()
         centerVisualizerView(visualizerModifier)
-        Spacer(modifier = Modifier.height(16.dp))
-        trackMetadataView()
-        Spacer(modifier = Modifier.height(16.dp))
-        seekbarView()
-        Spacer(modifier = Modifier.height(16.dp))
-        playbackControlsRow()
-        Spacer(modifier = Modifier.height(24.dp))
-        bottomActionRow()
+
+        androidx.compose.animation.AnimatedVisibility(
+          visible = !isLyricsFullscreen,
+          enter = fadeIn(animationSpec = tween(300)) + androidx.compose.animation.expandVertically(animationSpec = tween(300)),
+          exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.shrinkVertically(animationSpec = tween(300)),
+        ) {
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(16.dp))
+            trackMetadataView()
+            Spacer(modifier = Modifier.height(16.dp))
+            seekbarView()
+            Spacer(modifier = Modifier.height(16.dp))
+            playbackControlsRow()
+            Spacer(modifier = Modifier.height(24.dp))
+            bottomActionRow()
+          }
+        }
       }
     } else if (isTabletLandscape) {
       Row(
