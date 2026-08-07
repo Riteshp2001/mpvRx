@@ -153,6 +153,7 @@ object Icons {
     val Lock by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Lock) }
     val LockOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Lock_open) }
     val ListAlt by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.List_alt) }
+    val Lyrics by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Lyrics) }
     val Memory by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Memory) }
     val Mic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Mic) }
     val MonetizationOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Monetization_on) }
@@ -357,6 +358,7 @@ object Icons {
     val Lock get() = Shared.Lock
     val LockOpen get() = Shared.LockOpen
     val ListAlt get() = Shared.ListAlt
+    val Lyrics get() = Shared.Lyrics
     val Memory get() = Shared.Memory
     val Mic get() = Shared.Mic
     val MonetizationOn get() = Shared.MonetizationOn

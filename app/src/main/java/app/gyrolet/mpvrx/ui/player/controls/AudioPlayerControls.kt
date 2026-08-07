@@ -233,6 +233,8 @@ fun AudioPlayerControls(
   val precisePosition by viewModel.precisePosition.collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
 
+  var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
+
   val currentPath by MPVLib.propString["path"].collectAsState()
   val currentStreamFilename by MPVLib.propString["stream-open-filename"].collectAsState()
   val mediaPath = currentPath?.takeIf { it.isNotBlank() } ?: currentStreamFilename
@@ -411,6 +413,12 @@ fun AudioPlayerControls(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
 
+  LaunchedEffect(isTabletLandscape) {
+    if (isTabletLandscape) {
+      showInPlaceLyrics = false
+    }
+  }
+
   val ambientModeEnabled by audioPreferences.audioAmbientMode.collectAsState()
 
   val ambientColors by produceState<Pair<Color, Color>?>(
@@ -446,8 +454,8 @@ fun AudioPlayerControls(
     }
   }
 
-  val targetTopColor = if (ambientModeEnabled && !showVisualizer) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
-  val targetBottomColor = if (ambientModeEnabled && !showVisualizer) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
+  val targetTopColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
+  val targetBottomColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
 
   val animatedAmbientTop: Color by animateColorAsState(
     targetValue = targetTopColor,
@@ -467,7 +475,7 @@ fun AudioPlayerControls(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
         .drawWithCache {
-          if (ambientModeEnabled && !showVisualizer && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
+          if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics) && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
             val topColor = animatedAmbientTop
             val bottomColor = animatedAmbientBottom
             val radialGradient = Brush.radialGradient(
@@ -600,28 +608,34 @@ fun AudioPlayerControls(
         val containerWidthPx = constraints.maxWidth.toFloat()
         val currentOffset = animatableOffsetX.value
 
-        AnimatedContent(
-          targetState = showVisualizer,
-          transitionSpec = {
-            if (targetState) {
-              (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                scaleIn(animationSpec = tween(350, easing = FastOutSlowInEasing), initialScale = 0.90f))
-                .togetherWith(
-                  fadeOut(animationSpec = tween(280)) +
-                    scaleOut(animationSpec = tween(280), targetScale = 1.06f),
-                )
-            } else {
-              (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                scaleIn(animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f), initialScale = 0.88f))
-                .togetherWith(
-                  fadeOut(animationSpec = tween(280)) +
-                    scaleOut(animationSpec = tween(280), targetScale = 1.06f),
-                )
-            }
-          },
-          label = "visualizer_toggle",
-          modifier = Modifier.fillMaxSize(),
-        ) { isVisualizerActive ->
+        if (showInPlaceLyrics && !isTabletLandscape) {
+          app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
+            viewModel = viewModel,
+            modifier = Modifier.fillMaxSize(),
+          )
+        } else {
+          AnimatedContent(
+            targetState = showVisualizer,
+            transitionSpec = {
+              if (targetState) {
+                (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                  scaleIn(animationSpec = tween(350, easing = FastOutSlowInEasing), initialScale = 0.90f))
+                  .togetherWith(
+                    fadeOut(animationSpec = tween(280)) +
+                      scaleOut(animationSpec = tween(280), targetScale = 1.06f),
+                  )
+              } else {
+                (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                  scaleIn(animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f), initialScale = 0.88f))
+                  .togetherWith(
+                    fadeOut(animationSpec = tween(280)) +
+                      scaleOut(animationSpec = tween(280), targetScale = 1.06f),
+                  )
+              }
+            },
+            label = "visualizer_toggle",
+            modifier = Modifier.fillMaxSize(),
+          ) { isVisualizerActive ->
           if (isVisualizerActive) {
             Box(
               modifier = Modifier.fillMaxSize(),
@@ -773,6 +787,7 @@ fun AudioPlayerControls(
           }
         }
       }
+    }
     }
 
     val trackMetadataView = @Composable {
@@ -1167,6 +1182,15 @@ fun AudioPlayerControls(
               tint = if (backgroundPlaybackEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
+          if (!isTabletLandscape) {
+            ReactiveIconButton(onClick = { showInPlaceLyrics = !showInPlaceLyrics }) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Lyrics,
+                contentDescription = "Lyrics",
+                tint = if (showInPlaceLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          }
         }
         if (!isTabletLandscape) {
           ReactiveIconButton(
@@ -1333,15 +1357,53 @@ private fun DualPaneSidePanel(
   viewModel: PlayerViewModel,
   playlist: List<PlaylistItem>,
 ) {
-  Box(
+  var selectedTab by remember { mutableIntStateOf(0) }
+
+  Column(
     modifier = Modifier
       .fillMaxSize()
       .padding(16.dp),
   ) {
-    UpNextPlaylistContent(
-      viewModel = viewModel,
-      playlist = playlist,
-    )
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 12.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      androidx.compose.material3.FilterChip(
+        selected = selectedTab == 0,
+        onClick = { selectedTab = 0 },
+        label = { Text("Playlist", fontWeight = FontWeight.Bold) },
+        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+          selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+          selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+      )
+      androidx.compose.material3.FilterChip(
+        selected = selectedTab == 1,
+        onClick = { selectedTab = 1 },
+        label = { Text("Lyrics", fontWeight = FontWeight.Bold) },
+        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+          selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+          selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+      )
+    }
+
+    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+      if (selectedTab == 0) {
+        UpNextPlaylistContent(
+          viewModel = viewModel,
+          playlist = playlist,
+        )
+      } else {
+        app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
+          viewModel = viewModel,
+          showTitleHeader = false,
+        )
+      }
+    }
   }
 }
 

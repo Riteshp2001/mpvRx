@@ -99,4 +99,7 @@ val domainModule =
       app.gyrolet.mpvrx.domain.syncplay
         .SyncplayManager(androidContext())
     }
+    single { app.gyrolet.mpvrx.data.lyrics.LrcLibApiService(get()) }
+    single { app.gyrolet.mpvrx.repository.lyrics.LyricsRepository(androidContext(), get()) }
   }
+

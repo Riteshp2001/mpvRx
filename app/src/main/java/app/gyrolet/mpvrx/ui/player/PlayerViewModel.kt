@@ -184,6 +184,7 @@ class PlayerViewModel(
   private val onlineSubtitleOrchestrator: OnlineSubtitleOrchestrator by inject()
   private val introDbRepository: IntroDbRepository by inject()
   val syncplayManager: app.gyrolet.mpvrx.domain.syncplay.SyncplayManager by inject()
+  private val lyricsRepository: app.gyrolet.mpvrx.repository.lyrics.LyricsRepository by inject()
   private val introMarkerCachePrefs by lazy {
     host.context.getSharedPreferences(INTRO_MARKER_CACHE_PREFS, Context.MODE_PRIVATE)
   }
@@ -567,6 +568,20 @@ class PlayerViewModel(
   private val audioEqualizerManager = AudioEqualizerManager()
   private var equalizerMpvDebounceJob: Job? = null
 
+  data class LyricsUiState(
+    val isLoading: Boolean = false,
+    val lyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics? = null,
+    val embeddedLyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics? = null,
+    val onlineLyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics? = null,
+    val activeLineIndex: Int = -1,
+    val selectedSource: app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType = app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.EMBEDDED,
+    val availableSources: List<app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType> = emptyList(),
+    val syncOffsetMs: Int = 0,
+    val errorMessage: String? = null,
+  )
+
+  val lyricsUiState = MutableStateFlow(LyricsUiState())
+
   fun setEqualizerEnabled(enabled: Boolean) {
     equalizerState.value = equalizerState.value.copy(isEnabled = enabled)
     applyEqualizerMpvFilters(immediate = true)
@@ -595,6 +610,123 @@ class PlayerViewModel(
           bandGains = currentGains,
         )
       applyEqualizerMpvFilters(immediate = false)
+    }
+  }
+
+  fun loadLyricsForCurrentTrack(forceRefresh: Boolean = false) {
+    val path = MPVLib.getPropertyString("path") ?: MPVLib.getPropertyString("stream-open-filename") ?: return
+    if (path.isBlank()) return
+
+    val title = currentMediaTitle.takeIf { it.isNotBlank() }
+      ?: MPVLib.getPropertyString("metadata/by-key/Title")
+      ?: MPVLib.getPropertyString("media-title")
+      ?: ""
+
+    val artist = MPVLib.getPropertyString("metadata/by-key/Artist")
+      ?: MPVLib.getPropertyString("metadata/by-key/ARTIST")
+      ?: MPVLib.getPropertyString("metadata/by-key/album_artist")
+      ?: ""
+
+    val duration = MPVLib.getPropertyInt("duration") ?: 0
+
+    lyricsUiState.value = lyricsUiState.value.copy(isLoading = true, errorMessage = null)
+
+    viewModelScope.launch(Dispatchers.IO) {
+      val result = lyricsRepository.loadLyricsForTrack(
+        mediaPath = path,
+        title = title,
+        artist = artist,
+        durationSeconds = duration,
+        forceRefresh = forceRefresh,
+      )
+      val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+        syncedLines = result.activeLyrics?.synced,
+        positionMs = (precisePosition.value * 1000).toLong(),
+        offsetMs = lyricsUiState.value.syncOffsetMs,
+      )
+      lyricsUiState.value = lyricsUiState.value.copy(
+        isLoading = false,
+        lyrics = result.activeLyrics,
+        embeddedLyrics = result.embeddedLyrics,
+        onlineLyrics = result.onlineLyrics,
+        activeLineIndex = activeIndex,
+        selectedSource = result.selectedSource,
+        availableSources = result.availableSources,
+      )
+    }
+  }
+
+  fun switchLyricsSource(sourceType: app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType) {
+    val path = MPVLib.getPropertyString("path") ?: MPVLib.getPropertyString("stream-open-filename") ?: return
+    if (path.isBlank()) return
+
+    val current = lyricsUiState.value
+    if (sourceType == app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE && current.onlineLyrics == null) {
+      lyricsUiState.value = current.copy(isLoading = true)
+      viewModelScope.launch(Dispatchers.IO) {
+        val title = currentMediaTitle.takeIf { it.isNotBlank() }
+          ?: MPVLib.getPropertyString("metadata/by-key/Title")
+          ?: MPVLib.getPropertyString("media-title")
+          ?: ""
+        val artist = MPVLib.getPropertyString("metadata/by-key/Artist")
+          ?: MPVLib.getPropertyString("metadata/by-key/ARTIST")
+          ?: MPVLib.getPropertyString("metadata/by-key/album_artist")
+          ?: ""
+        val duration = MPVLib.getPropertyInt("duration") ?: 0
+
+        val online = lyricsRepository.fetchOnlineLyrics(title, artist, duration)
+        val updatedSources = (current.availableSources + app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE).distinct()
+        val activeLyrics = online ?: current.embeddedLyrics
+        val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+          syncedLines = activeLyrics?.synced,
+          positionMs = (precisePosition.value * 1000).toLong(),
+          offsetMs = current.syncOffsetMs,
+        )
+        lyricsUiState.value = current.copy(
+          isLoading = false,
+          onlineLyrics = online,
+          lyrics = activeLyrics,
+          selectedSource = if (online != null) app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE else current.selectedSource,
+          availableSources = updatedSources,
+          activeLineIndex = activeIndex,
+        )
+      }
+      return
+    }
+
+    val updatedResult = lyricsRepository.switchSource(path, sourceType)
+    if (updatedResult != null) {
+      val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+        syncedLines = updatedResult.activeLyrics?.synced,
+        positionMs = (precisePosition.value * 1000).toLong(),
+        offsetMs = current.syncOffsetMs,
+      )
+      lyricsUiState.value = current.copy(
+        lyrics = updatedResult.activeLyrics,
+        selectedSource = updatedResult.selectedSource,
+        activeLineIndex = activeIndex,
+      )
+    }
+  }
+
+  fun adjustLyricsSyncOffset(deltaMs: Int) {
+    val newOffset = lyricsUiState.value.syncOffsetMs + deltaMs
+    lyricsUiState.value = lyricsUiState.value.copy(syncOffsetMs = newOffset)
+    updateLyricsActiveLine()
+  }
+
+  fun resetLyricsSyncOffset() {
+    lyricsUiState.value = lyricsUiState.value.copy(syncOffsetMs = 0)
+    updateLyricsActiveLine()
+  }
+
+  fun updateLyricsActiveLine() {
+    val state = lyricsUiState.value
+    val synced = state.lyrics?.synced ?: return
+    val posMs = (precisePosition.value * 1000).toLong()
+    val index = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(synced, posMs, state.syncOffsetMs)
+    if (index != state.activeLineIndex) {
+      lyricsUiState.value = state.copy(activeLineIndex = index)
     }
   }
 
@@ -1125,6 +1257,17 @@ class PlayerViewModel(
 
   init {
     viewModelScope.launch {
+      combine(
+        MPVLib.propString["path"],
+        MPVLib.propString["stream-open-filename"],
+      ) { p1, p2 -> p1?.takeIf { it.isNotBlank() } ?: p2 }
+        .collect { currentPath ->
+          if (!currentPath.isNullOrBlank()) {
+            loadLyricsForCurrentTrack()
+          }
+        }
+    }
+    viewModelScope.launch {
       decoderPreferences.gpuNext.changes().collect { enabled ->
         _isGpuNextEnabled.value = enabled
         reconcileHdrModeWithRenderer()
@@ -1186,6 +1329,7 @@ class PlayerViewModel(
             val posFloat = time.toFloat()
             if (_precisePosition.value != posFloat) {
               _precisePosition.value = posFloat
+              updateLyricsActiveLine()
             }
             maybeAutoSkipIntro(time)
           }

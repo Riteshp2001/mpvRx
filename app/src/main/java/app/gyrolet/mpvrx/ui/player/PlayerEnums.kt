@@ -115,6 +115,7 @@ enum class Sheets {
   Equalizer,
   AudioProperties,
   VisualizerStyle,
+  Lyrics,
 }
 
 enum class Panels {
