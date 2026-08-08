@@ -71,6 +71,13 @@ fun AddToPlaylistDialog(
   val scope = rememberCoroutineScope()
   var showCreateDialog by remember { mutableStateOf(false) }
   val context = LocalContext.current
+  val isAudio = remember(videos) { videos.any { it.isAudio } }
+
+  androidx.compose.runtime.LaunchedEffect(isOpen, isAudio) {
+    if (isOpen) {
+      viewModel.loadPlaylists(isAudio = isAudio)
+    }
+  }
 
   if (!isOpen) return
 
@@ -81,10 +88,18 @@ fun AddToPlaylistDialog(
         scope.launch {
           viewModel.createAndAdd(name, videos)
           val message =
-            if (videos.size == 1) {
-              "Video added to \"$name\""
+            if (isAudio) {
+              if (videos.size == 1) {
+                "Song added to \"$name\""
+              } else {
+                "${videos.size} songs added to \"$name\""
+              }
             } else {
-              "${videos.size} videos added to \"$name\""
+              if (videos.size == 1) {
+                "Video added to \"$name\""
+              } else {
+                "${videos.size} videos added to \"$name\""
+              }
             }
           Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
           showCreateDialog = false
@@ -112,13 +127,13 @@ fun AddToPlaylistDialog(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
-        // Show video count
+        // Show video / song count
         Text(
           text =
-            if (videos.size == 1) {
-              "Adding 1 video to playlist"
+            if (isAudio) {
+              if (videos.size == 1) "Adding 1 song to playlist" else "Adding ${videos.size} songs to playlist"
             } else {
-              "Adding ${videos.size} videos to playlist"
+              if (videos.size == 1) "Adding 1 video to playlist" else "Adding ${videos.size} videos to playlist"
             },
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -168,10 +183,18 @@ fun AddToPlaylistDialog(
                   scope.launch {
                     viewModel.addToPlaylist(option.playlist.id, videos)
                     val message =
-                      if (videos.size == 1) {
-                        "Video added to \"${option.playlist.name}\""
+                      if (isAudio) {
+                        if (videos.size == 1) {
+                          "Song added to \"${option.playlist.name}\""
+                        } else {
+                          "${videos.size} songs added to \"${option.playlist.name}\""
+                        }
                       } else {
-                        "${videos.size} videos added to \"${option.playlist.name}\""
+                        if (videos.size == 1) {
+                          "Video added to \"${option.playlist.name}\""
+                        } else {
+                          "${videos.size} videos added to \"${option.playlist.name}\""
+                        }
                       }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                   }

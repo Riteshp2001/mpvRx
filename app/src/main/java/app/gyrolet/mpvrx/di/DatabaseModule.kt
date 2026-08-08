@@ -583,6 +583,22 @@ val MIGRATION_10_11 =
     }
   }
 
+val MIGRATION_11_12 =
+  object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      val cursor = db.query("PRAGMA table_info(PlaylistEntity)")
+      val columns = mutableSetOf<String>()
+      while (cursor.moveToNext()) {
+        columns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+      }
+      cursor.close()
+
+      if (!columns.contains("isAudio")) {
+        db.execSQL("ALTER TABLE `PlaylistEntity` ADD COLUMN `isAudio` INTEGER NOT NULL DEFAULT 0")
+      }
+    }
+  }
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -608,6 +624,7 @@ val DatabaseModule =
           MIGRATION_8_9,
           MIGRATION_9_10,
           MIGRATION_10_11,
+          MIGRATION_11_12,
         ).fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }

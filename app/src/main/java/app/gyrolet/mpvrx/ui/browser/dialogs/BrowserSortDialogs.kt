@@ -1110,8 +1110,8 @@ fun MusicSortDialog(
           label = "Cover Art Size",
           currentValue = musicCoverArtSize,
           onValueChange = { browserPreferences.musicCoverArtSize.set(it) },
-          valueRange = 36f..96f,
-          steps = 11,
+          valueRange = 56f..126f,
+          steps = 40,
           unitSuffix = "dp",
         )
       } else {

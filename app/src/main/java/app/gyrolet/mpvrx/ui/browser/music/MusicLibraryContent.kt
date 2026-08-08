@@ -15,11 +15,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,6 +46,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -77,6 +80,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -87,6 +91,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -94,9 +99,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.floor
+import kotlin.math.sqrt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
+import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
@@ -430,7 +438,28 @@ fun MusicLibraryContent(
       }
     },
     floatingActionButton = {
-      if (songs.isNotEmpty()) {
+      val isPlaylistsTab = MusicTab.defaultTabs.getOrNull(pagerState.currentPage) == MusicTab.PLAYLISTS
+      if (isPlaylistsTab) {
+        FloatingActionButtonMenu(
+          modifier = Modifier.padding(bottom = (navigationBarHeight - 16.dp).coerceAtLeast(0.dp)),
+          expanded = false,
+          button = {
+            ToggleFloatingActionButton(
+              modifier = Modifier.animateFloatingActionButton(
+                visible = showQuickPlayFab && !activeSelectionManager.isInSelectionMode && isFabVisible.value && !MainScreen.getPermissionDeniedState(),
+                alignment = Alignment.BottomEnd,
+              ),
+              checked = false,
+              onCheckedChange = { showCreatePlaylistDialog = true }
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Add,
+                contentDescription = "New Playlist"
+              )
+            }
+          }
+        ) { }
+      } else if (songs.isNotEmpty()) {
         FloatingActionButtonMenu(
           modifier = Modifier.padding(bottom = (navigationBarHeight - 16.dp).coerceAtLeast(0.dp)),
           expanded = isFabExpanded.value && !quickPlayFabDirect,
@@ -570,7 +599,9 @@ fun MusicLibraryContent(
 
               MusicTab.PLAYLISTS -> PlaylistsTabContent(
                 playlists = playlists,
+                songs = songs,
                 viewMode = viewMode,
+                coverArtSizeDp = coverArtSizeDp.dp,
                 onPlaylistClick = { playlist ->
                   if (playlistSelectionManager.isInSelectionMode) {
                     playlistSelectionManager.toggle(playlist)
@@ -582,7 +613,6 @@ fun MusicLibraryContent(
                   playlistSelectionManager.toggle(playlist)
                 },
                 selectionManager = playlistSelectionManager,
-                onCreatePlaylistClick = { showCreatePlaylistDialog = true }
               )
             }
           }
@@ -851,7 +881,7 @@ fun MusicLibraryContent(
 
               ListItem(
                 headlineContent = { Text("View Artist Songs") },
-                leadingContent = { Icon(Icons.RoundedFilled.Mic, contentDescription = null) },
+                leadingContent = { Icon(Icons.RoundedFilled.Person, contentDescription = null) },
                 modifier = Modifier.clickable {
                   val target = artist
                   selectedArtistForOptions = null
@@ -1043,7 +1073,7 @@ private fun LocalAlbumArtImage(
 private fun ArtistAvatarImage(
   artistName: String,
   modifier: Modifier = Modifier,
-  iconSize: Dp = 40.dp
+  iconSize: Dp? = null,
 ) {
   val client = koinInject<OkHttpClient>()
   var imageUrl by remember(artistName) { mutableStateOf<String?>(null) }
@@ -1053,7 +1083,7 @@ private fun ArtistAvatarImage(
   }
 
   val url = imageUrl
-  Box(
+  BoxWithConstraints(
     modifier = modifier
       .clip(CircleShape)
       .background(MaterialTheme.colorScheme.primaryContainer),
@@ -1067,11 +1097,12 @@ private fun ArtistAvatarImage(
         modifier = Modifier.fillMaxSize()
       )
     } else {
+      val dynamicIconSize = iconSize ?: (maxWidth * 0.55f)
       Icon(
-        imageVector = Icons.RoundedFilled.Mic,
+        imageVector = Icons.RoundedFilled.Person,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.size(iconSize)
+        modifier = Modifier.size(dynamicIconSize)
       )
     }
   }
@@ -1740,8 +1771,7 @@ private fun ArtistListCard(
       ) {
         ArtistAvatarImage(
           artistName = artist.name,
-          modifier = Modifier.fillMaxSize(),
-          iconSize = 34.dp
+          modifier = Modifier.fillMaxSize()
         )
         if (isSelected) {
           Box(
@@ -1782,14 +1812,327 @@ private fun ArtistListCard(
 }
 
 @Composable
+private fun PlaylistArtCollage(
+  artUris: List<Uri>,
+  modifier: Modifier = Modifier
+) {
+  val collageUris = remember(artUris) { artUris.take(4) }
+  Box(
+    modifier = modifier
+      .aspectRatio(1f)
+      .clip(AppShapeScale.medium)
+      .background(MaterialTheme.colorScheme.surfaceVariant),
+    contentAlignment = Alignment.Center
+  ) {
+    when (collageUris.size) {
+      0 -> {
+        Icon(
+          imageVector = Icons.RoundedFilled.QueueMusic,
+          contentDescription = "Playlist",
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+      }
+      1 -> {
+        LocalAlbumArtImage(
+          uri = collageUris[0],
+          contentDescription = null,
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp)
+            .clip(CircleShape)
+        )
+      }
+      2 -> {
+        Column(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+          verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          LocalAlbumArtImage(
+            uri = collageUris[0],
+            contentDescription = null,
+            modifier = Modifier
+              .weight(1f)
+              .aspectRatio(1f)
+              .clip(CircleShape)
+          )
+          LocalAlbumArtImage(
+            uri = collageUris[1],
+            contentDescription = null,
+            modifier = Modifier
+              .weight(1f)
+              .aspectRatio(1f)
+              .clip(CircleShape)
+          )
+        }
+      }
+      3 -> {
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+          contentAlignment = Alignment.Center
+        ) {
+          Layout(
+            content = {
+              collageUris.forEach { uri ->
+                LocalAlbumArtImage(
+                  uri = uri,
+                  contentDescription = null,
+                  modifier = Modifier.clip(CircleShape)
+                )
+              }
+            },
+            modifier = Modifier.fillMaxSize()
+          ) { measurables, constraints ->
+            val separation = 2.dp.toPx()
+            val itemSize = floor((constraints.maxWidth * 2f / (2f + sqrt(3f))) - separation).toInt()
+
+            val placeables = measurables.map {
+              it.measure(
+                constraints.copy(
+                  minWidth = itemSize, maxWidth = itemSize,
+                  minHeight = itemSize, maxHeight = itemSize
+                )
+              )
+            }
+
+            val L = itemSize + separation
+            val h = L * sqrt(3f) / 2f
+
+            val collageHeight = h + itemSize
+            val collageWidth = L + itemSize
+
+            val offsetX = ((constraints.maxWidth - collageWidth) / 2f).toInt()
+            val offsetY = ((constraints.maxHeight - collageHeight) / 2f).toInt()
+
+            layout(constraints.maxWidth, constraints.maxHeight) {
+              placeables.getOrNull(0)?.placeRelative(
+                x = (offsetX + (collageWidth - itemSize) / 2f).toInt(),
+                y = offsetY
+              )
+              placeables.getOrNull(1)?.placeRelative(
+                x = offsetX,
+                y = (offsetY + h).toInt()
+              )
+              placeables.getOrNull(2)?.placeRelative(
+                x = (offsetX + L).toInt(),
+                y = (offsetY + h).toInt()
+              )
+            }
+          }
+        }
+      }
+      else -> {
+        Column(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+          verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+          Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+          ) {
+            LocalAlbumArtImage(
+              uri = collageUris.getOrNull(0),
+              contentDescription = null,
+              modifier = Modifier
+                .weight(1f)
+                .aspectRatio(1f)
+                .clip(CircleShape)
+            )
+            LocalAlbumArtImage(
+              uri = collageUris.getOrNull(1),
+              contentDescription = null,
+              modifier = Modifier
+                .weight(1f)
+                .aspectRatio(1f)
+                .clip(CircleShape)
+            )
+          }
+          Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+          ) {
+            LocalAlbumArtImage(
+              uri = collageUris.getOrNull(2),
+              contentDescription = null,
+              modifier = Modifier
+                .weight(1f)
+                .aspectRatio(1f)
+                .clip(CircleShape)
+            )
+            LocalAlbumArtImage(
+              uri = collageUris.getOrNull(3),
+              contentDescription = null,
+              modifier = Modifier
+                .weight(1f)
+                .aspectRatio(1f)
+                .clip(CircleShape)
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MusicPlaylistCard(
+  playlist: PlaylistEntity,
+  itemCount: Int,
+  artUris: List<Uri>,
+  isSelected: Boolean,
+  isGridMode: Boolean,
+  coverArtSizeDp: Dp = 52.dp,
+  onClick: () -> Unit,
+  onLongClick: () -> Unit,
+) {
+  if (isGridMode) {
+    Card(
+      modifier = Modifier
+        .fillMaxWidth()
+        .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+      shape = AppShapeScale.large,
+      colors = CardDefaults.cardColors(
+        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else Color.Transparent
+      )
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(8.dp)
+      ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+          PlaylistArtCollage(
+            artUris = artUris,
+            modifier = Modifier.fillMaxWidth()
+          )
+          if (isSelected) {
+            Box(
+              modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.CheckCircle,
+                contentDescription = "Selected",
+                tint = Color.White,
+                modifier = Modifier.size(36.dp)
+              )
+            }
+          }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+          Text(
+            text = playlist.name,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+          Text(
+            text = if (itemCount == 1) "1 song" else "$itemCount songs",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
+      }
+    }
+  } else {
+    Surface(
+      modifier = Modifier
+        .fillMaxWidth()
+        .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+      color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+    ) {
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Box(modifier = Modifier.size(coverArtSizeDp)) {
+          PlaylistArtCollage(
+            artUris = artUris,
+            modifier = Modifier.fillMaxSize()
+          )
+          if (isSelected) {
+            Box(
+              modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.CheckCircle,
+                contentDescription = "Selected",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+              )
+            }
+          }
+        }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = playlist.name,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+          text = if (itemCount == 1) "1 song" else "$itemCount songs",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.primary
+        )
+      }
+    }
+  }
+}
+
+@Composable
 private fun PlaylistsTabContent(
   playlists: List<PlaylistEntity>,
+  songs: List<MusicSong>,
   viewMode: MusicViewMode,
+  coverArtSizeDp: Dp = 52.dp,
   onPlaylistClick: (PlaylistEntity) -> Unit,
   onPlaylistLongClick: (PlaylistEntity) -> Unit,
   selectionManager: app.gyrolet.mpvrx.ui.browser.selection.SelectionManager<PlaylistEntity, Long>,
-  onCreatePlaylistClick: () -> Unit
 ) {
+  val playlistRepository: PlaylistRepository = koinInject()
+
+  val playlistDetails by produceState<Map<Int, Pair<Int, List<Uri>>>>(initialValue = emptyMap(), playlists, songs) {
+    value = withContext(Dispatchers.IO) {
+      playlists.associate { playlist ->
+        val items = playlistRepository.getPlaylistItems(playlist.id)
+        val artUris = items.mapNotNull { item ->
+          songs.find { s -> s.path == item.filePath }?.albumArtUri
+        }.distinct().take(4)
+        playlist.id to Pair(items.size, artUris)
+      }
+    }
+  }
+
   Column(modifier = Modifier.fillMaxSize()) {
     Row(
       modifier = Modifier
@@ -1803,16 +2146,6 @@ private fun PlaylistsTabContent(
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant
       )
-
-      Button(
-        onClick = onCreatePlaylistClick,
-        shape = AppShapeScale.large,
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-      ) {
-        Icon(imageVector = Icons.RoundedFilled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(4.dp))
-        Text("New Playlist", color = MaterialTheme.colorScheme.onPrimaryContainer)
-      }
     }
 
     if (playlists.isEmpty()) {
@@ -1827,14 +2160,17 @@ private fun PlaylistsTabContent(
           horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
           items(playlists, key = { it.id }) { playlist ->
-            PlaylistCard(
+            val details = playlistDetails[playlist.id]
+            val itemCount = details?.first ?: 0
+            val artUris = details?.second ?: emptyList()
+            MusicPlaylistCard(
               playlist = playlist,
-              itemCount = 0,
+              itemCount = itemCount,
+              artUris = artUris,
               isSelected = selectionManager.isSelected(playlist),
+              isGridMode = true,
               onClick = { onPlaylistClick(playlist) },
-              onLongClick = { onPlaylistLongClick(playlist) },
-              onThumbClick = { onPlaylistClick(playlist) },
-              isGridMode = true
+              onLongClick = { onPlaylistLongClick(playlist) }
             )
           }
         }
@@ -1844,14 +2180,18 @@ private fun PlaylistsTabContent(
           contentPadding = PaddingValues(bottom = 80.dp)
         ) {
           items(playlists, key = { it.id }) { playlist ->
-            PlaylistCard(
+            val details = playlistDetails[playlist.id]
+            val itemCount = details?.first ?: 0
+            val artUris = details?.second ?: emptyList()
+            MusicPlaylistCard(
               playlist = playlist,
-              itemCount = 0,
+              itemCount = itemCount,
+              artUris = artUris,
               isSelected = selectionManager.isSelected(playlist),
+              isGridMode = false,
+              coverArtSizeDp = coverArtSizeDp,
               onClick = { onPlaylistClick(playlist) },
-              onLongClick = { onPlaylistLongClick(playlist) },
-              onThumbClick = { onPlaylistClick(playlist) },
-              isGridMode = false
+              onLongClick = { onPlaylistLongClick(playlist) }
             )
           }
         }

@@ -37,9 +37,12 @@ class AddToPlaylistViewModel :
   private val _playlistOptions = MutableStateFlow<List<PlaylistOption>>(emptyList())
   val playlistOptions: StateFlow<List<PlaylistOption>> = _playlistOptions.asStateFlow()
 
-  init {
-    viewModelScope.launch(Dispatchers.IO) {
-      repository.observeAllPlaylists().collectLatest { playlists ->
+  private var observeJob: kotlinx.coroutines.Job? = null
+
+  fun loadPlaylists(isAudio: Boolean?) {
+    observeJob?.cancel()
+    observeJob = viewModelScope.launch(Dispatchers.IO) {
+      repository.observeAllPlaylists(isAudio).collectLatest { playlists ->
         _playlistOptions.value =
           playlists
             .sortedBy { it.name.lowercase() }
@@ -57,7 +60,8 @@ class AddToPlaylistViewModel :
     name: String,
     videos: List<Video>,
   ) = withContext(Dispatchers.IO) {
-    val playlistId = repository.createPlaylist(name).toInt()
+    val isAudio = videos.any { it.isAudio }
+    val playlistId = repository.createPlaylist(name, isAudio = isAudio).toInt()
     repository.addItemsToPlaylist(playlistId, videos.asPlaylistItems())
   }
 

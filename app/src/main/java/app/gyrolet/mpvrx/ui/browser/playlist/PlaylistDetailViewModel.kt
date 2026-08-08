@@ -21,6 +21,7 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.player.extractLocalPath
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -112,22 +113,42 @@ class PlaylistDetailViewModel(
                     File(item.filePath).parent ?: ""
                   }.toSet()
 
-              // Get all videos from those folders (uses cache)
-              val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
+              // Get all videos and audio files from those folders (uses cache)
+              val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
 
               // Match videos by path, maintaining playlist order
               val videoItems =
                 items.mapNotNull { item ->
                   val matchedVideo = allVideos.find { video -> video.path == item.filePath }
-                  if (matchedVideo != null) {
-                    PlaylistVideoItem(item, matchedVideo)
-                  } else {
-                    Log.w(TAG, "Video not found for path: ${item.filePath}")
-                    null
+                  val video = matchedVideo ?: run {
+                    val file = File(item.filePath)
+                    val isAudioFile = FileTypeUtils.isAudioFile(file)
+                    Video(
+                      id = item.id.toLong(),
+                      title = item.fileName,
+                      displayName = item.fileName,
+                      path = item.filePath,
+                      uri = android.net.Uri.fromFile(file),
+                      duration = 0L,
+                      durationFormatted = "--",
+                      size = if (file.exists()) file.length() else 0L,
+                      sizeFormatted = "--",
+                      dateModified = item.addedAt,
+                      dateAdded = item.addedAt,
+                      mimeType = if (isAudioFile) "audio/*" else "video/*",
+                      bucketId = "",
+                      bucketDisplayName = "",
+                      width = 0,
+                      height = 0,
+                      fps = 0f,
+                      resolution = "--",
+                      isAudio = isAudioFile,
+                    )
                   }
+                  PlaylistVideoItem(item, video)
                 }
 
-              Log.d(TAG, "Loaded ${videoItems.size} videos out of ${items.size} playlist items")
+              Log.d(TAG, "Loaded ${videoItems.size} items out of ${items.size} playlist items")
               _videoItems.value = videoItems
             }
           }
@@ -166,12 +187,36 @@ class PlaylistDetailViewModel(
               .map { item ->
                 File(item.filePath).parent ?: ""
               }.toSet()
-          val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
+          val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
           val videoItems =
             items.mapNotNull { item ->
-              allVideos.find { video -> video.path == item.filePath }?.let { video ->
-                PlaylistVideoItem(item, video)
+              val matchedVideo = allVideos.find { video -> video.path == item.filePath }
+              val video = matchedVideo ?: run {
+                val file = File(item.filePath)
+                val isAudioFile = FileTypeUtils.isAudioFile(file)
+                Video(
+                  id = item.id.toLong(),
+                  title = item.fileName,
+                  displayName = item.fileName,
+                  path = item.filePath,
+                  uri = android.net.Uri.fromFile(file),
+                  duration = 0L,
+                  durationFormatted = "--",
+                  size = if (file.exists()) file.length() else 0L,
+                  sizeFormatted = "--",
+                  dateModified = item.addedAt,
+                  dateAdded = item.addedAt,
+                  mimeType = if (isAudioFile) "audio/*" else "video/*",
+                  bucketId = "",
+                  bucketDisplayName = "",
+                  width = 0,
+                  height = 0,
+                  fps = 0f,
+                  resolution = "--",
+                  isAudio = isAudioFile,
+                )
               }
+              PlaylistVideoItem(item, video)
             }
           _videoItems.value = videoItems
         }

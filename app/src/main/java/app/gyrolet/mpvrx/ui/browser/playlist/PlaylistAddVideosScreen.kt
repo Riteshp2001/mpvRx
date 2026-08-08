@@ -38,6 +38,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
@@ -69,6 +71,7 @@ import org.koin.compose.koinInject
 @Serializable
 data class PlaylistAddVideosScreen(
   val playlistId: Int,
+  val isAudio: Boolean = false,
 ) : Screen {
   @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
   @Composable
@@ -105,8 +108,8 @@ data class PlaylistAddVideosScreen(
     val videoListViewModel: VideoListViewModel? =
       if (folder != null) {
         viewModel(
-          key = "PlaylistAddVideosVideos_${folder.bucketId}",
-          factory = VideoListViewModel.factory(application, folder.bucketId),
+          key = "PlaylistAddVideosVideos_${folder.bucketId}_$isAudio",
+          factory = VideoListViewModel.factory(application, folder.bucketId, includeAudio = isAudio),
         )
       } else {
         null
@@ -119,19 +122,19 @@ data class PlaylistAddVideosScreen(
       }
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
-    val sortedVideos = remember(currentVideos, videoSortType, videoSortOrder) {
-      SortUtils.sortVideos(currentVideos, videoSortType, videoSortOrder)
+    val sortedVideos = remember(currentVideos, videoSortType, videoSortOrder, isAudio) {
+      val filtered = if (isAudio) currentVideos.filter { it.isAudio } else currentVideos
+      SortUtils.sortVideos(filtered, videoSortType, videoSortOrder)
     }
 
+    // Selection manager for multi-select videos step
     val selectionManager =
       if (folder != null) {
-        key(folder.bucketId) {
-          rememberSelectionManager(
-            items = sortedVideos,
-            getId = { it.id },
-            onDeleteItems = { _, _ -> 0 to 0 },
-          )
-        }
+        rememberSelectionManager(
+          items = sortedVideos,
+          getId = { it.id },
+          onDeleteItems = { _, _ -> Pair(0, 0) },
+        )
       } else {
         null
       }
@@ -141,14 +144,14 @@ data class PlaylistAddVideosScreen(
       if (videos.isEmpty()) return
       scope.launch {
         playlistDetailViewModel.addVideosToPlaylist(videos)
-        Toast
-          .makeText(
+        withContext(Dispatchers.Main) {
+          Toast.makeText(
             context,
-            context.getString(R.string.playlist_add_videos_success, videos.size),
+            if (isAudio) "Added ${videos.size} songs to playlist" else context.getString(R.string.playlist_add_videos_success, videos.size),
             Toast.LENGTH_SHORT,
           ).show()
-        selectionManager?.clear()
-        backstack.popSafely()
+          backstack.popSafely()
+        }
       }
     }
 
@@ -164,7 +167,7 @@ data class PlaylistAddVideosScreen(
       topBar = {
         if (folder == null) {
           BrowserTopBar(
-            title = stringResource(R.string.playlist_add_videos_title),
+            title = if (isAudio) "Add Songs" else stringResource(R.string.playlist_add_videos_title),
             isInSelectionMode = false,
             selectedCount = 0,
             totalCount = sortedFolders.size,
@@ -195,7 +198,7 @@ data class PlaylistAddVideosScreen(
               onClick = { addSelectedToPlaylist() },
               modifier = Modifier.fillMaxWidth().padding(16.dp),
             ) {
-              Text(stringResource(R.string.playlist_add_videos_button, selectedCount))
+              Text(if (isAudio) "Add $selectedCount Songs" else stringResource(R.string.playlist_add_videos_button, selectedCount))
             }
           }
         }
@@ -205,8 +208,8 @@ data class PlaylistAddVideosScreen(
         if (sortedFolders.isEmpty()) {
           EmptyState(
             icon = Icons.RoundedFilled.Folder,
-            title = stringResource(R.string.playlist_add_videos_empty_title),
-            message = stringResource(R.string.playlist_add_videos_empty_message),
+            title = if (isAudio) "No music folders found" else stringResource(R.string.playlist_add_videos_empty_title),
+            message = if (isAudio) "No folders with songs available" else stringResource(R.string.playlist_add_videos_empty_message),
             modifier = Modifier.padding(padding),
           )
         } else {
@@ -223,8 +226,8 @@ data class PlaylistAddVideosScreen(
       } else if (sortedVideos.isEmpty()) {
         EmptyState(
           icon = Icons.RoundedFilled.Folder,
-          title = stringResource(R.string.playlist_add_videos_empty_title),
-          message = stringResource(R.string.playlist_add_videos_empty_message),
+          title = if (isAudio) "No songs found" else stringResource(R.string.playlist_add_videos_empty_title),
+          message = if (isAudio) "No songs available in this folder" else stringResource(R.string.playlist_add_videos_empty_message),
           modifier = Modifier.padding(padding),
         )
       } else {

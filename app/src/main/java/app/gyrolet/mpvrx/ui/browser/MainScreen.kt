@@ -222,9 +222,12 @@ object MainScreen : Screen {
     LaunchedEffect(selectedTab) {
       android.util.Log.d("MainScreen", "selectedTab changed to: $selectedTab (was $persistentSelectedTab)")
       persistentSelectedTab = selectedTab
+      if (selectedTab != MainTab.HOME) {
+        NavigationBarState.isDualPaneFolderSelected = false
+      }
     }
 
-LaunchedEffect(visibleTabs) {
+    LaunchedEffect(visibleTabs) {
       if (visibleTabs.isEmpty()) {
         selectedTab = MainTab.HOME
       } else if (!visibleTabs.contains(selectedTab)) {
@@ -240,7 +243,7 @@ LaunchedEffect(visibleTabs) {
     val screenWidth = configuration.screenWidthDp.dp
     val targetNavBarWidth = (screenWidth - 64.dp).coerceAtMost(320.dp)
 
-    val targetOffsetFraction = if (isDualPaneFolderSelected) 0.2f else 0.5f
+    val targetOffsetFraction = if (isDualPaneFolderSelected && selectedTab == MainTab.HOME) 0.2f else 0.5f
 
     val animatedOffsetFraction by animateFloatAsState(
       targetValue = targetOffsetFraction,

@@ -38,6 +38,12 @@ interface PlaylistDao {
   @Query("SELECT * FROM PlaylistEntity ORDER BY updatedAt DESC")
   suspend fun getAllPlaylists(): List<PlaylistEntity>
 
+  @Query("SELECT * FROM PlaylistEntity WHERE isAudio = :isAudio ORDER BY updatedAt DESC")
+  fun observePlaylistsByAudio(isAudio: Boolean): Flow<List<PlaylistEntity>>
+
+  @Query("SELECT * FROM PlaylistEntity WHERE isAudio = :isAudio ORDER BY updatedAt DESC")
+  suspend fun getPlaylistsByAudio(isAudio: Boolean): List<PlaylistEntity>
+
   @Query("SELECT * FROM PlaylistEntity WHERE id = :playlistId")
   suspend fun getPlaylistById(playlistId: Int): PlaylistEntity?
 

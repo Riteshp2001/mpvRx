@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
+import app.gyrolet.mpvrx.ui.browser.music.MusicViewMode
+
 /**
  * Preferences for the video browser (folder and video lists)
  */
@@ -32,6 +34,9 @@ class BrowserPreferences(
   // Video sorting preferences
   val videoSortType = preferenceStore.getEnum("video_sort_type", VideoSortType.Title)
   val videoSortOrder = preferenceStore.getEnum("video_sort_order", SortOrder.Ascending)
+
+  // Music view mode preference
+  val musicViewMode = preferenceStore.getEnum("music_view_mode", MusicViewMode.GRID)
 
   // Network sorting preferences
   val networkSortType = preferenceStore.getEnum("network_sort_type", NetworkSortType.Title)

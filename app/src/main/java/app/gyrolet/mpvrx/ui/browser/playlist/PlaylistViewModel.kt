@@ -64,7 +64,7 @@ class PlaylistViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         // Get initial cached data synchronously
-        val cachedPlaylists = repository.getAllPlaylists()
+        val cachedPlaylists = repository.getAllPlaylists(isAudio = false)
         if (cachedPlaylists.isNotEmpty()) {
           // Show cached data immediately (without video counts for speed)
           val quickLoad =
@@ -81,7 +81,7 @@ class PlaylistViewModel(
 
     // Then observe for updates with actual counts
     viewModelScope.launch(Dispatchers.IO) {
-      repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
+      repository.observeAllPlaylists(isAudio = false).collectLatest { playlistsFromDb ->
         val sortedPlaylists = playlistsFromDb.sortedBy { it.name.lowercase() }
 
         val playlistsWithCounts =
@@ -116,7 +116,7 @@ class PlaylistViewModel(
           File(item.filePath).parent ?: ""
         }.toSet()
 
-    val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
+    val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
 
     return items.count { item ->
       allVideos.any { video -> video.path == item.filePath }
@@ -127,7 +127,7 @@ class PlaylistViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         _isLoading.value = true
-        val playlistsFromDb = repository.getAllPlaylists()
+        val playlistsFromDb = repository.getAllPlaylists(isAudio = false)
         val sortedPlaylists = playlistsFromDb.sortedBy { it.name.lowercase() }
 
         val playlistsWithCounts =
@@ -145,7 +145,7 @@ class PlaylistViewModel(
     }
   }
 
-  suspend fun createPlaylist(name: String): Long = repository.createPlaylist(name)
+  suspend fun createPlaylist(name: String): Long = repository.createPlaylist(name, isAudio = false)
 
   suspend fun createM3UPlaylist(
     url: String,
