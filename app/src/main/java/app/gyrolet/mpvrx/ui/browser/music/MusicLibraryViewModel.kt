@@ -33,6 +33,7 @@ import org.koin.core.component.inject
 class MusicLibraryViewModel : ViewModel(), KoinComponent {
 
   private val playlistRepository: PlaylistRepository by inject()
+  private val browserPreferences: app.gyrolet.mpvrx.preferences.BrowserPreferences by inject()
 
   private val _songs = MutableStateFlow<List<MusicSong>>(emptyList())
   val songs: StateFlow<List<MusicSong>> = _songs.asStateFlow()
@@ -59,8 +60,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   private val _sortOrder = MutableStateFlow(MusicSortOrder.ASCENDING)
   val sortOrder: StateFlow<MusicSortOrder> = _sortOrder.asStateFlow()
 
-  private val _viewMode = MutableStateFlow(MusicViewMode.GRID)
-  val viewMode: StateFlow<MusicViewMode> = _viewMode.asStateFlow()
+  val viewMode: StateFlow<MusicViewMode> = browserPreferences.musicViewMode.stateIn(viewModelScope)
 
   private val _selectedAlbum = MutableStateFlow<MusicAlbum?>(null)
   val selectedAlbum: StateFlow<MusicAlbum?> = _selectedAlbum.asStateFlow()
@@ -204,15 +204,12 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   }
 
   fun toggleViewMode() {
-    _viewMode.value = if (_viewMode.value == MusicViewMode.GRID) {
-      MusicViewMode.LIST
-    } else {
-      MusicViewMode.GRID
-    }
+    val nextMode = if (viewMode.value == MusicViewMode.GRID) MusicViewMode.LIST else MusicViewMode.GRID
+    browserPreferences.musicViewMode.set(nextMode)
   }
 
   fun setViewMode(mode: MusicViewMode) {
-    _viewMode.value = mode
+    browserPreferences.musicViewMode.set(mode)
   }
 
   fun selectAlbum(album: MusicAlbum?) {

@@ -452,16 +452,16 @@ private fun GridColumnsNextSection(
 ) {
   if (folderGridColumnSelector == null && videoGridColumnSelector == null) return
 
-  HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
-  DialogSectionTitle(text = "Grid Columns")
-
   val haptic = LocalHapticFeedback.current
 
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.spacedBy(16.dp),
-  ) {
-    if (folderGridColumnSelector != null) {
+  HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
+
+  if (folderGridColumnSelector != null && videoGridColumnSelector != null) {
+    DialogSectionTitle(text = "Grid Columns")
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
       Column(modifier = Modifier.weight(1f)) {
         Row(
           modifier = Modifier.fillMaxWidth(),
@@ -494,9 +494,7 @@ private fun GridColumnsNextSection(
           modifier = Modifier.fillMaxWidth(),
         )
       }
-    }
 
-    if (videoGridColumnSelector != null) {
       Column(modifier = Modifier.weight(1f)) {
         Row(
           modifier = Modifier.fillMaxWidth(),
@@ -530,6 +528,34 @@ private fun GridColumnsNextSection(
         )
       }
     }
+  } else {
+    val selector = folderGridColumnSelector ?: videoGridColumnSelector!!
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      DialogSectionTitle(text = selector.label)
+      Text(
+        text = if (selector.unitSuffix.isEmpty()) "${selector.currentValue}" else "${selector.currentValue} ${selector.unitSuffix}",
+        style = MaterialTheme.typography.bodySmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+      )
+    }
+    Slider(
+      value = selector.currentValue.toFloat(),
+      onValueChange = {
+        val newValue = it.roundToInt()
+        if (newValue != selector.currentValue) {
+          selector.onValueChange(newValue)
+          haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+      },
+      valueRange = selector.valueRange,
+      steps = selector.steps,
+      modifier = Modifier.fillMaxWidth(),
+    )
   }
 }
 
