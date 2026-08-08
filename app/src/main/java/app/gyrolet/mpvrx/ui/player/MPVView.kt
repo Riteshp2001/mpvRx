@@ -67,11 +67,16 @@ class MPVView(
     configDir: String,
     cacheDir: String,
   ): Result<Boolean> {
+    // The libmpv core is process-wide, so returning to the player can reuse a core created with
+    // older renderer preferences. Keep fallbacks stable for the lifetime of that preference
+    // selection, but recreate the core when gpu-next/Vulkan selection actually changes.
+    val requestedBackend = selectRenderBackend(ignoreForcedOpenGlFallback = true)
     val result =
       PlaybackSession.initialize(
         context = context.applicationContext,
         configDir = configDir,
         cacheDir = cacheDir,
+        rendererConfigurationKey = requestedBackend.configurationKey,
         initOptions = ::initOptions,
         postInitOptions = ::postInitOptions,
         observeProperties = ::observeProperties,
@@ -97,7 +102,10 @@ class MPVView(
     val gpuApi: String,
     val gpuContext: String,
     val reason: String,
-  )
+  ) {
+    val configurationKey: String
+      get() = "$vo|$gpuApi|$gpuContext"
+  }
 
   fun getVideoOutAspect(): Double? {
     // Try to get aspect from video-params/aspect first
@@ -600,8 +608,8 @@ class MPVView(
     }
   }
 
-  private fun shouldUseVulkan(): Boolean {
-    if (forceOpenGlFallback) {
+  private fun shouldUseVulkan(ignoreForcedOpenGlFallback: Boolean = false): Boolean {
+    if (forceOpenGlFallback && !ignoreForcedOpenGlFallback) {
       return false
     }
     if (!decoderPreferences.useVulkan.get()) {
@@ -623,12 +631,12 @@ class MPVView(
     return "mediacodec,mediacodec-copy,no"
   }
 
-  private fun selectRenderBackend(): RenderBackendSelection {
+  private fun selectRenderBackend(ignoreForcedOpenGlFallback: Boolean = false): RenderBackendSelection {
     val anime4kEnabled =
       decoderPreferences.enableAnime4K.get() &&
         (decoderPreferences.anime4kMode.get() != "OFF")
     val gpuNextEnabled = decoderPreferences.gpuNext.get()
-    val vulkanEnabled = shouldUseVulkan()
+    val vulkanEnabled = shouldUseVulkan(ignoreForcedOpenGlFallback)
 
     if (anime4kEnabled && gpuNextEnabled && !vulkanEnabled) {
       return RenderBackendSelection(

@@ -108,6 +108,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var initialized = false
   private var applicationContext: Context? = null
   private var desiredVideoOutput = "gpu"
+  private var activeRendererConfigurationKey: String? = null
   private var activeNetworkStream: NetworkStreamRegistration? = null
   private val auxiliaryNetworkStreams = linkedMapOf<String, NetworkStreamRegistration>()
 
@@ -127,13 +128,20 @@ object PlaybackSession : MPVLib.EventObserver {
     context: Context,
     configDir: String,
     cacheDir: String,
+    rendererConfigurationKey: String,
     initOptions: () -> Unit,
     postInitOptions: () -> Unit,
     observeProperties: () -> Unit,
   ): Result<Boolean> =
     runCatching {
       nativeLock.withLock {
-        if (initialized) return@withLock false
+        if (initialized && activeRendererConfigurationKey == rendererConfigurationKey) {
+          return@withLock false
+        }
+        if (initialized) {
+          Log.i(TAG, "Renderer configuration changed; recreating the libmpv core")
+          destroyLocked()
+        }
 
         applicationContext = context.applicationContext
         observedProperties.clear()
@@ -153,12 +161,14 @@ object PlaybackSession : MPVLib.EventObserver {
           reobserveTrackedProperties()
           observeProperties()
           initialized = true
+          activeRendererConfigurationKey = rendererConfigurationKey
           updateState { it.copy(phase = PlaybackPhase.IDLE, error = null) }
           true
         } catch (error: Throwable) {
           runCatching { MPVLib.removeObserver(this) }
           runCatching { MPVLib.destroy() }
           initialized = false
+          activeRendererConfigurationKey = null
           updateState {
             it.copy(
               phase = PlaybackPhase.ERROR,
@@ -254,21 +264,26 @@ object PlaybackSession : MPVLib.EventObserver {
   fun destroy() {
     nativeLock.withLock {
       if (!initialized) return
-      updateState { it.copy(phase = PlaybackPhase.STOPPING) }
-      runCatching { MPVLib.setPropertyBoolean("pause", true) }
-      runCatching { MPVLib.setPropertyString("vo", "null") }
-      runCatching { MPVLib.detachSurface() }
-      runCatching { MPVLib.removeObserver(this) }
-      runCatching { MPVLib.destroy() }
-        .onFailure { error -> Log.e(TAG, "Failed to destroy libmpv", error) }
-      releaseActiveNetworkStreamLocked()
-      releaseAuxiliaryNetworkStreamsLocked()
-      observers.clear()
-      pendingGenerations.clear()
-      observedProperties.clear()
-      initialized = false
-      updateState { PlaybackSessionState(phase = PlaybackPhase.UNINITIALIZED) }
+      destroyLocked()
     }
+  }
+
+  private fun destroyLocked() {
+    updateState { it.copy(phase = PlaybackPhase.STOPPING) }
+    runCatching { MPVLib.setPropertyBoolean("pause", true) }
+    runCatching { MPVLib.setPropertyString("vo", "null") }
+    runCatching { MPVLib.detachSurface() }
+    runCatching { MPVLib.removeObserver(this) }
+    runCatching { MPVLib.destroy() }
+      .onFailure { error -> Log.e(TAG, "Failed to destroy libmpv", error) }
+    releaseActiveNetworkStreamLocked()
+    releaseAuxiliaryNetworkStreamsLocked()
+    observers.clear()
+    pendingGenerations.clear()
+    observedProperties.clear()
+    initialized = false
+    activeRendererConfigurationKey = null
+    updateState { PlaybackSessionState(phase = PlaybackPhase.UNINITIALIZED) }
   }
 
   fun replaceQueue(

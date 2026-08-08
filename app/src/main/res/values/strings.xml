@@ -137,6 +137,8 @@
   <string name="pref_import_settings_summary">Import settings from an XML file</string>
   <string name="pref_enable_lua_scripts_title">Enable scripts</string>
   <string name="pref_enable_lua_scripts_summary">Load scripts from your MPV configuration directory</string>
+  <string name="pref_enable_p2p_streaming_title">Enable P2P torrent streaming</string>
+  <string name="pref_enable_p2p_streaming_summary">Stream playable media from magnet links and torrent files</string>
   <string name="pref_manage_lua_scripts_title">Manage scripts</string>
   <string name="pref_manage_lua_scripts_summary">Manage enabled scripts</string>
   <string name="pref_clear_config_cache_title">Clear config cache</string>
@@ -703,6 +705,15 @@
   <string name="pref_section_mpv_config">MPV Configuration</string>
   <string name="pref_config_edit_summary">Tap to edit configuration</string>
   <string name="pref_section_scripts">Scripts (Lua / JS)</string>
+  <string name="pref_section_p2p_streaming">P2P streaming</string>
+  <string name="torrent_status_engine">Torrent streaming engine</string>
+  <string name="torrent_status_hide">Hide torrent status</string>
+  <string name="torrent_status_error">Torrent streaming error</string>
+  <string name="torrent_status_swarm">%1$d seeds · %2$d peers</string>
+  <string name="torrent_status_downloaded">%1$d%% downloaded</string>
+  <string name="toast_torrent_streaming_disabled">Enable P2P torrent streaming in Advanced settings first</string>
+  <string name="ui_recent_stream_links">Recent links</string>
+  <string name="ui_torrent_files">Torrent files</string>
   <string name="pref_manage_scripts_summary_disabled">Set storage location and enable scripts first</string>
   <string name="pref_manage_scripts_summary_none">No scripts enabled</string>
   <string name="pref_manage_scripts_summary_singular">1 script enabled</string>

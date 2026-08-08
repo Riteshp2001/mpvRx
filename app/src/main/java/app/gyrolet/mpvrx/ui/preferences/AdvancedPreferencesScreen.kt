@@ -559,6 +559,28 @@ object AdvancedPreferencesScreen : Screen {
             }
           }
 
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_section_p2p_streaming))
+          }
+
+          item {
+            PreferenceCard {
+              val enableP2pStreaming by preferences.enableP2pStreaming.collectAsState()
+
+              SwitchPreference(
+                value = enableP2pStreaming,
+                onValueChange = preferences.enableP2pStreaming::set,
+                title = { Text(stringResource(R.string.pref_enable_p2p_streaming_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_enable_p2p_streaming_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+            }
+          }
+
           // Scripts Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_scripts))

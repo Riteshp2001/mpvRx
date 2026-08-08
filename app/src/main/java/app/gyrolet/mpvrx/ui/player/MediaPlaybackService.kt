@@ -45,6 +45,7 @@ import androidx.media.session.MediaButtonReceiver
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
@@ -146,6 +147,7 @@ class MediaPlaybackService :
   private val audioPreferences: AudioPreferences by inject()
   private val browserPreferences: BrowserPreferences by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val torrentStreamingEngine: TorrentStreamingEngine by inject()
 
   private var mediaIdentifier = ""
   private var mediaTitle = ""
@@ -267,7 +269,7 @@ class MediaPlaybackService :
       }.drop(1).collect { enabled ->
         if (!enabled) {
           Log.d(TAG, "Background playback disabled; stopping service")
-          if (!PlaybackSession.state.value.surfaceAttached) PlaybackSession.stop(clearQueue = false)
+          stopDetachedPlaybackIfNeeded()
           stopForegroundNotification()
           stopSelf()
         }
@@ -281,7 +283,7 @@ class MediaPlaybackService :
     serviceScope.launch {
       advancedPreferences.notificationStyle.changes().drop(1).collect {
         if (!notificationsEnabled()) {
-          if (!PlaybackSession.state.value.surfaceAttached) PlaybackSession.stop(clearQueue = false)
+          stopDetachedPlaybackIfNeeded()
           stopForegroundNotification()
           stopSelf()
         } else {
@@ -395,7 +397,7 @@ class MediaPlaybackService :
 
     if (!notificationsEnabled()) {
       Log.d(TAG, "Notification style disabled, stopping playback service")
-      if (!PlaybackSession.state.value.surfaceAttached) PlaybackSession.stop(clearQueue = false)
+      stopDetachedPlaybackIfNeeded()
       stopForegroundNotification()
       stopSelf()
       return START_NOT_STICKY
@@ -664,6 +666,7 @@ class MediaPlaybackService :
 
   private fun stopPlaybackAndService() {
     schedulePlaybackStateSave(force = true)
+    torrentStreamingEngine.stopStream()
     PlaybackSession.stop(clearQueue = false)
     paused = true
     mediaSession.setPlaybackState(
@@ -676,6 +679,12 @@ class MediaPlaybackService :
     abandonAudioOwnership()
     stopForegroundNotification()
     stopSelf()
+  }
+
+  private fun stopDetachedPlaybackIfNeeded() {
+    if (PlaybackSession.state.value.surfaceAttached) return
+    torrentStreamingEngine.stopStream()
+    PlaybackSession.stop(clearQueue = false)
   }
 
   private fun handleDetachedEndOfFile() {
@@ -1536,7 +1545,7 @@ class MediaPlaybackService :
     } finally {
       isServiceRunning = false
       if (activeInstance === this) activeInstance = null
-      if (!PlaybackSession.state.value.surfaceAttached) PlaybackSession.stop(clearQueue = false)
+      stopDetachedPlaybackIfNeeded()
       super.onDestroy()
     }
   }

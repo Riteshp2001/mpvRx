@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.di
 
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.repository.IntroDbRepository
@@ -101,5 +102,6 @@ val domainModule =
     }
     single { app.gyrolet.mpvrx.data.lyrics.LrcLibApiService(get()) }
     single { app.gyrolet.mpvrx.repository.lyrics.LyricsRepository(androidContext(), get()) }
+    single { TorrentStreamingEngine(androidContext()) }
   }
 

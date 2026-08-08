@@ -72,6 +72,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -126,8 +127,10 @@ import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -137,7 +140,7 @@ import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.RepeatMode
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
-import app.gyrolet.mpvrx.ui.player.controls.components.AudioReactiveSeekbar
+import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.visualizer.BlobOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.CuboidOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.GalaxyOverlay
@@ -146,6 +149,8 @@ import app.gyrolet.mpvrx.ui.player.visualizer.VisualizerPalette
 import app.gyrolet.mpvrx.ui.player.visualizer.rememberAudioVisualizerFeatures
 
 import app.gyrolet.mpvrx.utils.media.fileExtension
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -343,6 +348,7 @@ fun AudioPlayerControls(
     }
 
   val audioPreferences = koinInject<AudioPreferences>()
+  val appearancePreferences = koinInject<AppearancePreferences>()
   val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
   val backgroundPlaybackEnabled by audioPreferences.audioBackgroundPlayback.collectAsState()
   val colorScheme = MaterialTheme.colorScheme
@@ -376,6 +382,16 @@ fun AudioPlayerControls(
 
   var addToPlaylistDialogOpen by rememberSaveable { mutableStateOf(false) }
 
+  val playerPreferences = koinInject<PlayerPreferences>()
+  val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
+  val invertDuration by playerPreferences.invertDuration.collectAsState()
+  val showChapterIndicators by playerPreferences.showChapterIndicators.collectAsState()
+  val chapters by viewModel.chapters.collectAsState()
+  val seekbarChapters =
+    remember(chapters, showChapterIndicators) {
+      if (showChapterIndicators) chapters.toImmutableList() else persistentListOf()
+    }
+
   LaunchedEffect(Unit) {
     viewModel.refreshPlaylistItems()
   }
@@ -392,6 +408,28 @@ fun AudioPlayerControls(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
   val isTabletPortrait = isPortrait && isTablet
+  val immersiveVisualizer = isPortrait && showVisualizer && !showInPlaceLyrics && !isLyricsFullscreen
+  val visualizerPalette =
+    remember(palette, immersiveVisualizer) {
+      if (immersiveVisualizer) palette.copy(background = Color.Black.toArgb()) else palette
+    }
+  val immersiveColorScheme =
+    remember(colorScheme) {
+      darkColorScheme(
+        primary = colorScheme.primary,
+        onPrimary = colorScheme.onPrimary,
+        secondary = colorScheme.secondary,
+        onSecondary = colorScheme.onSecondary,
+        tertiary = colorScheme.tertiary,
+        onTertiary = colorScheme.onTertiary,
+        background = Color.Black,
+        surface = Color.Black,
+        surfaceVariant = Color(0xFF171717),
+        onBackground = Color.White,
+        onSurface = Color.White,
+        onSurfaceVariant = Color.White.copy(alpha = 0.72f),
+      )
+    }
 
   LaunchedEffect(isTabletLandscape) {
     if (isTabletLandscape) {
@@ -470,7 +508,7 @@ fun AudioPlayerControls(
     modifier =
       modifier
         .fillMaxSize()
-        .background(MaterialTheme.colorScheme.surface)
+        .background(if (immersiveVisualizer) Color.Black else MaterialTheme.colorScheme.surface)
         .drawWithCache {
           if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics) && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
             val topColor = animatedAmbientTop
@@ -501,8 +539,15 @@ fun AudioPlayerControls(
             onDrawBehind {}
           }
         }
-        .windowInsetsPadding(WindowInsets.safeDrawing)
-        .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp),
+        .then(
+          if (immersiveVisualizer) {
+            Modifier
+          } else {
+            Modifier
+              .windowInsetsPadding(WindowInsets.safeDrawing)
+              .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp)
+          },
+        ),
   ) {
     val headerBar = @Composable {
       Box(modifier = Modifier.fillMaxWidth()) {
@@ -643,16 +688,16 @@ fun AudioPlayerControls(
                when (audioVisualizerStyle) {
                  AudioVisualizerStyle.Galaxy ->
                    GalaxyOverlay(
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
+                     palette = visualizerPalette,
+                     isSheetOpen = isSheetOpen || immersiveVisualizer,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
                    )
                  AudioVisualizerStyle.Blob ->
                    BlobOverlay(
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
+                     palette = visualizerPalette,
+                     isSheetOpen = isSheetOpen || immersiveVisualizer,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
@@ -660,16 +705,16 @@ fun AudioPlayerControls(
                  AudioVisualizerStyle.Cuboid ->
                    CuboidOverlay(
                      isPlaying = isPlaying,
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
+                     palette = visualizerPalette,
+                     isSheetOpen = isSheetOpen || immersiveVisualizer,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
                    )
                  AudioVisualizerStyle.Particle ->
                    ParticleOverlay(
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
+                     palette = visualizerPalette,
+                     isSheetOpen = isSheetOpen || immersiveVisualizer,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
@@ -790,16 +835,16 @@ fun AudioPlayerControls(
     }
     }
 
+    val displayTitle =
+      remember(lastValidTitle, displayArtist) {
+        cleanSongTitle(lastValidTitle, displayArtist)
+      }
+
     val trackMetadataView = @Composable {
       Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start,
       ) {
-        val displayTitle =
-          remember(lastValidTitle, displayArtist) {
-            cleanSongTitle(lastValidTitle, displayArtist)
-          }
-
         // 1. Song Title Only
         Text(
           text = displayTitle,
@@ -1002,16 +1047,69 @@ fun AudioPlayerControls(
       }
     }
 
+    val immersiveMetadataView = @Composable {
+      Row(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .background(
+              Brush.verticalGradient(
+                listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f), Color.Black),
+              ),
+            ).padding(start = 14.dp, end = 4.dp, top = 28.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = displayTitle,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
+          )
+          Spacer(modifier = Modifier.height(2.dp))
+          Text(
+            text = displayArtist,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(alpha = 0.68f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+        ReactiveIconButton(
+          onClick = { addToPlaylistDialogOpen = true },
+          modifier = Modifier.size(44.dp),
+        ) {
+          Icon(
+            imageVector = Icons.RoundedFilled.PlaylistAdd,
+            contentDescription = stringResource(R.string.ui_add_to_playlist),
+            tint = Color.White,
+            modifier = Modifier.size(27.dp),
+          )
+        }
+      }
+    }
+
     val seekbarView = @Composable {
-      AudioReactiveSeekbar(
+      SeekbarWithTimers(
         position = currentPosSec,
+        committedPosition = currentPosSec,
         duration = currentDurSec.coerceAtLeast(1f),
-        features = visualizerFeatures,
-        isPlaying = isPlaying,
-        primary = MaterialTheme.colorScheme.primary,
-        secondary = MaterialTheme.colorScheme.tertiary,
-        inactive = MaterialTheme.colorScheme.onSurfaceVariant,
-        onSeekFinished = { targetPosition -> viewModel.seekTo(targetPosition.toInt(), fast = false) },
+        onValueChange = { value -> viewModel.seekTo(value.toInt(), fast = true) },
+        onValueChangeFinished = { targetPosition -> viewModel.seekTo(targetPosition.toInt(), fast = false) },
+        timersInverted = Pair(false, invertDuration),
+        durationTimerOnCLick = { playerPreferences.invertDuration.set(!invertDuration) },
+        positionTimerOnClick = {},
+        chapters = seekbarChapters,
+        skipSegments = persistentListOf(),
+        paused = paused ?: false,
+        seekbarStyle = seekbarStyle,
+        loopStart = abLoopA?.toFloat(),
+        loopEnd = abLoopB?.toFloat(),
+        isPortrait = isPortrait,
+        applyHorizontalPadding = false,
         modifier = Modifier.fillMaxWidth(),
       )
     }
@@ -1225,7 +1323,53 @@ fun AudioPlayerControls(
 
     val isTabletPortrait = isPortrait && (isTablet || configuration.screenWidthDp >= 600)
 
-    if (isPortrait) {
+    if (immersiveVisualizer) {
+      MaterialTheme(colorScheme = immersiveColorScheme) {
+        Box(
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+              ) { resetInactivityTimer() },
+        ) {
+          centerVisualizerView(Modifier.matchParentSize())
+          Box(
+            modifier =
+              Modifier
+                .matchParentSize()
+                .background(
+                  Brush.verticalGradient(
+                    listOf(
+                      Color.Black.copy(alpha = 0.72f),
+                      Color.Transparent,
+                      Color.Transparent,
+                      Color.Black.copy(alpha = 0.48f),
+                      Color.Black.copy(alpha = 0.96f),
+                    ),
+                  ),
+                ),
+          )
+          Column(
+            modifier =
+              Modifier
+                .matchParentSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
+            headerBar()
+            Spacer(modifier = Modifier.weight(1f))
+            immersiveMetadataView()
+            Spacer(modifier = Modifier.height(4.dp))
+            seekbarView()
+            Spacer(modifier = Modifier.height(8.dp))
+            playbackControlsRow()
+          }
+        }
+      }
+    } else if (isPortrait) {
       Column(
         modifier = Modifier
           .fillMaxSize()

@@ -15,9 +15,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
+import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.domain.network.ConnectionStatus
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
+import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.repository.NetworkRepository
+import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -34,6 +38,7 @@ class NetworkStreamingViewModel(
 ) : AndroidViewModel(application),
   KoinComponent {
   private val repository: NetworkRepository by inject()
+  private val streamEntryRepository: NetworkStreamEntryRepository by inject()
 
   /**
    * Observable list of all saved network connections
@@ -51,6 +56,39 @@ class NetworkStreamingViewModel(
    * Observable connection statuses
    */
   val connectionStatuses: StateFlow<Map<Long, ConnectionStatus>> = repository.connectionStatuses
+
+  val recentLinks: StateFlow<List<NetworkStreamEntryEntity>> =
+    streamEntryRepository
+      .observeRecentNormalEntries()
+      .stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList(),
+      )
+
+  val torrentFiles: StateFlow<List<NetworkStreamEntryEntity>> =
+    streamEntryRepository
+      .observeTorrentFileEntries()
+      .stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList(),
+      )
+
+  fun recordSubmittedLink(url: String) {
+    val source = url.trim()
+    if (source.isBlank() || isTorrentSource(source) || !MediaUtils.isURLValid(source)) return
+    viewModelScope.launch {
+      streamEntryRepository.saveNormalEntry(
+        canonicalSourceUri = source,
+        fileName = displayNameFor(source),
+      )
+    }
+  }
+
+  fun deleteStreamEntry(stableKey: String) {
+    viewModelScope.launch { streamEntryRepository.delete(stableKey) }
+  }
 
   /**
    * Add a new network connection
@@ -109,6 +147,16 @@ class NetworkStreamingViewModel(
   }
 
   companion object {
+    private fun displayNameFor(source: String): String =
+      runCatching {
+        val uri = android.net.Uri.parse(source)
+        uri.lastPathSegment
+          ?.substringAfterLast('/')
+          ?.takeIf { it.isNotBlank() }
+          ?: uri.host?.takeIf { it.isNotBlank() }
+          ?: source
+      }.getOrDefault(source)
+
     fun factory(application: Application): ViewModelProvider.Factory =
       viewModelFactory {
         initializer {

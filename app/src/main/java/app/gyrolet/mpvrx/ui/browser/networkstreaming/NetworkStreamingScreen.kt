@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -60,10 +61,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
+import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
+import app.gyrolet.mpvrx.domain.torrent.normalizeTorrentSource
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.cards.NetworkConnectionCard
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
@@ -86,6 +91,8 @@ object NetworkStreamingScreen : Screen {
       viewModel(factory = NetworkStreamingViewModel.factory(context.applicationContext as android.app.Application))
     val connections by viewModel.connections.collectAsState()
     val connectionStatuses by viewModel.connectionStatuses.collectAsState()
+    val recentLinks by viewModel.recentLinks.collectAsState()
+    val torrentFiles by viewModel.torrentFiles.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
     val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
@@ -114,6 +121,23 @@ object NetworkStreamingScreen : Screen {
               it.host.contains(searchQuery, ignoreCase = true) ||
               it.protocol.displayName.contains(searchQuery, ignoreCase = true)
           }
+        }
+      }
+
+    val filteredRecentLinks =
+      remember(recentLinks, searchQuery) {
+        recentLinks.filter { entry ->
+          searchQuery.isBlank() ||
+            entry.fileName.contains(searchQuery, ignoreCase = true) ||
+            entry.canonicalSourceUri.contains(searchQuery, ignoreCase = true)
+        }
+      }
+    val filteredTorrentFiles =
+      remember(torrentFiles, searchQuery) {
+        torrentFiles.filter { entry ->
+          searchQuery.isBlank() ||
+            entry.fileName.contains(searchQuery, ignoreCase = true) ||
+            entry.filePath.orEmpty().contains(searchQuery, ignoreCase = true)
         }
       }
 
@@ -174,7 +198,7 @@ object NetworkStreamingScreen : Screen {
             title = stringResource(R.string.ui_network),
             isInSelectionMode = false,
             selectedCount = 0,
-            totalCount = connections.size,
+            totalCount = connections.size + recentLinks.size + torrentFiles.size,
             onBackClick = null, // No back button for network screen (root tab)
             onCancelSelection = { },
             onSortClick = null,
@@ -229,9 +253,53 @@ object NetworkStreamingScreen : Screen {
         item {
           StreamLinkSection(
             onPlayLink = { url ->
-              MediaUtils.playFile(url, context, "network_stream")
+              val playableSource = normalizeTorrentSource(url) ?: url
+              viewModel.recordSubmittedLink(playableSource)
+              MediaUtils.playFile(playableSource, context, "network_stream")
             },
           )
+        }
+
+        if (filteredRecentLinks.isNotEmpty()) {
+          item {
+            StreamEntrySectionHeader(stringResource(R.string.ui_recent_stream_links))
+          }
+          items(filteredRecentLinks, key = { "recent:${it.stableKey}" }) { entry ->
+            StreamEntryCard(
+              entry = entry,
+              onPlay = {
+                viewModel.recordSubmittedLink(entry.canonicalSourceUri)
+                MediaUtils.playFile(
+                  source = entry.canonicalSourceUri,
+                  context = context,
+                  launchSource = "network_recent",
+                  title = entry.fileName,
+                )
+              },
+              onDelete = { viewModel.deleteStreamEntry(entry.stableKey) },
+            )
+          }
+        }
+
+        if (filteredTorrentFiles.isNotEmpty()) {
+          item {
+            StreamEntrySectionHeader(stringResource(R.string.ui_torrent_files))
+          }
+          items(filteredTorrentFiles, key = { "torrent:${it.stableKey}" }) { entry ->
+            StreamEntryCard(
+              entry = entry,
+              onPlay = {
+                MediaUtils.playFile(
+                  source = entry.canonicalSourceUri,
+                  context = context,
+                  launchSource = "network_torrent",
+                  title = entry.fileName,
+                  torrentFileIndex = entry.fileIndex,
+                )
+              },
+              onDelete = { viewModel.deleteStreamEntry(entry.stableKey) },
+            )
+          }
         }
 
         // Syncplay
@@ -320,7 +388,11 @@ object NetworkStreamingScreen : Screen {
               }
             }
           }
-        } else if (filteredConnections.isEmpty()) {
+        } else if (
+          filteredConnections.isEmpty() &&
+          filteredRecentLinks.isEmpty() &&
+          filteredTorrentFiles.isEmpty()
+        ) {
           item {
             Card(
               modifier = Modifier.fillMaxWidth(),
@@ -415,6 +487,84 @@ object NetworkStreamingScreen : Screen {
           },
         )
       }
+    }
+  }
+}
+
+@Composable
+private fun StreamEntrySectionHeader(title: String) {
+  Spacer(modifier = Modifier.height(24.dp))
+  Text(
+    text = title,
+    style = MaterialTheme.typography.titleLarge,
+    fontWeight = FontWeight.Bold,
+    color = MaterialTheme.colorScheme.primary,
+    modifier = Modifier.padding(vertical = 8.dp),
+  )
+}
+
+@Composable
+private fun StreamEntryCard(
+  entry: NetworkStreamEntryEntity,
+  onPlay: () -> Unit,
+  onDelete: () -> Unit,
+) {
+  Card(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(bottom = 10.dp)
+        .clickable(onClick = onPlay),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    shape = RoundedCornerShape(16.dp),
+  ) {
+    Row(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Icon(
+        imageVector = if (entry.fileIndex == null) Icons.RoundedFilled.Link else Icons.RoundedFilled.CloudDownload,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.primary,
+      )
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          text = entry.fileName,
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.SemiBold,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+          text = entry.filePath ?: entry.canonicalSourceUri,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        if (entry.fileSize > 0L) {
+          Text(
+            text = formatTorrentBytes(entry.fileSize),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+      }
+      IconButton(onClick = onDelete) {
+        Icon(
+          imageVector = Icons.RoundedFilled.Delete,
+          contentDescription = stringResource(R.string.delete),
+        )
+      }
+      Icon(
+        imageVector = Icons.RoundedFilled.PlayArrow,
+        contentDescription = stringResource(R.string.ui_play),
+        modifier = Modifier.padding(end = 12.dp),
+      )
     }
   }
 }

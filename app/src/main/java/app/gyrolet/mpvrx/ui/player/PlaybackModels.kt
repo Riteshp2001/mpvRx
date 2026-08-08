@@ -276,6 +276,11 @@ object PlaybackIdentity {
 
   fun forUri(uri: String): String = digest("uri\u0000${canonicalizeUri(uri)}")
 
+  fun forTorrent(
+    infoHash: String,
+    fileIndex: Int,
+  ): String = digest("torrent\u0000${infoHash.trim().lowercase(Locale.ROOT)}\u0000$fileIndex")
+
   private fun digest(value: String): String {
     val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
     return VERSION_PREFIX +

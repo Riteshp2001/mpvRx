@@ -215,6 +215,7 @@ internal fun Uri.resolveUri(context: Context): String? {
     "file" -> path
     "content" -> openContentFd(context)
     "data" -> "data://$schemeSpecificPart"
+    "magnet", "torrent" -> toString()
     NetworkPlaybackUri.SCHEME -> toString()
     in Utils.PROTOCOLS -> toString()
     else -> {

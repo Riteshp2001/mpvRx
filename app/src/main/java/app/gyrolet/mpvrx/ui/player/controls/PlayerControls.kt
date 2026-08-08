@@ -108,6 +108,7 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -139,6 +140,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.SeekThumbnailPreviewBubbl
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.controls.components.SlideToUnlock
 import app.gyrolet.mpvrx.ui.player.controls.components.TextPlayerUpdate
+import app.gyrolet.mpvrx.ui.player.controls.components.TorrentStatusOverlay
 import app.gyrolet.mpvrx.ui.player.controls.components.VolumeSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.ui.player.getTrackSelectionId
@@ -185,6 +187,8 @@ fun PlayerControls(
 ) {
   val spacing = MaterialTheme.spacing
   val advancedPreferences = koinInject<AdvancedPreferences>()
+  val torrentStreamingEngine = koinInject<TorrentStreamingEngine>()
+  val torrentState by torrentStreamingEngine.state.collectAsState()
   val appearancePreferences = koinInject<AppearancePreferences>()
   val aiPreferences = koinInject<AiPreferences>()
   val aiEnabled by aiPreferences.enabled.collectAsState()
@@ -369,6 +373,15 @@ fun PlayerControls(
         panelShown = panel,
         viewModel = viewModel,
         onDismissRequest = { onOpenPanel(Panels.None) },
+      )
+
+      TorrentStatusOverlay(
+        state = torrentState,
+        modifier =
+          Modifier
+            .align(Alignment.TopCenter)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .zIndex(100f),
       )
     }
     return
@@ -1802,6 +1815,15 @@ fun PlayerControls(
       viewModel = viewModel,
       onDismissRequest = { onOpenPanel(Panels.None) },
     )
+
+    TorrentStatusOverlay(
+      state = torrentState,
+      modifier =
+        Modifier
+          .align(Alignment.TopCenter)
+          .windowInsetsPadding(WindowInsets.statusBars)
+          .zIndex(100f),
+    )
   }
 }
 
@@ -1885,7 +1907,12 @@ private fun CustomStatsPageSixOverlay(
 
     while (true) {
       val fileName = runCatching { PlaybackSession.getPropertyString("media-title") ?: "--" }.getOrDefault("--")
-      val renderContext = runCatching { PlaybackSession.getPropertyString("current-vo") ?: "--" }.getOrDefault("--")
+      val currentVideoOutput =
+        runCatching {
+          PlaybackSession.getPropertyString("current-vo")
+            ?: PlaybackSession.getPropertyString("vo")
+            ?: "--"
+        }.getOrDefault("--")
       val dropped = runCatching { PlaybackSession.getPropertyInt("drop-frame-count") ?: 0 }.getOrDefault(0)
       val delayed = runCatching { PlaybackSession.getPropertyInt("vo-delayed-frame-count") ?: 0 }.getOrDefault(0)
       val videoCodec = runCatching { PlaybackSession.getPropertyString("video-codec") ?: "--" }.getOrDefault("--")
@@ -1956,7 +1983,9 @@ private fun CustomStatsPageSixOverlay(
         }
 
       val currentHwdec = runCatching { PlaybackSession.getPropertyString("hwdec-current") ?: "no" }.getOrDefault("no")
-      val gpuApi = runCatching { PlaybackSession.getPropertyString("gpu-api") ?: "opengl" }.getOrDefault("opengl")
+      val gpuApi = runCatching { PlaybackSession.getPropertyString("gpu-api") ?: "--" }.getOrDefault("--")
+      val gpuContext = runCatching { PlaybackSession.getPropertyString("gpu-context") ?: "--" }.getOrDefault("--")
+      val renderContext = "$currentVideoOutput | $gpuApi | $gpuContext"
       val decoderEfficiencyText =
         when {
           currentHwdec == "no" || currentHwdec.isBlank() -> "Low (Software Decoding, CPU-heavy)"

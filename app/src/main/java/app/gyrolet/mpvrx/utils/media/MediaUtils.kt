@@ -15,6 +15,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerLookupHints
 import `is`.xyz.mpv.Utils
@@ -72,6 +73,7 @@ object MediaUtils {
     enabledSubtitles: List<Uri> = emptyList(),
     subtitleTracks: List<PlaybackSubtitleTrack> = emptyList(),
     lookupHints: PlayerLookupHints = PlayerLookupHints(),
+    torrentFileIndex: Int? = null,
   ) {
     val uri =
       when (source) {
@@ -102,6 +104,7 @@ object MediaUtils {
             enabledSubtitles = enabledSubtitles,
             subtitleTracks = subtitleTracks,
             lookupHints = lookupHints,
+            torrentFileIndex = torrentFileIndex,
           )
           context.startActivity(intent)
           return
@@ -146,6 +149,7 @@ object MediaUtils {
       enabledSubtitles = enabledSubtitles,
       subtitleTracks = subtitleTracks,
       lookupHints = lookupHints,
+      torrentFileIndex = torrentFileIndex,
     )
     context.startActivity(intent)
   }
@@ -159,9 +163,11 @@ object MediaUtils {
     enabledSubtitles: List<Uri>,
     subtitleTracks: List<PlaybackSubtitleTrack>,
     lookupHints: PlayerLookupHints,
+    torrentFileIndex: Int?,
   ) {
     launchSource?.let { intent.putExtra("launch_source", it) }
     title?.let { intent.putExtra("title", it) }
+    torrentFileIndex?.takeIf { it >= 0 }?.let { intent.putExtra("torrent_file_index", it) }
     lookupHints.canonicalTitle?.takeIf { it.isNotBlank() }?.let { intent.putExtra("introdb_title", it) }
     lookupHints.imdbId?.takeIf { it.isNotBlank() }?.let { intent.putExtra("introdb_imdb_id", it) }
     lookupHints.tmdbId?.let { intent.putExtra("introdb_tmdb_id", it) }
@@ -225,11 +231,12 @@ object MediaUtils {
    * Network errors are detected when MPV attempts to open the stream.
    */
   fun isURLValid(url: String): Boolean =
-    url.toUri().let { uri ->
-      val structureOk =
-        uri.isHierarchical && !uri.isRelative && (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
-      structureOk && Utils.PROTOCOLS.contains(uri.scheme)
-    }
+    isTorrentSource(url) ||
+      url.toUri().let { uri ->
+        val structureOk =
+          uri.isHierarchical && !uri.isRelative && (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
+        structureOk && Utils.PROTOCOLS.contains(uri.scheme)
+      }
 
   /**
    * Share videos via system share sheet.

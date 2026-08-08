@@ -147,6 +147,18 @@
                 <data android:scheme="gopher" />
                 <data android:scheme="sctp" />
                 <data android:scheme="data" />
+                <data android:scheme="magnet" />
+                <data android:scheme="torrent" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="application/x-bittorrent" />
+                <data android:mimeType="application/x-torrent" />
+                <data android:mimeType="application/torrent" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

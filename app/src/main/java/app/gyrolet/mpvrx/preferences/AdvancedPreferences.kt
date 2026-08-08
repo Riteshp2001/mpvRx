@@ -30,6 +30,8 @@ class AdvancedPreferences(
   val enableLuaScripts = preferenceStore.getBoolean("enable_lua_scripts", false)
   val selectedLuaScripts = preferenceStore.getStringSet("selected_lua_scripts", emptySet())
 
+  val enableP2pStreaming = preferenceStore.getBoolean("enable_p2p_streaming", true)
+
   /** Notification style for the playback service (Media vs Progress-centric on Android 16+). */
   val notificationStyle = preferenceStore.getEnum("notification_style", NotificationStyle.Media)
 }
