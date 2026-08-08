@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -74,18 +76,27 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
   val isPlaybackActive: StateFlow<Boolean> =
-    // Guard against SIGABRT: MPVLib.propBoolean["pause"] calls into native code and will
-    // crash with "pthread_mutex_lock on destroyed mutex" if libmpv is not yet initialized.
-    // We only subscribe to the MPV flow when the playback service is running, and use
-    // .catch {} so any unexpected native error falls back to false instead of crashing.
-    if (MediaPlaybackService.isRunning()) {
-      MPVLib.propBoolean["pause"]
-        .map { paused -> paused == false }
-        .catch { emit(false) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-    } else {
-      flowOf(false).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    // Guard against SIGABRT: MPVLib.propBoolean["pause"] calls into native code and crashes
+    // with "pthread_mutex_lock on destroyed mutex" if libmpv is not initialized.
+    // Solution: poll MediaPlaybackService.isRunning() every second. Once running, collect the
+    // live MPV flow. When the service stops, fall back to false. This makes the highlight
+    // reactive (works even if the player is started after the Music tab is opened).
+    flow {
+      while (true) {
+        if (MediaPlaybackService.isRunning()) {
+          // Service is up — collect the real MPV flow until it terminates or errors
+          MPVLib.propBoolean["pause"]
+            .map { paused -> paused == false }
+            .catch { emit(false) }
+            .collect { emit(it) }
+        } else {
+          emit(false)
+        }
+        kotlinx.coroutines.delay(1_000)
+      }
     }
+    .distinctUntilChanged()
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
   val filteredSongs: StateFlow<List<MusicSong>> = combine(
     _songs, _searchQuery, _sortField, _sortOrder

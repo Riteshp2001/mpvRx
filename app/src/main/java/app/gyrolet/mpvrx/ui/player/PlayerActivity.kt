@@ -4061,8 +4061,38 @@ class PlayerActivity :
     // Set HTTP headers (including referer) BEFORE loading the new file
     setHttpHeadersFromExtras(intent.extras)
 
-    // Load the new file
+    // Load the new file — but skip reload if the same item is already playing
     getPlayableUri(intent)?.let { uri ->
+      // If the requested song is the same URI that's already loaded (e.g. user tapped the
+      // currently-playing song from the Songs tab), don't restart from position 0.
+      val incomingOriginalUri = extractUriFromIntent(intent)?.toString()
+      val newIndex = intent.getIntExtra("playlist_index", -1)
+      val incomingPlaylist = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableArrayListExtra("playlist", Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableArrayListExtra<Uri>("playlist")
+      }
+      val alreadyPlayingThisItem = when {
+        // If a full playlist was sent, compare by index + URI
+        !incomingPlaylist.isNullOrEmpty() && newIndex >= 0 ->
+          newIndex == playlistIndex &&
+            incomingPlaylist.getOrNull(newIndex)?.toString() == playlist.getOrNull(playlistIndex)?.toString()
+        // Fallback: compare the raw intent data URI to the current playlist item
+        incomingOriginalUri != null ->
+          playlist.getOrNull(playlistIndex)?.toString() == incomingOriginalUri
+        else -> false
+      }
+
+      if (alreadyPlayingThisItem && isReady) {
+        Log.d(TAG, "onNewIntent: same item already playing, skipping reload")
+        // Just ensure the player is visible
+        if (isBackgroundPlaybackEnabled()) {
+          syncBackgroundPlaybackService(updateThumbnail = false)
+        }
+        return@let
+      }
+
       // Remind user if they forgot to set up yt-dlp
       if (uri.startsWith("http") && !uri.substringAfterLast('/').contains('.')) {
         val ytdlDir = YtdlpManager.getYtdlDir(this)
@@ -5192,6 +5222,13 @@ class PlayerActivity :
       thumbnail = cachedThumbnail,
       uri = currentPlayableUri,
       identifier = mediaIdentifier,
+    )
+    // Mirror playlist state into the service so the notification tap-intent can restore it
+    service.setPlaylistInfo(
+      playlist = playlist,
+      index = playlistIndex,
+      playlistId = playlistId,
+      isAudio = intent.getBooleanExtra("is_audio", false),
     )
     service.setChapters(viewModel.chapters.value.map { ChapterNode(time = it.start, title = it.name) })
 
