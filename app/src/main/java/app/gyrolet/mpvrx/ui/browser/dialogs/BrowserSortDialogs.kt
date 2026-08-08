@@ -24,6 +24,9 @@ import app.gyrolet.mpvrx.preferences.NetworkSortType
 import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.preferences.VideoSortType
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.browser.music.MusicSortField
+import app.gyrolet.mpvrx.ui.browser.music.MusicSortOrder
+import app.gyrolet.mpvrx.ui.browser.music.MusicViewMode
 import app.gyrolet.mpvrx.ui.icons.Icons
 import org.koin.compose.koinInject
 
@@ -1033,6 +1036,86 @@ fun NetworkSortDialog(
             ),
           )
         }
+      },
+  )
+}
+
+@Composable
+fun MusicSortDialog(
+  isOpen: Boolean,
+  onDismiss: () -> Unit,
+  sortField: MusicSortField,
+  sortOrder: MusicSortOrder,
+  viewMode: MusicViewMode,
+  onSortFieldChange: (MusicSortField) -> Unit,
+  onSortOrderChange: (MusicSortOrder) -> Unit,
+  onViewModeChange: (MusicViewMode) -> Unit,
+) {
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val musicCoverArtSize by browserPreferences.musicCoverArtSize.collectAsState()
+
+  SortDialog(
+    isOpen = isOpen,
+    onDismiss = onDismiss,
+    title = stringResource(R.string.sort_view_options),
+    sortType = sortField.displayName,
+    onSortTypeChange = { typeName ->
+      MusicSortField.entries.find { it.displayName == typeName }?.let(onSortFieldChange)
+    },
+    sortOrderAsc = sortOrder == MusicSortOrder.ASCENDING,
+    onSortOrderChange = { isAsc ->
+      onSortOrderChange(if (isAsc) MusicSortOrder.ASCENDING else MusicSortOrder.DESCENDING)
+    },
+    types =
+      listOf(
+        MusicSortField.TITLE.displayName,
+        MusicSortField.ARTIST.displayName,
+        MusicSortField.ALBUM.displayName,
+        MusicSortField.DURATION.displayName,
+        MusicSortField.DATE_ADDED.displayName,
+      ),
+    icons =
+      listOf(
+        Icons.RoundedFilled.Title,
+        Icons.RoundedFilled.Mic,
+        Icons.RoundedFilled.Audiotrack,
+        Icons.RoundedFilled.AccessTime,
+        Icons.RoundedFilled.CalendarToday,
+      ),
+    getLabelForType = { type, _ ->
+      when (type) {
+        MusicSortField.TITLE.displayName,
+        MusicSortField.ARTIST.displayName,
+        MusicSortField.ALBUM.displayName -> Pair("A-Z", "Z-A")
+        MusicSortField.DURATION.displayName -> Pair("Shortest", "Longest")
+        MusicSortField.DATE_ADDED.displayName -> Pair("Oldest", "Newest")
+        else -> Pair("Asc", "Desc")
+      }
+    },
+    layoutModeSelector =
+      ViewModeSelector(
+        label = "Layout",
+        firstOptionLabel = "List",
+        secondOptionLabel = "Grid",
+        firstOptionIcon = Icons.RoundedFilled.ViewList,
+        secondOptionIcon = Icons.RoundedFilled.GridView,
+        isFirstOptionSelected = viewMode == MusicViewMode.LIST,
+        onViewModeChange = { isList ->
+          onViewModeChange(if (isList) MusicViewMode.LIST else MusicViewMode.GRID)
+        },
+      ),
+    videoGridColumnSelector =
+      if (viewMode == MusicViewMode.LIST) {
+        GridColumnSelector(
+          label = "Cover Art Size",
+          currentValue = musicCoverArtSize,
+          onValueChange = { browserPreferences.musicCoverArtSize.set(it) },
+          valueRange = 36f..96f,
+          steps = 11,
+          unitSuffix = "dp",
+        )
+      } else {
+        null
       },
   )
 }

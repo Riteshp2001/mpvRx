@@ -129,6 +129,12 @@ class MediaPlaybackService :
   private var mediaArtist = ""
   private var mediaUri: String? = null
   private var paused = false
+
+  // Playlist state — mirrored from PlayerActivity so the notification intent can restore it
+  private var notificationPlaylist: ArrayList<android.net.Uri> = ArrayList()
+  private var notificationPlaylistIndex: Int = 0
+  private var notificationPlaylistId: Int? = null
+  private var notificationIsAudio: Boolean = false
   private var lastNotificationUpdateTime = 0L
   private var lastPlaybackStateSaveTime = 0L
   private val notificationUpdateIntervalMs = 1000L
@@ -296,6 +302,23 @@ class MediaPlaybackService :
     }
   }
 
+  /**
+   * Called by [PlayerActivity] whenever the playlist or current index changes.
+   * Stored here so [buildContentIntent] can include it in the notification tap-intent,
+   * which allows the playlist to be restored on a cold-start from notification.
+   */
+  fun setPlaylistInfo(
+    playlist: List<android.net.Uri>,
+    index: Int,
+    playlistId: Int?,
+    isAudio: Boolean,
+  ) {
+    notificationPlaylist = ArrayList(playlist)
+    notificationPlaylistIndex = index
+    notificationPlaylistId = playlistId
+    notificationIsAudio = isAudio
+  }
+
   fun setChapters(chapters: List<ChapterNode>) {
     serviceScope.launch {
       this@MediaPlaybackService.chapters = chapters.sortedBy { it.time }
@@ -447,6 +470,14 @@ class MediaPlaybackService :
         )
         putExtra("launch_source", "notification")
         putExtra("internal_launch", true)
+        // Include playlist so cold-start from notification restores the full queue
+        if (notificationPlaylist.isNotEmpty()) {
+          putParcelableArrayListExtra("playlist", notificationPlaylist)
+          putExtra("playlist_index", notificationPlaylistIndex)
+          putExtra("is_audio", notificationIsAudio)
+          putExtra("media_library_audio", notificationIsAudio)
+        }
+        notificationPlaylistId?.let { putExtra("playlist_id", it) }
         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
       },
       PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
