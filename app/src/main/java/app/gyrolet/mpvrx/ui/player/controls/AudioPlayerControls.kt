@@ -72,7 +72,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -408,28 +407,6 @@ fun AudioPlayerControls(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
   val isTabletPortrait = isPortrait && isTablet
-  val immersiveVisualizer = isPortrait && showVisualizer && !showInPlaceLyrics && !isLyricsFullscreen
-  val visualizerPalette =
-    remember(palette, immersiveVisualizer) {
-      if (immersiveVisualizer) palette.copy(background = Color.Black.toArgb()) else palette
-    }
-  val immersiveColorScheme =
-    remember(colorScheme) {
-      darkColorScheme(
-        primary = colorScheme.primary,
-        onPrimary = colorScheme.onPrimary,
-        secondary = colorScheme.secondary,
-        onSecondary = colorScheme.onSecondary,
-        tertiary = colorScheme.tertiary,
-        onTertiary = colorScheme.onTertiary,
-        background = Color.Black,
-        surface = Color.Black,
-        surfaceVariant = Color(0xFF171717),
-        onBackground = Color.White,
-        onSurface = Color.White,
-        onSurfaceVariant = Color.White.copy(alpha = 0.72f),
-      )
-    }
 
   LaunchedEffect(isTabletLandscape) {
     if (isTabletLandscape) {
@@ -508,7 +485,7 @@ fun AudioPlayerControls(
     modifier =
       modifier
         .fillMaxSize()
-        .background(if (immersiveVisualizer) Color.Black else MaterialTheme.colorScheme.surface)
+        .background(MaterialTheme.colorScheme.surface)
         .drawWithCache {
           if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics) && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
             val topColor = animatedAmbientTop
@@ -539,15 +516,8 @@ fun AudioPlayerControls(
             onDrawBehind {}
           }
         }
-        .then(
-          if (immersiveVisualizer) {
-            Modifier
-          } else {
-            Modifier
-              .windowInsetsPadding(WindowInsets.safeDrawing)
-              .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp)
-          },
-        ),
+        .windowInsetsPadding(WindowInsets.safeDrawing)
+        .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp),
   ) {
     val headerBar = @Composable {
       Box(modifier = Modifier.fillMaxWidth()) {
@@ -688,16 +658,16 @@ fun AudioPlayerControls(
                when (audioVisualizerStyle) {
                  AudioVisualizerStyle.Galaxy ->
                    GalaxyOverlay(
-                     palette = visualizerPalette,
-                     isSheetOpen = isSheetOpen || immersiveVisualizer,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
                    )
                  AudioVisualizerStyle.Blob ->
                    BlobOverlay(
-                     palette = visualizerPalette,
-                     isSheetOpen = isSheetOpen || immersiveVisualizer,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
@@ -705,16 +675,16 @@ fun AudioPlayerControls(
                  AudioVisualizerStyle.Cuboid ->
                    CuboidOverlay(
                      isPlaying = isPlaying,
-                     palette = visualizerPalette,
-                     isSheetOpen = isSheetOpen || immersiveVisualizer,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
                    )
                  AudioVisualizerStyle.Particle ->
                    ParticleOverlay(
-                     palette = visualizerPalette,
-                     isSheetOpen = isSheetOpen || immersiveVisualizer,
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
                      volumeScale = volumeScale,
                      features = visualizerFeatures,
                      modifier = Modifier.fillMaxSize(),
@@ -835,16 +805,16 @@ fun AudioPlayerControls(
     }
     }
 
-    val displayTitle =
-      remember(lastValidTitle, displayArtist) {
-        cleanSongTitle(lastValidTitle, displayArtist)
-      }
-
     val trackMetadataView = @Composable {
       Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start,
       ) {
+        val displayTitle =
+          remember(lastValidTitle, displayArtist) {
+            cleanSongTitle(lastValidTitle, displayArtist)
+          }
+
         // 1. Song Title Only
         Text(
           text = displayTitle,
@@ -1043,51 +1013,6 @@ fun AudioPlayerControls(
               modifier = Modifier.size(32.dp),
             )
           }
-        }
-      }
-    }
-
-    val immersiveMetadataView = @Composable {
-      Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .background(
-              Brush.verticalGradient(
-                listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f), Color.Black),
-              ),
-            ).padding(start = 14.dp, end = 4.dp, top = 28.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = displayTitle,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
-          )
-          Spacer(modifier = Modifier.height(2.dp))
-          Text(
-            text = displayArtist,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.68f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-          )
-        }
-        ReactiveIconButton(
-          onClick = { addToPlaylistDialogOpen = true },
-          modifier = Modifier.size(44.dp),
-        ) {
-          Icon(
-            imageVector = Icons.RoundedFilled.PlaylistAdd,
-            contentDescription = stringResource(R.string.ui_add_to_playlist),
-            tint = Color.White,
-            modifier = Modifier.size(27.dp),
-          )
         }
       }
     }
@@ -1323,53 +1248,7 @@ fun AudioPlayerControls(
 
     val isTabletPortrait = isPortrait && (isTablet || configuration.screenWidthDp >= 600)
 
-    if (immersiveVisualizer) {
-      MaterialTheme(colorScheme = immersiveColorScheme) {
-        Box(
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-              ) { resetInactivityTimer() },
-        ) {
-          centerVisualizerView(Modifier.matchParentSize())
-          Box(
-            modifier =
-              Modifier
-                .matchParentSize()
-                .background(
-                  Brush.verticalGradient(
-                    listOf(
-                      Color.Black.copy(alpha = 0.72f),
-                      Color.Transparent,
-                      Color.Transparent,
-                      Color.Black.copy(alpha = 0.48f),
-                      Color.Black.copy(alpha = 0.96f),
-                    ),
-                  ),
-                ),
-          )
-          Column(
-            modifier =
-              Modifier
-                .matchParentSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-          ) {
-            headerBar()
-            Spacer(modifier = Modifier.weight(1f))
-            immersiveMetadataView()
-            Spacer(modifier = Modifier.height(4.dp))
-            seekbarView()
-            Spacer(modifier = Modifier.height(8.dp))
-            playbackControlsRow()
-          }
-        }
-      }
-    } else if (isPortrait) {
+    if (isPortrait) {
       Column(
         modifier = Modifier
           .fillMaxSize()
