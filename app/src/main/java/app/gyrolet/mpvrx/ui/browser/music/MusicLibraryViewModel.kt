@@ -11,13 +11,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
+import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
@@ -67,6 +72,20 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   val recentlyPlayedFilePath: StateFlow<String?> =
     RecentlyPlayedOps.observeLastPlayedPath()
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+  val isPlaybackActive: StateFlow<Boolean> =
+    // Guard against SIGABRT: MPVLib.propBoolean["pause"] calls into native code and will
+    // crash with "pthread_mutex_lock on destroyed mutex" if libmpv is not yet initialized.
+    // We only subscribe to the MPV flow when the playback service is running, and use
+    // .catch {} so any unexpected native error falls back to false instead of crashing.
+    if (MediaPlaybackService.isRunning()) {
+      MPVLib.propBoolean["pause"]
+        .map { paused -> paused == false }
+        .catch { emit(false) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    } else {
+      flowOf(false).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }
 
   val filteredSongs: StateFlow<List<MusicSong>> = combine(
     _songs, _searchQuery, _sortField, _sortOrder
@@ -169,12 +188,20 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     }
   }
 
+  fun setSortOrder(order: MusicSortOrder) {
+    _sortOrder.value = order
+  }
+
   fun toggleViewMode() {
     _viewMode.value = if (_viewMode.value == MusicViewMode.GRID) {
       MusicViewMode.LIST
     } else {
       MusicViewMode.GRID
     }
+  }
+
+  fun setViewMode(mode: MusicViewMode) {
+    _viewMode.value = mode
   }
 
   fun selectAlbum(album: MusicAlbum?) {

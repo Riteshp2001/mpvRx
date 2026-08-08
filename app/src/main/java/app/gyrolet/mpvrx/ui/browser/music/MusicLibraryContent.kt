@@ -100,6 +100,7 @@ import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
@@ -111,6 +112,7 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
+import app.gyrolet.mpvrx.ui.browser.dialogs.MusicSortDialog
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistDetailScreen
 import app.gyrolet.mpvrx.ui.browser.selection.rememberSelectionManager
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -173,6 +175,10 @@ fun MusicLibraryContent(
   val selectedAlbum by musicViewModel.selectedAlbum.collectAsState()
   val selectedArtist by musicViewModel.selectedArtist.collectAsState()
   val recentlyPlayedFilePath by musicViewModel.recentlyPlayedFilePath.collectAsState()
+  val isPlaybackActive by musicViewModel.isPlaybackActive.collectAsState()
+
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val coverArtSizeDp by browserPreferences.musicCoverArtSize.collectAsState()
 
   val isRefreshing = remember { mutableStateOf(false) }
   var isSearchActive by remember { mutableStateOf(false) }
@@ -380,54 +386,21 @@ fun MusicLibraryContent(
                   MusicTab.PLAYLISTS -> { }
                 }
               },
-              onAddToPlaylistClick = null,
-              additionalActions = {
-                IconButton(onClick = { musicViewModel.toggleViewMode() }) {
-                  Icon(
-                    imageVector = if (viewMode == MusicViewMode.GRID) Icons.RoundedFilled.ViewList else Icons.RoundedFilled.GridView,
-                    contentDescription = "Toggle View Mode"
-                  )
-                }
-              }
+              onAddToPlaylistClick = null
             )
-
-            if (!activeSelectionManager.isInSelectionMode) {
-              Box(
-                modifier = Modifier
-                  .align(Alignment.TopStart)
-                  .padding(start = 16.dp, top = 48.dp)
-              ) {
-                DropdownMenu(
-                  expanded = isSortMenuExpanded,
-                  onDismissRequest = { isSortMenuExpanded = false }
-                ) {
-                  DropdownMenuItem(
-                    text = { Text("Order: ${sortOrder.name}") },
-                    onClick = {
-                      musicViewModel.toggleSortOrder()
-                      isSortMenuExpanded = false
-                    }
-                  )
-                  MusicSortField.entries.forEach { field ->
-                    DropdownMenuItem(
-                      text = {
-                        Text(
-                          text = field.displayName,
-                          fontWeight = if (sortField == field) FontWeight.Bold else FontWeight.Normal,
-                          color = if (sortField == field) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                      },
-                      onClick = {
-                        musicViewModel.setSortField(field)
-                        isSortMenuExpanded = false
-                      }
-                    )
-                  }
-                }
-              }
-            }
           }
         }
+
+        MusicSortDialog(
+          isOpen = isSortMenuExpanded,
+          onDismiss = { isSortMenuExpanded = false },
+          sortField = sortField,
+          sortOrder = sortOrder,
+          viewMode = viewMode,
+          onSortFieldChange = { musicViewModel.setSortField(it) },
+          onSortOrderChange = { musicViewModel.setSortOrder(it) },
+          onViewModeChange = { musicViewModel.setViewMode(it) }
+        )
 
         PrimaryTabRow(
           selectedTabIndex = pagerState.currentPage,
@@ -546,6 +519,8 @@ fun MusicLibraryContent(
                 songs = songs,
                 viewMode = viewMode,
                 recentlyPlayedFilePath = recentlyPlayedFilePath,
+                isPlaybackActive = isPlaybackActive,
+                coverArtSizeDp = coverArtSizeDp,
                 onSongClick = { song ->
                   if (songSelectionManager.isInSelectionMode) {
                     songSelectionManager.toggle(song)
@@ -562,6 +537,7 @@ fun MusicLibraryContent(
               MusicTab.ALBUMS -> AlbumsTabContent(
                 albums = albums,
                 viewMode = viewMode,
+                coverArtSizeDp = coverArtSizeDp,
                 onAlbumClick = { album ->
                   if (albumSelectionManager.isInSelectionMode) {
                     albumSelectionManager.toggle(album)
@@ -578,6 +554,7 @@ fun MusicLibraryContent(
               MusicTab.ARTISTS -> ArtistsTabContent(
                 artists = artists,
                 viewMode = viewMode,
+                coverArtSizeDp = coverArtSizeDp,
                 onArtistClick = { artist ->
                   if (artistSelectionManager.isInSelectionMode) {
                     artistSelectionManager.toggle(artist)
@@ -621,6 +598,7 @@ fun MusicLibraryContent(
             album = album,
             songs = albumSongs,
             recentlyPlayedFilePath = recentlyPlayedFilePath,
+            isPlaybackActive = isPlaybackActive,
             onDismiss = { musicViewModel.selectAlbum(null) },
             onSongClick = { song -> musicViewModel.playSong(context, song, albumSongs) },
             onSongLongClick = { song -> selectedSongForOptions = song },
@@ -637,6 +615,7 @@ fun MusicLibraryContent(
             artist = artist,
             songs = artistSongs,
             recentlyPlayedFilePath = recentlyPlayedFilePath,
+            isPlaybackActive = isPlaybackActive,
             onDismiss = { musicViewModel.selectArtist(null) },
             onSongClick = { song -> musicViewModel.playSong(context, song, artistSongs) },
             onSongLongClick = { song -> selectedSongForOptions = song },
@@ -1103,6 +1082,8 @@ private fun SongsTabContent(
   songs: List<MusicSong>,
   viewMode: MusicViewMode,
   recentlyPlayedFilePath: String?,
+  isPlaybackActive: Boolean = false,
+  coverArtSizeDp: Int = 48,
   onSongClick: (MusicSong) -> Unit,
   onSongLongClick: (MusicSong) -> Unit,
   selectionManager: app.gyrolet.mpvrx.ui.browser.selection.SelectionManager<MusicSong, Long>
@@ -1122,7 +1103,7 @@ private fun SongsTabContent(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
       ) {
         items(songs, key = { it.id }) { song ->
-          val isPlaying = recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
+          val isPlaying = isPlaybackActive && recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
           SongGridCard(
             song = song,
             isSelected = selectionManager.isSelected(song),
@@ -1138,11 +1119,12 @@ private fun SongsTabContent(
         contentPadding = PaddingValues(bottom = 80.dp)
       ) {
         items(songs, key = { it.id }) { song ->
-          val isPlaying = recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
+          val isPlaying = isPlaybackActive && recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
           SongListItem(
             song = song,
             isSelected = selectionManager.isSelected(song),
             isPlaying = isPlaying,
+            coverArtSizeDp = coverArtSizeDp,
             onClick = { onSongClick(song) },
             onLongClick = { onSongLongClick(song) }
           )
@@ -1165,7 +1147,7 @@ private fun SongGridCard(
     modifier = Modifier
       .fillMaxWidth()
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-    shape = AppShapeScale.medium,
+    shape = AppShapeScale.large,
     colors = CardDefaults.cardColors(
       containerColor = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
@@ -1174,7 +1156,11 @@ private fun SongGridCard(
       }
     )
   ) {
-    Column {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(8.dp)
+    ) {
       Box(
         modifier = Modifier
           .fillMaxWidth()
@@ -1219,10 +1205,10 @@ private fun SongGridCard(
         }
       }
 
+      Spacer(modifier = Modifier.height(6.dp))
+
       Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(8.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
       ) {
         Text(
@@ -1263,12 +1249,15 @@ private fun SongListItem(
   song: MusicSong,
   isSelected: Boolean = false,
   isPlaying: Boolean = false,
+  coverArtSizeDp: Int = 48,
   onClick: () -> Unit,
   onLongClick: (() -> Unit)? = null
 ) {
   Surface(
     modifier = Modifier
       .fillMaxWidth()
+      .padding(horizontal = 8.dp, vertical = 3.dp)
+      .clip(AppShapeScale.large)
       .then(
         if (onLongClick != null) {
           Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -1276,8 +1265,9 @@ private fun SongListItem(
           Modifier.clickable(onClick = onClick)
         }
       ),
+    shape = AppShapeScale.large,
     color = when {
-      isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+      isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
       isPlaying -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
       else -> Color.Transparent
     }
@@ -1285,12 +1275,12 @@ private fun SongListItem(
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 8.dp),
+        .padding(horizontal = 12.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       Box(
         modifier = Modifier
-          .size(48.dp)
+          .size(coverArtSizeDp.dp)
           .clip(AppShapeScale.medium)
           .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center
@@ -1384,6 +1374,7 @@ private fun SongListItem(
 private fun AlbumsTabContent(
   albums: List<MusicAlbum>,
   viewMode: MusicViewMode,
+  coverArtSizeDp: Int = 48,
   onAlbumClick: (MusicAlbum) -> Unit,
   onAlbumLongClick: (MusicAlbum) -> Unit,
   selectionManager: app.gyrolet.mpvrx.ui.browser.selection.SelectionManager<MusicAlbum, Long>
@@ -1419,6 +1410,7 @@ private fun AlbumsTabContent(
         AlbumListCard(
           album = album,
           isSelected = selectionManager.isSelected(album),
+          coverArtSizeDp = coverArtSizeDp,
           onClick = { onAlbumClick(album) },
           onLongClick = { onAlbumLongClick(album) }
         )
@@ -1439,12 +1431,16 @@ private fun AlbumGridCard(
     modifier = Modifier
       .fillMaxWidth()
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-    shape = AppShapeScale.medium,
+    shape = AppShapeScale.large,
     colors = CardDefaults.cardColors(
       containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else Color.Transparent
     )
   ) {
-    Column {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(8.dp)
+    ) {
       Box(
         modifier = Modifier
           .fillMaxWidth()
@@ -1475,10 +1471,10 @@ private fun AlbumGridCard(
         }
       }
 
+      Spacer(modifier = Modifier.height(6.dp))
+
       Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(8.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
       ) {
         Text(
@@ -1516,24 +1512,28 @@ private fun AlbumGridCard(
 private fun AlbumListCard(
   album: MusicAlbum,
   isSelected: Boolean = false,
+  coverArtSizeDp: Int = 48,
   onClick: () -> Unit,
   onLongClick: () -> Unit
 ) {
   Surface(
     modifier = Modifier
       .fillMaxWidth()
+      .padding(horizontal = 8.dp, vertical = 3.dp)
+      .clip(AppShapeScale.large)
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+    shape = AppShapeScale.large,
+    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else Color.Transparent
   ) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 8.dp),
+        .padding(horizontal = 12.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       Box(
         modifier = Modifier
-          .size(52.dp)
+          .size(coverArtSizeDp.dp)
           .clip(AppShapeScale.medium)
           .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center
@@ -1592,6 +1592,7 @@ private fun AlbumListCard(
 private fun ArtistsTabContent(
   artists: List<MusicArtist>,
   viewMode: MusicViewMode,
+  coverArtSizeDp: Int = 48,
   onArtistClick: (MusicArtist) -> Unit,
   onArtistLongClick: (MusicArtist) -> Unit,
   selectionManager: app.gyrolet.mpvrx.ui.browser.selection.SelectionManager<MusicArtist, Long>
@@ -1627,6 +1628,7 @@ private fun ArtistsTabContent(
         ArtistListCard(
           artist = artist,
           isSelected = selectionManager.isSelected(artist),
+          coverArtSizeDp = coverArtSizeDp,
           onClick = { onArtistClick(artist) },
           onLongClick = { onArtistLongClick(artist) }
         )
@@ -1712,23 +1714,28 @@ private fun ArtistGridCard(
 private fun ArtistListCard(
   artist: MusicArtist,
   isSelected: Boolean = false,
+  coverArtSizeDp: Int = 48,
   onClick: () -> Unit,
   onLongClick: () -> Unit
 ) {
   Surface(
     modifier = Modifier
       .fillMaxWidth()
+      .padding(horizontal = 8.dp, vertical = 3.dp)
+      .clip(AppShapeScale.large)
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+    shape = AppShapeScale.large,
+    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else Color.Transparent
   ) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 10.dp),
+        .padding(horizontal = 12.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
+      val avatarSize = (coverArtSizeDp * 1.3f).toInt().coerceAtLeast(48).dp
       Box(
-        modifier = Modifier.size(68.dp),
+        modifier = Modifier.size(avatarSize),
         contentAlignment = Alignment.Center
       ) {
         ArtistAvatarImage(
@@ -1859,6 +1866,7 @@ private fun AlbumDetailSheet(
   album: MusicAlbum,
   songs: List<MusicSong>,
   recentlyPlayedFilePath: String?,
+  isPlaybackActive: Boolean = false,
   onDismiss: () -> Unit,
   onSongClick: (MusicSong) -> Unit,
   onSongLongClick: (MusicSong) -> Unit,
@@ -1925,7 +1933,7 @@ private fun AlbumDetailSheet(
           .height(350.dp)
       ) {
         items(songs, key = { it.id }) { song ->
-          val isPlaying = recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
+          val isPlaying = isPlaybackActive && recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
           SongListItem(
             song = song,
             isPlaying = isPlaying,
@@ -1944,6 +1952,7 @@ private fun ArtistDetailSheet(
   artist: MusicArtist,
   songs: List<MusicSong>,
   recentlyPlayedFilePath: String?,
+  isPlaybackActive: Boolean = false,
   onDismiss: () -> Unit,
   onSongClick: (MusicSong) -> Unit,
   onSongLongClick: (MusicSong) -> Unit,
@@ -1997,7 +2006,7 @@ private fun ArtistDetailSheet(
           .height(350.dp)
       ) {
         items(songs, key = { it.id }) { song ->
-          val isPlaying = recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
+          val isPlaying = isPlaybackActive && recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
           SongListItem(
             song = song,
             isPlaying = isPlaying,

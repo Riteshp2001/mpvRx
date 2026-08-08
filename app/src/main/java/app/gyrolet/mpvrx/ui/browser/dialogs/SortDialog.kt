@@ -469,14 +469,12 @@ private fun GridColumnsNextSection(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(
-            text =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_folder_grid),
+            text = folderGridColumnSelector.label,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Text(
-            text = "${folderGridColumnSelector.currentValue} cols",
+            text = if (folderGridColumnSelector.unitSuffix.isEmpty()) "${folderGridColumnSelector.currentValue}" else "${folderGridColumnSelector.currentValue} ${folderGridColumnSelector.unitSuffix}",
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary,
@@ -506,14 +504,12 @@ private fun GridColumnsNextSection(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(
-            text =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_video_grid),
+            text = videoGridColumnSelector.label,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Text(
-            text = "${videoGridColumnSelector.currentValue} cols",
+            text = if (videoGridColumnSelector.unitSuffix.isEmpty()) "${videoGridColumnSelector.currentValue}" else "${videoGridColumnSelector.currentValue} ${videoGridColumnSelector.unitSuffix}",
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary,
@@ -574,4 +570,5 @@ data class GridColumnSelector(
   val onValueChange: (Int) -> Unit,
   val valueRange: ClosedFloatingPointRange<Float> = 1f..4f,
   val steps: Int = 2,
+  val unitSuffix: String = "cols",
 )

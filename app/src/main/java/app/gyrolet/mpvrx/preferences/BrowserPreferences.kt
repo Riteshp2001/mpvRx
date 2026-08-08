@@ -81,6 +81,7 @@ class BrowserPreferences(
   val folderViewVideoLayoutMode = preferenceStore.getEnum("folder_view_video_layout_mode", MediaLayoutMode.LIST)
   val separateFolderVideoLayout = preferenceStore.getBoolean("separate_folder_video_layout", false)
   val manualGridColumnsEnabled = preferenceStore.getBoolean("manual_grid_columns_enabled", false)
+  val musicCoverArtSize = preferenceStore.getInt("music_cover_art_size", 48)
 
   // Visibility preferences for folder card chips
   val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
