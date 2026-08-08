@@ -44,7 +44,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   val artists: StateFlow<List<MusicArtist>> = _artists.asStateFlow()
 
   val playlists: StateFlow<List<PlaylistEntity>> =
-    playlistRepository.observeAllPlaylists()
+    playlistRepository.observeAllPlaylists(isAudio = true)
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   private val _selectedTab = MutableStateFlow(MusicTab.SONGS)
@@ -265,7 +265,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   fun createPlaylist(name: String) {
     viewModelScope.launch {
       if (name.isNotBlank()) {
-        playlistRepository.createPlaylist(name.trim())
+        playlistRepository.createPlaylist(name.trim(), isAudio = true)
       }
     }
   }

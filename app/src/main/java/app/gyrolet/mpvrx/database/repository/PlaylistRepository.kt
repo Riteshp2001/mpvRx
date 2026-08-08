@@ -18,6 +18,7 @@ import app.gyrolet.mpvrx.utils.media.M3UParseResult
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.M3UPlaylistItem
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class PlaylistRepository(
   private val playlistDao: PlaylistDao,
@@ -27,13 +28,17 @@ class PlaylistRepository(
   }
 
   // Playlist operations
-  suspend fun createPlaylist(name: String): Long {
+  suspend fun createPlaylist(
+    name: String,
+    isAudio: Boolean = false,
+  ): Long {
     val now = System.currentTimeMillis()
     return playlistDao.insertPlaylist(
       PlaylistEntity(
         name = name,
         createdAt = now,
         updatedAt = now,
+        isAudio = isAudio,
       ),
     )
   }
@@ -46,9 +51,47 @@ class PlaylistRepository(
     playlistDao.deletePlaylist(playlist)
   }
 
-  fun observeAllPlaylists(): Flow<List<PlaylistEntity>> = playlistDao.observeAllPlaylists()
+  fun observeAllPlaylists(isAudio: Boolean? = null): Flow<List<PlaylistEntity>> =
+    playlistDao.observeAllPlaylists().map { playlists ->
+      if (isAudio == null) {
+        playlists
+      } else {
+        classifyAndFilterPlaylists(playlists, isAudio)
+      }
+    }
 
-  suspend fun getAllPlaylists(): List<PlaylistEntity> = playlistDao.getAllPlaylists()
+  suspend fun getAllPlaylists(isAudio: Boolean? = null): List<PlaylistEntity> {
+    val playlists = playlistDao.getAllPlaylists()
+    return if (isAudio == null) {
+      playlists
+    } else {
+      classifyAndFilterPlaylists(playlists, isAudio)
+    }
+  }
+
+  private suspend fun classifyAndFilterPlaylists(
+    playlists: List<PlaylistEntity>,
+    targetIsAudio: Boolean,
+  ): List<PlaylistEntity> {
+    val result = mutableListOf<PlaylistEntity>()
+    for (playlist in playlists) {
+      var effectiveIsAudio = playlist.isAudio
+      if (!effectiveIsAudio) {
+        val items = playlistDao.getPlaylistItems(playlist.id)
+        if (items.isNotEmpty()) {
+          val hasAudioItems = items.any { app.gyrolet.mpvrx.utils.storage.FileTypeUtils.isAudioFile(java.io.File(it.filePath)) }
+          if (hasAudioItems) {
+            effectiveIsAudio = true
+            playlistDao.updatePlaylist(playlist.copy(isAudio = true))
+          }
+        }
+      }
+      if (effectiveIsAudio == targetIsAudio) {
+        result.add(playlist)
+      }
+    }
+    return result
+  }
 
   suspend fun getPlaylistById(playlistId: Int): PlaylistEntity? = playlistDao.getPlaylistById(playlistId)
 

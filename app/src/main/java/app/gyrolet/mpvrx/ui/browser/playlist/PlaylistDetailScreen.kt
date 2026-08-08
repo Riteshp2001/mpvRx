@@ -246,6 +246,7 @@ data class PlaylistDetailScreen(
           putExtra("playlist_index", startIndex)
           putExtra("playlist_id", playlistId)
           putExtra("launch_source", if (playlist?.isM3uPlaylist == true) "m3u_playlist" else "playlist")
+          putExtra("is_audio", item.video.isAudio)
           putExtra("title", item.playlistItem.fileName)
           buildM3UHeadersExtra(playlist, item.playlistItem)?.let { putExtra("headers", it) }
         }
@@ -473,10 +474,11 @@ data class PlaylistDetailScreen(
       },
       floatingActionButton = {
         if (!isSearching && !isReorderMode && !selectionManager.isInSelectionMode) {
+          val isAudioPlaylist = playlist?.isAudio == true || videoItems.any { it.video.isAudio }
           ExtendedFloatingActionButton(
-            onClick = { backStack.add(PlaylistAddVideosScreen(playlistId)) },
+            onClick = { backStack.add(PlaylistAddVideosScreen(playlistId, isAudio = isAudioPlaylist)) },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
-            text = { Text(stringResource(R.string.playlist_add_videos)) },
+            text = { Text(if (isAudioPlaylist) "Add Songs" else stringResource(R.string.playlist_add_videos)) },
           )
         }
       },
@@ -568,6 +570,7 @@ data class PlaylistDetailScreen(
               isLoading = isLoading && videoItems.isEmpty(),
               selectionManager = selectionManager,
               isM3uPlaylist = playlist?.isM3uPlaylist == true,
+              isAudio = playlist?.isAudio == true || videoItems.any { it.video.isAudio },
               isReorderMode = isReorderMode,
               onReorder = { fromIndex, toIndex ->
                 coroutineScope.launch {
@@ -645,6 +648,7 @@ private fun PlaylistVideoListContent(
   listState: androidx.compose.foundation.lazy.LazyListState,
   modifier: Modifier = Modifier,
   isM3uPlaylist: Boolean = false,
+  isAudio: Boolean = false,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>()
@@ -727,22 +731,22 @@ private fun PlaylistVideoListContent(
               .spacedBy(8.dp),
         ) {
           Icon(
-            imageVector = Icons.RoundedFilled.PlaylistAdd,
+            imageVector = if (isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlaylistAdd,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Text(
             text =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_in_playlist),
+              if (isAudio) "No songs in playlist"
+              else androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_in_playlist),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Text(
             text =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_add_videos_to_get_started),
+              if (isAudio) "Add songs to get started"
+              else androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_videos_to_get_started),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )

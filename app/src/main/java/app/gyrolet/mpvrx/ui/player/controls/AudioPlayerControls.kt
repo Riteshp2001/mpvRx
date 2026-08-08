@@ -413,13 +413,8 @@ fun AudioPlayerControls(
   val playlistItems by viewModel.playlistItems.collectAsState()
   val isAudioOnly by viewModel.isAudioOnly.collectAsState()
   val filteredPlaylist =
-    remember(playlistItems, isAudioOnly) {
-      val audioOnly = playlistItems.filter { it.isAudio }
-      if (audioOnly.isNotEmpty()) {
-        audioOnly
-      } else {
-        playlistItems
-      }
+    remember(playlistItems) {
+      playlistItems.filter { it.isAudio }
     }
 
   val configuration = LocalConfiguration.current

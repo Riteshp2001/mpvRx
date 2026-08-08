@@ -5586,24 +5586,25 @@ class PlayerActivity :
     launchSource: String,
   ): List<File> {
     val parentFolder = currentFile.parentFile ?: return emptyList()
+    val isAudioTarget = isKnownAudioLaunch(intent) || FileTypeUtils.isAudioFile(currentFile)
     val includeAudio = browserPreferences.includeAudioBrowser.get()
     val minimumAudioDurationMs = browserPreferences.minimumAudioDurationSeconds.get() * 1000L
     val directMediaFiles =
       parentFolder
         .listFiles { file ->
           file.isFile &&
+            !file.name.startsWith(".") &&
             (
-              FileTypeUtils.isVideoFile(file) ||
-                (
-                  includeAudio &&
-                    FileTypeUtils.isAudioFile(file) &&
-                    (
-                      minimumAudioDurationMs == 0L ||
-                        FileTypeUtils.getDurationMs(file) >= minimumAudioDurationMs
-                    )
-                )
-            ) &&
-            !file.name.startsWith(".")
+              if (isAudioTarget) {
+                FileTypeUtils.isAudioFile(file) &&
+                  (
+                    minimumAudioDurationMs == 0L ||
+                      FileTypeUtils.getDurationMs(file) >= minimumAudioDurationMs
+                  )
+              } else {
+                FileTypeUtils.isVideoFile(file)
+              }
+            )
         }?.toList()
         .orEmpty()
 
@@ -5638,19 +5639,20 @@ class PlayerActivity :
     reapplyShuffle: Boolean = false,
   ) {
     if (isAllVideosPlaylist(pid)) {
-      val mediaLibraryAudio = sourceIntent.getBooleanExtra("media_library_audio", false)
-      val isMediaLibraryLaunch = sourceIntent.getStringExtra("launch_source") == "media_library"
+      val isAudioTarget = sourceIntent.getBooleanExtra("media_library_audio", false) || isKnownAudioLaunch(sourceIntent)
+      val mediaLibraryAudio = sourceIntent.getBooleanExtra("media_library_audio", false) || isAudioTarget
+      val isMediaLibraryLaunch = sourceIntent.getStringExtra("launch_source") == "media_library" || isAudioTarget
       val allVideos =
         app.gyrolet.mpvrx.utils.sort.SortUtils.sortVideos(
           app.gyrolet.mpvrx.repository.MediaFileRepository
             .getAllVideos(
               context = this@PlayerActivity,
-              includeAudioOverride = if (isMediaLibraryLaunch) true else null,
+              includeAudioOverride = if (isMediaLibraryLaunch || isAudioTarget) true else null,
             ).let { media ->
-              if (isMediaLibraryLaunch) {
+              if (isMediaLibraryLaunch || isAudioTarget) {
                 media.filter { it.isAudio == mediaLibraryAudio }
               } else {
-                media
+                media.filter { !it.isAudio }
               }
             },
           browserPreferences.videoSortType.get(),

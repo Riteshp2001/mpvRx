@@ -389,10 +389,9 @@ fun PlayerSheets(
       val filteredPlaylist =
         remember(playlist, isAudioOnly) {
           if (isAudioOnly) {
-            val audioOnly = playlist.filter { it.isAudio }
-            audioOnly.ifEmpty { playlist }
+            playlist.filter { it.isAudio }
           } else {
-            playlist
+            playlist.filter { !it.isAudio }
           }
         }
 
