@@ -82,6 +82,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
 import app.gyrolet.mpvrx.ui.browser.medialibrary.MediaLibraryContent
+import app.gyrolet.mpvrx.ui.browser.music.MusicLibraryContent
 import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistScreen
 import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
@@ -288,7 +289,7 @@ LaunchedEffect(visibleTabs) {
               val tab = visibleTabs[page]
               when (tab) {
                 MainTab.HOME -> FolderListScreen.Content()
-                MainTab.MUSIC -> MediaLibraryContent(forceAudio = true)
+                MainTab.MUSIC -> MusicLibraryContent()
                 MainTab.RECENTS -> RecentlyPlayedScreen.Content()
                 MainTab.PLAYLISTS -> PlaylistScreen.Content()
                 MainTab.NETWORK -> NetworkStreamingScreen.Content()
