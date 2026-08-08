@@ -257,6 +257,7 @@ fun SeekbarWithTimers(
   skipSegments: ImmutableList<SkipSegment>,
   paused: Boolean,
   seekbarStyle: SeekbarStyle = SeekbarStyle.Wavy,
+  useWavySeekbar: Boolean = true,
   loopStart: Float? = null,
   loopEnd: Float? = null,
   bufferDuration: Float? = null,
@@ -308,6 +309,7 @@ fun SeekbarWithTimers(
         isPortrait = isPortrait,
         isUserInteracting = isUserInteracting,
         seekbarStyle = seekbarStyle,
+        useWavySeekbar = useWavySeekbar,
         loopStart = loopStart,
         loopEnd = loopEnd,
         bufferDuration = bufferDuration,
@@ -373,6 +375,7 @@ fun SeekbarWithTimers(
         isPortrait = isPortrait,
         isUserInteracting = isUserInteracting,
         seekbarStyle = seekbarStyle,
+        useWavySeekbar = useWavySeekbar,
         loopStart = loopStart,
         loopEnd = loopEnd,
         bufferDuration = bufferDuration,
@@ -410,6 +413,7 @@ private fun SeekbarContent(
   isPortrait: Boolean,
   isUserInteracting: Boolean,
   seekbarStyle: SeekbarStyle,
+  useWavySeekbar: Boolean,
   loopStart: Float?,
   loopEnd: Float?,
   bufferDuration: Float?,
@@ -530,7 +534,7 @@ private fun SeekbarContent(
             chapters = chapters,
             isPaused = paused,
             isScrubbing = isVisuallyInteracting,
-            useWavySeekbar = true,
+            useWavySeekbar = useWavySeekbar,
             seekbarStyle = SeekbarStyle.Wavy,
             onSeek = { }, // Touch handled by parent
             onSeekFinished = { }, // Touch handled by parent
@@ -1215,6 +1219,7 @@ private fun SlimSeekbar(
 fun SeekbarStylePreview(
   style: SeekbarStyle,
   progress: Float = 0.38f,
+  useWavySeekbar: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val primaryColor = MaterialTheme.colorScheme.primary
@@ -1227,7 +1232,7 @@ fun SeekbarStylePreview(
       chapters = persistentListOf(),
       isPaused = false,
       isScrubbing = false,
-      useWavySeekbar = true,
+      useWavySeekbar = useWavySeekbar,
       seekbarStyle = SeekbarStyle.Wavy,
       onSeek = {},
       onSeekFinished = {},
@@ -1351,6 +1356,7 @@ fun SeekbarStylePreview(
 @Composable
 fun SeekbarStyleLivePreview(
   style: SeekbarStyle,
+  useWavySeekbar: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val infiniteTransition = rememberInfiniteTransition(label = "seekbar_live_preview")
@@ -1368,6 +1374,7 @@ fun SeekbarStyleLivePreview(
   SeekbarStylePreview(
     style = style,
     progress = animatedProgress,
+    useWavySeekbar = useWavySeekbar,
     modifier = modifier,
   )
 }

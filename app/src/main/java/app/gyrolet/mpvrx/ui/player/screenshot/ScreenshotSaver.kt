@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.screenshot
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -19,7 +21,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
-import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -81,11 +82,11 @@ object ScreenshotSaver {
           ScreenshotTemplate.buildFileName(
             template = settings.template,
             extension = settings.format.extension,
-            filename = MPVLib.getPropertyString("filename"),
-            filenameNoExt = MPVLib.getPropertyString("filename/no-ext"),
-            mediaTitle = MPVLib.getPropertyString("media-title"),
-            path = MPVLib.getPropertyString("path"),
-            positionSeconds = MPVLib.getPropertyDouble("time-pos") ?: 0.0,
+            filename = PlaybackSession.getPropertyString("filename"),
+            filenameNoExt = PlaybackSession.getPropertyString("filename/no-ext"),
+            mediaTitle = PlaybackSession.getPropertyString("media-title"),
+            path = PlaybackSession.getPropertyString("path"),
+            positionSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0,
           )
         val tempFile =
           captureNative(context, settings, includeSubtitles)
@@ -99,12 +100,12 @@ object ScreenshotSaver {
     }
 
   fun applyMpvScreenshotOptions(settings: ScreenshotSettings) {
-    MPVLib.setOptionString("screenshot-format", settings.format.mpvValue)
-    MPVLib.setOptionString("screenshot-template", settings.template)
-    MPVLib.setOptionString("screenshot-jpeg-quality", settings.quality.coerceIn(0, 100).toString())
-    MPVLib.setOptionString("screenshot-webp-quality", settings.quality.coerceIn(0, 100).toString())
-    MPVLib.setOptionString("screenshot-png-compression", settings.pngCompression.coerceIn(0, 9).toString())
-    MPVLib.setOptionString("screenshot-webp-lossless", if (settings.webpLossless) "yes" else "no")
+    PlaybackSession.setOptionString("screenshot-format", settings.format.mpvValue)
+    PlaybackSession.setOptionString("screenshot-template", settings.template)
+    PlaybackSession.setOptionString("screenshot-jpeg-quality", settings.quality.coerceIn(0, 100).toString())
+    PlaybackSession.setOptionString("screenshot-webp-quality", settings.quality.coerceIn(0, 100).toString())
+    PlaybackSession.setOptionString("screenshot-png-compression", settings.pngCompression.coerceIn(0, 9).toString())
+    PlaybackSession.setOptionString("screenshot-webp-lossless", if (settings.webpLossless) "yes" else "no")
   }
 
   private suspend fun captureNative(
@@ -114,7 +115,7 @@ object ScreenshotSaver {
   ): File? {
     val tempFile = File(context.cacheDir, "mpvrx_snapshot_native.${settings.format.extension}")
     tempFile.delete()
-    MPVLib.command("screenshot-to-file", tempFile.absolutePath, if (includeSubtitles) "subtitles" else "video")
+    PlaybackSession.command("screenshot-to-file", tempFile.absolutePath, if (includeSubtitles) "subtitles" else "video")
     delay(250)
     return tempFile.takeIf { it.exists() && it.length() > 0L }
   }
@@ -128,8 +129,8 @@ object ScreenshotSaver {
 
     val sourcePng = File(context.cacheDir, "mpvrx_snapshot_fallback_source.png")
     sourcePng.delete()
-    MPVLib.setOptionString("screenshot-format", "png")
-    MPVLib.command("screenshot-to-file", sourcePng.absolutePath, if (includeSubtitles) "subtitles" else "video")
+    PlaybackSession.setOptionString("screenshot-format", "png")
+    PlaybackSession.command("screenshot-to-file", sourcePng.absolutePath, if (includeSubtitles) "subtitles" else "video")
     delay(250)
     if (!sourcePng.exists() || sourcePng.length() == 0L) return null
 

@@ -26,7 +26,6 @@ import androidx.appcompat.app.AppCompatActivity
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.media.resolveSeekMode
-import `is`.xyz.mpv.MPVLib
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -65,10 +64,10 @@ class MPVPipHelper(
         ) {
           val seekMode = resolveSeekMode(playerPreferences)
           when (intent?.getIntExtra(PIP_INTENT_ACTION, 0)) {
-            PIP_PLAY -> MPVLib.setPropertyBoolean("pause", false)
-            PIP_PAUSE -> MPVLib.setPropertyBoolean("pause", true)
-            PIP_REWIND -> MPVLib.command("seek", "-10", seekMode)
-            PIP_FORWARD -> MPVLib.command("seek", "10", seekMode)
+            PIP_PLAY -> PlaybackSession.setPropertyBoolean("pause", false)
+            PIP_PAUSE -> PlaybackSession.setPropertyBoolean("pause", true)
+            PIP_REWIND -> PlaybackSession.command("seek", "-10", seekMode)
+            PIP_FORWARD -> PlaybackSession.command("seek", "10", seekMode)
           }
           updatePictureInPictureParams()
         }
@@ -113,8 +112,8 @@ class MPVPipHelper(
       }.build()
 
   private fun getVideoAspectRatio(): Rational? {
-    val width = MPVLib.getPropertyInt("video-out-params/dw") ?: 0
-    val height = MPVLib.getPropertyInt("video-out-params/dh") ?: 0
+    val width = PlaybackSession.getPropertyInt("video-out-params/dw") ?: 0
+    val height = PlaybackSession.getPropertyInt("video-out-params/dh") ?: 0
 
     if (width == 0 || height == 0) return null
 
@@ -146,7 +145,7 @@ class MPVPipHelper(
   }
 
   private fun createPipActions(): List<RemoteAction> {
-    val isPlaying = MPVLib.getPropertyBoolean("pause") == false
+    val isPlaying = PlaybackSession.getPropertyBoolean("pause") == false
 
     return listOf(
       createRemoteAction("rewind", Icons.Platform.FastRewind, PIP_REWIND),

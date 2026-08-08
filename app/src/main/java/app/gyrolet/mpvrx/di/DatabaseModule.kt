@@ -13,6 +13,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.gyrolet.mpvrx.data.network.credentials.AndroidNetworkCredentialKey
+import app.gyrolet.mpvrx.data.network.credentials.NetworkCredentialCipher
 import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.database.repository.PlaybackStateRepositoryImpl
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
@@ -625,8 +627,7 @@ val DatabaseModule =
           MIGRATION_9_10,
           MIGRATION_10_11,
           MIGRATION_11_12,
-        ).fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
-        .build()
+        ).build()
     }
 
     singleOf(::PlaybackStateRepositoryImpl).bind(PlaybackStateRepository::class)
@@ -651,8 +652,13 @@ val DatabaseModule =
     }
 
     single {
+      NetworkCredentialCipher(AndroidNetworkCredentialKey::getOrCreate)
+    }
+
+    single {
       app.gyrolet.mpvrx.repository.NetworkRepository(
         dao = get(),
+        credentialCipher = get(),
       )
     }
 

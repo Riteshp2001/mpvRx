@@ -9,12 +9,13 @@
 
 package app.gyrolet.mpvrx.ui.player.ytdlp
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import android.content.Context
 import android.system.Os
 import android.util.Log
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
-import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.*
@@ -149,33 +150,33 @@ object YtdlpManager {
     }
 
     // Apply options to MPV core
-    MPVLib.setOptionString("ytdl", "yes")
-    MPVLib.setOptionString("ytdl-path", ytdlBinaryPath)
+    PlaybackSession.setOptionString("ytdl", "yes")
+    PlaybackSession.setOptionString("ytdl-path", ytdlBinaryPath)
 
     // Use script-opts-append for runtime flexibility
-    MPVLib.setOptionString("script-opts-append", "ytdl_hook-path=$ytdlBinaryPath")
-    MPVLib.setOptionString("script-opts-append", "ytdl_hook-ytdl_path=$ytdlBinaryPath")
-    MPVLib.setOptionString("script-opts-append", "ytdl_hook-all_formats=$allFormats")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-path=$ytdlBinaryPath")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-ytdl_path=$ytdlBinaryPath")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-all_formats=$allFormats")
     // Skip yt-dlp for direct media/manifest URLs (.m3u8/.mpd/.mp4/.ts/...). Without this,
     // ytdl_hook intercepts every http(s) URL and routes it through yt-dlp's generic
     // extractor, which chokes on tokenized HLS/CDN links — so mpv never falls back to
     // ffmpeg's native HLS demuxer and playback fails (while MX Player/VLC play it fine).
-    MPVLib.setOptionString("script-opts-append", "ytdl_hook-exclude=$DIRECT_MEDIA_EXCLUDE")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-exclude=$DIRECT_MEDIA_EXCLUDE")
 
     // Always derive this from typed preferences so newly added format controls cannot
     // be shadowed by an older cached generated string.
     val ytdlFormat = resolvedOptions.format
     if (ytdlFormat.isNotBlank()) {
-      MPVLib.setOptionString("ytdl-format", ytdlFormat)
+      PlaybackSession.setOptionString("ytdl-format", ytdlFormat)
     }
 
     // Global User-Agent to avoid blocks at the network level
-    MPVLib.setOptionString("user-agent", ua)
+    PlaybackSession.setOptionString("user-agent", ua)
 
     Log.d(TAG, "Setting ytdl-format to: $ytdlFormat")
     Log.d(TAG, "Setting ytdl-raw-options to: ${resolvedOptions.rawOptions}")
-    MPVLib.setOptionString("ytdl-raw-options", resolvedOptions.rawOptions)
-    MPVLib.setOptionString("script-opts-append", "ytdl_hook-user_agent=\"$ua\"")
+    PlaybackSession.setOptionString("ytdl-raw-options", resolvedOptions.rawOptions)
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-user_agent=\"$ua\"")
 
     Log.d(TAG, "MPV ytdl options set. Binary: $ytdlBinaryPath")
   }

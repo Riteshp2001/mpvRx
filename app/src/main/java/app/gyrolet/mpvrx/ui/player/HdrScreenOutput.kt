@@ -12,7 +12,6 @@ package app.gyrolet.mpvrx.ui.player
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.hdr.HdrToysProfile
-import `is`.xyz.mpv.MPVLib
 
 /**
  * Available HDR screen output modes.
@@ -150,7 +149,7 @@ fun applyHdrScreenOutputOptions(
   boostSdrToHdr: Boolean = false,
 ) {
   hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr).forEach { (property, value) ->
-    MPVLib.setOptionString(property, value)
+    PlaybackSession.setOptionString(property, value)
   }
 }
 
@@ -161,6 +160,6 @@ fun applyHdrScreenOutputProperties(
   boostSdrToHdr: Boolean = false,
 ) {
   hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr).forEach { (property, value) ->
-    MPVLib.setPropertyString(property, value)
+    PlaybackSession.setPropertyString(property, value)
   }
 }

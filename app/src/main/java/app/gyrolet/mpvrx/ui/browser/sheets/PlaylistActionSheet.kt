@@ -299,6 +299,8 @@ fun PlaylistActionSheet(
                     context.getString(app.gyrolet.mpvrx.R.string.playlist_add_success),
                     android.widget.Toast.LENGTH_SHORT,
                   ).show()
+                showM3UDialog = false
+                onDismiss()
               }.onFailure { error ->
                 android.widget.Toast
                   .makeText(
@@ -308,7 +310,6 @@ fun PlaylistActionSheet(
                   ).show()
               }
             isLoading = false
-            showM3UDialog = false
           }
         }
       }
@@ -318,7 +319,7 @@ fun PlaylistActionSheet(
         if (isLoading) {
           {}
         } else {
-          onDismiss
+          { showM3UDialog = false }
         },
     ) {
       Card(
@@ -451,6 +452,8 @@ fun PlaylistActionSheet(
                             context.getString(app.gyrolet.mpvrx.R.string.playlist_add_success),
                             android.widget.Toast.LENGTH_SHORT,
                           ).show()
+                        showM3UDialog = false
+                        onDismiss()
                       }.onFailure { error ->
                         android.widget.Toast
                           .makeText(
@@ -460,7 +463,6 @@ fun PlaylistActionSheet(
                           ).show()
                       }
                     isLoading = false
-                    showM3UDialog = false
                   }
                 }
               },

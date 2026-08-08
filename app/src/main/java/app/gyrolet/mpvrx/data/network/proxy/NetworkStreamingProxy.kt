@@ -11,39 +11,46 @@ package app.gyrolet.mpvrx.data.network.proxy
 
 import android.util.Log
 import app.gyrolet.mpvrx.data.network.client.NetworkClient
-import app.gyrolet.mpvrx.data.network.client.NetworkClientFactory
+import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
-import com.hierynomus.msdtyp.AccessMask
-import com.hierynomus.mssmb2.SMB2CreateDisposition
-import com.hierynomus.mssmb2.SMB2ShareAccess
-import com.hierynomus.smbj.SMBClient
-import com.hierynomus.smbj.SmbConfig
-import com.hierynomus.smbj.auth.AuthenticationContext
-import com.hierynomus.smbj.share.DiskShare
+import app.gyrolet.mpvrx.domain.network.NetworkPath
+import app.gyrolet.mpvrx.repository.NetworkRepository
 import fi.iki.elonen.NanoHTTPD
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import okhttp3.Credentials
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import java.io.ByteArrayInputStream
 import java.io.InputStream
-import java.time.Duration
-import java.util.EnumSet
+import java.net.URI
+import java.security.SecureRandom
+import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Local HTTP proxy server that enables seeking for network streaming protocols
- * that don't support it natively
+ * A loopback-only authenticated-capability gateway for SMB, FTP, and WebDAV media.
+ *
+ * Callers keep using their logical [streamId] for unregistering, but it is never exposed on the
+ * HTTP endpoint. Every registration gets a cryptographically random capability token. A token can
+ * resolve sibling paths below the configured connection root so relative HLS manifests, segments,
+ * keys, and maps keep working without embedding remote credentials in a URL.
  */
-class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
-  private val proxyScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+class NetworkStreamingProxy private constructor() :
+  NanoHTTPD("127.0.0.1", 0),
+  KoinComponent {
   companion object {
     private const val TAG = "NetworkStreamingProxy"
-    private val sharedWebDavHttpClient: OkHttpClient by lazy { OkHttpClient() }
+    private const val TOKEN_BYTES = 24
 
     @Volatile
     private var instance: NetworkStreamingProxy? = null
@@ -67,930 +74,351 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     }
   }
 
-  // Store active connections and their clients
-  private val activeStreams = ConcurrentHashMap<String, StreamInfo>()
+  private class StreamInfo(
+    val connectionId: Long,
+    val primaryPath: NetworkPath,
+    fileSize: Long,
+    val primaryMimeType: String,
+  ) {
+    val knownPrimarySize = AtomicLong(fileSize)
+    val clientMutex = Mutex()
 
-  data class StreamInfo(
-    val connection: NetworkConnection,
-    val filePath: String,
-    val client: NetworkClient,
-    var fileSize: Long = -1L,
-    var mimeType: String = "video/mp4",
-  )
+    @Volatile
+    var client: NetworkClient? = null
+  }
 
-  /**
-   * Register a stream for proxying
-   * @return The local URL to use for playback
-   */
+  private class HeadResponse(
+    status: Response.IStatus,
+    mimeType: String,
+    contentLength: Long,
+  ) : Response(status, mimeType, ByteArrayInputStream(ByteArray(0)), contentLength)
+
+  private val repository by inject<NetworkRepository>()
+  private val random = SecureRandom()
+  private val proxyJob = SupervisorJob()
+  private val proxyScope = CoroutineScope(Dispatchers.IO + proxyJob)
+  private val tokenByRegistration = ConcurrentHashMap<String, String>()
+  private val streamsByToken = ConcurrentHashMap<String, StreamInfo>()
+  private val closingStreams = ConcurrentHashMap.newKeySet<StreamInfo>()
+
+  /** Registers a caller-owned logical stream and returns a credential-free loopback URL. */
+  @Synchronized
   fun registerStream(
     streamId: String,
     connection: NetworkConnection,
     filePath: String,
     fileSize: Long = -1L,
     mimeType: String = "video/mp4",
+  ): String =
+    registerStream(
+      streamId = streamId,
+      connectionId = connection.id,
+      filePath = filePath,
+      fileSize = fileSize,
+      mimeType = mimeType,
+    )
+
+  /** Registers a stream by saved connection id without exposing or loading its credentials. */
+  @Synchronized
+  fun registerStream(
+    streamId: String,
+    connectionId: Long,
+    filePath: String,
+    fileSize: Long = -1L,
+    mimeType: String = "video/mp4",
   ): String {
-    activeStreams.remove(streamId)?.let { existing ->
-      proxyScope.launch {
-        runCatching { existing.client.disconnect() }
-      }
-    }
+    require(connectionId > 0L) { "A saved network connection is required for proxy streaming" }
+    require(fileSize >= -1L) { "File size must be -1 (unknown) or non-negative" }
 
-    val client = NetworkClientFactory.createClient(connection)
-
+    val path = NetworkPath.from(filePath)
+    val token = generateToken()
     val streamInfo =
       StreamInfo(
-        connection = connection,
-        filePath = filePath,
-        client = client,
+        connectionId = connectionId,
+        primaryPath = path,
         fileSize = fileSize,
-        mimeType = mimeType,
+        primaryMimeType = sanitizeMimeType(mimeType),
       )
 
-    activeStreams[streamId] = streamInfo
-
-    return "http://127.0.0.1:$listeningPort/$streamId"
-  }
-
-  /**
-   * Unregister a stream
-   */
-  fun unregisterStream(streamId: String) {
-    activeStreams.remove(streamId)?.let { streamInfo ->
-      proxyScope.launch {
-        try {
-          streamInfo.client.disconnect()
-        } catch (e: Exception) {
-          // Ignore disconnect errors
-        }
-      }
+    streamsByToken[token] = streamInfo
+    tokenByRegistration.put(streamId, token)?.let { previousToken ->
+      streamsByToken.remove(previousToken)?.let(::closeAsync)
     }
+
+    val route = "/$token${path.value}"
+    return URI("http", null, "127.0.0.1", listeningPort, route, null, null).toASCIIString()
   }
 
-  /**
-   * Cleanup all streams
-   */
-  private fun cleanup() {
-    val streamIds = activeStreams.keys.toList()
-    streamIds.forEach { unregisterStream(it) }
+  /** Unregisters the logical ID supplied to [registerStream]. */
+  @Synchronized
+  fun unregisterStream(streamId: String) {
+    val token = tokenByRegistration.remove(streamId) ?: return
+    streamsByToken.remove(token)?.let(::closeAsync)
   }
 
   override fun serve(session: IHTTPSession): Response {
-    val uri = session.uri
+    val headOnly = session.method == Method.HEAD
+    val route = parseRoute(session.uri) ?: return notFound(headOnly)
+    val streamInfo = streamsByToken[route.token] ?: return notFound(headOnly)
+    val requestedPath = route.path ?: streamInfo.primaryPath
 
-    // Extract stream ID from URI (format: /streamId)
-    val streamId = uri.removePrefix("/").split("/").firstOrNull()
-    if (streamId.isNullOrEmpty()) {
-      return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Stream not found")
+    if (session.method != Method.GET && session.method != Method.HEAD) {
+      return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT, "Method not allowed")
+        .apply { addHeader("Allow", "GET, HEAD") }
     }
-
-    val streamInfo = activeStreams[streamId]
-    if (streamInfo == null) {
-      return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Stream not found")
-    }
-
-    // Handle range requests for seeking
-    val rangeHeader = session.headers["range"]
 
     return try {
-      if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-        handleRangeRequest(session, streamInfo, rangeHeader)
+      val rangeHeader = session.headers["range"]
+      if (rangeHeader == null) {
+        handleFullRequest(headOnly, streamInfo, requestedPath)
       } else {
-        handleFullRequest(session, streamInfo)
+        handleRangeRequest(headOnly, streamInfo, requestedPath, rangeHeader)
       }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error serving request for stream $streamId: ${streamInfo.filePath}", e)
-      Log.e(
-        TAG,
-        "Connection: ${streamInfo.connection.protocol} ${streamInfo.connection.host}:${streamInfo.connection.port}${streamInfo.connection.path}",
-      )
-      newFixedLengthResponse(
-        Response.Status.INTERNAL_ERROR,
-        MIME_PLAINTEXT,
-        "Error: ${e.message}",
-      )
+    } catch (cancellation: CancellationException) {
+      throw cancellation
+    } catch (error: Exception) {
+      // Do not include remote URLs, paths, credentials, or exception messages in logs/responses.
+      Log.e(TAG, "Proxy request failed (${error::class.java.simpleName})")
+      textResponse(Response.Status.INTERNAL_ERROR, "Upstream stream failed", headOnly)
     }
   }
 
   private fun handleRangeRequest(
-    session: IHTTPSession,
+    headOnly: Boolean,
     streamInfo: StreamInfo,
+    path: NetworkPath,
     rangeHeader: String,
   ): Response {
-    // Parse range header: bytes=start-end
-    val rangeValue = rangeHeader.removePrefix("bytes=")
-    val parts = rangeValue.split("-", limit = 2)
+    val fileSize = getFileSize(streamInfo, path)
+    if (fileSize < 0L) return upstreamFailure(headOnly)
+    val range = HttpByteRange.parse(rangeHeader, fileSize) ?: return rangeNotSatisfiable(fileSize, headOnly)
+    val mimeType = mimeTypeFor(streamInfo, path)
 
-    // Get file size if not known
-    if (streamInfo.fileSize < 0) {
-      streamInfo.fileSize = getFileSize(streamInfo)
-    }
-
-    val fileSize = streamInfo.fileSize
-    if (fileSize <= 0L) {
-      val response =
-        newFixedLengthResponse(
-          Response.Status.RANGE_NOT_SATISFIABLE,
-          MIME_PLAINTEXT,
-          "File size unavailable",
-        )
-      response.addHeader("Content-Range", "bytes */*")
-      return response
-    }
-
-    val startPart = parts.getOrNull(0).orEmpty()
-    val endPart = parts.getOrNull(1).orEmpty()
-    val start: Long
-    val requestedEnd: Long?
-
-    if (startPart.isEmpty() && endPart.isNotEmpty()) {
-      val suffixLength = endPart.toLongOrNull()
-      if (suffixLength == null || suffixLength <= 0L) {
-        return rangeNotSatisfiable(fileSize)
-      }
-      start = (fileSize - suffixLength).coerceAtLeast(0L)
-      requestedEnd = fileSize - 1
-    } else {
-      start = startPart.toLongOrNull() ?: return rangeNotSatisfiable(fileSize)
-      requestedEnd = endPart.takeIf { it.isNotEmpty() }?.toLongOrNull()
-    }
-
-    if (start < 0L || start >= fileSize) {
-      return rangeNotSatisfiable(fileSize)
-    }
-
-    val rangeEnd = (requestedEnd ?: (fileSize - 1)).coerceAtMost(fileSize - 1)
-    if (rangeEnd < start) {
-      return rangeNotSatisfiable(fileSize)
-    }
-    val contentLength = rangeEnd - start + 1
-
-    // Get stream with offset
-    val inputStream = getStreamWithOffset(streamInfo, start)
-
-    if (inputStream == null) {
-      return newFixedLengthResponse(
-        Response.Status.INTERNAL_ERROR,
-        MIME_PLAINTEXT,
-        "Failed to open stream",
-      )
-    }
-
-    // Create response with partial content
     val response =
-      newFixedLengthResponse(
-        Response.Status.PARTIAL_CONTENT,
-        streamInfo.mimeType,
-        inputStream,
-        contentLength,
-      )
+      if (headOnly) {
+        HeadResponse(Response.Status.PARTIAL_CONTENT, mimeType, range.length)
+      } else {
+        val inputStream = getStream(streamInfo, path, range.start)
+          ?: return upstreamFailure(headOnly)
+        newFixedLengthResponse(
+          Response.Status.PARTIAL_CONTENT,
+          mimeType,
+          inputStream,
+          range.length,
+        )
+      }
 
     response.addHeader("Accept-Ranges", "bytes")
-    response.addHeader("Content-Range", "bytes $start-$rangeEnd/$fileSize")
-    response.addHeader("Content-Length", contentLength.toString())
-
+    response.addHeader("Content-Range", "bytes ${range.start}-${range.endInclusive}/$fileSize")
     return response
   }
 
-  private fun rangeNotSatisfiable(fileSize: Long): Response =
-    newFixedLengthResponse(
+  private fun handleFullRequest(
+    headOnly: Boolean,
+    streamInfo: StreamInfo,
+    path: NetworkPath,
+  ): Response {
+    val fileSize = getFileSize(streamInfo, path)
+    val mimeType = mimeTypeFor(streamInfo, path)
+
+    if (headOnly && fileSize < 0L) return upstreamFailure(headOnly)
+    if (headOnly) {
+      return HeadResponse(Response.Status.OK, mimeType, fileSize).apply {
+        addHeader("Accept-Ranges", "bytes")
+      }
+    }
+    if (fileSize == 0L) {
+      return emptyResponse(Response.Status.OK, mimeType).apply { addHeader("Accept-Ranges", "bytes") }
+    }
+
+    val inputStream = getStream(streamInfo, path, 0L) ?: return upstreamFailure(headOnly)
+    return if (fileSize >= 0L) {
+      newFixedLengthResponse(Response.Status.OK, mimeType, inputStream, fileSize).apply {
+        addHeader("Accept-Ranges", "bytes")
+      }
+    } else {
+      newChunkedResponse(Response.Status.OK, mimeType, inputStream)
+    }
+  }
+
+  private fun getFileSize(
+    streamInfo: StreamInfo,
+    path: NetworkPath,
+  ): Long {
+    if (path == streamInfo.primaryPath) {
+      streamInfo.knownPrimarySize.get().takeIf { it >= 0L }?.let { return it }
+    }
+
+    val discovered =
+      runBlocking {
+        withConnectedClient(streamInfo) { client -> client.getFileSize(path.value) }
+      }.getOrNull() ?: -1L
+
+    if (path == streamInfo.primaryPath && discovered >= 0L) {
+      streamInfo.knownPrimarySize.compareAndSet(-1L, discovered)
+    }
+    return discovered
+  }
+
+  private fun getStream(
+    streamInfo: StreamInfo,
+    path: NetworkPath,
+    offset: Long,
+  ): InputStream? =
+    runBlocking {
+      withConnectedClient(streamInfo) { client -> client.getFileStream(path.value, offset) }
+    }.getOrNull()
+
+  private suspend fun <T> withConnectedClient(
+    streamInfo: StreamInfo,
+    operation: suspend (NetworkClient) -> Result<T>,
+  ): Result<T> =
+    streamInfo.clientMutex.withLock {
+      var client = streamInfo.client
+      if (client == null) {
+        val candidate = repository.createClient(streamInfo.connectionId).getOrElse { return@withLock Result.failure(it) }
+        try {
+          candidate.connect().getOrThrow()
+          streamInfo.client = candidate
+          client = candidate
+        } catch (cancellation: CancellationException) {
+          runCatching { candidate.disconnect() }
+          throw cancellation
+        } catch (error: Exception) {
+          runCatching { candidate.disconnect() }
+          return@withLock Result.failure(error)
+        }
+      } else {
+        val existingClient = client
+        if (!existingClient.isConnected()) {
+          try {
+            existingClient.connect().getOrThrow()
+          } catch (cancellation: CancellationException) {
+            throw cancellation
+          } catch (error: Exception) {
+            streamInfo.client = null
+            runCatching { existingClient.disconnect() }
+            return@withLock Result.failure(error)
+          }
+        }
+      }
+
+      val connectedClient = client ?: return@withLock Result.failure(IllegalStateException("Client unavailable"))
+      operation(connectedClient)
+    }
+
+  private data class Route(
+    val token: String,
+    val path: NetworkPath?,
+  )
+
+  private fun parseRoute(uri: String): Route? {
+    val withoutLeadingSlash = uri.removePrefix("/")
+    val token = withoutLeadingSlash.substringBefore('/').takeIf(String::isNotBlank) ?: return null
+    val pathText = withoutLeadingSlash.substringAfter('/', missingDelimiterValue = "")
+    val path =
+      if (pathText.isBlank()) {
+        null
+      } else {
+        runCatching { NetworkPath.from(pathText) }.getOrNull() ?: return null
+      }
+    return Route(token, path)
+  }
+
+  private fun getKnownRegistrationMime(
+    streamInfo: StreamInfo,
+    path: NetworkPath,
+  ): String? = streamInfo.primaryMimeType.takeIf { path == streamInfo.primaryPath }
+
+  private fun mimeTypeFor(
+    streamInfo: StreamInfo,
+    path: NetworkPath,
+  ): String =
+    getKnownRegistrationMime(streamInfo, path)
+      ?: NetworkMimeTypes.forFileName(path.relative)
+      ?: "application/octet-stream"
+
+  private fun sanitizeMimeType(value: String): String =
+    value.takeIf { it.matches(Regex("[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+*-]+")) }
+      ?: "application/octet-stream"
+
+  private fun generateToken(): String {
+    var token: String
+    do {
+      val bytes = ByteArray(TOKEN_BYTES).also(random::nextBytes)
+      token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+    } while (streamsByToken.containsKey(token))
+    return token
+  }
+
+  private fun emptyResponse(
+    status: Response.IStatus,
+    mimeType: String,
+  ): Response = newFixedLengthResponse(status, mimeType, ByteArrayInputStream(ByteArray(0)), 0L)
+
+  private fun rangeNotSatisfiable(
+    fileSize: Long,
+    headOnly: Boolean,
+  ): Response =
+    textResponse(
       Response.Status.RANGE_NOT_SATISFIABLE,
-      MIME_PLAINTEXT,
       "Requested range not satisfiable",
+      headOnly,
     ).apply {
       addHeader("Content-Range", "bytes */$fileSize")
       addHeader("Accept-Ranges", "bytes")
     }
 
-  private fun handleFullRequest(
-    session: IHTTPSession,
-    streamInfo: StreamInfo,
-  ): Response {
-    // Get file size if not known
-    if (streamInfo.fileSize < 0) {
-      streamInfo.fileSize = getFileSize(streamInfo)
+  private fun notFound(headOnly: Boolean): Response =
+    textResponse(Response.Status.NOT_FOUND, "Stream not found", headOnly)
+
+  private fun upstreamFailure(headOnly: Boolean): Response =
+    textResponse(Response.Status.SERVICE_UNAVAILABLE, "Upstream stream failed", headOnly)
+
+  private fun textResponse(
+    status: Response.IStatus,
+    message: String,
+    headOnly: Boolean,
+  ): Response =
+    if (headOnly) {
+      HeadResponse(status, MIME_PLAINTEXT, message.toByteArray(Charsets.UTF_8).size.toLong())
+    } else {
+      newFixedLengthResponse(status, MIME_PLAINTEXT, message)
     }
 
-    val inputStream = getStream(streamInfo)
-
-    if (inputStream == null) {
-      return newFixedLengthResponse(
-        Response.Status.INTERNAL_ERROR,
-        MIME_PLAINTEXT,
-        "Failed to open stream",
-      )
-    }
-
-    val response =
-      if (streamInfo.fileSize > 0L) {
-        newFixedLengthResponse(
-          Response.Status.OK,
-          streamInfo.mimeType,
-          inputStream,
-          streamInfo.fileSize,
-        )
-      } else {
-        newChunkedResponse(
-          Response.Status.OK,
-          streamInfo.mimeType,
-          inputStream,
-        )
-      }
-
-    response.addHeader("Accept-Ranges", "bytes")
-    if (streamInfo.fileSize > 0) {
-      response.addHeader("Content-Length", streamInfo.fileSize.toString())
-    }
-
-    return response
-  }
-
-  private fun getFileSize(streamInfo: StreamInfo): Long {
-    return runBlocking {
+  private fun closeAsync(streamInfo: StreamInfo) {
+    if (!closingStreams.add(streamInfo)) return
+    proxyScope.launch {
       try {
-        if (!streamInfo.client.isConnected()) {
-          streamInfo.client.connect().getOrThrow()
-        }
-        streamInfo.client.getFileSize(streamInfo.filePath).getOrNull()?.let { size ->
-          if (size > 0L) {
-            return@runBlocking size
-          }
-        }
-
-        when (streamInfo.client) {
-          is app.gyrolet.mpvrx.data.network.client.SmbClient -> {
-            getFileSizeSMB(streamInfo)
-          }
-
-          is app.gyrolet.mpvrx.data.network.client.FtpClient -> {
-            getFileSizeFTP(streamInfo)
-          }
-
-          is app.gyrolet.mpvrx.data.network.client.WebDavClient -> {
-            val webDavClient = streamInfo.client
-            if (!webDavClient.isConnected()) {
-              webDavClient.connect().getOrThrow()
-            }
-            val sizeResult = webDavClient.getFileSize(streamInfo.filePath)
-            sizeResult.getOrNull() ?: -1L
-          }
-
-          else -> {
-            if (!streamInfo.client.isConnected()) {
-              streamInfo.client.connect().getOrThrow()
-            }
-            val ftpClient =
-              streamInfo.client as? app.gyrolet.mpvrx.data.network.client.FtpClient
-            val sizeResult = ftpClient?.getFileSize(streamInfo.filePath)
-            sizeResult?.getOrNull() ?: -1L
-          }
-        }
-      } catch (e: Exception) {
-        -1L
+        close(streamInfo)
+      } finally {
+        closingStreams.remove(streamInfo)
       }
     }
   }
 
-  /**
-   * Get file size using SMB
-   */
-  private suspend fun getFileSizeSMB(streamInfo: StreamInfo): Long {
-    try {
-      Log.d(TAG, "SMB getFileSize called")
-      Log.d(TAG, "  Connection path: ${streamInfo.connection.path}")
-      Log.d(TAG, "  File path: ${streamInfo.filePath}")
-
-      // Extract share name from connection path (just the share name, no subfolders)
-      val shareName = streamInfo.connection.path.trim('/')
-
-      if (shareName.isEmpty() || shareName.contains('/')) {
-        Log.e(TAG, "SMB: Invalid share name: $shareName")
-        return -1L
-      }
-
-      // Parse filePath to extract the relative path within the share
-      // filePath format: smb://host/shareName/folder/file.mkv
-      val relativePath =
-        when {
-          streamInfo.filePath.startsWith("smb://", ignoreCase = true) -> {
-            // Don't use URI parsing - just use string manipulation to avoid encoding issues
-            // Format: smb://host/shareName/path/to/file.mkv
-            val pathAfterProtocol = streamInfo.filePath.substring(6) // Remove "smb://"
-            val firstSlash = pathAfterProtocol.indexOf('/')
-            if (firstSlash == -1) {
-              Log.e(TAG, "Invalid SMB path format")
-              return -1L
-            }
-
-            // Skip past "host/shareName/" to get the file path
-            val pathAfterHost = pathAfterProtocol.substring(firstSlash + 1) // Remove "host/"
-            val secondSlash = pathAfterHost.indexOf('/')
-            if (secondSlash == -1) {
-              // Just "smb://host/shareName" with no file
-              ""
-            } else {
-              // Get everything after "shareName/"
-              val extracted = pathAfterHost.substring(secondSlash + 1)
-              Log.d(TAG, "  Extracted from SMB URL: $extracted")
-              extracted
-            }
-          }
-          else -> {
-            // Fallback: assume it's already a relative path
-            val extracted = streamInfo.filePath.trim('/')
-            Log.d(TAG, "  Using as relative path: $extracted")
-            extracted
-          }
-        }
-
-      Log.d(TAG, "  Final: share=$shareName, relativePath=$relativePath")
-
-      val smbConfig =
-        SmbConfig
-          .builder()
-          .withTimeout(30000, TimeUnit.MILLISECONDS)
-          .withSoTimeout(35000, TimeUnit.MILLISECONDS)
-          .build()
-      val smbClient = SMBClient(smbConfig)
-      val connection = smbClient.connect(streamInfo.connection.host, streamInfo.connection.port)
-
-      val authContext =
-        if (streamInfo.connection.isAnonymous) {
-          AuthenticationContext.anonymous()
-        } else {
-          AuthenticationContext(
-            streamInfo.connection.username,
-            streamInfo.connection.password.toCharArray(),
-            null,
-          )
-        }
-
-      val session = connection.authenticate(authContext)
-      val diskShare = session.connectShare(shareName) as DiskShare
-
-      val file =
-        diskShare.openFile(
-          relativePath,
-          EnumSet.of(AccessMask.GENERIC_READ),
-          null,
-          EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
-          SMB2CreateDisposition.FILE_OPEN,
-          null,
-        )
-
-      val fileSize = file.fileInformation.standardInformation.endOfFile
-      Log.d(TAG, "  File size: $fileSize")
-
-      file.close()
-      diskShare.close()
-      session.close()
-      connection.close()
-      smbClient.close()
-      return fileSize
-    } catch (e: Exception) {
-      Log.e(TAG, "SMB getFileSize error: ${e.message}", e)
-      return -1L
-    }
-  }
-
-  /**
-   * Get file size using FTP listFiles command
-   */
-  private suspend fun getFileSizeFTP(streamInfo: StreamInfo): Long {
-    val ftpClient =
-      org.apache.commons.net.ftp
-        .FTPClient()
-
-    // Set UTF-8 encoding for proper handling of non-English characters
-    ftpClient.controlEncoding = "UTF-8"
-    ftpClient.setConnectTimeout(10000)
-
-    try {
-      // Connect
-      ftpClient.connect(streamInfo.connection.host, streamInfo.connection.port)
-
-      if (!org.apache.commons.net.ftp.FTPReply
-          .isPositiveCompletion(ftpClient.replyCode)
-      ) {
-        ftpClient.disconnect()
-        return -1L
-      }
-
-      // Login
-      val loginSuccess =
-        if (streamInfo.connection.isAnonymous) {
-          ftpClient.login("anonymous", "")
-        } else {
-          ftpClient.login(streamInfo.connection.username, streamInfo.connection.password)
-        }
-
-      if (!loginSuccess) {
-        ftpClient.disconnect()
-        return -1L
-      }
-
-      // Set binary mode
-      ftpClient.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE)
-
-      // Try to enable UTF-8 mode on the server (RFC 2640)
-      try {
-        ftpClient.sendCommand("OPTS UTF8 ON")
-      } catch (_: Exception) {
-        // Server may not support UTF-8 mode, continue anyway
-      }
-
-      // Change to base directory if needed
-      if (streamInfo.connection.path != "/" && streamInfo.connection.path.isNotEmpty()) {
-        ftpClient.changeWorkingDirectory(streamInfo.connection.path)
-      }
-
-      // Determine the file path to use
-      val pathsToTry = mutableListOf<String>()
-      pathsToTry.add(streamInfo.filePath)
-      if (streamInfo.filePath.startsWith("/")) {
-        pathsToTry.add(streamInfo.filePath.substring(1))
-      }
-      if (streamInfo.connection.path != "/" &&
-        streamInfo.connection.path.isNotEmpty() &&
-        streamInfo.filePath.startsWith(streamInfo.connection.path)
-      ) {
-        val relativePath = streamInfo.filePath.substring(streamInfo.connection.path.length).trimStart('/')
-        if (relativePath.isNotEmpty()) {
-          pathsToTry.add(relativePath)
-        }
-      }
-
-      // Try to get file size using listFiles
-      for (path in pathsToTry) {
-        try {
-          val files = ftpClient.listFiles(path)
-          if (files.isNotEmpty() && !files[0].isDirectory) {
-            val size = files[0].size
-            ftpClient.disconnect()
-            return size
-          }
-        } catch (e: Exception) {
-          // Try next path
-        }
-      }
-
-      ftpClient.disconnect()
-      return -1L
-    } catch (e: Exception) {
-      try {
-        ftpClient.disconnect()
-      } catch (_: Exception) {
-      }
-      return -1L
-    }
-  }
-
-  private fun getStream(streamInfo: StreamInfo): InputStream? = getStreamWithOffset(streamInfo, 0L)
-
-  private fun getStreamWithOffset(
-    streamInfo: StreamInfo,
-    offset: Long,
-  ): InputStream? =
-    runBlocking {
-      try {
-        if (!streamInfo.client.isConnected()) {
-          streamInfo.client.connect().getOrThrow()
-        }
-        streamInfo.client.getFileStream(streamInfo.filePath, offset).getOrNull()
-      } catch (e: Exception) {
-        Log.e(TAG, "Error getting ranged stream", e)
-        null
+  private suspend fun close(streamInfo: StreamInfo) =
+    withContext(NonCancellable) {
+      streamInfo.clientMutex.withLock {
+        val client = streamInfo.client
+        streamInfo.client = null
+        runCatching { client?.disconnect() }
       }
     }
 
-  /**
-   * Get FTP stream with offset using REST command (efficient seeking)
-   */
-  private suspend fun getStreamWithOffsetFTP(
-    streamInfo: StreamInfo,
-    offset: Long,
-  ): InputStream? {
-    // Create a new FTP client for this specific range request
-    val ftpClient =
-      org.apache.commons.net.ftp
-        .FTPClient()
-
-    // Set UTF-8 encoding for proper handling of non-English characters
-    ftpClient.controlEncoding = "UTF-8"
-    ftpClient.setConnectTimeout(10000)
-    ftpClient.setDataTimeout(Duration.ofSeconds(30))
-    ftpClient.setControlKeepAliveTimeout(Duration.ofMinutes(5))
-
-    try {
-      // Connect
-      ftpClient.connect(streamInfo.connection.host, streamInfo.connection.port)
-
-      if (!org.apache.commons.net.ftp.FTPReply
-          .isPositiveCompletion(ftpClient.replyCode)
-      ) {
-        ftpClient.disconnect()
-        return null
-      }
-
-      // Login
-      val loginSuccess =
-        if (streamInfo.connection.isAnonymous) {
-          ftpClient.login("anonymous", "")
-        } else {
-          ftpClient.login(streamInfo.connection.username, streamInfo.connection.password)
-        }
-
-      if (!loginSuccess) {
-        ftpClient.disconnect()
-        return null
-      }
-
-      // Set binary mode and passive mode
-      ftpClient.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE)
-      ftpClient.enterLocalPassiveMode()
-
-      // Try to enable UTF-8 mode on the server (RFC 2640)
-      try {
-        ftpClient.sendCommand("OPTS UTF8 ON")
-      } catch (_: Exception) {
-        // Server may not support UTF-8 mode, continue anyway
-      }
-
-      ftpClient.setBufferSize(1024 * 64)
-
-      // Change to base directory if needed
-      if (streamInfo.connection.path != "/" && streamInfo.connection.path.isNotEmpty()) {
-        ftpClient.changeWorkingDirectory(streamInfo.connection.path)
-      }
-
-      // Set restart position (offset) - this is the key for efficient seeking!
-      if (offset > 0) {
-        ftpClient.setRestartOffset(offset)
-      }
-
-      // Determine the file path to use
-      val pathsToTry = mutableListOf<String>()
-      pathsToTry.add(streamInfo.filePath)
-      if (streamInfo.filePath.startsWith("/")) {
-        pathsToTry.add(streamInfo.filePath.substring(1))
-      }
-      if (streamInfo.connection.path != "/" &&
-        streamInfo.connection.path.isNotEmpty() &&
-        streamInfo.filePath.startsWith(streamInfo.connection.path)
-      ) {
-        val relativePath = streamInfo.filePath.substring(streamInfo.connection.path.length).trimStart('/')
-        if (relativePath.isNotEmpty()) {
-          pathsToTry.add(relativePath)
+  private fun cleanup() {
+    val streams =
+      synchronized(this) {
+        tokenByRegistration.clear()
+        (streamsByToken.values + closingStreams).distinct().also {
+          streamsByToken.clear()
+          closingStreams.clear()
         }
       }
 
-      // Try to retrieve file stream
-      var rawStream: java.io.InputStream? = null
-      for (path in pathsToTry) {
-        rawStream = ftpClient.retrieveFileStream(path)
-        if (rawStream != null) {
-          break
-        }
-      }
-
-      if (rawStream == null) {
-        ftpClient.disconnect()
-        return null
-      }
-
-      // Wrap stream to handle cleanup
-      val wrappedStream =
-        object : java.io.InputStream() {
-          override fun read(): Int = rawStream.read()
-
-          override fun read(b: ByteArray): Int = rawStream.read(b)
-
-          override fun read(
-            b: ByteArray,
-            off: Int,
-            len: Int,
-          ): Int = rawStream.read(b, off, len)
-
-          override fun available(): Int = rawStream.available()
-
-          override fun close() {
-            try {
-              rawStream.close()
-            } catch (e: Exception) {
-              // Ignore
-            }
-            try {
-              if (ftpClient.isConnected) {
-                ftpClient.completePendingCommand()
-                ftpClient.logout()
-                ftpClient.disconnect()
-              }
-            } catch (e: Exception) {
-              // Ignore
-            }
-          }
-        }
-
-      return wrappedStream
-    } catch (e: Exception) {
-      try {
-        ftpClient.disconnect()
-      } catch (_: Exception) {
-      }
-      return null
+    proxyScope.launch {
+      streams.forEach { close(it) }
+      proxyScope.cancel()
     }
-  }
-
-  /**
-   * Get WebDAV stream with offset using HTTP Range header (efficient seeking)
-   */
-  private suspend fun getStreamWithOffsetWebDAV(
-    streamInfo: StreamInfo,
-    offset: Long,
-  ): InputStream? {
-    try {
-      val protocol = if (streamInfo.connection.useHttps) "https" else "http"
-      val cleanBasePath = streamInfo.connection.path.trimEnd('/')
-      val cleanFilePath = if (streamInfo.filePath.startsWith("/")) streamInfo.filePath else "/${streamInfo.filePath}"
-      val url = "$protocol://${streamInfo.connection.host}:${streamInfo.connection.port}$cleanBasePath$cleanFilePath"
-
-      Log.d(TAG, "WebDAV stream request - Protocol: $protocol, URL: $url")
-
-      val requestBuilder =
-        Request
-          .Builder()
-          .url(url)
-          .get()
-          .addHeader("Range", "bytes=$offset-")
-
-      // Add auth if needed
-      if (!streamInfo.connection.isAnonymous) {
-        val credentials = Credentials.basic(streamInfo.connection.username, streamInfo.connection.password)
-        requestBuilder.addHeader("Authorization", credentials)
-      }
-
-      val request = requestBuilder.build()
-      val response = sharedWebDavHttpClient.newCall(request).execute()
-
-      if (!response.isSuccessful && response.code != 206) {
-        response.close()
-        return null
-      }
-
-      val rawStream = response.body.byteStream()
-
-      // Wrap stream to handle cleanup
-      val wrappedStream =
-        object : java.io.InputStream() {
-          override fun read(): Int = rawStream.read()
-
-          override fun read(b: ByteArray): Int = rawStream.read(b)
-
-          override fun read(
-            b: ByteArray,
-            off: Int,
-            len: Int,
-          ): Int = rawStream.read(b, off, len)
-
-          override fun available(): Int = rawStream.available()
-
-          override fun close() {
-            try {
-              rawStream.close()
-            } catch (e: Exception) {
-              // Ignore
-            }
-            try {
-              response.close()
-            } catch (e: Exception) {
-              // Ignore
-            }
-          }
-        }
-
-      return wrappedStream
-    } catch (e: Exception) {
-      return null
-    }
-  }
-
-  /**
-   * Get SMB stream with offset using SMBJ (efficient seeking)
-   */
-  private suspend fun getStreamWithOffsetSMB(
-    streamInfo: StreamInfo,
-    offset: Long,
-  ): InputStream? {
-    try {
-      Log.d(TAG, "SMB getStreamWithOffset called, offset=$offset")
-      Log.d(TAG, "  Connection path: ${streamInfo.connection.path}")
-      Log.d(TAG, "  File path: ${streamInfo.filePath}")
-
-      // Extract share name from connection path (just the share name, no subfolders)
-      val shareName = streamInfo.connection.path.trim('/')
-
-      if (shareName.isEmpty() || shareName.contains('/')) {
-        Log.e(TAG, "SMB: Invalid share name: $shareName")
-        return null
-      }
-
-      // Parse filePath to extract the relative path within the share
-      // filePath format: smb://host/shareName/folder/file.mkv
-      val relativePath =
-        when {
-          streamInfo.filePath.startsWith("smb://", ignoreCase = true) -> {
-            // Don't use URI parsing - just use string manipulation to avoid encoding issues
-            // Format: smb://host/shareName/path/to/file.mkv
-            val pathAfterProtocol = streamInfo.filePath.substring(6) // Remove "smb://"
-            val firstSlash = pathAfterProtocol.indexOf('/')
-            if (firstSlash == -1) {
-              Log.e(TAG, "Invalid SMB path format")
-              return null
-            }
-
-            // Skip past "host/shareName/" to get the file path
-            val pathAfterHost = pathAfterProtocol.substring(firstSlash + 1) // Remove "host/"
-            val secondSlash = pathAfterHost.indexOf('/')
-            if (secondSlash == -1) {
-              // Just "smb://host/shareName" with no file
-              ""
-            } else {
-              // Get everything after "shareName/"
-              val extracted = pathAfterHost.substring(secondSlash + 1)
-              Log.d(TAG, "  Extracted from SMB URL: '$extracted'")
-              extracted
-            }
-          }
-          else -> {
-            // Fallback: assume it's already a relative path
-            val extracted = streamInfo.filePath.trim('/')
-            Log.d(TAG, "  Using as relative path: '$extracted'")
-            extracted
-          }
-        }
-
-      Log.d(TAG, "  Final: share=$shareName, relativePath=$relativePath")
-
-      val smbConfig =
-        SmbConfig
-          .builder()
-          .withTimeout(120000, TimeUnit.MILLISECONDS) // Increase timeout for large seeks
-          .withSoTimeout(120000, TimeUnit.MILLISECONDS)
-          .withReadTimeout(120000, TimeUnit.MILLISECONDS)
-          .withSigningRequired(false)
-          .withEncryptData(false)
-          .build()
-      val smbClient = SMBClient(smbConfig)
-      val connection = smbClient.connect(streamInfo.connection.host, streamInfo.connection.port)
-
-      val authContext =
-        if (streamInfo.connection.isAnonymous) {
-          AuthenticationContext.anonymous()
-        } else {
-          AuthenticationContext(
-            streamInfo.connection.username,
-            streamInfo.connection.password.toCharArray(),
-            null,
-          )
-        }
-
-      val session = connection.authenticate(authContext)
-      val diskShare = session.connectShare(shareName) as DiskShare
-
-      // Open file with read access
-      val file =
-        diskShare.openFile(
-          relativePath,
-          EnumSet.of(AccessMask.GENERIC_READ),
-          null,
-          EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
-          SMB2CreateDisposition.FILE_OPEN,
-          null,
-        )
-
-      // Create a seekable stream that reads from file at specific offsets
-      val seekableStream =
-        object : InputStream() {
-          private var currentPosition = offset
-          private val fileHandle = file
-          private var closed = false
-
-          override fun read(): Int {
-            if (closed) return -1
-            val buf = ByteArray(1)
-            val bytesRead = read(buf, 0, 1)
-            return if (bytesRead == 1) buf[0].toInt() and 0xFF else -1
-          }
-
-          override fun read(b: ByteArray): Int = read(b, 0, b.size)
-
-          private var scratch = ByteArray(0)
-
-          override fun read(
-            b: ByteArray,
-            off: Int,
-            len: Int,
-          ): Int {
-            if (closed) return -1
-            if (len == 0) return 0
-
-            try {
-              // SMBJ's file.read() signature: read(ByteArray, Long) -> Int
-              // Read directly whenever possible to avoid per-read heap churn.
-              val readBuffer =
-                if (off == 0 && len == b.size) {
-                  b
-                } else {
-                  if (scratch.size < len) scratch = ByteArray(len)
-                  scratch
-                }
-              val bytesRead = fileHandle.read(readBuffer, currentPosition)
-
-              if (bytesRead <= 0) return -1
-
-              if (readBuffer !== b) {
-                System.arraycopy(readBuffer, 0, b, off, bytesRead)
-              }
-              currentPosition += bytesRead
-              return bytesRead
-            } catch (e: Exception) {
-              Log.e(TAG, "Error reading from SMB file: ${e.message}")
-              return -1
-            }
-          }
-
-          override fun available(): Int {
-            if (closed) return 0
-            return try {
-              val remaining = fileHandle.fileInformation.standardInformation.endOfFile - currentPosition
-              remaining.toInt().coerceAtLeast(0)
-            } catch (e: Exception) {
-              0
-            }
-          }
-
-          override fun close() {
-            if (!closed) {
-              closed = true
-              try {
-                fileHandle.close()
-              } catch (_: Exception) {
-              }
-              try {
-                diskShare.close()
-              } catch (_: Exception) {
-              }
-              try {
-                session.close()
-              } catch (_: Exception) {
-              }
-              try {
-                connection.close()
-              } catch (_: Exception) {
-              }
-              try {
-                smbClient.close()
-              } catch (_: Exception) {
-              }
-            }
-          }
-        }
-
-      Log.d(TAG, "  Stream created successfully starting at offset $offset")
-      return seekableStream
-    } catch (e: Exception) {
-      Log.e(TAG, "SMB getStreamWithOffset error: ${e.message}", e)
-      return null
-    }
-  }
-
-  /**
-   * Generic stream with offset using skip (less efficient, for other protocols)
-   */
-  private suspend fun getStreamWithOffsetGeneric(
-    streamInfo: StreamInfo,
-    offset: Long,
-  ): InputStream? {
-    if (!streamInfo.client.isConnected()) {
-      streamInfo.client.connect().getOrThrow()
-    }
-
-    val stream = streamInfo.client.getFileStream(streamInfo.filePath).getOrNull()
-
-    if (stream != null && offset > 0) {
-      var remaining = offset
-      val buffer = ByteArray(8192)
-
-      while (remaining > 0) {
-        val toSkip = minOf(remaining, buffer.size.toLong()).toInt()
-        val skipped = stream.read(buffer, 0, toSkip)
-        if (skipped <= 0) {
-          stream.close()
-          return null
-        }
-        remaining -= skipped
-      }
-    }
-
-    return stream
   }
 }

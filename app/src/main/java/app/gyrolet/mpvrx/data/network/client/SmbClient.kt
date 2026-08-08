@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.data.network.client
 import android.net.Uri
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
+import app.gyrolet.mpvrx.domain.network.NetworkPath
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation
 import com.hierynomus.mssmb2.SMB2CreateDisposition
@@ -23,13 +24,17 @@ import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.transport.tcp.async.AsyncDirectTcpTransportFactory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.BufferedInputStream
+import java.io.IOException
 import java.io.InputStream
+import java.net.URI
 import java.util.EnumSet
 import java.util.concurrent.TimeUnit
 
@@ -39,40 +44,33 @@ class SmbClient(
   companion object {
     private const val SMB_BUFFER_SIZE = 1024 * 1024
 
-    @Volatile
-    private var sharedSmbClient: SMBClient? = null
-
-    private fun getOrCreateClient(): SMBClient =
-      sharedSmbClient ?: synchronized(this) {
-        sharedSmbClient ?: SMBClient(
-          SmbConfig
-            .builder()
-            .withTransportLayerFactory(AsyncDirectTcpTransportFactory())
-            .withTimeout(60000, TimeUnit.MILLISECONDS)
-            .withSoTimeout(60000, TimeUnit.MILLISECONDS)
-            .withReadBufferSize(SMB_BUFFER_SIZE)
-            .withWriteBufferSize(SMB_BUFFER_SIZE)
-            .withTransactBufferSize(SMB_BUFFER_SIZE)
-            .withDialects(
-              com.hierynomus.mssmb2.SMB2Dialect.SMB_3_1_1,
-              com.hierynomus.mssmb2.SMB2Dialect.SMB_3_0_2,
-              com.hierynomus.mssmb2.SMB2Dialect.SMB_3_0,
-              com.hierynomus.mssmb2.SMB2Dialect.SMB_2_1,
-              com.hierynomus.mssmb2.SMB2Dialect.SMB_2_0_2,
-            ).withDfsEnabled(false)
-            .withMultiProtocolNegotiate(true)
-            .withSigningRequired(false)
-            .withEncryptData(false)
-            .build(),
-        ).also { sharedSmbClient = it }
-      }
+    private fun newClient(): SMBClient =
+      SMBClient(
+        SmbConfig
+          .builder()
+          .withTransportLayerFactory(AsyncDirectTcpTransportFactory())
+          .withTimeout(60000, TimeUnit.MILLISECONDS)
+          .withSoTimeout(60000, TimeUnit.MILLISECONDS)
+          .withReadBufferSize(SMB_BUFFER_SIZE)
+          .withWriteBufferSize(SMB_BUFFER_SIZE)
+          .withTransactBufferSize(SMB_BUFFER_SIZE)
+          .withDialects(
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_3_1_1,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_3_0_2,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_3_0,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_2_1,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_2_0_2,
+          ).withDfsEnabled(false)
+          .withMultiProtocolNegotiate(true)
+          .withSigningRequired(false)
+          .withEncryptData(false)
+          .build(),
+      )
   }
 
   private var smbClient: SMBClient? = null
   private var smbConnection: Connection? = null
   private var session: Session? = null
-  private var baseUrl: String = ""
-  private var resolvedHostIp: String = ""
   private var shareName: String = ""
   private val connectionMutex = Mutex()
 
@@ -110,12 +108,12 @@ class SmbClient(
       block()
     } catch (e: Exception) {
       if (isNetworkError(e)) {
-        android.util.Log.w("SmbClient", "SMB socket dead. Reconnecting...", e)
+        android.util.Log.w("SmbClient", "SMB transport failed; reconnecting")
 
         connectionMutex.withLock {
           if (session === sessionAtStart) {
             disconnect()
-            connect()
+            connect().getOrThrow()
           }
         }
 
@@ -128,140 +126,78 @@ class SmbClient(
 
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
+      var candidateClient: SMBClient? = null
+      var candidateConnection: Connection? = null
+      var candidateSession: Session? = null
       try {
-        smbClient = getOrCreateClient()
+        val configuredShare = configuredShareName()
 
-        // Resolve and verify the host
-        val resolvedAddress =
-          try {
-            withTimeout(5000) {
-              java.net.InetAddress.getByName(connection.host)
-            }
-          } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            return@withContext Result.failure(Exception("Host resolution timeout for ${connection.host}"))
-          } catch (e: java.net.UnknownHostException) {
-            return@withContext Result.failure(Exception("Host not found: ${connection.host}"))
-          }
-
-        // Check if the resolved host is reachable
-        val isHostReachable =
-          try {
-            withTimeout(3000) {
-              resolvedAddress.isReachable(2000)
-            }
-          } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            false
-          } catch (e: Exception) {
-            true // Continue anyway if ping fails
-          }
-
-        if (!isHostReachable) {
-          return@withContext Result.failure(Exception("Host ${connection.host} is not reachable on the network"))
-        }
-
-        // Use the resolved IP address
-        val hostForUrl = resolvedAddress.hostAddress ?: connection.host
-        resolvedHostIp = hostForUrl
-
-        // Parse the connection path - it should ONLY be the share name
-        // Expected format: /ShareName (not /ShareName/folder)
-        shareName = connection.path.trim('/')
-
-        if (shareName.isEmpty()) {
+        if (configuredShare.isEmpty()) {
           return@withContext Result.failure(
             Exception(
-              "Share name required. Path should be just the share name.\n\nExample: /Media or /Public\n\nDo not include folders, navigate to them after connecting.",
+              "SMB share name is required (for example, /Media).",
             ),
           )
         }
 
         // Reject paths with subfolders
-        if (shareName.contains('/')) {
+        if (configuredShare.contains('/') || configuredShare.contains('\\')) {
           return@withContext Result.failure(
             Exception(
-              "Path should be ONLY the share name, not a folder path.\n\nExample: Use /Media, not /Media/Movies\n\nYou can navigate to folders after connecting.",
+              "SMB path must contain only the share name, not a subfolder.",
             ),
           )
         }
 
-        baseUrl = "smb://${hostForUrl}${if (connection.port != 445) ":${connection.port}" else ""}/$shareName"
-
-        // Connect to the server
-        val connectionResult =
-          try {
-            withTimeout(10000) {
-              smbConnection = smbClient!!.connect(hostForUrl, connection.port)
-
-              // Create authentication context
-              val authContext =
-                if (connection.isAnonymous) {
-                  AuthenticationContext.anonymous()
-                } else {
-                  AuthenticationContext(
-                    connection.username,
-                    connection.password.toCharArray(),
-                    null, // domain can be null
-                  )
-                }
-
-              // Authenticate
-              session = smbConnection!!.authenticate(authContext)
-
-              // Test connection by connecting to the share
-              val diskShare =
-                session!!.connectShare(shareName) as? DiskShare
-                  ?: return@withTimeout Result.failure<Unit>(Exception("Share '$shareName' is not a disk share"))
-
-              try {
-                // Test access by listing the share root
-                diskShare.list("")
-
-                // Success
-                diskShare.close()
-                Result.success(Unit)
-              } catch (e: Exception) {
-                diskShare.close()
-                if (e.message?.contains("STATUS_ACCESS_DENIED", ignoreCase = true) == true ||
-                  e.message?.contains("Access is denied", ignoreCase = true) == true
-                ) {
-                  Result.failure<Unit>(Exception("Authentication failed. Check username and password."))
-                } else if (e.message?.contains("STATUS_OBJECT_NAME_NOT_FOUND", ignoreCase = true) == true ||
-                  e.message?.contains("does not exist", ignoreCase = true) == true
-                ) {
-                  Result.failure<Unit>(Exception("Share does not exist"))
-                } else {
-                  Result.failure<Unit>(Exception("Connection failed: ${e.message}"))
-                }
-              }
+        val newClient = newClient()
+        candidateClient = newClient
+        withTimeout(15_000) {
+          val newConnection = newClient.connect(connection.host, connection.port)
+          candidateConnection = newConnection
+          val authContext =
+            if (connection.isAnonymous) {
+              AuthenticationContext.anonymous()
+            } else {
+              AuthenticationContext(connection.username, connection.password.toCharArray(), null)
             }
-          } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            Result.failure(Exception("Connection timeout. Server not responding."))
-          } catch (e: Exception) {
-            Result.failure(Exception("Connection failed: ${e.message ?: "Unknown error"}"))
-          }
+          val newSession = newConnection.authenticate(authContext)
+          candidateSession = newSession
+          val diskShare =
+            newSession.connectShare(configuredShare) as? DiskShare
+              ?: throw IOException("Configured SMB share is not a disk share")
+          diskShare.use { it.list("") }
+        }
 
-        connectionResult
-      } catch (e: Exception) {
-        Result.failure(e)
+        shareName = configuredShare
+        smbClient = candidateClient
+        smbConnection = candidateConnection
+        session = candidateSession
+        candidateClient = null
+        candidateConnection = null
+        candidateSession = null
+        Result.success(Unit)
+      } catch (timeout: TimeoutCancellationException) {
+        closeResources(candidateSession, candidateConnection, candidateClient)
+        Result.failure(IOException("SMB connection timed out"))
+      } catch (cancellation: CancellationException) {
+        closeResources(candidateSession, candidateConnection, candidateClient)
+        throw cancellation
+      } catch (error: Exception) {
+        closeResources(candidateSession, candidateConnection, candidateClient)
+        Result.failure(error)
       }
     }
 
   override suspend fun disconnect() {
     withContext(Dispatchers.IO) {
-      try {
-        session?.close()
-      } catch (_: Exception) {
-      }
-      try {
-        smbConnection?.close()
-      } catch (_: Exception) {
-      }
+      val oldSession = session
+      val oldConnection = smbConnection
+      val oldClient = smbClient
       session = null
       smbConnection = null
       smbClient = null
-      baseUrl = ""
-      resolvedHostIp = ""
       shareName = ""
+      closeResources(oldSession, oldConnection, oldClient)
     }
   }
 
@@ -273,126 +209,42 @@ class SmbClient(
         val result =
           executeWithRetry {
             val sess = session ?: throw java.net.SocketException("Not connected")
-
-            android.util.Log.d("SmbClient", "=== listFiles called ===")
-            android.util.Log.d("SmbClient", "  Input path: '$path'")
-            android.util.Log.d("SmbClient", "  Share name: '$shareName'")
-
-            // Build the relative path within the share
-            // The 'path' parameter is the navigation path from the share root
-            val relativePath =
-              when {
-                path.startsWith("smb://") -> {
-                  // Extract path from smb:// URL
-                  val extracted =
-                    try {
-                      val uri = java.net.URI(path)
-                      val pathParts = uri.path.trim('/').split('/', limit = 2)
-                      pathParts.getOrNull(1) ?: ""
-                    } catch (e: Exception) {
-                      val pathAfterProtocol = path.substringAfter("smb://")
-                      val pathPart = pathAfterProtocol.substringAfter("/")
-                      val pathParts = pathPart.trim('/').split('/', limit = 2)
-                      pathParts.getOrNull(1) ?: ""
-                    }
-                  android.util.Log.d("SmbClient", "  Extracted from SMB URL: '$extracted'")
-                  extracted
-                }
-
-                path == "/" || path.isEmpty() -> {
-                  android.util.Log.d("SmbClient", "  Using share root (empty path)")
-                  ""
-                }
-
-                else -> {
-                  val cleaned = path.trim('/')
-                  if (cleaned.equals(shareName, ignoreCase = true)) {
-                    android.util.Log.d("SmbClient", "  Path equals share name - using root")
-                    ""
-                  } else if (cleaned.startsWith("$shareName/", ignoreCase = true)) {
-                    val withoutShare = cleaned.substring(shareName.length + 1)
-                    android.util.Log.d("SmbClient", "  Removed share prefix: '$withoutShare'")
-                    withoutShare
-                  } else {
-                    android.util.Log.d("SmbClient", "  Using cleaned path: '$cleaned'")
-                    cleaned
-                  }
-                }
-              }
-
-            android.util.Log.d("SmbClient", "  Final relativePath: '$relativePath'")
-            android.util.Log.d("SmbClient", "  Will call: diskShare.list('$relativePath')")
+            val directory = parseNetworkPath(path)
 
             val diskShare =
               sess.connectShare(shareName) as? DiskShare
-                ?: throw Exception("Share '$shareName' is not a disk share")
+                ?: throw IOException("Configured SMB share is not a disk share")
 
             diskShare.use { ds ->
-              try {
-                // Use a timeout for list operation
-                val rawFiles: List<FileIdBothDirectoryInformation> =
-                  try {
-                    withTimeout(15000) {
-                      ds.list(relativePath)
-                    }
-                  } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                    throw Exception("Operation timed out. The server may be slow or unresponsive.")
-                  }
+              val rawFiles: List<FileIdBothDirectoryInformation> =
+                try {
+                  withTimeout(15_000) { ds.list(directory.relative) }
+                } catch (_: TimeoutCancellationException) {
+                  throw IOException("SMB directory listing timed out")
+                }
 
-                android.util.Log.d("SmbClient", "  Listed ${rawFiles.size} items")
-
-                val files =
-                  rawFiles.mapNotNull { fileInfo ->
-                    try {
-                      val fileName = fileInfo.fileName
-
-                      if (fileName == "." || fileName == "..") {
-                        return@mapNotNull null
-                      }
-
-                      if (fileName.endsWith("$", ignoreCase = true)) {
-                        return@mapNotNull null
-                      }
-
-                      if (fileName.equals("IPC", ignoreCase = true) ||
-                        fileName.equals("print", ignoreCase = true) ||
-                        fileName.equals("print$", ignoreCase = true)
-                      ) {
-                        return@mapNotNull null
-                      }
-
-                      val isDirectory = fileInfo.fileAttributes and 0x10 != 0L
-                      val fileSize = if (isDirectory) 0 else fileInfo.endOfFile
-
-                      val fullPath =
-                        if (relativePath.isEmpty()) {
-                          "smb://$resolvedHostIp/$shareName/$fileName"
-                        } else {
-                          "smb://$resolvedHostIp/$shareName/$relativePath/$fileName"
-                        }
-
-                      NetworkFile(
-                        name = fileName,
-                        path = fullPath,
-                        isDirectory = isDirectory,
-                        size = fileSize,
-                        lastModified = fileInfo.lastWriteTime.toEpochMillis(),
-                        mimeType = if (!isDirectory) getMimeType(fileName) else null,
-                      )
-                    } catch (e: Exception) {
-                      null
-                    }
-                  }
-
-                files
-              } catch (e: Exception) {
-                throw Exception("Failed to list files: ${e.message}", e)
+              rawFiles.mapNotNull { fileInfo ->
+                val fileName = fileInfo.fileName
+                if (fileName == "." || fileName == "..") return@mapNotNull null
+                runCatching {
+                  val isDirectory = fileInfo.fileAttributes and 0x10 != 0L
+                  NetworkFile(
+                    name = fileName,
+                    path = directory.child(fileName).value,
+                    isDirectory = isDirectory,
+                    size = if (isDirectory) 0L else fileInfo.endOfFile,
+                    lastModified = fileInfo.lastWriteTime.toEpochMillis(),
+                    mimeType = if (!isDirectory) NetworkMimeTypes.forFileName(fileName) else null,
+                  )
+                }.getOrNull()
               }
             }
           }
         Result.success(result)
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
@@ -401,15 +253,16 @@ class SmbClient(
     offset: Long,
   ): Result<InputStream> =
     withContext(Dispatchers.IO) {
+      require(offset >= 0L) { "Stream offset must not be negative" }
       try {
         val result =
           executeWithRetry {
             val sess = session ?: throw java.net.SocketException("Not connected")
-            val relativePath = parseRelativePath(path)
+            val relativePath = parseNetworkPath(path).relative
 
             val diskShare =
               sess.connectShare(shareName) as? DiskShare
-                ?: throw Exception("Share '$shareName' is not a disk share")
+                ?: throw IOException("Configured SMB share is not a disk share")
 
             try {
               val file =
@@ -424,7 +277,7 @@ class SmbClient(
 
               val inputStream =
                 object : InputStream() {
-                  private var currentPosition = offset.coerceAtLeast(0L)
+                  private var currentPosition = offset
                   private var closed = false
                   private var scratch = ByteArray(0)
 
@@ -441,61 +294,63 @@ class SmbClient(
                     off: Int,
                     len: Int,
                   ): Int {
+                    if (off < 0 || len < 0 || off > b.size || len > b.size - off) {
+                      throw IndexOutOfBoundsException("offset=$off, length=$len, bufferSize=${b.size}")
+                    }
                     if (closed) return -1
                     if (len == 0) return 0
 
-                    return try {
+                    try {
                       val readBuffer =
                         if (off == 0 && len == b.size) {
                           b
                         } else {
-                          if (scratch.size < len) scratch = ByteArray(len)
+                          // SMBJ reads up to the supplied array size, so the scratch array must
+                          // exactly match the caller's requested length.
+                          if (scratch.size != len) scratch = ByteArray(len)
                           scratch
                         }
                       val bytesRead = file.read(readBuffer, currentPosition)
                       if (bytesRead <= 0) {
-                        -1
+                        return -1
                       } else {
                         if (readBuffer !== b) {
                           System.arraycopy(readBuffer, 0, b, off, bytesRead)
                         }
                         currentPosition += bytesRead
-                        bytesRead
+                        return bytesRead
                       }
-                    } catch (_: Exception) {
-                      -1
+                    } catch (error: Exception) {
+                      throw IOException("SMB stream read failed", error)
                     }
                   }
 
                   override fun available(): Int =
                     runCatching {
                       (file.fileInformation.standardInformation.endOfFile - currentPosition)
+                        .coerceIn(0L, Int.MAX_VALUE.toLong())
                         .toInt()
-                        .coerceAtLeast(0)
                     }.getOrDefault(0)
 
                   override fun close() {
+                    if (closed) return
                     closed = true
-                    try {
-                      file.close()
-                    } catch (_: Exception) {
-                    }
-                    try {
-                      diskShare.close()
-                    } catch (_: Exception) {
-                    }
+                    runCatching { file.close() }
+                    runCatching { diskShare.close() }
                   }
                 }
 
               BufferedInputStream(inputStream, SMB_BUFFER_SIZE)
             } catch (e: Exception) {
               diskShare.close()
-              throw Exception("Failed to open file: ${e.message}", e)
+              throw IOException("Failed to open SMB file", e)
             }
           }
         Result.success(result)
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
@@ -507,86 +362,70 @@ class SmbClient(
             val sess = session ?: throw java.net.SocketException("Not connected")
             val diskShare =
               sess.connectShare(shareName) as? DiskShare
-                ?: throw Exception("Share '$shareName' is not a disk share")
+                ?: throw IOException("Configured SMB share is not a disk share")
 
             try {
               val file =
                 diskShare.openFile(
-                  parseRelativePath(path),
+                  parseNetworkPath(path).relative,
                   EnumSet.of(AccessMask.GENERIC_READ),
                   null,
                   EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
                   SMB2CreateDisposition.FILE_OPEN,
                   null,
                 )
-              val size = file.fileInformation.standardInformation.endOfFile
-              file.close()
-              diskShare.close()
-              size
+              file.use { it.fileInformation.standardInformation.endOfFile }
             } catch (e: Exception) {
-              diskShare.close()
-              throw Exception("Failed to get SMB file size: ${e.message}", e)
+              throw IOException("Failed to get SMB file size", e)
+            } finally {
+              runCatching { diskShare.close() }
             }
           }
         Result.success(result)
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
+  /** Credential-free origin URI. Authenticated playback must use the loopback proxy. */
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
-        // For SMB, we'll use the smb:// URI with credentials embedded
-        val fullPath =
-          if (path.startsWith("smb://")) path else "$baseUrl${if (path.startsWith("/")) path else "/$path"}"
-
-        // Build URI with credentials for mpv
-        val uriString =
-          if (connection.isAnonymous) {
-            fullPath
-          } else {
-            val hostPart = "${connection.host}${if (connection.port != 445) ":${connection.port}" else ""}"
-            val pathPart = if (path.startsWith("/")) path else "/$path"
-            "smb://${connection.username}:${connection.password}@$hostPart${connection.path}$pathPart"
-          }
-
-        Result.success(Uri.parse(uriString))
-      } catch (e: Exception) {
-        Result.failure(e)
+        val host = connection.host.trim().removePrefix("[").removeSuffix("]")
+        val networkPath = parseNetworkPath(path)
+        val uriPath = "/${configuredShareName()}${if (networkPath.isRoot) "" else networkPath.value}"
+        val uri = URI("smb", null, host, connection.port, uriPath, null, null)
+        Result.success(Uri.parse(uri.toASCIIString()))
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
-  private fun getMimeType(fileName: String): String? {
-    val extension = fileName.substringAfterLast('.', "").lowercase()
-    return when (extension) {
-      "mp4", "m4v" -> "video/mp4"
-      "mkv" -> "video/x-matroska"
-      "avi" -> "video/x-msvideo"
-      "mov" -> "video/quicktime"
-      "wmv" -> "video/x-ms-wmv"
-      "flv" -> "video/x-flv"
-      "webm" -> "video/webm"
-      "mpeg", "mpg" -> "video/mpeg"
-      "3gp" -> "video/3gpp"
-      "ts" -> "video/mp2t"
-      else -> null
+  private fun parseNetworkPath(path: String): NetworkPath {
+    if (!path.startsWith("smb://", ignoreCase = true)) return NetworkPath.from(path)
+
+    val afterAuthority = path.substring(6).substringAfter('/', missingDelimiterValue = "")
+    val legacyShare = afterAuthority.substringBefore('/')
+    val expectedShare = shareName.takeIf(String::isNotEmpty) ?: configuredShareName()
+    require(legacyShare.equals(expectedShare, ignoreCase = true)) {
+      "SMB path is outside the configured share"
     }
+    return NetworkPath.from(afterAuthority.substringAfter('/', missingDelimiterValue = ""))
   }
 
-  private fun parseRelativePath(path: String): String =
-    if (path.startsWith("smb://", ignoreCase = true)) {
-      try {
-        val uri = java.net.URI(path)
-        val pathParts = uri.path.trim('/').split('/', limit = 2)
-        pathParts.getOrNull(1) ?: ""
-      } catch (_: Exception) {
-        val pathAfterProtocol = path.substringAfter("smb://")
-        val pathPart = pathAfterProtocol.substringAfter("/")
-        val pathParts = pathPart.trim('/').split('/', limit = 2)
-        pathParts.getOrNull(1) ?: ""
-      }
-    } else {
-      path.trim('/')
-    }
+  private fun configuredShareName(): String = connection.path.trim('/', '\\')
+
+  private fun closeResources(
+    smbSession: Session?,
+    networkConnection: Connection?,
+    client: SMBClient?,
+  ) {
+    runCatching { smbSession?.close() }
+    runCatching { networkConnection?.close() }
+    runCatching { client?.close() }
+  }
 }

@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -48,7 +50,6 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.spacing
-import `is`.xyz.mpv.MPVLib
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 import kotlin.math.pow
@@ -214,7 +215,7 @@ fun PlaybackSpeedSheet(
           value = pitchCorrection,
           onValueChange = { newValue ->
             audioPreferences.audioPitchCorrection.set(newValue)
-            MPVLib.setPropertyBoolean("audio-pitch-correction", newValue)
+            PlaybackSession.setPropertyBoolean("audio-pitch-correction", newValue)
           },
           title = {
             Text(

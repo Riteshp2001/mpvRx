@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -146,7 +148,6 @@ import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
 import app.gyrolet.mpvrx.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
-import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
@@ -200,14 +201,14 @@ fun PlayerControls(
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekBarShown by viewModel.seekBarShown.collectAsState()
-  val pausedForCache by MPVLib.propBoolean["paused-for-cache"].collectAsState()
-  val paused by MPVLib.propBoolean["pause"].collectAsState()
-  val duration by MPVLib.propInt["duration"].collectAsState()
-  val position by MPVLib.propInt["time-pos"].collectAsState()
+  val pausedForCache by PlaybackSession.propBoolean["paused-for-cache"].collectAsState()
+  val paused by PlaybackSession.propBoolean["pause"].collectAsState()
+  val duration by PlaybackSession.propInt["duration"].collectAsState()
+  val position by PlaybackSession.propInt["time-pos"].collectAsState()
   val precisePosition by viewModel.precisePosition.collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
-  val demuxerCacheTime by MPVLib.propDouble["demuxer-cache-time"].collectAsState()
-  val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
+  val demuxerCacheTime by PlaybackSession.propDouble["demuxer-cache-time"].collectAsState()
+  val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
   val seekbarDuration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f
   val seekState by viewModel.seekState.collectAsState()
   val seekPreview by viewModel.seekThumbnailPreview.collectAsState()
@@ -232,7 +233,7 @@ fun PlayerControls(
       Modifier
     }
   var isSeeking by remember { mutableStateOf(false) }
-  val mpvSeeking by MPVLib.propBoolean["seeking"].collectAsState()
+  val mpvSeeking by PlaybackSession.propBoolean["seeking"].collectAsState()
   val isPlayerSeeking = isSeeking || (mpvSeeking ?: false)
   var stableDemuxerCacheTime by remember { mutableFloatStateOf(0f) }
   val currentDemuxerCacheTime =
@@ -250,8 +251,8 @@ fun PlayerControls(
   }
   var resetControlsTimestamp by remember { mutableStateOf(0L) }
   val seekText = seekState.text
-  val currentChapter by MPVLib.propInt["chapter"].collectAsState()
-  val mpvDecoder by MPVLib.propString["hwdec-current"].collectAsState()
+  val currentChapter by PlaybackSession.propInt["chapter"].collectAsState()
+  val mpvDecoder by PlaybackSession.propString["hwdec-current"].collectAsState()
   val decoder = remember(mpvDecoder) { getDecoderFromValue(mpvDecoder ?: "auto") }
   val isSpeedNonOne = remember(playbackSpeed) {
     abs((playbackSpeed ?: 1f) - 1f) > 0.001f
@@ -297,7 +298,7 @@ fun PlayerControls(
 
   val isAudioOnly by viewModel.isAudioOnly.collectAsState()
   if (isAudioOnly) {
-    val rawMediaTitle by MPVLib.propString["media-title"].collectAsState()
+    val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
     val activity = LocalActivity.current as? PlayerActivity
     val mediaTitle =
       remember(rawMediaTitle, activity) {
@@ -341,20 +342,20 @@ fun PlayerControls(
         chapter = chapters.getOrNull(currentChapter ?: 0),
         chapters = chapters.toImmutableList(),
         onSeekToChapter = {
-          MPVLib.setPropertyInt("chapter", it)
+          PlaybackSession.setPropertyInt("chapter", it)
           viewModel.unpause()
         },
         decoder = decoder,
-        onUpdateDecoder = { MPVLib.setPropertyString("hwdec", it.value) },
+        onUpdateDecoder = { PlaybackSession.setPropertyString("hwdec", it.value) },
         speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
-        onSpeedChange = { MPVLib.setPropertyFloat("speed", it.toFixed(2)) },
+        onSpeedChange = { PlaybackSession.setPropertyFloat("speed", it.toFixed(2)) },
         onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
         onAddSpeedPreset = { playerPreferences.speedPresets += it.toFixed(2).toString() },
         onRemoveSpeedPreset = { playerPreferences.speedPresets -= it.toFixed(2).toString() },
         onResetSpeedPresets = playerPreferences.speedPresets::delete,
         speedPresets = sortedSpeedPresets,
         onResetDefaultSpeed = {
-          MPVLib.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
+          PlaybackSession.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
         },
         sleepTimerTimeRemaining = sleepTimerTimeRemaining,
         onStartSleepTimer = viewModel::startTimer,
@@ -514,7 +515,7 @@ fun PlayerControls(
           val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
           val volume by viewModel.currentVolume.collectAsState()
           val volumePercent by viewModel.currentVolumePercent.collectAsState()
-          val mpvVolume by MPVLib.propInt["volume"].collectAsState()
+          val mpvVolume by PlaybackSession.propInt["volume"].collectAsState()
           val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
           // Overlay visibility — Group 1
           val showVolumeGestureOverlay by playerPreferences.showVolumeGestureOverlay.collectAsState()
@@ -528,7 +529,7 @@ fun PlayerControls(
           val aspect by viewModel.videoAspect.collectAsState()
           val currentZoom by viewModel.videoZoom.collectAsState()
 
-          val rawMediaTitle by MPVLib.propString["media-title"].collectAsState()
+          val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
           val mediaTitle = remember(rawMediaTitle, activity) {
             rawMediaTitle?.takeIf { it.isNotBlank() } ?: activity.getTitleForControls()
           }
@@ -1438,6 +1439,7 @@ fun PlayerControls(
           ) {
             val invertDuration by playerPreferences.invertDuration.collectAsState()
             val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
+            val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
             val displayedSeekbarPosition =
               if (useThumbFastSeekPreview && seekPreview.visible) {
                 seekPreview.positionSeconds
@@ -1461,8 +1463,6 @@ fun PlayerControls(
                 resetControlsTimestamp = System.currentTimeMillis()
                 if (useThumbFastSeekPreview) {
                   viewModel.updateSeekThumbnailPreview(it, seekbarDuration)
-                } else {
-                  viewModel.seekTo(it.toInt(), fast = true)
                 }
               },
               onValueChangeFinished = { targetPosition ->
@@ -1484,6 +1484,7 @@ fun PlayerControls(
               skipSegments = skipSegmentsImmutable,
               paused = paused ?: false,
               seekbarStyle = seekbarStyle,
+              useWavySeekbar = useWavySeekbar,
               loopStart = abLoopA?.toFloat(),
               loopEnd = abLoopB?.toFloat(),
               bufferDuration = stableDemuxerCacheTime.takeIf { showBufferedRange && it > 0f },
@@ -1773,20 +1774,20 @@ fun PlayerControls(
       chapter = chapters.getOrNull(currentChapter ?: 0),
       chapters = chapters.toImmutableList(),
       onSeekToChapter = {
-        MPVLib.setPropertyInt("chapter", it)
+        PlaybackSession.setPropertyInt("chapter", it)
         viewModel.unpause()
       },
       decoder = decoder,
-      onUpdateDecoder = { MPVLib.setPropertyString("hwdec", it.value) },
+      onUpdateDecoder = { PlaybackSession.setPropertyString("hwdec", it.value) },
       speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
-      onSpeedChange = { MPVLib.setPropertyFloat("speed", it.toFixed(2)) },
+      onSpeedChange = { PlaybackSession.setPropertyFloat("speed", it.toFixed(2)) },
       onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
       onAddSpeedPreset = { playerPreferences.speedPresets += it.toFixed(2).toString() },
       onRemoveSpeedPreset = { playerPreferences.speedPresets -= it.toFixed(2).toString() },
       onResetSpeedPresets = playerPreferences.speedPresets::delete,
       speedPresets = sortedSpeedPresets,
       onResetDefaultSpeed = {
-        MPVLib.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
+        PlaybackSession.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
       },
       sleepTimerTimeRemaining = sleepTimerTimeRemaining,
       onStartSleepTimer = viewModel::startTimer,
@@ -1883,12 +1884,12 @@ private fun CustomStatsPageSixOverlay(
     var lastDelayed = 0
 
     while (true) {
-      val fileName = runCatching { MPVLib.getPropertyString("media-title") ?: "--" }.getOrDefault("--")
-      val renderContext = runCatching { MPVLib.getPropertyString("current-vo") ?: "--" }.getOrDefault("--")
-      val dropped = runCatching { MPVLib.getPropertyInt("drop-frame-count") ?: 0 }.getOrDefault(0)
-      val delayed = runCatching { MPVLib.getPropertyInt("vo-delayed-frame-count") ?: 0 }.getOrDefault(0)
-      val videoCodec = runCatching { MPVLib.getPropertyString("video-codec") ?: "--" }.getOrDefault("--")
-      val audioCodec = runCatching { MPVLib.getPropertyString("audio-codec-name") ?: "--" }.getOrDefault("--")
+      val fileName = runCatching { PlaybackSession.getPropertyString("media-title") ?: "--" }.getOrDefault("--")
+      val renderContext = runCatching { PlaybackSession.getPropertyString("current-vo") ?: "--" }.getOrDefault("--")
+      val dropped = runCatching { PlaybackSession.getPropertyInt("drop-frame-count") ?: 0 }.getOrDefault(0)
+      val delayed = runCatching { PlaybackSession.getPropertyInt("vo-delayed-frame-count") ?: 0 }.getOrDefault(0)
+      val videoCodec = runCatching { PlaybackSession.getPropertyString("video-codec") ?: "--" }.getOrDefault("--")
+      val audioCodec = runCatching { PlaybackSession.getPropertyString("audio-codec-name") ?: "--" }.getOrDefault("--")
 
       val currentCpuMs = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(lastCpuMs)
       val currentTimeMs = android.os.SystemClock.elapsedRealtime()
@@ -1896,7 +1897,7 @@ private fun CustomStatsPageSixOverlay(
       val timeDelta = (currentTimeMs - lastTimeMs).coerceAtLeast(1L)
       val cpu = ((cpuDelta.toFloat() / timeDelta.toFloat()) * 100f).coerceIn(0f, 100f)
 
-      val estFps = runCatching { MPVLib.getPropertyDouble("estimated-vf-fps") ?: 0.0 }.getOrDefault(0.0).toFloat()
+      val estFps = runCatching { PlaybackSession.getPropertyDouble("estimated-vf-fps") ?: 0.0 }.getOrDefault(0.0).toFloat()
       val droppedDelta = (dropped - lastDropped).coerceAtLeast(0)
       val delayedDelta = (delayed - lastDelayed).coerceAtLeast(0)
       val framePressure =
@@ -1908,7 +1909,7 @@ private fun CustomStatsPageSixOverlay(
       val gpuEstimate = (framePressure * 95f + if (estFps > 0f) 5f else 0f).coerceIn(0f, 100f)
 
       val battery = readBatterySnapshot(context)
-      val isPaused = runCatching { MPVLib.getPropertyBoolean("pause") }.getOrDefault(false) == true
+      val isPaused = runCatching { PlaybackSession.getPropertyBoolean("pause") }.getOrDefault(false) == true
 
       if (!isPaused) {
         totalActivePlayTimeMs += timeDelta
@@ -1954,8 +1955,8 @@ private fun CustomStatsPageSixOverlay(
           else -> "Normal"
         }
 
-      val currentHwdec = runCatching { MPVLib.getPropertyString("hwdec-current") ?: "no" }.getOrDefault("no")
-      val gpuApi = runCatching { MPVLib.getPropertyString("gpu-api") ?: "opengl" }.getOrDefault("opengl")
+      val currentHwdec = runCatching { PlaybackSession.getPropertyString("hwdec-current") ?: "no" }.getOrDefault("no")
+      val gpuApi = runCatching { PlaybackSession.getPropertyString("gpu-api") ?: "opengl" }.getOrDefault("opengl")
       val decoderEfficiencyText =
         when {
           currentHwdec == "no" || currentHwdec.isBlank() -> "Low (Software Decoding, CPU-heavy)"
@@ -1977,9 +1978,9 @@ private fun CustomStatsPageSixOverlay(
           batteryTempText = battery.tempText,
           hdrActive =
             runCatching {
-              val sourceGamma = MPVLib.getPropertyString("video-params/gamma").orEmpty()
-              val sourcePrimaries = MPVLib.getPropertyString("video-params/primaries").orEmpty()
-              val sourcePeak = MPVLib.getPropertyDouble("video-params/sig-peak") ?: 0.0
+              val sourceGamma = PlaybackSession.getPropertyString("video-params/gamma").orEmpty()
+              val sourcePrimaries = PlaybackSession.getPropertyString("video-params/primaries").orEmpty()
+              val sourcePeak = PlaybackSession.getPropertyDouble("video-params/sig-peak") ?: 0.0
 
               val isHdrSource =
                 sourceGamma == "pq" ||

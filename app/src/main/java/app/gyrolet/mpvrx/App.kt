@@ -27,23 +27,28 @@ import app.gyrolet.mpvrx.di.PreferencesModule
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.GlobalExceptionHandler
+import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.AndroidNativeCompat
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import `is`.xyz.mpv.FastThumbnails
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
+import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(KoinExperimentalAPI::class)
 class App :
   Application(),
   Application.ActivityLifecycleCallbacks {
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+  private val networkAutoConnectStarted = AtomicBoolean(false)
   private var startedActivityCount = 0
 
   companion object {
@@ -170,6 +175,32 @@ class App :
   ) = Unit
 
   override fun onActivityDestroyed(activity: Activity) = Unit
+
+  /** Starts saved-share auto-connect in process scope so Activity recreation cannot cancel it. */
+  internal fun autoConnectNetworksOnce() {
+    if (!networkAutoConnectStarted.compareAndSet(false, true)) return
+
+    applicationScope.launch {
+      try {
+        delay(500)
+        val repository = getKoin().get<NetworkRepository>()
+        repository.getAutoConnectConnections().forEach { connection ->
+          Log.d(TAG, "Auto-connecting to network share: ${connection.name}")
+          repository
+            .connect(connection)
+            .onFailure { error ->
+              Log.e(TAG, "Auto-connect failed for ${connection.name}: ${error.message}")
+            }
+        }
+      } catch (cancellation: CancellationException) {
+        networkAutoConnectStarted.set(false)
+        throw cancellation
+      } catch (error: Exception) {
+        networkAutoConnectStarted.set(false)
+        Log.e(TAG, "Failed to auto-connect saved network shares", error)
+      }
+    }
+  }
 
   /**
    * Resolves [org.koin.core.Koin] from the global context. Safe to call only

@@ -64,9 +64,12 @@ class NetworkStreamingViewModel(
   /**
    * Update an existing connection
    */
-  fun updateConnection(connection: NetworkConnection) {
+  fun updateConnection(
+    connection: NetworkConnection,
+    clearPassword: Boolean = false,
+  ) {
     viewModelScope.launch {
-      repository.updateConnection(connection)
+      repository.updateConnection(connection, clearPassword)
     }
   }
 

@@ -313,6 +313,8 @@ object SettingsSearchScreen : Screen {
                   "Folders",
                   "Audio",
                   "Background playback",
+                  "Notification",
+                  "Streaming",
                   "Advanced",
                 )
               @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -504,6 +506,7 @@ private fun SearchResultItem(
 private fun localizedSearchCategory(category: String): String =
   stringResource(
     when (category) {
+      "About" -> R.string.pref_section_about
       "Advanced" -> R.string.search_category_advanced
       "AI" -> R.string.search_category_ai
       "Appearance" -> R.string.search_category_appearance
@@ -511,6 +514,7 @@ private fun localizedSearchCategory(category: String): String =
       "Decoder" -> R.string.search_category_decoder
       "Folders" -> R.string.search_category_folders
       "Gestures" -> R.string.search_category_gestures
+      "Network" -> R.string.ui_network
       "Player" -> R.string.search_category_player
       "Subtitles" -> R.string.search_category_subtitles
       else -> R.string.search_category_advanced

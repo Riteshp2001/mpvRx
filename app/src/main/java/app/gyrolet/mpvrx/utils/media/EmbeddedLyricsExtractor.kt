@@ -10,6 +10,7 @@ import android.net.Uri
 import android.util.Log
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -33,7 +34,7 @@ object EmbeddedLyricsExtractor {
     // 2. Try MPV tag properties for embedded lyrics
     val mpvLyrics = listOf("LYRICS", "SYNCEDLYRICS", "UNSYNCEDLYRICS", "USLT", "lyrics")
       .firstNotNullOfOrNull { key ->
-        `is`.xyz.mpv.MPVLib.getPropertyString("metadata/by-key/$key")?.takeIf { it.isNotBlank() }
+        PlaybackSession.getPropertyString("metadata/by-key/$key")?.takeIf { it.isNotBlank() }
       }
     if (mpvLyrics != null) {
       val parsed = LyricsUtils.parseLyrics(mpvLyrics, sourceType = LyricsSourceType.EMBEDDED)

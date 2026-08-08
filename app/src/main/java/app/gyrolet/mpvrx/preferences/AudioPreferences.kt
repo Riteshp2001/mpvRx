@@ -63,10 +63,10 @@ enum class AudioChannels(
   val property: String,
   val value: String,
 ) {
-  /** MPV "auto-safe" — downmix only when safe; avoids channel layout issues. */
-  Auto(R.string.pref_audio_channels_auto, "audio-channels", "auto-safe"),
-  /** MPV "auto" — always downmix to stereo. */
-  AutoSafe(R.string.pref_audio_channels_auto_safe, "audio-channels", "auto"),
+  /** Let mpv prefer the source layout when the output device reports that it is supported. */
+  Auto(R.string.pref_audio_channels_auto, "audio-channels", "auto"),
+  /** Use the system-preferred layout and safely fall back to stereo. This is mpv's default. */
+  AutoSafe(R.string.pref_audio_channels_auto_safe, "audio-channels", "auto-safe"),
   Mono(R.string.pref_audio_channels_mono, "audio-channels", "mono"),
   Stereo(R.string.pref_audio_channels_stereo, "audio-channels", "stereo"),
   ReverseStereo(R.string.pref_audio_channels_stereo_reversed, "af", "pan=[stereo|c0=c1|c1=c0]"),

@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import android.annotation.SuppressLint
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
@@ -57,7 +59,6 @@ import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
 import com.github.k1rakishou.fsaf.FileManager
 import com.yubyf.truetypeparser.TTFFile
-import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -124,23 +125,23 @@ fun SubtitleSettingsTypographyCard(
     Column {
       AssOverrideWarningBanner(viewModel = viewModel, preferences = preferences)
 
-      val isBold by MPVLib.propBoolean["sub-bold"].collectAsState()
-      val isItalic by MPVLib.propBoolean["sub-italic"].collectAsState()
-      val mpvJustify by MPVLib.propString["sub-justify"].collectAsState()
+      val isBold by PlaybackSession.propBoolean["sub-bold"].collectAsState()
+      val isItalic by PlaybackSession.propBoolean["sub-italic"].collectAsState()
+      val mpvJustify by PlaybackSession.propString["sub-justify"].collectAsState()
       val justify by remember {
         derivedStateOf { SubtitleJustification.entries.first { it.value == mpvJustify } }
       }
-      val font by MPVLib.propString["sub-font"].collectAsState()
-      val fontSize by MPVLib.propInt["sub-font-size"].collectAsState()
-      val mpvBorderStyle by MPVLib.propString["sub-border-style"].collectAsState()
+      val font by PlaybackSession.propString["sub-font"].collectAsState()
+      val fontSize by PlaybackSession.propInt["sub-font-size"].collectAsState()
+      val mpvBorderStyle by PlaybackSession.propString["sub-border-style"].collectAsState()
       val borderStyle by remember {
         derivedStateOf {
           SubtitlesBorderStyle.entries.firstOrNull { it.value == mpvBorderStyle }
             ?: SubtitlesBorderStyle.OutlineAndShadow
         }
       }
-      val borderSize by MPVLib.propInt["sub-outline-size"].collectAsState()
-      val shadowOffset by MPVLib.propInt["sub-shadow-offset"].collectAsState()
+      val borderSize by PlaybackSession.propInt["sub-outline-size"].collectAsState()
+      val shadowOffset by PlaybackSession.propInt["sub-shadow-offset"].collectAsState()
       var localShadowOffset by remember(shadowOffset) {
         mutableStateOf(shadowOffset ?: preferences.shadowOffset.get())
       }
@@ -155,8 +156,8 @@ fun SubtitleSettingsTypographyCard(
           checked = isBold == true,
           onCheckedChange = {
             preferences.bold.set(it)
-            MPVLib.setPropertyBoolean("sub-bold", it)
-            MPVLib.setPropertyBoolean("secondary-sub-bold", it)
+            PlaybackSession.setPropertyBoolean("sub-bold", it)
+            PlaybackSession.setPropertyBoolean("secondary-sub-bold", it)
           },
         ) {
           Icon(
@@ -169,8 +170,8 @@ fun SubtitleSettingsTypographyCard(
           checked = isItalic == true,
           onCheckedChange = {
             preferences.italic.set(it)
-            MPVLib.setPropertyBoolean("sub-italic", it)
-            MPVLib.setPropertyBoolean("secondary-sub-italic", it)
+            PlaybackSession.setPropertyBoolean("sub-italic", it)
+            PlaybackSession.setPropertyBoolean("secondary-sub-italic", it)
           },
         ) {
           Icon(
@@ -183,15 +184,15 @@ fun SubtitleSettingsTypographyCard(
           IconToggleButton(
             checked = justify == justification,
             onCheckedChange = {
-              MPVLib.setPropertyBoolean("sub-ass-justify", it)
+              PlaybackSession.setPropertyBoolean("sub-ass-justify", it)
               if (it) {
                 preferences.justification.set(justification)
-                MPVLib.setPropertyString("sub-justify", justification.value)
-                MPVLib.setPropertyString("secondary-sub-justify", justification.value)
+                PlaybackSession.setPropertyString("sub-justify", justification.value)
+                PlaybackSession.setPropertyString("secondary-sub-justify", justification.value)
               } else {
                 preferences.justification.set(SubtitleJustification.Auto)
-                MPVLib.setPropertyString("sub-justify", SubtitleJustification.Auto.value)
-                MPVLib.setPropertyString("secondary-sub-justify", SubtitleJustification.Auto.value)
+                PlaybackSession.setPropertyString("sub-justify", SubtitleJustification.Auto.value)
+                PlaybackSession.setPropertyString("secondary-sub-justify", SubtitleJustification.Auto.value)
               }
             },
           ) {
@@ -228,8 +229,8 @@ fun SubtitleSettingsTypographyCard(
           onValueChangedEvent = {
             val actualFont = if (it == "Default") "" else it
             preferences.font.set(actualFont)
-            MPVLib.setPropertyString("sub-font", actualFont)
-            MPVLib.setPropertyString("secondary-sub-font", actualFont)
+            PlaybackSession.setPropertyString("sub-font", actualFont)
+            PlaybackSession.setPropertyString("secondary-sub-font", actualFont)
           },
           leadingIcon = fontsLoadingIndicator,
         )
@@ -242,8 +243,8 @@ fun SubtitleSettingsTypographyCard(
         valueText = fontSize.toString(),
         onChange = {
           preferences.fontSize.set(it)
-          MPVLib.setPropertyInt("sub-font-size", it)
-          MPVLib.setPropertyInt("secondary-sub-font-size", it)
+          PlaybackSession.setPropertyInt("sub-font-size", it)
+          PlaybackSession.setPropertyInt("secondary-sub-font-size", it)
         },
       ) {
         Icon(Icons.RoundedFilled.FormatSize, null)
@@ -255,8 +256,8 @@ fun SubtitleSettingsTypographyCard(
           borderStyle,
           onValueChange = {
             preferences.borderStyle.set(it)
-            MPVLib.setPropertyString("sub-border-style", it.value)
-            MPVLib.setPropertyString("secondary-sub-border-style", it.value)
+            PlaybackSession.setPropertyString("sub-border-style", it.value)
+            PlaybackSession.setPropertyString("secondary-sub-border-style", it.value)
           },
           title = { Text(stringResource(R.string.player_sheets_subtitles_border_style)) },
           valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
@@ -272,10 +273,10 @@ fun SubtitleSettingsTypographyCard(
         valueText = (borderSize ?: preferences.borderSize.get()).toString(),
         onChange = {
           preferences.borderSize.set(it)
-          MPVLib.setPropertyInt("sub-border-size", it)
-          MPVLib.setPropertyInt("sub-outline-size", it)
-          MPVLib.setPropertyInt("secondary-sub-border-size", it)
-          MPVLib.setPropertyInt("secondary-sub-outline-size", it)
+          PlaybackSession.setPropertyInt("sub-border-size", it)
+          PlaybackSession.setPropertyInt("sub-outline-size", it)
+          PlaybackSession.setPropertyInt("secondary-sub-border-size", it)
+          PlaybackSession.setPropertyInt("secondary-sub-outline-size", it)
         },
         max = 20,
         icon = { Icon(Icons.RoundedFilled.BorderColor, null) },
@@ -290,8 +291,8 @@ fun SubtitleSettingsTypographyCard(
         onChange = {
           localShadowOffset = it
           preferences.shadowOffset.set(it)
-          MPVLib.setPropertyInt("sub-shadow-offset", it)
-          MPVLib.setPropertyInt("secondary-sub-shadow-offset", it)
+          PlaybackSession.setPropertyInt("sub-shadow-offset", it)
+          PlaybackSession.setPropertyInt("secondary-sub-shadow-offset", it)
         },
         min = -20,
         max = 20,
@@ -312,17 +313,17 @@ fun resetTypography(preferences: SubtitlesPreferences) {
   val borderStyle = preferences.borderStyle.deleteAndGet().value
 
   for (prefix in listOf("sub-", "secondary-sub-")) {
-    MPVLib.setPropertyBoolean("${prefix}bold", bold)
-    MPVLib.setPropertyBoolean("${prefix}italic", italic)
-    MPVLib.setPropertyString("${prefix}justify", justify)
-    MPVLib.setPropertyString("${prefix}font", font)
-    MPVLib.setPropertyInt("${prefix}font-size", fontSize)
-    MPVLib.setPropertyInt("${prefix}border-size", borderSize)
-    MPVLib.setPropertyInt("${prefix}outline-size", borderSize)
-    MPVLib.setPropertyInt("${prefix}shadow-offset", shadowOffset)
-    MPVLib.setPropertyString("${prefix}border-style", borderStyle)
+    PlaybackSession.setPropertyBoolean("${prefix}bold", bold)
+    PlaybackSession.setPropertyBoolean("${prefix}italic", italic)
+    PlaybackSession.setPropertyString("${prefix}justify", justify)
+    PlaybackSession.setPropertyString("${prefix}font", font)
+    PlaybackSession.setPropertyInt("${prefix}font-size", fontSize)
+    PlaybackSession.setPropertyInt("${prefix}border-size", borderSize)
+    PlaybackSession.setPropertyInt("${prefix}outline-size", borderSize)
+    PlaybackSession.setPropertyInt("${prefix}shadow-offset", shadowOffset)
+    PlaybackSession.setPropertyString("${prefix}border-style", borderStyle)
   }
-  MPVLib.setPropertyBoolean("sub-ass-justify", false)
+  PlaybackSession.setPropertyBoolean("sub-ass-justify", false)
 }
 
 enum class SubtitlesBorderStyle(

@@ -12,8 +12,8 @@ package app.gyrolet.mpvrx.ui.player.anime4k
 import android.content.Context
 import android.util.Log
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.ThermalMonitor
-import `is`.xyz.mpv.MPVLib
 
 internal data class Anime4KSelection(
   val mode: Anime4KManager.Mode,
@@ -26,8 +26,8 @@ internal fun selectThermalSafeAnime4K(
   quality: Anime4KManager.Quality,
   enableIn4k: Boolean = false,
 ): Anime4KSelection {
-  val width = MPVLib.getPropertyInt("video-params/w") ?: 0
-  val height = MPVLib.getPropertyInt("video-params/h") ?: 0
+  val width = PlaybackSession.getPropertyInt("video-params/w") ?: 0
+  val height = PlaybackSession.getPropertyInt("video-params/h") ?: 0
   val pixels = width.toLong() * height.toLong()
 
   if (!enableIn4k && pixels >= 3840L * 2160L) {
@@ -75,10 +75,10 @@ internal fun selectRuntimeStableAnime4K(
     }
   }
 
-  val droppedFrames = MPVLib.getPropertyInt("drop-frame-count") ?: 0
-  val delayedFrames = MPVLib.getPropertyInt("vo-delayed-frame-count") ?: 0
-  val mistimedFrames = MPVLib.getPropertyInt("mistimed-frame-count") ?: 0
-  val voRenderMs = MPVLib.getPropertyDouble("vo-delayed-frame-average-ms") ?: 0.0
+  val droppedFrames = PlaybackSession.getPropertyInt("drop-frame-count") ?: 0
+  val delayedFrames = PlaybackSession.getPropertyInt("vo-delayed-frame-count") ?: 0
+  val mistimedFrames = PlaybackSession.getPropertyInt("mistimed-frame-count") ?: 0
+  val voRenderMs = PlaybackSession.getPropertyDouble("vo-delayed-frame-average-ms") ?: 0.0
 
   // Runtime pressure guard:
   // If renderer starts falling behind for sustained periods, aggressively lower Anime4K load.
@@ -135,10 +135,10 @@ internal fun applyAnime4KShaderChain(
 internal fun applyAnime4KStabilityOptions(useVulkan: Boolean) {
   // OpenGL-only tuning should not be pushed onto the Vulkan backend.
   if (!useVulkan) {
-    MPVLib.setOptionString("opengl-pbo", "yes")
-    MPVLib.setOptionString("opengl-early-flush", "no")
+    PlaybackSession.setOptionString("opengl-pbo", "yes")
+    PlaybackSession.setOptionString("opengl-early-flush", "no")
   }
-  MPVLib.setOptionString("vd-lavc-dr", "yes")
+  PlaybackSession.setOptionString("vd-lavc-dr", "yes")
 }
 
 private inline fun withPreservedVideoGeometry(block: () -> Unit) {
@@ -152,21 +152,21 @@ private fun captureVideoGeometry(): VideoGeometrySnapshot =
     doubles =
       VIDEO_GEOMETRY_DOUBLE_PROPS
         .mapNotNull { prop ->
-          MPVLib.getPropertyDouble(prop)?.let { prop to it }
+          PlaybackSession.getPropertyDouble(prop)?.let { prop to it }
         }.toMap(),
     strings =
       VIDEO_GEOMETRY_STRING_PROPS
         .mapNotNull { prop ->
-          MPVLib.getPropertyString(prop)?.takeIf { it.isNotBlank() }?.let { prop to it }
+          PlaybackSession.getPropertyString(prop)?.takeIf { it.isNotBlank() }?.let { prop to it }
         }.toMap(),
   )
 
 private fun restoreVideoGeometry(snapshot: VideoGeometrySnapshot) {
   snapshot.doubles.forEach { (prop, value) ->
-    runCatching { MPVLib.setPropertyDouble(prop, value) }
+    runCatching { PlaybackSession.setPropertyDouble(prop, value) }
   }
   snapshot.strings.forEach { (prop, value) ->
-    runCatching { MPVLib.setPropertyString(prop, value) }
+    runCatching { PlaybackSession.setPropertyString(prop, value) }
   }
 }
 
@@ -193,7 +193,7 @@ private val VIDEO_GEOMETRY_STRING_PROPS =
   )
 
 private fun currentShaderList(): List<String> =
-  MPVLib
+  PlaybackSession
     .getPropertyString("glsl-shaders")
     ?.split(":")
     ?.map { it.trim() }
@@ -201,7 +201,7 @@ private fun currentShaderList(): List<String> =
     .orEmpty()
 
 private fun setShaderList(shaderPaths: List<String>) {
-  MPVLib.setPropertyString("glsl-shaders", shaderPaths.joinToString(":"))
+  PlaybackSession.setPropertyString("glsl-shaders", shaderPaths.joinToString(":"))
 }
 
 private fun isBuiltInAnime4KShaderPath(path: String): Boolean {

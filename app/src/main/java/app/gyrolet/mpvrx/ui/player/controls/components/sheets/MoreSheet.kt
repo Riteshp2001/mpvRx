@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -59,7 +61,6 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.theme.spacing
-import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -215,32 +216,32 @@ fun MoreSheet(
               )
             },
             onClick = {
-              val isConsoleOpen = MPVLib.getPropertyBoolean("user-data/mpv/console/open") == true
+              val isConsoleOpen = PlaybackSession.getPropertyBoolean("user-data/mpv/console/open") == true
 
               // If we are choosing any page OTHER than Console, close the console if it's currently open
               if (page != 7 && isConsoleOpen) {
-                MPVLib.command("script-message-to", "console", "disable")
+                PlaybackSession.command("script-message-to", "console", "disable")
               }
 
               when (page) {
                 0 -> {
-                  if (statisticsPage in 1..5) MPVLib.command("script-binding", "stats/display-stats-toggle")
+                  if (statisticsPage in 1..5) PlaybackSession.command("script-binding", "stats/display-stats-toggle")
                 }
                 6 -> {
-                  if (statisticsPage in 1..5) MPVLib.command("script-binding", "stats/display-stats-toggle")
+                  if (statisticsPage in 1..5) PlaybackSession.command("script-binding", "stats/display-stats-toggle")
                 }
                 7 -> {
-                  if (statisticsPage in 1..5) MPVLib.command("script-binding", "stats/display-stats-toggle")
+                  if (statisticsPage in 1..5) PlaybackSession.command("script-binding", "stats/display-stats-toggle")
                   // Enable console only if it is not already open
                   if (!isConsoleOpen) {
-                    MPVLib.command("script-message-to", "console", "enable")
+                    PlaybackSession.command("script-message-to", "console", "enable")
                   }
                 }
                 else -> {
                   if (statisticsPage == 0 || statisticsPage == 6 || statisticsPage == 7) {
-                    MPVLib.command("script-binding", "stats/display-stats-toggle")
+                    PlaybackSession.command("script-binding", "stats/display-stats-toggle")
                   }
-                  MPVLib.command("script-binding", "stats/display-page-$page")
+                  PlaybackSession.command("script-binding", "stats/display-page-$page")
                 }
               }
               advancedPreferences.enabledStatisticsPage.set(page)

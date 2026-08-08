@@ -11,19 +11,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
-import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
-import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -76,27 +72,10 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
   val isPlaybackActive: StateFlow<Boolean> =
-    // Guard against SIGABRT: MPVLib.propBoolean["pause"] calls into native code and crashes
-    // with "pthread_mutex_lock on destroyed mutex" if libmpv is not initialized.
-    // Solution: poll MediaPlaybackService.isRunning() every second. Once running, collect the
-    // live MPV flow. When the service stops, fall back to false. This makes the highlight
-    // reactive (works even if the player is started after the Music tab is opened).
-    flow {
-      while (true) {
-        if (MediaPlaybackService.isRunning()) {
-          // Service is up — collect the real MPV flow until it terminates or errors
-          MPVLib.propBoolean["pause"]
-            .map { paused -> paused == false }
-            .catch { emit(false) }
-            .collect { emit(it) }
-        } else {
-          emit(false)
-        }
-        kotlinx.coroutines.delay(1_000)
-      }
-    }
-    .distinctUntilChanged()
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    PlaybackSession.state
+      .map { session -> session.currentItem != null && !session.paused }
+      .distinctUntilChanged()
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
   val filteredSongs: StateFlow<List<MusicSong>> = combine(
     _songs, _searchQuery, _sortField, _sortOrder

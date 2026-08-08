@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
@@ -51,7 +52,7 @@ fun EditConnectionSheet(
   connection: NetworkConnection,
   isOpen: Boolean,
   onDismiss: () -> Unit,
-  onSave: (NetworkConnection) -> Unit,
+  onSave: (NetworkConnection, Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   if (!isOpen) return
@@ -61,11 +62,11 @@ fun EditConnectionSheet(
   var host by remember(connection.id) { mutableStateOf(connection.host) }
   var port by remember(connection.id) { mutableStateOf(connection.port.toString()) }
   var username by remember(connection.id) { mutableStateOf(connection.username) }
-  var password by remember(connection.id) { mutableStateOf(connection.password) }
+  var password by remember(connection.id) { mutableStateOf("") }
+  var clearPassword by remember(connection.id) { mutableStateOf(false) }
   var path by remember(connection.id) { mutableStateOf(connection.path) }
   var isAnonymous by remember(connection.id) { mutableStateOf(connection.isAnonymous) }
   var useHttps by remember(connection.id) { mutableStateOf(connection.useHttps) }
-  var passwordVisible by remember { mutableStateOf(false) }
   var protocolMenuExpanded by remember { mutableStateOf(false) }
 
   val handleDismiss = {
@@ -75,17 +76,17 @@ fun EditConnectionSheet(
   val handleSave = {
     val updatedConnection =
       connection.copy(
-        name = name,
+        name = name.trim(),
         protocol = protocol,
-        host = host,
+        host = host.trim(),
         port = port.toIntOrNull() ?: protocol.defaultPort,
-        username = if (isAnonymous) "" else username,
+        username = if (isAnonymous) "" else username.trim(),
         password = if (isAnonymous) "" else password,
         path = path.ifBlank { "/" },
         isAnonymous = isAnonymous,
         useHttps = useHttps,
       )
-    onSave(updatedConnection)
+    onSave(updatedConnection, isAnonymous || clearPassword)
   }
 
   AlertDialog(
@@ -295,18 +296,44 @@ fun EditConnectionSheet(
           // Password
           OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+              password = it
+              if (it.isNotEmpty()) clearPassword = false
+            },
             label = {
               Text(
                 androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_password),
+                  .stringResource(
+                    app.gyrolet.mpvrx.R.string.ui_new_password_keep_existing,
+                  ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
               )
             },
             modifier = Modifier.weight(0.50f),
             singleLine = true,
+            enabled = !isAnonymous && !clearPassword,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+          )
+        }
+
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Checkbox(
+            checked = clearPassword,
+            onCheckedChange = { clear ->
+              clearPassword = clear
+              if (clear) password = ""
+            },
             enabled = !isAnonymous,
+          )
+          Spacer(modifier = Modifier.width(8.dp))
+          Text(
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_clear_saved_password),
           )
         }
       }

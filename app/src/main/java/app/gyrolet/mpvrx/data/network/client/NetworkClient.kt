@@ -52,7 +52,10 @@ interface NetworkClient {
     Result.failure(UnsupportedOperationException("File size is not supported by this client"))
 
   /**
-   * Get file URI for playback
+   * Get a credential-free origin URI for diagnostics and anonymous sources.
+   *
+   * Authenticated playback must use [app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy]
+   * so secrets never enter intents, playlists, history, or logs.
    */
   suspend fun getFileUri(path: String): Result<Uri>
 }

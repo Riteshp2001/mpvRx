@@ -47,6 +47,12 @@ interface NetworkConnectionDao {
     timestamp: Long,
   )
 
+  @Query("UPDATE network_connections SET password = :encryptedPassword WHERE id = :id")
+  suspend fun updateEncryptedPassword(
+    id: Long,
+    encryptedPassword: String,
+  )
+
   @Query("DELETE FROM network_connections WHERE id = :id")
   suspend fun deleteById(id: Long)
 

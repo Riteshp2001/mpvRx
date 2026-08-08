@@ -12,71 +12,69 @@ package app.gyrolet.mpvrx.data.network.client
 import android.net.Uri
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
+import app.gyrolet.mpvrx.domain.network.NetworkPath
 import com.thegrizzlylabs.sardineandroid.DavResource
 import com.thegrizzlylabs.sardineandroid.Sardine
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
+import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 import java.io.InputStream
 
 class WebDavClient(
   private val connection: NetworkConnection,
 ) : NetworkClient {
   companion object {
-    private const val TAG = "WebDavClient"
     private val rangeHttpClient by lazy { OkHttpClient() }
+    private val contentRangePattern = Regex("bytes\\s+(\\d+)-(\\d+)/(\\d+|\\*)", RegexOption.IGNORE_CASE)
   }
 
-  // Note: Sardine-Android uses OkHttp which properly handles UTF-8 encoding by default
   private var sardine: Sardine? = null
 
-  /**
-   * Build full WebDAV URL from connection and relative path
-   * Standard approach: protocol://host:port/basePath/relativePath
-   * relativePath should be relative to the basePath (connection.path)
-   */
-  private fun buildUrl(relativePath: String): String {
-    val protocol = if (connection.useHttps) "https" else "http"
-    val basePath = connection.path.trim('/')
-    val cleanPath = relativePath.trim('/')
+  /** Builds a URL from decoded path segments so credentials and reserved characters cannot leak. */
+  private fun buildUrl(
+    relativePath: String,
+    trailingSlash: Boolean = false,
+  ): String {
+    val host = connection.host.trim().removePrefix("[").removeSuffix("]")
+    val builder =
+      HttpUrl
+        .Builder()
+        .scheme(if (connection.useHttps) "https" else "http")
+        .host(host)
+        .port(connection.port)
 
-    // If relativePath is "/" or empty, it means we're at the root of the connection
-    // In that case, just use the basePath (connection.path)
-    return when {
-      cleanPath.isEmpty() || cleanPath == "/" -> {
-        if (basePath.isEmpty()) {
-          "$protocol://${connection.host}:${connection.port}/"
-        } else {
-          "$protocol://${connection.host}:${connection.port}/$basePath/"
-        }
-      }
-      basePath.isEmpty() -> "$protocol://${connection.host}:${connection.port}/$cleanPath"
-      else -> "$protocol://${connection.host}:${connection.port}/$basePath/$cleanPath"
-    }
+    NetworkPath.from(connection.path).segments.forEach(builder::addPathSegment)
+    NetworkPath.from(relativePath).segments.forEach(builder::addPathSegment)
+    if (trailingSlash) builder.addPathSegment("")
+    return builder.build().toString()
   }
 
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
-        val client = OkHttpSardine()
+        val candidate = OkHttpSardine()
         if (!connection.isAnonymous) {
-          client.setCredentials(connection.username, connection.password)
+          candidate.setCredentials(connection.username, connection.password)
         }
 
-        // Validate with WebDAV's native PROPFIND operation. Some compliant servers do not
-        // implement HEAD, which Sardine's exists() uses.
-        val testUrl = buildUrl("")
-        if (client.list(testUrl, 0).isEmpty()) {
-          throw IllegalStateException("WebDAV base path returned no resources")
+        if (candidate.list(buildUrl("", trailingSlash = true), 0).isEmpty()) {
+          throw IOException("WebDAV base path returned no resources")
         }
 
-        sardine = client
+        sardine = candidate
         Result.success(Unit)
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        sardine = null
+        throw cancellation
+      } catch (error: Exception) {
+        sardine = null
+        Result.failure(error)
       }
     }
 
@@ -91,62 +89,59 @@ class WebDavClient(
   override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
-        val client = sardine ?: return@withContext Result.failure(Exception("Not connected"))
-
-        val url = buildUrl(path)
-        val resources = client.list(url)
+        val client = sardine ?: return@withContext Result.failure(IOException("Not connected"))
+        val directory = NetworkPath.from(path)
+        val directoryUrl = buildUrl(directory.value, trailingSlash = true)
+        val requestedWirePath = java.net.URI(directoryUrl).path.trimEnd('/')
+        val resources = client.list(directoryUrl)
 
         val files =
           resources
-            .drop(1) // Skip the directory itself
-            .map { resource: DavResource ->
-              val resourceName = resource.name ?: ""
-
-              // Build child path by appending filename to current path
-              val filePath =
-                if (path.isEmpty() || path == "/") {
-                  resourceName
-                } else {
-                  "${path.trimEnd('/')}/$resourceName"
-                }
-
-              NetworkFile(
-                name = resourceName,
-                path = filePath,
-                isDirectory = resource.isDirectory,
-                size = resource.contentLength ?: 0,
-                lastModified = resource.modified?.time ?: 0,
-                mimeType = if (!resource.isDirectory) getMimeType(resourceName) else null,
-              )
+            .filterNot { resource -> resource.path.trimEnd('/') == requestedWirePath }
+            .mapNotNull { resource: DavResource ->
+              val resourceName = resource.name?.trimEnd('/')?.takeIf(String::isNotBlank)
+                ?: return@mapNotNull null
+              runCatching {
+                val filePath = directory.child(resourceName)
+                NetworkFile(
+                  name = resourceName,
+                  path = filePath.value,
+                  isDirectory = resource.isDirectory,
+                  size = resource.contentLength ?: -1L,
+                  lastModified = resource.modified?.time ?: 0,
+                  mimeType = if (!resource.isDirectory) NetworkMimeTypes.forFileName(resourceName) else null,
+                )
+              }.getOrNull()
             }
 
         Result.success(files)
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
-  /**
-   * Get file size for a specific file path
-   * This is useful for the proxy server to support range requests
-   */
   override suspend fun getFileSize(path: String): Result<Long> =
     withContext(Dispatchers.IO) {
       try {
-        val client = sardine ?: return@withContext Result.failure(Exception("Not connected"))
-
-        val url = buildUrl(path)
-
-        // Use PROPFIND to get file properties including size
-        val resources = client.list(url, 0) // depth 0 = only the resource itself
-        if (resources.isNotEmpty() && !resources[0].isDirectory) {
-          val size = resources[0].contentLength ?: -1L
-          Result.success(size)
+        val client = sardine ?: return@withContext Result.failure(IOException("Not connected"))
+        val resources = client.list(buildUrl(NetworkPath.from(path).value), 0)
+        val resource = resources.firstOrNull()
+        if (resource == null || resource.isDirectory) {
+          Result.failure(IOException("File not found or is a directory"))
         } else {
-          Result.failure(Exception("File not found or is a directory"))
+          val size = resource.contentLength
+          if (size == null || size < 0L) {
+            Result.failure(IOException("WebDAV server did not provide a file size"))
+          } else {
+            Result.success(size)
+          }
         }
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
@@ -155,81 +150,62 @@ class WebDavClient(
     offset: Long,
   ): Result<InputStream> =
     withContext(Dispatchers.IO) {
+      require(offset >= 0L) { "Stream offset must not be negative" }
       try {
         if (offset > 0L) {
-          return@withContext getRangedFileStream(path, offset)
+          return@withContext getRangedFileStream(NetworkPath.from(path), offset)
         }
 
-        // Create a fresh Sardine client for this stream to avoid connection conflicts
         val streamClient = OkHttpSardine()
-
         if (!connection.isAnonymous) {
           streamClient.setCredentials(connection.username, connection.password)
         }
-
-        val url = buildUrl(path)
-        val rawStream = streamClient.get(url)
-
-        if (rawStream == null) {
-          return@withContext Result.failure(Exception("Failed to open WebDAV stream"))
-        }
-
-        // Wrap the stream
-        val wrappedStream =
-          object : InputStream() {
-            override fun read(): Int = rawStream.read()
-
-            override fun read(b: ByteArray): Int = rawStream.read(b)
-
-            override fun read(
-              b: ByteArray,
-              off: Int,
-              len: Int,
-            ): Int = rawStream.read(b, off, len)
-
-            override fun available(): Int = rawStream.available()
-
-            override fun close() {
-              try {
-                rawStream.close()
-              } catch (e: Exception) {
-                // Ignore
-              }
-            }
-          }
-
-        Result.success(wrappedStream)
-      } catch (e: Exception) {
-        Result.failure(e)
+        Result.success(streamClient.get(buildUrl(NetworkPath.from(path).value)))
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
   private fun getRangedFileStream(
-    path: String,
+    path: NetworkPath,
     offset: Long,
   ): Result<InputStream> {
     val requestBuilder =
       Request
         .Builder()
-        .url(buildUrl(path))
+        .url(buildUrl(path.value))
         .get()
-        .addHeader("Range", "bytes=$offset-")
+        .header("Range", "bytes=$offset-")
 
     if (!connection.isAnonymous) {
-      requestBuilder.addHeader(
-        "Authorization",
-        Credentials.basic(connection.username, connection.password),
-      )
+      requestBuilder.header("Authorization", Credentials.basic(connection.username, connection.password))
     }
 
     val response = rangeHttpClient.newCall(requestBuilder.build()).execute()
-    if (!response.isSuccessful && response.code != 206) {
+    val contentRange = response.header("Content-Range")
+    val rangeMatch = contentRangePattern.matchEntire(contentRange.orEmpty())
+    val returnedStart = rangeMatch?.groupValues?.get(1)?.toLongOrNull()
+    val returnedEnd = rangeMatch?.groupValues?.get(2)?.toLongOrNull()
+
+    // A successful HTTP 200 means the server ignored Range. Returning it as if it started at
+    // [offset] corrupts seeking, so only a validated 206 response is accepted.
+    if (response.code != 206 || returnedStart != offset || returnedEnd == null || returnedEnd < offset) {
       response.close()
-      return Result.failure(Exception("Failed to open ranged WebDAV stream: HTTP ${response.code}"))
+      return Result.failure(
+        IOException(
+          if (response.code == 200) {
+            "WebDAV server ignored the requested byte range"
+          } else {
+            "WebDAV ranged request failed with HTTP ${response.code}"
+          },
+        ),
+      )
     }
 
     val rawStream = response.body.byteStream()
-    val wrappedStream =
+    return Result.success(
       object : InputStream() {
         override fun read(): Int = rawStream.read()
 
@@ -245,54 +221,21 @@ class WebDavClient(
 
         override fun close() {
           runCatching { rawStream.close() }
-          runCatching { response.close() }
+          response.close()
         }
-      }
-    return Result.success(wrappedStream)
+      },
+    )
   }
 
+  /** Credential-free origin URI. Authenticated playback must use the loopback proxy. */
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
-        val protocol = if (connection.useHttps) "https" else "http"
-        val basePath = connection.path.trim('/')
-        val cleanPath = path.trim('/')
-
-        val fullPath =
-          when {
-            cleanPath.isEmpty() -> basePath
-            basePath.isEmpty() -> cleanPath
-            else -> "$basePath/$cleanPath"
-          }
-
-        // Build WebDAV URI with credentials embedded for mpv
-        val uriString =
-          if (connection.isAnonymous) {
-            "$protocol://${connection.host}:${connection.port}/$fullPath"
-          } else {
-            "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}/$fullPath"
-          }
-
-        Result.success(Uri.parse(uriString))
-      } catch (e: Exception) {
-        Result.failure(e)
+        Result.success(Uri.parse(buildUrl(NetworkPath.from(path).value)))
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
-
-  private fun getMimeType(fileName: String): String? {
-    val extension = fileName.substringAfterLast('.', "").lowercase()
-    return when (extension) {
-      "mp4", "m4v" -> "video/mp4"
-      "mkv" -> "video/x-matroska"
-      "avi" -> "video/x-msvideo"
-      "mov" -> "video/quicktime"
-      "wmv" -> "video/x-ms-wmv"
-      "flv" -> "video/x-flv"
-      "webm" -> "video/webm"
-      "mpeg", "mpg" -> "video/mpeg"
-      "3gp" -> "video/3gpp"
-      "ts" -> "video/mp2t"
-      else -> null
-    }
-  }
 }

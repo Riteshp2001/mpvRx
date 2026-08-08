@@ -110,7 +110,7 @@ object AudioPreferencesScreen : Screen {
               .padding(padding),
         ) {
           item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_audio))
+            PreferenceSectionHeader(title = stringResource(R.string.pref_media_library_section))
           }
 
           item {
@@ -169,53 +169,60 @@ object AudioPreferencesScreen : Screen {
                   sliderValue = minimumAudioDurationSeconds.toFloat(),
                 )
               }
+            }
+          }
 
-              PreferenceDivider()
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_section_appearance))
+          }
+
+          item {
+            PreferenceCard {
               val audioVisualizerStyle by preferences.audioVisualizerStyle.collectAsState()
               ListPreference(
-                  value = audioVisualizerStyle,
-                  onValueChange = { preferences.audioVisualizerStyle.set(it) },
-                  values = AudioVisualizerStyle.entries,
-                  valueToText = { AnnotatedString(resources.getString(it.title)) },
-                  title = { Text(stringResource(R.string.pref_audio_visualizer_style_title)) },
-                  summary = {
-                    Column {
+                value = audioVisualizerStyle,
+                onValueChange = { preferences.audioVisualizerStyle.set(it) },
+                values = AudioVisualizerStyle.entries,
+                valueToText = { AnnotatedString(resources.getString(it.title)) },
+                title = { Text(stringResource(R.string.pref_audio_visualizer_style_title)) },
+                summary = {
+                  Column {
+                    Text(
+                      stringResource(audioVisualizerStyle.title),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                    if (audioVisualizerStyle == AudioVisualizerStyle.Galaxy ||
+                      audioVisualizerStyle == AudioVisualizerStyle.Cuboid
+                    ) {
                       Text(
-                        stringResource(audioVisualizerStyle.title),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                      if (audioVisualizerStyle == AudioVisualizerStyle.Galaxy ||
-                        audioVisualizerStyle == AudioVisualizerStyle.Cuboid
-                      ) {
-                        Text(
-                          text =
-                            if (audioVisualizerStyle == AudioVisualizerStyle.Cuboid) {
-                              "Inspired by the Cuboid Warptunnel concept by Niklas Knaack"
-                            } else {
-                              stringResource(R.string.pref_audio_visualizer_galaxy_credit)
-                            },
-                          color = MaterialTheme.colorScheme.primary,
-                          style = MaterialTheme.typography.bodySmall,
-                          textDecoration = TextDecoration.Underline,
-                          modifier =
-                            Modifier.clickable {
-                              context.startActivity(
-                                Intent(
-                                  Intent.ACTION_VIEW,
-                                  Uri.parse(
-                                    if (audioVisualizerStyle == AudioVisualizerStyle.Cuboid) {
-                                      "https://codepen.io/NiklasKnaack/pen/WyWqja"
-                                    } else {
-                                      "https://codepen.io/Zain-Raza-the-sasster/pen/ByBeKqa"
-                                    },
-                                  ),
+                        text =
+                          if (audioVisualizerStyle == AudioVisualizerStyle.Cuboid) {
+                            "Inspired by the Cuboid Warptunnel concept by Niklas Knaack"
+                          } else {
+                            stringResource(R.string.pref_audio_visualizer_galaxy_credit)
+                          },
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        textDecoration = TextDecoration.Underline,
+                        modifier =
+                          Modifier.clickable {
+                            context.startActivity(
+                              Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse(
+                                  if (audioVisualizerStyle == AudioVisualizerStyle.Cuboid) {
+                                    "https://codepen.io/NiklasKnaack/pen/WyWqja"
+                                  } else {
+                                    "https://codepen.io/Zain-Raza-the-sasster/pen/ByBeKqa"
+                                  },
                                 ),
-                              )
-                            },
-                        )
-                      }
+                              ),
+                            )
+                          },
+                      )
                     }
-                  },
+                  }
+                },
               )
 
               PreferenceDivider()
@@ -247,8 +254,15 @@ object AudioPreferencesScreen : Screen {
                   )
                 },
               )
+            }
+          }
 
-              PreferenceDivider()
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_section_playback))
+          }
+
+          item {
+            PreferenceCard {
               val preferredLanguages by preferences.preferredLanguages.collectAsState()
               TextFieldPreference(
                 value = preferredLanguages,

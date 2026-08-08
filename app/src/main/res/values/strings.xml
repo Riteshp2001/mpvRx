@@ -1118,6 +1118,8 @@
   <string name="ui_use_https_secure_connection">Use HTTPS (Secure Connection)</string>
   <string name="ui_username">Username</string>
   <string name="ui_password">Password</string>
+  <string name="ui_new_password_keep_existing">New password (blank keeps saved password)</string>
+  <string name="ui_clear_saved_password">Clear saved password</string>
   <string name="ui_save">Save</string>
   <string name="ui_create_new_playlist">Create New Playlist</string>
   <string name="ui_existing_playlists">Existing Playlists</string>

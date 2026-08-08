@@ -10,9 +10,10 @@
 package app.gyrolet.mpvrx.utils.media
 
 import android.util.Log
-import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
+import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.repository.NetworkRepository
-import `is`.xyz.mpv.MPVLib
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -32,8 +33,10 @@ object SubtitleOps : KoinComponent {
     videoFilePath: String,
     videoFileName: String,
     networkConnectionId: Long = -1L,
+    expectedGeneration: Long? = null,
   ) = withContext(Dispatchers.IO) {
     try {
+      if (!isGenerationCurrent(expectedGeneration)) return@withContext
       // Skip file descriptor URIs (these don't have a parent directory concept)
       if (videoFilePath.startsWith("fd://")) return@withContext
 
@@ -43,7 +46,7 @@ object SubtitleOps : KoinComponent {
       // Check if this is a network file with connection ID (SMB/FTP/WebDAV via proxy)
       if (networkConnectionId != -1L) {
         // For network files, scan the directory using network client
-        autoloadNetworkFileSubtitles(videoFilePath, videoFileName, networkConnectionId)
+        autoloadNetworkFileSubtitles(videoFilePath, videoFileName, networkConnectionId, expectedGeneration)
         return@withContext
       }
 
@@ -55,8 +58,10 @@ object SubtitleOps : KoinComponent {
         return@withContext
       } else {
         // For local files, scan the directory
-        autoloadLocalSubtitles(videoFilePath, videoFileName)
+        autoloadLocalSubtitles(videoFilePath, videoFileName, expectedGeneration)
       }
+    } catch (cancellation: CancellationException) {
+      throw cancellation
     } catch (e: Exception) {
       Log.e(TAG, "Error loading subtitles", e)
     }
@@ -70,6 +75,7 @@ object SubtitleOps : KoinComponent {
     videoFilePath: String,
     videoFileName: String,
     networkConnectionId: Long,
+    expectedGeneration: Long?,
   ) {
     try {
       Log.d(TAG, "Autoloading subtitles for network file: $videoFilePath")
@@ -82,11 +88,8 @@ object SubtitleOps : KoinComponent {
       }
 
       // Get the directory path (parent of the video file)
-      val directoryPath = videoFilePath.substringBeforeLast('/', "")
-      if (directoryPath.isEmpty()) {
-        Log.w(TAG, "Could not determine directory path from: $videoFilePath")
-        return
-      }
+      val normalizedVideoPath = NetworkPath.from(videoFilePath)
+      val directoryPath = NetworkPath.from(normalizedVideoPath.segments.dropLast(1).joinToString("/")).value
 
       Log.d(TAG, "Scanning directory: $directoryPath")
 
@@ -101,6 +104,7 @@ object SubtitleOps : KoinComponent {
       }
 
       val files = filesResult.getOrNull() ?: emptyList()
+      if (!isGenerationCurrent(expectedGeneration)) return
 
       // Filter for subtitle files that match the video base name
       val subtitles =
@@ -118,12 +122,12 @@ object SubtitleOps : KoinComponent {
       Log.d(TAG, "Found ${subtitles.size} subtitle file(s)")
 
       // Load subtitles via proxy
-      val proxy = NetworkStreamingProxy.getInstance()
-
       // Dispatch JNI calls to the Main thread to prevent concurrent JNI usage/crashes.
       withContext(Dispatchers.Main) {
         subtitles.forEachIndexed { index, subtitle ->
+          var registeredProxyUrl: String? = null
           try {
+            if (!isGenerationCurrent(expectedGeneration)) return@forEachIndexed
             // Extract just the filename without path for display
             // Handle both forward slashes and backslashes
             val displayName =
@@ -137,44 +141,43 @@ object SubtitleOps : KoinComponent {
               "Processing subtitle - name: '${subtitle.name}', displayName: '$displayName', path: '${subtitle.path}'",
             )
 
-            // Create a URL-safe filename for the streamId
-            val urlSafeFilename =
-              displayName
-                .replace(" ", ".")
-                .replace(Regex("[^a-zA-Z0-9._-]"), "")
-
-            // Register subtitle stream with proxy using the filename in streamId
-            val streamId = urlSafeFilename
             val proxyUrl =
-              proxy.registerStream(
-                streamId = streamId,
-                connection = connection,
+              PlaybackSession.registerAuxiliaryNetworkStream(
+                connectionId = connection.id,
                 filePath = subtitle.path,
                 fileSize = subtitle.size,
                 mimeType = "text/plain",
-              )
-
-            // Get current subtitle track count before adding
-            val trackCountBefore = MPVLib.getPropertyInt("track-list/count") ?: 0
+                expectedGeneration = expectedGeneration,
+              ) ?: return@forEachIndexed
+            registeredProxyUrl = proxyUrl
 
             // Use "select" for the first subtitle, "auto" for others
             val flag = if (index == 0) "select" else "auto"
-            MPVLib.command("sub-add", proxyUrl, flag)
-
-            // Set the title for the newly added subtitle track
-            val trackCountAfter = MPVLib.getPropertyInt("track-list/count") ?: 0
-            if (trackCountAfter > trackCountBefore) {
-              val newTrackIndex = trackCountAfter - 1
-              MPVLib.setPropertyString("track-list/$newTrackIndex/title", displayName)
-              Log.d(TAG, "Loaded network subtitle: '$displayName' (track $newTrackIndex) via proxy (flag=$flag)")
-            } else {
-              Log.d(TAG, "Loaded network subtitle: '$displayName' via proxy (flag=$flag)")
+            val added =
+              expectedGeneration?.let { generation ->
+                PlaybackSession.commandForGeneration(generation, "sub-add", proxyUrl, flag, displayName)
+              } ?: run {
+                PlaybackSession.command("sub-add", proxyUrl, flag, displayName)
+                true
+              }
+            if (!added) {
+              PlaybackSession.unregisterAuxiliaryNetworkStream(proxyUrl)
+              registeredProxyUrl = null
+              return@forEachIndexed
             }
+            Log.d(TAG, "Loaded network subtitle: '$displayName' via proxy (flag=$flag)")
+            registeredProxyUrl = null
+          } catch (cancellation: CancellationException) {
+            registeredProxyUrl?.let(PlaybackSession::unregisterAuxiliaryNetworkStream)
+            throw cancellation
           } catch (e: Exception) {
+            registeredProxyUrl?.let(PlaybackSession::unregisterAuxiliaryNetworkStream)
             Log.e(TAG, "Failed to load subtitle ${subtitle.name}: ${e.message}", e)
           }
         }
       }
+    } catch (cancellation: CancellationException) {
+      throw cancellation
     } catch (e: Exception) {
       Log.e(TAG, "Error autoloading network subtitles", e)
     }
@@ -183,6 +186,7 @@ object SubtitleOps : KoinComponent {
   private suspend fun autoloadLocalSubtitles(
     videoFilePath: String,
     videoFileName: String,
+    expectedGeneration: Long?,
   ) {
     val videoFile = File(videoFilePath)
     val videoDirectory = videoFile.parentFile ?: return
@@ -198,10 +202,24 @@ object SubtitleOps : KoinComponent {
     if (subtitles.isNotEmpty()) {
       withContext(Dispatchers.Main) {
         subtitles.forEachIndexed { index, subtitle ->
+          if (!isGenerationCurrent(expectedGeneration)) return@forEachIndexed
           // MPV command format: sub-add <url> [<flags> [<title>]]
           // Use "select" for the first autoloaded subtitle so it is enabled by default
           val flag = if (index == 0) "select" else "auto"
-          MPVLib.command("sub-add", subtitle.absolutePath, flag, subtitle.name)
+          val added =
+            expectedGeneration?.let { generation ->
+              PlaybackSession.commandForGeneration(
+                generation,
+                "sub-add",
+                subtitle.absolutePath,
+                flag,
+                subtitle.name,
+              )
+            } ?: run {
+              PlaybackSession.command("sub-add", subtitle.absolutePath, flag, subtitle.name)
+              true
+            }
+          if (!added) return@forEachIndexed
           Log.d(TAG, "Loaded local subtitle: ${subtitle.name} (flag=$flag)")
         }
       }
@@ -255,4 +273,7 @@ object SubtitleOps : KoinComponent {
         "pgs",
       )
   }
+
+  private fun isGenerationCurrent(expectedGeneration: Long?): Boolean =
+    expectedGeneration == null || PlaybackSession.isCurrentGeneration(expectedGeneration)
 }

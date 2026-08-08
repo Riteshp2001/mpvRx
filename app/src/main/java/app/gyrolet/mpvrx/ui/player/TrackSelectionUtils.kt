@@ -9,10 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player
 
-import `is`.xyz.mpv.MPVLib
 
 internal fun getTrackSelectionId(property: String): Int =
-  runCatching { MPVLib.getPropertyString(property)?.toIntOrNull() ?: 0 }
+  runCatching { PlaybackSession.getPropertyString(property)?.toIntOrNull() ?: 0 }
     .getOrDefault(0)
 
 internal fun setTrackSelectionId(
@@ -20,5 +19,5 @@ internal fun setTrackSelectionId(
   id: Int?,
 ) {
   val value = id?.takeIf { it > 0 }?.toString() ?: "no"
-  MPVLib.setPropertyString(property, value)
+  PlaybackSession.setPropertyString(property, value)
 }

@@ -11,7 +11,7 @@ package app.gyrolet.mpvrx.domain.hdr
 
 import android.content.Context
 import android.util.Log
-import `is`.xyz.mpv.MPVLib
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import java.io.File
 import java.io.FileOutputStream
 
@@ -61,7 +61,7 @@ class HdrToysManager(
     }
     clear()
     profile.mpvShaderPaths.forEach { shaderPath ->
-      MPVLib.command("change-list", "glsl-shaders", "append", shaderPath)
+      PlaybackSession.command("change-list", "glsl-shaders", "append", shaderPath)
     }
     return true
   }
@@ -72,21 +72,21 @@ class HdrToysManager(
       .toList()
       .asReversed()
       .forEach { shaderPath ->
-        runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", shaderPath) }
+        runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", shaderPath) }
       }
     HdrToysProfile.allShaderPaths.forEach { relPath ->
       val absolutePath = File(context.filesDir, "shaders/$relPath").absolutePath
-      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", absolutePath) }
+      runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", absolutePath) }
     }
     runCatching {
-      val activeShaders = MPVLib.getPropertyString("glsl-shaders")
+      val activeShaders = PlaybackSession.getPropertyString("glsl-shaders")
       if (!activeShaders.isNullOrEmpty()) {
         val remaining =
           activeShaders
             .split(":")
             .map { it.trim() }
             .filter { path -> path.isNotEmpty() && !path.contains("hdr-toys") }
-        MPVLib.setPropertyString("glsl-shaders", remaining.joinToString(":"))
+        PlaybackSession.setPropertyString("glsl-shaders", remaining.joinToString(":"))
       }
     }
   }

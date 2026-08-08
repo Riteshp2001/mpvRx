@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,7 +46,6 @@ import app.gyrolet.mpvrx.ui.player.Debanding
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
-import `is`.xyz.mpv.MPVLib
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
@@ -82,16 +83,16 @@ fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
                 decoderPreferences.debanding.set(it)
                 when (it) {
                   Debanding.None -> {
-                    MPVLib.setOptionString("deband", "no")
-                    MPVLib.command("vf", "remove", "@deband")
+                    PlaybackSession.setOptionString("deband", "no")
+                    PlaybackSession.command("vf", "remove", "@deband")
                   }
                   Debanding.CPU -> {
-                    MPVLib.setOptionString("deband", "no")
-                    MPVLib.command("vf", "add", "@deband:gradfun=radius=12")
+                    PlaybackSession.setOptionString("deband", "no")
+                    PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
                   }
                   Debanding.GPU -> {
-                    MPVLib.setOptionString("deband", "yes")
-                    MPVLib.command("vf", "remove", "@deband")
+                    PlaybackSession.setOptionString("deband", "yes")
+                    PlaybackSession.command("vf", "remove", "@deband")
                   }
                 }
               },
@@ -110,10 +111,10 @@ fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
           TextButton(
             onClick = {
               decoderPreferences.debanding.set(Debanding.None)
-              MPVLib.setOptionString("deband", "no")
-              MPVLib.command("vf", "remove", "@deband")
+              PlaybackSession.setOptionString("deband", "no")
+              PlaybackSession.command("vf", "remove", "@deband")
               DebandSettings.entries.forEach {
-                MPVLib.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
+                PlaybackSession.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
               }
             },
           ) {
@@ -135,7 +136,7 @@ fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
             valueText = value.toString(),
             onChange = {
               debandSettings.preference(decoderPreferences).set(it)
-              MPVLib.setPropertyInt(debandSettings.mpvProperty, it)
+              PlaybackSession.setPropertyInt(debandSettings.mpvProperty, it)
             },
             min = debandSettings.start,
             max = debandSettings.end,

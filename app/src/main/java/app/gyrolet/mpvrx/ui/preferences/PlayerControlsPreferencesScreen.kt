@@ -206,6 +206,7 @@ object PlayerControlsPreferencesScreen : Screen {
 
           item {
             val seekbarStyle by appearancePrefs.seekbarStyle.collectAsState()
+            val useWavySeekbar by playerPrefs.useWavySeekbar.collectAsState()
 
             PreferenceCard {
               SeekbarStyle.entries.forEachIndexed { index, style ->
@@ -216,6 +217,7 @@ object PlayerControlsPreferencesScreen : Screen {
                   supportingContent = {
                     SeekbarStyleLivePreview(
                       style = style,
+                      useWavySeekbar = useWavySeekbar,
                       modifier =
                         Modifier
                           .fillMaxWidth()

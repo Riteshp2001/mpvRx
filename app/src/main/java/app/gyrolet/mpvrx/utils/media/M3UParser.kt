@@ -11,35 +11,46 @@ package app.gyrolet.mpvrx.utils.media
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
-import app.gyrolet.mpvrx.ui.player.openContentFd
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import android.provider.OpenableColumns
 import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
+import java.io.FilterInputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.StringReader
+import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Credentials
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import kotlin.coroutines.resume
 
-/**
- * Data class representing a parsed M3U playlist entry
- */
 data class M3UPlaylistItem(
   val url: String,
   val title: String? = null,
-  val duration: Int = -1, // Duration in seconds, -1 if unknown
-  val tvgId: String? = null, // TVG channel ID (e.g. EPG mapping)
-  val tvgName: String? = null, // TVG display name override
-  val tvgLogo: String? = null, // Logo URL if present in EXTINF
-  val groupTitle: String? = null, // Group title for categorization
-  val licenseType: String? = null, // DRM license type (e.g. com.widevine.alpha)
-  val licenseKey: String? = null, // DRM license key URL
-  val userAgent: String? = null, // Per-stream user-agent from EXTVLCOPT
+  val duration: Int = -1,
+  val tvgId: String? = null,
+  val tvgName: String? = null,
+  val tvgLogo: String? = null,
+  val groupTitle: String? = null,
+  val licenseType: String? = null,
+  val licenseKey: String? = null,
+  val userAgent: String? = null,
 )
 
-/**
- * Result of M3U playlist parsing
- */
 sealed class M3UParseResult {
   data class Success(
     val playlistName: String,
@@ -52,472 +63,512 @@ sealed class M3UParseResult {
   ) : M3UParseResult()
 }
 
-/**
- * Parser for M3U and M3U8 playlist files.
- * Supports both simple M3U format and extended M3U format with EXTINF tags.
- * Handles relative URLs for any URI scheme, including http(s), davs://, smb://, ftp://, sftp://.
- */
-object M3UParser {
-  private const val TAG = "M3UParser"
-  private const val TIMEOUT_MS = 30_000 // 30s — generous for slow WebDAV/SMB servers
-  private const val DEFAULT_USER_AGENT = "mpvRx/1.0"
+/** Resource limits shared by every M3U entry point. */
+data class M3ULimits(
+  val maxBytes: Long = 32L * 1024 * 1024,
+  val maxLines: Int = 300_000,
+  val maxEntries: Int = 100_000,
+) {
+  init {
+    require(maxBytes > 0) { "maxBytes must be positive" }
+    require(maxLines > 0) { "maxLines must be positive" }
+    require(maxEntries > 0) { "maxEntries must be positive" }
+  }
+}
 
+/** Bounded parser/loader for simple and extended M3U playlists. */
+object M3UParser {
+  private const val TIMEOUT_MS = 30_000L
+  private const val DEFAULT_USER_AGENT = "mpvRx/1.0"
   private const val EXTINF_PREFIX = "#EXTINF:"
   private const val KODIPROP_PREFIX = "#KODIPROP:"
   private const val EXTVLCOPT_PREFIX = "#EXTVLCOPT:"
   private const val KODI_LICENSE_TYPE = "inputstream.adaptive.license_type"
   private const val KODI_LICENSE_KEY = "inputstream.adaptive.license_key"
+  private const val HLS_ERROR = "HLS media manifest must be played directly"
+  private const val BOM = '\uFEFF'
 
-  private val kodiPropRegex = """([^=]+)=(.+)""".toRegex()
-  private val extinfMetaRegex = """([\w\-_.]+)=\s*(?:"([^"]*)"|([\S]+))""".toRegex()
-  private val extinfInfoRegex = """(-?\d+)(.*),(.*)""".toRegex()
+  private val defaultLimits = M3ULimits()
+  private val extinfAttributeRegex =
+    Regex("""([A-Za-z0-9_.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))""")
+  private val httpClient by lazy {
+    OkHttpClient
+      .Builder()
+      .connectTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
+      .readTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
+      .build()
+  }
 
-  /**
-   * Parse an M3U/M3U8 playlist from a URL
-   */
+  /** Loads an HTTP(S) playlist without retaining credentials from URL user-info. */
   suspend fun parseFromUrl(
     url: String,
     userAgent: String? = null,
-  ): M3UParseResult =
-    withContext(Dispatchers.IO) {
-      try {
-        Log.d(TAG, "Parsing M3U playlist from URL: $url")
+  ): M3UParseResult = parseFromUrl(url, userAgent, defaultLimits)
 
-        val urlObj = URL(url)
-        val connection = urlObj.openConnection() as HttpURLConnection
-        connection.connectTimeout = TIMEOUT_MS
-        connection.readTimeout = TIMEOUT_MS
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("User-Agent", userAgent?.takeIf { it.isNotBlank() } ?: DEFAULT_USER_AGENT)
+  suspend fun parseFromUrl(
+    url: String,
+    userAgent: String?,
+    limits: M3ULimits,
+  ): M3UParseResult {
+    val originalUrl = url.toHttpUrlOrNull() ?: return error("Invalid playlist URL")
+    val username = originalUrl.username
+    val password = originalUrl.password
+    val safeUrl = originalUrl.newBuilder().username("").password("").build()
+    val request =
+      runCatching {
+        Request
+          .Builder()
+          .url(safeUrl)
+          .header("User-Agent", userAgent?.takeIf(String::isNotBlank) ?: DEFAULT_USER_AGENT)
+          .apply {
+            if (username.isNotEmpty() || password.isNotEmpty()) {
+              header("Authorization", Credentials.basic(username, password))
+            }
+          }.build()
+      }.getOrElse { return error("Invalid playlist request") }
 
-        val responseCode = connection.responseCode
-        if (responseCode != HttpURLConnection.HTTP_OK) {
-          return@withContext M3UParseResult.Error("HTTP error: $responseCode")
-        }
-
-        val content =
-          BufferedReader(InputStreamReader(connection.inputStream, "UTF-8")).use { reader ->
-            reader.readText()
-          }
-
-        connection.disconnect()
-
-        parseContent(content, url)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error parsing M3U playlist", e)
-        M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
+    return try {
+      httpClient.newCall(request).await().use { response ->
+        if (!response.isSuccessful) return error("HTTP error: ${response.code}")
+        if (response.body.contentLength() > limits.maxBytes) return error(byteLimitMessage(limits))
+        parseFromStream(
+          inputStream = response.body.byteStream(),
+          sourceUrl = response.request.url.newBuilder().username("").password("").build().toString(),
+          limits = limits,
+        )
       }
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Exception) {
+      error("Failed to load playlist")
     }
+  }
 
-  /**
-   * Parse an M3U/M3U8 playlist from a local file URI
-   */
+  /** Loads a local/content playlist through the same bounded streaming path. */
   suspend fun parseFromUri(
     context: Context,
     uri: Uri,
   ): M3UParseResult =
     withContext(Dispatchers.IO) {
       try {
-        Log.d(TAG, "Parsing M3U playlist from URI: $uri")
-
-        val content =
-          context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            BufferedReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
-              reader.readText()
-            }
-          } ?: return@withContext M3UParseResult.Error("Failed to open file")
-
-        // Resolve sourceUrl to its real filesystem path to allow proper base directory resolution
-        val resolvedPath = runCatching { uri.openContentFd(context) }.getOrNull()
-        val sourceUrl =
-          if (resolvedPath != null && !resolvedPath.startsWith("fd://")) {
-            resolvedPath
-          } else {
-            uri.toString()
-          }
-
-        // Get filename for playlist name with multi-stage fallback
+        // Do not call the player fd resolver here: its fallback detaches an fd for libmpv, while
+        // this parser opens its own stream and would otherwise leak the detached descriptor.
+        val sourceUrl = uri.toString()
         val rawFilename =
-          context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-            if (nameIndex >= 0 && cursor.moveToFirst()) {
-              cursor.getString(nameIndex)
-            } else {
-              null
-            }
-          } ?: (if (resolvedPath != null && !resolvedPath.startsWith("fd://")) File(resolvedPath).name else null)
-            ?: uri.lastPathSegment
+          context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+          } ?: uri.lastPathSegment
             ?: "Local M3U Playlist"
+        val playlistName = cleanPlaylistName(decode(rawFilename), "Local M3U Playlist")
+        val stream = context.contentResolver.openInputStream(uri) ?: return@withContext error("Failed to open file")
 
-        // URL-decode to handle encoded names (e.g. %20 -> space, %3A -> :)
-        val decodedFilename =
-          runCatching { java.net.URLDecoder.decode(rawFilename, "UTF-8") }.getOrNull() ?: rawFilename
-
-        // Clean the name: strip extension, replace underscores/dashes with spaces
-        val cleanPlaylistName =
-          decodedFilename
-            .substringBeforeLast('.')
-            .replace('_', ' ')
-            .replace('-', ' ')
-            .trim()
-            .ifEmpty { "Local M3U Playlist" }
-
-        parseContent(content, sourceUrl, overridePlaylistName = cleanPlaylistName)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error parsing M3U playlist from URI", e)
-        M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
+        parseFromStream(stream, sourceUrl, playlistName)
+      } catch (error: CancellationException) {
+        throw error
+      } catch (_: Exception) {
+        error("Failed to parse playlist")
       }
     }
 
   /**
-   * Parse M3U/M3U8 content from a string.
-   *
-   * @param content  Raw M3U text
-   * @param sourceUrl  The URL/path from which the content was loaded; used to resolve
-   *                   relative entry URLs. Pass null only if all entries are absolute.
+   * Parses and closes [inputStream]. Cancellation closes the stream so a blocked network read can unwind.
    */
+  suspend fun parseFromStream(
+    inputStream: InputStream,
+    sourceUrl: String? = null,
+    overridePlaylistName: String? = null,
+    limits: M3ULimits = defaultLimits,
+  ): M3UParseResult {
+    val context = currentCoroutineContext()
+    return try {
+      runInterruptible(Dispatchers.IO) {
+        inputStream.use { stream ->
+          LimitedInputStream(stream, limits.maxBytes)
+            .bufferedReader(StandardCharsets.UTF_8)
+            .use { reader -> parseReader(reader, sourceUrl, overridePlaylistName, limits) { context.ensureActive() } }
+        }
+      }
+    } catch (error: CancellationException) {
+      throw error
+    } catch (error: M3ULimitException) {
+      context.ensureActive()
+      error(error.message ?: "Playlist exceeds a safety limit")
+    } catch (_: Exception) {
+      context.ensureActive()
+      error("Failed to read playlist")
+    }
+  }
+
+  /** Compatibility wrapper for callers that already hold text. New loaders should use [parseFromStream]. */
   fun parseContent(
     content: String,
     sourceUrl: String? = null,
     overridePlaylistName: String? = null,
-  ): M3UParseResult {
+  ): M3UParseResult = parseContent(content, sourceUrl, overridePlaylistName, defaultLimits)
+
+  fun parseContent(
+    content: String,
+    sourceUrl: String?,
+    overridePlaylistName: String?,
+    limits: M3ULimits,
+  ): M3UParseResult =
     try {
-      val lines = content.lines().map { it.trimEnd() }.filter { it.isNotEmpty() }
-
-      if (lines.isEmpty()) {
-        return M3UParseResult.Error("Playlist is empty")
+      if (content.toByteArray(StandardCharsets.UTF_8).size.toLong() > limits.maxBytes) {
+        return error(byteLimitMessage(limits))
       }
+      BufferedReader(StringReader(content)).use { reader ->
+        parseReader(reader, sourceUrl, overridePlaylistName, limits)
+      }
+    } catch (error: M3ULimitException) {
+      error(error.message ?: "Playlist exceeds a safety limit")
+    } catch (_: Exception) {
+      error("Failed to parse playlist content")
+    }
 
-      val items = mutableListOf<M3UPlaylistItem>()
-      var currentTitle: String? = null
-      var currentDuration: Int = -1
-      var currentTvgId: String? = null
-      var currentTvgName: String? = null
-      var currentTvgLogo: String? = null
-      var currentGroupTitle: String? = null
-      var currentLicenseType: String? = null
-      var currentLicenseKey: String? = null
-      var currentUserAgent: String? = null
+  fun isLikelyHlsMediaManifest(content: String): Boolean =
+    content.lineSequence().any { rawLine -> normalizeLine(rawLine).startsWith("#EXT-X-", ignoreCase = true) }
 
-      val baseUrl = sourceUrl?.let { extractBaseUrl(it) }
+  fun shouldPlayHlsDirectly(result: M3UParseResult): Boolean =
+    result is M3UParseResult.Error && result.message == HLS_ERROR
 
-      for (line in lines) {
-        when {
-          line.startsWith("#EXTM3U") -> {
-            // Playlist header, skip
-            continue
+  /** Removes `user:password@` from a source before it is logged, persisted, or used as an entry base. */
+  fun sanitizeSourceUrl(sourceUrl: String): String = stripUriUserInfo(sourceUrl)
+
+  private fun parseReader(
+    reader: BufferedReader,
+    sourceUrl: String?,
+    overridePlaylistName: String?,
+    limits: M3ULimits,
+    checkCancellation: () -> Unit = {},
+  ): M3UParseResult {
+    val items = ArrayList<M3UPlaylistItem>(minOf(limits.maxEntries, 1_024))
+    val pending = PendingEntry()
+    var lineCount = 0
+    var foundContent = false
+
+    while (true) {
+      checkCancellation()
+      val rawLine = reader.readLine() ?: break
+      lineCount++
+      if (lineCount > limits.maxLines) throw M3ULimitException("Playlist exceeds ${limits.maxLines} lines")
+
+      val line = normalizeLine(rawLine)
+      if (line.isEmpty()) continue
+      foundContent = true
+
+      when {
+        line.startsWith("#EXT-X-", ignoreCase = true) -> return error(HLS_ERROR)
+        line.startsWith("#EXTM3U", ignoreCase = true) -> Unit
+        line.startsWith(EXTINF_PREFIX, ignoreCase = true) -> {
+          pending.clearExtInf()
+          parseExtInf(line.substring(EXTINF_PREFIX.length).trim(), pending)
+        }
+        line.startsWith(KODIPROP_PREFIX, ignoreCase = true) -> {
+          parseKodiProperty(line.substring(KODIPROP_PREFIX.length).trim(), pending)
+        }
+        line.startsWith(EXTVLCOPT_PREFIX, ignoreCase = true) -> {
+          parseVlcOption(line.substring(EXTVLCOPT_PREFIX.length).trim(), pending)
+        }
+        line.startsWith('#') -> Unit
+        else -> {
+          if (items.size >= limits.maxEntries) {
+            throw M3ULimitException("Playlist exceeds ${limits.maxEntries} entries")
           }
-
-          line.startsWith(EXTINF_PREFIX) -> {
-            val info = line.substring(EXTINF_PREFIX.length).trim()
-            val match = extinfInfoRegex.matchEntire(info)
-            if (match != null) {
-              currentDuration = match.groups[1]?.value?.toIntOrNull() ?: -1
-              currentTitle =
-                match.groups[3]
-                  ?.value
-                  ?.trim()
-                  ?.ifBlank { null }
-              val metaText =
-                match.groups[2]
-                  ?.value
-                  .orEmpty()
-                  .trim()
-              for (m in extinfMetaRegex.findAll(metaText)) {
-                val key = m.groups[1]?.value?.trim() ?: continue
-                val value = (m.groups[2]?.value ?: m.groups[3]?.value)?.ifBlank { null } ?: continue
-                when (key) {
-                  "tvg-id" -> currentTvgId = value
-                  "tvg-name" -> currentTvgName = value
-                  "tvg-logo" -> currentTvgLogo = value
-                  "group-title" -> currentGroupTitle = value
-                }
-              }
-            } else {
-              // Fallback: old comma-based split
-              val parts = info.split(",", limit = 2)
-              currentDuration = parts
-                .firstOrNull()
-                ?.trim()
-                ?.split(" ")
-                ?.firstOrNull()
-                ?.toIntOrNull() ?: -1
-              currentTitle = if (parts.size > 1) parts[1].trim().ifBlank { null } else null
-              if (parts.isNotEmpty()) {
-                currentTvgLogo = extractAttribute(parts[0], "tvg-logo")
-                currentGroupTitle = extractAttribute(parts[0], "group-title")
-                currentTvgId = extractAttribute(parts[0], "tvg-id")
-                currentTvgName = extractAttribute(parts[0], "tvg-name")
-              }
-            }
-          }
-
-          line.startsWith(KODIPROP_PREFIX) -> {
-            val kodi = line.substring(KODIPROP_PREFIX.length).trim()
-            val m = kodiPropRegex.matchEntire(kodi) ?: continue
-            val key = m.groups[1]?.value?.trim() ?: continue
-            val value =
-              m.groups[2]
-                ?.value
-                ?.trim()
-                ?.ifBlank { null } ?: continue
-            when (key) {
-              KODI_LICENSE_TYPE -> currentLicenseType = value
-              KODI_LICENSE_KEY -> currentLicenseKey = value
-            }
-          }
-
-          line.startsWith(EXTVLCOPT_PREFIX) -> {
-            val opt = line.substring(EXTVLCOPT_PREFIX.length).trim()
-            if (opt.startsWith("http-user-agent=")) {
-              currentUserAgent = opt.removePrefix("http-user-agent=").trim()
-            }
-          }
-
-          line.startsWith("#EXT-X-") -> {
-            // HLS-specific tags, skip
-            continue
-          }
-
-          line.startsWith("#") -> {
-            continue
-          }
-
-          else -> {
-            // This is a media URL
-            var mediaUrl = line.trim()
-            if (mediaUrl.isEmpty()) continue
-
-            // Resolve relative URLs against the base URL of the M3U file.
-            // This handles any URI scheme: http(s), davs://, smb://, ftp://, sftp://, etc.
-            if (baseUrl != null && !isAbsoluteUrl(mediaUrl)) {
-              mediaUrl = resolveRelativeUrl(baseUrl, mediaUrl)
-            }
-
-            // Generate a title if none was provided
-            val title = currentTitle ?: currentTvgName ?: extractTitleFromUrl(mediaUrl)
-
-            items.add(
+          val mediaUrl = resolveMediaUrl(sourceUrl, line)
+          if (mediaUrl.isNotEmpty()) {
+            items +=
               M3UPlaylistItem(
                 url = mediaUrl,
-                title = title,
-                duration = currentDuration,
-                tvgId = currentTvgId,
-                tvgName = currentTvgName,
-                tvgLogo = currentTvgLogo,
-                groupTitle = currentGroupTitle,
-                licenseType = currentLicenseType,
-                licenseKey = currentLicenseKey,
-                userAgent = currentUserAgent,
-              ),
-            )
-
-            // Reset current info for next entry
-            currentTitle = null
-            currentDuration = -1
-            currentTvgId = null
-            currentTvgName = null
-            currentTvgLogo = null
-            currentGroupTitle = null
-            currentLicenseType = null
-            currentLicenseKey = null
-            currentUserAgent = null
+                title = pending.title ?: pending.tvgName ?: extractTitleFromUrl(mediaUrl),
+                duration = pending.duration,
+                tvgId = pending.tvgId,
+                tvgName = pending.tvgName,
+                tvgLogo = pending.tvgLogo?.let(::stripUriUserInfo),
+                groupTitle = pending.groupTitle,
+                licenseType = pending.licenseType,
+                licenseKey = pending.licenseKey?.let(::stripUriUserInfo),
+                userAgent = pending.userAgent,
+              )
           }
-        }
-      }
-
-      if (items.isEmpty()) {
-        return M3UParseResult.Error("No valid media URLs found in playlist")
-      }
-
-      // Extract playlist name from override, source URL/filename, or use default
-      val playlistName =
-        overridePlaylistName ?: sourceUrl?.let {
-          if (it.startsWith("http://") || it.startsWith("https://")) {
-            extractPlaylistNameFromUrl(it)
-          } else {
-            // It's a filename or a non-http URL — extract name without extension
-            it
-              .substringAfterLast('/')
-              .substringBeforeLast('.')
-              .replace('_', ' ')
-              .replace('-', ' ')
-              .trim()
-              .ifEmpty { "M3U Playlist" }
-          }
-        } ?: "M3U Playlist"
-
-      Log.d(TAG, "Successfully parsed M3U playlist with ${items.size} items")
-      return M3UParseResult.Success(playlistName, items)
-    } catch (e: Exception) {
-      Log.e(TAG, "Error parsing M3U content", e)
-      return M3UParseResult.Error("Failed to parse playlist content: ${e.message}", e)
-    }
-  }
-
-  /**
-   * Returns true if the URL string is already absolute (has a scheme or is protocol-relative).
-   */
-  private fun isAbsoluteUrl(url: String): Boolean = url.startsWith("//") || Uri.parse(url).scheme != null
-
-  fun isLikelyHlsMediaManifest(content: String): Boolean {
-    val lines = content.lines().map { it.trim() }
-    return lines.any { line ->
-      line.startsWith("#EXT-X-STREAM-INF") ||
-        line.startsWith("#EXT-X-TARGETDURATION") ||
-        line.startsWith("#EXT-X-MEDIA-SEQUENCE") ||
-        line.startsWith("#EXT-X-MAP") ||
-        line.startsWith("#EXT-X-BYTERANGE") ||
-        line.startsWith("#EXT-X-ENDLIST")
-    }
-  }
-
-  /**
-   * Extract attribute value from an EXTINF attribute string.
-   * Example: extractAttribute(line, "tvg-logo") -> "http://example.com/logo.png"
-   */
-  private fun extractAttribute(
-    line: String,
-    attributeName: String,
-  ): String? {
-    val pattern = """$attributeName="([^"]+)"""".toRegex()
-    return pattern.find(line)?.groupValues?.getOrNull(1)
-  }
-
-  /**
-   * Extract the base directory URL from a full URL.
-   *
-   * - http/https: uses java.net.URL for accurate path handling
-   * - All other schemes (davs://, smb://, ftp://, sftp://, etc.): strips the
-   *   filename after the last slash
-   */
-  private fun extractBaseUrl(url: String): String {
-    val scheme = Uri.parse(url).scheme?.lowercase()
-    if (scheme == "http" || scheme == "https") {
-      return try {
-        val urlObj = URL(url)
-        val path = urlObj.path
-        val lastSlash = path.lastIndexOf('/')
-        val basePath = if (lastSlash >= 0) path.substring(0, lastSlash + 1) else "/"
-        val userInfo = urlObj.userInfo?.takeIf { it.isNotBlank() }?.let { "$it@" } ?: ""
-        "${urlObj.protocol}://$userInfo${urlObj.host}${if (urlObj.port != -1) ":${urlObj.port}" else ""}$basePath"
-      } catch (_: Exception) {
-        url.substringBeforeLast('/') + "/"
-      }
-    }
-    // Non-http scheme: strip filename after last slash
-    val stripped = url.substringBeforeLast('/')
-    return if (stripped == url) "$url/" else "$stripped/"
-  }
-
-  /**
-   * Resolve a relative URL against a base URL.
-   *
-   * Handles all URI schemes correctly:
-   * - http/https/ftp → java.net.URL (handles `../` segments properly)
-   * - davs://, smb://, sftp://, and any other scheme → pure Uri-based resolution
-   *
-   * @param baseUrl      Directory URL (always ends with '/' from [extractBaseUrl])
-   * @param relativeUrl  Raw URL string from an M3U entry line
-   */
-  private fun resolveRelativeUrl(
-    baseUrl: String,
-    relativeUrl: String,
-  ): String {
-    // Fast path: already absolute or protocol-relative
-    if (isAbsoluteUrl(relativeUrl)) return relativeUrl
-
-    val baseScheme = Uri.parse(baseUrl).scheme?.lowercase()
-
-    // For http/https/ftp, java.net.URL handles `../` traversal correctly
-    if (baseScheme == "http" || baseScheme == "https" || baseScheme == "ftp") {
-      return try {
-        URL(URL(baseUrl), relativeUrl).toString()
-      } catch (_: Exception) {
-        // Fall through to Uri-based resolver
-        resolveWithUri(baseUrl, relativeUrl, baseScheme)
-      }
-    }
-
-    // For davs://, smb://, sftp://, etc. — use Uri-based resolution
-    return resolveWithUri(baseUrl, relativeUrl, baseScheme)
-  }
-
-  /**
-   * Pure Uri-based relative URL resolver.
-   * Works for any URI scheme where java.net.URL is not applicable.
-   */
-  private fun resolveWithUri(
-    baseUrl: String,
-    relativeUrl: String,
-    baseScheme: String?,
-  ): String {
-    val baseUri = Uri.parse(baseUrl)
-    val authority =
-      baseUri.encodedAuthority?.takeIf { it.isNotBlank() }
-        ?: baseUri.authority?.takeIf { it.isNotBlank() }
-        ?: ""
-    val schemePrefix = if (baseScheme != null) "$baseScheme://" else "//"
-
-    return when {
-      relativeUrl.startsWith("/") -> {
-        // Absolute path on the same server — keep scheme + authority, replace path
-        "$schemePrefix$authority$relativeUrl"
-      }
-      else -> {
-        // Relative to the base directory (e.g. "ep2.mkv" or "../s2/ep1.mkv")
-        // baseUrl already ends with '/' from extractBaseUrl
-        val combined = baseUrl + relativeUrl
-        // Use java.net.URI.normalize() to collapse '..' and '.' segments
-        try {
-          java.net
-            .URI(combined)
-            .normalize()
-            .toString()
-        } catch (_: Exception) {
-          combined
+          pending.clear()
         }
       }
     }
+
+    if (!foundContent) return error("Playlist is empty")
+    if (items.isEmpty()) return error("No valid media URLs found in playlist")
+    val playlistName =
+      overridePlaylistName?.takeIf(String::isNotBlank)
+        ?: sourceUrl?.let(::extractPlaylistName)
+        ?: "M3U Playlist"
+    return M3UParseResult.Success(playlistName, items)
   }
 
-  /**
-   * Extract a human-readable title from a media URL.
-   * Falls back to URL-decoding the last path segment and stripping the extension.
-   */
-  private fun extractTitleFromUrl(url: String): String =
-    try {
-      val path = Uri.parse(url).path ?: url
-      val filename = path.substringAfterLast('/')
-      val nameWithoutExt = filename.substringBeforeLast('.')
-      java.net.URLDecoder
-        .decode(nameWithoutExt, "UTF-8")
-        .replace('_', ' ')
-        .replace('-', ' ')
-        .trim()
-        .ifBlank { filename.take(60) }
-    } catch (_: Exception) {
-      url.substringAfterLast('/').take(60)
+  private fun parseExtInf(
+    info: String,
+    pending: PendingEntry,
+  ) {
+    val commaIndex = firstUnquotedComma(info)
+    val descriptor = if (commaIndex >= 0) info.substring(0, commaIndex).trim() else info.trim()
+    pending.title =
+      if (commaIndex >= 0) info.substring(commaIndex + 1).trim().ifBlank { null } else null
+
+    val durationEnd = descriptor.indexOfFirst(Char::isWhitespace).let { if (it < 0) descriptor.length else it }
+    val duration = descriptor.substring(0, durationEnd).toDoubleOrNull()
+    pending.duration = duration?.toInt() ?: -1
+    val metadata = if (duration == null) descriptor else descriptor.substring(durationEnd).trim()
+    extinfAttributeRegex.findAll(metadata).forEach { match ->
+      val key = match.groupValues[1].lowercase()
+      val value = match.groupValues.drop(2).firstOrNull(String::isNotEmpty) ?: return@forEach
+      when (key) {
+        "tvg-id" -> pending.tvgId = value
+        "tvg-name" -> pending.tvgName = value
+        "tvg-logo" -> pending.tvgLogo = value
+        "group-title" -> pending.groupTitle = value
+      }
+    }
+  }
+
+  private fun parseKodiProperty(
+    property: String,
+    pending: PendingEntry,
+  ) {
+    val separator = property.indexOf('=')
+    if (separator <= 0) return
+    val key = property.substring(0, separator).trim().lowercase()
+    val value = property.substring(separator + 1).trim().ifBlank { null } ?: return
+    when (key) {
+      KODI_LICENSE_TYPE -> pending.licenseType = value
+      KODI_LICENSE_KEY -> pending.licenseKey = value
+    }
+  }
+
+  private fun parseVlcOption(
+    option: String,
+    pending: PendingEntry,
+  ) {
+    val separator = option.indexOf('=')
+    if (separator <= 0) return
+    val key = option.substring(0, separator).trim().lowercase()
+    val value = option.substring(separator + 1).trim().ifBlank { null } ?: return
+    if (key == "http-user-agent") pending.userAgent = value
+  }
+
+  private fun resolveMediaUrl(
+    sourceUrl: String?,
+    entry: String,
+  ): String {
+    val optionStart = entry.indexOf('|')
+    val resource = (if (optionStart >= 0) entry.substring(0, optionStart) else entry).trim()
+    val optionSuffix = if (optionStart >= 0) entry.substring(optionStart) else ""
+    if (resource.isEmpty()) return ""
+    val parsedEntry = parseUriLeniently(resource)
+
+    if (parsedEntry?.isAbsolute == true) return stripUriUserInfo(resource) + optionSuffix
+    val source = sourceUrl ?: return stripUriUserInfo(resource) + optionSuffix
+    val parsedSource = parseUriLeniently(source)
+
+    if (parsedSource?.scheme.equals("http", true) || parsedSource?.scheme.equals("https", true)) {
+      val resolved =
+        stripUserInfo(parsedSource!!)
+          .toString()
+          .toHttpUrlOrNull()
+          ?.resolve(".")
+          ?.resolve(resource)
+      if (resolved != null) return resolved.newBuilder().username("").password("").build().toString() + optionSuffix
     }
 
-  /**
-   * Extract a human-readable playlist name from a URL.
-   * Decodes URL encoding and strips the file extension.
-   */
-  private fun extractPlaylistNameFromUrl(url: String): String {
-    return try {
-      val path = Uri.parse(url).path ?: return "M3U Playlist"
-      val filename = path.substringAfterLast('/')
-      val nameWithoutExt = filename.substringBeforeLast('.')
-      java.net.URLDecoder
-        .decode(nameWithoutExt, "UTF-8")
-        .replace('_', ' ')
-        .replace('-', ' ')
-        .replaceFirstChar { it.uppercase() }
-        .trim()
-        .ifBlank { "M3U Playlist" }
-    } catch (_: Exception) {
-      "M3U Playlist"
+    if (parsedSource != null && (parsedSource.isAbsolute || parsedSource.rawAuthority != null)) {
+      val safeBase = stripUserInfo(parsedSource).withoutQueryOrFragment().resolve(".")
+      val resolved = runCatching { safeBase.resolve(parsedEntry ?: URI(resource)).normalize() }.getOrNull()
+      if (resolved != null) return stripUserInfo(resolved).toString() + optionSuffix
+    }
+
+    val parent = File(source).parentFile ?: return stripUriUserInfo(resource) + optionSuffix
+    return File(parent, resource).normalize().path + optionSuffix
+  }
+
+  private fun stripUriUserInfo(value: String): String {
+    val resource = value.substringBefore('|')
+    val suffix = value.substring(resource.length)
+    val uri = parseUriLeniently(resource) ?: return stripUserInfoFallback(resource) + suffix
+    return stripUserInfo(uri).toString() + suffix
+  }
+
+  private fun stripUserInfoFallback(value: String): String {
+    val authorityStart = value.indexOf("://").takeIf { it >= 0 }?.plus(3) ?: return value
+    val authorityEnd =
+      value.indexOfAny(charArrayOf('/', '?', '#'), authorityStart).takeIf { it >= 0 } ?: value.length
+    val at = value.lastIndexOf('@', authorityEnd - 1)
+    return if (at >= authorityStart) value.removeRange(authorityStart, at + 1) else value
+  }
+
+  private fun stripUserInfo(uri: URI): URI {
+    val authority = uri.rawAuthority ?: return uri
+    if (uri.rawUserInfo == null) return uri
+    val safeAuthority = authority.substringAfterLast('@')
+    val rebuilt = buildString {
+      uri.scheme?.let { append(it).append(':') }
+      append("//").append(safeAuthority)
+      append(uri.rawPath.orEmpty())
+      uri.rawQuery?.let { append('?').append(it) }
+      uri.rawFragment?.let { append('#').append(it) }
+    }
+    return URI(rebuilt)
+  }
+
+  private fun URI.withoutQueryOrFragment(): URI {
+    if (rawQuery == null && rawFragment == null) return this
+    val value = toString()
+    val end = listOf(value.indexOf('?'), value.indexOf('#')).filter { it >= 0 }.minOrNull() ?: value.length
+    return URI(value.substring(0, end))
+  }
+
+  private fun parseUriLeniently(value: String): URI? =
+    runCatching { URI(value) }.getOrElse {
+      runCatching { URI(value.replace(" ", "%20")) }.getOrNull()
+    }
+
+  private fun extractTitleFromUrl(url: String): String {
+    val resource = url.substringBefore('|')
+    val path = parseUriLeniently(resource)?.path ?: resource
+    val filename = path.substringAfterLast('/')
+    return decode(filename.substringBeforeLast('.'))
+      .replace('_', ' ')
+      .replace('-', ' ')
+      .trim()
+      .ifBlank { filename.take(60) }
+  }
+
+  private fun extractPlaylistName(sourceUrl: String): String {
+    val safeSource = stripUriUserInfo(sourceUrl)
+    val sourceUri = parseUriLeniently(safeSource)
+    val path = sourceUri?.path ?: safeSource.substringBefore('?').substringBefore('#')
+    val filename = path.substringAfterLast('/')
+    val name = cleanPlaylistName(decode(filename), "M3U Playlist")
+    return if (sourceUri?.scheme.equals("http", true) || sourceUri?.scheme.equals("https", true)) {
+      name.replaceFirstChar { it.uppercase() }
+    } else {
+      name
+    }
+  }
+
+  private fun cleanPlaylistName(
+    filename: String,
+    fallback: String,
+  ): String =
+    filename
+      .substringBeforeLast('.')
+      .replace('_', ' ')
+      .replace('-', ' ')
+      .trim()
+      .ifBlank { fallback }
+
+  private fun decode(value: String): String =
+    runCatching { URLDecoder.decode(value, StandardCharsets.UTF_8.name()) }.getOrDefault(value)
+
+  private fun normalizeLine(line: String): String = line.trim().removePrefix(BOM.toString()).trimStart()
+
+  private fun firstUnquotedComma(value: String): Int {
+    var quote: Char? = null
+    value.forEachIndexed { index, char ->
+      when {
+        quote == null && (char == '"' || char == '\'') -> quote = char
+        quote == char -> quote = null
+        quote == null && char == ',' -> return index
+      }
+    }
+    return -1
+  }
+
+  private fun error(message: String): M3UParseResult.Error = M3UParseResult.Error(message)
+
+  private fun byteLimitMessage(limits: M3ULimits): String = "Playlist exceeds ${limits.maxBytes} bytes"
+
+  private suspend fun Call.await(): Response =
+    suspendCancellableCoroutine { continuation ->
+      continuation.invokeOnCancellation { cancel() }
+      enqueue(
+        object : Callback {
+          override fun onFailure(
+            call: Call,
+            error: IOException,
+          ) {
+            if (continuation.isActive) continuation.resumeWith(Result.failure(error))
+          }
+
+          override fun onResponse(
+            call: Call,
+            response: Response,
+          ) {
+            // The resource-aware resume overload closes the response if cancellation wins either
+            // before dispatch or while the resumed coroutine is waiting to run.
+            continuation.resume(response) { _, rejectedResponse, _ -> rejectedResponse.close() }
+          }
+        },
+      )
+    }
+
+  private class PendingEntry {
+    var title: String? = null
+    var duration: Int = -1
+    var tvgId: String? = null
+    var tvgName: String? = null
+    var tvgLogo: String? = null
+    var groupTitle: String? = null
+    var licenseType: String? = null
+    var licenseKey: String? = null
+    var userAgent: String? = null
+
+    fun clearExtInf() {
+      title = null
+      duration = -1
+      tvgId = null
+      tvgName = null
+      tvgLogo = null
+      groupTitle = null
+    }
+
+    fun clear() {
+      clearExtInf()
+      licenseType = null
+      licenseKey = null
+      userAgent = null
+    }
+  }
+
+  private class M3ULimitException(
+    message: String,
+  ) : IOException(message)
+
+  private class LimitedInputStream(
+    input: InputStream,
+    private val maxBytes: Long,
+  ) : FilterInputStream(input) {
+    private var byteCount = 0L
+
+    override fun read(): Int {
+      if (byteCount >= maxBytes) return readPastLimit()
+      return super.read().also { if (it >= 0) byteCount++ }
+    }
+
+    override fun read(
+      buffer: ByteArray,
+      offset: Int,
+      length: Int,
+    ): Int {
+      if (length == 0) return 0
+      val remaining = maxBytes - byteCount
+      if (remaining <= 0) return readPastLimit()
+      return super.read(buffer, offset, minOf(length.toLong(), remaining).toInt()).also { read ->
+        if (read > 0) byteCount += read
+      }
+    }
+
+    private fun readPastLimit(): Int {
+      if (super.read() == -1) return -1
+      throw M3ULimitException("Playlist exceeds $maxBytes bytes")
     }
   }
 }

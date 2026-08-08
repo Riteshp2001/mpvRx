@@ -4,6 +4,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -51,7 +53,6 @@ import app.gyrolet.mpvrx.domain.lyrics.SyncedLine
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
-import `is`.xyz.mpv.MPVLib
 
 @Composable
 fun LyricsSheet(
@@ -60,8 +61,8 @@ fun LyricsSheet(
   modifier: Modifier = Modifier,
 ) {
   val state by viewModel.lyricsUiState.collectAsState()
-  val mediaTitle by MPVLib.propString["media-title"].collectAsState()
-  val artistName by MPVLib.propString["metadata/by-key/Artist"].collectAsState()
+  val mediaTitle by PlaybackSession.propString["media-title"].collectAsState()
+  val artistName by PlaybackSession.propString["metadata/by-key/Artist"].collectAsState()
   val displayTitle = mediaTitle?.takeIf { it.isNotBlank() } ?: "Current Track"
   val displayArtist = artistName?.takeIf { it.isNotBlank() } ?: ""
 
@@ -244,7 +245,7 @@ fun LyricsSheet(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                       val targetSeconds = line.time / 1000f
-                      MPVLib.command("seek", targetSeconds.toString(), "absolute+exact")
+                      PlaybackSession.command("seek", targetSeconds.toString(), "absolute+exact")
                     }
                     .padding(vertical = 4.dp, horizontal = 8.dp),
                 )

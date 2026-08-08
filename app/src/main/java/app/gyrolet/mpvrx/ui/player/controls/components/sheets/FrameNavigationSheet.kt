@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
@@ -64,7 +66,6 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
 import app.gyrolet.mpvrx.ui.theme.spacing
-import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -101,15 +102,15 @@ fun FrameNavigationSheet(
   val currentOnUpdateFrameInfo by rememberUpdatedState(onUpdateFrameInfo)
 
   // Use the same logic as PlayerControls for pause state
-  val paused by MPVLib.propBoolean["pause"].collectAsState()
+  val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val isPaused = paused ?: false
 
   // Remember the initial pause state when the sheet opens
   val wasPausedInitially = remember { isPaused }
 
   // Use the same logic as PlayerControls for position and duration
-  val position by MPVLib.propInt["time-pos"].collectAsState()
-  val duration by MPVLib.propInt["duration"].collectAsState()
+  val position by PlaybackSession.propInt["time-pos"].collectAsState()
+  val duration by PlaybackSession.propInt["duration"].collectAsState()
   val pos = position ?: 0
   val dur = duration ?: 0
 
@@ -150,7 +151,7 @@ fun FrameNavigationSheet(
               currentOnPause()
               delay(50)
             }
-            MPVLib.command("no-osd", "frame-back-step")
+            PlaybackSession.command("no-osd", "frame-back-step")
             delay(100)
             currentOnUpdateFrameInfo()
           }
@@ -164,7 +165,7 @@ fun FrameNavigationSheet(
               currentOnPause()
               delay(50)
             }
-            MPVLib.command("no-osd", "frame-step")
+            PlaybackSession.command("no-osd", "frame-step")
             delay(100)
             currentOnUpdateFrameInfo()
           }

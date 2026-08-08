@@ -50,7 +50,8 @@ class AudioSpectrumAnalyzer(
             processFftData(fftBytes)
           }
         },
-        onSamplingRate = { rate -> sampleRate = rate },
+        // Android reports this callback value in milliHertz, while band cutoffs use Hz.
+        onSamplingRate = { rate -> sampleRate = (rate / 1000).coerceAtLeast(8_000) },
       )
       visualizerManager = manager
     }
@@ -278,37 +279,40 @@ class VisualizerManager(
     onSamplingRate: ((Int) -> Unit)? = null,
   ) {
     release()
-    runCatching {
-      val v = runCatching { Visualizer(0) }.getOrElse { Visualizer(sessionId) }
-      visualizer = v.apply {
-        captureSize = Visualizer.getCaptureSizeRange()[1]
-        scalingMode = Visualizer.SCALING_MODE_NORMALIZED
-        enabled = false
-        setDataCaptureListener(
-          object : Visualizer.OnDataCaptureListener {
-            override fun onWaveFormDataCapture(
-              visualizer: Visualizer?,
-              waveform: ByteArray?,
-              samplingRate: Int,
-            ) {
-              onSamplingRate?.invoke(samplingRate)
-              waveform?.let(onWaveform)
-            }
+    val v = Visualizer(sessionId)
+    try {
+      v.captureSize = Visualizer.getCaptureSizeRange()[1]
+      v.scalingMode = Visualizer.SCALING_MODE_NORMALIZED
+      v.enabled = false
+      v.setDataCaptureListener(
+        object : Visualizer.OnDataCaptureListener {
+          override fun onWaveFormDataCapture(
+            visualizer: Visualizer?,
+            waveform: ByteArray?,
+            samplingRate: Int,
+          ) {
+            onSamplingRate?.invoke(samplingRate)
+            waveform?.let(onWaveform)
+          }
 
-            override fun onFftDataCapture(
-              visualizer: Visualizer?,
-              fft: ByteArray?,
-              samplingRate: Int,
-            ) {
-              fft?.let(onFFT)
-            }
-          },
-          Visualizer.getMaxCaptureRate(),
-          true,
-          true,
-        )
-        enabled = true
-      }
+          override fun onFftDataCapture(
+            visualizer: Visualizer?,
+            fft: ByteArray?,
+            samplingRate: Int,
+          ) {
+            onSamplingRate?.invoke(samplingRate)
+            fft?.let(onFFT)
+          }
+        },
+        Visualizer.getMaxCaptureRate(),
+        true,
+        true,
+      )
+      v.enabled = true
+      visualizer = v
+    } catch (error: Throwable) {
+      runCatching { v.release() }
+      throw error
     }
   }
 

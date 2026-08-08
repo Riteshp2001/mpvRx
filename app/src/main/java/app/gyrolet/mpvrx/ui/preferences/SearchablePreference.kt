@@ -11,9 +11,7 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.preferences.*
 import app.gyrolet.mpvrx.presentation.Screen
-import org.koin.core.context.GlobalContext
 
 /**
  * Represents a searchable preference item.
@@ -27,7 +25,6 @@ data class SearchablePreference(
   val keywords: List<String> = emptyList(),
   val category: String,
   val screen: Screen,
-  val key: String? = null,
 )
 
 /**
@@ -155,16 +152,6 @@ object SearchablePreferences {
           screen = AppearancePreferencesScreen,
         ),
       )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_clear_thumbnail_cache_title,
-          summaryRes = R.string.pref_clear_thumbnail_cache_summary,
-          keywords = listOf("thumbnail", "cache", "clear", "delete", "reset"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-
       // Layout preferences
       add(
         SearchablePreference(
@@ -263,15 +250,6 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_player_remember_brightness,
           keywords = listOf("brightness", "remember", "display", "screen"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_autoplay_title,
-          summaryRes = R.string.pref_autoplay_summary,
-          keywords = listOf("autoplay", "playlist", "next", "previous", "folder", "navigation"),
           category = "Player",
           screen = PlayerPreferencesScreen,
         ),
@@ -437,32 +415,32 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_player_gestures_brightness,
           keywords = listOf("brightness", "gesture", "swipe", "display", "control"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
         ),
       )
       add(
         SearchablePreference(
           titleRes = R.string.pref_player_gestures_volume,
           keywords = listOf("volume", "gesture", "swipe", "audio", "sound"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
         ),
       )
       add(
         SearchablePreference(
           titleRes = R.string.pref_player_gestures_pinch_to_zoom,
           keywords = listOf("zoom", "pinch", "gesture", "scale", "crop", "video"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
         ),
       )
       add(
         SearchablePreference(
           titleRes = R.string.pref_player_gestures_horizontal_swipe_to_seek,
           keywords = listOf("horizontal", "swipe", "seek", "gesture", "left", "right"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
         ),
       )
       add(
@@ -470,16 +448,16 @@ object SearchablePreferences {
           titleRes = R.string.pref_player_gestures_horizontal_swipe_sensitivity,
           summaryRes = R.string.pref_player_gestures_horizontal_swipe_sensitivity_summary,
           keywords = listOf("horizontal", "swipe", "sensitivity", "seek", "distance", "speed"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
         ),
       )
       add(
         SearchablePreference(
           titleRes = R.string.pref_player_gestures_hold_for_multiple_speed,
           keywords = listOf("hold", "speed", "multiple", "playback", "tempo", "rate"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
         ),
       )
       add(
@@ -516,7 +494,8 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_show_navigation_bar_title,
+          titleRes = R.string.pref_nav_bar_title,
+          summaryRes = R.string.pref_nav_bar_summary,
           keywords = listOf("navigation bar", "controls", "system", "show", "hide"),
           category = "Player",
           screen = PlayerPreferencesScreen,
@@ -615,16 +594,6 @@ object SearchablePreferences {
           screen = GesturePreferencesScreen,
         ),
       )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_gesture_tap_thumbnail_to_select_title,
-          summaryRes = R.string.pref_gesture_tap_thumbnail_to_select_summary,
-          keywords = listOf("thumbnail", "tap", "select", "play", "preview"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-
       // Storage / Folder preferences
       add(
         SearchablePreference(
@@ -660,25 +629,6 @@ object SearchablePreferences {
           screen = FoldersPreferencesScreen,
         ),
       )
-      add(
-        SearchablePreference(
-          titleRes = R.string.search_subtitle_save_folder_title,
-          summary = "Where downloaded subtitles are saved",
-          keywords = listOf("subtitle", "save", "download", "folder", "directory", "location"),
-          category = "Folders",
-          screen = FoldersPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.search_fonts_folder_title,
-          summary = "Fonts used for subtitle rendering",
-          keywords = listOf("fonts", "subtitle", "folder", "directory", "custom"),
-          category = "Folders",
-          screen = FoldersPreferencesScreen,
-        ),
-      )
-
       // Decoder preferences
       add(
         SearchablePreference(
@@ -708,7 +658,7 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_decoder_vulkan_title,
+          titleRes = R.string.pref_decoder_vulkan_experimental_title,
           summaryRes = R.string.pref_decoder_vulkan_summary,
           keywords = listOf("vulkan", "gpu", "rendering", "graphics", "api", "performance"),
           category = "Decoder",
@@ -816,14 +766,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_subtitles_save_location,
-          keywords = listOf("subtitle", "download", "save", "location", "folder", "directory"),
-          category = "Folders",
-          screen = FoldersPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_subtitle_sources_title,
           keywords = listOf("subtitle", "sources", "provider", "wyzie", "search"),
           category = "Subtitles",
@@ -884,8 +826,7 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_music_visualizer_title,
-          summaryRes = R.string.pref_music_visualizer_summary,
+          titleRes = R.string.pref_audio_visualizer_style_title,
           keywords =
             listOf(
               "music",
@@ -1011,15 +952,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.ui_base_storage_folder,
-          summary = "Root folder — auto-creates Subtitles/ and Fonts/ subdirs",
-          keywords = listOf("base", "storage", "root", "folder", "subtitles", "fonts", "directory"),
-          category = "Advanced",
-          screen = AdvancedPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_advanced_mpv_conf_storage_location,
           keywords = listOf("storage", "location", "directory", "folder", "config"),
           category = "Advanced",
@@ -1058,6 +990,15 @@ object SearchablePreferences {
           keywords = listOf("scripts", "lua", "js", "javascript", "manage", "select", "plugin"),
           category = "Advanced",
           screen = AdvancedPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.ui_yt_dlp_manager,
+          summaryRes = R.string.ui_install_and_update_yt_dlp_for_streaming_support,
+          keywords = listOf("yt-dlp", "online", "streaming", "extractor", "network", "download"),
+          category = "Network",
+          screen = YtdlpSettingsScreen,
         ),
       )
       add(
@@ -1117,8 +1058,8 @@ object SearchablePreferences {
               "hide notification",
               "background playback",
             ),
-          category = "Advanced",
-          screen = AdvancedPreferencesScreen,
+          category = "Player",
+          screen = PlayerPreferencesScreen,
         ),
       )
       add(
@@ -1211,15 +1152,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_show_ai_reasoning_title,
-          summary = "Show the model's internal thought process for supported models",
-          keywords = listOf("reasoning", "thinking", "thought", "chain of thought", "cot", "explanation"),
-          category = "AI",
-          screen = AiIntegrationScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_ai_rename_title,
           summary = "Use AI to generate clean filenames for bulk rename operations",
           keywords = listOf("rename", "bulk", "filename", "clean", "ai", "organize"),
@@ -1295,119 +1227,6 @@ object SearchablePreferences {
       )
     }
 
-  private var isReflectionInitialized = false
-  private val dynamicPreferences = mutableListOf<SearchablePreference>()
-
-  val allPreferences: List<SearchablePreference>
-    get() {
-      initializeReflectionIfNeeded { "" }
-      return dynamicPreferences
-    }
-
-  private fun initializeReflectionIfNeeded(getStringRes: (Int) -> String) {
-    if (isReflectionInitialized) return
-    synchronized(this) {
-      if (isReflectionInitialized) return
-
-      // Add new explicitly indexed preferences
-      dynamicPreferences.addAll(staticPreferences)
-
-      val context =
-        org.koin.core.context.GlobalContext
-          .get()
-          .get<android.content.Context>()
-
-      val existingTitles =
-        dynamicPreferences
-          .map {
-            (if (it.titleRes != null) getStringRes(it.titleRes) else it.title ?: "").lowercase().trim()
-          }.filter { it.isNotEmpty() }
-          .toSet()
-
-      val explicitKeys = dynamicPreferences.mapNotNull { it.key }.toSet()
-
-      val classMappings =
-        listOf(
-          Triple(AdvancedPreferences::class.java, AdvancedPreferencesScreen, "Advanced"),
-          Triple(AiPreferences::class.java, AiIntegrationScreen, "AI"),
-          Triple(AppearancePreferences::class.java, AppearancePreferencesScreen, "Appearance"),
-          Triple(AudioPreferences::class.java, AudioPreferencesScreen, "Audio"),
-          Triple(BrowserPreferences::class.java, AppearancePreferencesScreen, "Appearance"),
-          Triple(DecoderPreferences::class.java, DecoderPreferencesScreen, "Decoder"),
-          Triple(FoldersPreferences::class.java, FoldersPreferencesScreen, "Folders"),
-          Triple(GesturePreferences::class.java, GesturePreferencesScreen, "Gestures"),
-          Triple(PlayerPreferences::class.java, PlayerPreferencesScreen, "Player"),
-          Triple(SubtitlesPreferences::class.java, SubtitlesPreferencesScreen, "Subtitles"),
-          Triple(YtdlPreferences::class.java, YtdlpSettingsScreen, "Advanced"),
-        )
-
-      for ((prefClass, targetScreen, category) in classMappings) {
-        try {
-          for (field in prefClass.declaredFields) {
-            if (field.isSynthetic) continue
-            val name = field.name
-            if (name == "preferenceStore" ||
-              name == "context" ||
-              name == "isTablet" ||
-              name == "maxColumns"
-            ) {
-              continue
-            }
-
-            if (name !in explicitKeys) {
-              val titleResId = getResourceForProperty(context, name, isTitle = true)
-              val summaryResId = getResourceForProperty(context, name, isTitle = false)
-
-              val readableTitle = name.camelCaseToSentence()
-              val hasManualTitle = titleResId > 0
-              val resolvedTitle =
-                if (hasManualTitle) {
-                  try {
-                    context.getString(titleResId)
-                  } catch (e: Exception) {
-                    readableTitle
-                  }
-                } else {
-                  readableTitle
-                }
-
-              if (resolvedTitle.lowercase().trim() in existingTitles) continue
-
-              val words =
-                name
-                  .split(Regex("(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|_"))
-                  .map { it.lowercase() }
-                  .filter { it.isNotBlank() }
-
-              dynamicPreferences.add(
-                SearchablePreference(
-                  titleRes = if (titleResId > 0) titleResId else null,
-                  title = if (titleResId > 0) null else readableTitle,
-                  summaryRes = if (summaryResId > 0) summaryResId else null,
-                  summary =
-                    if (summaryResId >
-                      0
-                    ) {
-                      null
-                    } else {
-                      context.getString(R.string.search_generated_summary, readableTitle.lowercase())
-                    },
-                  keywords = words,
-                  category = category,
-                  screen = targetScreen,
-                  key = name,
-                ),
-              )
-            }
-          }
-        } catch (e: Exception) {
-          // Fail-safe
-        }
-      }
-      isReflectionInitialized = true
-    }
-  }
-
   /**
    * Search preferences by query.
    * Simple case-insensitive search against title, summary, keywords, and category.
@@ -1417,11 +1236,10 @@ object SearchablePreferences {
     getStringRes: (Int) -> String,
   ): List<SearchablePreference> {
     if (query.isBlank()) return emptyList()
-    initializeReflectionIfNeeded(getStringRes)
 
     val normalizedQuery = query.lowercase().trim()
 
-    return dynamicPreferences.filter { pref ->
+    return staticPreferences.filter { pref ->
       val title = (if (pref.titleRes != null) getStringRes(pref.titleRes) else pref.title ?: "").lowercase()
       val summary =
         (
@@ -1442,53 +1260,4 @@ object SearchablePreferences {
         category.contains(normalizedQuery)
     }
   }
-}
-
-private fun String.camelCaseToSentence(): String {
-  val result = this.replace(Regex("(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|_"), " ")
-  return result
-    .split(" ")
-    .joinToString(" ") { word ->
-      word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
-    }.trim()
-}
-
-private fun String.camelToSnakeCase(): String =
-  this.replace(Regex("(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])"), "_").lowercase()
-
-private fun getResourceForProperty(
-  context: android.content.Context,
-  name: String,
-  isTitle: Boolean,
-): Int {
-  val snake = name.camelToSnakeCase()
-  val prefixes =
-    listOf(
-      "",
-      "appearance_",
-      "player_",
-      "advanced_",
-      "audio_",
-      "subtitles_",
-      "decoder_",
-      "folders_",
-      "gesture_",
-      "nav_",
-      "nav_home_",
-      "nav_recents_",
-      "nav_playlists_",
-      "nav_network_",
-    )
-
-  val suffixes = if (isTitle) listOf("_title", "") else listOf("_summary", "")
-
-  for (prefix in prefixes) {
-    for (suffix in suffixes) {
-      val resName = "pref_$prefix$snake$suffix"
-      if (!isTitle && suffix == "") continue
-      val id = context.resources.getIdentifier(resName, "string", context.packageName)
-      if (id > 0) return id
-    }
-  }
-  return 0
 }

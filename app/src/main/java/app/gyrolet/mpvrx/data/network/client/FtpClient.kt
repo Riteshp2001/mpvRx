@@ -12,12 +12,16 @@ package app.gyrolet.mpvrx.data.network.client
 import android.net.Uri
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
+import app.gyrolet.mpvrx.domain.network.NetworkPath
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.net.ftp.FTP
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPReply
+import java.io.IOException
 import java.io.InputStream
+import java.net.URI
 import java.time.Duration
 
 class FtpClient(
@@ -27,89 +31,40 @@ class FtpClient(
 
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
+      var candidateToClose: FTPClient? = null
       try {
-        val client = FTPClient()
+        val candidate = newClient(streaming = false)
+        candidateToClose = candidate
+        candidate.connect(connection.host, connection.port)
+        ensurePositiveReply(candidate, "FTP server refused connection")
 
-        // Set UTF-8 encoding for proper handling of non-English characters
-        client.controlEncoding = "UTF-8"
+        if (!login(candidate)) throw IOException("FTP login failed")
+        if (!candidate.setFileType(FTP.BINARY_FILE_TYPE)) throw IOException("FTP binary mode was rejected")
+        candidate.enterLocalPassiveMode()
+        runCatching { candidate.sendCommand("OPTS UTF8 ON") }
 
-        // Increase timeouts to prevent broken pipe
-        client.setConnectTimeout(15000) // 15 seconds
-        client.setDataTimeout(Duration.ofSeconds(60)) // 60 seconds
-        client.setDefaultTimeout(60000) // 60 seconds default
-        client.setControlKeepAliveTimeout(Duration.ofMinutes(5)) // 5 minutes keep-alive
-
-        // Enable keep-alive to prevent connection drops
-        client.setControlKeepAliveReplyTimeout(Duration.ofSeconds(10)) // 10 seconds for keep-alive replies
-
-        // Connect to server
-        client.connect(connection.host, connection.port)
-
-        val reply = client.replyCode
-        if (!FTPReply.isPositiveCompletion(reply)) {
-          client.disconnect()
-          return@withContext Result.failure(Exception("FTP server refused connection"))
+        val root = remotePath(NetworkPath.ROOT)
+        if (root != "/" && !candidate.changeWorkingDirectory(root)) {
+          throw IOException("FTP base path is unavailable (reply ${candidate.replyCode})")
         }
 
-        // Login
-        val success =
-          if (connection.isAnonymous) {
-            client.login("anonymous", "")
-          } else {
-            client.login(connection.username, connection.password)
-          }
-
-        if (!success) {
-          client.disconnect()
-          return@withContext Result.failure(Exception("Login failed"))
-        }
-
-        // Set binary mode for file transfers
-        client.setFileType(FTP.BINARY_FILE_TYPE)
-        client.enterLocalPassiveMode()
-
-        // Try to enable UTF-8 mode on the server (RFC 2640)
-        // This sends "OPTS UTF8 ON" command if the server supports it
-        try {
-          client.sendCommand("OPTS UTF8 ON")
-        } catch (_: Exception) {
-          // Server may not support UTF-8 mode, continue anyway
-        }
-
-        // Set buffer size for better performance
-        client.bufferSize = 1024 * 64 // 64KB buffer
-
-        // Change to initial directory if specified
-        if (connection.path != "/" && connection.path.isNotEmpty()) {
-          val changed = client.changeWorkingDirectory(connection.path)
-          if (!changed) {
-            android.util.Log.w(
-              "FtpClient",
-              "Failed to change directory: ${client.replyCode}",
-            )
-          }
-        }
-
-        ftpClient = client
+        ftpClient = candidate
+        candidateToClose = null
         Result.success(Unit)
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        closeClient(candidateToClose)
+        throw cancellation
+      } catch (error: Exception) {
+        closeClient(candidateToClose)
+        Result.failure(error)
       }
     }
 
   override suspend fun disconnect() {
     withContext(Dispatchers.IO) {
-      ftpClient?.let { client ->
-        try {
-          if (client.isConnected) {
-            client.logout()
-            client.disconnect()
-          }
-        } catch (_: Exception) {
-          // Ignore disconnect errors
-        }
-      }
+      val client = ftpClient
       ftpClient = null
+      closeClient(client)
     }
   }
 
@@ -118,71 +73,54 @@ class FtpClient(
   override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
-        val client = ftpClient ?: return@withContext Result.failure(Exception("Not connected"))
-
-        // Check if connection is still alive
-        if (!client.isConnected) {
-          return@withContext Result.failure(Exception("Connection lost"))
+        var client = ftpClient ?: return@withContext Result.failure(IOException("Not connected"))
+        if (!client.isConnected || !runCatching { client.sendNoOp() }.getOrDefault(false)) {
+          disconnect()
+          connect().getOrThrow()
+          client = ftpClient ?: throw IOException("FTP reconnect did not create a client")
         }
 
-        // Send NOOP to check connection health
-        try {
-          client.sendNoOp()
-        } catch (e: Exception) {
-          // Try to reconnect
-          val reconnectResult = connect()
-          if (reconnectResult.isFailure) {
-            return@withContext Result.failure(Exception("Connection broken and reconnect failed"))
-          }
-        }
-
+        val directory = NetworkPath.from(path)
+        val rawFiles = client.listFiles(remotePath(directory))
+        ensurePositiveReply(client, "FTP directory listing failed")
         val files =
-          client.listFiles(path).mapNotNull { file ->
-            try {
-              // Skip . and .. entries
-              if (file.name == "." || file.name == "..") return@mapNotNull null
-
+          rawFiles.mapNotNull { file ->
+            val name = file.name.takeUnless { it == "." || it == ".." } ?: return@mapNotNull null
+            runCatching {
+              val filePath = directory.child(name)
               NetworkFile(
-                name = file.name,
-                path = if (path.endsWith("/")) "$path${file.name}" else "$path/${file.name}",
+                name = name,
+                path = filePath.value,
                 isDirectory = file.isDirectory,
-                size = file.size,
+                size = if (file.isDirectory) 0L else file.size,
                 lastModified = file.timestamp?.timeInMillis ?: 0,
-                mimeType = if (!file.isDirectory) getMimeType(file.name) else null,
+                mimeType = if (!file.isDirectory) NetworkMimeTypes.forFileName(name) else null,
               )
-            } catch (_: Exception) {
-              null
-            }
+            }.getOrNull()
           }
-
         Result.success(files)
-      } catch (e: Exception) {
-        // If it's a broken pipe error, the connection is dead
-        if (e.message?.contains("pipe", ignoreCase = true) == true) {
-          ftpClient = null
-        }
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
-  /**
-   * Get file size for a specific file path
-   * This is useful for the proxy server to support range requests
-   */
   override suspend fun getFileSize(path: String): Result<Long> =
     withContext(Dispatchers.IO) {
       try {
-        val client = ftpClient ?: return@withContext Result.failure(Exception("Not connected"))
-
-        // Try to get file info
-        val files = client.listFiles(path)
-        if (files.isNotEmpty() && !files[0].isDirectory) {
-          Result.success(files[0].size)
+        val client = ftpClient ?: return@withContext Result.failure(IOException("Not connected"))
+        val wirePath = remotePath(NetworkPath.from(path))
+        val file = client.mlistFile(wirePath) ?: client.listFiles(wirePath).firstOrNull()
+        if (file == null || file.isDirectory || file.size < 0L) {
+          Result.failure(IOException("FTP file size is unavailable"))
         } else {
-          Result.failure(Exception("File not found or is a directory"))
+          Result.success(file.size)
         }
-      } catch (e: Exception) {
-        Result.failure(e)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
@@ -191,179 +129,108 @@ class FtpClient(
     offset: Long,
   ): Result<InputStream> =
     withContext(Dispatchers.IO) {
+      require(offset >= 0L) { "Stream offset must not be negative" }
+      var clientToClose: FTPClient? = null
       try {
-        // Create a fresh FTP client for this stream to avoid connection conflicts
-        val streamClient = FTPClient()
-
-        // Set UTF-8 encoding for proper handling of non-English characters
-        streamClient.controlEncoding = "UTF-8"
-
-        // Increase timeouts to prevent broken pipe during streaming
-        streamClient.setConnectTimeout(15000) // 15 seconds
-        streamClient.setDataTimeout(Duration.ofMinutes(2)) // 120 seconds (2 minutes) for video streaming
-        streamClient.setDefaultTimeout(120000)
-        streamClient.setControlKeepAliveTimeout(Duration.ofMinutes(10)) // 10 minutes keep-alive
-        streamClient.setControlKeepAliveReplyTimeout(Duration.ofSeconds(15))
-
-        // Connect to server
+        val streamClient = newClient(streaming = true)
+        clientToClose = streamClient
         streamClient.connect(connection.host, connection.port)
-
-        val reply = streamClient.replyCode
-        if (!FTPReply.isPositiveCompletion(reply)) {
-          streamClient.disconnect()
-          return@withContext Result.failure(Exception("FTP server refused connection (code: $reply)"))
-        }
-
-        // Login
-        val success =
-          if (connection.isAnonymous) {
-            streamClient.login("anonymous", "")
-          } else {
-            streamClient.login(connection.username, connection.password)
-          }
-
-        if (!success) {
-          streamClient.disconnect()
-          return@withContext Result.failure(Exception("Login failed"))
-        }
-
-        // Set binary mode and passive mode
-        streamClient.setFileType(FTP.BINARY_FILE_TYPE)
+        ensurePositiveReply(streamClient, "FTP server refused connection")
+        if (!login(streamClient)) throw IOException("FTP login failed")
+        if (!streamClient.setFileType(FTP.BINARY_FILE_TYPE)) throw IOException("FTP binary mode was rejected")
         streamClient.enterLocalPassiveMode()
+        runCatching { streamClient.sendCommand("OPTS UTF8 ON") }
+        if (offset > 0L) streamClient.setRestartOffset(offset)
 
-        // Try to enable UTF-8 mode on the server (RFC 2640)
-        try {
-          streamClient.sendCommand("OPTS UTF8 ON")
-        } catch (_: Exception) {
-          // Server may not support UTF-8 mode, continue anyway
-        }
+        val rawStream =
+          streamClient.retrieveFileStream(remotePath(NetworkPath.from(path)))
+            ?: throw IOException("FTP server rejected the file request (reply ${streamClient.replyCode})")
+        val ownedClient = streamClient
+        clientToClose = null
 
-        streamClient.bufferSize = 1024 * 64 // 64KB buffer
-        if (offset > 0L) {
-          streamClient.setRestartOffset(offset)
-        }
+        Result.success(
+          object : InputStream() {
+            private var closed = false
 
-        // Change to initial directory if specified (matching the connect() behavior)
-        if (connection.path != "/" && connection.path.isNotEmpty()) {
-          val changed = streamClient.changeWorkingDirectory(connection.path)
-          if (!changed) {
-            android.util.Log.w(
-              "FtpClient",
-              "Failed to change to base directory: ${streamClient.replyCode}",
-            )
-          }
-        }
+            override fun read(): Int = rawStream.read()
 
-        // Try different path variations
-        val pathsToTry = mutableListOf<String>()
-        pathsToTry.add(path)
+            override fun read(b: ByteArray): Int = rawStream.read(b)
 
-        // Try without leading slash
-        if (path.startsWith("/")) {
-          pathsToTry.add(path.substring(1))
-        }
+            override fun read(
+              b: ByteArray,
+              off: Int,
+              len: Int,
+            ): Int = rawStream.read(b, off, len)
 
-        // Try relative to connection.path if it's set and path contains it
-        if (connection.path != "/" && connection.path.isNotEmpty() && path.startsWith(connection.path)) {
-          val relativePath = path.substring(connection.path.length).trimStart('/')
-          if (relativePath.isNotEmpty()) {
-            pathsToTry.add(relativePath)
-          }
-        }
+            override fun available(): Int = rawStream.available()
 
-        var lastError: String = ""
-
-        for (filePath in pathsToTry) {
-          try {
-            val rawStream = streamClient.retrieveFileStream(filePath)
-
-            if (rawStream != null) {
-              // Wrap the stream to handle cleanup when closed
-              val wrappedStream =
-                object : InputStream() {
-                  override fun read(): Int = rawStream.read()
-
-                  override fun read(b: ByteArray): Int = rawStream.read(b)
-
-                  override fun read(
-                    b: ByteArray,
-                    off: Int,
-                    len: Int,
-                  ): Int = rawStream.read(b, off, len)
-
-                  override fun available(): Int = rawStream.available()
-
-                  override fun close() {
-                    try {
-                      rawStream.close()
-                    } catch (e: Exception) {
-                      android.util.Log.e("FtpClient", "Error closing stream", e)
-                    }
-                    try {
-                      if (streamClient.isConnected) {
-                        streamClient.completePendingCommand()
-                        streamClient.logout()
-                        streamClient.disconnect()
-                      }
-                    } catch (e: Exception) {
-                      android.util.Log.e("FtpClient", "Error disconnecting", e)
-                    }
-                  }
-                }
-
-              return@withContext Result.success(wrappedStream)
-            } else {
-              lastError = "No stream returned"
+            override fun close() {
+              if (closed) return
+              closed = true
+              runCatching { rawStream.close() }
+              runCatching { ownedClient.completePendingCommand() }
+              closeClient(ownedClient)
             }
-          } catch (e: Exception) {
-            lastError = e.message ?: e.toString()
-          }
-        }
-
-        // If we get here, all paths failed
-        try {
-          streamClient.disconnect()
-        } catch (_: Exception) {
-        }
-
-        return@withContext Result.failure(Exception("Failed to open FTP file stream. $lastError"))
-      } catch (e: Exception) {
-        android.util.Log.e("FtpClient", "Exception getting file stream", e)
-        return@withContext Result.failure(e)
+          },
+        )
+      } catch (cancellation: CancellationException) {
+        closeClient(clientToClose)
+        throw cancellation
+      } catch (error: Exception) {
+        closeClient(clientToClose)
+        Result.failure(error)
       }
     }
 
+  /** Credential-free origin URI. Authenticated playback must use the loopback proxy. */
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
-        // Build FTP URI for mpv
-        val uriString =
-          if (connection.isAnonymous) {
-            "ftp://${connection.host}:${connection.port}$path"
-          } else {
-            "ftp://${connection.username}:${connection.password}@${connection.host}:${connection.port}$path"
-          }
-
-        Result.success(Uri.parse(uriString))
-      } catch (e: Exception) {
-        Result.failure(e)
+        val host = connection.host.trim().removePrefix("[").removeSuffix("]")
+        val uri = URI("ftp", null, host, connection.port, remotePath(NetworkPath.from(path)), null, null)
+        Result.success(Uri.parse(uri.toASCIIString()))
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
       }
     }
 
-  private fun getMimeType(fileName: String): String? {
-    val extension = fileName.substringAfterLast('.', "").lowercase()
-    return when (extension) {
-      "mp4", "m4v" -> "video/mp4"
-      "mkv" -> "video/x-matroska"
-      "avi" -> "video/x-msvideo"
-      "mov" -> "video/quicktime"
-      "wmv" -> "video/x-ms-wmv"
-      "flv" -> "video/x-flv"
-      "webm" -> "video/webm"
-      "mpeg", "mpg" -> "video/mpeg"
-      "3gp" -> "video/3gpp"
-      "ts" -> "video/mp2t"
-      else -> null
+  private fun remotePath(path: NetworkPath): String {
+    val segments = NetworkPath.from(connection.path).segments + path.segments
+    return if (segments.isEmpty()) "/" else "/${segments.joinToString("/")}"
+  }
+
+  private fun newClient(streaming: Boolean): FTPClient =
+    FTPClient().apply {
+      controlEncoding = "UTF-8"
+      setConnectTimeout(15_000)
+      setDataTimeout(if (streaming) Duration.ofMinutes(2) else Duration.ofSeconds(60))
+      setDefaultTimeout(if (streaming) 120_000 else 60_000)
+      setControlKeepAliveTimeout(if (streaming) Duration.ofMinutes(10) else Duration.ofMinutes(5))
+      setControlKeepAliveReplyTimeout(if (streaming) Duration.ofSeconds(15) else Duration.ofSeconds(10))
+      bufferSize = 64 * 1024
     }
+
+  private fun login(client: FTPClient): Boolean =
+    if (connection.isAnonymous) {
+      client.login("anonymous", "")
+    } else {
+      client.login(connection.username, connection.password)
+    }
+
+  private fun ensurePositiveReply(
+    client: FTPClient,
+    message: String,
+  ) {
+    if (!FTPReply.isPositiveCompletion(client.replyCode)) {
+      throw IOException("$message (reply ${client.replyCode})")
+    }
+  }
+
+  private fun closeClient(client: FTPClient?) {
+    if (client == null) return
+    runCatching { if (client.isConnected) client.logout() }
+    runCatching { if (client.isConnected) client.disconnect() }
   }
 }

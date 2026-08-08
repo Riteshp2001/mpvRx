@@ -218,7 +218,13 @@ object PreferencesScreen : Screen {
           listOf(
             SettingsDestination(
               title = stringResource(R.string.pref_player),
-              summary = stringResource(R.string.pref_player_summary),
+              summary =
+                listOf(
+                  stringResource(R.string.pref_section_general),
+                  stringResource(R.string.pref_player_seeking_title),
+                  stringResource(R.string.pref_section_display_controls),
+                  stringResource(R.string.pref_screenshots_section),
+                ).joinToString(", "),
               icon = Icons.RoundedFilled.Slideshow,
               screen = PlayerPreferencesScreen,
             ),
@@ -275,7 +281,7 @@ object PreferencesScreen : Screen {
           listOfNotNull(
             SettingsDestination(
               title = stringResource(R.string.pref_folders_title),
-              summary = "Media library folders, hidden paths, fonts, and subtitle directories.",
+              summary = stringResource(R.string.pref_folders_summary),
               icon = Icons.RoundedFilled.Folder,
               screen = FoldersPreferencesScreen,
             ),
@@ -298,7 +304,7 @@ object PreferencesScreen : Screen {
           listOf(
             SettingsDestination(
               title = stringResource(R.string.pref_section_ai_title),
-              summary = "Provider, model, API keys, rename tools, translation, and offline models.",
+              summary = stringResource(R.string.pref_section_ai_summary),
               icon = Icons.RoundedFilled.AutoAwesome,
               screen = AiIntegrationScreen,
             ),
@@ -311,7 +317,13 @@ object PreferencesScreen : Screen {
           listOf(
             SettingsDestination(
               title = stringResource(R.string.pref_advanced),
-              summary = stringResource(R.string.pref_advanced_summary),
+              summary =
+                listOf(
+                  stringResource(R.string.pref_section_app_language),
+                  stringResource(R.string.pref_section_backup_restore),
+                  stringResource(R.string.pref_section_mpv_config),
+                  stringResource(R.string.ui_network),
+                ).joinToString(", "),
               icon = Icons.Alternatives.AdvancedSettings,
               screen = AdvancedPreferencesScreen,
             ),

@@ -469,12 +469,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
-        <provider
-            android:name=".ui.browser.networkstreaming.NetworkStreamingProvider"
-            android:authorities="${applicationId}.networkstreaming"
-            android:exported="false"
-            android:grantUriPermissions="true" />
     </application>
 </manifest>
 

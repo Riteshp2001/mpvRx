@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.player
 
 import android.util.Log
-import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -366,7 +365,7 @@ class ScriptCurlBridge(
     val responseJson =
       json.encodeToString(response)
 
-    MPVLib.setPropertyString(
+    PlaybackSession.setPropertyString(
       RESPONSE_PROPERTY,
       responseJson,
     )

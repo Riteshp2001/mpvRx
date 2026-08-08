@@ -60,8 +60,6 @@ import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.repository.NetworkLifecycleObserver
-import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -73,12 +71,8 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.update.UpdateDialog
 import app.gyrolet.mpvrx.utils.update.UpdateViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 
 private fun screenNavTransition(
@@ -195,19 +189,7 @@ private fun screenNavTransition(
 class MainActivity : AppCompatActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
   private val playerPreferences by inject<PlayerPreferences>()
-  private val networkRepository by inject<NetworkRepository>()
   private var appliedEdgeToEdgeDarkMode: Boolean? = null
-
-  /**
-   * Per-process flag that ensures auto-connect only runs once per cold start,
-   * even if MainActivity is recreated (config change, process death + restore,
-   * etc.). See issue 1.6 in the startup audit.
-   */
-  @Volatile
-  private var autoConnectTriggered: Boolean = false
-
-  // Create a coroutine scope tied to the activity lifecycle
-  private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
   // Register the ActivityResultLauncher at class level
   private val mediaAccessLauncher =
@@ -222,15 +204,6 @@ class MainActivity : AppCompatActivity() {
 
     PermissionUtils.setMediaAccessLauncher(mediaAccessLauncher)
 
-    val networkStreamingEnabled = appearancePreferences.showNetworkTab.get()
-    if (networkStreamingEnabled) {
-      lifecycle.addObserver(
-        app.gyrolet.mpvrx.data.network.proxy
-          .ProxyLifecycleObserver(),
-      )
-    }
-    lifecycle.addObserver(NetworkLifecycleObserver(networkRepository))
-
     applyEdgeToEdge(
       isDarkMode =
         resolveIsDarkMode(
@@ -242,6 +215,7 @@ class MainActivity : AppCompatActivity() {
     setContent {
       // Set up theme and edge-to-edge display
       val dark by appearancePreferences.darkMode.collectAsState()
+      val networkStreamingEnabled by appearancePreferences.showNetworkTab.collectAsState()
       val isSystemInDarkTheme = isSystemInDarkTheme()
       val isDarkMode =
         remember(dark, isSystemInDarkTheme) {
@@ -269,9 +243,8 @@ class MainActivity : AppCompatActivity() {
       // even if the user never opened the Network tab.
       // See issue 1.6 in the startup audit.
       LaunchedEffect(networkStreamingEnabled) {
-        if (networkStreamingEnabled && !autoConnectTriggered) {
-          autoConnectTriggered = true
-          autoConnectToNetworks()
+        if (networkStreamingEnabled) {
+          (application as? App)?.autoConnectNetworksOnce()
         }
       }
 
@@ -321,41 +294,6 @@ class MainActivity : AppCompatActivity() {
 
   private companion object {
     const val SYSTEM_BAR_THEME_SWITCH_PROGRESS = 0.55f
-  }
-
-  /**
-   * Auto-connect to network connections that are marked for auto-connection
-   */
-  private suspend fun autoConnectToNetworks() {
-    // Delay auto-connect to let UI settle first
-    kotlinx.coroutines.delay(500)
-
-    // Use coroutineScope for properly structured concurrency
-    withContext(Dispatchers.IO) {
-      try {
-        val autoConnectConnections = networkRepository.getAutoConnectConnections()
-        autoConnectConnections.forEach { connection ->
-          withContext(Dispatchers.Main) {
-            Log.d("MainActivity", "Auto-connecting to: ${connection.name}")
-          }
-          networkRepository
-            .connect(connection)
-            .onSuccess {
-              withContext(Dispatchers.Main) {
-                Log.d("MainActivity", "Auto-connected successfully: ${connection.name}")
-              }
-            }.onFailure { e ->
-              withContext(Dispatchers.Main) {
-                Log.e("MainActivity", "Auto-connect failed for ${connection.name}: ${e.message}")
-              }
-            }
-        }
-      } catch (e: Exception) {
-        withContext(Dispatchers.Main) {
-          Log.e("MainActivity", "Error during auto-connect", e)
-        }
-      }
-    }
   }
 
   /**

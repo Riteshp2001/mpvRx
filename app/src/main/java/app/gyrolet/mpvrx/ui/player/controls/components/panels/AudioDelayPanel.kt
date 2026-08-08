@@ -11,6 +11,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,7 +36,6 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
-import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
@@ -51,17 +52,17 @@ fun AudioDelayPanel(
       AudioDelayCardTitle(onClose = onDismissRequest)
     },
   ) {
-    val delay by MPVLib.propDouble["audio-delay"].collectAsState()
+    val delay by PlaybackSession.propDouble["audio-delay"].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
 
     DelayCard(
       delay = delayFloat,
       onDelayChange = {
         val delayInSeconds = it.toDouble()
-        MPVLib.setPropertyDouble("audio-delay", delayInSeconds)
+        PlaybackSession.setPropertyDouble("audio-delay", delayInSeconds)
       },
       onApply = { preferences.defaultAudioDelay.set((delayFloat * 1000).roundToInt()) },
-      onReset = { MPVLib.setPropertyDouble("audio-delay", 0.0) },
+      onReset = { PlaybackSession.setPropertyDouble("audio-delay", 0.0) },
       delayType = DelayType.Audio,
     )
   }

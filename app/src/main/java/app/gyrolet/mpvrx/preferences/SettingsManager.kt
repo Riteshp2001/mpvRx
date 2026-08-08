@@ -197,11 +197,14 @@ class SettingsManager(
     serializer.attribute(null, "host", sanitizeXmlValue(connection.host))
     serializer.attribute(null, "port", connection.port.toString())
     serializer.attribute(null, "username", sanitizeXmlValue(connection.username))
-    serializer.attribute(null, "password", sanitizeXmlValue(connection.password))
+    // Passwords are Android Keystore-bound ciphertext at rest. Exporting that envelope would both
+    // expose credential material and create an unusable backup on another installation. Deliberately
+    // omit it; non-anonymous imports stay disconnected until the user enters a password again.
     serializer.attribute(null, "path", sanitizeXmlValue(connection.path))
     serializer.attribute(null, "isAnonymous", connection.isAnonymous.toString())
     serializer.attribute(null, "lastConnected", connection.lastConnected.toString())
     serializer.attribute(null, "autoConnect", connection.autoConnect.toString())
+    serializer.attribute(null, "useHttps", connection.useHttps.toString())
     serializer.endTag(null, TAG_NETWORK_CONNECTION)
   }
 
@@ -301,11 +304,15 @@ class SettingsManager(
       host = parser.getAttributeValue(null, "host") ?: "",
       port = parser.getAttributeValue(null, "port")?.toIntOrNull() ?: 445,
       username = parser.getAttributeValue(null, "username") ?: "",
-      password = parser.getAttributeValue(null, "password") ?: "",
+      // Never restore credentials from settings XML, including legacy exports that contained
+      // plaintext passwords or device-bound encrypted envelopes.
+      password = "",
       path = parser.getAttributeValue(null, "path") ?: "/",
       isAnonymous = parser.getAttributeValue(null, "isAnonymous")?.toBoolean() ?: false,
       lastConnected = parser.getAttributeValue(null, "lastConnected")?.toLongOrNull() ?: 0L,
-      autoConnect = parser.getAttributeValue(null, "autoConnect")?.toBoolean() ?: false,
+      // Avoid repeated authentication attempts before credentials have been re-entered.
+      autoConnect = false,
+      useHttps = parser.getAttributeValue(null, "useHttps")?.toBoolean() ?: false,
     )
 
   fun getDefaultExportFilename(): String {

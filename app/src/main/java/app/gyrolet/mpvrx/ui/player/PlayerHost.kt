@@ -50,4 +50,21 @@ interface PlayerHost {
   fun currentThumbnailSource(): String? = null
 
   fun isCurrentMediaKnownAudio(): Boolean = false
+
+  fun playQueueItem(index: Int)
+
+  fun reorderQueueItem(
+    from: Int,
+    to: Int,
+  )
+
+  fun hasNextQueueItem(): Boolean
+
+  fun hasPreviousQueueItem(): Boolean
+
+  fun playNextQueueItem()
+
+  fun playPreviousQueueItem()
+
+  fun onQueueShuffleChanged(enabled: Boolean)
 }

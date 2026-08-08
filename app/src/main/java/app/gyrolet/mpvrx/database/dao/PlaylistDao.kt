@@ -57,6 +57,37 @@ interface PlaylistDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertPlaylistItems(items: List<PlaylistItemEntity>)
 
+  /** Inserts a potentially large item batch in one transaction without exceeding bind limits. */
+  @Transaction
+  suspend fun insertPlaylistItemsAtomically(items: List<PlaylistItemEntity>) {
+    items.chunked(PLAYLIST_WRITE_CHUNK_SIZE).forEach { chunk -> insertPlaylistItems(chunk) }
+  }
+
+  /** Inserts playlist metadata and every item atomically, assigning the generated parent id. */
+  @Transaction
+  suspend fun insertPlaylistWithItems(
+    playlist: PlaylistEntity,
+    items: List<PlaylistItemEntity>,
+  ): Long {
+    val playlistId = insertPlaylist(playlist)
+    items
+      .map { item -> item.copy(playlistId = playlistId.toInt()) }
+      .chunked(PLAYLIST_WRITE_CHUNK_SIZE)
+      .forEach { chunk -> insertPlaylistItems(chunk) }
+    return playlistId
+  }
+
+  /** Replaces a parsed playlist without exposing the old list to partial-delete failures. */
+  @Transaction
+  suspend fun replacePlaylistItems(
+    playlist: PlaylistEntity,
+    items: List<PlaylistItemEntity>,
+  ) {
+    deleteAllItemsFromPlaylist(playlist.id)
+    items.chunked(PLAYLIST_WRITE_CHUNK_SIZE).forEach { chunk -> insertPlaylistItems(chunk) }
+    updatePlaylist(playlist)
+  }
+
   @Update
   suspend fun updatePlaylistItem(item: PlaylistItemEntity)
 
@@ -249,4 +280,8 @@ interface PlaylistDao {
     """,
   )
   suspend fun getFavoriteFilePaths(playlistId: Int): List<String>
+
+  companion object {
+    private const val PLAYLIST_WRITE_CHUNK_SIZE = 500
+  }
 }

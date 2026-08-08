@@ -409,8 +409,8 @@ object NetworkStreamingScreen : Screen {
           connection = connection,
           isOpen = true,
           onDismiss = { editingConnection = null },
-          onSave = { updatedConnection ->
-            viewModel.updateConnection(updatedConnection)
+          onSave = { updatedConnection, clearPassword ->
+            viewModel.updateConnection(updatedConnection, clearPassword)
             editingConnection = null
           },
         )

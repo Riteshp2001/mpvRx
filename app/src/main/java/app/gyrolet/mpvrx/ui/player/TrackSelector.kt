@@ -12,7 +12,6 @@ package app.gyrolet.mpvrx.ui.player
 import android.util.Log
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
-import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -84,13 +83,13 @@ class TrackSelector(
       val maxAttempts = 20
 
       while (attempts < maxAttempts) {
-        val count = MPVLib.getPropertyInt("track-list/count") ?: 0
+        val count = PlaybackSession.getPropertyInt("track-list/count") ?: 0
         if (count > 0) break
         delay(50)
         attempts++
       }
 
-      val trackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
+      val trackCount = PlaybackSession.getPropertyInt("track-list/count") ?: 0
       if (trackCount == 0) return@withContext
 
       // Read all tracks once
@@ -108,20 +107,20 @@ class TrackSelector(
   private fun readTracks(count: Int): List<Track> {
     val list = mutableListOf<Track>()
     for (i in 0 until count) {
-      val id = MPVLib.getPropertyInt("track-list/$i/id") ?: continue
-      val type = MPVLib.getPropertyString("track-list/$i/type") ?: continue
+      val id = PlaybackSession.getPropertyInt("track-list/$i/id") ?: continue
+      val type = PlaybackSession.getPropertyString("track-list/$i/type") ?: continue
 
       list.add(
         Track(
           id = id,
           type = type,
-          lang = (MPVLib.getPropertyString("track-list/$i/lang") ?: "").lowercase(),
-          title = (MPVLib.getPropertyString("track-list/$i/title") ?: "").lowercase(),
-          isDefault = MPVLib.getPropertyBoolean("track-list/$i/default") ?: false,
-          forced = MPVLib.getPropertyBoolean("track-list/$i/forced") ?: false,
-          hearing = MPVLib.getPropertyBoolean("track-list/$i/hearing-impaired") ?: false,
-          external = MPVLib.getPropertyBoolean("track-list/$i/external") ?: false,
-          image = MPVLib.getPropertyBoolean("track-list/$i/image") ?: false,
+          lang = (PlaybackSession.getPropertyString("track-list/$i/lang") ?: "").lowercase(),
+          title = (PlaybackSession.getPropertyString("track-list/$i/title") ?: "").lowercase(),
+          isDefault = PlaybackSession.getPropertyBoolean("track-list/$i/default") ?: false,
+          forced = PlaybackSession.getPropertyBoolean("track-list/$i/forced") ?: false,
+          hearing = PlaybackSession.getPropertyBoolean("track-list/$i/hearing-impaired") ?: false,
+          external = PlaybackSession.getPropertyBoolean("track-list/$i/external") ?: false,
+          image = PlaybackSession.getPropertyBoolean("track-list/$i/image") ?: false,
         ),
       )
     }
@@ -158,9 +157,9 @@ class TrackSelector(
   }
 
   private fun detectAnimeContext(tracks: List<Track>): Boolean {
-    val path = MPVLib.getPropertyString("path") ?: ""
-    val title = MPVLib.getPropertyString("media-title") ?: ""
-    val filename = MPVLib.getPropertyString("filename") ?: ""
+    val path = PlaybackSession.getPropertyString("path") ?: ""
+    val title = PlaybackSession.getPropertyString("media-title") ?: ""
+    val filename = PlaybackSession.getPropertyString("filename") ?: ""
 
     val signalFolder = isAnimeFolder(path)
     val signalLiveAction = isLiveAction(path, title)
@@ -281,7 +280,7 @@ class TrackSelector(
 
       if (preferredLangs.isEmpty()) {
         preferredLangs =
-          (MPVLib.getPropertyString("slang") ?: "")
+          (PlaybackSession.getPropertyString("slang") ?: "")
             .split(",")
             .map { it.trim().lowercase() }
             .filter { it.isNotEmpty() }

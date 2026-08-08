@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -57,7 +59,6 @@ import app.gyrolet.mpvrx.ui.player.applySubtitleLayout
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
-import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
 
 @Composable
@@ -137,9 +138,9 @@ fun SubtitleSettingsColorsCard(
           currentColor = it
           currentColorType.preference(preferences).set(it)
           val hexColor = it.toColorHexString()
-          MPVLib.setPropertyString(currentColorType.property, hexColor)
+          PlaybackSession.setPropertyString(currentColorType.property, hexColor)
           val secondaryProp = currentColorType.property.replace("sub-", "secondary-sub-")
-          MPVLib.setPropertyString(secondaryProp, hexColor)
+          PlaybackSession.setPropertyString(secondaryProp, hexColor)
         },
       )
     }
@@ -199,12 +200,12 @@ fun resetColors(
       SubColorType.Background -> preferences.backgroundColor.deleteAndGet().toColorHexString()
       SubColorType.Shadow -> preferences.shadowColor.deleteAndGet().toColorHexString()
     }
-  MPVLib.setPropertyString(type.property, hexColor)
-  MPVLib.setPropertyString(type.property.replace("sub-", "secondary-sub-"), hexColor)
+  PlaybackSession.setPropertyString(type.property, hexColor)
+  PlaybackSession.setPropertyString(type.property.replace("sub-", "secondary-sub-"), hexColor)
 }
 
 val getCurrentMPVColor: (SubColorType) -> Int = {
-  MPVLib.getPropertyString(it.property)?.uppercase()?.toColorInt() ?: 0xFFFFFFFF.toInt()
+  PlaybackSession.getPropertyString(it.property)?.uppercase()?.toColorInt() ?: 0xFFFFFFFF.toInt()
 }
 
 @Composable
@@ -311,7 +312,7 @@ fun AssOverrideWarningBanner(
             onClick = {
               preferences.overrideAssSubs.set(true)
               overrideAssSubs = true
-              applySubtitleLayout(MPVLib.getPropertyInt("sub-pos") ?: preferences.subPos.get(), true)
+              applySubtitleLayout(PlaybackSession.getPropertyInt("sub-pos") ?: preferences.subPos.get(), true)
             },
             contentPadding =
               androidx.compose.foundation.layout

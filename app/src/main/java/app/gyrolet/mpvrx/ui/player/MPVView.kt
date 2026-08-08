@@ -59,6 +59,39 @@ class MPVView(
     private set
   var onSurfaceReady: (() -> Unit)? = null
 
+  /**
+   * Configures the process-wide player and binds this view as its current rendering surface.
+   * Re-entering the player reuses the live core; it never creates a second native instance.
+   */
+  fun initializeSession(
+    configDir: String,
+    cacheDir: String,
+  ): Result<Boolean> {
+    val result =
+      PlaybackSession.initialize(
+        context = context.applicationContext,
+        configDir = configDir,
+        cacheDir = cacheDir,
+        initOptions = ::initOptions,
+        postInitOptions = ::postInitOptions,
+        observeProperties = ::observeProperties,
+      )
+    if (result.isSuccess) {
+      holder.removeCallback(this)
+      holder.addCallback(this)
+      if (holder.surface.isValid && !isSurfaceReady) surfaceCreated(holder)
+    }
+    return result
+  }
+
+  fun releaseSurface() {
+    holder.removeCallback(this)
+    if (isSurfaceReady || PlaybackSession.state.value.surfaceAttached) {
+      isSurfaceReady = false
+      PlaybackSession.unbindSurface()
+    }
+  }
+
   private data class RenderBackendSelection(
     val vo: String,
     val gpuApi: String,
@@ -68,20 +101,20 @@ class MPVView(
 
   fun getVideoOutAspect(): Double? {
     // Try to get aspect from video-params/aspect first
-    val rawAspect = MPVLib.getPropertyDouble("video-params/aspect")
-    val rotate = MPVLib.getPropertyInt("video-params/rotate") ?: 0
+    val rawAspect = PlaybackSession.getPropertyDouble("video-params/aspect")
+    val rotate = PlaybackSession.getPropertyInt("video-params/rotate") ?: 0
 
     // If aspect is not available or 0, calculate from width and height
     val finalAspect =
       if (rawAspect == null || rawAspect < 0.001) {
         val width =
           runCatching {
-            MPVLib.getPropertyInt("width") ?: MPVLib.getPropertyInt("video-params/w") ?: 0
+            PlaybackSession.getPropertyInt("width") ?: PlaybackSession.getPropertyInt("video-params/w") ?: 0
           }.getOrDefault(0)
 
         val height =
           runCatching {
-            MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
+            PlaybackSession.getPropertyInt("height") ?: PlaybackSession.getPropertyInt("video-params/h") ?: 0
           }.getOrDefault(0)
 
         if (width > 0 && height > 0) {
@@ -110,7 +143,7 @@ class MPVView(
       thisRef: Any?,
       property: KProperty<*>,
     ): Int {
-      val v = MPVLib.getPropertyString(name)
+      val v = PlaybackSession.getPropertyString(name)
       // we can get null here for "no" or other invalid value
       return v?.toIntOrNull() ?: -1
     }
@@ -121,9 +154,9 @@ class MPVView(
       value: Int,
     ) {
       if (value == -1) {
-        MPVLib.setPropertyString(name, "no")
+        PlaybackSession.setPropertyString(name, "no")
       } else {
-        MPVLib.setPropertyString(name, value.toString())
+        PlaybackSession.setPropertyString(name, value.toString())
       }
     }
   }
@@ -134,13 +167,13 @@ class MPVView(
 
   override fun initOptions() {
     val profile = decoderPreferences.profile.get()
-    MPVLib.setOptionString("profile", profile)
+    PlaybackSession.setOptionString("profile", profile)
     val backend = selectRenderBackend()
     val useVulkan = backend.gpuApi == "vulkan"
     val hwdecMode = preferredHwdecMode()
-    setVo(backend.vo)
-    MPVLib.setOptionString("gpu-api", backend.gpuApi)
-    MPVLib.setOptionString("gpu-context", backend.gpuContext)
+    PlaybackSession.setVideoOutput(backend.vo)
+    PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
+    PlaybackSession.setOptionString("gpu-context", backend.gpuContext)
 
     val hdrScreenOutputEnabled = decoderPreferences.hdrScreenOutput.get()
     val isLinearAvailable = useVulkan && backend.vo == "gpu-next"
@@ -163,59 +196,59 @@ class MPVView(
     )
 
     // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
-    MPVLib.setOptionString(
+    PlaybackSession.setOptionString(
       "hwdec",
       hwdecMode,
     )
-    MPVLib.setOptionString("hwdec-codecs", "all")
+    PlaybackSession.setOptionString("hwdec-codecs", "all")
 
     // Enable direct rendering for hardware decoding (reduces memory copies)
-    MPVLib.setOptionString("vd-lavc-dr", "yes")
+    PlaybackSession.setOptionString("vd-lavc-dr", "yes")
     // Queue extra frames to absorb decode jitter on 4K content
-    MPVLib.setOptionString("vd-lavc-queue", "yes")
+    PlaybackSession.setOptionString("vd-lavc-queue", "yes")
 
     if (decoderPreferences.useYUV420P.get()) {
-      MPVLib.setOptionString("vf", "format=yuv420p")
+      PlaybackSession.setOptionString("vf", "format=yuv420p")
     }
     val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
-    MPVLib.setOptionString("msg-level", "all=$logLevel")
+    PlaybackSession.setOptionString("msg-level", "all=$logLevel")
 
-    MPVLib.setPropertyBoolean("keep-open", true)
-    MPVLib.setPropertyBoolean("input-default-bindings", true)
+    PlaybackSession.setPropertyBoolean("keep-open", true)
+    PlaybackSession.setPropertyBoolean("input-default-bindings", true)
 
-    MPVLib.setOptionString("tls-verify", "yes")
-    MPVLib.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
+    PlaybackSession.setOptionString("tls-verify", "yes")
+    PlaybackSession.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
 
     val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
     screenshotDir.mkdirs()
-    MPVLib.setOptionString("screenshot-directory", screenshotDir.path)
+    PlaybackSession.setOptionString("screenshot-directory", screenshotDir.path)
 
     VideoFilters.entries.forEach {
-      MPVLib.setOptionString(it.mpvProperty, it.preference(decoderPreferences).get().toString())
+      PlaybackSession.setOptionString(it.mpvProperty, it.preference(decoderPreferences).get().toString())
     }
 
-    MPVLib.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
+    PlaybackSession.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
     // Avoid forcing CPU-side film-grain synthesis globally; this can spike thermals on mobile SoCs.
     // Let mpv choose the safest path for the active decoder/backend.
-    MPVLib.setOptionString("vd-lavc-film-grain", "auto")
+    PlaybackSession.setOptionString("vd-lavc-film-grain", "auto")
 
     // Streaming improvements
     // Use adaptive HLS bitrate selection to avoid forcing the heaviest stream profile.
     // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
-    MPVLib.setOptionString("hls-bitrate", "no")
-    MPVLib.setOptionString("http-allow-redirect", "yes")
+    PlaybackSession.setOptionString("hls-bitrate", "no")
+    PlaybackSession.setOptionString("http-allow-redirect", "yes")
     // Drop only video-output-bound late frames when rendering cannot keep up.
     // This prevents long-term jitter buildup without aggressively sacrificing smoothness.
-    MPVLib.setOptionString("framedrop", "vo")
+    PlaybackSession.setOptionString("framedrop", "vo")
 
     val preciseSeek = playerPreferences.usePreciseSeeking.get()
-    MPVLib.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
-    MPVLib.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
+    PlaybackSession.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
+    PlaybackSession.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
 
     // Use audio-based video sync for better frame pacing with 4K HDR content.
     // This prevents timing jitter when the display refresh rate doesn't perfectly
     // match the video frame rate (e.g., 24fps content on 60Hz display).
-    MPVLib.setOptionString("video-sync", "audio")
+    PlaybackSession.setOptionString("video-sync", "audio")
 
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
     applyAnime4KShaders(backend.vo, backend.gpuApi)
@@ -228,7 +261,7 @@ class MPVView(
   }
 
   override fun observeProperties() {
-    for ((name, format) in observedProps) MPVLib.observeProperty(name, format)
+    for ((name, format) in observedProps) PlaybackSession.observeProperty(name, format)
   }
 
   override fun postInitOptions() {
@@ -236,14 +269,14 @@ class MPVView(
 
     when (decoderPreferences.debanding.get()) {
       Debanding.None -> {}
-      Debanding.CPU -> MPVLib.command("vf", "add", "@deband:gradfun=radius=12")
-      Debanding.GPU -> MPVLib.setOptionString("deband", "yes")
+      Debanding.CPU -> PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
+      Debanding.GPU -> PlaybackSession.setOptionString("deband", "yes")
     }
 
     advancedPreferences.enabledStatisticsPage.get().let {
       if (it in 1..5) {
-        MPVLib.command("script-binding", "stats/display-stats-toggle")
-        MPVLib.command("script-binding", "stats/display-page-$it")
+        PlaybackSession.command("script-binding", "stats/display-stats-toggle")
+        PlaybackSession.command("script-binding", "stats/display-page-$it")
       }
     }
   }
@@ -255,8 +288,8 @@ class MPVView(
     val cutoutInsets = resolvedInsets?.getInsets(WindowInsetsCompat.Type.displayCutout())
     val horizontalMargin = maxOf(cutoutInsets?.left ?: 0, cutoutInsets?.right ?: 0).coerceAtLeast(16)
     val verticalMargin = (cutoutInsets?.top ?: 0).coerceAtLeast(16)
-    MPVLib.setOptionString("osd-margin-x", horizontalMargin.toString())
-    MPVLib.setOptionString("osd-margin-y", verticalMargin.toString())
+    PlaybackSession.setOptionString("osd-margin-x", horizontalMargin.toString())
+    PlaybackSession.setOptionString("osd-margin-y", verticalMargin.toString())
   }
 
   @Suppress("ReturnCount", "DEPRECATION")
@@ -291,7 +324,7 @@ class MPVView(
 
     val action = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
     mod.add(mapped)
-    MPVLib.command(action, mod.joinToString("+"))
+    PlaybackSession.command(action, mod.joinToString("+"))
 
     return true
   }
@@ -302,13 +335,12 @@ class MPVView(
     width: Int,
     height: Int,
   ) {
-    super.surfaceChanged(holder, format, width, height)
+    PlaybackSession.resizeSurface(width, height)
     applyFrameRate()
   }
 
   override fun surfaceCreated(holder: android.view.SurfaceHolder) {
-    super.surfaceCreated(holder)
-    isSurfaceReady = true
+    isSurfaceReady = PlaybackSession.bindSurface(holder.surface, width, height)
     applyFrameRate()
     post {
       if (isSurfaceReady && holder.surface.isValid) {
@@ -319,12 +351,12 @@ class MPVView(
 
   override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {
     isSurfaceReady = false
-    super.surfaceDestroyed(holder)
+    PlaybackSession.unbindSurface()
   }
 
   private fun applyFrameRate() {
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-      val fps = MPVLib.getPropertyDouble("container-fps") ?: 0.0
+      val fps = PlaybackSession.getPropertyDouble("container-fps") ?: 0.0
       if (fps > 0.0 && holder?.surface?.isValid == true) {
         try {
           holder.surface.setFrameRate(
@@ -372,54 +404,54 @@ class MPVView(
   private fun setupAudioOptions() {
     // Disable MPV's automatic audio selection
     // App will handle track selection manually via TrackSelector to respect user choices
-    MPVLib.setOptionString("alang", "")
-    MPVLib.setOptionString("audio-display", "embedded-first")
-    MPVLib.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
-    MPVLib.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
-    MPVLib.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
+    PlaybackSession.setOptionString("alang", "")
+    PlaybackSession.setOptionString("audio-display", "embedded-first")
+    PlaybackSession.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
+    PlaybackSession.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
+    PlaybackSession.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
     // Prevent automatic volume normalization when downmixing multi-channel audio
-    MPVLib.setOptionString("audio-normalize-downmix", "no")
+    PlaybackSession.setOptionString("audio-normalize-downmix", "no")
   }
 
   // Setup
   private fun setupSubtitlesOptions() {
     // Disable MPV's automatic subtitle selection
     // App will handle track selection manually via TrackSelector to respect user choices
-    MPVLib.setOptionString("slang", "")
-    MPVLib.setOptionString("sub-auto", "no")
-    MPVLib.setOptionString("sub-file-paths", "")
-    MPVLib.setOptionString("subs-fallback", "no")
+    PlaybackSession.setOptionString("slang", "")
+    PlaybackSession.setOptionString("sub-auto", "no")
+    PlaybackSession.setOptionString("sub-file-paths", "")
+    PlaybackSession.setOptionString("subs-fallback", "no")
 
     val fontsDirPath = "${context.filesDir.path}/fonts/"
-    MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)
+    PlaybackSession.setOptionString("sub-fonts-dir", fontsDirPath)
     // Auto-detect subtitle encoding
-    MPVLib.setOptionString("sub-codepage", "auto")
+    PlaybackSession.setOptionString("sub-codepage", "auto")
     // Allow embedded fonts from MKV/MP4 containers
-    MPVLib.setOptionString("embeddedfonts", "yes")
+    PlaybackSession.setOptionString("embeddedfonts", "yes")
     // Auto-detect font provider (system fonts, embedded fonts, etc.)
-    MPVLib.setOptionString("sub-font-provider", "auto")
+    PlaybackSession.setOptionString("sub-font-provider", "auto")
 
     // Delay and speed for both primary and secondary
     val subDelay = (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString()
     val subSpeed = subtitlesPreferences.defaultSubSpeed.get().toString()
-    MPVLib.setOptionString("sub-delay", subDelay)
-    MPVLib.setOptionString("sub-speed", subSpeed)
-    MPVLib.setOptionString("secondary-sub-delay", subDelay)
-    MPVLib.setOptionString("secondary-sub-speed", subSpeed)
+    PlaybackSession.setOptionString("sub-delay", subDelay)
+    PlaybackSession.setOptionString("sub-speed", subSpeed)
+    PlaybackSession.setOptionString("secondary-sub-delay", subDelay)
+    PlaybackSession.setOptionString("secondary-sub-speed", subSpeed)
 
     val preferredFont = subtitlesPreferences.font.get()
     if (preferredFont.isNotBlank()) {
-      MPVLib.setOptionString("sub-font", preferredFont)
+      PlaybackSession.setOptionString("sub-font", preferredFont)
     }
     // If blank, MPV uses its default font
 
     if (subtitlesPreferences.overrideAssSubs.get()) {
-      MPVLib.setOptionString("sub-ass-override", "force")
-      MPVLib.setOptionString("sub-ass-justify", "yes")
-      MPVLib.setOptionString("secondary-sub-ass-override", "force")
+      PlaybackSession.setOptionString("sub-ass-override", "force")
+      PlaybackSession.setOptionString("sub-ass-justify", "yes")
+      PlaybackSession.setOptionString("secondary-sub-ass-override", "force")
     } else {
-      MPVLib.setOptionString("sub-ass-override", "no")
-      MPVLib.setOptionString("secondary-sub-ass-override", "no")
+      PlaybackSession.setOptionString("sub-ass-override", "no")
+      PlaybackSession.setOptionString("secondary-sub-ass-override", "no")
     }
 
     // Typography and styling for both primary and secondary
@@ -453,31 +485,31 @@ class MPVView(
       } else {
         "no"
       }
-    MPVLib.setOptionString("blend-subtitles", blendMode)
+    PlaybackSession.setOptionString("blend-subtitles", blendMode)
 
     for ((prefix, pos) in listOf("sub-" to subPos.toString(), "secondary-sub-" to secondarySubPos.toString())) {
-      MPVLib.setOptionString("${prefix}font-size", fontSize)
-      MPVLib.setOptionString("${prefix}bold", bold)
-      MPVLib.setOptionString("${prefix}italic", italic)
-      MPVLib.setOptionString("${prefix}justify", justify)
-      MPVLib.setOptionString("${prefix}color", textColor)
-      MPVLib.setOptionString("${prefix}back-color", backgroundColor)
-      MPVLib.setOptionString("${prefix}border-color", borderColor)
-      MPVLib.setOptionString("${prefix}shadow-color", shadowColor)
-      MPVLib.setOptionString("${prefix}border-size", borderSize)
-      MPVLib.setOptionString("${prefix}border-style", borderStyle)
-      MPVLib.setOptionString("${prefix}shadow-offset", shadowOffset)
-      MPVLib.setOptionString("${prefix}scale", subScale)
-      MPVLib.setOptionString("${prefix}pos", pos)
-      MPVLib.setOptionString("${prefix}scale-by-window", scaleByWindow)
-      MPVLib.setOptionString("${prefix}use-margins", scaleByWindow)
+      PlaybackSession.setOptionString("${prefix}font-size", fontSize)
+      PlaybackSession.setOptionString("${prefix}bold", bold)
+      PlaybackSession.setOptionString("${prefix}italic", italic)
+      PlaybackSession.setOptionString("${prefix}justify", justify)
+      PlaybackSession.setOptionString("${prefix}color", textColor)
+      PlaybackSession.setOptionString("${prefix}back-color", backgroundColor)
+      PlaybackSession.setOptionString("${prefix}border-color", borderColor)
+      PlaybackSession.setOptionString("${prefix}shadow-color", shadowColor)
+      PlaybackSession.setOptionString("${prefix}border-size", borderSize)
+      PlaybackSession.setOptionString("${prefix}border-style", borderStyle)
+      PlaybackSession.setOptionString("${prefix}shadow-offset", shadowOffset)
+      PlaybackSession.setOptionString("${prefix}scale", subScale)
+      PlaybackSession.setOptionString("${prefix}pos", pos)
+      PlaybackSession.setOptionString("${prefix}scale-by-window", scaleByWindow)
+      PlaybackSession.setOptionString("${prefix}use-margins", scaleByWindow)
     }
   }
 
   fun applyAnime4KShaders() {
     applyAnime4KShaders(
-      activeVo = MPVLib.getPropertyString("vo") ?: "",
-      activeGpuApi = MPVLib.getPropertyString("gpu-api") ?: "",
+      activeVo = PlaybackSession.getPropertyString("vo") ?: "",
+      activeGpuApi = PlaybackSession.getPropertyString("gpu-api") ?: "",
     )
   }
 

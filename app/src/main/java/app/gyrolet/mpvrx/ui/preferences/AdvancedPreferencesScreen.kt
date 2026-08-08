@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
@@ -65,7 +64,6 @@ import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.NotificationStyle
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
@@ -631,9 +629,15 @@ object AdvancedPreferencesScreen : Screen {
                   backStack.add(app.gyrolet.mpvrx.ui.preferences.CustomButtonScreen)
                 },
               )
+            }
+          }
 
-              PreferenceDivider()
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.ui_network))
+          }
 
+          item {
+            PreferenceCard {
               Preference(
                 title = {
                   Text(
@@ -945,37 +949,6 @@ object AdvancedPreferencesScreen : Screen {
                         ).show()
                     }
                   }
-                },
-              )
-            }
-          }
-
-          item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_notification))
-          }
-
-          item {
-            PreferenceCard {
-              val notificationStyle by preferences.notificationStyle.collectAsState()
-              val supportedNotificationStyles =
-                remember {
-                  NotificationStyle.entries.filter { it.isSupportedOn(Build.VERSION.SDK_INT) }
-                }
-              val selectedNotificationStyle =
-                notificationStyle.takeIf { it.isSupportedOn(Build.VERSION.SDK_INT) }
-                  ?: NotificationStyle.Media
-
-              ListPreference(
-                value = selectedNotificationStyle,
-                onValueChange = preferences.notificationStyle::set,
-                values = supportedNotificationStyles,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(text = stringResource(R.string.pref_advanced_notification_style)) },
-                summary = {
-                  Text(
-                    text = selectedNotificationStyle.displayName,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
                 },
               )
             }

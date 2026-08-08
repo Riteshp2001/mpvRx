@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -82,7 +84,6 @@ import app.gyrolet.mpvrx.ui.player.getSubtitleHitboxBounds
 import app.gyrolet.mpvrx.ui.player.getTrackSelectionId
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
-import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -112,10 +113,10 @@ fun GestureHandler(
   val subtitlesPreferences = koinInject<SubtitlesPreferences>()
   val context = LocalContext.current
   val subtitleTracks by viewModel.subtitleTracks.collectAsState(emptyList())
-  val videoAspectState by MPVLib.propDouble["video-params/aspect"].collectAsState()
-  val videoZoomState by MPVLib.propDouble["video-zoom"].collectAsState()
-  val videoPanYState by MPVLib.propDouble["video-pan-y"].collectAsState()
-  val subUseMarginsState by MPVLib.propString["sub-use-margins"].collectAsState()
+  val videoAspectState by PlaybackSession.propDouble["video-params/aspect"].collectAsState()
+  val videoZoomState by PlaybackSession.propDouble["video-zoom"].collectAsState()
+  val videoPanYState by PlaybackSession.propDouble["video-pan-y"].collectAsState()
+  val subUseMarginsState by PlaybackSession.propString["sub-use-margins"].collectAsState()
 
   fun getSubtitleScreenY(
     subPos: Int,
@@ -154,10 +155,10 @@ fun GestureHandler(
 
   val panelShown by viewModel.panelShown.collectAsState()
   val allowGesturesInPanels by playerPreferences.allowGesturesInPanels.collectAsState()
-  val paused by MPVLib.propBoolean["pause"].collectAsState()
-  val duration by MPVLib.propInt["duration"].collectAsState()
-  val position by MPVLib.propInt["time-pos"].collectAsState()
-  val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
+  val paused by PlaybackSession.propBoolean["pause"].collectAsState()
+  val duration by PlaybackSession.propInt["duration"].collectAsState()
+  val position by PlaybackSession.propInt["time-pos"].collectAsState()
+  val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
   val controlsShown by viewModel.controlsShown.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekState by viewModel.seekState.collectAsState()
@@ -200,7 +201,7 @@ fun GestureHandler(
   var longPressTriggeredDuringTouch by remember { mutableStateOf(false) }
   var isVerticalGestureActive by remember { mutableStateOf(false) }
   val currentVolumePercent by viewModel.currentVolumePercent.collectAsState()
-  val currentMPVVolume by MPVLib.propInt["volume"].collectAsState()
+  val currentMPVVolume by PlaybackSession.propInt["volume"].collectAsState()
   val currentBrightness by viewModel.currentBrightness.collectAsState()
   val volumeBoostingCap = audioPreferences.volumeBoostCap.get()
   val haptics = LocalHapticFeedback.current
@@ -480,8 +481,8 @@ fun GestureHandler(
             var lastVolumePercentValue = currentVolumePercent
             var lastMPVVolumeValue = currentMPVVolume ?: 100
             var lastBrightnessValue = currentBrightness
-            var originalSubtitlePosition = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
-            var lastSubtitlePosition = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+            var originalSubtitlePosition = PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+            var lastSubtitlePosition = PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
             val brightnessGestureSens = 0.001f
             // Match the anime4k gesture feel, but snap to whole-number volume steps.
             val volumeGestureSens = 0.1f
@@ -511,7 +512,7 @@ fun GestureHandler(
                       isSubtitleHoldActive = true
                       longPressTriggeredDuringTouch = true
                       haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                      originalSubtitlePosition = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+                      originalSubtitlePosition = PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
                       lastSubtitlePosition = originalSubtitlePosition
                       viewModel.playerUpdate.update {
                         PlayerUpdates.ShowText(
@@ -532,7 +533,7 @@ fun GestureHandler(
                       for (i in 1..steps) {
                         val t = i.toFloat() / steps
                         val intermediateSpeed = startSpeed + (targetSpeed - startSpeed) * t
-                        MPVLib.setPropertyFloat("speed", intermediateSpeed)
+                        PlaybackSession.setPropertyFloat("speed", intermediateSpeed)
                         if (i < steps) delay(stepDelay)
                       }
 
@@ -615,7 +616,7 @@ fun GestureHandler(
                       when (gestureType) {
                         "speed_control" -> {
                           dynamicSpeedStartX = currentPosition.x
-                          dynamicSpeedStartValue = MPVLib.getPropertyFloat("speed") ?: multipleSpeedGesture
+                          dynamicSpeedStartValue = PlaybackSession.getPropertyFloat("speed") ?: multipleSpeedGesture
                         }
                         "vertical" -> {
                           if ((brightnessGesture || volumeGesture) && !isLongPressing) {
@@ -629,15 +630,15 @@ fun GestureHandler(
                             lastMPVVolumeValue = currentMPVVolume ?: 100
                             lastBrightnessValue = currentBrightness
                             originalSubtitlePosition =
-                              MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
-                            lastSubtitlePosition = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+                              PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+                            lastSubtitlePosition = PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
                           }
                         }
                         "subtitle_vertical" -> {
                           isVerticalGestureActive = true
                           startingY = 0f
                           originalSubtitlePosition =
-                            MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+                            PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
                           lastSubtitlePosition = originalSubtitlePosition
                         }
                       }
@@ -683,7 +684,7 @@ fun GestureHandler(
                             if (abs(lastAppliedSpeed - newSpeed) > 0.01f) {
                               haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                               lastAppliedSpeed = newSpeed
-                              MPVLib.setPropertyFloat("speed", newSpeed)
+                              PlaybackSession.setPropertyFloat("speed", newSpeed)
                               viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed) }
                             }
                           }
@@ -834,7 +835,7 @@ fun GestureHandler(
               isDynamicSpeedControlActive = false
               hasSwipedEnough = false
               // Ramp speed back down incrementally to avoid audio filter stutter
-              val currentSpeed = MPVLib.getPropertyFloat("speed") ?: multipleSpeedGesture
+              val currentSpeed = PlaybackSession.getPropertyFloat("speed") ?: multipleSpeedGesture
               val targetSpeed = originalSpeed
               val steps = 5
               val stepDelay = 16L
@@ -842,7 +843,7 @@ fun GestureHandler(
                 for (i in 1..steps) {
                   val t = i.toFloat() / steps
                   val intermediateSpeed = currentSpeed + (targetSpeed - currentSpeed) * t
-                  MPVLib.setPropertyFloat("speed", intermediateSpeed)
+                  PlaybackSession.setPropertyFloat("speed", intermediateSpeed)
                   if (i < steps) delay(stepDelay)
                 }
               }
@@ -931,7 +932,7 @@ fun GestureHandler(
                   currentPanY = viewModel.videoPanY.value
 
                   val hasActiveSub = getTrackSelectionId("sid") > 0 || getTrackSelectionId("secondary-sid") > 0
-                  val subPos = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+                  val subPos = PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
                   val subtitleScreenY = getSubtitleScreenY(subPos, sw, sh)
                   val isCenterPinchX = midX in (sw * 0.2f)..(sw * 0.8f)
                   val (lowerBound, upperBound) = getSubtitleHitboxBounds(sw, sh)
@@ -939,7 +940,7 @@ fun GestureHandler(
 
                   if (pinchToZoomSubtitles && hasActiveSub && isSubtitlePinch) {
                     isSubZoomMode = true
-                    initialSubScale = MPVLib.getPropertyFloat("sub-scale") ?: subtitlesPreferences.subScale.get()
+                    initialSubScale = PlaybackSession.getPropertyFloat("sub-scale") ?: subtitlesPreferences.subScale.get()
                     initialDist = dist
                     lastCalculatedSubScale = initialSubScale
                   } else if (pinchToZoomGesture || panAndZoomEnabled) {
@@ -957,7 +958,7 @@ fun GestureHandler(
                     if (gestureStarted && initialDist > 0f) {
                       val currentSubScale = (initialSubScale * (dist / initialDist)).coerceIn(0.1f, 5.0f)
                       lastCalculatedSubScale = currentSubScale
-                      MPVLib.setPropertyFloat("sub-scale", currentSubScale)
+                      PlaybackSession.setPropertyFloat("sub-scale", currentSubScale)
                       viewModel.playerUpdate.update { PlayerUpdates.SubtitleZoom(currentSubScale) }
                     }
                   } else if (pinchToZoomGesture || panAndZoomEnabled) {
@@ -1039,7 +1040,7 @@ fun GestureHandler(
             val startTime = System.currentTimeMillis()
 
             val hasActiveSubtitle = getTrackSelectionId("sid") > 0 || getTrackSelectionId("secondary-sid") > 0
-            val subPos = MPVLib.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
+            val subPos = PlaybackSession.getPropertyInt("sub-pos") ?: subtitlesPreferences.subPos.get()
             val subtitleScreenY = getSubtitleScreenY(subPos, size.width.toFloat(), size.height.toFloat())
 
             val isCenterTouchX = startPosition.x in (size.width * 0.2f)..(size.width * 0.8f)
@@ -1072,7 +1073,7 @@ fun GestureHandler(
                       hasStartedSeeking = true
                       val isForward = if (isSwipeSubtitlesInverted) deltaX < 0 else deltaX > 0
                       val direction = if (isForward) "1" else "-1"
-                      MPVLib.command("sub-seek", direction)
+                      PlaybackSession.command("sub-seek", direction)
                       haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                       viewModel.playerUpdate.update {
                         PlayerUpdates.ShowText(
@@ -1124,8 +1125,6 @@ fun GestureHandler(
                       pendingSeekPosition = clampedPosition
                       if (useThumbFastSeekPreview) {
                         viewModel.updateSeekThumbnailPreview(clampedPosition, maxDuration)
-                      } else {
-                        viewModel.seekTo(clampedPosition.toInt(), fast = true)
                       }
 
                       // Format and display time position updates

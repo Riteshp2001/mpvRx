@@ -49,19 +49,20 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
-import `is`.xyz.mpv.MPVLib
 
 @Composable
 fun AudioMiniPlayer(modifier: Modifier = Modifier) {
-  val isServiceRunning = MediaPlaybackService.isRunning()
-  if (!isServiceRunning) return
-
+  val isServiceRunning = MediaPlaybackService.isForegroundActive()
   val context = LocalContext.current
-  val paused by MPVLib.propBoolean["pause"].collectAsState()
-  val rawMediaTitle by MPVLib.propString["media-title"].collectAsState()
-  val duration by MPVLib.propInt["duration"].collectAsState()
-  val position by MPVLib.propInt["time-pos"].collectAsState()
+  val sessionState by PlaybackSession.state.collectAsState()
+  val paused by PlaybackSession.propBoolean["pause"].collectAsState()
+  val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
+  val duration by PlaybackSession.propInt["duration"].collectAsState()
+  val position by PlaybackSession.propInt["time-pos"].collectAsState()
+
+  if (!isServiceRunning || sessionState.currentItem == null) return
 
   val isPlaying = paused == false
   val title = rawMediaTitle?.takeIf { it.isNotBlank() } ?: "Audio Track"
@@ -78,6 +79,11 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
         .clickable {
           val intent =
             Intent(context, PlayerActivity::class.java).apply {
+              action = MediaPlaybackService.ACTION_OPEN_PLAYER
+              putExtra("is_audio", true)
+              putExtra("media_library_audio", true)
+              putExtra("internal_launch", true)
+              putExtra("launch_source", "notification")
               flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
           context.startActivity(intent)
@@ -151,7 +157,13 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
 
       // Play / Pause Action Button
       IconButton(
-        onClick = { MPVLib.command("cycle", "pause") },
+        onClick = {
+          context.startService(
+            Intent(context, MediaPlaybackService::class.java).setAction(
+              MediaPlaybackService.ACTION_NOTIFICATION_PLAY_PAUSE,
+            ),
+          )
+        },
         modifier = Modifier.size(36.dp),
       ) {
         AnimatedContent(
@@ -170,7 +182,13 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
 
       // Next Track Action Button
       IconButton(
-        onClick = { MPVLib.command("playlist-next") },
+        onClick = {
+          context.startService(
+            Intent(context, MediaPlaybackService::class.java).setAction(
+              MediaPlaybackService.ACTION_NOTIFICATION_NEXT,
+            ),
+          )
+        },
         modifier = Modifier.size(36.dp),
       ) {
         Icon(
@@ -183,7 +201,13 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
 
       // Close Action Button
       IconButton(
-        onClick = { MPVLib.command("stop") },
+        onClick = {
+          context.startService(
+            Intent(context, MediaPlaybackService::class.java).setAction(
+              MediaPlaybackService.ACTION_NOTIFICATION_STOP,
+            ),
+          )
+        },
         modifier = Modifier.size(32.dp),
       ) {
         Icon(
