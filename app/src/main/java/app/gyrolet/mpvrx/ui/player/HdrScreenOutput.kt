@@ -80,7 +80,6 @@ private val HDR_OWNED_PROPERTIES =
   listOf(
     "target-colorspace-hint",
     "target-colorspace-hint-mode",
-    "target-colorspace-hint-strict",
     "target-prim",
     "target-trc",
     "target-peak",
@@ -116,7 +115,6 @@ internal fun hdrScreenOutputSettings(
 private fun commonSettings(
   targetColorspaceHint: String,
   targetColorspaceHintMode: String,
-  targetColorspaceHintStrict: String,
   targetPrim: String,
   targetTrc: String,
   targetPeak: String,
@@ -129,7 +127,6 @@ private fun commonSettings(
   listOf(
     "target-colorspace-hint" to targetColorspaceHint,
     "target-colorspace-hint-mode" to targetColorspaceHintMode,
-    "target-colorspace-hint-strict" to targetColorspaceHintStrict,
     "target-prim" to targetPrim,
     "target-trc" to targetTrc,
     "target-peak" to targetPeak,
@@ -146,7 +143,6 @@ private fun offSettings(): List<Pair<String, String>> =
   commonSettings(
     targetColorspaceHint = "auto",
     targetColorspaceHintMode = "target",
-    targetColorspaceHintStrict = "yes",
     targetPrim = "auto",
     targetTrc = "auto",
     targetPeak = "auto",
@@ -163,7 +159,6 @@ private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>>
     // second HDR output transform on top of the shader pipeline.
     targetColorspaceHint = "no",
     targetColorspaceHintMode = "target",
-    targetColorspaceHintStrict = "yes",
     targetPrim = profile.targetPrim,
     targetTrc = profile.targetTrc,
     targetPeak = "auto",
@@ -181,7 +176,6 @@ private fun linearHdrSettings(boostSdrToHdr: Boolean): List<Pair<String, String>
     // mode history and can keep rendering with stale primaries/TRC after the UI says Linear.
     targetColorspaceHint = "yes",
     targetColorspaceHintMode = "target",
-    targetColorspaceHintStrict = "yes",
     targetPrim = "auto",
     targetTrc = "auto",
     targetPeak = "auto",
