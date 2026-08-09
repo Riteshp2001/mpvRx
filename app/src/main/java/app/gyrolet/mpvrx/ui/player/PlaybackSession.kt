@@ -86,6 +86,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val TAG = "PlaybackSession"
   private const val SEEK_AUDIO_RESTORE_DELAY_MS = 60L
   private const val SEEK_AUDIO_FALLBACK_RESTORE_MS = 750L
+  private val TIMELINE_PROPERTIES = setOf("time-pos", "duration", "demuxer-cache-time", "percent-pos", "playback-time")
 
   private data class NetworkStreamRegistration(
     val proxy: NetworkStreamingProxy,
@@ -129,6 +130,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private var desiredPaused = true
   private var seekAudioGuardToken = 0L
   private var seekAudioGuardPreviousMute: Boolean? = null
+  private var activePlayableUri: String? = null
+  private var lavfRecoveryGeneration = -1L
 
   val isInitialized: Boolean
     get() = initialized
@@ -450,6 +453,8 @@ object PlaybackSession : MPVLib.EventObserver {
       // A saved video-track id belongs to the outgoing file only. Never carry it into a new load.
       suspendedVideoTrack = null
       desiredPaused = false
+      activePlayableUri = playableUri
+      lavfRecoveryGeneration = -1L
       clearSeekAudioGuardLocked(restoreMute = true)
       val generation = _state.value.generation + 1L
       pendingGenerations.addLast(generation)
@@ -524,7 +529,13 @@ object PlaybackSession : MPVLib.EventObserver {
     value: String,
   ): Int = withCore(-1, allowInitializing = true) { MPVLib.setOptionString(name, value) }
 
-  fun getPropertyInt(property: String): Int? = withCore(null) { MPVLib.getPropertyInt(property) }
+  fun getPropertyInt(property: String): Int? =
+    if (shouldSkipUnavailableTimelineRead(property)) null else withCore(null) { MPVLib.getPropertyInt(property) }
+
+  private fun shouldSkipUnavailableTimelineRead(property: String): Boolean {
+    if (property !in TIMELINE_PROPERTIES) return false
+    return _state.value.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+  }
 
   fun setPropertyInt(
     property: String,
@@ -534,14 +545,16 @@ object PlaybackSession : MPVLib.EventObserver {
     if (property == "vid" && value > 0) suspendedVideoTrack = null
   }
 
-  fun getPropertyDouble(property: String): Double? = withCore(null) { MPVLib.getPropertyDouble(property) }
+  fun getPropertyDouble(property: String): Double? =
+    if (shouldSkipUnavailableTimelineRead(property)) null else withCore(null) { MPVLib.getPropertyDouble(property) }
 
   fun setPropertyDouble(
     property: String,
     value: Double,
   ) = withCore(Unit) { MPVLib.setPropertyDouble(property, value) }
 
-  fun getPropertyFloat(property: String): Float? = withCore(null) { MPVLib.getPropertyFloat(property) }
+  fun getPropertyFloat(property: String): Float? =
+    if (shouldSkipUnavailableTimelineRead(property)) null else withCore(null) { MPVLib.getPropertyFloat(property) }
 
   fun setPropertyFloat(
     property: String,
@@ -755,6 +768,29 @@ object PlaybackSession : MPVLib.EventObserver {
             scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_RESTORE_DELAY_MS)
             true
           }
+          MPVLib.MpvEvent.MPV_EVENT_END_FILE -> {
+            val current = _state.value
+            when {
+              current.phase != PlaybackPhase.LOADING -> true
+              current.activeGeneration != 0L && current.activeGeneration != current.generation -> {
+                Log.d(TAG, "Ignoring stale END_FILE generation ${current.activeGeneration}; current=${current.generation}")
+                false
+              }
+              tryRecoverFailedLocalContainerLocked() -> false
+              else -> {
+                desiredPaused = true
+                updateState {
+                  it.copy(
+                    phase = PlaybackPhase.ERROR,
+                    paused = true,
+                    error = "Failed to recognize or open media format",
+                  )
+                }
+                propBoolean.emit("pause", true)
+                true
+              }
+            }
+          }
           MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
             releaseActiveNetworkStream()
             releaseAuxiliaryNetworkStreams()
@@ -772,6 +808,46 @@ object PlaybackSession : MPVLib.EventObserver {
     if (shouldForward) {
       observerSnapshot().forEach { observer -> runCatching { observer.event(eventId, data) } }
     }
+  }
+
+  /**
+   * Retry a low-confidence local Matroska/WebM-family open exactly once. Normal and network
+   * playback keep mpv's fast defaults; this slower probe is paid only after normal open failed.
+   */
+  private fun tryRecoverFailedLocalContainerLocked(): Boolean {
+    val current = _state.value
+    if (lavfRecoveryGeneration == current.generation) return false
+    val playableUri = activePlayableUri ?: return false
+    if (!isRecoverableLocalContainer(playableUri, current.currentItem)) return false
+
+    lavfRecoveryGeneration = current.generation
+    pendingGenerations.addLast(current.generation)
+    Log.w(TAG, "Retrying local container with relaxed lavf probing: $playableUri")
+    MPVLib.command(
+      "loadfile",
+      playableUri,
+      "replace",
+      "-1",
+      "pause=yes,demuxer=lavf,demuxer-lavf-probescore=1,demuxer-lavf-probesize=52428800,demuxer-lavf-analyzeduration=50",
+    )
+    return true
+  }
+
+  private fun isRecoverableLocalContainer(
+    playableUri: String,
+    item: PlaybackItem?,
+  ): Boolean {
+    val scheme = Uri.parse(playableUri).scheme?.lowercase()
+    if (scheme != null && scheme !in setOf("file", "content")) return false
+
+    val extension =
+      sequenceOf(playableUri, item?.originalUri, item?.playableUri)
+        .filterNotNull()
+        .map { candidate ->
+          val clean = candidate.substringBefore('?').substringBefore('#')
+          clean.substringAfterLast('/', clean).substringAfterLast('.', "").lowercase()
+        }.firstOrNull { it.isNotBlank() }
+    return extension in setOf("mkv", "webm", "mka")
   }
 
   /**
