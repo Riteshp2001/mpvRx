@@ -1331,6 +1331,12 @@ class PlayerActivity :
     }
 
     super.finish()
+
+    // Minimizing into the Mini Player: slide the full player down toward the bottom
+    // bar. The browser tab stays in place; the Mini Player slides up to meet it.
+    if (isMiniPlayerEnabled()) {
+      overridePendingTransition(0, R.anim.slide_out_down)
+    }
   }
 
   override fun finishAndRemoveTask() {

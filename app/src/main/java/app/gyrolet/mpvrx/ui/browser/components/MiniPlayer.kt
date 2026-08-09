@@ -201,7 +201,7 @@ private fun MiniPlayerContent(
       }
       context.startActivity(intent)
       if (context is Activity) {
-        context.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        context.overridePendingTransition(R.anim.slide_in_up, 0)
       }
     }
   }
