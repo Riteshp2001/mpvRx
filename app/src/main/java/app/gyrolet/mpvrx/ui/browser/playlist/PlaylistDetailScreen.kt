@@ -476,6 +476,8 @@ data class PlaylistDetailScreen(
         if (!isSearching && !isReorderMode && !selectionManager.isInSelectionMode) {
           val isAudioPlaylist = playlist?.isAudio == true || videoItems.any { it.video.isAudio }
           ExtendedFloatingActionButton(
+            modifier =
+              Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance),
             onClick = { backStack.add(PlaylistAddVideosScreen(playlistId, isAudio = isAudioPlaylist)) },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
             text = { Text(if (isAudioPlaylist) "Add Songs" else stringResource(R.string.playlist_add_videos)) },

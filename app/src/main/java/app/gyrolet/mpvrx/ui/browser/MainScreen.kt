@@ -53,6 +53,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -181,6 +182,17 @@ object MainScreen : Screen {
       }
       }
 
+    // Track whether the floating pill nav bar is on screen so the mini player can
+    // sit at the very bottom when navigating to screens without it.
+    DisposableEffect(Unit) {
+      onDispose {
+        NavigationBarState.isNavBarVisible = false
+      }
+    }
+    SideEffect {
+      NavigationBarState.isNavBarVisible = !hideNavigationBar && visibleTabs.isNotEmpty() && !isPermissionDenied
+    }
+
     val scope = rememberCoroutineScope()
 
     val pagerState = rememberPagerState(
@@ -283,20 +295,9 @@ object MainScreen : Screen {
       label = "nav_bar_width",
     )
 
-    // On portrait phones the full-width mini player sits at the very bottom and the
-    // pill nav bar floats above it, so raise the bar's bottom padding accordingly.
-    val navBarBottomPadding by animateDpAsState(
-      targetValue = if (isMiniPlayerVisible && isPortrait && !isTablet) 88.dp else 12.dp,
-      animationSpec =
-        spring(
-          dampingRatio = Spring.DampingRatioNoBouncy,
-          stiffness = Spring.StiffnessMediumLow,
-        ),
-      label = "nav_bar_bottom_padding",
-    )
-
-    // Screens/FABs must clear the mini player stack when it is edge-to-edge in portrait.
-    val miniPlayerNavClearance = if (isMiniPlayerVisible && isPortrait && !isTablet) 88.dp else 0.dp
+    // On portrait phones the edge-to-edge mini player sits above the pill nav bar,
+    // so screens/FABs must clear it.
+    val miniPlayerNavClearance = if (isMiniPlayerVisible && isPortrait && !isTablet) 96.dp else 0.dp
 
     // Scaffold with bottom navigation bar
     Scaffold(
@@ -361,7 +362,7 @@ object MainScreen : Screen {
               .fillMaxWidth()
               .align(Alignment.BottomStart)
               .navigationBarsPadding()
-              .padding(bottom = navBarBottomPadding),
+              .padding(bottom = 12.dp),
         ) {
           BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val containerWidth = maxWidth

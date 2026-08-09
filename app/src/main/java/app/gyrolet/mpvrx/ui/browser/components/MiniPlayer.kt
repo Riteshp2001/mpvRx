@@ -55,6 +55,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +110,7 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
 
   val currentItem = sessionState.currentItem
   val isMediaActive = isServiceRunning && currentItem != null &&
+    !NavigationBarState.isInSelectionMode &&
     sessionState.phase != PlaybackPhase.IDLE &&
     sessionState.phase != PlaybackPhase.UNINITIALIZED &&
     sessionState.phase != PlaybackPhase.ERROR
@@ -322,14 +324,16 @@ private fun MiniPlayerContent(
           modifier = Modifier.weight(1f),
           verticalArrangement = Arrangement.Center,
         ) {
-          Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.basicMarquee(),
-          )
+          key(currentItem?.stableId ?: currentItem?.originalUri) {
+            Text(
+              text = title,
+              style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+              color = MaterialTheme.colorScheme.onSurface,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              modifier = Modifier.basicMarquee(),
+            )
+          }
           Text(
             text = if (isPlaying) "Playing Video" else "Paused",
             style = MaterialTheme.typography.labelSmall,
@@ -432,14 +436,16 @@ private fun MiniPlayerContent(
           modifier = Modifier.weight(1f),
           verticalArrangement = Arrangement.Center,
         ) {
-          Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.basicMarquee(),
-          )
+          key(currentItem?.stableId ?: currentItem?.originalUri) {
+            Text(
+              text = title,
+              style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+              color = MaterialTheme.colorScheme.onSurface,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              modifier = Modifier.basicMarquee(),
+            )
+          }
           Text(
             text = if (isPlaying) "Playing" else "Paused",
             style = MaterialTheme.typography.labelSmall,
