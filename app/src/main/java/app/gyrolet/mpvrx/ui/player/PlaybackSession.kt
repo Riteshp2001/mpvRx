@@ -93,6 +93,15 @@ object PlaybackSession : MPVLib.EventObserver {
     val registration: NetworkStreamRegistration? = null,
   )
 
+  /**
+   * Video decoding is intentionally disabled while Android has no render surface. Keep the track
+   * id process-wide so Activity recreation (for example notification re-entry) cannot lose it.
+   */
+  private data class SuspendedVideoTrack(
+    val id: Int,
+    val generation: Long,
+  )
+
   private val nativeLock = ReentrantLock(true)
   private val observers = CopyOnWriteArraySet<MPVLib.EventObserver>()
   private val pendingGenerations = ArrayDeque<Long>()
@@ -111,6 +120,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private var activeRendererConfigurationKey: String? = null
   private var activeNetworkStream: NetworkStreamRegistration? = null
   private val auxiliaryNetworkStreams = linkedMapOf<String, NetworkStreamRegistration>()
+  private var suspendedVideoTrack: SuspendedVideoTrack? = null
+  private var desiredPaused = true
 
   val isInitialized: Boolean
     get() = initialized
@@ -145,6 +156,8 @@ object PlaybackSession : MPVLib.EventObserver {
 
         applicationContext = context.applicationContext
         observedProperties.clear()
+        suspendedVideoTrack = null
+        desiredPaused = true
         updateState { it.copy(phase = PlaybackPhase.INITIALIZING, error = null) }
         try {
           MPVLib.create(context.applicationContext)
@@ -162,13 +175,15 @@ object PlaybackSession : MPVLib.EventObserver {
           observeProperties()
           initialized = true
           activeRendererConfigurationKey = rendererConfigurationKey
-          updateState { it.copy(phase = PlaybackPhase.IDLE, error = null) }
+          updateState { it.copy(phase = PlaybackPhase.IDLE, paused = true, error = null) }
           true
         } catch (error: Throwable) {
           runCatching { MPVLib.removeObserver(this) }
           runCatching { MPVLib.destroy() }
           initialized = false
           activeRendererConfigurationKey = null
+          suspendedVideoTrack = null
+          desiredPaused = true
           updateState {
             it.copy(
               phase = PlaybackPhase.ERROR,
@@ -187,7 +202,14 @@ object PlaybackSession : MPVLib.EventObserver {
   ): Boolean =
     withCore(default = false) {
       if (!surface.isValid) return@withCore false
-      if (_state.value.surfaceAttached) runCatching { MPVLib.detachSurface() }
+
+      // Replacing an already-attached Surface must also detach the hardware video decoder first.
+      // Otherwise MediaCodec can race the old ANativeWindow while the new Surface is attached.
+      if (_state.value.surfaceAttached) {
+        suspendVideoTrackForSurfaceLossLocked()
+        runCatching { MPVLib.detachSurface() }
+      }
+
       MPVLib.attachSurface(surface)
       width?.takeIf { it > 0 }?.let { resolvedWidth ->
         height?.takeIf { it > 0 }?.let { resolvedHeight ->
@@ -197,6 +219,7 @@ object PlaybackSession : MPVLib.EventObserver {
       MPVLib.setOptionString("force-window", "yes")
       MPVLib.setPropertyString("vo", desiredVideoOutput)
       updateState { it.copy(surfaceAttached = true) }
+      restoreSuspendedVideoTrackLocked()
       true
     }
 
@@ -211,6 +234,10 @@ object PlaybackSession : MPVLib.EventObserver {
   fun unbindSurface() {
     withCore(Unit) {
       if (!_state.value.surfaceAttached) return@withCore
+
+      // Never leave a hardware video decoder attached to a Surface that Android is destroying.
+      // Audio remains untouched, so background/audio-only playback continues normally.
+      suspendVideoTrackForSurfaceLossLocked()
       runCatching { MPVLib.setPropertyString("vo", "null") }
       runCatching { MPVLib.setOptionString("force-window", "no") }
       runCatching { MPVLib.detachSurface() }
@@ -232,8 +259,11 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   fun markForeground() {
-    updateState { current ->
-      if (current.phase == PlaybackPhase.BACKGROUND) current.copy(phase = PlaybackPhase.READY) else current
+    withCore(Unit) {
+      updateState { current ->
+        if (current.phase == PlaybackPhase.BACKGROUND) current.copy(phase = PlaybackPhase.READY) else current
+      }
+      restoreSuspendedVideoTrackLocked()
     }
   }
 
@@ -242,6 +272,8 @@ object PlaybackSession : MPVLib.EventObserver {
     withCore(Unit) {
       val nextGeneration = _state.value.generation + 1L
       pendingGenerations.clear()
+      suspendedVideoTrack = null
+      desiredPaused = true
       runCatching { MPVLib.command("stop") }
       runCatching { MPVLib.setPropertyBoolean("pause", true) }
       if (clearQueue) _queue.value = PlaybackQueueState()
@@ -255,6 +287,7 @@ object PlaybackSession : MPVLib.EventObserver {
           error = null,
         )
       }
+      propBoolean.emit("pause", true)
     }
     releaseActiveNetworkStream()
     releaseAuxiliaryNetworkStreams()
@@ -270,6 +303,8 @@ object PlaybackSession : MPVLib.EventObserver {
 
   private fun destroyLocked() {
     updateState { it.copy(phase = PlaybackPhase.STOPPING) }
+    desiredPaused = true
+    suspendedVideoTrack = null
     runCatching { MPVLib.setPropertyBoolean("pause", true) }
     runCatching { MPVLib.setPropertyString("vo", "null") }
     runCatching { MPVLib.detachSurface() }
@@ -401,6 +436,9 @@ object PlaybackSession : MPVLib.EventObserver {
     item: PlaybackItem? = null,
   ): Long =
     withCore(default = -1L) {
+      // A saved video-track id belongs to the outgoing file only. Never carry it into a new load.
+      suspendedVideoTrack = null
+      desiredPaused = false
       val generation = _state.value.generation + 1L
       pendingGenerations.addLast(generation)
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
@@ -408,6 +446,7 @@ object PlaybackSession : MPVLib.EventObserver {
         it.copy(
           phase = PlaybackPhase.LOADING,
           generation = generation,
+          paused = false,
           currentItem = resolvedItem,
           error = null,
         )
@@ -419,8 +458,11 @@ object PlaybackSession : MPVLib.EventObserver {
           .joinToString(",") { (name, value) -> "$name: ${value.replace(",", "\\,")}" }
       MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
       MPVLib.setPropertyString("http-header-fields", headerFields)
-      MPVLib.command("loadfile", playableUri, "replace", "-1", "pause=no")
-      updateState { it.copy(paused = false) }
+
+      // Keep the native core paused while tracks/decoder/output are being replaced. Play intent is
+      // kept in desiredPaused and applied exactly once when FILE_LOADED arrives. This prevents the
+      // audio output and UI from racing three separate pause=no writes during startup.
+      MPVLib.command("loadfile", playableUri, "replace", "-1", "pause=yes")
       propBoolean.emit("pause", false)
       generation
     }
@@ -471,7 +513,10 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setPropertyInt(
     property: String,
     value: Int,
-  ) = withCore(Unit) { MPVLib.setPropertyInt(property, value) }
+  ) = withCore(Unit) {
+    MPVLib.setPropertyInt(property, value)
+    if (property == "vid" && value > 0) suspendedVideoTrack = null
+  }
 
   fun getPropertyDouble(property: String): Double? = withCore(null) { MPVLib.getPropertyDouble(property) }
 
@@ -493,18 +538,34 @@ object PlaybackSession : MPVLib.EventObserver {
     property: String,
     value: Boolean,
   ) = withCore(Unit) {
-    MPVLib.setPropertyBoolean(property, value)
     if (property == "pause") {
+      desiredPaused = value
+      // During a replacement load the native core deliberately stays paused until FILE_LOADED.
+      // Record user/service intent now, then apply it once decoder/track setup is complete.
+      if (_state.value.phase != PlaybackPhase.LOADING) {
+        MPVLib.setPropertyBoolean(property, value)
+      }
       updateState { it.copy(paused = value) }
       propBoolean.emit(property, value)
+    } else {
+      MPVLib.setPropertyBoolean(property, value)
     }
   }
 
   /** Atomically toggles pause so rapid UI/media-button taps cannot race separate reads and writes. */
   fun togglePause(): Boolean? =
     withCore(default = null) {
-      val nextPaused = !(MPVLib.getPropertyBoolean("pause") ?: _state.value.paused)
-      MPVLib.setPropertyBoolean("pause", nextPaused)
+      val currentPaused =
+        if (_state.value.phase == PlaybackPhase.LOADING) {
+          desiredPaused
+        } else {
+          MPVLib.getPropertyBoolean("pause") ?: desiredPaused
+        }
+      val nextPaused = !currentPaused
+      desiredPaused = nextPaused
+      if (_state.value.phase != PlaybackPhase.LOADING) {
+        MPVLib.setPropertyBoolean("pause", nextPaused)
+      }
       updateState { it.copy(paused = nextPaused) }
       propBoolean.emit("pause", nextPaused)
       nextPaused
@@ -517,7 +578,19 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setPropertyString(
     property: String,
     value: String,
-  ) = withCore(Unit) { MPVLib.setPropertyString(property, value) }
+  ) = withCore(Unit) {
+    if (property == "vid") {
+      if (value == "no" && _state.value.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) {
+        val activeVid = MPVLib.getPropertyInt("vid") ?: -1
+        if (activeVid > 0) {
+          suspendedVideoTrack = SuspendedVideoTrack(activeVid, _state.value.generation)
+        }
+      } else if (value != "no") {
+        suspendedVideoTrack = null
+      }
+    }
+    MPVLib.setPropertyString(property, value)
+  }
 
   fun grabThumbnail(dimension: Int): Bitmap? = withCore(null) { MPVLib.grabThumbnail(dimension) }
 
@@ -597,9 +670,11 @@ object PlaybackSession : MPVLib.EventObserver {
     property: String,
     value: Boolean,
   ) {
-    if (property == "pause") updateState { it.copy(paused = value) }
-    propBoolean.emit(property, value)
-    observerSnapshot().forEach { observer -> runCatching { observer.eventProperty(property, value) } }
+    val effectiveValue =
+      if (property == "pause" && _state.value.phase == PlaybackPhase.LOADING) desiredPaused else value
+    if (property == "pause") updateState { it.copy(paused = effectiveValue) }
+    propBoolean.emit(property, effectiveValue)
+    observerSnapshot().forEach { observer -> runCatching { observer.eventProperty(property, effectiveValue) } }
   }
 
   override fun eventProperty(
@@ -645,20 +720,28 @@ object PlaybackSession : MPVLib.EventObserver {
               Log.d(TAG, "Ignoring stale FILE_LOADED generation ${current.activeGeneration}; current=${current.generation}")
               false
             } else {
+              // Track/decoder replacement is now complete. Apply the latest user/service intent
+              // once instead of allowing pause writes to race the load operation.
+              MPVLib.setPropertyBoolean("pause", desiredPaused)
               updateState {
                 it.copy(
                   phase = if (it.phase == PlaybackPhase.BACKGROUND) PlaybackPhase.BACKGROUND else PlaybackPhase.READY,
+                  paused = desiredPaused,
                   error = null,
                 )
               }
+              propBoolean.emit("pause", desiredPaused)
+              restoreSuspendedVideoTrackLocked()
               true
             }
           }
           MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
             releaseActiveNetworkStream()
             releaseAuxiliaryNetworkStreams()
+            suspendedVideoTrack = null
+            desiredPaused = true
             initialized = false
-            updateState { it.copy(phase = PlaybackPhase.UNINITIALIZED, surfaceAttached = false) }
+            updateState { it.copy(phase = PlaybackPhase.UNINITIALIZED, surfaceAttached = false, paused = true) }
             true
           }
           else -> true
@@ -668,6 +751,35 @@ object PlaybackSession : MPVLib.EventObserver {
     if (shouldForward) {
       observerSnapshot().forEach { observer -> runCatching { observer.event(eventId, data) } }
     }
+  }
+
+  private fun suspendVideoTrackForSurfaceLossLocked() {
+    val current = _state.value
+    if (current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return
+    val activeVid = MPVLib.getPropertyInt("vid") ?: -1
+    if (activeVid > 0) {
+      suspendedVideoTrack = SuspendedVideoTrack(activeVid, current.generation)
+      // Stop video decoding before the ANativeWindow disappears. Audio remains active.
+      runCatching { MPVLib.setPropertyString("vid", "no") }
+    }
+  }
+
+  private fun restoreSuspendedVideoTrackLocked() {
+    val suspended = suspendedVideoTrack ?: return
+    val current = _state.value
+    if (suspended.generation != current.generation) {
+      suspendedVideoTrack = null
+      return
+    }
+    if (!current.surfaceAttached || current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return
+
+    runCatching { MPVLib.setPropertyInt("vid", suspended.id) }
+      .onSuccess {
+        suspendedVideoTrack = null
+        Log.d(TAG, "Restored video track ${suspended.id} after Surface reattachment")
+      }.onFailure { error ->
+        Log.w(TAG, "Failed to restore video track ${suspended.id} after Surface reattachment", error)
+      }
   }
 
   private fun resolvePlayableUri(item: PlaybackItem): ResolvedPlayable {
