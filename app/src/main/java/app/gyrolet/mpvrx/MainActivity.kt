@@ -37,6 +37,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -49,6 +50,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -68,6 +70,7 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.MainScreen
+import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.browser.components.MiniPlayer
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -375,12 +378,43 @@ class MainActivity : AppCompatActivity() {
             },
           )
 
-          MiniPlayer(
-            modifier = Modifier
-              .align(Alignment.BottomCenter)
-              .windowInsetsPadding(WindowInsets.navigationBars)
-              .padding(bottom = 88.dp, start = 12.dp, end = 12.dp),
-          )
+          val miniPlayerConfig = LocalConfiguration.current
+          val isPortrait = miniPlayerConfig.orientation == Configuration.ORIENTATION_PORTRAIT
+          val isTablet = miniPlayerConfig.smallestScreenWidthDp >= 600
+          val isDualPane = NavigationBarState.isDualPaneFolderSelected
+
+          val miniPlayerModifier =
+            when {
+              // Dual-pane tablets: the mini player lives inside the 2nd (right) pane.
+              isDualPane ->
+                Modifier
+                  .align(Alignment.BottomEnd)
+                  .fillMaxWidth(0.6f)
+                  .windowInsetsPadding(WindowInsets.navigationBars)
+                  .padding(bottom = 12.dp, start = 12.dp, end = 12.dp)
+
+              // Portrait phones: edge-to-edge full width at the very bottom.
+              isPortrait && !isTablet ->
+                Modifier
+                  .align(Alignment.BottomCenter)
+                  .fillMaxWidth()
+                  .windowInsetsPadding(WindowInsets.navigationBars)
+
+              // Landscape/tablet single-pane: sit on the right side of the nav bar,
+              // which slides left when the mini player appears.
+              else ->
+                Modifier
+                  .align(Alignment.BottomStart)
+                  .padding(
+                    start = NavigationBarState.navbarLeftOffset + NavigationBarState.navbarWidth + 12.dp,
+                    end = 12.dp,
+                  )
+                  .fillMaxWidth()
+                  .windowInsetsPadding(WindowInsets.navigationBars)
+                  .padding(bottom = 12.dp)
+            }
+
+          MiniPlayer(modifier = miniPlayerModifier)
         }
       }
 

@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.browser
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.animateColorAsState
@@ -53,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -161,6 +163,7 @@ object MainScreen : Screen {
     val hideNavigationBar = NavigationBarState.shouldHideNavigationBar
     val isPermissionDenied = NavigationBarState.isPermissionDenied
     val isDualPaneFolderSelected = NavigationBarState.isDualPaneFolderSelected
+    val isMiniPlayerVisible = NavigationBarState.isMiniPlayerVisible
 
     val visibleTabs =
       remember(
@@ -243,7 +246,22 @@ object MainScreen : Screen {
     val screenWidth = configuration.screenWidthDp.dp
     val targetNavBarWidth = (screenWidth - 64.dp).coerceAtMost(320.dp)
 
-    val targetOffsetFraction = if (isDualPaneFolderSelected && selectedTab == MainTab.HOME) 0.2f else 0.5f
+    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+    val isTablet = configuration.smallestScreenWidthDp >= 600
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // In landscape/tablet single-pane the nav bar slides to the left edge (with a
+    // small margin) so the mini player can sit on its right side.
+    val leftAlignedOffset =
+      ((12.dp + targetNavBarWidth / 2) / screenWidth)
+        .coerceAtLeast(0f)
+
+    val targetOffsetFraction =
+      when {
+        isDualPaneFolderSelected && selectedTab == MainTab.HOME -> 0.2f
+        isMiniPlayerVisible && (isLandscape || isTablet) -> leftAlignedOffset
+        else -> 0.5f
+      }
 
     val animatedOffsetFraction by animateFloatAsState(
       targetValue = targetOffsetFraction,
@@ -265,16 +283,32 @@ object MainScreen : Screen {
       label = "nav_bar_width",
     )
 
+    // On portrait phones the full-width mini player sits at the very bottom and the
+    // pill nav bar floats above it, so raise the bar's bottom padding accordingly.
+    val navBarBottomPadding by animateDpAsState(
+      targetValue = if (isMiniPlayerVisible && isPortrait && !isTablet) 88.dp else 12.dp,
+      animationSpec =
+        spring(
+          dampingRatio = Spring.DampingRatioNoBouncy,
+          stiffness = Spring.StiffnessMediumLow,
+        ),
+      label = "nav_bar_bottom_padding",
+    )
+
+    // Screens/FABs must clear the mini player stack when it is edge-to-edge in portrait.
+    val miniPlayerNavClearance = if (isMiniPlayerVisible && isPortrait && !isTablet) 88.dp else 0.dp
+
     // Scaffold with bottom navigation bar
     Scaffold(
       modifier = Modifier.fillMaxSize(),
     ) { paddingValues ->
       Box(modifier = Modifier.fillMaxSize()) {
         val fabBottomPadding = 88.dp
+        val contentBottomPadding = fabBottomPadding + miniPlayerNavClearance
 
         if (visibleTabs.isEmpty()) {
           CompositionLocalProvider(
-            LocalNavigationBarHeight provides fabBottomPadding,
+            LocalNavigationBarHeight provides contentBottomPadding,
             LocalMainNavigationBar provides mainNavBar,
           ) {
             FolderListScreen.Content()
@@ -286,7 +320,7 @@ object MainScreen : Screen {
             userScrollEnabled = !isPermissionDenied,
           ) { page ->
             CompositionLocalProvider(
-              LocalNavigationBarHeight provides fabBottomPadding,
+              LocalNavigationBarHeight provides contentBottomPadding,
               LocalMainNavigationBar provides mainNavBar,
             ) {
               val tab = visibleTabs[page]
@@ -327,12 +361,19 @@ object MainScreen : Screen {
               .fillMaxWidth()
               .align(Alignment.BottomStart)
               .navigationBarsPadding()
-              .padding(bottom = 12.dp),
+              .padding(bottom = navBarBottomPadding),
         ) {
           BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val containerWidth = maxWidth
             val targetCenter = containerWidth * animatedOffsetFraction
             val leftPadding = (targetCenter - (navBarWidth / 2)).coerceAtLeast(0.dp)
+
+            // Publish the animated nav bar geometry so the mini player overlay can sit
+            // on its right side in landscape/tablet single-pane.
+            SideEffect {
+              NavigationBarState.navbarLeftOffset = leftPadding
+              NavigationBarState.navbarWidth = navBarWidth
+            }
 
             Box(
               modifier =
