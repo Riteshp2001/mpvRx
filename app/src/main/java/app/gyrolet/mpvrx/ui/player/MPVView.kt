@@ -235,9 +235,15 @@ class MPVView(
     screenshotDir.mkdirs()
     PlaybackSession.setOptionString("screenshot-directory", screenshotDir.path)
 
-    VideoFilters.entries.forEach {
-      PlaybackSession.setOptionString(it.mpvProperty, it.preference(decoderPreferences).get().toString())
-    }
+    val sharpnessValue = decoderPreferences.sharpnessFilter.get().coerceIn(-5, 5)
+    VideoFilters.entries
+      .filterNot { it == VideoFilters.SHARPNESS }
+      .forEach {
+        PlaybackSession.setOptionString(it.mpvProperty, it.preference(decoderPreferences).get().toString())
+      }
+    // Native mpv sharpening belongs to legacy vo=gpu. gpu-next gets the shader fallback
+    // in postInitOptions(), after libmpv is initialized but before media is loaded.
+    PlaybackSession.setOptionString("sharpen", if (backend.vo == "gpu-next") "0" else sharpnessValue.toString())
 
     PlaybackSession.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
     // Avoid forcing CPU-side film-grain synthesis globally; this can spike thermals on mobile SoCs.
@@ -280,6 +286,11 @@ class MPVView(
 
   override fun postInitOptions() {
     applyOsdSafeAreaMargins()
+    SharpnessShaderManager.applyRuntime(
+      context = context,
+      value = decoderPreferences.sharpnessFilter.get(),
+      videoOutputOverride = selectRenderBackend().vo,
+    )
 
     when (decoderPreferences.debanding.get()) {
       Debanding.None -> {}

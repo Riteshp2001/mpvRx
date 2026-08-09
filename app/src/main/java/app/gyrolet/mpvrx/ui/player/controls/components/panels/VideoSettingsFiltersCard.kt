@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.SharpnessShaderManager
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -45,6 +47,7 @@ import org.koin.compose.koinInject
 @Composable
 fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
   val decoderPreferences = koinInject<DecoderPreferences>()
+  val appContext = LocalContext.current.applicationContext
   var isExpanded by remember { mutableStateOf(true) }
 
   ExpandableCard(
@@ -65,8 +68,13 @@ fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
       Column {
         TextButton(
           onClick = {
-            VideoFilters.entries.forEach {
-              PlaybackSession.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
+            VideoFilters.entries.forEach { filter ->
+              val resetValue = filter.preference(decoderPreferences).deleteAndGet()
+              if (filter == VideoFilters.SHARPNESS) {
+                SharpnessShaderManager.applyRuntime(appContext, resetValue)
+              } else {
+                PlaybackSession.setPropertyInt(filter.mpvProperty, resetValue)
+              }
             }
           },
         ) {
@@ -79,9 +87,13 @@ fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
             label = stringResource(filter.titleRes),
             value = value,
             valueText = value.toString(),
-            onChange = {
-              filter.preference(decoderPreferences).set(it)
-              PlaybackSession.setPropertyInt(filter.mpvProperty, it)
+            onChange = { newValue ->
+              filter.preference(decoderPreferences).set(newValue)
+              if (filter == VideoFilters.SHARPNESS) {
+                SharpnessShaderManager.applyRuntime(appContext, newValue)
+              } else {
+                PlaybackSession.setPropertyInt(filter.mpvProperty, newValue)
+              }
             },
             max = filter.max,
             min = filter.min,
