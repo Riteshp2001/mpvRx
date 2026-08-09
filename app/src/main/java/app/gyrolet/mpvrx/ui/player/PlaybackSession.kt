@@ -140,6 +140,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private val activeAmbientShaderPaths = linkedSetOf<String>()
   private var desiredAmbientScaleX = 1.0
   private var desiredAmbientScaleY = 1.0
+  private var defaultNetworkUserAgent = ""
 
   val isInitialized: Boolean
     get() = initialized
@@ -513,13 +514,25 @@ object PlaybackSession : MPVLib.EventObserver {
           error = null,
         )
       }
-      val userAgent = resolvedItem.headers.entries.firstOrNull { it.key.equals("User-Agent", ignoreCase = true) }?.value
-      val headerFields =
-        resolvedItem.headers.entries
-          .filterNot { it.key.equals("User-Agent", ignoreCase = true) }
-          .joinToString(",") { (name, value) -> "$name: ${value.replace(",", "\\,")}" }
-      MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
-      MPVLib.setPropertyString("http-header-fields", headerFields)
+
+      // PlayerActivity may have already prepared Referer/custom headers for the exact URL being
+      // opened. Do not destroy that state just because a plain PlaybackItem has no embedded header
+      // map. That used to turn working Vercel/OneDrive/SharePoint and /api/raw DDL links into empty-
+      // header requests immediately before loadfile. Explicit item headers still take precedence.
+      if (resolvedItem.headers.isNotEmpty()) {
+        val userAgent =
+          resolvedItem.headers.entries
+            .firstOrNull { it.key.equals("User-Agent", ignoreCase = true) }
+            ?.value
+            ?.takeIf { it.isNotBlank() }
+            ?: defaultNetworkUserAgent
+        val headerFields =
+          resolvedItem.headers.entries
+            .filterNot { it.key.equals("User-Agent", ignoreCase = true) }
+            .joinToString(",") { (name, value) -> "$name: ${value.replace(",", "\\,")}" }
+        MPVLib.setPropertyString("user-agent", userAgent)
+        MPVLib.setPropertyString("http-header-fields", headerFields)
+      }
       MPVLib.setPropertyString("force-media-title", "")
 
       // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
@@ -576,7 +589,14 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setOptionString(
     name: String,
     value: String,
-  ): Int = withCore(-1, allowInitializing = true) { MPVLib.setOptionString(name, value) }
+  ): Int =
+    withCore(-1, allowInitializing = true) {
+      // YtdlpManager installs a browser-compatible UA once for the native network stack. Remember
+      // it so ordinary launches with no explicit UA restore that baseline instead of setting an
+      // empty User-Agent, which some CDNs and signed download endpoints reject.
+      if (name == "user-agent" && value.isNotBlank()) defaultNetworkUserAgent = value
+      MPVLib.setOptionString(name, value)
+    }
 
   fun getPropertyInt(property: String): Int? = withCore(null) { MPVLib.getPropertyInt(property) }
 
@@ -677,7 +697,14 @@ object PlaybackSession : MPVLib.EventObserver {
       resetActiveAmbientScaleLocked()
       activeAmbientShaderPaths.clear()
     }
-    MPVLib.setPropertyString(property, value)
+
+    val effectiveValue =
+      if (property == "user-agent" && value.isBlank() && defaultNetworkUserAgent.isNotBlank()) {
+        defaultNetworkUserAgent
+      } else {
+        value
+      }
+    MPVLib.setPropertyString(property, effectiveValue)
   }
 
   fun grabThumbnail(dimension: Int): Bitmap? = withCore(null) { MPVLib.grabThumbnail(dimension) }
