@@ -429,10 +429,6 @@ class MPVView(
     PlaybackSession.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
     PlaybackSession.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
     PlaybackSession.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
-    // Keep Android's audio output alive across seeks and fill seek gaps with silence. This avoids
-    // stop/start churn in AudioTrack that can otherwise produce repeated/warbled audio while
-    // scrubbing, without changing the selected track, volume, EQ, or playback speed.
-    PlaybackSession.setOptionString("audio-stream-silence", "yes")
     // Prevent automatic volume normalization when downmixing multi-channel audio
     PlaybackSession.setOptionString("audio-normalize-downmix", "no")
   }
