@@ -1661,4 +1661,38 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="lyrics_source_embedded">Incrustada</string>
   <string name="lyrics_source_online">En línea</string>
   <string name="lyrics_source_local">Local (.lrc)</string>
+  <string name="pref_enable_p2p_streaming_title">Habilitar la transmisión de torrents P2P</string>
+  <string name="pref_enable_p2p_streaming_summary">Transmitir medios reproducibles desde enlaces magnet y archivos torrent</string>
+  <string name="pref_audio_drc_title">Compresión de rango dinámico (DRC)</string>
+  <string name="pref_audio_drc_summary">Comprimir el rango dinámico del audio para realzar los diálogos bajos y suavizar los sonidos fuertes</string>
+  <string name="pref_audio_effects">Procesamiento de audio</string>
+  <string name="toast_file_not_found">El archivo ya no existe</string>
+  <string name="pref_audio_visualizer_style_particle">Partículas</string>
+  <string name="pref_section_p2p_streaming">Transmisión P2P</string>
+  <string name="toast_torrent_streaming_disabled">Active primero la transmisión de torrents P2P en los ajustes avanzados</string>
+  <string name="ui_recent_stream_links">Enlaces recientes</string>
+  <string name="ui_torrent_files">Torrents</string>
+  <string name="ui_expand_torrent_group">Mostrar archivos de torrent</string>
+  <string name="ui_collapse_torrent_group">Ocultar archivos de torrent</string>
+  <string name="ui_delete_torrent_group">Eliminar torrent</string>
+  <string name="torrent_picker_back">Cerrar torrent</string>
+  <string name="torrent_picker_choose_title">Elige qué reproducir</string>
+  <string name="torrent_picker_finding_details">Buscando carátula y detalles…</string>
+  <string name="torrent_picker_play_file">Reproducir %1$s</string>
+  <string name="torrent_picker_preparing_title">Leyendo torrent</string>
+  <string name="torrent_picker_preparing_description">Conectando con pares y buscando archivos reproducibles…</string>
+  <string name="torrent_picker_error_title">No se pudo abrir el torrent</string>
+  <string name="torrent_picker_retry">Reintentar</string>
+  <string name="torrent_picker_episode_label">Temporada %1$d • Episodio %2$d</string>
+  <string name="torrent_picker_single_episode_label">Episodio %1$d</string>
+  <string name="ui_new_password_keep_existing">Nueva contraseña (vacío conserva la contraseña guardada)</string>
+  <string name="ui_clear_saved_password">Borrar contraseña guardada</string>
+  <plurals name="ui_torrent_group_file_count">
+    <item quantity="one">%1$d archivo reproducible</item>
+    <item quantity="other">%1$d archivos reproducibles</item>
+  </plurals>
+  <plurals name="torrent_picker_playable_count">
+    <item quantity="one">%1$d archivo reproducible</item>
+    <item quantity="other">%1$d archivos reproducibles</item>
+  </plurals>
 </resources>

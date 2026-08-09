@@ -1661,4 +1661,38 @@
   <string name="lyrics_source_embedded">内嵌</string>
   <string name="lyrics_source_online">在线</string>
   <string name="lyrics_source_local">本地 (.lrc)</string>
+  <string name="pref_enable_p2p_streaming_title">启用 P2P 种子流媒体播放</string>
+  <string name="pref_enable_p2p_streaming_summary">通过磁力链接和种子文件流媒体播放可播放的媒体</string>
+  <string name="pref_audio_drc_title">动态范围压缩 (DRC)</string>
+  <string name="pref_audio_drc_summary">压缩音频动态范围，以增强安静的对白并减弱响亮的声音</string>
+  <string name="pref_audio_effects">音频处理</string>
+  <string name="toast_file_not_found">文件已不存在</string>
+  <string name="pref_audio_visualizer_style_particle">粒子</string>
+  <string name="pref_section_p2p_streaming">P2P 流媒体播放</string>
+  <string name="toast_torrent_streaming_disabled">请先在高级设置中启用 P2P 种子流媒体播放</string>
+  <string name="ui_recent_stream_links">最近的链接</string>
+  <string name="ui_torrent_files">种子</string>
+  <string name="ui_expand_torrent_group">显示种子文件</string>
+  <string name="ui_collapse_torrent_group">隐藏种子文件</string>
+  <string name="ui_delete_torrent_group">移除种子</string>
+  <string name="torrent_picker_back">关闭种子</string>
+  <string name="torrent_picker_choose_title">选择要播放的内容</string>
+  <string name="torrent_picker_finding_details">正在查找封面和详细信息…</string>
+  <string name="torrent_picker_play_file">播放 %1$s</string>
+  <string name="torrent_picker_preparing_title">正在读取种子</string>
+  <string name="torrent_picker_preparing_description">正在连接对等节点并查找可播放文件…</string>
+  <string name="torrent_picker_error_title">无法打开种子</string>
+  <string name="torrent_picker_retry">重试</string>
+  <string name="torrent_picker_episode_label">第 %1$d 季 • 第 %2$d 集</string>
+  <string name="torrent_picker_single_episode_label">第 %1$d 集</string>
+  <string name="ui_new_password_keep_existing">新密码（留空则保留已保存的密码）</string>
+  <string name="ui_clear_saved_password">清除已保存的密码</string>
+  <plurals name="ui_torrent_group_file_count">
+    <item quantity="one">%1$d 个可播放文件</item>
+    <item quantity="other">%1$d 个可播放文件</item>
+  </plurals>
+  <plurals name="torrent_picker_playable_count">
+    <item quantity="one">%1$d 个可播放文件</item>
+    <item quantity="other">%1$d 个可播放文件</item>
+  </plurals>
 </resources>

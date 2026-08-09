@@ -1570,4 +1570,33 @@
   <string name="lyrics_source_embedded">एंबेडेड</string>
   <string name="lyrics_source_online">ऑनलाइन</string>
   <string name="lyrics_source_local">लोकल (.lrc)</string>
+  <string name="pref_enable_p2p_streaming_title">P2P टोरेंट स्ट्रीमिंग सक्षम करें</string>
+  <string name="pref_enable_p2p_streaming_summary">मैग्नेट लिंक और टोरेंट फ़ाइलों से चलाने योग्य मीडिया स्ट्रीम करें</string>
+  <string name="pref_section_p2p_streaming">P2P स्ट्रीमिंग</string>
+  <string name="toast_torrent_streaming_disabled">पहले उन्नत सेटिंग्स में P2P टोरेंट स्ट्रीमिंग सक्षम करें</string>
+  <string name="ui_recent_stream_links">हाल के लिंक</string>
+  <string name="ui_torrent_files">टोरेंट</string>
+  <string name="ui_expand_torrent_group">टोरेंट फ़ाइलें दिखाएं</string>
+  <string name="ui_collapse_torrent_group">टोरेंट फ़ाइलें छुपाएं</string>
+  <string name="ui_delete_torrent_group">टोरेंट हटाएं</string>
+  <string name="torrent_picker_back">टोरेंट बंद करें</string>
+  <string name="torrent_picker_choose_title">चुनें कि क्या चलाना है</string>
+  <string name="torrent_picker_finding_details">आर्टवर्क और विवरण खोजा जा रहा है…</string>
+  <string name="torrent_picker_play_file">%1$s चलाएं</string>
+  <string name="torrent_picker_preparing_title">टोरेंट पढ़ा जा रहा है</string>
+  <string name="torrent_picker_preparing_description">पीर्स से जुड़ा जा रहा है और चलाने योग्य फ़ाइलें खोजी जा रही हैं…</string>
+  <string name="torrent_picker_error_title">टोरेंट नहीं खोला जा सका</string>
+  <string name="torrent_picker_retry">फिर से कोशिश करें</string>
+  <string name="torrent_picker_episode_label">सीज़न %1$d • एपिसोड %2$d</string>
+  <string name="torrent_picker_single_episode_label">एपिसोड %1$d</string>
+  <string name="ui_new_password_keep_existing">नया पासवर्ड (खाली छोड़ने पर सहेजा हुआ पासवर्ड बना रहेगा)</string>
+  <string name="ui_clear_saved_password">सहेजा हुआ पासवर्ड साफ़ करें</string>
+  <plurals name="ui_torrent_group_file_count">
+    <item quantity="one">%1$d चलाने योग्य फ़ाइल</item>
+    <item quantity="other">%1$d चलाने योग्य फ़ाइलें</item>
+  </plurals>
+  <plurals name="torrent_picker_playable_count">
+    <item quantity="one">%1$d चलाने योग्य फ़ाइल</item>
+    <item quantity="other">%1$d चलाने योग्य फ़ाइलें</item>
+  </plurals>
 </resources>

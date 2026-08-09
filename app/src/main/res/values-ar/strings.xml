@@ -1661,4 +1661,40 @@
   <string name="lyrics_source_embedded">مضمنة</string>
   <string name="lyrics_source_online">عبر الإنترنت</string>
   <string name="lyrics_source_local">محلي (.lrc)</string>
+
+  <!-- Missing strings aligned with default values/strings.xml -->
+  <string name="pref_enable_p2p_streaming_title">تفعيل بث التورنت P2P</string>
+  <string name="pref_enable_p2p_streaming_summary">بث الوسائط القابلة للتشغيل من روابط المغناطيس وملفات التورنت</string>
+  <string name="pref_audio_drc_title">ضغط المدى الديناميكي (DRC)</string>
+  <string name="pref_audio_drc_summary">ضغط النطاق الديناميكي للصوت لتعزيز الحوار الهادئ وتخفيف الأصوات العالية</string>
+  <string name="pref_audio_effects">معالجة الصوت</string>
+  <string name="toast_file_not_found">الملف لم يعد موجودًا</string>
+  <string name="pref_audio_visualizer_style_particle">جسيمات</string>
+  <string name="pref_section_p2p_streaming">بث P2P</string>
+  <string name="toast_torrent_streaming_disabled">فعّل بث التورنت P2P في الإعدادات المتقدمة أولاً</string>
+  <string name="ui_recent_stream_links">الروابط الأخيرة</string>
+  <string name="ui_torrent_files">تورنت</string>
+  <string name="ui_expand_torrent_group">إظهار ملفات التورنت</string>
+  <string name="ui_collapse_torrent_group">إخفاء ملفات التورنت</string>
+  <string name="ui_delete_torrent_group">إزالة التورنت</string>
+  <string name="torrent_picker_back">إغلاق التورنت</string>
+  <string name="torrent_picker_choose_title">اختر ما تريد تشغيله</string>
+  <string name="torrent_picker_finding_details">جارٍ البحث عن الغلاف والتفاصيل…</string>
+  <string name="torrent_picker_play_file">تشغيل %1$s</string>
+  <string name="torrent_picker_preparing_title">جارٍ قراءة التورنت</string>
+  <string name="torrent_picker_preparing_description">جارٍ الاتصال بالأقران والبحث عن ملفات قابلة للتشغيل…</string>
+  <string name="torrent_picker_error_title">تعذّر فتح التورنت</string>
+  <string name="torrent_picker_retry">إعادة المحاولة</string>
+  <string name="torrent_picker_episode_label">الموسم %1$d • الحلقة %2$d</string>
+  <string name="torrent_picker_single_episode_label">الحلقة %1$d</string>
+  <string name="ui_new_password_keep_existing">كلمة مرور جديدة (اتركها فارغة للإبقاء على كلمة المرور المحفوظة)</string>
+  <string name="ui_clear_saved_password">مسح كلمة المرور المحفوظة</string>
+  <plurals name="ui_torrent_group_file_count">
+    <item quantity="one">%1$d ملف قابل للتشغيل</item>
+    <item quantity="other">%1$d ملفات قابلة للتشغيل</item>
+  </plurals>
+  <plurals name="torrent_picker_playable_count">
+    <item quantity="one">%1$d ملف قابل للتشغيل</item>
+    <item quantity="other">%1$d ملفات قابلة للتشغيل</item>
+  </plurals>
 </resources>

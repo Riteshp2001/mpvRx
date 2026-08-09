@@ -1661,4 +1661,38 @@
   <string name="lyrics_source_embedded">埋め込み</string>
   <string name="lyrics_source_online">オンライン</string>
   <string name="lyrics_source_local">ローカル (.lrc)</string>
+  <string name="pref_enable_p2p_streaming_title">P2P トレントストリーミングを有効化</string>
+  <string name="pref_enable_p2p_streaming_summary">マグネットリンクとトレントファイルから再生可能なメディアをストリーミング</string>
+  <string name="pref_audio_drc_title">ダイナミックレンジ压縮 (DRC)</string>
+  <string name="pref_audio_drc_summary">オーディオのダイナミックレンジを圧縮し、静かな台詞を強調して大きな音を軽めます</string>
+  <string name="pref_audio_effects">音声処理</string>
+  <string name="toast_file_not_found">ファイルはもう存在しません</string>
+  <string name="pref_audio_visualizer_style_particle">粒子</string>
+  <string name="pref_section_p2p_streaming">P2P ストリーミング</string>
+  <string name="toast_torrent_streaming_disabled">最初に詳細設定で P2P トレントストリーミングを有効化してください</string>
+  <string name="ui_recent_stream_links">最近のリンク</string>
+  <string name="ui_torrent_files">トレント</string>
+  <string name="ui_expand_torrent_group">トレントファイルを表示</string>
+  <string name="ui_collapse_torrent_group">トレントファイルを隠す</string>
+  <string name="ui_delete_torrent_group">トレントを削除</string>
+  <string name="torrent_picker_back">トレントを閉じる</string>
+  <string name="torrent_picker_choose_title">再生するものを選択</string>
+  <string name="torrent_picker_finding_details">アートワークと詳細を探しています…</string>
+  <string name="torrent_picker_play_file">%1$s を再生</string>
+  <string name="torrent_picker_preparing_title">トレントを読み込んでいます</string>
+  <string name="torrent_picker_preparing_description">ピアに接続して再生可能なファイルを探しています…</string>
+  <string name="torrent_picker_error_title">トレントを開けませんでした</string>
+  <string name="torrent_picker_retry">再試行</string>
+  <string name="torrent_picker_episode_label">シーズン %1$d • エピソード %2$d</string>
+  <string name="torrent_picker_single_episode_label">エピソード %1$d</string>
+  <string name="ui_new_password_keep_existing">新しいパスワード（空白の場合は保存済みのパスワードを維持）</string>
+  <string name="ui_clear_saved_password">保存済みのパスワードをクリア</string>
+  <plurals name="ui_torrent_group_file_count">
+    <item quantity="one">%1$d 個の再生可能なファイル</item>
+    <item quantity="other">%1$d 個の再生可能なファイル</item>
+  </plurals>
+  <plurals name="torrent_picker_playable_count">
+    <item quantity="one">%1$d 個の再生可能なファイル</item>
+    <item quantity="other">%1$d 個の再生可能なファイル</item>
+  </plurals>
 </resources>

@@ -1661,4 +1661,38 @@
   <string name="lyrics_source_embedded">Встроенный</string>
   <string name="lyrics_source_online">Онлайн</string>
   <string name="lyrics_source_local">Локальный (.lrc)</string>
+  <string name="pref_enable_p2p_streaming_title">Включить P2P-стриминг торрентов</string>
+  <string name="pref_enable_p2p_streaming_summary">Стримить воспроизводимые медиа из magnet-ссылок и торрент-файлов</string>
+  <string name="pref_audio_drc_title">Сжатие динамического диапазона (DRC)</string>
+  <string name="pref_audio_drc_summary">Сжимать динамический диапазон звука, чтобы усилить тихие диалоги и приглушить громкие звуки</string>
+  <string name="pref_audio_effects">Обработка звука</string>
+  <string name="toast_file_not_found">Файл больше не существует</string>
+  <string name="pref_audio_visualizer_style_particle">Частицы</string>
+  <string name="pref_section_p2p_streaming">P2P-стриминг</string>
+  <string name="toast_torrent_streaming_disabled">Сначала включите P2P-стриминг торрентов в расширенных настройках</string>
+  <string name="ui_recent_stream_links">Недавние ссылки</string>
+  <string name="ui_torrent_files">Торренты</string>
+  <string name="ui_expand_torrent_group">Показать файлы торрента</string>
+  <string name="ui_collapse_torrent_group">Скрыть файлы торрента</string>
+  <string name="ui_delete_torrent_group">Удалить торрент</string>
+  <string name="torrent_picker_back">Закрыть торрент</string>
+  <string name="torrent_picker_choose_title">Выберите, что воспроизвести</string>
+  <string name="torrent_picker_finding_details">Поиск обложки и подробностей…</string>
+  <string name="torrent_picker_play_file">Воспроизвести %1$s</string>
+  <string name="torrent_picker_preparing_title">Чтение торрента</string>
+  <string name="torrent_picker_preparing_description">Подключение к пирам и поиск воспроизводимых файлов…</string>
+  <string name="torrent_picker_error_title">Не удалось открыть торрент</string>
+  <string name="torrent_picker_retry">Повторить</string>
+  <string name="torrent_picker_episode_label">Сезон %1$d • Серия %2$d</string>
+  <string name="torrent_picker_single_episode_label">Серия %1$d</string>
+  <string name="ui_new_password_keep_existing">Новый пароль (пусто — сохранить текущий пароль)</string>
+  <string name="ui_clear_saved_password">Очистить сохранённый пароль</string>
+  <plurals name="ui_torrent_group_file_count">
+    <item quantity="one">%1$d воспроизводимый файл</item>
+    <item quantity="other">%1$d воспроизводимых файлов</item>
+  </plurals>
+  <plurals name="torrent_picker_playable_count">
+    <item quantity="one">%1$d воспроизводимый файл</item>
+    <item quantity="other">%1$d воспроизводимых файлов</item>
+  </plurals>
 </resources>
