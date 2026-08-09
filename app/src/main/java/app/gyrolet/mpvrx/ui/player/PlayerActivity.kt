@@ -762,15 +762,20 @@ class PlayerActivity :
       combine(
         viewModel.sheetShown,
         viewModel.panelShown,
-        playerPreferences.autoPiPOnNavigation.changes(),
-        audioPreferences.backgroundPlayback.changes(),
-        audioPreferences.audioBackgroundPlayback.changes(),
-      ) { sheetShown, panelShown, autoPipOnNavigation, videoBackground, audioBackground ->
+        combine(
+          playerPreferences.autoPiPOnNavigation.changes(),
+          playerPreferences.enableVideoMiniPlayer.changes(),
+          audioPreferences.backgroundPlayback.changes(),
+          audioPreferences.audioBackgroundPlayback.changes(),
+        ) { autoPip, miniPlayer, videoBg, audioBg ->
+          autoPip || miniPlayer || videoBg || audioBg
+        },
+      ) { sheetShown, panelShown, prefsActive ->
         sheetShown != Sheets.None ||
           panelShown != Panels.None ||
-          autoPipOnNavigation ||
-          videoBackground ||
-          audioBackground
+          prefsActive ||
+          viewModel.isAudioOnly.value ||
+          isCurrentMediaKnownAudio()
       }.distinctUntilChanged()
         .collect { callback.isEnabled = it }
     }
@@ -780,6 +785,7 @@ class PlayerActivity :
     viewModel.sheetShown.value != Sheets.None ||
       viewModel.panelShown.value != Panels.None ||
       playerPreferences.autoPiPOnNavigation.get() ||
+      isMiniPlayerEnabled() ||
       isBackgroundPlaybackEnabled()
 
   private fun applyPredictiveBackProgress(backEvent: BackEventCompat) {
@@ -842,9 +848,10 @@ class PlayerActivity :
       return
     }
 
-    // Background playback takes precedence on Back: return to the browser while
+    // Background playback or Mini Player handoff on Back: return to the browser while
     // handing the live MPV session to the foreground service.
     if (
+      isMiniPlayerEnabled() ||
       PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnBack(
         backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
         mediaReady = isReady,
@@ -2420,6 +2427,15 @@ class PlayerActivity :
     viewModel.syncCurrentVolumeState()
     if (volume < viewModel.maxVolume) {
       viewModel.changeMPVVolumeTo(MAX_MPV_VOLUME)
+    }
+  }
+
+  private fun isMiniPlayerEnabled(): Boolean {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    return if (isAudio) {
+      true
+    } else {
+      playerPreferences.enableVideoMiniPlayer.get()
     }
   }
 
@@ -6182,6 +6198,7 @@ class PlayerActivity :
    */
   private fun disableVideoForBackground() {
     if (!isReady || fileName.isBlank()) return
+    if (isMiniPlayerEnabled()) return
 
     val currentVid = PlaybackSession.getPropertyInt("vid") ?: -1
     if (currentVid > 0) {

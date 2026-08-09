@@ -262,6 +262,21 @@ object PlayerPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              val enableVideoMiniPlayer by preferences.enableVideoMiniPlayer.collectAsState()
+              SwitchPreference(
+                value = enableVideoMiniPlayer,
+                onValueChange = preferences.enableVideoMiniPlayer::set,
+                title = { Text(stringResource(R.string.pref_enable_video_mini_player_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_enable_video_mini_player_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               val keepScreenOnWhenPaused by preferences.keepScreenOnWhenPaused.collectAsState()
               SwitchPreference(
                 value = keepScreenOnWhenPaused,
