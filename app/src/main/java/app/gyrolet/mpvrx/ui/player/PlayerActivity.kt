@@ -431,6 +431,7 @@ class PlayerActivity :
    * Callback to restore audio focus after it's been lost and regained.
    */
   private var restoreAudioFocus: () -> Unit = {}
+  private var holdsAudioFocus = false
 
   // ==================== Broadcast Receivers ====================
 
@@ -484,6 +485,11 @@ class PlayerActivity :
         AudioManager.AUDIOFOCUS_LOSS,
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
         -> {
+          holdsAudioFocus = false
+          // Ignore the loss caused by handing off playback to the detached
+          // MediaPlaybackService so minimizing into the Mini Player does not pause.
+          val handoff = isFinishing || isDestroyed || MediaPlaybackService.isActivityHandoffInProgress()
+          if (handoff) return@OnAudioFocusChangeListener
           // Save current state to restore later
           val oldRestore = restoreAudioFocus
           val wasPlayerPaused = viewModel.paused ?: false
@@ -503,6 +509,7 @@ class PlayerActivity :
         }
 
         AudioManager.AUDIOFOCUS_GAIN -> {
+          holdsAudioFocus = true
           // Restore previous audio state
           restoreAudioFocus()
           restoreAudioFocus = {}
@@ -1027,7 +1034,7 @@ class PlayerActivity :
       }
     }
 
-    if (!serviceBound) {
+    if (audioFocusRequest == null) {
       audioFocusRequest =
         AudioFocusRequest
           .Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -1041,6 +1048,12 @@ class PlayerActivity :
           .setAcceptsDelayedFocusGain(true)
           .setWillPauseWhenDucked(true)
           .build()
+    }
+    // Reopening an existing session: the detached service already owns focus and playback is
+    // ongoing. Requesting focus here would steal it from the service and make it pause, so the
+    // foreground Activity re-acquires focus from onStart() after the service is torn down.
+    val reattachingSession = intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER && PlaybackSession.isInitialized
+    if (!serviceBound && !reattachingSession) {
       requestAudioFocus()
     }
   }
@@ -1053,6 +1066,7 @@ class PlayerActivity :
     val result = audioManager.requestAudioFocus(req)
     return when (result) {
       AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
+        holdsAudioFocus = true
         restoreAudioFocus = {}
         true
       }
@@ -1063,6 +1077,7 @@ class PlayerActivity :
       }
 
       else -> {
+        holdsAudioFocus = false
         restoreAudioFocus = {}
         false
       }
@@ -1142,10 +1157,11 @@ class PlayerActivity :
         mediaPlaybackService = null
       }
 
-      // The service explicitly acquires focus above for detached playback. The Activity must
-      // always release its listener so it cannot retain this destroyed window/ViewModel.
-      if (keepBackgroundPlaybackAlive) MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
+      // Release the Activity's focus before the service requests it for detached playback.
+      // Otherwise the Activity's focus listener would receive LOSS and pause playback just as
+      // the user minimizes into the Mini Player.
       cleanupAudio()
+      if (keepBackgroundPlaybackAlive) MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
       cleanupReceivers()
       releaseMediaSession()
       if (!keepBackgroundPlaybackAlive && !torrentPickerHandoff) torrentStreamingEngine.stopStream()
@@ -1226,10 +1242,11 @@ class PlayerActivity :
   }
 
   override fun abandonAudioFocus() {
-    if (restoreAudioFocus != {}) {
-      audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-      restoreAudioFocus = {}
+    if (holdsAudioFocus) {
+      audioFocusRequest?.let { req -> runCatching { audioManager.abandonAudioFocusRequest(req) } }
+      holdsAudioFocus = false
     }
+    restoreAudioFocus = {}
   }
 
   private fun cleanupAudio() {
@@ -1342,6 +1359,7 @@ class PlayerActivity :
   }
 
   override fun onStop() {
+    MediaPlaybackService.activityForeground = false
     runCatching {
       pipHelper.onStop()
       if (!mpvInitialized) return@runCatching
@@ -1426,6 +1444,7 @@ class PlayerActivity :
   override fun onStart() {
     super.onStart()
     if (!mpvInitialized) return
+    MediaPlaybackService.activityForeground = true
 
     runCatching {
       setupWindowFlags()
@@ -1437,6 +1456,9 @@ class PlayerActivity :
         enableVideoAfterBackground()
         if (MediaPlaybackService.isRunning()) endBackgroundPlayback()
         isBackgroundPlaybackSessionActive = false
+        // The detached service released focus during the handoff; take it back over so a
+        // future focus loss (e.g. a phone call) pauses the now-foreground playback.
+        if (viewModel.paused != true) requestAudioFocus()
       }
 
       if (!noisyReceiverRegistered) {
@@ -1648,6 +1670,7 @@ class PlayerActivity :
 
   private fun releaseDetachedBackgroundPlaybackBeforeFreshLaunch() {
     if (intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER && PlaybackSession.isInitialized) {
+      MediaPlaybackService.prepareForActivityHandoff()
       PlaybackSession.markForeground()
       return
     }
@@ -5134,6 +5157,10 @@ class PlayerActivity :
     isBackgroundPlaybackSessionActive = false
     pendingBackgroundTransition = false
     pendingBackNavigationBackgroundTransition = false
+
+    // Tell the service this destruction is a handoff back to the Activity so it neither
+    // pauses on focus loss nor stops the shared PlaybackSession media during teardown.
+    MediaPlaybackService.prepareForActivityHandoff()
 
     if (serviceBound) {
       try {

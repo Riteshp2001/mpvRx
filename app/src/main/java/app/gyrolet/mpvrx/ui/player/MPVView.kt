@@ -93,7 +93,7 @@ class MPVView(
     holder.removeCallback(this)
     if (isSurfaceReady || PlaybackSession.state.value.surfaceAttached) {
       isSurfaceReady = false
-      PlaybackSession.unbindSurface()
+      PlaybackSession.unbindSurface(this)
     }
   }
 
@@ -354,7 +354,7 @@ class MPVView(
   }
 
   override fun surfaceCreated(holder: android.view.SurfaceHolder) {
-    isSurfaceReady = PlaybackSession.bindSurface(holder.surface, width, height)
+    isSurfaceReady = PlaybackSession.bindSurface(holder.surface, width, height, this)
     applyFrameRate()
     post {
       if (isSurfaceReady && holder.surface.isValid) {
@@ -365,7 +365,7 @@ class MPVView(
 
   override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {
     isSurfaceReady = false
-    PlaybackSession.unbindSurface()
+    PlaybackSession.unbindSurface(this)
   }
 
   private fun applyFrameRate() {

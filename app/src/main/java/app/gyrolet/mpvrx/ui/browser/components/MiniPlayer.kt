@@ -292,7 +292,7 @@ private fun MiniPlayerContent(
                     if (vid == "no" || vid == "0") {
                       PlaybackSession.setPropertyString("vid", "auto")
                     }
-                    PlaybackSession.bindSurface(holder.surface)
+                    PlaybackSession.bindSurface(holder.surface, owner = this@apply)
                   }
 
                   override fun surfaceChanged(
@@ -307,7 +307,7 @@ private fun MiniPlayerContent(
                   }
 
                   override fun surfaceDestroyed(holder: SurfaceHolder) {
-                    PlaybackSession.unbindSurface()
+                    PlaybackSession.unbindSurface(this@apply)
                   }
                 })
               }

@@ -108,11 +108,30 @@ class MediaPlaybackService :
 
     fun isForegroundActive(): Boolean = activeInstance?.foregroundReady == true
 
+    /**
+     * True while a PlayerActivity is the active foreground owner of the shared playback session
+     * (e.g. the full player is visible and playing, including audio-only media that has no
+     * attached video surface). The service must not steal audio focus from it.
+     */
+    @Volatile
+    var activityForeground = false
+
     internal fun relinquishMediaSessionToActivity() {
       activeInstance?.deactivateMediaSession()
     }
 
     internal fun takeAudioOwnershipForDetachedPlayback(): Boolean = activeInstance?.takeAudioOwnership() == true
+
+    /**
+     * Marks that playback is being handed back to a foreground Activity (e.g. reopening the
+     * player from the Mini Player). While set, the service must not pause playback or stop the
+     * shared PlaybackSession media during its own teardown/focus loss.
+     */
+    internal fun prepareForActivityHandoff() {
+      activeInstance?.handingBackToActivity = true
+    }
+
+    internal fun isActivityHandoffInProgress(): Boolean = activeInstance?.handingBackToActivity == true
 
     /** Releases every service-owned MPV access before an Activity destroys the global core. */
     internal fun prepareForMpvShutdown() {
@@ -185,6 +204,8 @@ class MediaPlaybackService :
   private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
   private var audioFocusRequest: AudioFocusRequest? = null
   private var ownsAudioFocus = false
+  @Volatile
+  private var handingBackToActivity = false
   private var resumeAfterFocusGain = false
   private var volumeBeforeDuck: Double? = null
   private var noisyReceiverRegistered = false
@@ -195,6 +216,11 @@ class MediaPlaybackService :
       when (change) {
         AudioManager.AUDIOFOCUS_LOSS -> {
           resumeAfterFocusGain = false
+          // A foreground Activity is taking over playback; do not pause the shared session.
+          if (handingBackToActivity) {
+            abandonAudioOwnership()
+            return@OnAudioFocusChangeListener
+          }
           PlaybackSession.setPropertyBoolean("pause", true)
           abandonAudioOwnership()
         }
@@ -387,7 +413,10 @@ class MediaPlaybackService :
     mediaDurationSeconds = runCatching { PlaybackSession.getPropertyDouble("duration") }.getOrNull() ?: 0.0
     currentPositionSeconds = runCatching { PlaybackSession.getPropertyDouble("time-pos") }.getOrNull() ?: 0.0
     currentChapterIndex = runCatching { PlaybackSession.getPropertyInt("chapter") }.getOrNull() ?: -1
-    if (!PlaybackSession.state.value.surfaceAttached && !takeAudioOwnership()) {
+    // Only take over audio focus / pause for genuinely detached playback. A foreground
+    // Activity (audio-only media has no attached video surface) owns focus itself, and stealing
+    // it here would make the Activity's focus listener pause playback right after it starts.
+    if (!PlaybackSession.state.value.surfaceAttached && !activityForeground && !takeAudioOwnership()) {
       PlaybackSession.setPropertyBoolean("pause", true)
     }
     refreshNotificationPalette()
@@ -665,6 +694,7 @@ class MediaPlaybackService :
   }
 
   private fun stopPlaybackAndService() {
+    handingBackToActivity = false
     schedulePlaybackStateSave(force = true)
     torrentStreamingEngine.stopStream()
     PlaybackSession.stop(clearQueue = false)
@@ -682,6 +712,8 @@ class MediaPlaybackService :
   }
 
   private fun stopDetachedPlaybackIfNeeded() {
+    // Never kill the shared PlaybackSession media while an Activity is taking it back over.
+    if (handingBackToActivity) return
     if (PlaybackSession.state.value.surfaceAttached) return
     torrentStreamingEngine.stopStream()
     PlaybackSession.stop(clearQueue = false)
@@ -1546,6 +1578,7 @@ class MediaPlaybackService :
       isServiceRunning = false
       if (activeInstance === this) activeInstance = null
       stopDetachedPlaybackIfNeeded()
+      handingBackToActivity = false
       super.onDestroy()
     }
   }

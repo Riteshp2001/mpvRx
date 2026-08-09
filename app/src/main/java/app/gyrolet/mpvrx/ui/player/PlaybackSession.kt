@@ -123,6 +123,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var applicationContext: Context? = null
   private var desiredVideoOutput = "gpu"
   private var activeRendererConfigurationKey: String? = null
+  private var attachedSurfaceOwner: Any? = null
   private var activeNetworkStream: NetworkStreamRegistration? = null
   private val auxiliaryNetworkStreams = linkedMapOf<String, NetworkStreamRegistration>()
   private var suspendedVideoTrack: SuspendedVideoTrack? = null
@@ -208,17 +209,17 @@ object PlaybackSession : MPVLib.EventObserver {
     surface: Surface,
     width: Int? = null,
     height: Int? = null,
+    owner: Any,
   ): Boolean =
     withCore(default = false) {
       if (!surface.isValid) return@withCore false
 
       // Replacing an already-attached Surface must also detach the hardware video decoder first.
       // Otherwise MediaCodec can race the old ANativeWindow while the new Surface is attached.
-      if (_state.value.surfaceAttached) {
+      if (_state.value.surfaceAttached && attachedSurfaceOwner !== owner) {
         suspendVideoTrackForSurfaceLossLocked()
         runCatching { MPVLib.detachSurface() }
       }
-
       MPVLib.attachSurface(surface)
       width?.takeIf { it > 0 }?.let { resolvedWidth ->
         height?.takeIf { it > 0 }?.let { resolvedHeight ->
@@ -227,6 +228,7 @@ object PlaybackSession : MPVLib.EventObserver {
       }
       MPVLib.setOptionString("force-window", "yes")
       MPVLib.setPropertyString("vo", desiredVideoOutput)
+      attachedSurfaceOwner = owner
       updateState { it.copy(surfaceAttached = true) }
       restoreSuspendedVideoTrackLocked()
       true
@@ -240,8 +242,9 @@ object PlaybackSession : MPVLib.EventObserver {
     withCore(Unit) { MPVLib.setPropertyString("android-surface-size", "${width}x$height") }
   }
 
-  fun unbindSurface() {
+  fun unbindSurface(owner: Any) {
     withCore(Unit) {
+      if (attachedSurfaceOwner !== owner) return@withCore
       if (!_state.value.surfaceAttached) return@withCore
 
       // Never leave a hardware video decoder attached to a Surface that Android is destroying.
@@ -250,6 +253,7 @@ object PlaybackSession : MPVLib.EventObserver {
       runCatching { MPVLib.setPropertyString("vo", "null") }
       runCatching { MPVLib.setOptionString("force-window", "no") }
       runCatching { MPVLib.detachSurface() }
+      attachedSurfaceOwner = null
       updateState { it.copy(surfaceAttached = false) }
     }
   }
