@@ -90,6 +90,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.player.toObject
+import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.Dispatchers
@@ -108,9 +109,16 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
   val playerPreferences: PlayerPreferences = koinInject()
   val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
 
+  val backstack = LocalBackStack.current
+  val currentScreen = backstack.lastOrNull()
+  val isSettingsScreen = currentScreen != null &&
+    (currentScreen.javaClass.name.startsWith("app.gyrolet.mpvrx.ui.preferences") ||
+     currentScreen.javaClass.name.startsWith("app.gyrolet.mpvrx.ui.editor"))
+
   val currentItem = sessionState.currentItem
   val isMediaActive = isServiceRunning && currentItem != null &&
     !NavigationBarState.isInSelectionMode &&
+    !isSettingsScreen &&
     sessionState.phase != PlaybackPhase.IDLE &&
     sessionState.phase != PlaybackPhase.UNINITIALIZED &&
     sessionState.phase != PlaybackPhase.ERROR

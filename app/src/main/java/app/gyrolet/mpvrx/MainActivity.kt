@@ -353,6 +353,7 @@ class MainActivity : AppCompatActivity() {
     val isServiceRunning = MediaPlaybackService.isForegroundActive()
     val sessionState = PlaybackSession.state.value
     val isMediaActive = isServiceRunning && sessionState.currentItem != null &&
+      NavigationBarState.isMiniPlayerVisible &&
       sessionState.phase != PlaybackPhase.IDLE &&
       sessionState.phase != PlaybackPhase.UNINITIALIZED &&
       sessionState.phase != PlaybackPhase.ERROR
