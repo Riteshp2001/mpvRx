@@ -573,8 +573,8 @@ class PlayerViewModel : ViewModel(),
 
   // Audio player UI state
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
-  // The style is persistent, but the artwork/visualizer display choice belongs to this player.
-  val showVisualizerInAudioPlayer = MutableStateFlow(true)
+  // The style and artwork/visualizer display choice are persisted via audioPreferences.
+  val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.showAudioVisualizer.get())
   val equalizerState = MutableStateFlow(EqualizerState())
   private val audioEqualizerManager = AudioEqualizerManager()
   private var equalizerMpvDebounceJob: Job? = null
@@ -848,6 +848,7 @@ class PlayerViewModel : ViewModel(),
     if (!audioVisualizerToggleDebouncer.tryConsume()) return false
     val newValue = !showVisualizerInAudioPlayer.value
     showVisualizerInAudioPlayer.value = newValue
+    audioPreferences.showAudioVisualizer.set(newValue)
     return true
   }
 

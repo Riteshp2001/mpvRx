@@ -629,9 +629,13 @@ fun FileSystemBrowserScreen(path: String? = null) {
       },
       floatingActionButton = {
         val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
+        val miniPlayerClearance = app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance
         if (isAtRoot) {
           FloatingActionButtonMenu(
-            modifier = Modifier.padding(bottom = (navigationBarHeight - 16.dp).coerceAtLeast(0.dp)),
+            modifier =
+              Modifier.padding(
+                bottom = (navigationBarHeight - 16.dp).coerceAtLeast(0.dp) + miniPlayerClearance,
+              ),
             expanded = isFabExpanded.value && !quickPlayFabDirect,
             button = {
               TooltipBox(

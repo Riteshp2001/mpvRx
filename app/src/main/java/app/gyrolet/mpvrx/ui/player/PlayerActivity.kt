@@ -431,6 +431,7 @@ class PlayerActivity :
    * Callback to restore audio focus after it's been lost and regained.
    */
   private var restoreAudioFocus: () -> Unit = {}
+  private var holdsAudioFocus = false
 
   // ==================== Broadcast Receivers ====================
 
@@ -484,6 +485,11 @@ class PlayerActivity :
         AudioManager.AUDIOFOCUS_LOSS,
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
         -> {
+          holdsAudioFocus = false
+          // Ignore the loss caused by handing off playback to the detached
+          // MediaPlaybackService so minimizing into the Mini Player does not pause.
+          val handoff = isFinishing || isDestroyed || MediaPlaybackService.isActivityHandoffInProgress()
+          if (handoff) return@OnAudioFocusChangeListener
           // Save current state to restore later
           val oldRestore = restoreAudioFocus
           val wasPlayerPaused = viewModel.paused ?: false
@@ -503,6 +509,7 @@ class PlayerActivity :
         }
 
         AudioManager.AUDIOFOCUS_GAIN -> {
+          holdsAudioFocus = true
           // Restore previous audio state
           restoreAudioFocus()
           restoreAudioFocus = {}
@@ -762,15 +769,20 @@ class PlayerActivity :
       combine(
         viewModel.sheetShown,
         viewModel.panelShown,
-        playerPreferences.autoPiPOnNavigation.changes(),
-        audioPreferences.backgroundPlayback.changes(),
-        audioPreferences.audioBackgroundPlayback.changes(),
-      ) { sheetShown, panelShown, autoPipOnNavigation, videoBackground, audioBackground ->
+        combine(
+          playerPreferences.autoPiPOnNavigation.changes(),
+          playerPreferences.enableVideoMiniPlayer.changes(),
+          audioPreferences.backgroundPlayback.changes(),
+          audioPreferences.audioBackgroundPlayback.changes(),
+        ) { autoPip, miniPlayer, videoBg, audioBg ->
+          autoPip || miniPlayer || videoBg || audioBg
+        },
+      ) { sheetShown, panelShown, prefsActive ->
         sheetShown != Sheets.None ||
           panelShown != Panels.None ||
-          autoPipOnNavigation ||
-          videoBackground ||
-          audioBackground
+          prefsActive ||
+          viewModel.isAudioOnly.value ||
+          isCurrentMediaKnownAudio()
       }.distinctUntilChanged()
         .collect { callback.isEnabled = it }
     }
@@ -780,6 +792,7 @@ class PlayerActivity :
     viewModel.sheetShown.value != Sheets.None ||
       viewModel.panelShown.value != Panels.None ||
       playerPreferences.autoPiPOnNavigation.get() ||
+      isMiniPlayerEnabled() ||
       isBackgroundPlaybackEnabled()
 
   private fun applyPredictiveBackProgress(backEvent: BackEventCompat) {
@@ -842,9 +855,10 @@ class PlayerActivity :
       return
     }
 
-    // Background playback takes precedence on Back: return to the browser while
+    // Background playback or Mini Player handoff on Back: return to the browser while
     // handing the live MPV session to the foreground service.
     if (
+      isMiniPlayerEnabled() ||
       PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnBack(
         backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
         mediaReady = isReady,
@@ -1020,7 +1034,7 @@ class PlayerActivity :
       }
     }
 
-    if (!serviceBound) {
+    if (audioFocusRequest == null) {
       audioFocusRequest =
         AudioFocusRequest
           .Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -1034,6 +1048,12 @@ class PlayerActivity :
           .setAcceptsDelayedFocusGain(true)
           .setWillPauseWhenDucked(true)
           .build()
+    }
+    // Reopening an existing session: the detached service already owns focus and playback is
+    // ongoing. Requesting focus here would steal it from the service and make it pause, so the
+    // foreground Activity re-acquires focus from onStart() after the service is torn down.
+    val reattachingSession = intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER && PlaybackSession.isInitialized
+    if (!serviceBound && !reattachingSession) {
       requestAudioFocus()
     }
   }
@@ -1046,6 +1066,7 @@ class PlayerActivity :
     val result = audioManager.requestAudioFocus(req)
     return when (result) {
       AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
+        holdsAudioFocus = true
         restoreAudioFocus = {}
         true
       }
@@ -1056,6 +1077,7 @@ class PlayerActivity :
       }
 
       else -> {
+        holdsAudioFocus = false
         restoreAudioFocus = {}
         false
       }
@@ -1135,10 +1157,11 @@ class PlayerActivity :
         mediaPlaybackService = null
       }
 
-      // The service explicitly acquires focus above for detached playback. The Activity must
-      // always release its listener so it cannot retain this destroyed window/ViewModel.
-      if (keepBackgroundPlaybackAlive) MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
+      // Release the Activity's focus before the service requests it for detached playback.
+      // Otherwise the Activity's focus listener would receive LOSS and pause playback just as
+      // the user minimizes into the Mini Player.
       cleanupAudio()
+      if (keepBackgroundPlaybackAlive) MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
       cleanupReceivers()
       releaseMediaSession()
       if (!keepBackgroundPlaybackAlive && !torrentPickerHandoff) torrentStreamingEngine.stopStream()
@@ -1219,10 +1242,11 @@ class PlayerActivity :
   }
 
   override fun abandonAudioFocus() {
-    if (restoreAudioFocus != {}) {
-      audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-      restoreAudioFocus = {}
+    if (holdsAudioFocus) {
+      audioFocusRequest?.let { req -> runCatching { audioManager.abandonAudioFocusRequest(req) } }
+      holdsAudioFocus = false
     }
+    restoreAudioFocus = {}
   }
 
   private fun cleanupAudio() {
@@ -1307,6 +1331,12 @@ class PlayerActivity :
     }
 
     super.finish()
+
+    // Minimizing into the Mini Player: slide the full player down toward the bottom
+    // bar. The browser tab stays in place; the Mini Player slides up to meet it.
+    if (isMiniPlayerEnabled()) {
+      overridePendingTransition(0, R.anim.slide_out_down)
+    }
   }
 
   override fun finishAndRemoveTask() {
@@ -1335,6 +1365,7 @@ class PlayerActivity :
   }
 
   override fun onStop() {
+    MediaPlaybackService.activityForeground = false
     runCatching {
       pipHelper.onStop()
       if (!mpvInitialized) return@runCatching
@@ -1419,6 +1450,7 @@ class PlayerActivity :
   override fun onStart() {
     super.onStart()
     if (!mpvInitialized) return
+    MediaPlaybackService.activityForeground = true
 
     runCatching {
       setupWindowFlags()
@@ -1430,6 +1462,9 @@ class PlayerActivity :
         enableVideoAfterBackground()
         if (MediaPlaybackService.isRunning()) endBackgroundPlayback()
         isBackgroundPlaybackSessionActive = false
+        // The detached service released focus during the handoff; take it back over so a
+        // future focus loss (e.g. a phone call) pauses the now-foreground playback.
+        if (viewModel.paused != true) requestAudioFocus()
       }
 
       if (!noisyReceiverRegistered) {
@@ -1464,6 +1499,14 @@ class PlayerActivity :
 
   private fun setupWindowFlags() {
     pipHelper.updatePictureInPictureParams()
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    if (isAudio) {
+      WindowCompat.setDecorFitsSystemWindows(window, true)
+      window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+      window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+      return
+    }
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.setFlags(
       WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -1501,7 +1544,8 @@ class PlayerActivity :
   }
 
   private fun handleSystemBarsVisibility(insets: WindowInsetsCompat) {
-    if (viewModel.isAudioOnly.value) {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    if (isAudio) {
       cancelSystemBarsAutoHide()
       try {
         windowInsetsController.apply {
@@ -1527,12 +1571,14 @@ class PlayerActivity :
     }
   }
 
-  private fun shouldAutoHideSystemBars(): Boolean =
-    !isInPictureInPictureMode &&
-      !viewModel.isAudioOnly.value &&
+  private fun shouldAutoHideSystemBars(): Boolean {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    return !isInPictureInPictureMode &&
+      !isAudio &&
       !viewModel.controlsShown.value &&
       viewModel.sheetShown.value == Sheets.None &&
       viewModel.panelShown.value == Panels.None
+  }
 
   private fun scheduleSystemBarsAutoHide(delayMs: Long = 1500L) {
     if (!shouldAutoHideSystemBars()) {
@@ -1558,9 +1604,11 @@ class PlayerActivity :
   @Suppress("DEPRECATION")
   private fun hideSystemBarsForPlayback() {
     cancelSystemBarsAutoHide()
-    if (viewModel.isAudioOnly.value) {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    if (isAudio) {
       try {
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         binding.root.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
         window.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -1598,7 +1646,8 @@ class PlayerActivity :
   }
 
   private fun setupSystemUI() {
-    setLayoutInDisplayCutoutModeIfSupported(shortEdges = true)
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    setLayoutInDisplayCutoutModeIfSupported(shortEdges = !isAudio)
 
     // Set status bar color for when it will be shown (with controls)
     applyStatusBarColorIfNeeded()
@@ -1641,6 +1690,7 @@ class PlayerActivity :
 
   private fun releaseDetachedBackgroundPlaybackBeforeFreshLaunch() {
     if (intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER && PlaybackSession.isInitialized) {
+      MediaPlaybackService.prepareForActivityHandoff()
       PlaybackSession.markForeground()
       return
     }
@@ -2420,6 +2470,15 @@ class PlayerActivity :
     viewModel.syncCurrentVolumeState()
     if (volume < viewModel.maxVolume) {
       viewModel.changeMPVVolumeTo(MAX_MPV_VOLUME)
+    }
+  }
+
+  private fun isMiniPlayerEnabled(): Boolean {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    return if (isAudio) {
+      true
+    } else {
+      playerPreferences.enableVideoMiniPlayer.get()
     }
   }
 
@@ -5119,6 +5178,10 @@ class PlayerActivity :
     pendingBackgroundTransition = false
     pendingBackNavigationBackgroundTransition = false
 
+    // Tell the service this destruction is a handoff back to the Activity so it neither
+    // pauses on focus loss nor stops the shared PlaybackSession media during teardown.
+    MediaPlaybackService.prepareForActivityHandoff()
+
     if (serviceBound) {
       try {
         unbindService(serviceConnection)
@@ -5247,13 +5310,13 @@ class PlayerActivity :
   }
 
   private fun awaitServiceMediaSessionOwnership() {
-    if (mediaPlaybackService == null) return
     backgroundHandoffJob?.cancel()
     backgroundHandoffJob =
       lifecycleScope.launch {
         repeat(30) {
-          if (isFinishing || isDestroyed || mediaPlaybackService == null) return@launch
-          if (mediaPlaybackService?.isForegroundReady() == true) {
+          if (isFinishing || isDestroyed) return@launch
+          val service = mediaPlaybackService
+          if (service != null && service.isForegroundReady()) {
             setActivityMediaSessionActive(false)
             if (pendingBackNavigationBackgroundTransition) finishIntoBackgroundPlayback()
             return@launch
@@ -6182,6 +6245,7 @@ class PlayerActivity :
    */
   private fun disableVideoForBackground() {
     if (!isReady || fileName.isBlank()) return
+    if (isMiniPlayerEnabled()) return
 
     val currentVid = PlaybackSession.getPropertyInt("vid") ?: -1
     if (currentVid > 0) {

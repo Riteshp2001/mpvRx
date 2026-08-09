@@ -65,6 +65,9 @@
             android:name=".MainActivity"
             android:exported="true"
             android:enableOnBackInvokedCallback="true"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
             android:theme="@style/Theme.mpvrx">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -12,6 +12,8 @@ package app.gyrolet.mpvrx.ui.browser
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /**
  * Centralized state holder for browser navigation visibility.
@@ -22,6 +24,24 @@ object NavigationBarState {
     private set
 
   var isDualPaneFolderSelected: Boolean by mutableStateOf(false)
+
+  // Mini player coordination state (published by MiniPlayer/MainScreen so the
+  // browser layout can adapt when the mini player is on screen).
+  var isMiniPlayerVisible: Boolean by mutableStateOf(false)
+
+  // True while the floating pill nav bar is actually on screen (MainScreen on top
+  // and not hidden). Lets the mini player drop to the very bottom when there is no
+  // nav bar below it (e.g. pushed video list screens).
+  var isNavBarVisible: Boolean by mutableStateOf(false)
+
+  var navbarLeftOffset: Dp by mutableStateOf(0.dp)
+
+  var navbarWidth: Dp by mutableStateOf(320.dp)
+
+  // Vertical space the mini player needs to clear from the bottom of the screen in
+  // screens that sit below it without a nav bar (FABs/list content).
+  val miniPlayerClearance: Dp
+    get() = if (isMiniPlayerVisible) 96.dp else 0.dp
 
   var shouldHideNavigationBar: Boolean by mutableStateOf(false)
     private set
