@@ -176,9 +176,9 @@ private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>>
 
 private fun linearHdrSettings(boostSdrToHdr: Boolean): List<Pair<String, String>> =
   commonSettings(
-    // LINEAR is mpv-native. Crucially, reset target primaries/TRC/peak back to auto so values from
-    // PQ/HLG/BT.2020 cannot leak into this mode. gpu-next will derive the target from the active
-    // swapchain/source metadata when the platform exposes it.
+    // Preserve the existing mpv-native HDR rendering policy, but reset every target value that a
+    // previous PQ/HLG/BT.2020 mode may have overridden. Without these resets Linear HDR depends on
+    // mode history and can keep rendering with stale primaries/TRC after the UI says Linear.
     targetColorspaceHint = "yes",
     targetColorspaceHintMode = "target",
     targetColorspaceHintStrict = "yes",
@@ -186,9 +186,9 @@ private fun linearHdrSettings(boostSdrToHdr: Boolean): List<Pair<String, String>
     targetTrc = "auto",
     targetPeak = "auto",
     inverseToneMapping = if (boostSdrToHdr) "yes" else "no",
-    toneMapping = "auto",
-    gamutMappingMode = "auto",
-    hdrComputePeak = "auto",
+    toneMapping = "clip",
+    gamutMappingMode = "clip",
+    hdrComputePeak = "yes",
     shaderOptions = "",
   )
 
