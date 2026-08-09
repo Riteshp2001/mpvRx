@@ -21,6 +21,7 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.util.Log
 import android.util.Rational
+import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
@@ -40,9 +41,16 @@ private const val PIP_FORWARD = 4
 
 class MPVPipHelper(
   private val activity: AppCompatActivity,
-  private val mpvView: MPVView,
+  private val videoViewProvider: (() -> View?)? = null,
   private val isAudioPlayer: () -> Boolean = { false },
 ) : KoinComponent {
+
+  constructor(
+    activity: AppCompatActivity,
+    mpvView: MPVView,
+    isAudioPlayer: () -> Boolean = { false },
+  ) : this(activity, { mpvView }, isAudioPlayer)
+
   private val playerPreferences: PlayerPreferences by inject()
   private var pipReceiver: BroadcastReceiver? = null
 
@@ -121,8 +129,9 @@ class MPVPipHelper(
   }
 
   private fun calculateSourceRect(aspectRatio: Rational): Rect? {
+    val targetView = videoViewProvider?.invoke() ?: return null
     val visiblePlayerRect = Rect()
-    if (!mpvView.getGlobalVisibleRect(visiblePlayerRect) || visiblePlayerRect.isEmpty) return null
+    if (!targetView.getGlobalVisibleRect(visiblePlayerRect) || visiblePlayerRect.isEmpty) return null
 
     val viewWidth = visiblePlayerRect.width().toFloat()
     val viewHeight = visiblePlayerRect.height().toFloat()

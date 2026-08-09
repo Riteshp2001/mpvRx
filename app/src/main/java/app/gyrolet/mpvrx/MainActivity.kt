@@ -77,13 +77,30 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.theme.rememberThemeTransitionState
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import androidx.compose.foundation.background
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.viewinterop.AndroidView
+import app.gyrolet.mpvrx.ui.player.MPVPipHelper
+import app.gyrolet.mpvrx.ui.player.PlaybackPhase
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
+import app.gyrolet.mpvrx.ui.player.TrackNode
+import app.gyrolet.mpvrx.ui.player.toObject
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.update.UpdateDialog
 import app.gyrolet.mpvrx.utils.update.UpdateViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.Json
+import org.koin.android.ext.android.getKoin
 import org.koin.android.ext.android.inject
 
 private fun screenNavTransition(
@@ -201,6 +218,8 @@ class MainActivity : AppCompatActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
   private val playerPreferences by inject<PlayerPreferences>()
   private var appliedEdgeToEdgeDarkMode: Boolean? = null
+  private lateinit var pipHelper: MPVPipHelper
+  private var isPipMode by mutableStateOf(false)
 
   // Register the ActivityResultLauncher at class level
   private val mediaAccessLauncher =
@@ -212,6 +231,11 @@ class MainActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
+    pipHelper = MPVPipHelper(
+      activity = this,
+      isAudioPlayer = { isCurrentMediaAudioOnly() },
+    )
 
     PermissionUtils.setMediaAccessLauncher(mediaAccessLauncher)
 
@@ -227,6 +251,15 @@ class MainActivity : AppCompatActivity() {
       // Set up theme and edge-to-edge display
       val dark by appearancePreferences.darkMode.collectAsState()
       val networkStreamingEnabled by appearancePreferences.showNetworkTab.collectAsState()
+      val sessionState by PlaybackSession.state.collectAsState()
+      val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
+      val autoPiPOnNavigation by playerPreferences.autoPiPOnNavigation.collectAsState()
+      val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
+
+      LaunchedEffect(sessionState, enableVideoMiniPlayer, autoPiPOnNavigation, trackListNode) {
+        pipHelper.updatePictureInPictureParams()
+      }
+
       val isSystemInDarkTheme = isSystemInDarkTheme()
       val isDarkMode =
         remember(dark, isSystemInDarkTheme) {
@@ -259,12 +292,116 @@ class MainActivity : AppCompatActivity() {
         }
       }
 
-      MpvrxTheme(transitionState = themeTransitionState) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-          Navigator()
+      if (isPipMode) {
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+          contentAlignment = Alignment.Center,
+        ) {
+          AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { viewContext ->
+              SurfaceView(viewContext).apply {
+                setZOrderMediaOverlay(true)
+                holder.addCallback(object : SurfaceHolder.Callback {
+                  override fun surfaceCreated(holder: SurfaceHolder) {
+                    PlaybackSession.bindSurface(holder.surface, owner = this@apply)
+                  }
+
+                  override fun surfaceChanged(
+                    holder: SurfaceHolder,
+                    format: Int,
+                    width: Int,
+                    height: Int,
+                  ) {
+                    if (holder.surface.isValid) {
+                      PlaybackSession.resizeSurface(width, height)
+                    }
+                  }
+
+                  override fun surfaceDestroyed(holder: SurfaceHolder) {
+                    PlaybackSession.unbindSurface(this@apply)
+                  }
+                })
+              }
+            },
+          )
+        }
+      } else {
+        MpvrxTheme(transitionState = themeTransitionState) {
+          Surface(modifier = Modifier.fillMaxSize()) {
+            Navigator()
+          }
         }
       }
     }
+  }
+
+  override fun onStart() {
+    super.onStart()
+    pipHelper.updatePictureInPictureParams()
+  }
+
+  override fun onResume() {
+    super.onResume()
+    pipHelper.updatePictureInPictureParams()
+  }
+
+  override fun onUserLeaveHint() {
+    super.onUserLeaveHint()
+    val isServiceRunning = MediaPlaybackService.isForegroundActive()
+    val sessionState = PlaybackSession.state.value
+    val isMediaActive = isServiceRunning && sessionState.currentItem != null &&
+      sessionState.phase != PlaybackPhase.IDLE &&
+      sessionState.phase != PlaybackPhase.UNINITIALIZED &&
+      sessionState.phase != PlaybackPhase.ERROR
+    if (
+      playerPreferences.autoPiPOnNavigation.get() &&
+      isMediaActive &&
+      !isCurrentMediaAudioOnly() &&
+      !isPipMode
+    ) {
+      pipHelper.enterPipMode()
+    }
+  }
+
+  override fun onPictureInPictureModeChanged(
+    isInPictureInPictureMode: Boolean,
+    newConfig: Configuration,
+  ) {
+    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+    this.isPipMode = isInPictureInPictureMode
+    pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
+  }
+
+  override fun onStop() {
+    super.onStop()
+    pipHelper.onStop()
+  }
+
+  private fun isCurrentMediaAudioOnly(): Boolean {
+    val sessionState = PlaybackSession.state.value
+    val currentItem = sessionState.currentItem ?: return true
+    val enableVideoMiniPlayer = playerPreferences.enableVideoMiniPlayer.get()
+    if (!enableVideoMiniPlayer) return true
+
+    val ext = (currentItem.originalUri.ifBlank { currentItem.title.orEmpty() }).fileExtension()
+    val mimeIsAudio = currentItem.mimeType?.startsWith("audio/", ignoreCase = true) == true
+    val extIsAudio = ext in FileTypeUtils.AUDIO_EXTENSIONS
+    val extIsVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
+
+    if (extIsVideo) return false
+    if (mimeIsAudio || extIsAudio) return true
+
+    val trackListNode = PlaybackSession.propNode["track-list"].value
+    if (trackListNode != null) {
+      val json: Json = getKoin().get()
+      val tracks = runCatching { trackListNode.toObject<List<TrackNode>>(json) }.getOrNull().orEmpty()
+      val hasRealVideo = tracks.any { it.isVideo && !it.isAlbumArtwork }
+      if (hasRealVideo) return false
+    }
+    return false
   }
 
   override fun onDestroy() {
