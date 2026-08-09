@@ -281,27 +281,6 @@ object NetworkStreamingScreen : Screen {
           }
         }
 
-        if (filteredTorrentFiles.isNotEmpty()) {
-          item {
-            StreamEntrySectionHeader(stringResource(R.string.ui_torrent_files))
-          }
-          items(filteredTorrentFiles, key = { "torrent:${it.stableKey}" }) { entry ->
-            StreamEntryCard(
-              entry = entry,
-              onPlay = {
-                MediaUtils.playFile(
-                  source = entry.canonicalSourceUri,
-                  context = context,
-                  launchSource = "network_torrent",
-                  title = entry.fileName,
-                  torrentFileIndex = entry.fileIndex,
-                )
-              },
-              onDelete = { viewModel.deleteStreamEntry(entry.stableKey) },
-            )
-          }
-        }
-
         // Syncplay
         item {
           Spacer(modifier = Modifier.height(24.dp))
@@ -460,6 +439,28 @@ object NetworkStreamingScreen : Screen {
               isConnecting = status?.isConnecting ?: false,
               error = status?.error,
               modifier = Modifier.padding(bottom = 16.dp),
+            )
+          }
+        }
+
+        // Keep the torrent catalog at the bottom of the Network tab.
+        if (filteredTorrentFiles.isNotEmpty()) {
+          item {
+            StreamEntrySectionHeader(stringResource(R.string.ui_torrent_files))
+          }
+          items(filteredTorrentFiles, key = { "torrent:${it.stableKey}" }) { entry ->
+            StreamEntryCard(
+              entry = entry,
+              onPlay = {
+                MediaUtils.playFile(
+                  source = entry.canonicalSourceUri,
+                  context = context,
+                  launchSource = "network_torrent",
+                  title = entry.fileName,
+                  torrentFileIndex = entry.fileIndex,
+                )
+              },
+              onDelete = { viewModel.deleteStreamEntry(entry.stableKey) },
             )
           }
         }

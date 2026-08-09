@@ -98,8 +98,6 @@ object Icons {
     val FileDownload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_download) }
     val FileOpen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_open) }
     val FileUpload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.File_upload) }
-    val Group by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Group) }
-    val Upload by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Upload) }
     val FitScreen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fit_screen) }
     val Flip by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Flip) }
     val Fingerprint by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Fingerprint) }
@@ -320,8 +318,6 @@ object Icons {
     val FileDownload get() = Shared.FileDownload
     val FileOpen get() = Shared.FileOpen
     val FileUpload get() = Shared.FileUpload
-    val Group get() = Shared.Group
-    val Upload get() = Shared.Upload
     val FitScreen get() = Shared.FitScreen
     val Flip get() = Shared.Flip
     val Fingerprint get() = Shared.Fingerprint

@@ -706,11 +706,6 @@
   <string name="pref_config_edit_summary">Tap to edit configuration</string>
   <string name="pref_section_scripts">Scripts (Lua / JS)</string>
   <string name="pref_section_p2p_streaming">P2P streaming</string>
-  <string name="torrent_status_engine">Torrent streaming engine</string>
-  <string name="torrent_status_hide">Hide torrent status</string>
-  <string name="torrent_status_error">Torrent streaming error</string>
-  <string name="torrent_status_swarm">%1$d seeds · %2$d peers</string>
-  <string name="torrent_status_downloaded">%1$d%% downloaded</string>
   <string name="toast_torrent_streaming_disabled">Enable P2P torrent streaming in Advanced settings first</string>
   <string name="ui_recent_stream_links">Recent links</string>
   <string name="ui_torrent_files">Torrent files</string>
