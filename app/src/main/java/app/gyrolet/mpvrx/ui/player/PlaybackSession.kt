@@ -86,6 +86,9 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val TAG = "PlaybackSession"
   private const val SEEK_AUDIO_RESTORE_DELAY_MS = 60L
   private const val SEEK_AUDIO_FALLBACK_RESTORE_MS = 750L
+  private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
+  private const val AMBIENT_SHADER_PREFIX = "ambient_"
+  private const val AMBIENT_SHADER_SUFFIX = ".glsl"
 
   private data class NetworkStreamRegistration(
     val proxy: NetworkStreamingProxy,
@@ -114,6 +117,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private val streamSequence = AtomicLong()
   private val observedProperties = mutableSetOf<Pair<String, Int>>()
   private val seekAudioGuardHandler = Handler(Looper.getMainLooper())
+  private val playbackTransitionAudioGuardHandler = Handler(Looper.getMainLooper())
 
   val state: StateFlow<PlaybackSessionState> = _state.asStateFlow()
   val queue: StateFlow<PlaybackQueueState> = _queue.asStateFlow()
@@ -130,6 +134,11 @@ object PlaybackSession : MPVLib.EventObserver {
   private var desiredPaused = true
   private var seekAudioGuardToken = 0L
   private var seekAudioGuardPreviousMute: Boolean? = null
+  private var playbackTransitionAudioGuardToken = 0L
+  private var playbackTransitionAudioGuardPreviousMute: Boolean? = null
+  private val activeAmbientShaderPaths = linkedSetOf<String>()
+  private var desiredAmbientScaleX = 1.0
+  private var desiredAmbientScaleY = 1.0
 
   val isInitialized: Boolean
     get() = initialized
@@ -167,6 +176,8 @@ object PlaybackSession : MPVLib.EventObserver {
         suspendedVideoTrack = null
         desiredPaused = true
         clearSeekAudioGuardLocked(restoreMute = false)
+        clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
+        resetAmbientShaderTrackingLocked()
         updateState { it.copy(phase = PlaybackPhase.INITIALIZING, error = null) }
         try {
           MPVLib.create(context.applicationContext)
@@ -194,6 +205,8 @@ object PlaybackSession : MPVLib.EventObserver {
           suspendedVideoTrack = null
           desiredPaused = true
           clearSeekAudioGuardLocked(restoreMute = false)
+          clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
+          resetAmbientShaderTrackingLocked()
           updateState {
             it.copy(
               phase = PlaybackPhase.ERROR,
@@ -287,9 +300,15 @@ object PlaybackSession : MPVLib.EventObserver {
       pendingGenerations.clear()
       suspendedVideoTrack = null
       desiredPaused = true
+
+      // Stop/quit must silence the native audio output before its decoder/output queues are torn
+      // down. Restoring a seek guard's mute state before stop previously let a short buffered tail
+      // escape after the Activity had already disappeared.
       clearSeekAudioGuardLocked(restoreMute = true)
-      runCatching { MPVLib.command("stop") }
+      beginPlaybackTransitionAudioGuardLocked()
       runCatching { MPVLib.setPropertyBoolean("pause", true) }
+      runCatching { MPVLib.command("stop") }
+
       if (clearQueue) _queue.value = PlaybackQueueState()
       updateState {
         it.copy(
@@ -319,7 +338,9 @@ object PlaybackSession : MPVLib.EventObserver {
     updateState { it.copy(phase = PlaybackPhase.STOPPING) }
     desiredPaused = true
     suspendedVideoTrack = null
-    clearSeekAudioGuardLocked(restoreMute = true)
+    clearSeekAudioGuardLocked(restoreMute = false)
+    clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
+    runCatching { MPVLib.setPropertyBoolean("mute", true) }
     runCatching { MPVLib.setPropertyBoolean("pause", true) }
     runCatching { MPVLib.setPropertyString("vo", "null") }
     runCatching { MPVLib.detachSurface() }
@@ -331,6 +352,7 @@ object PlaybackSession : MPVLib.EventObserver {
     observers.clear()
     pendingGenerations.clear()
     observedProperties.clear()
+    resetAmbientShaderTrackingLocked()
     initialized = false
     activeRendererConfigurationKey = null
     updateState { PlaybackSessionState(phase = PlaybackPhase.UNINITIALIZED) }
@@ -455,6 +477,12 @@ object PlaybackSession : MPVLib.EventObserver {
       suspendedVideoTrack = null
       desiredPaused = false
       clearSeekAudioGuardLocked(restoreMute = true)
+
+      // Keep replacement/startup audio muted until mpv has restarted cleanly. FILE_LOADED can be
+      // followed by saved-position and audio-track restoration; without this guard tiny fragments
+      // from the pre-restore timeline can reach AudioTrack and sound like a glitch/warble.
+      beginPlaybackTransitionAudioGuardLocked()
+
       val generation = _state.value.generation + 1L
       pendingGenerations.addLast(generation)
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
@@ -497,6 +525,7 @@ object PlaybackSession : MPVLib.EventObserver {
   fun command(vararg command: String) {
     withCore(Unit) {
       if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
+      if (handleAmbientShaderCommandLocked(command)) return@withCore
       MPVLib.command(*command)
     }
   }
@@ -509,7 +538,7 @@ object PlaybackSession : MPVLib.EventObserver {
     nativeLock.withLock {
       if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
       if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
-      MPVLib.command(*command)
+      if (!handleAmbientShaderCommandLocked(command)) MPVLib.command(*command)
       true
     }
 
@@ -544,7 +573,13 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setPropertyDouble(
     property: String,
     value: Double,
-  ) = withCore(Unit) { MPVLib.setPropertyDouble(property, value) }
+  ) = withCore(Unit) {
+    when (property) {
+      "video-scale-x" -> setAmbientVideoScaleLocked(axis = 'x', value = value)
+      "video-scale-y" -> setAmbientVideoScaleLocked(axis = 'y', value = value)
+      else -> MPVLib.setPropertyDouble(property, value)
+    }
+  }
 
   fun getPropertyFloat(property: String): Float? = withCore(null) { MPVLib.getPropertyFloat(property) }
 
@@ -568,6 +603,11 @@ object PlaybackSession : MPVLib.EventObserver {
       }
       updateState { it.copy(paused = value) }
       propBoolean.emit(property, value)
+    } else if (property == "mute" && playbackTransitionAudioGuardPreviousMute != null) {
+      // A user mute/unmute action during startup/teardown should update the value that will be
+      // restored, but must not open the guard and leak transition audio immediately.
+      playbackTransitionAudioGuardPreviousMute = value
+      MPVLib.setPropertyBoolean("mute", true)
     } else {
       MPVLib.setPropertyBoolean(property, value)
     }
@@ -609,6 +649,13 @@ object PlaybackSession : MPVLib.EventObserver {
       } else if (value != "no") {
         suspendedVideoTrack = null
       }
+    }
+
+    // Some shader-stack managers replace the whole list instead of using change-list/remove.
+    // If that replacement drops Ambient, restore the base video scale before the next frame.
+    if (property == "glsl-shaders" && activeAmbientShaderPaths.isNotEmpty() && !value.contains(AMBIENT_SHADER_PREFIX)) {
+      resetActiveAmbientScaleLocked()
+      activeAmbientShaderPaths.clear()
     }
     MPVLib.setPropertyString(property, value)
   }
@@ -758,6 +805,7 @@ object PlaybackSession : MPVLib.EventObserver {
           }
           MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
             scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_RESTORE_DELAY_MS)
+            schedulePlaybackTransitionAudioGuardRestoreLocked(PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS)
             true
           }
           MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
@@ -766,6 +814,8 @@ object PlaybackSession : MPVLib.EventObserver {
             suspendedVideoTrack = null
             desiredPaused = true
             clearSeekAudioGuardLocked(restoreMute = false)
+            clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
+            resetAmbientShaderTrackingLocked()
             initialized = false
             updateState { it.copy(phase = PlaybackPhase.UNINITIALIZED, surfaceAttached = false, paused = true) }
             true
@@ -818,6 +868,124 @@ object PlaybackSession : MPVLib.EventObserver {
     if (restoreMute && initialized && previousMute != null) {
       runCatching { MPVLib.setPropertyBoolean("mute", previousMute) }
     }
+  }
+
+  /**
+   * Mutes only decoder/output transitions. Unlike the seek guard this can span stop -> next load,
+   * which guarantees that an Android AudioTrack cannot drain a stale tail after quit and that the
+   * first audible samples of a new file are from its settled timeline/track state.
+   */
+  private fun beginPlaybackTransitionAudioGuardLocked() {
+    if (playbackTransitionAudioGuardPreviousMute == null) {
+      playbackTransitionAudioGuardPreviousMute = MPVLib.getPropertyBoolean("mute") ?: false
+    }
+    runCatching { MPVLib.setPropertyBoolean("mute", true) }
+    playbackTransitionAudioGuardToken++
+  }
+
+  private fun schedulePlaybackTransitionAudioGuardRestoreLocked(delayMs: Long) {
+    if (playbackTransitionAudioGuardPreviousMute == null) return
+    val token = ++playbackTransitionAudioGuardToken
+    playbackTransitionAudioGuardHandler.postDelayed(
+      {
+        nativeLock.withLock {
+          if (!initialized || token != playbackTransitionAudioGuardToken) return@withLock
+          clearPlaybackTransitionAudioGuardLocked(restoreMute = true)
+        }
+      },
+      delayMs,
+    )
+  }
+
+  private fun clearPlaybackTransitionAudioGuardLocked(restoreMute: Boolean) {
+    val previousMute = playbackTransitionAudioGuardPreviousMute
+    playbackTransitionAudioGuardPreviousMute = null
+    playbackTransitionAudioGuardToken++
+    if (restoreMute && initialized && previousMute != null) {
+      runCatching { MPVLib.setPropertyBoolean("mute", previousMute) }
+    }
+  }
+
+  /**
+   * Ambient Mode expands the real video quad and remaps it back in an OUTPUT shader. Applying the
+   * scale before that shader exists (or leaving it in place while the shader is replaced) exposes
+   * the expanded/cropped source frame directly. That is the intermittent full-frame corruption
+   * seen during file changes, HDR/Anime4K shader-stack rebuilds, and orientation changes.
+   *
+   * Non-1 ambient scales are therefore staged here and become visible only after the matching
+   * ambient shader has been appended. A scale of 1 is always applied immediately for teardown.
+   */
+  private fun setAmbientVideoScaleLocked(
+    axis: Char,
+    value: Double,
+  ) {
+    if (axis == 'x') desiredAmbientScaleX = value else desiredAmbientScaleY = value
+    if (kotlin.math.abs(value - 1.0) <= 0.000001) {
+      MPVLib.setPropertyDouble(if (axis == 'x') "video-scale-x" else "video-scale-y", 1.0)
+    }
+  }
+
+  private fun handleAmbientShaderCommandLocked(command: Array<out String>): Boolean {
+    if (command.size < 3 || command[0] != "change-list" || command[1] != "glsl-shaders") return false
+
+    val action = command[2]
+    if (action == "clr") {
+      if (activeAmbientShaderPaths.isNotEmpty()) resetActiveAmbientScaleLocked()
+      activeAmbientShaderPaths.clear()
+      MPVLib.command(*command)
+      return true
+    }
+
+    val path = command.getOrNull(3) ?: return false
+    val isAmbient = isAmbientShaderPath(path)
+
+    if (action == "set" && !isAmbient && activeAmbientShaderPaths.isNotEmpty()) {
+      resetActiveAmbientScaleLocked()
+      activeAmbientShaderPaths.clear()
+      MPVLib.command(*command)
+      return true
+    }
+    if (!isAmbient) return false
+
+    when (action) {
+      "remove" -> {
+        // Reset first so there is never a rendered frame with Ambient's expanded source quad but
+        // without the remapping shader that restores the original picture in the centre.
+        resetActiveAmbientScaleLocked()
+        activeAmbientShaderPaths.remove(path)
+        MPVLib.command(*command)
+      }
+      "append", "add", "pre", "set" -> {
+        // Install the shader first. Only then expose the staged scale values to the renderer.
+        MPVLib.command(*command)
+        if (action == "set") activeAmbientShaderPaths.clear()
+        activeAmbientShaderPaths += path
+        applyDesiredAmbientScaleLocked()
+      }
+      else -> return false
+    }
+    return true
+  }
+
+  private fun isAmbientShaderPath(path: String): Boolean {
+    val fileName = path.substringAfterLast('/').substringAfterLast('\\')
+    return fileName.startsWith(AMBIENT_SHADER_PREFIX) && fileName.endsWith(AMBIENT_SHADER_SUFFIX)
+  }
+
+  private fun applyDesiredAmbientScaleLocked() {
+    MPVLib.setPropertyDouble("video-scale-x", desiredAmbientScaleX)
+    MPVLib.setPropertyDouble("video-scale-y", desiredAmbientScaleY)
+  }
+
+  private fun resetActiveAmbientScaleLocked() {
+    runCatching { MPVLib.setPropertyDouble("video-scale-x", 1.0) }
+    runCatching { MPVLib.setPropertyDouble("video-scale-y", 1.0) }
+  }
+
+  private fun resetAmbientShaderTrackingLocked() {
+    activeAmbientShaderPaths.clear()
+    desiredAmbientScaleX = 1.0
+    desiredAmbientScaleY = 1.0
   }
 
   private fun suspendVideoTrackForSurfaceLossLocked() {
