@@ -98,9 +98,11 @@ import app.gyrolet.mpvrx.ui.cast.CastPlaybackController
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControls
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionActivity
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.JellyfinSessionReporter
+import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.media.resolveSeekMode
 import app.gyrolet.mpvrx.utils.media.M3UParseResult
@@ -359,6 +361,7 @@ class PlayerActivity :
   private var screenStateReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
   private var viewModelHostAttached = false
+  private var torrentPickerHandoff = false
   private var savePlaybackStateJob: Job? = null // Track ongoing save job
   private var wasPlayingBeforePause = false // Track if video was playing before pause
   private var resumeAfterUnlockJob: Job? = null
@@ -514,6 +517,7 @@ class PlayerActivity :
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    if (redirectUnselectedTorrentToPicker(intent, finishCurrent = true)) return
     mediaRequestGeneration++
     // Read from the actual launch intent now that it's safe to (see isSecureFolderLaunch kdoc).
     isSecureFolderLaunch = intent.getStringExtra("launch_source") == "secure_folder"
@@ -1137,7 +1141,7 @@ class PlayerActivity :
       cleanupAudio()
       cleanupReceivers()
       releaseMediaSession()
-      if (!keepBackgroundPlaybackAlive) torrentStreamingEngine.stopStream()
+      if (!keepBackgroundPlaybackAlive && !torrentPickerHandoff) torrentStreamingEngine.stopStream()
     }.onFailure { e ->
       Log.e(TAG, "Error during onDestroy", e)
     }
@@ -4120,6 +4124,8 @@ class PlayerActivity :
       }
     }
 
+    if (redirectUnselectedTorrentToPicker(intent, finishCurrent = false)) return
+
     // A browser may replace the process queue before this singleTask Activity receives its Intent.
     // Snapshot what this Activity actually has loaded before installing any incoming metadata.
     val previouslyLoadedIdentifier = mediaIdentifier
@@ -4348,6 +4354,7 @@ class PlayerActivity :
                 TorrentStreamRequest(
                   source = requestedSource,
                   fileIndex = requestedTorrentFileIndex,
+                  preparationId = sourceIntent.getStringExtra("torrent_preparation_id"),
                 ),
               )
             coroutineContext.ensureActive()
@@ -4443,6 +4450,31 @@ class PlayerActivity :
           }
         }
       }
+  }
+
+  private fun redirectUnselectedTorrentToPicker(
+    sourceIntent: Intent,
+    finishCurrent: Boolean,
+  ): Boolean {
+    if (
+      sourceIntent.getIntExtra(MediaUtils.EXTRA_TORRENT_FILE_INDEX, -1) >= 0 ||
+      !sourceIntent.getStringExtra(MediaUtils.EXTRA_TORRENT_PREPARATION_ID).isNullOrBlank()
+    ) {
+      return false
+    }
+    val source = extractUriFromIntent(sourceIntent)?.toString()?.trim().orEmpty()
+    if (!isTorrentSource(source, sourceIntent.type)) return false
+
+    val pickerIntent =
+      Intent(sourceIntent).apply {
+        setClass(this@PlayerActivity, TorrentSelectionActivity::class.java)
+        putExtra(MediaUtils.EXTRA_TORRENT_SOURCE, source)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      }
+    torrentPickerHandoff = finishCurrent
+    startActivity(pickerIntent)
+    if (finishCurrent) finish()
+    return true
   }
 
   // ==================== Picture-in-Picture Management ====================

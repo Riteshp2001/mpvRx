@@ -10,6 +10,8 @@ import java.nio.charset.StandardCharsets
 data class TorrentStreamRequest(
   val source: String,
   val fileIndex: Int? = null,
+  /** Opaque token returned by [TorrentStreamingEngine.prepareTorrent]. */
+  val preparationId: String? = null,
 )
 
 data class TorrentFileItem(
@@ -24,6 +26,16 @@ data class TorrentStreamResult(
   val localUrl: String,
   val selectedFile: TorrentFileItem,
   /** A durable source. This is never the temporary loopback playback URL. */
+  val source: String,
+  val infoHash: String,
+  val torrentName: String,
+  val playableFiles: List<TorrentFileItem>,
+)
+
+/** Metadata-only result used by the pre-player file picker. */
+data class TorrentCatalog(
+  val preparationId: String,
+  /** A durable source. This is never a content grant or loopback proxy URL. */
   val source: String,
   val infoHash: String,
   val torrentName: String,

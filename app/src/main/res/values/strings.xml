@@ -708,7 +708,28 @@
   <string name="pref_section_p2p_streaming">P2P streaming</string>
   <string name="toast_torrent_streaming_disabled">Enable P2P torrent streaming in Advanced settings first</string>
   <string name="ui_recent_stream_links">Recent links</string>
-  <string name="ui_torrent_files">Torrent files</string>
+  <string name="ui_torrent_files">Torrents</string>
+  <plurals name="ui_torrent_group_file_count">
+    <item quantity="one">%1$d playable file</item>
+    <item quantity="other">%1$d playable files</item>
+  </plurals>
+  <string name="ui_expand_torrent_group">Show torrent files</string>
+  <string name="ui_collapse_torrent_group">Hide torrent files</string>
+  <string name="ui_delete_torrent_group">Remove torrent</string>
+  <string name="torrent_picker_back">Close torrent</string>
+  <string name="torrent_picker_choose_title">Choose what to play</string>
+  <plurals name="torrent_picker_playable_count">
+    <item quantity="one">%1$d playable file</item>
+    <item quantity="other">%1$d playable files</item>
+  </plurals>
+  <string name="torrent_picker_finding_details">Finding artwork and details…</string>
+  <string name="torrent_picker_play_file">Play %1$s</string>
+  <string name="torrent_picker_preparing_title">Reading torrent</string>
+  <string name="torrent_picker_preparing_description">Connecting to peers and finding playable files…</string>
+  <string name="torrent_picker_error_title">Couldn\'t open torrent</string>
+  <string name="torrent_picker_retry">Try again</string>
+  <string name="torrent_picker_episode_label">Season %1$d • Episode %2$d</string>
+  <string name="torrent_picker_single_episode_label">Episode %1$d</string>
   <string name="pref_manage_scripts_summary_disabled">Set storage location and enable scripts first</string>
   <string name="pref_manage_scripts_summary_none">No scripts enabled</string>
   <string name="pref_manage_scripts_summary_singular">1 script enabled</string>

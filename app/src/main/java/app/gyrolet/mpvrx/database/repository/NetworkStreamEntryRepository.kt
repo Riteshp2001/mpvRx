@@ -94,6 +94,11 @@ class NetworkStreamEntryRepository(
     if (stableKey.isNotBlank()) dao.deleteByStableKey(stableKey)
   }
 
+  suspend fun deleteTorrentGroup(infoHash: String) {
+    val canonicalInfoHash = infoHash.trim().lowercase()
+    if (canonicalInfoHash.isNotEmpty()) dao.deleteTorrentFiles(canonicalInfoHash)
+  }
+
   private fun normalStableKey(canonicalSourceUri: String): String = "normal:$canonicalSourceUri"
 
   private fun torrentStableKey(

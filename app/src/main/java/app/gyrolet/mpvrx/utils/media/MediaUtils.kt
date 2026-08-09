@@ -18,6 +18,7 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerLookupHints
+import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionActivity
 import `is`.xyz.mpv.Utils
 import java.io.File
 import kotlin.math.pow
@@ -74,12 +75,24 @@ object MediaUtils {
     subtitleTracks: List<PlaybackSubtitleTrack> = emptyList(),
     lookupHints: PlayerLookupHints = PlayerLookupHints(),
     torrentFileIndex: Int? = null,
+    torrentPreparationId: String? = null,
+    mediaDescription: String? = null,
+    posterUrl: String? = null,
+    backdropUrl: String? = null,
   ) {
     val uri =
       when (source) {
         is Video -> {
           val intent = Intent(Intent.ACTION_VIEW, source.uri)
-          intent.setClass(context, PlayerActivity::class.java)
+          val torrentSource = source.uri.toString().takeIf { isTorrentSource(it, source.mimeType) }
+          intent.setClass(
+            context,
+            if (torrentSource != null && torrentFileIndex == null && torrentPreparationId == null) {
+              TorrentSelectionActivity::class.java
+            } else {
+              PlayerActivity::class.java
+            },
+          )
           intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
           intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
           intent.putExtra("internal_launch", true) // Enables subtitle autoload
@@ -105,6 +118,11 @@ object MediaUtils {
             subtitleTracks = subtitleTracks,
             lookupHints = lookupHints,
             torrentFileIndex = torrentFileIndex,
+            torrentPreparationId = torrentPreparationId,
+            torrentSource = torrentSource,
+            mediaDescription = mediaDescription,
+            posterUrl = posterUrl,
+            backdropUrl = backdropUrl,
           )
           context.startActivity(intent)
           return
@@ -137,7 +155,20 @@ object MediaUtils {
       }
 
     val intent = Intent(Intent.ACTION_VIEW, uri)
-    intent.setClass(context, PlayerActivity::class.java)
+    val torrentSource =
+      when (source) {
+        is String -> source.trim()
+        is Uri -> source.toString()
+        else -> uri.toString()
+      }.takeIf { isTorrentSource(it) }
+    intent.setClass(
+      context,
+      if (torrentSource != null && torrentFileIndex == null && torrentPreparationId == null) {
+        TorrentSelectionActivity::class.java
+      } else {
+        PlayerActivity::class.java
+      },
+    )
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     applyPlaybackExtras(
@@ -150,6 +181,11 @@ object MediaUtils {
       subtitleTracks = subtitleTracks,
       lookupHints = lookupHints,
       torrentFileIndex = torrentFileIndex,
+      torrentPreparationId = torrentPreparationId,
+      torrentSource = torrentSource,
+      mediaDescription = mediaDescription,
+      posterUrl = posterUrl,
+      backdropUrl = backdropUrl,
     )
     context.startActivity(intent)
   }
@@ -164,10 +200,23 @@ object MediaUtils {
     subtitleTracks: List<PlaybackSubtitleTrack>,
     lookupHints: PlayerLookupHints,
     torrentFileIndex: Int?,
+    torrentPreparationId: String?,
+    torrentSource: String?,
+    mediaDescription: String?,
+    posterUrl: String?,
+    backdropUrl: String?,
   ) {
     launchSource?.let { intent.putExtra("launch_source", it) }
-    title?.let { intent.putExtra("title", it) }
-    torrentFileIndex?.takeIf { it >= 0 }?.let { intent.putExtra("torrent_file_index", it) }
+    title?.let {
+      intent.putExtra("title", it)
+      intent.putExtra(EXTRA_MEDIA_TITLE, it)
+    }
+    torrentFileIndex?.takeIf { it >= 0 }?.let { intent.putExtra(EXTRA_TORRENT_FILE_INDEX, it) }
+    torrentPreparationId?.takeIf { it.isNotBlank() }?.let { intent.putExtra(EXTRA_TORRENT_PREPARATION_ID, it) }
+    torrentSource?.takeIf { it.isNotBlank() }?.let { intent.putExtra(EXTRA_TORRENT_SOURCE, it) }
+    mediaDescription?.takeIf { it.isNotBlank() }?.let { intent.putExtra(EXTRA_MEDIA_DESCRIPTION, it) }
+    posterUrl?.takeIf { it.isNotBlank() }?.let { intent.putExtra(EXTRA_MEDIA_POSTER_URL, it) }
+    backdropUrl?.takeIf { it.isNotBlank() }?.let { intent.putExtra(EXTRA_MEDIA_BACKDROP_URL, it) }
     lookupHints.canonicalTitle?.takeIf { it.isNotBlank() }?.let { intent.putExtra("introdb_title", it) }
     lookupHints.imdbId?.takeIf { it.isNotBlank() }?.let { intent.putExtra("introdb_imdb_id", it) }
     lookupHints.tmdbId?.let { intent.putExtra("introdb_tmdb_id", it) }
@@ -224,6 +273,14 @@ object MediaUtils {
     val scheme = source.uri.scheme?.lowercase() ?: return false
     return scheme !in setOf("file", "content", "android.resource")
   }
+
+  const val EXTRA_TORRENT_SOURCE = "torrent_source"
+  const val EXTRA_TORRENT_FILE_INDEX = "torrent_file_index"
+  const val EXTRA_TORRENT_PREPARATION_ID = "torrent_preparation_id"
+  const val EXTRA_MEDIA_TITLE = "torrent_media_title"
+  const val EXTRA_MEDIA_DESCRIPTION = "torrent_media_description"
+  const val EXTRA_MEDIA_POSTER_URL = "torrent_media_poster_url"
+  const val EXTRA_MEDIA_BACKDROP_URL = "torrent_media_backdrop_url"
 
   /**
    * Validate URL structure and protocol support.
