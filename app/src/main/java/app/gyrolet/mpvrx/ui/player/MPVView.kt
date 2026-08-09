@@ -203,9 +203,8 @@ class MPVView(
       boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
     )
 
-    // MediaCodec direct rendering is valid only for gpu/opengl/android. Other render backends use
-    // the copy path. Both configurations retain explicit software fallback so a broken vendor
-    // codec never leaves playback stuck on a black frame.
+    // Keep direct -> copy -> software fallback on the standard Android renderer. Backends that
+    // cannot use direct MediaCodec start at the copy path instead.
     PlaybackSession.setOptionString("hwdec", hwdecMode)
     PlaybackSession.setOptionString(
       "hwdec-codecs",
@@ -640,14 +639,14 @@ class MPVView(
       return "no"
     }
 
-    // Android MediaCodec's direct path is only supported by mpv with legacy gpu + android
-    // OpenGL context. gpu-next/Vulkan and androidvk must use the copy path instead.
+    // Direct MediaCodec is only valid with legacy gpu + Android OpenGL. Preserve the copy attempt
+    // after direct on that path, while gpu-next/Vulkan-compatible paths start with copy directly.
     return if (
       backend.vo == "gpu" &&
       backend.gpuApi == "opengl" &&
       backend.gpuContext == "android"
     ) {
-      "mediacodec,no"
+      "mediacodec,mediacodec-copy,no"
     } else {
       "mediacodec-copy,no"
     }
