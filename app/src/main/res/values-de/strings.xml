@@ -721,25 +721,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_ai_disabled_summary">KI-Funktionen sind deaktiviert</string>
   <string name="pref_ai_provider_section">Anbieter</string>
   <string name="pref_ai_provider_title">KI-Anbieter</string>
-  <string name="pref_hf_setup_section">Hugging-Face-Einrichtung</string>
-  <string name="pref_hf_token_title">Hugging-Face-Token</string>
-  <string name="pref_hf_token_summary_error">Für zugangsbeschränkte Modelle erforderlich. Erhältlich unter huggingface.co/settings/tokens</string>
-  <string name="pref_hf_token_summary_saved">Token auf dem Gerät gespeichert</string>
-  <string name="pref_hf_token_dialog_text">Hugging-Face-Token einfügen</string>
-  <string name="pref_hf_token_placeholder">hf_…</string>
-  <string name="pref_offline_models_section">Offline-Modelle</string>
-  <string name="pref_model_picker_header">Geschwindigkeitsorientierte Modellauswahl</string>
-  <string name="pref_model_picker_description">Modelle werden nach gefühlter Geschwindigkeit nach dem Laden, RAM-Belastung und Qualität der Untertitelübersetzung bewertet.</string>
-  <string name="pref_filter_recommended">Empfohlen</string>
-  <string name="pref_filter_fastest">Am schnellsten</string>
-  <string name="pref_filter_best_translation">Beste Übersetzung</string>
-  <string name="pref_filter_downloaded">Heruntergeladen</string>
-  <string name="pref_model_download_success">Modell erfolgreich heruntergeladen</string>
-  <string name="pref_model_download_failed">Download fehlgeschlagen: %1$s</string>
-  <string name="pref_model_deleted">Modell gelöscht</string>
-  <string name="pref_model_using">%1$s wird verwendet</string>
-  <string name="pref_benchmark_saved">Benchmark gespeichert: %1$s</string>
-  <string name="pref_benchmark_failed">Benchmark fehlgeschlagen: %1$s</string>
   <string name="pref_api_config_section">API-Konfiguration</string>
   <string name="pref_api_key_saved">API-Schlüssel auf dem Gerät gespeichert</string>
   <string name="pref_hide_key">Schlüssel ausblenden</string>
@@ -841,7 +822,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="search_translation_summary">Externe Untertitel mit KI und Zielsprachen für die automatische Übersetzung übersetzen</string>
   <string name="search_custom_ai_prompts_title">Benutzerdefinierte KI-Prompts</string>
   <string name="search_custom_ai_prompts_summary">Standardanweisungen für Umbenennungs-, Übersetzungs- und Formatierungsaufgaben überschreiben</string>
-  <string name="search_offline_ai_models_title">Offline-KI-Modelle</string>
   <string name="search_offline_ai_models_summary">Lokale LLMs für vollständig offline nutzbare KI-Funktionen herunterladen und verwalten</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -1468,7 +1448,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="oss_sora_editor_description">Leistungsfähiger, effizienter Code-Editor für Android mit TextMate-Hervorhebung.</string>
   <string name="oss_media3_description">Android-Medienbibliotheken für erweiterte Wiedergabe und Effekte.</string>
   <string name="oss_jsoup_description">Java-HTML-Parser für Web-Scraping und Dokumentextraktion.</string>
-  <string name="oss_llamatik_description">Lokale LLM-Inferenzbrücke zum Ausführen von KI-Modellen unter Android.</string>
   <string name="oss_androidx_core_ktx_description">Kern-Kotlin-Erweiterungen für Android-Framework-APIs.</string>
   <string name="oss_androidx_appcompat_description">Abwärtskompatible Versionen von Android-Framework-APIs.</string>
   <string name="oss_androidx_constraintlayout_description">Flexibler Layout-Manager für Android-Oberflächen.</string>
@@ -1547,7 +1526,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_extractor_args_2">extractor-args=\"youtube:player_client=android,web\"\ngeo-bypass=</string>
   <string name="ui_h_264">H.264</string>
   <string name="ui_h_265">H.265</string>
-  <string name="ui_hf">hf_...</string>
   <string name="ui_mozilla_5_0">Mozilla/5.0 ...</string>
   <string name="ui_mp4_mkv_webm">mp4, mkv, webm</string>
   <string name="ui_res_fps_hdr_12_vcodec_vp9_2">res,fps,hdr:12,vcodec:vp9.2</string>

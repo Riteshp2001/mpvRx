@@ -240,7 +240,6 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
-  implementation(libs.llamatik)
   implementation(libs.androidx.profileinstaller)
   implementation(libs.google.cast.framework)
 

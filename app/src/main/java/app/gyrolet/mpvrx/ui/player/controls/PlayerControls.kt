@@ -1463,6 +1463,10 @@ fun PlayerControls(
                 resetControlsTimestamp = System.currentTimeMillis()
                 if (useThumbFastSeekPreview) {
                   viewModel.updateSeekThumbnailPreview(it, seekbarDuration)
+                } else {
+                  // Legacy mode previews on the actual video surface. The ViewModel conflates
+                  // pointer events so this remains responsive instead of issuing a seek per pixel.
+                  viewModel.previewSeekTo(it.toInt())
                 }
               },
               onValueChangeFinished = { targetPosition ->

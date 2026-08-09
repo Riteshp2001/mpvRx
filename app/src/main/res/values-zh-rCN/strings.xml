@@ -721,25 +721,6 @@
   <string name="pref_ai_disabled_summary">AI 功能已禁用</string>
   <string name="pref_ai_provider_section">提供商</string>
   <string name="pref_ai_provider_title">AI 提供商</string>
-  <string name="pref_hf_setup_section">Hugging Face 设置</string>
-  <string name="pref_hf_token_title">Hugging Face 令牌</string>
-  <string name="pref_hf_token_summary_error">受限模型需要此令牌。请前往 huggingface.co/settings/tokens 获取</string>
-  <string name="pref_hf_token_summary_saved">令牌已保存在设备上</string>
-  <string name="pref_hf_token_dialog_text">粘贴 Hugging Face 令牌</string>
-  <string name="pref_hf_token_placeholder">hf_…</string>
-  <string name="pref_offline_models_section">离线模型</string>
-  <string name="pref_model_picker_header">速度优先的模型选择器</string>
-  <string name="pref_model_picker_description">模型根据加载后的体感速度、RAM 压力和字幕翻译质量进行排名。</string>
-  <string name="pref_filter_recommended">推荐</string>
-  <string name="pref_filter_fastest">最快</string>
-  <string name="pref_filter_best_translation">最佳翻译</string>
-  <string name="pref_filter_downloaded">已下载</string>
-  <string name="pref_model_download_success">模型下载成功</string>
-  <string name="pref_model_download_failed">下载失败：%1$s</string>
-  <string name="pref_model_deleted">模型已删除</string>
-  <string name="pref_model_using">正在使用 %1$s</string>
-  <string name="pref_benchmark_saved">基准测试已保存：%1$s</string>
-  <string name="pref_benchmark_failed">基准测试失败：%1$s</string>
   <string name="pref_api_config_section">API 配置</string>
   <string name="pref_api_key_saved">API 密钥已保存在设备上</string>
   <string name="pref_hide_key">隐藏密钥</string>
@@ -841,7 +822,6 @@
   <string name="search_translation_summary">使用 AI 翻译外部字幕并设置自动翻译目标语言</string>
   <string name="search_custom_ai_prompts_title">自定义 AI 提示词</string>
   <string name="search_custom_ai_prompts_summary">覆盖重命名、翻译和格式化任务的默认指令</string>
-  <string name="search_offline_ai_models_title">离线 AI 模型</string>
   <string name="search_offline_ai_models_summary">下载并管理本地大语言模型，实现完全离线的 AI 功能</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -1468,7 +1448,6 @@
   <string name="oss_sora_editor_description">适用于 Android 的强大高效代码编辑器，支持 TextMate 高亮。</string>
   <string name="oss_media3_description">用于高级播放和特效的 Android 媒体库。</string>
   <string name="oss_jsoup_description">用于网页抓取和文档提取的 Java HTML 解析器。</string>
-  <string name="oss_llamatik_description">在 Android 上运行 AI 模型的本地大语言模型推理桥接层。</string>
   <string name="oss_androidx_core_ktx_description">用于 Android 框架 API 的核心 Kotlin 扩展。</string>
   <string name="oss_androidx_appcompat_description">Android 框架 API 的向后兼容版本。</string>
   <string name="oss_androidx_constraintlayout_description">用于 Android 界面的灵活布局管理器。</string>
@@ -1547,7 +1526,6 @@
   <string name="ui_extractor_args_2">extractor-args=\"youtube:player_client=android,web\"\ngeo-bypass=</string>
   <string name="ui_h_264">H.264</string>
   <string name="ui_h_265">H.265</string>
-  <string name="ui_hf">hf_...</string>
   <string name="ui_mozilla_5_0">Mozilla/5.0 ...</string>
   <string name="ui_mp4_mkv_webm">mp4, mkv, webm</string>
   <string name="ui_res_fps_hdr_12_vcodec_vp9_2">res,fps,hdr:12,vcodec:vp9.2</string>

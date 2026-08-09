@@ -1,4 +1,4 @@
-/*
+﻿/*
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
@@ -70,10 +70,6 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.repository.ai.AiModelInfo
 import app.gyrolet.mpvrx.repository.ai.AiService
-import app.gyrolet.mpvrx.repository.ai.DownloadProgress
-import app.gyrolet.mpvrx.repository.ai.LocalModelBenchmark
-import app.gyrolet.mpvrx.repository.ai.LocalModelCatalog
-import app.gyrolet.mpvrx.repository.ai.LocalModelInfo
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.PreferenceCard
@@ -159,9 +155,6 @@ object AiIntegrationScreen : Screen {
     val openrouterKey by preferences.openrouterApiKey.collectAsState()
     val togetherKey by preferences.togetherApiKey.collectAsState()
     val selectedModel by preferences.selectedModelFor(provider).collectAsState()
-    val localModelId by preferences.localModelId.collectAsState()
-    val localModelDownloaded by preferences.localModelDownloaded.collectAsState()
-    val huggingfaceToken by preferences.huggingfaceToken.collectAsState()
     val customPromptEnabled by preferences.customPromptEnabled.collectAsState()
     val customPrompt by preferences.customPrompt.collectAsState()
     val customRenamePrompt by preferences.customRenamePrompt.collectAsState()
@@ -184,20 +177,6 @@ object AiIntegrationScreen : Screen {
     var showApiKey by remember { mutableStateOf(false) }
     var modelLoadError by remember { mutableStateOf<String?>(null) }
     var showSubtitleTranslationWarning by remember { mutableStateOf(false) }
-    var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
-    var isDownloading by remember { mutableStateOf(false) }
-    var localModelSort by remember { mutableStateOf("Recommended") }
-    var benchmarks by remember { mutableStateOf(aiService.getLocalModelBenchmarks()) }
-    var benchmarkingModelId by remember { mutableStateOf<String?>(null) }
-
-    val activityManager =
-      context.getSystemService(
-        android.content.Context.ACTIVITY_SERVICE,
-      ) as android.app.ActivityManager
-    val memoryInfo = android.app.ActivityManager.MemoryInfo()
-    activityManager.getMemoryInfo(memoryInfo)
-    val ramMb = (memoryInfo.totalMem / (1024 * 1024)).toInt()
-    val recommendedModelIds = remember(ramMb) { LocalModelCatalog.recommendedForRam(ramMb).map { it.id }.toSet() }
 
     val json = koinInject<Json>()
 
@@ -236,7 +215,7 @@ object AiIntegrationScreen : Screen {
         } catch (_: Exception) {
         }
       }
-      if (models.isEmpty() && provider != AiProvider.LOCAL) {
+      if (models.isEmpty()) {
         loadModels()
       }
     }
@@ -327,221 +306,7 @@ object AiIntegrationScreen : Screen {
               }
             }
 
-            if (provider == AiProvider.LOCAL) {
-              item { PreferenceSectionHeader(title = stringResource(R.string.pref_hf_setup_section)) }
-
-              item {
-                PreferenceCard {
-                  TextFieldPreference(
-                    value = huggingfaceToken,
-                    onValueChange = preferences.huggingfaceToken::set,
-                    textToValue = { it.trim() },
-                    title = {
-                      Text(
-                        androidx.compose.ui.res
-                          .stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_title),
-                      )
-                    },
-                    summary = {
-                      if (huggingfaceToken.isBlank()) {
-                        Text(
-                          androidx.compose.ui.res.stringResource(
-                            app.gyrolet.mpvrx.R.string.pref_hf_token_summary_error,
-                          ),
-                          color = MaterialTheme.colorScheme.error,
-                        )
-                      } else {
-                        Text(
-                          androidx.compose.ui.res.stringResource(
-                            app.gyrolet.mpvrx.R.string.pref_hf_token_summary_saved,
-                          ),
-                          color = MaterialTheme.colorScheme.outline,
-                        )
-                      }
-                    },
-                    textField = { value, onValueChange, _ ->
-                      Column {
-                        Text(
-                          androidx.compose.ui.res
-                            .stringResource(app.gyrolet.mpvrx.R.string.pref_hf_token_dialog_text),
-                        )
-                        TextField(
-                          value = value,
-                          onValueChange = onValueChange,
-                          modifier = Modifier.fillMaxWidth(),
-                          placeholder = {
-                            Text(
-                              androidx.compose.ui.res
-                                .stringResource(app.gyrolet.mpvrx.R.string.ui_hf),
-                            )
-                          },
-                          singleLine = true,
-                          visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
-                        )
-                      }
-                    },
-                  )
-                }
-              }
-
-              item { PreferenceSectionHeader(title = stringResource(R.string.pref_offline_models_section)) }
-
-              item {
-                Column(
-                  modifier =
-                    Modifier
-                      .fillMaxWidth()
-                      .padding(horizontal = 16.dp, vertical = 8.dp),
-                  verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                  Text(
-                    text =
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.pref_model_picker_header),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                  )
-                  Text(
-                    text =
-                      androidx.compose.ui.res.stringResource(
-                        app.gyrolet.mpvrx.R.string.pref_model_picker_description,
-                      ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                  Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier =
-                      Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                  ) {
-                    listOf("Recommended", "Fastest", "Best translation", "Downloaded").forEach { mode ->
-                      FilterChip(
-                        selected = localModelSort == mode,
-                        onClick = { localModelSort = mode },
-                        label = { Text(mode, maxLines = 1) },
-                      )
-                    }
-                  }
-                }
-              }
-
-              val visibleLocalModels =
-                when (localModelSort) {
-                  "Fastest" -> LocalModelCatalog.models.sortedByDescending { it.speedRank }
-                  "Best translation" -> LocalModelCatalog.models.sortedByDescending { it.translationRank }
-                  "Downloaded" ->
-                    LocalModelCatalog.models.sortedWith(
-                      compareByDescending<LocalModelInfo> { aiService.isLocalModelDownloaded(it.id) }
-                        .thenBy { it.tier.sortWeight }
-                        .thenByDescending { it.speedRank },
-                    )
-                  else -> LocalModelCatalog.speedFirst(ramMb)
-                }
-
-              items(visibleLocalModels, key = { it.id }) { model ->
-                val isDownloaded =
-                  remember(model.id, isDownloading) {
-                    aiService.isLocalModelDownloaded(model.id)
-                  }
-                val isSelected = localModelId == model.id
-                val isThisDownloading = isDownloading && localModelId == model.id
-                val benchmark = benchmarks.firstOrNull { it.modelId == model.id }
-
-                OfflineModelCard(
-                  model = model,
-                  isDownloaded = isDownloaded,
-                  isSelected = isSelected,
-                  isDownloading = isThisDownloading,
-                  isBenchmarking = benchmarkingModelId == model.id,
-                  isRecommended = recommendedModelIds.contains(model.id),
-                  benchmark = benchmark,
-                  downloadProgress = if (isThisDownloading) downloadProgress else null,
-                  onDownload = {
-                    preferences.localModelId.set(model.id)
-                    isDownloading = true
-                    downloadProgress = null
-                    scope.launch {
-                      aiService
-                        .downloadLocalModel(model.id)
-                        .onSuccess {
-                          downloadProgress = DownloadProgress(isComplete = true)
-                          Toast
-                            .makeText(
-                              context,
-                              context.getString(app.gyrolet.mpvrx.R.string.pref_model_download_success),
-                              Toast.LENGTH_SHORT,
-                            ).show()
-                        }.onFailure { e ->
-                          downloadProgress = DownloadProgress(error = e.message)
-                          Toast
-                            .makeText(
-                              context,
-                              context.getString(
-                                R.string.pref_model_download_failed,
-                                e.message ?: context.getString(R.string.generic_unknown_error),
-                              ),
-                              Toast.LENGTH_LONG,
-                            ).show()
-                        }
-                      isDownloading = false
-                    }
-                  },
-                  onDelete = {
-                    if (aiService.deleteLocalModel(model.id)) {
-                      Toast
-                        .makeText(
-                          context,
-                          context.getString(app.gyrolet.mpvrx.R.string.pref_model_deleted),
-                          Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                  },
-                  onSelect = {
-                    preferences.localModelId.set(model.id)
-                    Toast
-                      .makeText(
-                        context,
-                        context.getString(R.string.pref_model_using, model.displayName),
-                        Toast.LENGTH_SHORT,
-                      ).show()
-                  },
-                  onBenchmark = {
-                    benchmarkingModelId = model.id
-                    scope.launch {
-                      aiService
-                        .benchmarkLocalModel(model.id)
-                        .onSuccess {
-                          benchmarks = aiService.getLocalModelBenchmarks()
-                          Toast
-                            .makeText(
-                              context,
-                              context.getString(R.string.pref_benchmark_saved, it.speedLabel),
-                              Toast.LENGTH_SHORT,
-                            ).show()
-                        }.onFailure { e ->
-                          Toast
-                            .makeText(
-                              context,
-                              context.getString(
-                                R.string.pref_benchmark_failed,
-                                e.message ?: context.getString(R.string.generic_unknown_error),
-                              ),
-                              Toast.LENGTH_LONG,
-                            ).show()
-                        }
-                      benchmarkingModelId = null
-                    }
-                  },
-                )
-              }
-
-              item { Spacer(modifier = Modifier.height(16.dp)) }
-            }
-
-            if (provider != AiProvider.LOCAL) {
-              val apiKeyInfo =
+val apiKeyInfo =
                 when (provider) {
                   AiProvider.OPENCODE ->
                     ApiKeyInfo(
@@ -930,7 +695,7 @@ object AiIntegrationScreen : Screen {
                               val isWarning =
                                 line.startsWith("Quota") ||
                                   line.startsWith("Paid") ||
-                                  line.startsWith("⚠")
+                                  line.startsWith("âš ")
                               Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -964,7 +729,6 @@ object AiIntegrationScreen : Screen {
                   }
                 }
               }
-            }
 
             item { PreferenceSectionHeader(title = stringResource(R.string.pref_ai_features_subsection)) }
 
@@ -1010,8 +774,7 @@ object AiIntegrationScreen : Screen {
               }
             }
 
-            if (provider != AiProvider.LOCAL) {
-              item { PreferenceSectionHeader(title = stringResource(R.string.pref_stt_section)) }
+            item { PreferenceSectionHeader(title = stringResource(R.string.pref_stt_section)) }
 
               item {
                 PreferenceCard {
@@ -1164,9 +927,7 @@ object AiIntegrationScreen : Screen {
                   )
                 }
               }
-            }
 
-            if (provider != AiProvider.LOCAL) {
               item { PreferenceSectionHeader(title = stringResource(R.string.pref_translation_section)) }
 
               item {
@@ -1203,7 +964,6 @@ object AiIntegrationScreen : Screen {
                   )
                 }
               }
-            }
 
             item { PreferenceSectionHeader(title = stringResource(R.string.pref_custom_prompt_section)) }
 
@@ -1384,236 +1144,6 @@ object AiIntegrationScreen : Screen {
     }
   }
 
-  @Composable
-  private fun OfflineModelCard(
-    model: LocalModelInfo,
-    isDownloaded: Boolean,
-    isSelected: Boolean,
-    isDownloading: Boolean,
-    isBenchmarking: Boolean,
-    isRecommended: Boolean = false,
-    benchmark: LocalModelBenchmark?,
-    downloadProgress: DownloadProgress?,
-    onDownload: () -> Unit,
-    onDelete: () -> Unit,
-    onSelect: () -> Unit,
-    onBenchmark: () -> Unit,
-  ) {
-    val cardColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-
-    ElevatedCard(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp, vertical = 4.dp),
-      shape = RoundedCornerShape(10.dp),
-      colors =
-        CardDefaults.elevatedCardColors(
-          containerColor = cardColor,
-          contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-        ),
-      elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-    ) {
-      Column(
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            Text(
-              text = model.displayName,
-              style = MaterialTheme.typography.titleSmall,
-              fontWeight = FontWeight.Bold,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-              horizontalArrangement = Arrangement.spacedBy(6.dp),
-              modifier = Modifier.horizontalScroll(rememberScrollState()),
-            ) {
-              ModelChip(model.tier.label)
-              ModelChip(model.sizeLabel)
-              ModelChip("${model.minRamGb}GB RAM+")
-            }
-          }
-
-          if (isDownloaded && !isDownloading) {
-            IconButton(onClick = onDelete) {
-              Icon(
-                Icons.RoundedFilled.Delete,
-                contentDescription =
-                  androidx.compose.ui.res.stringResource(
-                    app.gyrolet.mpvrx.R.string.delete,
-                  ),
-                tint =
-                  if (isSelected) {
-                    MaterialTheme.colorScheme.error
-                  } else {
-                    MaterialTheme.colorScheme.error
-                      .copy(
-                        alpha = 0.8f,
-                      )
-                  },
-              )
-            }
-          }
-        }
-
-        Text(
-          text = model.description,
-          style = MaterialTheme.typography.bodySmall,
-          color =
-            if (isSelected) {
-              MaterialTheme.colorScheme.onPrimaryContainer.copy(
-                alpha = 0.9f,
-              )
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
-        )
-
-        Row(
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .horizontalScroll(rememberScrollState()),
-        ) {
-          if (isRecommended) ModelChip("Recommended here")
-          ModelChip("Speed ${model.speedRank}")
-          ModelChip("Translation ${model.translationRank}")
-          ModelChip(model.languageTier.label)
-        }
-
-        if (benchmark != null) {
-          Text(
-            text = "${benchmark.speedLabel} - ${benchmark.loadLabel} - about ${benchmark.memoryEstimateMb} MB while loaded",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-          )
-        }
-
-        if (isDownloading && downloadProgress != null) {
-          val percentage = downloadProgress.percentage
-          LinearProgressIndicator(
-            progress = { percentage },
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp)),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-          )
-          Text(
-            text = "${(percentage * 100).toInt()}% downloaded",
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(top = 4.dp),
-            color = MaterialTheme.colorScheme.primary,
-          )
-        } else if (isDownloading) {
-          LinearProgressIndicator(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp)),
-          )
-        }
-
-        Row(
-          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-          verticalAlignment = Alignment.CenterVertically,
-          modifier = Modifier.fillMaxWidth(),
-        ) {
-          if (isDownloaded && !isDownloading) {
-            OutlinedButton(
-              onClick = onBenchmark,
-              enabled = !isBenchmarking,
-              shape = RoundedCornerShape(10.dp),
-            ) {
-              if (isBenchmarking) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                Spacer(modifier = Modifier.width(6.dp))
-              }
-              Text(
-                if (benchmark ==
-                  null
-                ) {
-                  stringResource(R.string.pref_benchmark)
-                } else {
-                  stringResource(R.string.pref_retest)
-                },
-              )
-            }
-          }
-          if (!isDownloaded && !isDownloading) {
-            Button(
-              onClick = onDownload,
-              shape = RoundedCornerShape(10.dp),
-              colors =
-                ButtonDefaults.buttonColors(
-                  containerColor = MaterialTheme.colorScheme.primary,
-                ),
-            ) {
-              Icon(Icons.RoundedFilled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-              Spacer(modifier = Modifier.width(8.dp))
-              Text(
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_download),
-              )
-            }
-          } else if (isDownloaded && !isSelected && !isDownloading) {
-            Button(
-              onClick = onSelect,
-              shape = RoundedCornerShape(10.dp),
-              colors =
-                ButtonDefaults.buttonColors(
-                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-            ) {
-              Text(
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_use_model),
-              )
-            }
-          } else if (isSelected && isDownloaded && !isDownloading) {
-            Surface(
-              color = MaterialTheme.colorScheme.primary,
-              shape = RoundedCornerShape(10.dp),
-            ) {
-              Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Icon(
-                  Icons.RoundedFilled.Check,
-                  contentDescription = null,
-                  modifier = Modifier.size(16.dp),
-                  tint = MaterialTheme.colorScheme.onPrimary,
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                  androidx.compose.ui.res
-                    .stringResource(app.gyrolet.mpvrx.R.string.ui_active),
-                  style = MaterialTheme.typography.labelLarge,
-                  color = MaterialTheme.colorScheme.onPrimary,
-                  fontWeight = FontWeight.Bold,
-                )
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   private data class ApiKeyInfo(
     val title: String,
     val hint: String,
@@ -1621,22 +1151,6 @@ object AiIntegrationScreen : Screen {
     val apiKey: String,
     val onChange: (String) -> Unit,
   )
-
-  @Composable
-  private fun ModelChip(text: String) {
-    Surface(
-      color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-      shape = RoundedCornerShape(8.dp),
-    ) {
-      Text(
-        text = text,
-        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-        style = MaterialTheme.typography.labelSmall,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-    }
-  }
 
   @Composable
   private fun SttModelSelector(

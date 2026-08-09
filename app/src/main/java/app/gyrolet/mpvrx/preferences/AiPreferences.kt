@@ -22,7 +22,6 @@ enum class AiProvider(
   ANTHROPIC("Anthropic"),
   OPENROUTER("OpenRouter"),
   TOGETHER("Together"),
-  LOCAL("Offline Model"),
 }
 
 class AiPreferences(
@@ -57,13 +56,6 @@ class AiPreferences(
   private val openRouterAvailableModels = preferenceStore.getString("ai_available_models_openrouter", "[]")
   private val togetherAvailableModels = preferenceStore.getString("ai_available_models_together", "[]")
 
-  val localModelId = preferenceStore.getString("ai_local_model_id", "")
-  val localModelPath = preferenceStore.getString("ai_local_model_path", "")
-  val localModelDownloaded = preferenceStore.getBoolean("ai_local_model_downloaded", false)
-  val localModelDownloadProgress = preferenceStore.getFloat("ai_local_model_download_progress", 0f)
-  val localModelBenchmarks = preferenceStore.getString("ai_local_model_benchmarks", "[]")
-  val huggingfaceToken = preferenceStore.getString("ai_huggingface_token", "")
-
   val subtitleGenerationOutputFormat = preferenceStore.getString("ai_subtitle_generation_output_format", "srt")
 
   // Speech-to-text (real-time subs + batch generation)
@@ -93,15 +85,13 @@ class AiPreferences(
 
   init {
     val currentProvider = provider.get()
-    if (currentProvider != AiProvider.LOCAL) {
-      val providerModel = selectedModelFor(currentProvider)
-      if (providerModel.get().isBlank() && selectedModel.get().isNotBlank()) {
-        providerModel.set(selectedModel.get())
-      }
-      val providerModels = availableModelsFor(currentProvider)
-      if (providerModels.get() == "[]" && availableModels.get() != "[]") {
-        providerModels.set(availableModels.get())
-      }
+    val providerModel = selectedModelFor(currentProvider)
+    if (providerModel.get().isBlank() && selectedModel.get().isNotBlank()) {
+      providerModel.set(selectedModel.get())
+    }
+    val providerModels = availableModelsFor(currentProvider)
+    if (providerModels.get() == "[]" && availableModels.get() != "[]") {
+      providerModels.set(availableModels.get())
     }
   }
 
@@ -113,7 +103,6 @@ class AiPreferences(
       AiProvider.ANTHROPIC -> anthropicSelectedModel
       AiProvider.OPENROUTER -> openRouterSelectedModel
       AiProvider.TOGETHER -> togetherSelectedModel
-      AiProvider.LOCAL -> localModelId
     }
 
   fun availableModelsFor(provider: AiProvider): Preference<String> =
@@ -124,6 +113,5 @@ class AiPreferences(
       AiProvider.ANTHROPIC -> anthropicAvailableModels
       AiProvider.OPENROUTER -> openRouterAvailableModels
       AiProvider.TOGETHER -> togetherAvailableModels
-      AiProvider.LOCAL -> availableModels
     }
 }

@@ -44,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.preferences.AiProvider
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -91,7 +90,6 @@ fun SubtitlesSheet(
   subtitleGenerationStatus: String,
   translatingTrackId: Int? = null,
   translatingTrackName: String = "",
-  provider: AiProvider = AiProvider.OPENCODE,
   autoTranslateLanguages: String = "",
   aiEnabled: Boolean = true,
   realtimeSubsEnabled: Boolean = true,
@@ -117,8 +115,6 @@ fun SubtitlesSheet(
 
       list.toImmutableList()
     }
-
-  val isOnlineProvider = provider != AiProvider.LOCAL
 
   val configuredLanguages =
     remember(autoTranslateLanguages) {
@@ -326,7 +322,7 @@ fun SubtitlesSheet(
           IconButton(onClick = onOpenOnlineSearch) {
             Icon(Icons.RoundedFilled.Search, null)
           }
-          if (isOnlineProvider && aiEnabled && realtimeSubsEnabled) {
+          if (aiEnabled && realtimeSubsEnabled) {
             IconButton(onClick = onGenerateSubtitle) {
               Icon(Icons.RoundedFilled.Subtitles, "Generate subtitles")
             }
@@ -432,7 +428,7 @@ fun SubtitlesSheet(
                 onToggle = { onToggleSubtitle(track.id) },
                 onRemove = { onRemoveSubtitle(track.id) },
                 onTranslate = {
-                  if (translationEnabled && isOnlineProvider) {
+                  if (translationEnabled) {
                     if (configuredLanguages.size == 1) {
                       val langName = codeToName[configuredLanguages.first()] ?: configuredLanguages.first()
                       onTranslateSubtitle(track, langName)
@@ -441,7 +437,7 @@ fun SubtitlesSheet(
                     }
                   }
                 },
-                translationEnabled = translationEnabled && isOnlineProvider,
+                translationEnabled = translationEnabled,
                 isCurrentlyTranslating = track.id == translatingTrackId,
               )
             }

@@ -721,25 +721,6 @@
   <string name="pref_ai_disabled_summary">AI機能は無効です</string>
   <string name="pref_ai_provider_section">提供元</string>
   <string name="pref_ai_provider_title">AI提供元</string>
-  <string name="pref_hf_setup_section">Hugging Face設定</string>
-  <string name="pref_hf_token_title">Hugging Faceトークン</string>
-  <string name="pref_hf_token_summary_error">制限付きモデルに必要です。huggingface.co/settings/tokensで取得してください</string>
-  <string name="pref_hf_token_summary_saved">トークンは端末に保存されています</string>
-  <string name="pref_hf_token_dialog_text">Hugging Faceトークンを貼り付けてください</string>
-  <string name="pref_hf_token_placeholder">hf_…</string>
-  <string name="pref_offline_models_section">オフラインモデル</string>
-  <string name="pref_model_picker_header">速度優先のモデル選択</string>
-  <string name="pref_model_picker_description">モデルは読み込み後の体感速度、RAM負荷、字幕翻訳品質で順位付けされます。</string>
-  <string name="pref_filter_recommended">推奨</string>
-  <string name="pref_filter_fastest">最速</string>
-  <string name="pref_filter_best_translation">最高の翻訳</string>
-  <string name="pref_filter_downloaded">ダウンロード済み</string>
-  <string name="pref_model_download_success">モデルをダウンロードしました</string>
-  <string name="pref_model_download_failed">ダウンロードに失敗しました：%1$s</string>
-  <string name="pref_model_deleted">モデルを削除しました</string>
-  <string name="pref_model_using">%1$sを使用中</string>
-  <string name="pref_benchmark_saved">ベンチマークを保存しました：%1$s</string>
-  <string name="pref_benchmark_failed">ベンチマークに失敗しました：%1$s</string>
   <string name="pref_api_config_section">API設定</string>
   <string name="pref_api_key_saved">APIキーは端末に保存されています</string>
   <string name="pref_hide_key">キーを隠す</string>
@@ -841,7 +822,6 @@
   <string name="search_translation_summary">AIで外部字幕を翻訳し、自動翻訳の対象言語を設定</string>
   <string name="search_custom_ai_prompts_title">カスタムAIプロンプト</string>
   <string name="search_custom_ai_prompts_summary">名前変更、翻訳、整形タスクの既定の指示を上書き</string>
-  <string name="search_offline_ai_models_title">オフラインAIモデル</string>
   <string name="search_offline_ai_models_summary">完全オフラインのAI機能向けにローカルLLMをダウンロードして管理</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -1468,7 +1448,6 @@
   <string name="oss_sora_editor_description">TextMateハイライト対応の高機能で効率的なAndroidコードエディター。</string>
   <string name="oss_media3_description">高度な再生とエフェクト向けAndroidメディアライブラリ。</string>
   <string name="oss_jsoup_description">Webスクレイピングと文書抽出向けJava HTMLパーサー。</string>
-  <string name="oss_llamatik_description">Android上でAIモデルを動かすためのローカルLLM推論ブリッジ。</string>
   <string name="oss_androidx_core_ktx_description">AndroidフレームワークAPI向けの基本Kotlin拡張。</string>
   <string name="oss_androidx_appcompat_description">AndroidフレームワークAPIの後方互換バージョン。</string>
   <string name="oss_androidx_constraintlayout_description">Androidインターフェース向け柔軟なレイアウトマネージャー。</string>
@@ -1547,7 +1526,6 @@
   <string name="ui_extractor_args_2">extractor-args=\"youtube:player_client=android,web\"\ngeo-bypass=</string>
   <string name="ui_h_264">H.264</string>
   <string name="ui_h_265">H.265</string>
-  <string name="ui_hf">hf_...</string>
   <string name="ui_mozilla_5_0">Mozilla/5.0 ...</string>
   <string name="ui_mp4_mkv_webm">mp4, mkv, webm</string>
   <string name="ui_res_fps_hdr_12_vcodec_vp9_2">res,fps,hdr:12,vcodec:vp9.2</string>

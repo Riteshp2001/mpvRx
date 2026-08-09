@@ -938,13 +938,6 @@ private val OPEN_SOURCE_LIBRARIES =
       url = "https://jsoup.org/",
     ),
     OpenSourceLibrary(
-      name = "Llamatik",
-      artifact = "com.llamatik:library",
-      descriptionRes = R.string.oss_llamatik_description,
-      license = "Apache-2.0",
-      url = "https://github.com/ferranpons/llamatik",
-    ),
-    OpenSourceLibrary(
       name = "AndroidX Core KTX",
       artifact = "androidx.core:core-ktx",
       descriptionRes = R.string.oss_androidx_core_ktx_description,

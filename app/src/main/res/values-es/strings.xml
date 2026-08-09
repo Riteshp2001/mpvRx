@@ -721,25 +721,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_ai_disabled_summary">Las funciones de IA están desactivadas</string>
   <string name="pref_ai_provider_section">Proveedor</string>
   <string name="pref_ai_provider_title">Proveedor de IA</string>
-  <string name="pref_hf_setup_section">Configuración de Hugging Face</string>
-  <string name="pref_hf_token_title">Token de Hugging Face</string>
-  <string name="pref_hf_token_summary_error">Necesario para modelos restringidos. Consigue uno en huggingface.co/settings/tokens</string>
-  <string name="pref_hf_token_summary_saved">Token guardado en el dispositivo</string>
-  <string name="pref_hf_token_dialog_text">Pega tu token de Hugging Face</string>
-  <string name="pref_hf_token_placeholder">hf_…</string>
-  <string name="pref_offline_models_section">Modelos sin conexión</string>
-  <string name="pref_model_picker_header">Selector de modelos centrado en velocidad</string>
-  <string name="pref_model_picker_description">Los modelos se ordenan según su rapidez después de cargarse, la presión sobre la RAM y la calidad de traducción de subtítulos.</string>
-  <string name="pref_filter_recommended">Recomendado</string>
-  <string name="pref_filter_fastest">Más rápido</string>
-  <string name="pref_filter_best_translation">Mejor traducción</string>
-  <string name="pref_filter_downloaded">Descargado</string>
-  <string name="pref_model_download_success">Modelo descargado correctamente</string>
-  <string name="pref_model_download_failed">Error de descarga: %1$s</string>
-  <string name="pref_model_deleted">Modelo eliminado</string>
-  <string name="pref_model_using">Usando %1$s</string>
-  <string name="pref_benchmark_saved">Prueba de rendimiento guardada: %1$s</string>
-  <string name="pref_benchmark_failed">Error en la prueba de rendimiento: %1$s</string>
   <string name="pref_api_config_section">Configuración de API</string>
   <string name="pref_api_key_saved">Clave de API guardada en el dispositivo</string>
   <string name="pref_hide_key">Ocultar clave</string>
@@ -841,7 +822,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="search_translation_summary">Traducir subtítulos externos con IA y elegir idiomas de destino para la traducción automática</string>
   <string name="search_custom_ai_prompts_title">Indicaciones de IA personalizadas</string>
   <string name="search_custom_ai_prompts_summary">Sustituir las instrucciones predeterminadas para tareas de cambio de nombre, traducción y formato</string>
-  <string name="search_offline_ai_models_title">Modelos de IA sin conexión</string>
   <string name="search_offline_ai_models_summary">Descarga y administra modelos de lenguaje locales para usar funciones de IA totalmente sin conexión</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -1468,7 +1448,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="oss_sora_editor_description">Editor de código potente y eficiente para Android con resaltado TextMate.</string>
   <string name="oss_media3_description">Bibliotecas multimedia de Android para reproducción y efectos avanzados.</string>
   <string name="oss_jsoup_description">Analizador HTML de Java para extracción web y de documentos.</string>
-  <string name="oss_llamatik_description">Puente de inferencia LLM local para ejecutar modelos de IA en Android.</string>
   <string name="oss_androidx_core_ktx_description">Extensiones principales de Kotlin para las API del framework Android.</string>
   <string name="oss_androidx_appcompat_description">Versiones retrocompatibles de las API del framework Android.</string>
   <string name="oss_androidx_constraintlayout_description">Gestor de diseño flexible para interfaces Android.</string>
@@ -1547,7 +1526,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_extractor_args_2">extractor-args=\"youtube:player_client=android,web\"\ngeo-bypass=</string>
   <string name="ui_h_264">H.264</string>
   <string name="ui_h_265">H.265</string>
-  <string name="ui_hf">hf_...</string>
   <string name="ui_mozilla_5_0">Mozilla/5.0 ...</string>
   <string name="ui_mp4_mkv_webm">mp4, mkv, webm</string>
   <string name="ui_res_fps_hdr_12_vcodec_vp9_2">res,fps,hdr:12,vcodec:vp9.2</string>

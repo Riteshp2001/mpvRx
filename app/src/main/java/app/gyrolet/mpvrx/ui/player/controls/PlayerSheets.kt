@@ -151,7 +151,6 @@ fun PlayerSheets(
       val aiEnabled by aiPreferences.enabled.collectAsState()
       val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
       val translationEnabled by aiPreferences.subtitleTranslationEnabled.collectAsState()
-      val provider by aiPreferences.provider.collectAsState()
       val autoTranslateLanguages by aiPreferences.autoTranslateLanguages.collectAsState()
 
       val subtitlesOff = subtitles.none { isSubtitleSelected(it.id) }
@@ -179,7 +178,6 @@ fun PlayerSheets(
         subtitleGenerationStatus = subtitleGenerationStatus,
         translatingTrackId = translatingTrackId,
         translatingTrackName = translatingTrackName,
-        provider = provider,
         autoTranslateLanguages = autoTranslateLanguages,
         aiEnabled = aiEnabled,
         realtimeSubsEnabled = realtimeSubsEnabled,

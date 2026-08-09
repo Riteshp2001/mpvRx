@@ -20,9 +20,6 @@ import app.gyrolet.mpvrx.repository.ai.AiService
 import app.gyrolet.mpvrx.repository.ai.AnthropicClient
 import app.gyrolet.mpvrx.repository.ai.GroqClient
 import app.gyrolet.mpvrx.repository.ai.GroqSpeechClient
-import app.gyrolet.mpvrx.repository.ai.LlamaCppInference
-import app.gyrolet.mpvrx.repository.ai.LocalAiClient
-import app.gyrolet.mpvrx.repository.ai.ModelDownloadManager
 import app.gyrolet.mpvrx.repository.ai.OpenAiClient
 import app.gyrolet.mpvrx.repository.ai.OpenCodeClient
 import app.gyrolet.mpvrx.repository.ai.OpenRouterClient
@@ -67,18 +64,12 @@ val domainModule =
     single { TogetherClient(get(), get()) }
     single { GroqSpeechClient(get(), get()) }
     single { OpenRouterSpeechClient(get(), get()) }
-    single<app.gyrolet.mpvrx.repository.ai.LlmInference> {
-      app.gyrolet.mpvrx.repository.ai
-        .LlamaCppInference()
-    }
     single<AiClient>(named("opencode")) { OpenCodeClient(get(), get()) }
     single<AiClient>(named("groq")) { GroqClient(get(), get()) }
     single<AiClient>(named("openai")) { OpenAiClient(get(), get()) }
     single<AiClient>(named("anthropic")) { AnthropicClient(get(), get()) }
     single<AiClient>(named("openrouter")) { OpenRouterClient(get(), get()) }
     single<AiClient>(named("together")) { TogetherClient(get(), get()) }
-    single { LocalAiClient(get()) }
-    single { ModelDownloadManager(get()) }
     single { SubtitleGenerationService(androidContext(), get(), get(), get(), get(), get()) }
     single { RealtimeSubtitleService(androidContext(), get(), get(), get(), get(), get()) }
     single {
@@ -91,8 +82,6 @@ val domainModule =
         get<AiClient>(named("anthropic")),
         get<AiClient>(named("openrouter")),
         get<AiClient>(named("together")),
-        get<LocalAiClient>(),
-        get<ModelDownloadManager>(),
         get<Json>(),
       )
     }

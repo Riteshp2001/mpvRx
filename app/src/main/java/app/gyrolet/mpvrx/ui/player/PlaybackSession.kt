@@ -526,7 +526,13 @@ object PlaybackSession : MPVLib.EventObserver {
     position: Double = 0.0,
     dimension: Int,
     useHwDec: Boolean = true,
-  ): Bitmap? = withCore(null) { MPVLib.grabThumbnailFast(path, position, dimension, useHwDec) }
+  ): Bitmap? {
+    // Fast thumbnails use their own native player. Holding nativeLock while they decode a
+    // network/keyframe-heavy source blocks every command sent to the active player, including
+    // seek, pause and surface updates. Only snapshot core availability under the lock.
+    if (!nativeLock.withLock { initialized }) return null
+    return MPVLib.grabThumbnailFast(path, position, dimension, useHwDec)
+  }
 
   fun setThumbnailJavaVM(context: Context) {
     withCore(Unit) { MPVLib.setThumbnailJavaVM(context.applicationContext) }

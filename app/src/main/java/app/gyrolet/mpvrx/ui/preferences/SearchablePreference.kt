@@ -1094,7 +1094,7 @@ object SearchablePreferences {
       add(
         SearchablePreference(
           titleRes = R.string.pref_section_ai_title,
-          summary = "AI-powered rename, subtitle formatting, speech-to-text, subtitle translation, offline models",
+          summary = "AI-powered rename, subtitle formatting, speech-to-text, subtitle translation",
           keywords =
             listOf(
               "ai",
@@ -1114,7 +1114,7 @@ object SearchablePreferences {
       add(
         SearchablePreference(
           titleRes = R.string.pref_ai_provider_title,
-          summary = "Choose OpenCode, Groq, OpenAI, Anthropic, OpenRouter, Together, or offline local models",
+          summary = "Choose OpenCode, Groq, OpenAI, Anthropic, OpenRouter, or Together",
           keywords =
             listOf(
               "provider",
@@ -1201,15 +1201,6 @@ object SearchablePreferences {
           titleRes = R.string.search_custom_ai_prompts_title,
           summary = "Override default instructions for rename, translation, and formatting tasks",
           keywords = listOf("prompt", "custom", "instructions", "override", "rename", "translate", "format"),
-          category = "AI",
-          screen = AiIntegrationScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.search_offline_ai_models_title,
-          summary = "Download and manage local LLMs for fully offline AI features",
-          keywords = listOf("offline", "local", "model", "download", "llm", "huggingface", "gguf", "quantized"),
           category = "AI",
           screen = AiIntegrationScreen,
         ),

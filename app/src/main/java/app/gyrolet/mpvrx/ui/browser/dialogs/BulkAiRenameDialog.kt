@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.preferences.AiPreferences
-import app.gyrolet.mpvrx.preferences.AiProvider
 import app.gyrolet.mpvrx.repository.ai.AiService
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -100,9 +99,7 @@ fun BulkAiRenameDialog(
       checkedState.clear()
       editedNames.clear()
 
-      val provider = aiPreferences.provider.get()
-      // LOCAL model is single-threaded; cap concurrency to 1
-      val semaphore = if (provider == AiProvider.LOCAL) Semaphore(1) else Semaphore(3)
+      val semaphore = Semaphore(3)
 
       val results = mutableListOf<PreviewItem>()
       var failCount = 0

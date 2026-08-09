@@ -16,7 +16,6 @@ import app.gyrolet.mpvrx.preferences.AiProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -34,8 +33,6 @@ class AiService(
   private val anthropicClient: AiClient,
   private val openRouterClient: AiClient,
   private val togetherClient: AiClient,
-  private val localAiClient: LocalAiClient,
-  private val modelDownloadManager: ModelDownloadManager,
   private val json: Json,
 ) {
   companion object {
@@ -50,7 +47,6 @@ class AiService(
       AiProvider.ANTHROPIC to anthropicClient,
       AiProvider.OPENROUTER to openRouterClient,
       AiProvider.TOGETHER to togetherClient,
-      AiProvider.LOCAL to localAiClient,
     )
 
   @Serializable
@@ -76,10 +72,6 @@ class AiService(
   suspend fun fetchModelsForProvider(provider: AiProvider): Result<List<AiModelInfo>> =
     withContext(Dispatchers.IO) {
       val apiKey = getApiKey(provider)
-
-      if (provider == AiProvider.LOCAL) {
-        return@withContext localAiClient.fetchModels("")
-      }
 
       if (apiKey.isBlank()) {
         return@withContext Result.failure(Exception("API key not configured for $provider"))
@@ -118,10 +110,6 @@ class AiService(
     withContext(Dispatchers.IO) {
       val provider = preferences.provider.get()
 
-      if (provider == AiProvider.LOCAL) {
-        return@withContext Result.success("Local model ready")
-      }
-
       val apiKey = getApiKey(provider)
       if (apiKey.isBlank()) {
         return@withContext Result.failure(Exception("API key not configured for $provider"))
@@ -137,15 +125,9 @@ class AiService(
     extraInstruction: String? = null,
   ): Result<String> =
     withContext(Dispatchers.IO) {
-      // Subtitle translation uses only online providers
-      val effectiveProvider =
-        if (task == AiTask.TRANSLATE && preferences.provider.get() == AiProvider.LOCAL) {
-          preferences.sttProvider.get()
-        } else {
-          preferences.provider.get()
-        }
-      val model = preferences.selectedModelFor(effectiveProvider).get()
-      val apiKey = getApiKey(effectiveProvider)
+      val provider = preferences.provider.get()
+      val model = preferences.selectedModelFor(provider).get()
+      val apiKey = getApiKey(provider)
 
       if (userInput.isBlank()) {
         return@withContext Result.failure(Exception("Empty input provided to AI"))
@@ -156,14 +138,10 @@ class AiService(
       val customSubtitleTranslationPrompt = preferences.customSubtitleTranslationPrompt.get()
       val customSubtitleFormatPrompt = preferences.customSubtitleFormatPrompt.get()
 
-      if (effectiveProvider != AiProvider.LOCAL && apiKey.isBlank()) {
-        return@withContext Result.failure(Exception("API key not configured for $effectiveProvider"))
+      if (apiKey.isBlank()) {
+        return@withContext Result.failure(Exception("API key not configured for $provider"))
       }
-      if (effectiveProvider == AiProvider.LOCAL) {
-        if (preferences.localModelId.get().isBlank()) {
-          return@withContext Result.failure(Exception("No local model selected. Go to AI Settings to select a model."))
-        }
-      } else if (model.isBlank()) {
+      if (model.isBlank()) {
         return@withContext Result.failure(Exception("No AI model selected"))
       }
 
@@ -181,32 +159,9 @@ class AiService(
       }
 
       val client =
-        clients[effectiveProvider]
-          ?: return@withContext Result.failure(Exception("Unknown provider: $effectiveProvider"))
+        clients[provider]
+          ?: return@withContext Result.failure(Exception("Unknown provider: $provider"))
       val options = generationOptionsFor(task)
-
-      if (effectiveProvider == AiProvider.LOCAL) {
-        val modelId = preferences.localModelId.get()
-        val localInfo = LocalModelCatalog.getById(modelId)
-        if (localInfo == null) {
-          return@withContext Result.failure(
-            Exception("Local model not selected. Go to AI Settings to download a model."),
-          )
-        }
-        val modelDir = getLocalModelDir()
-        val modelFile = modelDownloadManager.getModelFile(localInfo, modelDir)
-        if (!modelFile.exists()) {
-          return@withContext Result.failure(Exception("Model file not found. Please download the model first."))
-        }
-        return@withContext localAiClient
-          .generateContent(
-            modelFile.absolutePath,
-            modelId,
-            instruction,
-            userInput,
-            options,
-          ).map { it.text }
-      }
 
       client.generateContent(apiKey, model, instruction, userInput, options).map { it.text }
     }
@@ -217,55 +172,6 @@ class AiService(
       AiTask.SUBTITLE_FORMAT -> AiGenerationOptions(maxTokens = 1024, temperature = 0.1)
       AiTask.TRANSLATE -> AiGenerationOptions(maxTokens = 2048, temperature = 0.2)
     }
-
-  private fun deviceRamMb(): Int {
-    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-    val memoryInfo = android.app.ActivityManager.MemoryInfo()
-    activityManager.getMemoryInfo(memoryInfo)
-    return (memoryInfo.totalMem / (1024 * 1024)).toInt()
-  }
-
-  private fun selectBestDownloadedLocalModelForTranslation(extraInstruction: String) {
-    val targetLanguage =
-      Regex("TARGET LANGUAGE:\\s*([^\\n]+)", RegexOption.IGNORE_CASE)
-        .find(extraInstruction)
-        ?.groupValues
-        ?.getOrNull(1)
-        ?.trim()
-        .orEmpty()
-    if (targetLanguage.isBlank()) return
-
-    val ramMb = deviceRamMb()
-    val downloaded = LocalModelCatalog.speedFirst(ramMb).filter { isLocalModelDownloaded(it.id) }
-    if (downloaded.isEmpty()) return
-
-    val current = LocalModelCatalog.getById(preferences.localModelId.get())
-    val lowerLanguage = targetLanguage.lowercase(Locale.ROOT)
-    val currentIsGood =
-      current != null &&
-        current.tier != LocalModelTier.UTILITY &&
-        current.weakLanguages.none { lowerLanguage.contains(it.lowercase(Locale.ROOT)) } &&
-        isLocalModelDownloaded(current.id)
-    if (currentIsGood) return
-
-    val best =
-      downloaded
-        .filter { it.tier != LocalModelTier.UTILITY }
-        .sortedWith(
-          compareByDescending<LocalModelInfo> {
-            it.bestLanguages.any { lang ->
-              lowerLanguage.contains(lang.lowercase(Locale.ROOT))
-            }
-          }.thenByDescending { it.translationRank }
-            .thenByDescending { it.speedRank },
-        ).firstOrNull()
-    if (best != null && best.id != preferences.localModelId.get()) {
-      preferences.localModelId.set(best.id)
-      preferences.localModelPath.set(modelDownloadManager.getModelFile(best, getLocalModelDir()).absolutePath)
-      preferences.localModelDownloaded.set(true)
-      Log.i(TAG, "Selected ${best.displayName} for $targetLanguage subtitle translation")
-    }
-  }
 
   suspend fun renameWithAi(
     currentName: String,
@@ -304,13 +210,6 @@ class AiService(
   suspend fun verifyModel(): Result<String> =
     withContext(Dispatchers.IO) {
       val provider = preferences.provider.get()
-
-      if (provider == AiProvider.LOCAL) {
-        val modelId = preferences.localModelId.get()
-        if (modelId.isBlank()) return@withContext Result.failure(Exception("No local model selected"))
-        if (!isLocalModelDownloaded(modelId)) return@withContext Result.failure(Exception("Local model not downloaded"))
-        return@withContext Result.success("Local model is ready")
-      }
 
       val model = preferences.selectedModelFor(provider).get()
       if (model.isBlank()) return@withContext Result.failure(Exception("No model selected"))
@@ -370,20 +269,9 @@ class AiService(
 
   suspend fun isConfigured(): Boolean {
     val provider = preferences.provider.get()
-    return when (provider) {
-      AiProvider.LOCAL -> {
-        preferences.enabled.get() &&
-          preferences.localModelId.get().isNotBlank() &&
-          preferences.localModelDownloaded.get()
-      }
-      else -> {
-        val apiKey = getApiKey(provider)
-        preferences.enabled.get() && apiKey.isNotBlank() && preferences.selectedModelFor(provider).get().isNotBlank()
-      }
-    }
+    val apiKey = getApiKey(provider)
+    return preferences.enabled.get() && apiKey.isNotBlank() && preferences.selectedModelFor(provider).get().isNotBlank()
   }
-
-  fun getOnlineProviders(): List<AiProvider> = AiProvider.values().filter { it != AiProvider.LOCAL }
 
   fun getApiKey(provider: AiProvider): String =
     when (provider) {
@@ -393,77 +281,6 @@ class AiService(
       AiProvider.ANTHROPIC -> preferences.anthropicApiKey.get()
       AiProvider.OPENROUTER -> preferences.openrouterApiKey.get()
       AiProvider.TOGETHER -> preferences.togetherApiKey.get()
-      AiProvider.LOCAL -> ""
-    }
-
-  fun getLocalModelDir(): File = File(context.filesDir, "local_ai_models").also { it.mkdirs() }
-
-  suspend fun downloadLocalModel(modelId: String): Result<File> {
-    val model =
-      LocalModelCatalog.getById(modelId)
-        ?: return Result.failure(Exception("Unknown model: $modelId"))
-
-    val modelDir = getLocalModelDir()
-    val hfToken = preferences.huggingfaceToken.get()
-    return modelDownloadManager.downloadModel(model, modelDir, hfToken).onSuccess { file ->
-      try {
-        // Persist the absolute path and mark downloaded in preferences for later debugging/use
-        preferences.localModelPath.set(file.absolutePath)
-        preferences.localModelDownloaded.set(true)
-      } catch (_: Exception) {
-        // ignore preference write failures but continue returning the file
-      }
-    }
-  }
-
-  fun isLocalModelDownloaded(modelId: String): Boolean {
-    val model = LocalModelCatalog.getById(modelId) ?: return false
-    return modelDownloadManager.getModelFile(model, getLocalModelDir()).exists()
-  }
-
-  fun deleteLocalModel(modelId: String): Boolean {
-    val model = LocalModelCatalog.getById(modelId) ?: return false
-    val file = modelDownloadManager.getModelFile(model, getLocalModelDir())
-    if (file.exists()) {
-      val deleted = file.delete()
-      if (deleted && preferences.localModelPath.get() == file.absolutePath) {
-        preferences.localModelDownloaded.set(false)
-        preferences.localModelPath.set("")
-      }
-      return deleted
-    }
-    return false
-  }
-
-  fun getDownloadProgress() = modelDownloadManager.progress
-
-  fun getLocalModelBenchmarks(): List<LocalModelBenchmark> =
-    runCatching {
-      json.decodeFromString(
-        ListSerializer(LocalModelBenchmark.serializer()),
-        preferences.localModelBenchmarks.get(),
-      )
-    }.getOrDefault(emptyList())
-
-  suspend fun benchmarkLocalModel(modelId: String): Result<LocalModelBenchmark> =
-    withContext(Dispatchers.IO) {
-      val model =
-        LocalModelCatalog.getById(modelId)
-          ?: return@withContext Result.failure(Exception("Unknown model: $modelId"))
-      val modelFile = modelDownloadManager.getModelFile(model, getLocalModelDir())
-      if (!modelFile.exists()) {
-        return@withContext Result.failure(Exception("Download ${model.displayName} before benchmarking."))
-      }
-
-      localAiClient.benchmark(modelFile.absolutePath, model.id).onSuccess { benchmark ->
-        val existing = getLocalModelBenchmarks().filterNot { it.modelId == model.id }
-        preferences.localModelBenchmarks.set(
-          json.encodeToString(
-            ListSerializer(LocalModelBenchmark.serializer()),
-            existing + benchmark,
-          ),
-        )
-      }
     }
 
   suspend fun translateSubtitle(
@@ -663,20 +480,9 @@ class AiService(
     targetLanguage: String,
     format: String?,
   ): String {
-    val effectiveProvider =
-      if (preferences.provider.get() == AiProvider.LOCAL) {
-        preferences.sttProvider.get().name
-      } else {
-        preferences.provider.get().name
-      }
-    val provider =
-      if (preferences.provider.get() == AiProvider.LOCAL) {
-        preferences.sttProvider.get()
-      } else {
-        preferences.provider.get()
-      }
+    val provider = preferences.provider.get()
     val model = preferences.selectedModelFor(provider).get()
-    val input = listOf(content, targetLanguage, format.orEmpty(), effectiveProvider, model).joinToString("\u001f")
+    val input = listOf(content, targetLanguage, format.orEmpty(), provider.name, model).joinToString("\u001f")
     val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
     return digest.joinToString("") { "%02x".format(it) }
   }

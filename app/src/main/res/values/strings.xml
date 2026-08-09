@@ -571,7 +571,7 @@
   <string name="pref_section_storage_summary">Media paths, hidden folders</string>
   <string name="pref_section_ai">AI</string>
   <string name="pref_section_ai_title">AI Integration</string>
-  <string name="pref_section_ai_summary">AI rename, subtitle translation, speech-to-text, offline models (OpenCode/Groq/OpenAI)</string>
+  <string name="pref_section_ai_summary">AI rename, subtitle translation, speech-to-text (OpenCode/Groq/OpenAI)</string>
   <string name="pref_section_advanced">Advanced</string>
   <string name="pref_section_about">About</string>
 
@@ -733,25 +733,6 @@
   <string name="pref_ai_disabled_summary">AI features are disabled</string>
   <string name="pref_ai_provider_section">Provider</string>
   <string name="pref_ai_provider_title">AI Provider</string>
-  <string name="pref_hf_setup_section">Hugging Face Setup</string>
-  <string name="pref_hf_token_title">Hugging Face Token</string>
-  <string name="pref_hf_token_summary_error">Required for gated models. Get one from huggingface.co/settings/tokens</string>
-  <string name="pref_hf_token_summary_saved">Token saved on device</string>
-  <string name="pref_hf_token_dialog_text">Paste your Hugging Face token</string>
-  <string name="pref_hf_token_placeholder">hf_…</string>
-  <string name="pref_offline_models_section">Offline Models</string>
-  <string name="pref_model_picker_header">Speed-first model picker</string>
-  <string name="pref_model_picker_description">Models are ranked by how fast they feel after loading, RAM pressure, and subtitle translation quality.</string>
-  <string name="pref_filter_recommended">Recommended</string>
-  <string name="pref_filter_fastest">Fastest</string>
-  <string name="pref_filter_best_translation">Best translation</string>
-  <string name="pref_filter_downloaded">Downloaded</string>
-  <string name="pref_model_download_success">Model downloaded successfully</string>
-  <string name="pref_model_download_failed">Download failed: %1$s</string>
-  <string name="pref_model_deleted">Model deleted</string>
-  <string name="pref_model_using">Using %1$s</string>
-  <string name="pref_benchmark_saved">Benchmark saved: %1$s</string>
-  <string name="pref_benchmark_failed">Benchmark failed: %1$s</string>
   <string name="pref_api_config_section">API Configuration</string>
   <string name="pref_api_key_saved">API key saved on device</string>
   <string name="pref_hide_key">Hide Key</string>
@@ -839,7 +820,7 @@
   <string name="search_fonts_folder_title">Fonts Folder</string>
   <string name="search_fonts_folder_summary">Fonts used for subtitle rendering</string>
   <string name="search_base_storage_summary">Root folder — auto-creates Subtitles/ and Fonts/ subdirs</string>
-  <string name="search_ai_integration_summary">AI-powered rename, subtitle formatting, speech-to-text, subtitle translation, offline models</string>
+  <string name="search_ai_integration_summary">AI-powered rename, subtitle formatting, speech-to-text, subtitle translation</string>
   <string name="search_ai_provider_summary">Choose OpenCode, Groq, OpenAI, Anthropic, OpenRouter, Together, or offline local models</string>
   <string name="search_api_key_config_title">API Key Configuration</string>
   <string name="search_api_key_config_summary">Enter and verify your AI provider API key</string>
@@ -853,7 +834,6 @@
   <string name="search_translation_summary">Translate external subtitles using AI with auto-translate target languages</string>
   <string name="search_custom_ai_prompts_title">Custom AI Prompts</string>
   <string name="search_custom_ai_prompts_summary">Override default instructions for rename, translation, and formatting tasks</string>
-  <string name="search_offline_ai_models_title">Offline AI Models</string>
   <string name="search_offline_ai_models_summary">Download and manage local LLMs for fully offline AI features</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -1356,7 +1336,6 @@
   <string name="ui_upi_id_copied">UPI ID copied!</string>
   <string name="ui_no_upi_app_found">No UPI app found</string>
   <string name="ui_install_and_update_yt_dlp_for_streaming_support">Install and update yt-dlp for streaming support</string>
-  <string name="ui_hf" translatable="false">hf_...</string>
   <string name="ui_instructions_for_ai_file_renaming">Instructions for AI file renaming...</string>
   <string name="ui_instructions_for_ai_subtitle_translation">Instructions for AI subtitle translation...</string>
   <string name="ui_instructions_for_formatting_subtitle_search_queries">Instructions for formatting subtitle search queries...</string>
@@ -1502,7 +1481,6 @@
   <string name="oss_sora_editor_description">A powerful, efficient code editor for Android with TextMate highlighting.</string>
   <string name="oss_media3_description">Android media libraries for advanced playback and effects.</string>
   <string name="oss_jsoup_description">Java HTML Parser for web scraping and document extraction.</string>
-  <string name="oss_llamatik_description">Local LLM inference bridge for running AI models on Android.</string>
   <string name="oss_androidx_core_ktx_description">Core Kotlin extensions for Android framework APIs.</string>
   <string name="oss_androidx_appcompat_description">Backward-compatible versions of Android framework APIs.</string>
   <string name="oss_androidx_constraintlayout_description">Flexible layout manager for Android interfaces.</string>
