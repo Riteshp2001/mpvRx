@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
+import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
@@ -72,10 +73,12 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.sort.SortUtils
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import java.io.File
 import kotlin.math.roundToInt
 
 /**
@@ -95,6 +98,7 @@ data object SecureFolderScreen : Screen {
 
     val browserPreferences = koinInject<BrowserPreferences>()
     val appearancePreferences = koinInject<AppearancePreferences>()
+    val metadataCacheRepository = koinInject<VideoMetadataCacheRepository>()
 
     val media by viewModel.secureMedia.collectAsState()
     val selectedIds by viewModel.selectedIds.collectAsState()
@@ -157,10 +161,23 @@ data object SecureFolderScreen : Screen {
         )
       }
 
+    // Secure files live outside MediaStore, so duration/resolution aren't available for free
+    // like they are for normal library videos; extract them via MediaMetadataRetriever instead.
+    var secureVideoMetadata by remember { mutableStateOf<Map<String, MediaInfoOps.VideoMetadata>>(emptyMap()) }
+    LaunchedEffect(media) {
+      val fileTriples =
+        media.map { entity ->
+          val file = File(entity.secureFilePath)
+          Triple(file, android.net.Uri.fromFile(file), entity.fileName)
+        }
+      secureVideoMetadata = metadataCacheRepository.getOrExtractMetadataBatch(fileTriples)
+    }
+
     // Convert secure media entities into Video models and sort them
     val secureMediaVideos =
-      remember(media) {
+      remember(media, secureVideoMetadata) {
         media.map { entity ->
+          val metadata = secureVideoMetadata[entity.secureFilePath]
           entity to
             Video(
               id = entity.id,
@@ -168,8 +185,8 @@ data object SecureFolderScreen : Screen {
               displayName = entity.fileName,
               path = entity.secureFilePath,
               uri = android.net.Uri.fromFile(java.io.File(entity.secureFilePath)),
-              duration = 0L,
-              durationFormatted = "",
+              duration = metadata?.durationMs ?: 0L,
+              durationFormatted = metadata?.let { formatDuration(it.durationMs) } ?: "",
               size = entity.fileSize,
               sizeFormatted = MediaUtils.formatFileSize(entity.fileSize),
               dateModified = entity.dateHidden / 1000,
@@ -177,10 +194,10 @@ data object SecureFolderScreen : Screen {
               mimeType = entity.mimeType,
               bucketId = "secure_folder",
               bucketDisplayName = "Secure Folder",
-              width = 0,
-              height = 0,
-              fps = 0f,
-              resolution = "--",
+              width = metadata?.width ?: 0,
+              height = metadata?.height ?: 0,
+              fps = metadata?.fps ?: 0f,
+              resolution = metadata?.let { formatResolutionWithFps(it.width, it.height, it.fps) } ?: "--",
               isAudio = entity.mimeType.startsWith("audio/"),
             )
         }
@@ -603,6 +620,51 @@ data object SecureFolderScreen : Screen {
 }
 
 private enum class PendingAction { RESTORE, DELETE }
+
+private fun formatDuration(durationMs: Long): String {
+  if (durationMs <= 0) return "0s"
+
+  val seconds = durationMs / 1000
+  val hours = seconds / 3600
+  val minutes = (seconds % 3600) / 60
+  val secs = seconds % 60
+
+  return when {
+    hours > 0 -> String.format(java.util.Locale.getDefault(), "%d:%02d:%02d", hours, minutes, secs)
+    minutes > 0 -> String.format(java.util.Locale.getDefault(), "%d:%02d", minutes, secs)
+    else -> "${secs}s"
+  }
+}
+
+private fun formatResolution(
+  width: Int,
+  height: Int,
+): String {
+  if (width <= 0 || height <= 0) return "--"
+
+  return when {
+    width >= 7680 || height >= 4320 -> "4320p"
+    width >= 3840 || height >= 2160 -> "2160p"
+    width >= 2560 || height >= 1440 -> "1440p"
+    width >= 1920 || height >= 1080 -> "1080p"
+    width >= 1280 || height >= 720 -> "720p"
+    width >= 854 || height >= 480 -> "480p"
+    width >= 640 || height >= 360 -> "360p"
+    width >= 426 || height >= 240 -> "240p"
+    else -> "${height}p"
+  }
+}
+
+private fun formatResolutionWithFps(
+  width: Int,
+  height: Int,
+  fps: Float,
+): String {
+  val baseResolution = formatResolution(width, height)
+  if (baseResolution == "--" || fps <= 0f) return baseResolution
+
+  return "$baseResolution@${fps.toInt()}"
+}
 
 
 
