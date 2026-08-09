@@ -26,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -39,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
@@ -143,31 +145,54 @@ object AudioPreferencesScreen : Screen {
               if (includeAudioBrowser) {
                 PreferenceDivider()
                 val minimumAudioDurationSeconds by browserPreferences.minimumAudioDurationSeconds.collectAsState()
-                SliderPreference(
-                  value = minimumAudioDurationSeconds.toFloat(),
-                  onValueChange = { browserPreferences.minimumAudioDurationSeconds.set(it.toInt()) },
-                  title = {
-                    Text(
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_minimum_audio_duration),
-                    )
-                  },
-                  valueRange = 0f..120f,
-                  valueSteps = 24,
-                  summary = {
-                    Text(
-                      when (minimumAudioDurationSeconds) {
-                        0 -> "Any duration"
-                        60 -> "1 min"
-                        120 -> "2 min"
-                        else -> "${minimumAudioDurationSeconds}s"
-                      },
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                  onSliderValueChange = { browserPreferences.minimumAudioDurationSeconds.set(it.toInt()) },
-                  sliderValue = minimumAudioDurationSeconds.toFloat(),
-                )
+                val maxMinimumDurationSeconds = 120f
+                val minimumDurationLabel =
+                  when {
+                    minimumAudioDurationSeconds <= 0 -> "Any duration"
+                    minimumAudioDurationSeconds < 60 -> "${minimumAudioDurationSeconds}s and longer"
+                    minimumAudioDurationSeconds % 60 == 0 -> "${minimumAudioDurationSeconds / 60} min and longer"
+                    else ->
+                      "${minimumAudioDurationSeconds / 60}m ${minimumAudioDurationSeconds % 60}s and longer"
+                  }
+
+                Column(
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_minimum_audio_duration),
+                    style = MaterialTheme.typography.bodyLarge,
+                  )
+                  Text(
+                    minimumDurationLabel,
+                    color = MaterialTheme.colorScheme.outline,
+                    style = MaterialTheme.typography.bodyMedium,
+                  )
+                  RangeSlider(
+                    value =
+                      minimumAudioDurationSeconds
+                        .toFloat()
+                        .coerceIn(0f, maxMinimumDurationSeconds)..maxMinimumDurationSeconds,
+                    onValueChange = { selectedRange ->
+                      // The highlighted range means "included": the left thumb is the minimum
+                      // duration and the right thumb represents no upper limit. Tracks longer than
+                      // the visual 2-minute endpoint are still included by design.
+                      browserPreferences.minimumAudioDurationSeconds.set(
+                        selectedRange.start.toInt().coerceIn(0, maxMinimumDurationSeconds.toInt()),
+                      )
+                    },
+                    valueRange = 0f..maxMinimumDurationSeconds,
+                    steps = 23,
+                  )
+                  Text(
+                    text = "Included range: ${if (minimumAudioDurationSeconds <= 0) "0s" else minimumDurationLabel.removeSuffix(" and longer")} – no limit",
+                    color = MaterialTheme.colorScheme.outline,
+                    style = MaterialTheme.typography.bodySmall,
+                  )
+                }
               }
             }
           }

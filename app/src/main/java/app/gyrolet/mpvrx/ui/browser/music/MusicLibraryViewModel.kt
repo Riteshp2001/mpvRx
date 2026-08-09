@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,10 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
 
   private val playlistRepository: PlaylistRepository by inject()
   private val browserPreferences: app.gyrolet.mpvrx.preferences.BrowserPreferences by inject()
+
+  // Keep the unfiltered MediaStore result so changing the minimum-duration preference can update
+  // Songs, Albums and Artists immediately without rescanning storage on every slider movement.
+  private val _allSongs = MutableStateFlow<List<MusicSong>>(emptyList())
 
   private val _songs = MutableStateFlow<List<MusicSong>>(emptyList())
   val songs: StateFlow<List<MusicSong>> = _songs.asStateFlow()
@@ -76,6 +81,15 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
       .map { session -> session.currentItem != null && !session.paused }
       .distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+  init {
+    viewModelScope.launch {
+      browserPreferences.minimumAudioDurationSeconds
+        .changes()
+        .distinctUntilChanged()
+        .collect { minimumSeconds -> applyDurationFilter(minimumSeconds) }
+    }
+  }
 
   val filteredSongs: StateFlow<List<MusicSong>> = combine(
     _songs, _searchQuery, _sortField, _sortOrder
@@ -138,19 +152,66 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   suspend fun refreshLibrary(context: Context) {
     _isLoading.value = true
     try {
-      val songList = MusicLibraryScanner.scanSongs(context)
-      val albumList = MusicLibraryScanner.scanAlbums(context, songList)
-      val artistList = MusicLibraryScanner.scanArtists(context, songList)
-
-      _songs.value = songList
-      _albums.value = albumList
-      _artists.value = artistList
+      _allSongs.value = MusicLibraryScanner.scanSongs(context)
+      applyDurationFilter(browserPreferences.minimumAudioDurationSeconds.get())
     } catch (e: Exception) {
       e.printStackTrace()
     } finally {
       _isLoading.value = false
     }
   }
+
+  /**
+   * Minimum duration is a lower bound only. There is intentionally no upper bound: if the user
+   * selects 30 seconds, every 30s, 3min, 30min, or multi-hour audio file remains in the library.
+   */
+  private fun applyDurationFilter(minimumSeconds: Int) {
+    val minimumMs = minimumSeconds.coerceAtLeast(0).toLong() * 1000L
+    val visibleSongs =
+      if (minimumMs == 0L) {
+        _allSongs.value
+      } else {
+        _allSongs.value.filter { song -> song.durationMs >= minimumMs }
+      }
+
+    _songs.value = visibleSongs
+    _albums.value = buildAlbums(visibleSongs)
+    _artists.value = buildArtists(visibleSongs)
+
+    // Never leave the detail screen pointing at an album/artist that was completely filtered out.
+    _selectedAlbum.value = _selectedAlbum.value?.takeIf { selected -> _albums.value.any { it.id == selected.id } }
+    _selectedArtist.value = _selectedArtist.value?.takeIf { selected -> _artists.value.any { it.id == selected.id } }
+  }
+
+  private fun buildAlbums(songs: List<MusicSong>): List<MusicAlbum> =
+    songs
+      .groupBy { song -> if (song.albumId > 0) song.albumId else song.album.hashCode().toLong() }
+      .map { (albumId, albumSongs) ->
+        val firstSong = albumSongs.first()
+        MusicAlbum(
+          id = albumId,
+          title = firstSong.album,
+          artist = firstSong.artist,
+          songCount = albumSongs.size,
+          year = albumSongs.maxOfOrNull { it.year } ?: 0,
+          albumArtUri = firstSong.albumArtUri,
+        )
+      }
+      .sortedBy { it.title.lowercase() }
+
+  private fun buildArtists(songs: List<MusicSong>): List<MusicArtist> =
+    songs
+      .groupBy { it.artist.lowercase().trim() }
+      .map { (_, artistSongs) ->
+        val firstSong = artistSongs.first()
+        MusicArtist(
+          id = firstSong.artist.hashCode().toLong(),
+          name = firstSong.artist,
+          songCount = artistSongs.size,
+          albumCount = artistSongs.map { it.albumId }.distinct().size,
+        )
+      }
+      .sortedBy { it.name.lowercase() }
 
   fun scanLibrary(context: Context) {
     viewModelScope.launch {

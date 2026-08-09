@@ -473,6 +473,12 @@ object PlaybackSession : MPVLib.EventObserver {
     item: PlaybackItem? = null,
   ): Long =
     withCore(default = -1L) {
+      // The outgoing file can be intentionally left at vid=no while its Surface/decoder is being
+      // replaced. Never let that file-local track selection leak into the new foreground file.
+      // Using a loadfile option selects the new file's default video track atomically, without
+      // briefly re-enabling the outgoing decoder before the replacement command executes.
+      val selectVideoForNewFile = _state.value.surfaceAttached
+
       // A saved video-track id belongs to the outgoing file only. Never carry it into a new load.
       suspendedVideoTrack = null
       desiredPaused = false
@@ -504,10 +510,12 @@ object PlaybackSession : MPVLib.EventObserver {
       MPVLib.setPropertyString("http-header-fields", headerFields)
       MPVLib.setPropertyString("force-media-title", "")
 
-      // Keep the native core paused while tracks/decoder/output are being replaced. Play intent is
-      // kept in desiredPaused and applied exactly once when FILE_LOADED arrives. This prevents the
-      // audio output and UI from racing three separate pause=no writes during startup.
-      MPVLib.command("loadfile", playableUri, "replace", "-1", "pause=yes")
+      // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
+      // render Surface is attached, explicitly make vid=auto file-local to this new load. This
+      // prevents a preceding vid=no from producing "No video or audio streams selected" on
+      // video-only files while preserving video suppression for true background/no-Surface loads.
+      val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes"
+      MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
       propBoolean.emit("pause", false)
       generation
     }
