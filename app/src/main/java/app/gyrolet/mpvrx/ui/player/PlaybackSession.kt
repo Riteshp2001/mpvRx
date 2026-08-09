@@ -458,7 +458,6 @@ object PlaybackSession : MPVLib.EventObserver {
       val generation = _state.value.generation + 1L
       pendingGenerations.addLast(generation)
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
-      val itemChanged = resolvedItem.stableId != _state.value.currentItem?.stableId
       updateState {
         it.copy(
           phase = PlaybackPhase.LOADING,
@@ -475,9 +474,7 @@ object PlaybackSession : MPVLib.EventObserver {
           .joinToString(",") { (name, value) -> "$name: ${value.replace(",", "\\,")}" }
       MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
       MPVLib.setPropertyString("http-header-fields", headerFields)
-      if (itemChanged) {
-        MPVLib.setPropertyString("force-media-title", "")
-      }
+      MPVLib.setPropertyString("force-media-title", "")
 
       // Keep the native core paused while tracks/decoder/output are being replaced. Play intent is
       // kept in desiredPaused and applied exactly once when FILE_LOADED arrives. This prevents the
