@@ -12,6 +12,9 @@ package app.gyrolet.mpvrx.ui.browser.components
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.compose.animation.AnimatedContent
@@ -22,6 +25,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -41,7 +45,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,7 +52,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,7 +66,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +77,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -81,9 +86,14 @@ import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.ui.player.TrackNode
+import app.gyrolet.mpvrx.ui.player.toObject
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import org.koin.compose.koinInject
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -129,16 +139,38 @@ private fun MiniPlayerContent(
   val videoAspectRaw by PlaybackSession.propDouble["video-params/aspect"].collectAsState()
   val videoWidth by PlaybackSession.propLong["video-params/w"].collectAsState()
   val videoHeight by PlaybackSession.propLong["video-params/h"].collectAsState()
+  val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
+  val json: Json = koinInject()
 
   val isPlaying = paused == false
   val title = rawMediaTitle?.takeIf { it.isNotBlank() }
     ?: currentItem?.title?.takeIf { it.isNotBlank() }
     ?: "Media Track"
 
+  val tracks = remember(trackListNode) { trackListNode?.toObject<List<TrackNode>>(json).orEmpty() }
+  val hasRealVideo = tracks.any { it.isVideo && !it.isAlbumArtwork }
+  val hasAlbumArt = tracks.any { it.isAlbumArtwork }
+
   val ext = (currentItem?.originalUri ?: currentItem?.title ?: "").fileExtension()
-  val isAudioOnlyItem = ext in FileTypeUtils.AUDIO_EXTENSIONS
+  val mimeIsAudio = currentItem?.mimeType?.startsWith("audio/", ignoreCase = true) == true
+  val extIsAudio = ext in FileTypeUtils.AUDIO_EXTENSIONS
+  val extIsVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
+
+  // A real video track or a known video container always wins. Music is detected by
+  // mime type, audio extension, an album-art track, or any audio-only track list.
+  val isAudioOnlyItem =
+    if (hasRealVideo || extIsVideo) {
+      false
+    } else {
+      mimeIsAudio || extIsAudio || hasAlbumArt || tracks.any { it.isAudio }
+    }
 
   val isVideoMode = !isAudioOnlyItem && enableVideoMiniPlayer
+
+  val coverArtPath =
+    currentItem?.originalUri?.takeIf { it.isNotBlank() }
+      ?: currentItem?.playableUri?.takeIf { it.isNotBlank() }
+  val coverArt = rememberMiniPlayerCoverArt(if (isAudioOnlyItem) coverArtPath else null)
 
   val dur = duration?.toFloat() ?: 0f
   val pos = position?.toFloat() ?: 0f
@@ -251,13 +283,16 @@ private fun MiniPlayerContent(
             modifier = Modifier.fillMaxSize(),
             factory = { viewContext ->
               SurfaceView(viewContext).apply {
+                // Render the video above the Compose window layers so the mini
+                // player's Surface/clip does not paint over the SurfaceView.
+                setZOrderMediaOverlay(true)
                 holder.addCallback(object : SurfaceHolder.Callback {
                   override fun surfaceCreated(holder: SurfaceHolder) {
                     val vid = PlaybackSession.getPropertyString("vid")
                     if (vid == "no" || vid == "0") {
                       PlaybackSession.setPropertyString("vid", "auto")
                     }
-                    PlaybackSession.bindSurface(holder.surface, width, height)
+                    PlaybackSession.bindSurface(holder.surface)
                   }
 
                   override fun surfaceChanged(
@@ -266,26 +301,15 @@ private fun MiniPlayerContent(
                     width: Int,
                     height: Int,
                   ) {
-                    val vid = PlaybackSession.getPropertyString("vid")
-                    if (vid == "no" || vid == "0") {
-                      PlaybackSession.setPropertyString("vid", "auto")
+                    if (holder.surface.isValid) {
+                      PlaybackSession.resizeSurface(width, height)
                     }
-                    PlaybackSession.bindSurface(holder.surface, width, height)
                   }
 
                   override fun surfaceDestroyed(holder: SurfaceHolder) {
                     PlaybackSession.unbindSurface()
                   }
                 })
-              }
-            },
-            update = { surfaceView ->
-              if (surfaceView.holder.surface.isValid) {
-                val vid = PlaybackSession.getPropertyString("vid")
-                if (vid == "no" || vid == "0") {
-                  PlaybackSession.setPropertyString("vid", "auto")
-                }
-                PlaybackSession.bindSurface(surfaceView.holder.surface, surfaceView.width, surfaceView.height)
               }
             },
           )
@@ -375,20 +399,30 @@ private fun MiniPlayerContent(
           .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        // Music Icon Badge
+        // Music Cover Art
         Box(
           modifier = Modifier
-            .size(42.dp)
-            .clip(CircleShape)
+            .size(48.dp)
+            .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
           contentAlignment = Alignment.Center,
         ) {
-          Icon(
-            imageVector = Icons.RoundedFilled.Audiotrack,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp),
-          )
+          val artwork = coverArt
+          if (artwork != null) {
+            Image(
+              bitmap = artwork.asImageBitmap(),
+              contentDescription = null,
+              contentScale = ContentScale.Crop,
+              modifier = Modifier.fillMaxSize(),
+            )
+          } else {
+            Icon(
+              imageVector = Icons.RoundedFilled.Audiotrack,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(24.dp),
+            )
+          }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -475,4 +509,46 @@ private fun MiniPlayerContent(
       }
     }
   }
+}
+
+/**
+ * Extracts embedded album art for the current track so the mini player can show a
+ * square cover instead of a bare icon. Returns null when no artwork is available.
+ */
+@Composable
+private fun rememberMiniPlayerCoverArt(pathOrUri: String?): Bitmap? {
+  val context = LocalContext.current
+  var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+  LaunchedEffect(pathOrUri) {
+    if (pathOrUri.isNullOrBlank()) {
+      bitmap = null
+      return@LaunchedEffect
+    }
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val cleanPath =
+          when {
+            pathOrUri.startsWith("file://") -> pathOrUri.removePrefix("file://")
+            pathOrUri.startsWith("content://") -> null
+            else -> pathOrUri
+          }
+        val retriever = MediaMetadataRetriever()
+        try {
+          if (cleanPath != null) {
+            retriever.setDataSource(cleanPath)
+          } else {
+            retriever.setDataSource(context, Uri.parse(pathOrUri))
+          }
+          EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever)
+        } finally {
+          runCatching { retriever.release() }
+        }
+      }.onSuccess { loaded ->
+        bitmap = loaded
+      }.onFailure {
+        bitmap = null
+      }
+    }
+  }
+  return bitmap
 }
