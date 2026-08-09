@@ -1499,6 +1499,14 @@ class PlayerActivity :
 
   private fun setupWindowFlags() {
     pipHelper.updatePictureInPictureParams()
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    if (isAudio) {
+      WindowCompat.setDecorFitsSystemWindows(window, true)
+      window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+      window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+      return
+    }
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.setFlags(
       WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -1536,7 +1544,8 @@ class PlayerActivity :
   }
 
   private fun handleSystemBarsVisibility(insets: WindowInsetsCompat) {
-    if (viewModel.isAudioOnly.value) {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    if (isAudio) {
       cancelSystemBarsAutoHide()
       try {
         windowInsetsController.apply {
@@ -1562,12 +1571,14 @@ class PlayerActivity :
     }
   }
 
-  private fun shouldAutoHideSystemBars(): Boolean =
-    !isInPictureInPictureMode &&
-      !viewModel.isAudioOnly.value &&
+  private fun shouldAutoHideSystemBars(): Boolean {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    return !isInPictureInPictureMode &&
+      !isAudio &&
       !viewModel.controlsShown.value &&
       viewModel.sheetShown.value == Sheets.None &&
       viewModel.panelShown.value == Panels.None
+  }
 
   private fun scheduleSystemBarsAutoHide(delayMs: Long = 1500L) {
     if (!shouldAutoHideSystemBars()) {
@@ -1593,9 +1604,11 @@ class PlayerActivity :
   @Suppress("DEPRECATION")
   private fun hideSystemBarsForPlayback() {
     cancelSystemBarsAutoHide()
-    if (viewModel.isAudioOnly.value) {
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    if (isAudio) {
       try {
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         binding.root.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
         window.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -1633,7 +1646,8 @@ class PlayerActivity :
   }
 
   private fun setupSystemUI() {
-    setLayoutInDisplayCutoutModeIfSupported(shortEdges = true)
+    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    setLayoutInDisplayCutoutModeIfSupported(shortEdges = !isAudio)
 
     // Set status bar color for when it will be shown (with controls)
     applyStatusBarColorIfNeeded()
