@@ -5296,13 +5296,13 @@ class PlayerActivity :
   }
 
   private fun awaitServiceMediaSessionOwnership() {
-    if (mediaPlaybackService == null) return
     backgroundHandoffJob?.cancel()
     backgroundHandoffJob =
       lifecycleScope.launch {
         repeat(30) {
-          if (isFinishing || isDestroyed || mediaPlaybackService == null) return@launch
-          if (mediaPlaybackService?.isForegroundReady() == true) {
+          if (isFinishing || isDestroyed) return@launch
+          val service = mediaPlaybackService
+          if (service != null && service.isForegroundReady()) {
             setActivityMediaSessionActive(false)
             if (pendingBackNavigationBackgroundTransition) finishIntoBackgroundPlayback()
             return@launch

@@ -290,10 +290,6 @@ private fun MiniPlayerContent(
                 setZOrderMediaOverlay(true)
                 holder.addCallback(object : SurfaceHolder.Callback {
                   override fun surfaceCreated(holder: SurfaceHolder) {
-                    val vid = PlaybackSession.getPropertyString("vid")
-                    if (vid == "no" || vid == "0") {
-                      PlaybackSession.setPropertyString("vid", "auto")
-                    }
                     PlaybackSession.bindSurface(holder.surface, owner = this@apply)
                   }
 
