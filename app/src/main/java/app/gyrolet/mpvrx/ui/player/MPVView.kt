@@ -210,10 +210,11 @@ class MPVView(
     )
     PlaybackSession.setOptionString("hwdec-codecs", "all")
 
-    // Enable direct rendering for hardware decoding (reduces memory copies)
-    PlaybackSession.setOptionString("vd-lavc-dr", "yes")
-    // Queue extra frames to absorb decode jitter on 4K content
-    PlaybackSession.setOptionString("vd-lavc-queue", "yes")
+    // These were forced on between the last known-good build (e3b1de8) and the first build
+    // reproducing the HEVC/Main10 frame-drop regression (84f21fc). Keep mpv's normal direct-
+    // rendering heuristic and disable the extra decoder-frame queue, matching mpv's defaults.
+    PlaybackSession.setOptionString("vd-lavc-dr", "auto")
+    PlaybackSession.setOptionString("vd-lavc-queue", "no")
 
     if (decoderPreferences.useYUV420P.get()) {
       PlaybackSession.setOptionString("vf", "format=yuv420p")
