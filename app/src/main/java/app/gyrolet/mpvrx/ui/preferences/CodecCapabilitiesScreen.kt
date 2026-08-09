@@ -480,6 +480,7 @@ object CodecInspector {
     return null
   }
 
+  @Suppress("DEPRECATION")
   private fun getColorFormatName(format: Int): String {
     return when (format) {
       MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar -> "YUV 420 Planar"

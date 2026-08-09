@@ -242,7 +242,7 @@ private fun TorrentHero(
           artwork.mediaType
             ?.takeIf(String::isNotBlank)
             ?.let { MediaPill(it.replaceFirstChar { char -> char.titlecase() }) }
-          artwork.releaseYear?.takeIf(String::isNotBlank)?.let(::MediaPill)
+          artwork.releaseYear?.takeIf(String::isNotBlank)?.let { MediaPill(it) }
           MediaPill(
             pluralStringResource(
               R.plurals.torrent_picker_playable_count,

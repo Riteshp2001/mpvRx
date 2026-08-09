@@ -313,7 +313,7 @@ fun LyricsView(
                   }
 
                   // Render Translation if present (Smaller font size, highlighted together with original when active)
-                  if (hasTranslation && transText != null) {
+                  if (hasTranslation) {
                     val translationColor by animateColorAsState(
                       targetValue = if (isActiveLine) activeColor.copy(alpha = 0.85f) else inactiveColor.copy(alpha = 0.70f),
                       animationSpec = tween(durationMillis = 250),
@@ -321,7 +321,7 @@ fun LyricsView(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                      text = transText,
+                      text = transText.orEmpty(),
                       color = translationColor,
                       fontSize = if (isActiveLine) 16.sp else 14.sp,
                       fontWeight = FontWeight.Bold,

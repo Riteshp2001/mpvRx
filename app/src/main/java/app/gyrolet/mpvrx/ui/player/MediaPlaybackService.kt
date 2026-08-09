@@ -1380,7 +1380,7 @@ class MediaPlaybackService :
       val oldState = playbackStateRepository.getVideoDataByTitle(identifier)
       val snapshot =
         if (capturedSnapshot.externalSubtitles.isBlank() && !oldState?.externalSubtitles.isNullOrBlank()) {
-          capturedSnapshot.copy(externalSubtitles = oldState?.externalSubtitles.orEmpty())
+          capturedSnapshot.copy(externalSubtitles = oldState.externalSubtitles.orEmpty())
         } else {
           capturedSnapshot
         }

@@ -303,8 +303,7 @@ class NetworkStreamingProxy private constructor() :
         }
       }
 
-      val connectedClient = client ?: return@withLock Result.failure(IllegalStateException("Client unavailable"))
-      operation(connectedClient)
+      operation(client)
     }
 
   private data class Route(

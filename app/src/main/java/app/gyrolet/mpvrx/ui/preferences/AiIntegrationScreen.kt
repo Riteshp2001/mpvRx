@@ -307,7 +307,8 @@ object AiIntegrationScreen : Screen {
             }
 
 val apiKeyInfo =
-                when (provider) {
+                  @Suppress("REDUNDANT_ELSE_IN_WHEN")
+                  when (provider) {
                   AiProvider.OPENCODE ->
                     ApiKeyInfo(
                       "OpenCode API Key",

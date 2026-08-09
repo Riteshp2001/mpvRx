@@ -991,8 +991,7 @@ fun MusicLibraryContent(
           onMoveClick = { },
           onRenameClick = { },
           onDeleteClick = { showDeleteSelectedDialog = true },
-          onAddToPlaylistClick = {
-            @Suppress("UNCHECKED_CAST")
+          onAddToPlaylistClick = @Suppress("UNCHECKED_CAST") {
             val items = activeSelectionManager.getSelectedItems()
             val videosToAdd = when (selectedTab) {
               MusicTab.SONGS -> (items as List<MusicSong>).map { it.toVideo() }
