@@ -3551,11 +3551,13 @@ class PlayerViewModel : ViewModel(),
     viewModelScope.launch(Dispatchers.IO) {
       val wasPaused = PlaybackSession.getPropertyBoolean("pause") ?: PlaybackSession.state.value.paused
       if (wasPaused) {
-        withContext(Dispatchers.Main) { host.requestAudioFocus() }
+        val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
+        if (!focusGranted) return@launch
       }
-      val isPaused = PlaybackSession.togglePause() ?: return@launch
-      syncplayManager.updatePlayerState(precisePosition.value.toDouble(), isPaused, doSeek = false)
-      if (isPaused) {
+
+      val nowPaused = PlaybackSession.togglePause() ?: return@launch
+      syncplayManager.updatePlayerState(precisePosition.value.toDouble(), nowPaused, doSeek = false)
+      if (nowPaused) {
         withContext(Dispatchers.Main) { host.abandonAudioFocus() }
       }
     }
@@ -3571,7 +3573,8 @@ class PlayerViewModel : ViewModel(),
 
   fun unpause() {
     viewModelScope.launch(Dispatchers.IO) {
-      withContext(Dispatchers.Main) { host.requestAudioFocus() }
+      val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
+      if (!focusGranted) return@launch
       PlaybackSession.setPropertyBoolean("pause", false)
       syncplayManager.updatePlayerState(precisePosition.value.toDouble(), false, doSeek = false)
     }

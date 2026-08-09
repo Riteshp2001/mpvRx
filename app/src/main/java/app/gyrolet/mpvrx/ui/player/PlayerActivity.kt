@@ -427,10 +427,13 @@ class PlayerActivity :
    */
   private var audioFocusRequest: AudioFocusRequest? = null
 
-  /**
-   * Callback to restore audio focus after it's been lost and regained.
-   */
-  private var restoreAudioFocus: () -> Unit = {}
+  // Explicit interruption state replaces nested restore lambdas. A transient phone call
+  // pauses the existing mpv session without abandoning/re-requesting focus or seeking.
+  private var transientAudioFocusLossActive = false
+  private var resumeAfterTransientAudioFocusLoss = false
+  private var resumeAfterDelayedAudioFocusGain = false
+  private var resumeAfterAudioFocusWhenForeground = false
+  private var volumeBeforeAudioFocusDuck: Double? = null
 
   // ==================== Broadcast Receivers ====================
 
@@ -458,6 +461,10 @@ class PlayerActivity :
       ) {
         when (intent?.action) {
           Intent.ACTION_SCREEN_OFF -> {
+            // During a call the focus listener already owns pause/resume. Feeding the same
+            // proximity-driven screen-off into the unlock controller would create a second
+            // independent resume policy and can clear/reacquire audio focus in onStop.
+            if (transientAudioFocusLossActive) return
             screenUnlockPlaybackController.onScreenTurnedOff(
               autoplayAfterScreenUnlockEnabled = playerPreferences.autoplayAfterScreenUnlock.get(),
               wasPlayingBeforePause = wasPlayingBeforePause,
@@ -481,38 +488,63 @@ class PlayerActivity :
   private val audioFocusChangeListener =
     AudioManager.OnAudioFocusChangeListener { focusChange ->
       when (focusChange) {
-        AudioManager.AUDIOFOCUS_LOSS,
-        AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-        -> {
-          // Save current state to restore later
-          val oldRestore = restoreAudioFocus
-          val wasPlayerPaused = viewModel.paused ?: false
-          viewModel.pause()
-          restoreAudioFocus = {
-            oldRestore()
-            if (!wasPlayerPaused) viewModel.unpause()
+        AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+          if (!transientAudioFocusLossActive) {
+            resumeAfterTransientAudioFocusLoss = PlaybackSession.getPropertyBoolean("pause") == false
           }
+          transientAudioFocusLossActive = true
+          restoreAudioFocusDuck()
+          PlaybackSession.setPropertyBoolean("pause", true)
+        }
+
+        AudioManager.AUDIOFOCUS_LOSS -> {
+          transientAudioFocusLossActive = false
+          resumeAfterTransientAudioFocusLoss = false
+          resumeAfterDelayedAudioFocusGain = false
+          resumeAfterAudioFocusWhenForeground = false
+          restoreAudioFocusDuck()
+          PlaybackSession.setPropertyBoolean("pause", true)
         }
 
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-          // Lower volume temporarily
-          PlaybackSession.command("multiply", "volume", "0.5")
-          restoreAudioFocus = {
-            PlaybackSession.command("multiply", "volume", "2")
+          if (volumeBeforeAudioFocusDuck == null) {
+            PlaybackSession.getPropertyDouble("volume")?.let { currentVolume ->
+              volumeBeforeAudioFocusDuck = currentVolume
+              PlaybackSession.setPropertyDouble("volume", currentVolume * 0.5)
+            }
           }
         }
 
         AudioManager.AUDIOFOCUS_GAIN -> {
-          // Restore previous audio state
-          restoreAudioFocus()
-          restoreAudioFocus = {}
+          restoreAudioFocusDuck()
+          val shouldResume = resumeAfterTransientAudioFocusLoss || resumeAfterDelayedAudioFocusGain
+          transientAudioFocusLossActive = false
+          resumeAfterTransientAudioFocusLoss = false
+          resumeAfterDelayedAudioFocusGain = false
+          if (shouldResume) {
+            // If the call left the screen locked and background playback is not actually
+            // running, keep transport paused until the Activity is foreground again. This
+            // prevents call-end focus gain from unexpectedly playing audio behind a lockscreen.
+            if (isDeviceScreenOffOrLocked() && !isBackgroundPlaybackSessionActive) {
+              resumeAfterAudioFocusWhenForeground = true
+            } else {
+              resumeAfterAudioFocusWhenForeground = false
+              // Resume the existing pipeline in place. No seek, loadfile, decoder reset, or
+              // Syncplay transport event belongs to a local phone-call interruption.
+              PlaybackSession.setPropertyBoolean("pause", false)
+            }
+          }
         }
 
-        AudioManager.AUDIOFOCUS_REQUEST_FAILED -> {
-          Log.d(TAG, "Audio focus request failed")
-        }
+        AudioManager.AUDIOFOCUS_REQUEST_FAILED -> Log.d(TAG, "Audio focus request failed")
       }
     }
+
+  private fun restoreAudioFocusDuck() {
+    val previousVolume = volumeBeforeAudioFocusDuck ?: return
+    volumeBeforeAudioFocusDuck = null
+    PlaybackSession.setPropertyDouble("volume", previousVolume)
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -1043,20 +1075,20 @@ class PlayerActivity :
    */
   override fun requestAudioFocus(): Boolean {
     val req = audioFocusRequest ?: return false
-    val result = audioManager.requestAudioFocus(req)
-    return when (result) {
+    return when (audioManager.requestAudioFocus(req)) {
       AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
-        restoreAudioFocus = {}
+        resumeAfterDelayedAudioFocusGain = false
         true
       }
 
       AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
-        restoreAudioFocus = { requestAudioFocus() }
+        // PlayerViewModel keeps transport paused until the matching GAIN callback.
+        resumeAfterDelayedAudioFocusGain = true
         false
       }
 
       else -> {
-        restoreAudioFocus = {}
+        resumeAfterDelayedAudioFocusGain = false
         false
       }
     }
@@ -1219,10 +1251,14 @@ class PlayerActivity :
   }
 
   override fun abandonAudioFocus() {
-    if (restoreAudioFocus != {}) {
-      audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-      restoreAudioFocus = {}
+    restoreAudioFocusDuck()
+    audioFocusRequest?.let { request ->
+      runCatching { audioManager.abandonAudioFocusRequest(request) }
     }
+    transientAudioFocusLossActive = false
+    resumeAfterTransientAudioFocusLoss = false
+    resumeAfterDelayedAudioFocusGain = false
+    resumeAfterAudioFocusWhenForeground = false
   }
 
   private fun cleanupAudio() {
@@ -1380,15 +1416,25 @@ class PlayerActivity :
           isBackgroundPlaybackSessionActive = true
           disableVideoForBackground()
         } else {
-          rememberResumeAfterUnlockBeforeForcedPause()
-          viewModel.pause()
+          if (transientAudioFocusLossActive) {
+            // The focus callback already paused mpv. Do not route a call-driven Activity
+            // stop through user pause(), which abandons focus and destroys resume intent.
+            PlaybackSession.setPropertyBoolean("pause", true)
+          } else {
+            rememberResumeAfterUnlockBeforeForcedPause()
+            viewModel.pause()
+          }
         }
         return@runCatching
       }
 
       if (isDeviceScreenOffOrLocked() && !isBackgroundPlaybackEnabled()) {
-        rememberResumeAfterUnlockBeforeForcedPause()
-        viewModel.pause()
+        if (transientAudioFocusLossActive) {
+          PlaybackSession.setPropertyBoolean("pause", true)
+        } else {
+          rememberResumeAfterUnlockBeforeForcedPause()
+          viewModel.pause()
+        }
       } else if (!isBackgroundPlaybackSessionActive && (isUserFinishing || isFinishing)) {
         viewModel.pause()
       } else if (isBackgroundPlaybackSessionActive && !isInBackgroundPlayback) {
@@ -2405,6 +2451,10 @@ class PlayerActivity :
     if (!isDeviceScreenOffOrLocked()) enableVideoAfterBackground()
     updateVolume()
     resumePlaybackAfterScreenUnlockIfNeeded()
+    if (resumeAfterAudioFocusWhenForeground && !isDeviceScreenOffOrLocked()) {
+      resumeAfterAudioFocusWhenForeground = false
+      PlaybackSession.setPropertyBoolean("pause", false)
+    }
     if (!screenUnlockPlaybackController.hasPendingResume()) wasPlayingBeforePause = false
   }
 
