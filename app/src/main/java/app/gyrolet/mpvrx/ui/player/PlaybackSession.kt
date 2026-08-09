@@ -12,6 +12,8 @@ package app.gyrolet.mpvrx.ui.player
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Surface
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
@@ -82,6 +84,8 @@ class PlaybackProperty<T> internal constructor(
 @Suppress("TooManyFunctions")
 object PlaybackSession : MPVLib.EventObserver {
   private const val TAG = "PlaybackSession"
+  private const val SEEK_AUDIO_RESTORE_DELAY_MS = 60L
+  private const val SEEK_AUDIO_FALLBACK_RESTORE_MS = 750L
 
   private data class NetworkStreamRegistration(
     val proxy: NetworkStreamingProxy,
@@ -109,6 +113,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private val _queue = MutableStateFlow(PlaybackQueueState())
   private val streamSequence = AtomicLong()
   private val observedProperties = mutableSetOf<Pair<String, Int>>()
+  private val seekAudioGuardHandler = Handler(Looper.getMainLooper())
 
   val state: StateFlow<PlaybackSessionState> = _state.asStateFlow()
   val queue: StateFlow<PlaybackQueueState> = _queue.asStateFlow()
@@ -122,6 +127,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private val auxiliaryNetworkStreams = linkedMapOf<String, NetworkStreamRegistration>()
   private var suspendedVideoTrack: SuspendedVideoTrack? = null
   private var desiredPaused = true
+  private var seekAudioGuardToken = 0L
+  private var seekAudioGuardPreviousMute: Boolean? = null
 
   val isInitialized: Boolean
     get() = initialized
@@ -158,6 +165,7 @@ object PlaybackSession : MPVLib.EventObserver {
         observedProperties.clear()
         suspendedVideoTrack = null
         desiredPaused = true
+        clearSeekAudioGuardLocked(restoreMute = false)
         updateState { it.copy(phase = PlaybackPhase.INITIALIZING, error = null) }
         try {
           MPVLib.create(context.applicationContext)
@@ -184,6 +192,7 @@ object PlaybackSession : MPVLib.EventObserver {
           activeRendererConfigurationKey = null
           suspendedVideoTrack = null
           desiredPaused = true
+          clearSeekAudioGuardLocked(restoreMute = false)
           updateState {
             it.copy(
               phase = PlaybackPhase.ERROR,
@@ -274,6 +283,7 @@ object PlaybackSession : MPVLib.EventObserver {
       pendingGenerations.clear()
       suspendedVideoTrack = null
       desiredPaused = true
+      clearSeekAudioGuardLocked(restoreMute = true)
       runCatching { MPVLib.command("stop") }
       runCatching { MPVLib.setPropertyBoolean("pause", true) }
       if (clearQueue) _queue.value = PlaybackQueueState()
@@ -305,6 +315,7 @@ object PlaybackSession : MPVLib.EventObserver {
     updateState { it.copy(phase = PlaybackPhase.STOPPING) }
     desiredPaused = true
     suspendedVideoTrack = null
+    clearSeekAudioGuardLocked(restoreMute = true)
     runCatching { MPVLib.setPropertyBoolean("pause", true) }
     runCatching { MPVLib.setPropertyString("vo", "null") }
     runCatching { MPVLib.detachSurface() }
@@ -439,6 +450,7 @@ object PlaybackSession : MPVLib.EventObserver {
       // A saved video-track id belongs to the outgoing file only. Never carry it into a new load.
       suspendedVideoTrack = null
       desiredPaused = false
+      clearSeekAudioGuardLocked(restoreMute = true)
       val generation = _state.value.generation + 1L
       pendingGenerations.addLast(generation)
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
@@ -478,7 +490,10 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   fun command(vararg command: String) {
-    withCore(Unit) { MPVLib.command(*command) }
+    withCore(Unit) {
+      if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
+      MPVLib.command(*command)
+    }
   }
 
   /** Executes a media-specific command only while its load generation is still current. */
@@ -488,6 +503,7 @@ object PlaybackSession : MPVLib.EventObserver {
   ): Boolean =
     nativeLock.withLock {
       if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
+      if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
       MPVLib.command(*command)
       true
     }
@@ -735,11 +751,16 @@ object PlaybackSession : MPVLib.EventObserver {
               true
             }
           }
+          MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
+            scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_RESTORE_DELAY_MS)
+            true
+          }
           MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
             releaseActiveNetworkStream()
             releaseAuxiliaryNetworkStreams()
             suspendedVideoTrack = null
             desiredPaused = true
+            clearSeekAudioGuardLocked(restoreMute = false)
             initialized = false
             updateState { it.copy(phase = PlaybackPhase.UNINITIALIZED, surfaceAttached = false, paused = true) }
             true
@@ -750,6 +771,47 @@ object PlaybackSession : MPVLib.EventObserver {
 
     if (shouldForward) {
       observerSnapshot().forEach { observer -> runCatching { observer.event(eventId, data) } }
+    }
+  }
+
+  /**
+   * Rapid keyframe/exact seeks can expose tiny decoded audio fragments between decoder flushes,
+   * which sounds like echo/warble while scrubbing. Temporarily mute only the active seek window;
+   * the user's original mute state is restored after mpv reports playback restart.
+   */
+  private fun beginSeekAudioGuardLocked() {
+    if (_state.value.paused || _state.value.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return
+
+    if (seekAudioGuardPreviousMute == null) {
+      val wasMuted = MPVLib.getPropertyBoolean("mute") ?: false
+      seekAudioGuardPreviousMute = wasMuted
+      if (!wasMuted) runCatching { MPVLib.setPropertyBoolean("mute", true) }
+    }
+
+    seekAudioGuardToken++
+    scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_FALLBACK_RESTORE_MS)
+  }
+
+  private fun scheduleSeekAudioGuardRestoreLocked(delayMs: Long) {
+    if (seekAudioGuardPreviousMute == null) return
+    val token = seekAudioGuardToken
+    seekAudioGuardHandler.postDelayed(
+      {
+        nativeLock.withLock {
+          if (!initialized || token != seekAudioGuardToken) return@withLock
+          clearSeekAudioGuardLocked(restoreMute = true)
+        }
+      },
+      delayMs,
+    )
+  }
+
+  private fun clearSeekAudioGuardLocked(restoreMute: Boolean) {
+    val previousMute = seekAudioGuardPreviousMute
+    seekAudioGuardPreviousMute = null
+    seekAudioGuardToken++
+    if (restoreMute && initialized && previousMute != null) {
+      runCatching { MPVLib.setPropertyBoolean("mute", previousMute) }
     }
   }
 
