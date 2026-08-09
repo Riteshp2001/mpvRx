@@ -178,7 +178,7 @@ class MPVView(
     PlaybackSession.setOptionString("profile", profile)
     val backend = selectRenderBackend()
     val useVulkan = backend.gpuApi == "vulkan"
-    val hwdecMode = preferredHwdecMode(backend)
+    val hwdecMode = preferredHwdecMode()
     PlaybackSession.setVideoOutput(backend.vo)
     PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
     PlaybackSession.setOptionString("gpu-context", backend.gpuContext)
@@ -203,20 +203,16 @@ class MPVView(
       boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
     )
 
-    // Keep direct -> copy -> software fallback on the standard Android renderer. Backends that
-    // cannot use direct MediaCodec start at the copy path instead.
-    PlaybackSession.setOptionString("hwdec", hwdecMode)
+    // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
     PlaybackSession.setOptionString(
-      "hwdec-codecs",
-      "h264,vc1,hevc,vp8,vp9,av1,prores,prores_raw,ffv1,dpx,apv",
+      "hwdec",
+      hwdecMode,
     )
-    PlaybackSession.setOptionString("hwdec-software-fallback", "3")
+    PlaybackSession.setOptionString("hwdec-codecs", "all")
 
-    // Let mpv decide whether direct rendering is actually beneficial for the active backend.
-    // Forcing DR on Android can make a decoder reconfigure fail when the Surface is changing.
-    PlaybackSession.setOptionString("vd-lavc-dr", "auto")
-    PlaybackSession.setOptionString("vd-lavc-threads", "0")
-    // Queue extra frames to absorb decode jitter on 4K content.
+    // Enable direct rendering for hardware decoding (reduces memory copies)
+    PlaybackSession.setOptionString("vd-lavc-dr", "yes")
+    // Queue extra frames to absorb decode jitter on 4K content
     PlaybackSession.setOptionString("vd-lavc-queue", "yes")
 
     if (decoderPreferences.useYUV420P.get()) {
@@ -250,14 +246,12 @@ class MPVView(
     PlaybackSession.setOptionString("hls-bitrate", "no")
     PlaybackSession.setOptionString("http-allow-redirect", "yes")
     // Drop only video-output-bound late frames when rendering cannot keep up.
-    // Software emergency handling can still escalate this later without changing the normal path.
+    // This prevents long-term jitter buildup without aggressively sacrificing smoothness.
     PlaybackSession.setOptionString("framedrop", "vo")
 
     val preciseSeek = playerPreferences.usePreciseSeeking.get()
     PlaybackSession.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
-    // mpv defaults this to yes. Keeping it enabled is important on HEVC/long-GOP files: frames
-    // before the exact target can be dropped instead of being rendered and starving audio.
-    PlaybackSession.setOptionString("hr-seek-framedrop", "yes")
+    PlaybackSession.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
 
     // Use audio-based video sync for better frame pacing with 4K HDR content.
     // This prevents timing jitter when the display refresh rate doesn't perfectly
@@ -393,11 +387,6 @@ class MPVView(
       "video-params/w" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
       "video-params/h" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
       "container-fps" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
-      "hwdec-current" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
-      "frame-drop-count" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
-      "decoder-frame-drop-count" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
-      "avsync" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
-      "estimated-vf-fps" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
       "eof-reached" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
       "user-data/mpvrx/show_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       "user-data/mpvrx/toggle_ui" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
@@ -634,22 +623,12 @@ class MPVView(
     return supported
   }
 
-  private fun preferredHwdecMode(backend: RenderBackendSelection): String {
+  private fun preferredHwdecMode(): String {
     if (!decoderPreferences.tryHWDecoding.get()) {
       return "no"
     }
 
-    // Direct MediaCodec is only valid with legacy gpu + Android OpenGL. Preserve the copy attempt
-    // after direct on that path, while gpu-next/Vulkan-compatible paths start with copy directly.
-    return if (
-      backend.vo == "gpu" &&
-      backend.gpuApi == "opengl" &&
-      backend.gpuContext == "android"
-    ) {
-      "mediacodec,mediacodec-copy,no"
-    } else {
-      "mediacodec-copy,no"
-    }
+    return "mediacodec,mediacodec-copy,no"
   }
 
   private fun selectRenderBackend(ignoreForcedOpenGlFallback: Boolean = false): RenderBackendSelection {
