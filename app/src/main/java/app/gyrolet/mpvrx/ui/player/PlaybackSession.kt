@@ -89,6 +89,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
+  private const val AMBIENT_SCALE_EPSILON = 0.000001
 
   private data class NetworkStreamRegistration(
     val proxy: NetworkStreamingProxy,
@@ -301,6 +302,11 @@ object PlaybackSession : MPVLib.EventObserver {
       suspendedVideoTrack = null
       desiredPaused = true
 
+      // Ambient shaders contain dimensions and scale baked for one video. Never leave them attached
+      // to the process-wide core after playback ends, even if the Activity/ViewModel that created
+      // them has already gone away.
+      clearAmbientShadersLocked(resetDesired = true)
+
       // Stop/quit must silence the native audio output before its decoder/output queues are torn
       // down. Restoring a seek guard's mute state before stop previously let a short buffered tail
       // escape after the Activity had already disappeared.
@@ -478,6 +484,12 @@ object PlaybackSession : MPVLib.EventObserver {
       // Using a loadfile option selects the new file's default video track atomically, without
       // briefly re-enabling the outgoing decoder before the replacement command executes.
       val selectVideoForNewFile = _state.value.surfaceAttached
+
+      // An OUTPUT Ambient shader bakes the previous video's aspect ratio into its GLSL. Because the
+      // libmpv core outlives PlayerActivity, a late/cancelled Ambient job can otherwise poison the
+      // next file even when the UI preference is OFF. Start every replacement load from a clean,
+      // identity-scaled shader state; an enabled Ambient mode will re-append after FILE_LOADED.
+      clearAmbientShadersLocked(resetDesired = true)
 
       // A saved video-track id belongs to the outgoing file only. Never carry it into a new load.
       suspendedVideoTrack = null
@@ -928,8 +940,14 @@ object PlaybackSession : MPVLib.EventObserver {
     value: Double,
   ) {
     if (axis == 'x') desiredAmbientScaleX = value else desiredAmbientScaleY = value
-    if (kotlin.math.abs(value - 1.0) <= 0.000001) {
+    if (kotlin.math.abs(value - 1.0) <= AMBIENT_SCALE_EPSILON) {
       MPVLib.setPropertyDouble(if (axis == 'x') "video-scale-x" else "video-scale-y", 1.0)
+    }
+
+    // OFF/teardown writes x=1 then y=1. Purge again when both axes reach identity so an Ambient
+    // shader that raced between the ViewModel's remove and scale-reset calls cannot survive.
+    if (ambientScaleIsIdentityLocked()) {
+      clearAmbientShadersLocked(resetDesired = false)
     }
   }
 
@@ -964,6 +982,17 @@ object PlaybackSession : MPVLib.EventObserver {
         MPVLib.command(*command)
       }
       "append", "add", "pre", "set" -> {
+        // A cancelled/debounced Ambient coroutine may finish its file write after Ambient was turned
+        // off. Identity scale is the process-wide teardown state, so never let that late shader
+        // resurrect itself. This is especially important for Flow because SCALE_X/Y are baked into
+        // the GLSL and can crop the centre picture even after the real video scale was reset.
+        if (ambientScaleIsIdentityLocked()) {
+          activeAmbientShaderPaths.remove(path)
+          resetActiveAmbientScaleLocked()
+          Log.w(TAG, "Ignored stale Ambient shader install while scale is identity: $path")
+          return true
+        }
+
         // Install the shader first. Only then expose the staged scale values to the renderer.
         MPVLib.command(*command)
         if (action == "set") activeAmbientShaderPaths.clear()
@@ -978,6 +1007,28 @@ object PlaybackSession : MPVLib.EventObserver {
   private fun isAmbientShaderPath(path: String): Boolean {
     val fileName = path.substringAfterLast('/').substringAfterLast('\\')
     return fileName.startsWith(AMBIENT_SHADER_PREFIX) && fileName.endsWith(AMBIENT_SHADER_SUFFIX)
+  }
+
+  private fun ambientScaleIsIdentityLocked(): Boolean =
+    kotlin.math.abs(desiredAmbientScaleX - 1.0) <= AMBIENT_SCALE_EPSILON &&
+      kotlin.math.abs(desiredAmbientScaleY - 1.0) <= AMBIENT_SCALE_EPSILON
+
+  private fun clearAmbientShadersLocked(resetDesired: Boolean) {
+    // Reset the real video quad before removing OUTPUT remappers. This avoids exposing a single
+    // expanded/cropped frame during teardown.
+    resetActiveAmbientScaleLocked()
+
+    val stalePaths = activeAmbientShaderPaths.toList()
+    activeAmbientShaderPaths.clear()
+    stalePaths.forEach { path ->
+      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", path) }
+        .onFailure { error -> Log.w(TAG, "Failed to remove stale Ambient shader $path", error) }
+    }
+
+    if (resetDesired) {
+      desiredAmbientScaleX = 1.0
+      desiredAmbientScaleY = 1.0
+    }
   }
 
   private fun applyDesiredAmbientScaleLocked() {
