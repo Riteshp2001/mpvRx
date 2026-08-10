@@ -27,12 +27,15 @@ import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.GlobalExceptionHandler
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.AndroidNativeCompat
+import app.gyrolet.mpvrx.ui.player.PlaybackPhase
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import `is`.xyz.mpv.FastThumbnails
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.annotation.KoinExperimentalAPI
@@ -54,6 +57,7 @@ class App :
     private const val TAG = "App"
     private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
     private const val THUMBNAIL_WARMUP_DELAY_MS = 1_500L
+    private const val IDLE_MPV_CORE_GRACE_MS = 3L * 60L * 1000L
   }
 
   override fun onCreate() {
@@ -77,6 +81,7 @@ class App :
     registerActivityLifecycleCallbacks(this)
 
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
+    startIdleMpvCoreReaper()
 
     applicationScope.launch {
       runCatching {
@@ -156,6 +161,38 @@ class App :
   ) = Unit
 
   override fun onActivityDestroyed(activity: Activity) = Unit
+
+  /**
+   * Keep libmpv warm for quick navigation/re-entry, but do not pin its native decoder/renderer
+   * allocation forever after playback has genuinely ended. collectLatest makes this self-cancelling:
+   * any new load, surface attachment, background session, or other state change aborts the grace
+   * timer before destruction can run.
+   */
+  private fun startIdleMpvCoreReaper() {
+    applicationScope.launch {
+      PlaybackSession.state.collectLatest { state ->
+        val isFullyIdle =
+          state.phase == PlaybackPhase.IDLE &&
+            state.currentItem == null &&
+            !state.surfaceAttached &&
+            PlaybackSession.isInitialized
+        if (!isFullyIdle) return@collectLatest
+
+        delay(IDLE_MPV_CORE_GRACE_MS)
+
+        val latest = PlaybackSession.state.value
+        val stillFullyIdle =
+          latest.phase == PlaybackPhase.IDLE &&
+            latest.currentItem == null &&
+            !latest.surfaceAttached &&
+            PlaybackSession.isInitialized
+        if (stillFullyIdle) {
+          Log.d(TAG, "Destroying libmpv after idle grace period")
+          PlaybackSession.destroy()
+        }
+      }
+    }
+  }
 
   private fun scheduleFastThumbnailWarmupOnce() {
     if (!fastThumbnailsStarted.compareAndSet(false, true)) return
