@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -96,9 +97,16 @@ fun BrowserBottomBar(
   val effectiveShowDelete = if (isSelectionMode) showDelete else lastShowDelete
   val effectiveShowAddToPlaylist = if (isSelectionMode) showAddToPlaylist else lastShowAddToPlaylist
 
+  val stackedModifier =
+    if (NavigationBarState.isNavBarVisible) {
+      modifier.padding(bottom = NavigationBarState.navigationBarClearance)
+    } else {
+      modifier
+    }
+
   AnimatedVisibility(
     visible = isSelectionMode,
-    modifier = modifier,
+    modifier = stackedModifier,
     enter =
       androidx.compose.animation.slideInVertically(
         animationSpec =
@@ -166,9 +174,9 @@ fun BrowserBottomBar(
           isTablet -> {
             val options =
               listOf(
-                BarLayoutParams(64.dp, 32.dp, 24.dp, 20.dp, 8.dp, 32.dp, 16.dp), // Large
-                BarLayoutParams(56.dp, 28.dp, 16.dp, 16.dp, 6.dp, 24.dp, 12.dp), // Medium
-                BarLayoutParams(48.dp, 24.dp, 12.dp, 12.dp, 6.dp, 16.dp, 10.dp), // Small
+                BarLayoutParams(64.dp, 32.dp, 24.dp, 20.dp, 8.dp, 32.dp, 16.dp),
+                BarLayoutParams(56.dp, 28.dp, 16.dp, 16.dp, 6.dp, 24.dp, 12.dp),
+                BarLayoutParams(48.dp, 24.dp, 12.dp, 12.dp, 6.dp, 16.dp, 10.dp),
               )
             options.firstOrNull { opt ->
               val totalWidth =
@@ -180,10 +188,10 @@ fun BrowserBottomBar(
           isLandscape -> {
             val options =
               listOf(
-                BarLayoutParams(56.dp, 28.dp, 12.dp, 10.dp, 4.dp, 16.dp, 6.dp), // Large (Compact vertical)
-                BarLayoutParams(48.dp, 24.dp, 10.dp, 8.dp, 4.dp, 12.dp, 6.dp), // Medium (Compact vertical)
-                BarLayoutParams(42.dp, 22.dp, 8.dp, 6.dp, 2.dp, 8.dp, 4.dp), // Small (Compact vertical)
-                BarLayoutParams(36.dp, 18.dp, 6.dp, 4.dp, 2.dp, 6.dp, 4.dp), // Tiny (Compact vertical)
+                BarLayoutParams(56.dp, 28.dp, 12.dp, 10.dp, 4.dp, 16.dp, 6.dp),
+                BarLayoutParams(48.dp, 24.dp, 10.dp, 8.dp, 4.dp, 12.dp, 6.dp),
+                BarLayoutParams(42.dp, 22.dp, 8.dp, 6.dp, 2.dp, 8.dp, 4.dp),
+                BarLayoutParams(36.dp, 18.dp, 6.dp, 4.dp, 2.dp, 6.dp, 4.dp),
               )
             options.firstOrNull { opt ->
               val totalWidth =
@@ -195,10 +203,10 @@ fun BrowserBottomBar(
           else -> {
             val options =
               listOf(
-                BarLayoutParams(56.dp, 28.dp, 12.dp, 10.dp, 8.dp, 16.dp, 12.dp), // Large
-                BarLayoutParams(48.dp, 24.dp, 10.dp, 8.dp, 6.dp, 12.dp, 10.dp), // Medium
-                BarLayoutParams(42.dp, 22.dp, 8.dp, 6.dp, 4.dp, 8.dp, 8.dp), // Small
-                BarLayoutParams(36.dp, 18.dp, 6.dp, 4.dp, 4.dp, 6.dp, 6.dp), // Tiny
+                BarLayoutParams(56.dp, 28.dp, 12.dp, 10.dp, 8.dp, 16.dp, 12.dp),
+                BarLayoutParams(48.dp, 24.dp, 10.dp, 8.dp, 6.dp, 12.dp, 10.dp),
+                BarLayoutParams(42.dp, 22.dp, 8.dp, 6.dp, 4.dp, 8.dp, 8.dp),
+                BarLayoutParams(36.dp, 18.dp, 6.dp, 4.dp, 4.dp, 6.dp, 6.dp),
               )
             options.firstOrNull { opt ->
               val totalWidth =
@@ -232,46 +240,11 @@ fun BrowserBottomBar(
           horizontalArrangement = Arrangement.spacedBy(layoutParams.spacing),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          BrowserBottomBarButton(
-            effectiveShowCopy,
-            onCopyClick,
-            Icons.RoundedFilled.ContentCopy,
-            "Copy",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowMove,
-            onMoveClick,
-            Icons.RoundedFilled.DriveFileMove,
-            "Move",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowDownscale,
-            onDownscaleClick,
-            Icons.RoundedFilled.FitScreen,
-            "Compressor",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowRename,
-            onRenameClick,
-            Icons.RoundedFilled.DriveFileRenameOutline,
-            "Rename",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowAddToPlaylist,
-            onAddToPlaylistClick,
-            Icons.RoundedFilled.PlaylistAdd,
-            "Add to Playlist",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
+          BrowserBottomBarButton(effectiveShowCopy, onCopyClick, Icons.RoundedFilled.ContentCopy, "Copy", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(effectiveShowMove, onMoveClick, Icons.RoundedFilled.DriveFileMove, "Move", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(effectiveShowDownscale, onDownscaleClick, Icons.RoundedFilled.FitScreen, "Compressor", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(effectiveShowRename, onRenameClick, Icons.RoundedFilled.DriveFileRenameOutline, "Rename", layoutParams.buttonSize, layoutParams.iconSize)
+          BrowserBottomBarButton(effectiveShowAddToPlaylist, onAddToPlaylistClick, Icons.RoundedFilled.PlaylistAdd, "Add to Playlist", layoutParams.buttonSize, layoutParams.iconSize)
           BrowserBottomBarButton(
             effectiveShowDelete,
             onDeleteClick,
