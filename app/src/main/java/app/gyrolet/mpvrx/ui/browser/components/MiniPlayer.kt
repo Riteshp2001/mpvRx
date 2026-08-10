@@ -24,7 +24,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -260,7 +259,6 @@ private fun MiniPlayerContent(
     color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
     tonalElevation = 8.dp,
     shadowElevation = 10.dp,
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
   ) {
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
 
