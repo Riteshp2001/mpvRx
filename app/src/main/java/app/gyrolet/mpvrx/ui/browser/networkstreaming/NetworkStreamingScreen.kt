@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,15 +33,18 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,9 +53,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.activity.compose.BackHandler
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -68,19 +69,27 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
+import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
+import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.domain.torrent.normalizeTorrentSource
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.ui.browser.cards.NetworkConnectionCard
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddConnectionSheet
 import app.gyrolet.mpvrx.ui.browser.dialogs.EditConnectionSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionInput
+import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionScreen
+import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionViewModel
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
 
 @Serializable
 object NetworkStreamingScreen : Screen {
@@ -91,13 +100,42 @@ object NetworkStreamingScreen : Screen {
     val context = LocalContext.current
     val viewModel: NetworkStreamingViewModel =
       viewModel(factory = NetworkStreamingViewModel.factory(context.applicationContext as android.app.Application))
+    val torrentStreamingEngine = koinInject<TorrentStreamingEngine>()
+    val streamEntryRepository = koinInject<NetworkStreamEntryRepository>()
+    val wyzieSearchRepository = koinInject<WyzieSearchRepository>()
+    val torrentPickerViewModel: TorrentSelectionViewModel =
+      viewModel(
+        key = "network_torrent_picker",
+        factory =
+          TorrentSelectionViewModel.factory(
+            torrentStreamingEngine = torrentStreamingEngine,
+            streamEntryRepository = streamEntryRepository,
+            wyzieSearchRepository = wyzieSearchRepository,
+          ),
+      )
+    val torrentPickerState by torrentPickerViewModel.uiState.collectAsState()
     val connections by viewModel.connections.collectAsState()
     val connectionStatuses by viewModel.connectionStatuses.collectAsState()
     val recentLinks by viewModel.recentLinks.collectAsState()
     val torrentGroups by viewModel.torrentGroups.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
+    var showTorrentPicker by rememberSaveable { mutableStateOf(false) }
     val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
+
+    LaunchedEffect(torrentPickerViewModel) {
+      torrentPickerViewModel.launches.collect { request ->
+        showTorrentPicker = false
+        MediaUtils.playFile(
+          source = request.source,
+          context = context,
+          launchSource = "network_torrent",
+          title = request.file.name,
+          torrentFileIndex = request.file.index,
+          torrentPreparationId = request.preparationId,
+        )
+      }
+    }
 
     val listState = rememberLazyListState()
     val isFabVisible = remember { mutableStateOf(true) }
@@ -158,7 +196,7 @@ object NetworkStreamingScreen : Screen {
         }
       }
 
-    androidx.activity.compose.BackHandler(enabled = isSearching) {
+    BackHandler(enabled = isSearching) {
       isSearching = false
       searchQuery = ""
     }
@@ -216,7 +254,7 @@ object NetworkStreamingScreen : Screen {
             isInSelectionMode = false,
             selectedCount = 0,
             totalCount = connections.size + recentLinks.size + torrentGroups.size,
-            onBackClick = null, // No back button for network screen (root tab)
+            onBackClick = null,
             onCancelSelection = { },
             onSortClick = null,
             onSearchClick = { isSearching = true },
@@ -266,13 +304,17 @@ object NetworkStreamingScreen : Screen {
             bottom = navigationBarHeight,
           ),
       ) {
-        // Section 1: Stream Link
         item {
           StreamLinkSection(
             onPlayLink = { url ->
-              val playableSource = normalizeTorrentSource(url) ?: url
-              viewModel.recordSubmittedLink(playableSource)
-              MediaUtils.playFile(playableSource, context, "network_stream")
+              val playableSource = normalizeTorrentSource(url) ?: url.trim()
+              if (isTorrentSource(playableSource)) {
+                showTorrentPicker = true
+                torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource))
+              } else {
+                viewModel.recordSubmittedLink(playableSource)
+                MediaUtils.playFile(playableSource, context, "network_stream")
+              }
             },
           )
         }
@@ -298,7 +340,6 @@ object NetworkStreamingScreen : Screen {
           }
         }
 
-        // Syncplay
         item {
           Spacer(modifier = Modifier.height(24.dp))
           var showSyncplaySheet by remember { mutableStateOf(false) }
@@ -325,7 +366,6 @@ object NetworkStreamingScreen : Screen {
           }
         }
 
-        // Section 2: Local Network header
         item {
           Spacer(modifier = Modifier.height(24.dp))
           Text(
@@ -339,7 +379,6 @@ object NetworkStreamingScreen : Screen {
           )
         }
 
-        // Show empty state or connection list
         if (connections.isEmpty()) {
           item {
             Card(
@@ -460,7 +499,6 @@ object NetworkStreamingScreen : Screen {
           }
         }
 
-        // Keep the torrent catalog at the bottom of the Network tab.
         if (filteredTorrentGroups.isNotEmpty()) {
           item {
             StreamEntrySectionHeader(stringResource(R.string.ui_torrent_files))
@@ -486,7 +524,6 @@ object NetworkStreamingScreen : Screen {
         }
       }
 
-      // Add Connection Sheet
       AddConnectionSheet(
         isOpen = showAddSheet,
         onDismiss = { showAddSheet = false },
@@ -496,7 +533,6 @@ object NetworkStreamingScreen : Screen {
         },
       )
 
-      // Edit Connection Sheet
       editingConnection?.let { connection ->
         EditConnectionSheet(
           connection = connection,
@@ -506,6 +542,18 @@ object NetworkStreamingScreen : Screen {
             viewModel.updateConnection(updatedConnection, clearPassword)
             editingConnection = null
           },
+        )
+      }
+
+      if (showTorrentPicker) {
+        TorrentSelectionScreen(
+          state = torrentPickerState,
+          onBack = {
+            showTorrentPicker = false
+            torrentPickerViewModel.cancel()
+          },
+          onRetry = torrentPickerViewModel::retry,
+          onSelect = torrentPickerViewModel::select,
         )
       }
     }
