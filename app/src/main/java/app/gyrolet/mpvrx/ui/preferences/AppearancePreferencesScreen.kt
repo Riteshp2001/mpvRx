@@ -394,14 +394,19 @@ object AppearancePreferencesScreen : Screen {
                     text = stringResource(id = R.string.pref_appearance_unplayed_old_video_days_title),
                   )
                 },
-                valueRange = 1f..30f,
+                valueRange = 0f..30f,
+                valueSteps = 29,
                 summary = {
                   Text(
                     text =
-                      stringResource(
-                        id = R.string.pref_appearance_unplayed_old_video_days_summary,
-                        unplayedOldVideoDays,
-                      ),
+                      if (unplayedOldVideoDays == 0) {
+                        "Unlimited — NEW stays until the watched threshold is reached"
+                      } else {
+                        stringResource(
+                          id = R.string.pref_appearance_unplayed_old_video_days_summary,
+                          unplayedOldVideoDays,
+                        )
+                      },
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -815,7 +820,6 @@ object AppearancePreferencesScreen : Screen {
                   )
                 },
               )
-
             }
           }
 
