@@ -112,9 +112,19 @@ class MediaPlaybackService :
      * True while a PlayerActivity is the active foreground owner of the shared playback session
      * (e.g. the full player is visible and playing, including audio-only media that has no
      * attached video surface). The service must not steal audio focus from it.
+     *
+     * Clearing this flag is also the boundary between a completed foreground handoff and a new
+     * detached playback cycle. A service instance can survive briefly because of Binder timing;
+     * never let a stale handoff marker poison the next notification/background start.
      */
     @Volatile
     var activityForeground = false
+      set(value) {
+        field = value
+        if (!value) {
+          activeInstance?.handingBackToActivity = false
+        }
+      }
 
     internal fun relinquishMediaSessionToActivity() {
       activeInstance?.deactivateMediaSession()
@@ -124,11 +134,16 @@ class MediaPlaybackService :
 
     /**
      * Marks that playback is being handed back to a foreground Activity (e.g. reopening the
-     * player from the Mini Player). While set, the service must not pause playback or stop the
-     * shared PlaybackSession media during its own teardown/focus loss.
+     * player from the Mini Player / playback notification). Release the service-owned focus
+     * immediately, but never mutate mpv's pause state: the foreground Activity will acquire
+     * focus in its normal lifecycle. This makes the handoff lossless even when notification
+     * re-entry and service teardown are delivered in different Android lifecycle turns.
      */
     internal fun prepareForActivityHandoff() {
-      activeInstance?.handingBackToActivity = true
+      activeInstance?.let { service ->
+        service.handingBackToActivity = true
+        service.abandonAudioOwnership()
+      }
     }
 
     internal fun isActivityHandoffInProgress(): Boolean = activeInstance?.handingBackToActivity == true
@@ -273,6 +288,7 @@ class MediaPlaybackService :
     activeInstance = this
     isServiceRunning = true
     mpvAccessReleased = false
+    handingBackToActivity = false
 
     // Ensure notification channel exists before starting foreground service
     createNotificationChannel(this)
@@ -413,12 +429,20 @@ class MediaPlaybackService :
     mediaDurationSeconds = runCatching { PlaybackSession.getPropertyDouble("duration") }.getOrNull() ?: 0.0
     currentPositionSeconds = runCatching { PlaybackSession.getPropertyDouble("time-pos") }.getOrNull() ?: 0.0
     currentChapterIndex = runCatching { PlaybackSession.getPropertyInt("chapter") }.getOrNull() ?: -1
-    // Only take over audio focus / pause for genuinely detached playback. A foreground
-    // Activity (audio-only media has no attached video surface) owns focus itself, and stealing
-    // it here would make the Activity's focus listener pause playback right after it starts.
-    if (!PlaybackSession.state.value.surfaceAttached && !activityForeground && !takeAudioOwnership()) {
+
+    // Only take audio ownership for a truly detached session. Notification re-entry first moves
+    // the process-wide session back to READY and/or marks a handoff. Re-requesting focus from the
+    // service in that window can make PlayerActivity receive AUDIOFOCUS_LOSS and pause the video.
+    val sessionState = PlaybackSession.state.value
+    val shouldTakeDetachedAudioFocus =
+      sessionState.phase == PlaybackPhase.BACKGROUND &&
+        !sessionState.surfaceAttached &&
+        !activityForeground &&
+        !handingBackToActivity
+    if (shouldTakeDetachedAudioFocus && !takeAudioOwnership()) {
       PlaybackSession.setPropertyBoolean("pause", true)
     }
+
     refreshNotificationPalette()
 
     updateMediaSessionMetadata()
@@ -518,6 +542,10 @@ class MediaPlaybackService :
   }
 
   fun takeAudioOwnership(): Boolean {
+    // During a foreground handoff, returning true means "ownership is intentionally not needed".
+    // Do not request focus and bounce it back to PlayerActivity; that focus ping-pong is exactly
+    // what can turn a notification tap into an unexpected pause.
+    if (activityForeground || handingBackToActivity) return true
     if (ownsAudioFocus) return true
     val request =
       audioFocusRequest ?: AudioFocusRequest
@@ -537,7 +565,10 @@ class MediaPlaybackService :
 
   private fun abandonAudioOwnership() {
     restoreDuckedVolume()
-    if (!ownsAudioFocus) return
+    if (!ownsAudioFocus) {
+      resumeAfterFocusGain = false
+      return
+    }
     audioFocusRequest?.let { request -> audioManager.abandonAudioFocusRequest(request) }
     ownsAudioFocus = false
     resumeAfterFocusGain = false
