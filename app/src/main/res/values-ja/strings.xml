@@ -1565,6 +1565,8 @@
   <string name="secure_folder_verify">確認</string>
   <string name="secure_folder_next">次へ</string>
   <string name="secure_folder_save">保存</string>
+  <string name="secure_folder_pin_changed">PINを変更しました</string>
+  <string name="secure_folder_security_question_changed">秘密の質問を更新しました</string>
   <string name="secure_folder_use_fingerprint">指紋を使用</string>
   <string name="secure_folder_enable_fingerprint">指紋を有効にする</string>
   <string name="secure_folder_disable_fingerprint">指紋を無効にする</string>

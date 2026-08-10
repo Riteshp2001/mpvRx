@@ -1565,6 +1565,8 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="secure_folder_verify">Vérifier</string>
   <string name="secure_folder_next">Suivant</string>
   <string name="secure_folder_save">Enregistrer</string>
+  <string name="secure_folder_pin_changed">Code PIN modifié avec succès</string>
+  <string name="secure_folder_security_question_changed">Question de sécurité mise à jour</string>
   <string name="secure_folder_use_fingerprint">Utiliser l\'empreinte digitale</string>
   <string name="secure_folder_enable_fingerprint">Activer l\'empreinte digitale</string>
   <string name="secure_folder_disable_fingerprint">Désactiver l\'empreinte digitale</string>

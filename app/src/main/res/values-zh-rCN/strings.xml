@@ -1565,6 +1565,8 @@
   <string name="secure_folder_verify">验证</string>
   <string name="secure_folder_next">下一步</string>
   <string name="secure_folder_save">保存</string>
+  <string name="secure_folder_pin_changed">PIN码修改成功</string>
+  <string name="secure_folder_security_question_changed">安全问题已更新</string>
   <string name="secure_folder_use_fingerprint">使用指纹</string>
   <string name="secure_folder_enable_fingerprint">启用指纹</string>
   <string name="secure_folder_disable_fingerprint">禁用指纹</string>

@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.securefolder
 
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.keyframes
@@ -126,6 +128,8 @@ data object SecureFolderGateScreen : Screen {
 
     val gateStep by viewModel.gateStep.collectAsState()
     val gateError by viewModel.gateError.collectAsState()
+    val pinChangedMessage = stringResource(R.string.secure_folder_pin_changed)
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // Biometric authentication
     val biometricManager = BiometricManager.from(context)
@@ -136,6 +140,10 @@ data object SecureFolderGateScreen : Screen {
 
     fun showBiometricPrompt() {
       val fragmentActivity = context as? FragmentActivity ?: return
+      // The PIN field's soft keyboard may still have a pending show request queued (it auto-focuses
+      // on this screen). If that request gets delivered after the biometric prompt dismisses, it
+      // flashes the numeric keyboard on whatever screen we've navigated to next. Hide it up front.
+      keyboardController?.hide()
       val executor = ContextCompat.getMainExecutor(context)
       val callback = object : BiometricPrompt.AuthenticationCallback() {
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
@@ -161,8 +169,15 @@ data object SecureFolderGateScreen : Screen {
       biometricPrompt.authenticate(promptInfoBuilder.build())
     }
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
       viewModel.refreshGateStep()
+    }
+
+    // Covers the system back gesture/button too, not just the topbar arrow — same keyboard-hide
+    // fix as onBackClick below, since either path can leave the IME lingering over the next screen.
+    BackHandler {
+      keyboardController?.hide()
+      backstack.popSafely()
     }
 
     Scaffold(
@@ -172,7 +187,10 @@ data object SecureFolderGateScreen : Screen {
           isInSelectionMode = false,
           selectedCount = 0,
           totalCount = 0,
-          onBackClick = { backstack.popSafely() },
+          onBackClick = {
+            keyboardController?.hide()
+            backstack.popSafely()
+          },
           onCancelSelection = {},
         )
       },
@@ -237,7 +255,11 @@ data object SecureFolderGateScreen : Screen {
                     title = stringResource(R.string.secure_folder_choose_new_pin),
                     subtitle = stringResource(R.string.secure_folder_old_pin_invalid),
                     error = gateError,
-                    onSubmit = { pin -> viewModel.finishForgotPinFlow(pin) },
+                    onSubmit = { pin ->
+                      if (viewModel.finishForgotPinFlow(pin)) {
+                        Toast.makeText(context, pinChangedMessage, Toast.LENGTH_SHORT).show()
+                      }
+                    },
                   )
               }
             }
@@ -267,7 +289,11 @@ private fun EnterPinContent(
   fun submit(): Boolean {
     if (pin.isEmpty()) return false
     val ok = onSubmit(pin)
-    if (!ok) {
+    if (ok) {
+      // Hide the keyboard right away on success — otherwise its pending close/show request can
+      // bleed into the next screen and flash there for a moment (same issue as the biometric path).
+      keyboardController?.hide()
+    } else {
       pin = ""
       scope.launch {
         shakeOffset.animateTo(

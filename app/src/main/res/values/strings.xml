@@ -1589,6 +1589,8 @@
   <string name="secure_folder_verify">Verify</string>
   <string name="secure_folder_next">Next</string>
   <string name="secure_folder_save">Save</string>
+  <string name="secure_folder_pin_changed">PIN changed successfully</string>
+  <string name="secure_folder_security_question_changed">Security question updated</string>
   <string name="secure_folder_use_fingerprint">Use Fingerprint</string>
   <string name="secure_folder_enable_fingerprint">Enable Fingerprint</string>
   <string name="secure_folder_disable_fingerprint">Disable Fingerprint</string>

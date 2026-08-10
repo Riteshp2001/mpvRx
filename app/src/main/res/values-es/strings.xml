@@ -1565,6 +1565,8 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="secure_folder_verify">Verificar</string>
   <string name="secure_folder_next">Siguiente</string>
   <string name="secure_folder_save">Guardar</string>
+  <string name="secure_folder_pin_changed">PIN cambiado correctamente</string>
+  <string name="secure_folder_security_question_changed">Pregunta de seguridad actualizada</string>
   <string name="secure_folder_use_fingerprint">Usar huella digital</string>
   <string name="secure_folder_enable_fingerprint">Activar huella digital</string>
   <string name="secure_folder_disable_fingerprint">Desactivar huella digital</string>

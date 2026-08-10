@@ -1565,6 +1565,8 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="secure_folder_verify">Verificar</string>
   <string name="secure_folder_next">Avançar</string>
   <string name="secure_folder_save">Salvar</string>
+  <string name="secure_folder_pin_changed">PIN alterado com sucesso</string>
+  <string name="secure_folder_security_question_changed">Pergunta de segurança atualizada</string>
   <string name="secure_folder_use_fingerprint">Usar digital</string>
   <string name="secure_folder_enable_fingerprint">Ativar digital</string>
   <string name="secure_folder_disable_fingerprint">Desativar digital</string>
