@@ -18,6 +18,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.LruCache
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -374,6 +375,10 @@ fun AudioPlayerControls(
     if (isLyricsFullscreen) {
       isLyricsFullscreen = false
     }
+  }
+
+  BackHandler(enabled = isLyricsFullscreen) {
+    resetInactivityTimer()
   }
 
   val currentPath by PlaybackSession.propString["path"].collectAsState()

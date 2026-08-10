@@ -384,8 +384,6 @@ class MainActivity : AppCompatActivity() {
   private fun isCurrentMediaAudioOnly(): Boolean {
     val sessionState = PlaybackSession.state.value
     val currentItem = sessionState.currentItem ?: return true
-    val enableVideoMiniPlayer = playerPreferences.enableVideoMiniPlayer.get()
-    if (!enableVideoMiniPlayer) return true
 
     val ext = (currentItem.originalUri.ifBlank { currentItem.title.orEmpty() }).fileExtension()
     val mimeIsAudio = currentItem.mimeType?.startsWith("audio/", ignoreCase = true) == true
