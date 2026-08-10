@@ -11,10 +11,15 @@ package app.gyrolet.mpvrx.ui.player.controls
 
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.util.LruCache
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.Crossfade
@@ -75,6 +80,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -123,6 +129,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
+import androidx.core.content.ContextCompat
 import kotlin.math.roundToInt
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
@@ -140,6 +147,8 @@ import app.gyrolet.mpvrx.ui.player.RepeatMode
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
+import app.gyrolet.mpvrx.ui.player.visualizer.AudioFeatures
+import app.gyrolet.mpvrx.ui.player.visualizer.AudioSpectrumAnalyzer
 import app.gyrolet.mpvrx.ui.player.visualizer.BlobOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.CuboidOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.GalaxyOverlay
@@ -151,21 +160,59 @@ import app.gyrolet.mpvrx.utils.media.fileExtension
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 
-@Composable
-private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? {
-  val context = LocalContext.current
-  var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-  LaunchedEffect(pathOrUri) {
-    if (pathOrUri.isNullOrBlank()) {
-      bitmap = null
-      return@LaunchedEffect
+private data class AudioPresentationMetadata(
+  val artwork: Bitmap?,
+  val artist: String?,
+)
+
+/**
+ * One bounded native-metadata pipeline for the current song, swipe previews, and queue rows.
+ *
+ * Previously each consumer created its own MediaMetadataRetriever (and the current track created a
+ * second retriever just for artist fallback), so entering Now Playing could parse the same file
+ * several times and hold several native retrievers concurrently. The cache is byte-sized by
+ * artwork memory, metadata-only/missing-art entries still consume a small fixed weight, and the
+ * mutex intentionally serializes cache misses to cap native decoder/retriever pressure.
+ */
+private object AudioPresentationMetadataCache {
+  private const val MAX_CACHE_KB = 16 * 1024
+  private const val METADATA_ONLY_WEIGHT_KB = 64
+  private val loadMutex = Mutex()
+  private val cache =
+    object : LruCache<String, AudioPresentationMetadata>(MAX_CACHE_KB) {
+      override fun sizeOf(
+        key: String,
+        value: AudioPresentationMetadata,
+      ): Int =
+        maxOf(
+          METADATA_ONLY_WEIGHT_KB,
+          (value.artwork?.byteCount ?: 0) / 1024,
+        )
     }
+
+  fun peek(pathOrUri: String?): AudioPresentationMetadata? {
+    if (pathOrUri.isNullOrBlank()) return null
+    return synchronized(cache) { cache.get(pathOrUri) }
+  }
+
+  suspend fun resolve(
+    context: android.content.Context,
+    pathOrUri: String,
+  ): AudioPresentationMetadata =
     withContext(Dispatchers.IO) {
-      runCatching {
+      synchronized(cache) { cache.get(pathOrUri) }?.let { return@withContext it }
+
+      loadMutex.withLock {
+        synchronized(cache) { cache.get(pathOrUri) }?.let { return@withLock it }
+
         val cleanPath =
           when {
             pathOrUri.startsWith("file://") -> pathOrUri.removePrefix("file://")
@@ -173,22 +220,103 @@ private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? {
             else -> pathOrUri
           }
         val retriever = MediaMetadataRetriever()
-        if (cleanPath != null) {
-          retriever.setDataSource(cleanPath)
-        } else {
-          retriever.setDataSource(context, Uri.parse(pathOrUri))
-        }
-        val art = EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever)
-        retriever.release()
-        art
-      }.onSuccess { loadedBitmap ->
-        bitmap = loadedBitmap
-      }.onFailure {
-        bitmap = null
+        val loaded =
+          try {
+            if (cleanPath != null) {
+              retriever.setDataSource(cleanPath)
+            } else {
+              retriever.setDataSource(context, Uri.parse(pathOrUri))
+            }
+
+            AudioPresentationMetadata(
+              artwork = EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever),
+              artist =
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                  ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+                  ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR)
+                  ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
+            )
+          } catch (_: Exception) {
+            AudioPresentationMetadata(artwork = null, artist = null)
+          } finally {
+            runCatching { retriever.release() }
+          }
+
+        synchronized(cache) { cache.put(pathOrUri, loaded) }
+        loaded
       }
     }
+}
+
+@Composable
+private fun rememberAudioPresentationMetadata(pathOrUri: String?): AudioPresentationMetadata? {
+  val context = LocalContext.current
+  var metadata by remember(pathOrUri) {
+    mutableStateOf(AudioPresentationMetadataCache.peek(pathOrUri))
   }
-  return bitmap
+  LaunchedEffect(pathOrUri) {
+    metadata =
+      if (pathOrUri.isNullOrBlank()) {
+        null
+      } else {
+        AudioPresentationMetadataCache.resolve(context, pathOrUri)
+      }
+  }
+  return metadata
+}
+
+@Composable
+private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? =
+  rememberAudioPresentationMetadata(pathOrUri)?.artwork
+
+/**
+ * Cuboid is a Compose Canvas and does not pass through the GLSurfaceView VisualizerOverlay, so it
+ * needs the same scoped Android spectrum capture explicitly. The capture exists only while Cuboid
+ * is actually visible; album-art mode, lyrics and modal sheets release it immediately.
+ */
+@Composable
+private fun CuboidSpectrumCaptureEffect(
+  enabled: Boolean,
+  features: AudioFeatures,
+) {
+  val context = LocalContext.current
+  val scope = rememberCoroutineScope()
+  val analyzerActive = remember(features) { AtomicBoolean(false) }
+  var hasRecordPermission by remember {
+    mutableStateOf(
+      ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+        PackageManager.PERMISSION_GRANTED,
+    )
+  }
+  val recordPermissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      hasRecordPermission = granted
+    }
+
+  LaunchedEffect(enabled, hasRecordPermission) {
+    if (enabled && !hasRecordPermission) {
+      recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+  }
+
+  DisposableEffect(enabled, hasRecordPermission, features) {
+    val analyzer = if (enabled && hasRecordPermission) AudioSpectrumAnalyzer(features) else null
+    val job =
+      scope.launch(Dispatchers.Default) {
+        while (isActive && analyzer != null) {
+          val captureFresh = features.active && features.hasRecentCapture(1_500_000_000L)
+          if (!analyzerActive.get() || !captureFresh) {
+            analyzerActive.set(analyzer.start(0).isSuccess)
+          }
+          kotlinx.coroutines.delay(if (analyzerActive.get()) 1_500L else 400L)
+        }
+      }
+    onDispose {
+      job.cancel()
+      analyzerActive.set(false)
+      analyzer?.stop(resetFeatures = false)
+    }
+  }
 }
 
 @Composable
@@ -275,7 +403,8 @@ fun AudioPlayerControls(
       isLosslessCodecOrExt && (sampleRate ?: 0) >= 88200
     }
 
-  val albumArtBitmap = rememberAudioAlbumArt(mediaPath)
+  val currentAudioPresentation = rememberAudioPresentationMetadata(mediaPath)
+  val albumArtBitmap = currentAudioPresentation?.artwork
 
   fun cleanSongTitle(
     title: String,
@@ -315,29 +444,7 @@ fun AudioPlayerControls(
   val rawArtistAlt by PlaybackSession.propString["metadata/artist"].collectAsState()
   val rawAlbumArtist by PlaybackSession.propString["metadata/by-key/album_artist"].collectAsState()
   val rawPerformer by PlaybackSession.propString["metadata/by-key/PERFORMER"].collectAsState()
-
-  var retrievedArtist by remember(mediaPath) { mutableStateOf<String?>(null) }
-  LaunchedEffect(mediaPath) {
-    if (!mediaPath.isNullOrBlank()) {
-      withContext(Dispatchers.IO) {
-        runCatching {
-          val retriever = MediaMetadataRetriever()
-          if (mediaPath.startsWith("content://")) {
-            retriever.setDataSource(context, Uri.parse(mediaPath))
-          } else {
-            retriever.setDataSource(mediaPath.removePrefix("file://"))
-          }
-          val art =
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-              ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-              ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR)
-              ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
-          retriever.release()
-          art
-        }.getOrNull()?.let { retrievedArtist = it }
-      }
-    }
-  }
+  val retrievedArtist = currentAudioPresentation?.artist
 
   val displayArtist =
     remember(rawArtist, rawArtistAlt, rawAlbumArtist, rawPerformer, retrievedArtist) {
@@ -374,6 +481,15 @@ fun AudioPlayerControls(
   val showVisualizer by viewModel.showVisualizerInAudioPlayer.collectAsState()
   val sheetShown by viewModel.sheetShown.collectAsState()
   val isSheetOpen = sheetShown != Sheets.None
+
+  CuboidSpectrumCaptureEffect(
+    enabled =
+      showVisualizer &&
+        !showInPlaceLyrics &&
+        !isSheetOpen &&
+        audioVisualizerStyle == AudioVisualizerStyle.Cuboid,
+    features = visualizerFeatures,
+  )
 
   val abLoop by viewModel.abLoopState.collectAsState()
   val abLoopA = abLoop.a
@@ -673,14 +789,16 @@ fun AudioPlayerControls(
                      modifier = Modifier.fillMaxSize(),
                    )
                  AudioVisualizerStyle.Cuboid ->
-                   CuboidOverlay(
-                     isPlaying = isPlaying,
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
-                     volumeScale = volumeScale,
-                     features = visualizerFeatures,
-                     modifier = Modifier.fillMaxSize(),
-                   )
+                   if (!isSheetOpen) {
+                     CuboidOverlay(
+                       isPlaying = isPlaying,
+                       palette = palette,
+                       isSheetOpen = false,
+                       volumeScale = volumeScale,
+                       features = visualizerFeatures,
+                       modifier = Modifier.fillMaxSize(),
+                     )
+                   }
                  AudioVisualizerStyle.Particle ->
                    ParticleOverlay(
                      palette = palette,
