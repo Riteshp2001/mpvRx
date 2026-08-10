@@ -123,6 +123,25 @@ object PlaybackSession : MPVLib.EventObserver {
   val state: StateFlow<PlaybackSessionState> = _state.asStateFlow()
   val queue: StateFlow<PlaybackQueueState> = _queue.asStateFlow()
 
+  /**
+   * Tracks the decoder the user explicitly picked from the Decoders sheet.
+   *
+   * This is intentionally NOT derived from the mpv `hwdec` property: at
+   * playback start `hwdec` is set to a comma-delimited fallback list
+   * (e.g. "mediacodec,mediacodec-copy,no") rather than a single value, so
+   * reading it back would not match any Decoder enum entry. It's also not
+   * derived from `hwdec-current`, since that reflects whatever mpv actually
+   * ends up running (which can silently fall back), not what the user chose.
+   * Null means "no explicit user selection yet" (i.e. using the default
+   * fallback chain).
+   */
+  private val _userSelectedHwdec = MutableStateFlow<String?>(null)
+  val userSelectedHwdec: StateFlow<String?> = _userSelectedHwdec.asStateFlow()
+
+  fun setUserSelectedHwdec(value: String) {
+    _userSelectedHwdec.value = value
+  }
+
   @Volatile
   private var initialized = false
   private var applicationContext: Context? = null
