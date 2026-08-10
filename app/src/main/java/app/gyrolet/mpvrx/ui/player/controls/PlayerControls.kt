@@ -252,8 +252,8 @@ fun PlayerControls(
   var resetControlsTimestamp by remember { mutableStateOf(0L) }
   val seekText = seekState.text
   val currentChapter by PlaybackSession.propInt["chapter"].collectAsState()
-  val userSelectedHwdec by PlaybackSession.userSelectedHwdec.collectAsState()
-  val decoder = remember(userSelectedHwdec) { getDecoderFromValue(userSelectedHwdec ?: "auto-copy") }
+  val mpvDecoder by PlaybackSession.propString["hwdec-current"].collectAsState()
+  val decoder = remember(mpvDecoder) { getDecoderFromValue(mpvDecoder ?: "auto") }
   val isSpeedNonOne = remember(playbackSpeed) {
     abs((playbackSpeed ?: 1f) - 1f) > 0.001f
   }
@@ -346,10 +346,7 @@ fun PlayerControls(
           viewModel.unpause()
         },
         decoder = decoder,
-        onUpdateDecoder = {
-          PlaybackSession.setPropertyString("hwdec", it.value)
-          PlaybackSession.setUserSelectedHwdec(it.value)
-        },
+        onUpdateDecoder = { PlaybackSession.setPropertyString("hwdec", it.value) },
         speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
         onSpeedChange = { PlaybackSession.setPropertyFloat("speed", it.toFixed(2)) },
         onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
@@ -1785,10 +1782,7 @@ fun PlayerControls(
         viewModel.unpause()
       },
       decoder = decoder,
-      onUpdateDecoder = {
-        PlaybackSession.setPropertyString("hwdec", it.value)
-        PlaybackSession.setUserSelectedHwdec(it.value)
-      },
+      onUpdateDecoder = { PlaybackSession.setPropertyString("hwdec", it.value) },
       speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
       onSpeedChange = { PlaybackSession.setPropertyFloat("speed", it.toFixed(2)) },
       onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
