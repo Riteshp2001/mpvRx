@@ -1518,7 +1518,7 @@
   <string name="secure_folder_moved_partial">%1$d ले जाई गईं, %2$d नाकाम</string>
   <string name="secure_folder_move_failed">फाइलों को सिक्योर फोल्डर में ले जाना नाकाम</string>
   <string name="secure_folder_error_incorrect_pin">गलत PIN</string>
-  <string name="secure_folder_error_pin_min_digits">PIN कम से कम 4 अंकों का होना चाहिए</string>
+  <string name="secure_folder_error_pin_min_digits">PIN 4 अंकों का होना चाहिए</string>
   <string name="secure_folder_error_pins_dont_match">PIN मेल नहीं खाते</string>
   <string name="secure_folder_error_answer_question">कृपया सुरक्षा सवाल का जवाब दें</string>
   <string name="secure_folder_error_fill_both_fields">कृपया दोनों फील्ड भरें</string>

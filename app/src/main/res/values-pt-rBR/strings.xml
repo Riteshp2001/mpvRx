@@ -1609,7 +1609,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="secure_folder_moved_partial">%1$d movido(s), %2$d falhou(aram)</string>
   <string name="secure_folder_move_failed">Falha ao mover arquivos para a Pasta Segura</string>
   <string name="secure_folder_error_incorrect_pin">PIN incorreto</string>
-  <string name="secure_folder_error_pin_min_digits">O PIN deve ter pelo menos 4 dígitos</string>
+  <string name="secure_folder_error_pin_min_digits">O PIN deve ter 4 dígitos</string>
   <string name="secure_folder_error_pins_dont_match">Os PINs não coincidem</string>
   <string name="secure_folder_error_answer_question">Por favor, responda à pergunta de segurança</string>
   <string name="secure_folder_error_fill_both_fields">Por favor, preencha ambos os campos</string>

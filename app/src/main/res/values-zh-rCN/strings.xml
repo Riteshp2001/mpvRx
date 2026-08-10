@@ -1609,7 +1609,7 @@
   <string name="secure_folder_moved_partial">已移动 %1$d 个文件，%2$d 个失败</string>
   <string name="secure_folder_move_failed">无法将文件移动到安全文件夹</string>
   <string name="secure_folder_error_incorrect_pin">PIN码错误</string>
-  <string name="secure_folder_error_pin_min_digits">PIN码必须至少为4位数字</string>
+  <string name="secure_folder_error_pin_min_digits">PIN码必须为4位数字</string>
   <string name="secure_folder_error_pins_dont_match">PIN码不匹配</string>
   <string name="secure_folder_error_answer_question">请回答安全问题</string>
   <string name="secure_folder_error_fill_both_fields">请填写两个字段</string>

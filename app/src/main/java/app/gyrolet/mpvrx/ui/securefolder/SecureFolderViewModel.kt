@@ -93,7 +93,7 @@ class SecureFolderViewModel(
     question: String,
     answer: String,
   ): Boolean {
-    if (pin.length < 4) {
+    if (pin.length != 4) {
       _gateError.value = getApplication<Application>().getString(R.string.secure_folder_error_pin_min_digits)
       return false
     }
@@ -122,7 +122,7 @@ class SecureFolderViewModel(
 
   /** Forgot-PIN flow's last step: persists the new PIN directly, no security question re-ask needed. */
   fun finishForgotPinFlow(pin: String): Boolean {
-    if (pin.length < 4) {
+    if (pin.length != 4) {
       _gateError.value = getApplication<Application>().getString(R.string.secure_folder_error_pin_min_digits)
       return false
     }

@@ -1609,7 +1609,7 @@
   <string name="secure_folder_moved_partial">تم نقل %1$d، وفشل %2$d</string>
   <string name="secure_folder_move_failed">فشل نقل الملفات إلى المجلد الآمن</string>
   <string name="secure_folder_error_incorrect_pin">رمز PIN غير صحيح</string>
-  <string name="secure_folder_error_pin_min_digits">يجب أن يتكون رمز PIN من 4 أرقام على الأقل</string>
+  <string name="secure_folder_error_pin_min_digits">يجب أن يتكون رمز PIN من 4 أرقام</string>
   <string name="secure_folder_error_pins_dont_match">رموز PIN غير متطابقة</string>
   <string name="secure_folder_error_answer_question">يرجى الإجابة على سؤال الأمان</string>
   <string name="secure_folder_error_fill_both_fields">يرجى ملء كلا الحقلين</string>

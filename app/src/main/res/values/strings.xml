@@ -1641,7 +1641,7 @@
 
   <!-- Errors & Operation Results -->
   <string name="secure_folder_error_incorrect_pin">Incorrect PIN</string>
-  <string name="secure_folder_error_pin_min_digits">PIN must be at least 4 digits</string>
+  <string name="secure_folder_error_pin_min_digits">PIN must be 4 digits</string>
   <string name="secure_folder_error_pins_dont_match">PINs don\'t match</string>
   <string name="secure_folder_error_answer_question">Please answer the security question</string>
   <string name="secure_folder_error_fill_both_fields">Please fill in both fields</string>

@@ -1609,7 +1609,7 @@
   <string name="secure_folder_moved_partial">Перемещено %1$d, ошибка %2$d</string>
   <string name="secure_folder_move_failed">Не удалось переместить файлы в Защищенную папку</string>
   <string name="secure_folder_error_incorrect_pin">Неверный PIN-код</string>
-  <string name="secure_folder_error_pin_min_digits">PIN-код должен состоять минимум из 4 цифр</string>
+  <string name="secure_folder_error_pin_min_digits">PIN-код должен состоять из 4 цифр</string>
   <string name="secure_folder_error_pins_dont_match">PIN-коды не совпадают</string>
   <string name="secure_folder_error_answer_question">Пожалуйста, ответьте на контрольный вопрос</string>
   <string name="secure_folder_error_fill_both_fields">Пожалуйста, заполните оба поля</string>
