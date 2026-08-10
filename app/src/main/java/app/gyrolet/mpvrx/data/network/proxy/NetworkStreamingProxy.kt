@@ -23,19 +23,21 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.io.InputStream
 import java.net.URI
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * A loopback-only authenticated-capability gateway for SMB, FTP, and WebDAV media.
@@ -51,6 +53,7 @@ class NetworkStreamingProxy private constructor() :
   companion object {
     private const val TAG = "NetworkStreamingProxy"
     private const val TOKEN_BYTES = 24
+    private const val PROXY_OPERATION_TIMEOUT_SECONDS = 75L
 
     @Volatile
     private var instance: NetworkStreamingProxy? = null
@@ -80,7 +83,11 @@ class NetworkStreamingProxy private constructor() :
     fileSize: Long,
     val primaryMimeType: String,
   ) {
-    val knownPrimarySize = AtomicLong(fileSize)
+    // Cache sizes for the primary media and sibling resources (HLS segments, keys, maps, etc.).
+    // A seek can otherwise issue repeated serialized size probes before every range request.
+    val knownSizes = ConcurrentHashMap<NetworkPath, Long>().apply {
+      if (fileSize >= 0L) put(primaryPath, fileSize)
+    }
     val clientMutex = Mutex()
 
     @Volatile
@@ -245,17 +252,15 @@ class NetworkStreamingProxy private constructor() :
     streamInfo: StreamInfo,
     path: NetworkPath,
   ): Long {
-    if (path == streamInfo.primaryPath) {
-      streamInfo.knownPrimarySize.get().takeIf { it >= 0L }?.let { return it }
-    }
+    streamInfo.knownSizes[path]?.let { return it }
 
     val discovered =
-      runBlocking {
+      awaitProxyIo {
         withConnectedClient(streamInfo) { client -> client.getFileSize(path.value) }
       }.getOrNull() ?: -1L
 
-    if (path == streamInfo.primaryPath && discovered >= 0L) {
-      streamInfo.knownPrimarySize.compareAndSet(-1L, discovered)
+    if (discovered >= 0L) {
+      streamInfo.knownSizes.putIfAbsent(path, discovered)
     }
     return discovered
   }
@@ -265,9 +270,45 @@ class NetworkStreamingProxy private constructor() :
     path: NetworkPath,
     offset: Long,
   ): InputStream? =
-    runBlocking {
+    awaitProxyIo {
       withConnectedClient(streamInfo) { client -> client.getFileStream(path.value, offset) }
     }.getOrNull()
+
+  /**
+   * NanoHTTPD's serve API is synchronous, but upstream clients are suspend-based. Do not use
+   * runBlocking here: it installs a nested coroutine event loop on every range request and can
+   * amplify thread contention under rapid seeks. Dispatch the suspend work onto the proxy's bounded
+   * IO scope and wait only for the result, with a hard timeout and cancellation.
+   */
+  private fun <T> awaitProxyIo(operation: suspend () -> Result<T>): Result<T> {
+    val result = AtomicReference<Result<T>?>(null)
+    val latch = CountDownLatch(1)
+    val job =
+      proxyScope.launch {
+        try {
+          result.set(operation())
+        } catch (cancellation: CancellationException) {
+          result.set(Result.failure(cancellation))
+        } catch (error: Exception) {
+          result.set(Result.failure(error))
+        } finally {
+          latch.countDown()
+        }
+      }
+
+    return try {
+      if (!latch.await(PROXY_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+        job.cancel()
+        Result.failure(IOException("Upstream proxy operation timed out"))
+      } else {
+        result.get() ?: Result.failure(IOException("Upstream proxy operation produced no result"))
+      }
+    } catch (interrupted: InterruptedException) {
+      job.cancel()
+      Thread.currentThread().interrupt()
+      Result.failure(interrupted)
+    }
+  }
 
   private suspend fun <T> withConnectedClient(
     streamInfo: StreamInfo,
