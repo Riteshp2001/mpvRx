@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
-import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -112,17 +111,9 @@ fun MoreSheet(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             ) {
-              Icon(imageVector = Icons.RoundedFilled.Timer, contentDescription = null)
-              Text(
-                text =
-                  if (remainingTime == 0) {
-                    stringResource(R.string.timer_title)
-                  } else {
-                    stringResource(
-                      R.string.timer_remaining,
-                      DateUtils.formatElapsedTime(remainingTime.toLong()),
-                    )
-                  },
+              Icon(
+                imageVector = Icons.RoundedFilled.Timer,
+                contentDescription = stringResource(R.string.timer_title),
               )
               if (isSleepTimerDialogShown) {
                 TimePickerDialog(
@@ -135,57 +126,32 @@ fun MoreSheet(
           }
           if (onEnterEqualizerSheet != null) {
             TextButton(onClick = onEnterEqualizerSheet) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-              ) {
-                Icon(imageVector = Icons.RoundedFilled.Equalizer, contentDescription = null)
-                Text(text = stringResource(id = R.string.btn_label_equalizer))
-              }
+              Icon(
+                imageVector = Icons.RoundedFilled.Equalizer,
+                contentDescription = stringResource(id = R.string.btn_label_equalizer),
+              )
             }
           }
           TextButton(onClick = onEnterFiltersPanel) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-              Icon(imageVector = Icons.RoundedFilled.Tune, contentDescription = null)
-              Text(text = stringResource(id = R.string.player_sheets_filters_title))
-            }
+            Icon(
+              imageVector = Icons.RoundedFilled.Tune,
+              contentDescription = stringResource(id = R.string.player_sheets_filters_title),
+            )
           }
           TextButton(
             onClick = onEnterLuaScriptsPanel,
             enabled = mpvConfStorageLocation.isNotBlank(),
           ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Code,
-                contentDescription = null,
-                tint =
-                  if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
-                    MaterialTheme.colorScheme.primary
-                  } else {
-                    LocalContentColor.current
-                  },
-              )
-              Text(
-                text =
-                  if (selectedLuaScripts.isEmpty()) {
-                    "Scripts"
-                  } else {
-                    "Scripts (${selectedLuaScripts.size})"
-                  },
-                color =
-                  if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
-                    MaterialTheme.colorScheme.primary
-                  } else {
-                    LocalContentColor.current
-                  },
-              )
-            }
+            Icon(
+              imageVector = Icons.RoundedFilled.Code,
+              contentDescription = "Scripts",
+              tint =
+                if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
+                  MaterialTheme.colorScheme.primary
+                } else {
+                  LocalContentColor.current
+                },
+            )
           }
         }
       }
