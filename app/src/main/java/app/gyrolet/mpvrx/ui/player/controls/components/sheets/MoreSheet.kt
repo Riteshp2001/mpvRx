@@ -11,6 +11,8 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
+import android.content.res.Configuration
+import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -80,6 +83,7 @@ fun MoreSheet(
   val enableLuaScripts by advancedPreferences.enableLuaScripts.collectAsState()
   val selectedLuaScripts by advancedPreferences.selectedLuaScripts.collectAsState()
   val mpvConfStorageLocation by advancedPreferences.mpvConfStorageUri.collectAsState()
+  val showActionLabels = LocalConfiguration.current.orientation != Configuration.ORIENTATION_PORTRAIT
 
   PlayerSheet(
     onDismissRequest,
@@ -115,6 +119,19 @@ fun MoreSheet(
                 imageVector = Icons.RoundedFilled.Timer,
                 contentDescription = stringResource(R.string.timer_title),
               )
+              if (showActionLabels) {
+                Text(
+                  text =
+                    if (remainingTime == 0) {
+                      stringResource(R.string.timer_title)
+                    } else {
+                      stringResource(
+                        R.string.timer_remaining,
+                        DateUtils.formatElapsedTime(remainingTime.toLong()),
+                      )
+                    },
+                )
+              }
               if (isSleepTimerDialogShown) {
                 TimePickerDialog(
                   remainingTime = remainingTime,
@@ -126,32 +143,69 @@ fun MoreSheet(
           }
           if (onEnterEqualizerSheet != null) {
             TextButton(onClick = onEnterEqualizerSheet) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Equalizer,
-                contentDescription = stringResource(id = R.string.btn_label_equalizer),
-              )
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Equalizer,
+                  contentDescription = stringResource(id = R.string.btn_label_equalizer),
+                )
+                if (showActionLabels) {
+                  Text(text = stringResource(id = R.string.btn_label_equalizer))
+                }
+              }
             }
           }
           TextButton(onClick = onEnterFiltersPanel) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Tune,
-              contentDescription = stringResource(id = R.string.player_sheets_filters_title),
-            )
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Tune,
+                contentDescription = stringResource(id = R.string.player_sheets_filters_title),
+              )
+              if (showActionLabels) {
+                Text(text = stringResource(id = R.string.player_sheets_filters_title))
+              }
+            }
           }
           TextButton(
             onClick = onEnterLuaScriptsPanel,
             enabled = mpvConfStorageLocation.isNotBlank(),
           ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Code,
-              contentDescription = "Scripts",
-              tint =
-                if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
-                  MaterialTheme.colorScheme.primary
-                } else {
-                  LocalContentColor.current
-                },
-            )
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Code,
+                contentDescription = "Scripts",
+                tint =
+                  if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    LocalContentColor.current
+                  },
+              )
+              if (showActionLabels) {
+                Text(
+                  text =
+                    if (selectedLuaScripts.isEmpty()) {
+                      "Scripts"
+                    } else {
+                      "Scripts (${selectedLuaScripts.size})"
+                    },
+                  color =
+                    if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
+                      MaterialTheme.colorScheme.primary
+                    } else {
+                      LocalContentColor.current
+                    },
+                )
+              }
+            }
           }
         }
       }
