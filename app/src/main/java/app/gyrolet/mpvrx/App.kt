@@ -47,11 +47,13 @@ class App :
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
   private val networkAutoConnectStarted = AtomicBoolean(false)
   private val metadataMaintenanceStarted = AtomicBoolean(false)
+  private val fastThumbnailsStarted = AtomicBoolean(false)
   private var startedActivityCount = 0
 
   companion object {
     private const val TAG = "App"
     private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
+    private const val THUMBNAIL_WARMUP_DELAY_MS = 1_500L
   }
 
   override fun onCreate() {
@@ -76,9 +78,6 @@ class App :
 
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
 
-    // Native libmpv thumbnail engine used by browser, folder, playlist, and network previews.
-    FastThumbnails.initialize(this)
-
     applicationScope.launch {
       runCatching {
         val preferences: PlayerPreferences = getKoin().get()
@@ -101,8 +100,8 @@ class App :
     }
 
     // TextMate grammar/theme assets for the script editor are initialized lazily on first use.
-    // Metadata cache maintenance is also intentionally not started here: Room/file validation can
-    // wait until the app has reached foreground and settled after its first frames.
+    // Metadata cache maintenance and native thumbnail startup are intentionally kept out of the
+    // Application cold-start path so they cannot compete with first composition / first frame.
 
     // MediaStore is Android's source of truth for the normal library. Do not trigger a recursive
     // scan of the entire external-storage root from process startup: on large libraries that can
@@ -113,6 +112,7 @@ class App :
   override fun onActivityStarted(activity: Activity) {
     if (startedActivityCount++ == 0) {
       getKoin().get<app.gyrolet.mpvrx.domain.syncplay.SyncplayManager>().onAppForegrounded()
+      scheduleFastThumbnailWarmupOnce()
       scheduleMetadataMaintenanceOnce()
     }
   }
@@ -156,6 +156,22 @@ class App :
   ) = Unit
 
   override fun onActivityDestroyed(activity: Activity) = Unit
+
+  private fun scheduleFastThumbnailWarmupOnce() {
+    if (!fastThumbnailsStarted.compareAndSet(false, true)) return
+    applicationScope.launch(Dispatchers.Default) {
+      try {
+        delay(THUMBNAIL_WARMUP_DELAY_MS)
+        FastThumbnails.initialize(this@App)
+      } catch (cancellation: CancellationException) {
+        fastThumbnailsStarted.set(false)
+        throw cancellation
+      } catch (error: Exception) {
+        fastThumbnailsStarted.set(false)
+        Log.w(TAG, "Deferred FastThumbnails initialization failed", error)
+      }
+    }
+  }
 
   private fun scheduleMetadataMaintenanceOnce() {
     if (!metadataMaintenanceStarted.compareAndSet(false, true)) return
