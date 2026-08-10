@@ -67,7 +67,7 @@ enum class Decoder(
   ;
 
   companion object {
-    fun getDecoderFromValue(value: String): Decoder = Decoder.entries.firstOrNull { it.value == value } ?: AutoCopy
+    fun getDecoderFromValue(value: String): Decoder = Decoder.entries.firstOrNull { it.value == value } ?: Auto
   }
 }
 
