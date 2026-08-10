@@ -1565,6 +1565,8 @@
   <string name="secure_folder_verify">التحقق</string>
   <string name="secure_folder_next">التالي</string>
   <string name="secure_folder_save">حفظ</string>
+  <string name="secure_folder_pin_changed">تم تغيير رمز PIN بنجاح</string>
+  <string name="secure_folder_security_question_changed">تم تحديث سؤال الأمان</string>
   <string name="secure_folder_use_fingerprint">استخدام بصمة الإصبع</string>
   <string name="secure_folder_enable_fingerprint">تفعيل بصمة الإصبع</string>
   <string name="secure_folder_disable_fingerprint">تعطيل بصمة الإصبع</string>

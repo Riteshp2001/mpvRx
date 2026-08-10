@@ -1474,6 +1474,8 @@
   <string name="secure_folder_verify">वेरिफाई करें</string>
   <string name="secure_folder_next">अगला</string>
   <string name="secure_folder_save">सेव करें</string>
+  <string name="secure_folder_pin_changed">PIN सफलतापूर्वक बदल दिया गया</string>
+  <string name="secure_folder_security_question_changed">सुरक्षा प्रश्न अपडेट हो गया</string>
   <string name="secure_folder_use_fingerprint">फिंगरप्रिंट इस्तेमाल करें</string>
   <string name="secure_folder_enable_fingerprint">फिंगरप्रिंट सक्षम करें</string>
   <string name="secure_folder_disable_fingerprint">फिंगरप्रिंट अक्षम करें</string>

@@ -1565,6 +1565,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="secure_folder_verify">Überprüfen</string>
   <string name="secure_folder_next">Weiter</string>
   <string name="secure_folder_save">Speichern</string>
+  <string name="secure_folder_pin_changed">PIN erfolgreich geändert</string>
+  <string name="secure_folder_security_question_changed">Sicherheitsfrage aktualisiert</string>
   <string name="secure_folder_use_fingerprint">Fingerabdruck verwenden</string>
   <string name="secure_folder_enable_fingerprint">Fingerabdruck aktivieren</string>
   <string name="secure_folder_disable_fingerprint">Fingerabdruck deaktivieren</string>

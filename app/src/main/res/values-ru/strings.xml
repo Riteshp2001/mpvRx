@@ -1565,6 +1565,8 @@
   <string name="secure_folder_verify">Проверить</string>
   <string name="secure_folder_next">Далее</string>
   <string name="secure_folder_save">Сохранить</string>
+  <string name="secure_folder_pin_changed">PIN-код успешно изменён</string>
+  <string name="secure_folder_security_question_changed">Контрольный вопрос обновлён</string>
   <string name="secure_folder_use_fingerprint">Использовать отпечаток пальца</string>
   <string name="secure_folder_enable_fingerprint">Включить отпечаток пальца</string>
   <string name="secure_folder_disable_fingerprint">Отключить отпечаток пальца</string>

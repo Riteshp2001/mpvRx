@@ -76,6 +76,7 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.sort.SortUtils
+import android.widget.Toast
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
@@ -95,6 +96,9 @@ data object SecureFolderScreen : Screen {
     val backstack = LocalBackStack.current
     val viewModel: SecureFolderViewModel =
       viewModel(factory = SecureFolderViewModel.factory(context.applicationContext as android.app.Application))
+
+    val pinChangedMessage = stringResource(R.string.secure_folder_pin_changed)
+    val securityQuestionChangedMessage = stringResource(R.string.secure_folder_security_question_changed)
 
     val browserPreferences = koinInject<BrowserPreferences>()
     val appearancePreferences = koinInject<AppearancePreferences>()
@@ -597,12 +601,14 @@ data object SecureFolderScreen : Screen {
       isOpen = changePinOpen,
       preferences = viewModel.preferences,
       onDismiss = { changePinOpen = false },
+      onChanged = { Toast.makeText(context, pinChangedMessage, Toast.LENGTH_SHORT).show() },
     )
 
     ChangeSecurityQuestionDialog(
       isOpen = changeSecurityQuestionOpen,
       preferences = viewModel.preferences,
       onDismiss = { changeSecurityQuestionOpen = false },
+      onChanged = { Toast.makeText(context, securityQuestionChangedMessage, Toast.LENGTH_SHORT).show() },
     )
 
     VideoSortDialog(

@@ -12,12 +12,9 @@ package app.gyrolet.mpvrx.ui.securefolder
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -28,16 +25,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
+import app.gyrolet.mpvrx.presentation.components.ExposedTextDropDownMenu
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * "Change PIN" and "Change Security Question" dialogs for the Secure Folder overflow menu /
@@ -107,7 +102,7 @@ fun ChangePinDialog(
             PinField(
               value = currentPin,
               onValueChange = {
-                currentPin = it.filter(Char::isDigit).take(8)
+                currentPin = it.filter(Char::isDigit).take(4)
                 errorRes = null
               },
               showPin = showPin,
@@ -119,7 +114,7 @@ fun ChangePinDialog(
             PinField(
               value = newPin,
               onValueChange = {
-                newPin = it.filter(Char::isDigit).take(8)
+                newPin = it.filter(Char::isDigit).take(4)
                 errorRes = null
               },
               showPin = showPin,
@@ -129,7 +124,7 @@ fun ChangePinDialog(
             PinField(
               value = confirmPin,
               onValueChange = {
-                confirmPin = it.filter(Char::isDigit).take(8)
+                confirmPin = it.filter(Char::isDigit).take(4)
                 errorRes = null
               },
               showPin = showPin,
@@ -180,7 +175,8 @@ fun ChangeSecurityQuestionDialog(
   var step by rememberSaveable(isOpen) { mutableStateOf(AccountDialogStep.VERIFY_CURRENT_PIN) }
   var currentPin by rememberSaveable(isOpen) { mutableStateOf("") }
   var showPin by rememberSaveable(isOpen) { mutableStateOf(false) }
-  var question by rememberSaveable(isOpen) { mutableStateOf("") }
+  val presets = SECURITY_QUESTION_PRESET_RES_IDS.map { stringResource(it) }.toImmutableList()
+  var question by rememberSaveable(isOpen, presets) { mutableStateOf(presets.first()) }
   var answer by rememberSaveable(isOpen) { mutableStateOf("") }
   var errorRes by rememberSaveable(isOpen) { mutableStateOf<Int?>(null) }
 
@@ -225,7 +221,7 @@ fun ChangeSecurityQuestionDialog(
             PinField(
               value = currentPin,
               onValueChange = {
-                currentPin = it.filter(Char::isDigit).take(8)
+                currentPin = it.filter(Char::isDigit).take(4)
                 errorRes = null
               },
               showPin = showPin,
@@ -234,12 +230,11 @@ fun ChangeSecurityQuestionDialog(
               onDone = ::submit,
             )
           AccountDialogStep.ENTER_NEW -> {
-            OutlinedTextField(
-              value = question,
-              onValueChange = { question = it },
-              label = { Text(stringResource(R.string.secure_folder_question)) },
-              singleLine = true,
-              modifier = Modifier.fillMaxWidth(),
+            ExposedTextDropDownMenu(
+              selectedValue = question,
+              options = presets,
+              label = stringResource(R.string.secure_folder_security_question),
+              onValueChangedEvent = { question = it },
             )
             OutlinedTextField(
               value = answer,
