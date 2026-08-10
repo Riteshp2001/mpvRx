@@ -290,7 +290,6 @@ private fun NormalTopBar(
           )
         }
       }
-      additionalActions()
       if (onSortClick != null) {
         IconButton(
           onClick = onSortClick,
@@ -304,6 +303,7 @@ private fun NormalTopBar(
           )
         }
       }
+      additionalActions()
       if (onSettingsClick != null) {
         IconButton(
           onClick = onSettingsClick,
