@@ -1609,7 +1609,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="secure_folder_moved_partial">Se han movido %1$d, fallaron %2$d</string>
   <string name="secure_folder_move_failed">Error al mover archivos a Carpeta segura</string>
   <string name="secure_folder_error_incorrect_pin">PIN incorrecto</string>
-  <string name="secure_folder_error_pin_min_digits">El PIN debe tener al menos 4 dígitos</string>
+  <string name="secure_folder_error_pin_min_digits">El PIN debe tener 4 dígitos</string>
   <string name="secure_folder_error_pins_dont_match">Los PIN no coinciden</string>
   <string name="secure_folder_error_answer_question">Por favor, responde a la pregunta de seguridad</string>
   <string name="secure_folder_error_fill_both_fields">Por favor, rellena ambos campos</string>
