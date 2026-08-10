@@ -50,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -186,6 +187,15 @@ private fun MiniPlayerContent(
 
   val isVideoMode = !isAudioOnlyItem && enableVideoMiniPlayer
 
+  DisposableEffect(isVideoMode) {
+    if (isVideoMode) {
+      PlaybackSession.setPropertyBoolean("sub-visibility", false)
+    }
+    onDispose {
+      PlaybackSession.setPropertyBoolean("sub-visibility", true)
+    }
+  }
+
   val coverArtPath =
     currentItem?.originalUri?.takeIf { it.isNotBlank() }
       ?: currentItem?.playableUri?.takeIf { it.isNotBlank() }
@@ -300,6 +310,7 @@ private fun MiniPlayerContent(
                 holder.addCallback(object : SurfaceHolder.Callback {
                   override fun surfaceCreated(holder: SurfaceHolder) {
                     PlaybackSession.bindSurface(holder.surface, owner = this@apply)
+                    PlaybackSession.setPropertyBoolean("sub-visibility", false)
                   }
 
                   override fun surfaceChanged(
@@ -315,6 +326,7 @@ private fun MiniPlayerContent(
 
                   override fun surfaceDestroyed(holder: SurfaceHolder) {
                     PlaybackSession.unbindSurface(this@apply)
+                    PlaybackSession.setPropertyBoolean("sub-visibility", true)
                   }
                 })
               }
