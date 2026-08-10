@@ -46,10 +46,12 @@ class App :
   Application.ActivityLifecycleCallbacks {
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
   private val networkAutoConnectStarted = AtomicBoolean(false)
+  private val metadataMaintenanceStarted = AtomicBoolean(false)
   private var startedActivityCount = 0
 
   companion object {
     private const val TAG = "App"
+    private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
   }
 
   override fun onCreate() {
@@ -98,24 +100,9 @@ class App :
       }
     }
 
-    // Perform cache maintenance on app startup (non-blocking).
-    // Resolve the repository lazily inside the coroutine so Room DB construction
-    // (which registers 8 migrations and opens the SQLite file) happens on the
-    // background dispatcher instead of contending with first-frame work on the
-    // main thread. See issue 1.1 in the startup audit.
-    applicationScope.launch {
-      runCatching {
-        val metadataCache: VideoMetadataCacheRepository = getKoin().get()
-        metadataCache.performMaintenance()
-      }
-    }
-
-    // Note: TextMate grammar/theme assets for the script editor are no longer
-    // pre-loaded here. They are initialized lazily on first use by
-    // ScriptEditorTextMate.ensureInitialized() in MpvScriptEditor.kt, which
-    // already has a thread-safe double-checked init. Loading them on every
-    // cold start wasted I/O + JSON parse time for a feature most users never
-    // open. See issue 1.2 in the startup audit.
+    // TextMate grammar/theme assets for the script editor are initialized lazily on first use.
+    // Metadata cache maintenance is also intentionally not started here: Room/file validation can
+    // wait until the app has reached foreground and settled after its first frames.
 
     // MediaStore is Android's source of truth for the normal library. Do not trigger a recursive
     // scan of the entire external-storage root from process startup: on large libraries that can
@@ -126,6 +113,7 @@ class App :
   override fun onActivityStarted(activity: Activity) {
     if (startedActivityCount++ == 0) {
       getKoin().get<app.gyrolet.mpvrx.domain.syncplay.SyncplayManager>().onAppForegrounded()
+      scheduleMetadataMaintenanceOnce()
     }
   }
 
@@ -168,6 +156,23 @@ class App :
   ) = Unit
 
   override fun onActivityDestroyed(activity: Activity) = Unit
+
+  private fun scheduleMetadataMaintenanceOnce() {
+    if (!metadataMaintenanceStarted.compareAndSet(false, true)) return
+    applicationScope.launch(Dispatchers.IO) {
+      try {
+        delay(POST_START_MAINTENANCE_DELAY_MS)
+        val metadataCache: VideoMetadataCacheRepository = getKoin().get()
+        metadataCache.performMaintenance()
+      } catch (cancellation: CancellationException) {
+        metadataMaintenanceStarted.set(false)
+        throw cancellation
+      } catch (error: Exception) {
+        metadataMaintenanceStarted.set(false)
+        Log.w(TAG, "Deferred metadata maintenance failed", error)
+      }
+    }
+  }
 
   /** Starts saved-share auto-connect in process scope so Activity recreation cannot cancel it. */
   internal fun autoConnectNetworksOnce() {
