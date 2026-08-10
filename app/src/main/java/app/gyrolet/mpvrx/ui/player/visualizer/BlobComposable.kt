@@ -95,8 +95,47 @@ private fun <T> VisualizerOverlay(
   features: AudioFeatures,
   factory: (android.content.Context, AudioFeatures, VisualizerPalette) -> T,
 ) where T : GLSurfaceView, T : PaletteConsumer {
+  val context = LocalContext.current
+  val scope = rememberCoroutineScope()
+  val realAnalyzerActive = remember(features) { AtomicBoolean(false) }
+  var hasRecordPermission by remember {
+    mutableStateOf(
+      ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+        PackageManager.PERMISSION_GRANTED,
+    )
+  }
+  val recordPermissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      hasRecordPermission = granted
+    }
+
   LaunchedEffect(volumeScale) {
     features.volumeScale = volumeScale
+  }
+  LaunchedEffect(hasRecordPermission) {
+    if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+  }
+
+  // The overlay itself is only composed while a visualizer is visible. Keep Android's audio
+  // capture pipeline scoped to this lifecycle so album-art-only playback does not hold a Visualizer
+  // effect, poll capture freshness, or repeatedly retry the audio session in the background.
+  DisposableEffect(hasRecordPermission, features) {
+    val analyzer = if (hasRecordPermission) AudioSpectrumAnalyzer(features) else null
+    val job =
+      scope.launch(Dispatchers.Default) {
+        while (isActive && analyzer != null) {
+          val captureFresh = features.active && features.hasRecentCapture(1_500_000_000L)
+          if (!realAnalyzerActive.get() || !captureFresh) {
+            realAnalyzerActive.set(analyzer.start(0).isSuccess)
+          }
+          delay(if (realAnalyzerActive.get()) 1_500L else 400L)
+        }
+      }
+    onDispose {
+      job.cancel()
+      realAnalyzerActive.set(false)
+      analyzer?.stop(resetFeatures = false)
+    }
   }
 
   AndroidView(
@@ -124,58 +163,24 @@ private fun <T> VisualizerOverlay(
   )
 }
 
-/** One capture pipeline shared by every renderer and the audio-reactive seekbar. */
+/** Lightweight feature state shared by every renderer and the audio-reactive seekbar. */
 @Composable
 internal fun rememberAudioVisualizerFeatures(
   isPlaying: Boolean,
   volumeScale: Float,
 ): AudioFeatures {
-  val context = LocalContext.current
   val features = remember { AudioFeatures() }
   val scope = rememberCoroutineScope()
-  val realAnalyzerActive = remember { AtomicBoolean(false) }
-  var hasRecordPermission by remember {
-    mutableStateOf(
-      ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-        PackageManager.PERMISSION_GRANTED,
-    )
-  }
-  val recordPermissionLauncher =
-    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      hasRecordPermission = granted
-    }
 
   LaunchedEffect(volumeScale) {
     features.volumeScale = volumeScale.coerceIn(0f, 1f)
-  }
-  LaunchedEffect(hasRecordPermission) {
-    if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-  }
-
-  DisposableEffect(hasRecordPermission) {
-    val analyzer = if (hasRecordPermission) AudioSpectrumAnalyzer(features) else null
-    val job =
-      scope.launch(Dispatchers.Default) {
-        while (isActive && analyzer != null) {
-          val captureFresh = features.active && features.hasRecentCapture(1_500_000_000L)
-          if (!realAnalyzerActive.get() || !captureFresh) {
-            realAnalyzerActive.set(analyzer.start(0).isSuccess)
-          }
-          delay(if (realAnalyzerActive.get()) 1_500L else 400L)
-        }
-      }
-    onDispose {
-      job.cancel()
-      realAnalyzerActive.set(false)
-      analyzer?.stop(resetFeatures = false)
-    }
   }
 
   DisposableEffect(isPlaying) {
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive) {
-          val realCapture = realAnalyzerActive.get() && features.hasRecentCapture(1_500_000_000L)
+          val realCapture = features.active && features.hasRecentCapture(1_500_000_000L)
           if (!realCapture && isPlaying) {
             val time = System.nanoTime() / 1_000_000_000f
             features.energy = 0.025f + sin(time * 0.72f) * 0.006f
