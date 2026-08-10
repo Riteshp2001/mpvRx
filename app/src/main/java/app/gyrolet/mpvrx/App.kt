@@ -14,12 +14,10 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import android.media.MediaScannerConnection
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
@@ -29,10 +27,9 @@ import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.GlobalExceptionHandler
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.AndroidNativeCompat
-import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import `is`.xyz.mpv.FastThumbnails
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -53,9 +50,6 @@ class App :
 
   companion object {
     private const val TAG = "App"
-    private const val LAUNCH_SCAN_PREFS = "launch_media_scan"
-    private const val LAST_LAUNCH_SCAN_MS = "last_launch_scan_ms"
-    private const val LAUNCH_SCAN_INTERVAL_MS = 24L * 60L * 60L * 1000L
   }
 
   override fun onCreate() {
@@ -123,11 +117,10 @@ class App :
     // cold start wasted I/O + JSON parse time for a feature most users never
     // open. See issue 1.2 in the startup audit.
 
-    applicationScope.launch {
-      runCatching {
-        triggerMediaScanOnLaunch()
-      }
-    }
+    // MediaStore is Android's source of truth for the normal library. Do not trigger a recursive
+    // scan of the entire external-storage root from process startup: on large libraries that can
+    // wake storage for minutes and duplicate work the platform already performs when media changes.
+    // Explicit library refreshes and normal MediaStore notifications still invalidate app caches.
   }
 
   override fun onActivityStarted(activity: Activity) {
@@ -208,39 +201,4 @@ class App :
    * of [onCreate]).
    */
   private fun getKoin() = GlobalContext.get()
-
-  private fun triggerMediaScanOnLaunch() {
-    try {
-      if (!shouldRunLaunchMediaScan()) {
-        Log.d(TAG, "Skipped launch media scan; last scan was recent")
-        return
-      }
-
-      val externalStorage = Environment.getExternalStorageDirectory()
-
-      MediaScannerConnection.scanFile(
-        this,
-        arrayOf(externalStorage.absolutePath),
-        null,
-      ) { path, _ ->
-        Log.d(TAG, "Launch media scan completed for: $path")
-        MediaLibraryEvents.notifyChanged()
-      }
-
-      Log.d(TAG, "Triggered media scan on app launch")
-    } catch (error: Exception) {
-      Log.e(TAG, "Failed to trigger media scan on launch", error)
-    }
-  }
-
-  private fun shouldRunLaunchMediaScan(): Boolean {
-    val now = System.currentTimeMillis()
-    val prefs = getSharedPreferences(LAUNCH_SCAN_PREFS, MODE_PRIVATE)
-    val lastScan = prefs.getLong(LAST_LAUNCH_SCAN_MS, 0L)
-    if (now - lastScan < LAUNCH_SCAN_INTERVAL_MS) {
-      return false
-    }
-    prefs.edit().putLong(LAST_LAUNCH_SCAN_MS, now).apply()
-    return true
-  }
 }
