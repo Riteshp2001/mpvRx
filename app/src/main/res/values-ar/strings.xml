@@ -115,6 +115,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">البقاء على الفيديو الحالي عند انتهائه</string>
   <string name="pref_auto_pip_title">صورة داخل صورة تلقائيًا</string>
   <string name="pref_auto_pip_summary">الدخول تلقائيًا إلى وضع PIP عند الضغط على الرئيسية أو الرجوع</string>
+  <string name="pref_enable_video_mini_player_title">تفعيل المشغل المصغر للفيديو</string>
+  <string name="pref_enable_video_mini_player_summary">تصغير تشغيل الفيديو إلى مشغل مصغر عائم عند الضغط على زر الرجوع</string>
   <string name="pref_player_keep_screen_on_when_paused_title">إبقاء الشاشة قيد التشغيل عند الإيقاف المؤقت</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">تبقى الشاشة مستيقظة أثناء إيقاف الفيديو مؤقتًا</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">يمكن إطفاء الشاشة أثناء إيقاف الفيديو مؤقتًا</string>

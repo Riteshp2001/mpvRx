@@ -115,6 +115,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">終了後も現在の動画に留まります</string>
   <string name="pref_auto_pip_title">自動ピクチャーインピクチャー</string>
   <string name="pref_auto_pip_summary">ホームまたは戻るを押したときに自動的にPIPモードへ移行します</string>
+  <string name="pref_enable_video_mini_player_title">動画ミニプレーヤーを有効化</string>
+  <string name="pref_enable_video_mini_player_summary">戻るボタンを押したときに動画再生をフローティングミニプレーヤーに最小化</string>
   <string name="pref_player_keep_screen_on_when_paused_title">一時停止中も画面をオンにする</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">動画の一時停止中も画面を点灯したままにします</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">動画の一時停止中に画面をオフにできます</string>

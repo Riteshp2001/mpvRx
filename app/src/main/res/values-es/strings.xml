@@ -115,6 +115,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">Permanecer en el vídeo actual cuando termine</string>
   <string name="pref_auto_pip_title">Imagen en imagen automática</string>
   <string name="pref_auto_pip_summary">Entrar automáticamente en modo PIP al pulsar Inicio o Atrás</string>
+  <string name="pref_enable_video_mini_player_title">Activar minireproductor de vídeo</string>
+  <string name="pref_enable_video_mini_player_summary">Minimizar la reproducción de vídeo en un minireproductor flotante al pulsar Atrás</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Mantener la pantalla encendida al pausar</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">La pantalla permanece encendida mientras el vídeo está en pausa</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">La pantalla puede apagarse mientras el vídeo está en pausa</string>
