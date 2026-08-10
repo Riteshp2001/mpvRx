@@ -9,6 +9,7 @@
 
 package app.gyrolet.mpvrx.preferences
 
+import app.gyrolet.mpvrx.preferences.preference.DependentBooleanPreference
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 import app.gyrolet.mpvrx.ui.player.AmbientVisualMode
@@ -120,7 +121,9 @@ class PlayerPreferences(
   val autoplayNextVideo = preferenceStore.getBoolean("autoplay_next_video", true)
 
   val autoPiPOnNavigation = preferenceStore.getBoolean("auto_pip_on_navigation", false)
-  val enableVideoMiniPlayer = preferenceStore.getBoolean("enable_video_mini_player", false)
+  private val videoBackgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
+  private val storedEnableVideoMiniPlayer = preferenceStore.getBoolean("enable_video_mini_player", false)
+  val enableVideoMiniPlayer = DependentBooleanPreference(storedEnableVideoMiniPlayer, videoBackgroundPlayback)
 
   val keepScreenOnWhenPaused = preferenceStore.getBoolean("keep_screen_on_when_paused", false)
   val autoplayAfterScreenUnlock = preferenceStore.getBoolean("autoplay_after_screen_unlock", false)

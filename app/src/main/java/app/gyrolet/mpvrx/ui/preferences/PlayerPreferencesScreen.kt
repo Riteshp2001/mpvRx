@@ -87,6 +87,7 @@ object PlayerPreferencesScreen : Screen {
       ) { _ -> }
     var showTemplateDialog by remember { mutableStateOf(false) }
     var templateDraft by remember { mutableStateOf("") }
+    var showVideoMiniPlayerDependencyDialog by remember { mutableStateOf(false) }
     Scaffold(
       topBar = {
         TopAppBar(
@@ -158,6 +159,10 @@ object PlayerPreferencesScreen : Screen {
                 value = videoBackgroundPlayback,
                 onValueChange = { enabled ->
                   audioPreferences.backgroundPlayback.set(enabled)
+                  if (!enabled) {
+                    preferences.enableVideoMiniPlayer.set(false)
+                    showVideoMiniPlayerDependencyDialog = false
+                  }
                   if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED
@@ -265,7 +270,16 @@ object PlayerPreferencesScreen : Screen {
               val enableVideoMiniPlayer by preferences.enableVideoMiniPlayer.collectAsState()
               SwitchPreference(
                 value = enableVideoMiniPlayer,
-                onValueChange = preferences.enableVideoMiniPlayer::set,
+                onValueChange = { enabled ->
+                  when {
+                    !enabled -> preferences.enableVideoMiniPlayer.set(false)
+                    videoBackgroundPlayback -> preferences.enableVideoMiniPlayer.set(true)
+                    else -> {
+                      preferences.enableVideoMiniPlayer.set(false)
+                      showVideoMiniPlayerDependencyDialog = true
+                    }
+                  }
+                },
                 title = { Text(stringResource(R.string.pref_enable_video_mini_player_title)) },
                 summary = {
                   Text(
@@ -951,6 +965,40 @@ object PlayerPreferencesScreen : Screen {
           }
         }
       }
+    }
+    if (showVideoMiniPlayerDependencyDialog) {
+      AlertDialog(
+        onDismissRequest = { showVideoMiniPlayerDependencyDialog = false },
+        title = { Text(stringResource(R.string.pref_video_mini_player_dependency_title)) },
+        text = { Text(stringResource(R.string.pref_video_mini_player_dependency_message)) },
+        confirmButton = {
+          TextButton(
+            onClick = {
+              audioPreferences.backgroundPlayback.set(true)
+              preferences.enableVideoMiniPlayer.set(true)
+              showVideoMiniPlayerDependencyDialog = false
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+              ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+              }
+            },
+          ) {
+            Text(stringResource(R.string.pref_video_mini_player_dependency_confirm))
+          }
+        },
+        dismissButton = {
+          TextButton(
+            onClick = {
+              preferences.enableVideoMiniPlayer.set(false)
+              showVideoMiniPlayerDependencyDialog = false
+            },
+          ) {
+            Text(stringResource(R.string.generic_cancel))
+          }
+        },
+      )
     }
     if (showTemplateDialog) {
       AlertDialog(

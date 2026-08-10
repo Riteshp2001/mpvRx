@@ -79,6 +79,11 @@ class TorrentSelectionViewModel(
 
   fun initialize(value: TorrentSelectionInput) {
     if (input != null) return
+    open(value)
+  }
+
+  /** Opens a new torrent in the same picker host, replacing any previous picker session. */
+  fun open(value: TorrentSelectionInput) {
     input = value
     load(value)
   }
