@@ -33,8 +33,13 @@ internal class ParticleFeedbackRenderer(
   @Volatile private var reducedMotionEnabled = reducedMotion
 
   private object Cfg {
-    const val SIM_SIZE = 512
+    // 384² still provides ~147k particles, but removes ~44% of the simulation/point work compared
+    // with 512². Trails carry most of the perceived density, so the visual difference is tiny on a
+    // phone while GPU bandwidth and the dummy vertex allocation fall substantially.
+    const val SIM_SIZE = 384
     const val NUM_PARTICLES = SIM_SIZE * SIM_SIZE
+    const val TRAIL_SCALE = 0.65f
+    const val MIPMAP_INTERVAL_FRAMES = 2L
     const val DECAY = 0.880f
     const val DIFFUSE = 0.004f
     const val BRIGHT = 0.008f
@@ -81,6 +86,8 @@ internal class ParticleFeedbackRenderer(
 
   private var viewportWidth = 1
   private var viewportHeight = 1
+  private var trailWidth = 1
+  private var trailHeight = 1
 
   // Uniform locations
   private var uSimState = -1
@@ -194,6 +201,8 @@ internal class ParticleFeedbackRenderer(
   override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
     viewportWidth = max(2, width)
     viewportHeight = max(2, height)
+    trailWidth = max(2, (viewportWidth * Cfg.TRAIL_SCALE).toInt())
+    trailHeight = max(2, (viewportHeight * Cfg.TRAIL_SCALE).toInt())
     allocTrailBuffers()
   }
 
@@ -235,12 +244,12 @@ internal class ParticleFeedbackRenderer(
     /* 2. Decay + Diffuse Previous Trail */
     val nextTrail = 1 - trailSrc
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, trailFbo[nextTrail])
-    GLES30.glViewport(0, 0, viewportWidth, viewportHeight)
+    GLES30.glViewport(0, 0, trailWidth, trailHeight)
     GLES30.glUseProgram(pDecay)
     GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[trailSrc])
     GLES30.glUniform1i(uDecayTrail, 0)
-    GLES30.glUniform2f(uDecayTexel, 1f / viewportWidth, 1f / viewportHeight)
+    GLES30.glUniform2f(uDecayTexel, 1f / trailWidth, 1f / trailHeight)
     GLES30.glUniform1f(uDecayFactor, Cfg.DECAY)
     GLES30.glUniform1f(uDecayDiff, Cfg.DIFFUSE)
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
@@ -254,7 +263,7 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1i(uPtsState, 0)
     GLES30.glUniform1i(uPtsSimSize, Cfg.SIM_SIZE)
     GLES30.glUniform1f(uPtsAspect, aspect)
-    GLES30.glUniform1f(uPtsViewportHeight, viewportHeight.toFloat())
+    GLES30.glUniform1f(uPtsViewportHeight, trailHeight.toFloat())
     GLES30.glUniform1f(uPtsHue, hueCurrent)
     GLES30.glUniform1f(uPtsEnergy, energySmoothed)
     GLES30.glUniform1f(uPtsBeat, beatSmoothed)
@@ -268,11 +277,13 @@ internal class ParticleFeedbackRenderer(
     GLES30.glDisable(GLES30.GL_BLEND)
     trailSrc = nextTrail
 
-    /* 4. Generate Mipmaps for Bloom */
+    /* 4. Generate bloom mip levels every other frame. The base trail is still updated every frame. */
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
     GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[trailSrc])
-    GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)
+    if (frameCounter % Cfg.MIPMAP_INTERVAL_FRAMES == 0L) {
+      GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)
+    }
 
     /* 5. Composite Pass to Screen with Dynamic Colors & Theme Adaptation */
     val primaryRgb = requestedPalette.primaryRgb()
@@ -385,7 +396,8 @@ internal class ParticleFeedbackRenderer(
 
     GLES30.glBindVertexArray(dummyVao)
     GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, dummyVbo)
-    val dummyData = FloatArray(Cfg.NUM_PARTICLES * 4)
+    // Attribute 0 consumes one float per point. The previous 4-float allocation was never read.
+    val dummyData = FloatArray(Cfg.NUM_PARTICLES)
     GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, dummyData.size * Float.SIZE_BYTES, GlUtils.floatBuffer(dummyData), GLES30.GL_STATIC_DRAW)
     GLES30.glEnableVertexAttribArray(0)
     GLES30.glVertexAttribPointer(0, 1, GLES30.GL_FLOAT, false, 0, 0)
@@ -419,10 +431,12 @@ internal class ParticleFeedbackRenderer(
     }
     GLES30.glGenTextures(2, trailTex, 0)
     GLES30.glGenFramebuffers(2, trailFbo, 0)
-    val levels = max(1, log2(max(viewportWidth, viewportHeight).toDouble()).toInt() + 1)
+    // Bloom/feedback is intentionally rendered below display resolution and upscaled in the final
+    // composite. At 0.65x this cuts trail FBO pixels by ~58% while the soft feedback hides scaling.
+    val levels = max(1, log2(max(trailWidth, trailHeight).toDouble()).toInt() + 1)
     for (i in 0 until 2) {
       GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[i])
-      GLES30.glTexStorage2D(GLES30.GL_TEXTURE_2D, levels, GLES30.GL_RGBA16F, viewportWidth, viewportHeight)
+      GLES30.glTexStorage2D(GLES30.GL_TEXTURE_2D, levels, GLES30.GL_RGBA16F, trailWidth, trailHeight)
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR)
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)

@@ -95,45 +95,9 @@ private fun <T> VisualizerOverlay(
   features: AudioFeatures,
   factory: (android.content.Context, AudioFeatures, VisualizerPalette) -> T,
 ) where T : GLSurfaceView, T : PaletteConsumer {
-  LaunchedEffect(volumeScale) {
-    features.volumeScale = volumeScale
-  }
-
-  AndroidView(
-    factory = { ctx ->
-      factory(ctx, features, palette).apply {
-        layoutParams =
-          ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-          )
-      }
-    },
-    modifier = modifier,
-    update = { view ->
-      view.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
-      view.updatePalette(palette)
-      if (isSheetOpen) {
-        view.setZOrderOnTop(false)
-        view.setZOrderMediaOverlay(true)
-      } else {
-        view.setZOrderMediaOverlay(false)
-        view.setZOrderOnTop(true)
-      }
-    },
-  )
-}
-
-/** One capture pipeline shared by every renderer and the audio-reactive seekbar. */
-@Composable
-internal fun rememberAudioVisualizerFeatures(
-  isPlaying: Boolean,
-  volumeScale: Float,
-): AudioFeatures {
   val context = LocalContext.current
-  val features = remember { AudioFeatures() }
   val scope = rememberCoroutineScope()
-  val realAnalyzerActive = remember { AtomicBoolean(false) }
+  val realAnalyzerActive = remember(features) { AtomicBoolean(false) }
   var hasRecordPermission by remember {
     mutableStateOf(
       ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
@@ -146,14 +110,19 @@ internal fun rememberAudioVisualizerFeatures(
     }
 
   LaunchedEffect(volumeScale) {
-    features.volumeScale = volumeScale.coerceIn(0f, 1f)
+    features.volumeScale = volumeScale
   }
   LaunchedEffect(hasRecordPermission) {
     if (!hasRecordPermission) recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
   }
 
-  DisposableEffect(hasRecordPermission) {
-    val analyzer = if (hasRecordPermission) AudioSpectrumAnalyzer(features) else null
+  // The overlay itself is only composed while a visualizer is visible. Keep Android's audio
+  // capture pipeline scoped to this lifecycle so album-art-only playback does not hold a Visualizer
+  // effect, poll capture freshness, or repeatedly retry the audio session in the background.
+  // A modal sheet covers the renderer, so suspend capture there too and let the UI consume zero
+  // analyzer work until the visualizer is visible again.
+  DisposableEffect(hasRecordPermission, features, isSheetOpen) {
+    val analyzer = if (hasRecordPermission && !isSheetOpen) AudioSpectrumAnalyzer(features) else null
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive && analyzer != null) {
@@ -171,11 +140,53 @@ internal fun rememberAudioVisualizerFeatures(
     }
   }
 
+  AndroidView(
+    factory = { ctx ->
+      factory(ctx, features, palette).apply {
+        layoutParams =
+          ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+          )
+      }
+    },
+    modifier = modifier,
+    update = { view ->
+      view.updatePalette(palette)
+      if (isSheetOpen) {
+        // A sheet fully covers the expensive GLSurfaceView. Keep the last frame but stop the
+        // continuous render loop (particle/galaxy renderers otherwise burn GPU underneath it).
+        view.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        view.requestRender()
+        view.setZOrderOnTop(false)
+        view.setZOrderMediaOverlay(true)
+      } else {
+        view.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        view.setZOrderMediaOverlay(false)
+        view.setZOrderOnTop(true)
+      }
+    },
+  )
+}
+
+/** Lightweight feature state shared by every renderer and the audio-reactive seekbar. */
+@Composable
+internal fun rememberAudioVisualizerFeatures(
+  isPlaying: Boolean,
+  volumeScale: Float,
+): AudioFeatures {
+  val features = remember { AudioFeatures() }
+  val scope = rememberCoroutineScope()
+
+  LaunchedEffect(volumeScale) {
+    features.volumeScale = volumeScale.coerceIn(0f, 1f)
+  }
+
   DisposableEffect(isPlaying) {
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive) {
-          val realCapture = realAnalyzerActive.get() && features.hasRecentCapture(1_500_000_000L)
+          val realCapture = features.active && features.hasRecentCapture(1_500_000_000L)
           if (!realCapture && isPlaying) {
             val time = System.nanoTime() / 1_000_000_000f
             features.energy = 0.025f + sin(time * 0.72f) * 0.006f

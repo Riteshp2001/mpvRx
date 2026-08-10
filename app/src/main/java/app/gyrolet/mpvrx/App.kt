@@ -14,12 +14,10 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import android.media.MediaScannerConnection
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
@@ -29,13 +27,15 @@ import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.GlobalExceptionHandler
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.AndroidNativeCompat
-import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
+import app.gyrolet.mpvrx.ui.player.PlaybackPhase
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import `is`.xyz.mpv.FastThumbnails
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.annotation.KoinExperimentalAPI
@@ -49,13 +49,15 @@ class App :
   Application.ActivityLifecycleCallbacks {
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
   private val networkAutoConnectStarted = AtomicBoolean(false)
+  private val metadataMaintenanceStarted = AtomicBoolean(false)
+  private val fastThumbnailsStarted = AtomicBoolean(false)
   private var startedActivityCount = 0
 
   companion object {
     private const val TAG = "App"
-    private const val LAUNCH_SCAN_PREFS = "launch_media_scan"
-    private const val LAST_LAUNCH_SCAN_MS = "last_launch_scan_ms"
-    private const val LAUNCH_SCAN_INTERVAL_MS = 24L * 60L * 60L * 1000L
+    private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
+    private const val THUMBNAIL_WARMUP_DELAY_MS = 1_500L
+    private const val IDLE_MPV_CORE_GRACE_MS = 3L * 60L * 1000L
   }
 
   override fun onCreate() {
@@ -79,9 +81,7 @@ class App :
     registerActivityLifecycleCallbacks(this)
 
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
-
-    // Native libmpv thumbnail engine used by browser, folder, playlist, and network previews.
-    FastThumbnails.initialize(this)
+    startIdleMpvCoreReaper()
 
     applicationScope.launch {
       runCatching {
@@ -104,35 +104,21 @@ class App :
       }
     }
 
-    // Perform cache maintenance on app startup (non-blocking).
-    // Resolve the repository lazily inside the coroutine so Room DB construction
-    // (which registers 8 migrations and opens the SQLite file) happens on the
-    // background dispatcher instead of contending with first-frame work on the
-    // main thread. See issue 1.1 in the startup audit.
-    applicationScope.launch {
-      runCatching {
-        val metadataCache: VideoMetadataCacheRepository = getKoin().get()
-        metadataCache.performMaintenance()
-      }
-    }
+    // TextMate grammar/theme assets for the script editor are initialized lazily on first use.
+    // Metadata cache maintenance and native thumbnail startup are intentionally kept out of the
+    // Application cold-start path so they cannot compete with first composition / first frame.
 
-    // Note: TextMate grammar/theme assets for the script editor are no longer
-    // pre-loaded here. They are initialized lazily on first use by
-    // ScriptEditorTextMate.ensureInitialized() in MpvScriptEditor.kt, which
-    // already has a thread-safe double-checked init. Loading them on every
-    // cold start wasted I/O + JSON parse time for a feature most users never
-    // open. See issue 1.2 in the startup audit.
-
-    applicationScope.launch {
-      runCatching {
-        triggerMediaScanOnLaunch()
-      }
-    }
+    // MediaStore is Android's source of truth for the normal library. Do not trigger a recursive
+    // scan of the entire external-storage root from process startup: on large libraries that can
+    // wake storage for minutes and duplicate work the platform already performs when media changes.
+    // Explicit library refreshes and normal MediaStore notifications still invalidate app caches.
   }
 
   override fun onActivityStarted(activity: Activity) {
     if (startedActivityCount++ == 0) {
       getKoin().get<app.gyrolet.mpvrx.domain.syncplay.SyncplayManager>().onAppForegrounded()
+      scheduleFastThumbnailWarmupOnce()
+      scheduleMetadataMaintenanceOnce()
     }
   }
 
@@ -176,6 +162,71 @@ class App :
 
   override fun onActivityDestroyed(activity: Activity) = Unit
 
+  /**
+   * Keep libmpv warm for quick navigation/re-entry, but do not pin its native decoder/renderer
+   * allocation forever after playback has genuinely ended. collectLatest makes this self-cancelling:
+   * any new load, surface attachment, background session, or other state change aborts the grace
+   * timer before destruction can run.
+   */
+  private fun startIdleMpvCoreReaper() {
+    applicationScope.launch {
+      PlaybackSession.state.collectLatest { state ->
+        val isFullyIdle =
+          state.phase == PlaybackPhase.IDLE &&
+            state.currentItem == null &&
+            !state.surfaceAttached &&
+            PlaybackSession.isInitialized
+        if (!isFullyIdle) return@collectLatest
+
+        delay(IDLE_MPV_CORE_GRACE_MS)
+
+        val latest = PlaybackSession.state.value
+        val stillFullyIdle =
+          latest.phase == PlaybackPhase.IDLE &&
+            latest.currentItem == null &&
+            !latest.surfaceAttached &&
+            PlaybackSession.isInitialized
+        if (stillFullyIdle) {
+          Log.d(TAG, "Destroying libmpv after idle grace period")
+          PlaybackSession.destroy()
+        }
+      }
+    }
+  }
+
+  private fun scheduleFastThumbnailWarmupOnce() {
+    if (!fastThumbnailsStarted.compareAndSet(false, true)) return
+    applicationScope.launch(Dispatchers.Default) {
+      try {
+        delay(THUMBNAIL_WARMUP_DELAY_MS)
+        FastThumbnails.initialize(this@App)
+      } catch (cancellation: CancellationException) {
+        fastThumbnailsStarted.set(false)
+        throw cancellation
+      } catch (error: Exception) {
+        fastThumbnailsStarted.set(false)
+        Log.w(TAG, "Deferred FastThumbnails initialization failed", error)
+      }
+    }
+  }
+
+  private fun scheduleMetadataMaintenanceOnce() {
+    if (!metadataMaintenanceStarted.compareAndSet(false, true)) return
+    applicationScope.launch(Dispatchers.IO) {
+      try {
+        delay(POST_START_MAINTENANCE_DELAY_MS)
+        val metadataCache: VideoMetadataCacheRepository = getKoin().get()
+        metadataCache.performMaintenance()
+      } catch (cancellation: CancellationException) {
+        metadataMaintenanceStarted.set(false)
+        throw cancellation
+      } catch (error: Exception) {
+        metadataMaintenanceStarted.set(false)
+        Log.w(TAG, "Deferred metadata maintenance failed", error)
+      }
+    }
+  }
+
   /** Starts saved-share auto-connect in process scope so Activity recreation cannot cancel it. */
   internal fun autoConnectNetworksOnce() {
     if (!networkAutoConnectStarted.compareAndSet(false, true)) return
@@ -208,39 +259,4 @@ class App :
    * of [onCreate]).
    */
   private fun getKoin() = GlobalContext.get()
-
-  private fun triggerMediaScanOnLaunch() {
-    try {
-      if (!shouldRunLaunchMediaScan()) {
-        Log.d(TAG, "Skipped launch media scan; last scan was recent")
-        return
-      }
-
-      val externalStorage = Environment.getExternalStorageDirectory()
-
-      MediaScannerConnection.scanFile(
-        this,
-        arrayOf(externalStorage.absolutePath),
-        null,
-      ) { path, _ ->
-        Log.d(TAG, "Launch media scan completed for: $path")
-        MediaLibraryEvents.notifyChanged()
-      }
-
-      Log.d(TAG, "Triggered media scan on app launch")
-    } catch (error: Exception) {
-      Log.e(TAG, "Failed to trigger media scan on launch", error)
-    }
-  }
-
-  private fun shouldRunLaunchMediaScan(): Boolean {
-    val now = System.currentTimeMillis()
-    val prefs = getSharedPreferences(LAUNCH_SCAN_PREFS, MODE_PRIVATE)
-    val lastScan = prefs.getLong(LAST_LAUNCH_SCAN_MS, 0L)
-    if (now - lastScan < LAUNCH_SCAN_INTERVAL_MS) {
-      return false
-    }
-    prefs.edit().putLong(LAST_LAUNCH_SCAN_MS, now).apply()
-    return true
-  }
 }

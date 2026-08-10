@@ -42,7 +42,11 @@ class SmbClient(
   private val connection: NetworkConnection,
 ) : NetworkClient {
   companion object {
-    private const val SMB_BUFFER_SIZE = 1024 * 1024
+    // 1 MiB for every transport buffer plus another 1 MiB stream buffer was excessive on phones,
+    // especially when mpv opens multiple range requests while seeking. 512 KiB keeps SMBJ reads
+    // comfortably large without reserving several megabytes per active connection.
+    private const val SMB_TRANSPORT_BUFFER_SIZE = 512 * 1024
+    private const val SMB_STREAM_BUFFER_SIZE = 256 * 1024
 
     private fun newClient(): SMBClient =
       SMBClient(
@@ -51,9 +55,9 @@ class SmbClient(
           .withTransportLayerFactory(AsyncDirectTcpTransportFactory())
           .withTimeout(60000, TimeUnit.MILLISECONDS)
           .withSoTimeout(60000, TimeUnit.MILLISECONDS)
-          .withReadBufferSize(SMB_BUFFER_SIZE)
-          .withWriteBufferSize(SMB_BUFFER_SIZE)
-          .withTransactBufferSize(SMB_BUFFER_SIZE)
+          .withReadBufferSize(SMB_TRANSPORT_BUFFER_SIZE)
+          .withWriteBufferSize(SMB_TRANSPORT_BUFFER_SIZE)
+          .withTransactBufferSize(SMB_TRANSPORT_BUFFER_SIZE)
           .withDialects(
             com.hierynomus.mssmb2.SMB2Dialect.SMB_3_1_1,
             com.hierynomus.mssmb2.SMB2Dialect.SMB_3_0_2,
@@ -280,11 +284,11 @@ class SmbClient(
                   private var currentPosition = offset
                   private var closed = false
                   private var scratch = ByteArray(0)
+                  private val singleByte = ByteArray(1)
 
                   override fun read(): Int {
-                    val buffer = ByteArray(1)
-                    val read = read(buffer, 0, 1)
-                    return if (read == 1) buffer[0].toInt() and 0xFF else -1
+                    val read = read(singleByte, 0, 1)
+                    return if (read == 1) singleByte[0].toInt() and 0xFF else -1
                   }
 
                   override fun read(b: ByteArray): Int = read(b, 0, b.size)
@@ -340,7 +344,7 @@ class SmbClient(
                   }
                 }
 
-              BufferedInputStream(inputStream, SMB_BUFFER_SIZE)
+              BufferedInputStream(inputStream, SMB_STREAM_BUFFER_SIZE)
             } catch (e: Exception) {
               diskShare.close()
               throw IOException("Failed to open SMB file", e)

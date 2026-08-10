@@ -27,10 +27,13 @@ interface RecentlyPlayedDao {
   @Query("SELECT * FROM RecentlyPlayedEntity WHERE filePath = :filePath LIMIT 1")
   suspend fun getByFilePath(filePath: String): RecentlyPlayedEntity?
 
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT 1")
+  // id is the INTEGER PRIMARY KEY and therefore already indexed by SQLite. New history entries are
+  // inserted with autoGenerate=true, so ordering by id avoids building a temporary timestamp sort
+  // for the hot recent-history queries without introducing a database migration solely for indexes.
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY id DESC LIMIT 1")
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
 
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT 1")
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY id DESC LIMIT 1")
   fun observeLastPlayed(): Flow<RecentlyPlayedEntity?>
 
   @Query(
@@ -38,7 +41,7 @@ interface RecentlyPlayedDao {
     SELECT * FROM RecentlyPlayedEntity 
     WHERE (launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list')
     AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
-    ORDER BY timestamp DESC 
+    ORDER BY id DESC 
     LIMIT 1
   """,
   )
@@ -49,7 +52,7 @@ interface RecentlyPlayedDao {
     SELECT * FROM RecentlyPlayedEntity 
     WHERE (launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list')
     AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
-    ORDER BY timestamp DESC 
+    ORDER BY id DESC 
     LIMIT 1
   """,
   )
@@ -59,7 +62,7 @@ interface RecentlyPlayedDao {
     """
     SELECT * FROM RecentlyPlayedEntity 
     WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%')) 
-    ORDER BY timestamp DESC 
+    ORDER BY id DESC 
     LIMIT :limit
   """,
   )
@@ -69,7 +72,7 @@ interface RecentlyPlayedDao {
     """
     SELECT * FROM RecentlyPlayedEntity 
     WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%')) 
-    ORDER BY timestamp DESC 
+    ORDER BY id DESC 
     LIMIT :limit
   """,
   )
@@ -80,7 +83,7 @@ interface RecentlyPlayedDao {
     SELECT * FROM RecentlyPlayedEntity 
     WHERE launchSource = :launchSource
     AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
-    ORDER BY timestamp DESC 
+    ORDER BY id DESC 
     LIMIT :limit
   """,
   )
@@ -155,7 +158,7 @@ interface RecentlyPlayedDao {
     val timestamp: Long,
   )
 
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC")
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY id DESC")
   suspend fun getAllRecentlyPlayed(): List<RecentlyPlayedEntity>
 
   @Query("SELECT COUNT(*) FROM RecentlyPlayedEntity")
