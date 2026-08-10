@@ -12,11 +12,34 @@ package app.gyrolet.mpvrx.utils.media
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.util.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.mediaarea.mediainfo.lib.MediaInfo
+import java.io.File
 
 object MediaInfoOps {
+  // Basic metadata is requested from several entry points (filesystem browser, playlists, recents,
+  // thumbnail fallback and the persistent Room metadata repository). Keep the expensive native
+  // MediaInfo extraction behind one process-wide bounded cache so those paths do not repeatedly
+  // parse the same container during a session. The persistent repository can still provide the
+  // cross-process cache; this layer catches direct callers that previously bypassed it.
+  private const val BASIC_METADATA_CACHE_ENTRIES = 512
+  private val basicMetadataCache = LruCache<String, VideoMetadata>(BASIC_METADATA_CACHE_ENTRIES)
+
+  private fun basicMetadataCacheKey(
+    uri: Uri,
+    fileName: String,
+  ): String {
+    if (uri.scheme.equals("file", ignoreCase = true)) {
+      val file = uri.path?.let(::File)
+      if (file != null) {
+        return "${file.absolutePath}|${file.length()}|${file.lastModified()}"
+      }
+    }
+    return "${uri}|$fileName"
+  }
+
   /**
    * Extract detailed media information from a video file
    */
@@ -315,99 +338,119 @@ object MediaInfoOps {
     fileName: String,
   ): Result<VideoMetadata> =
     withContext(Dispatchers.IO) {
-      runCatching {
-        val contentResolver = context.contentResolver
-        val pfd =
-          contentResolver.openFileDescriptor(uri, "r")
-            ?: return@runCatching VideoMetadata(0L, 0L, 0, 0, 0f, false)
+      val cacheKey = basicMetadataCacheKey(uri, fileName)
+      synchronized(basicMetadataCache) {
+        basicMetadataCache.get(cacheKey)
+      }?.let { cached -> return@withContext Result.success(cached) }
 
-        val fd = pfd.detachFd()
-        val mi = MediaInfo()
+      val result =
+        runCatching {
+          val contentResolver = context.contentResolver
+          val pfd =
+            contentResolver.openFileDescriptor(uri, "r")
+              ?: return@runCatching VideoMetadata(0L, 0L, 0, 0, 0f, false)
 
-        try {
-          mi.Open(fd, fileName)
+          val fd = pfd.detachFd()
+          val mi = MediaInfo()
 
-          // Extract file size in bytes
-          val fileSizeStr = mi.getInfo(MediaInfo.Stream.General, 0, "FileSize")
-          val fileSize = fileSizeStr.toLongOrNull() ?: 0L
+          try {
+            mi.Open(fd, fileName)
 
-          // Extract duration in milliseconds - handle both integer and decimal formats
-          val durationStr = mi.getInfo(MediaInfo.Stream.General, 0, "Duration")
-          val duration = durationStr.toDoubleOrNull()?.toLong() ?: 0L
+            // Extract file size in bytes
+            val fileSizeStr = mi.getInfo(MediaInfo.Stream.General, 0, "FileSize")
+            val fileSize = fileSizeStr.toLongOrNull() ?: 0L
 
-          // Extract video resolution (width and height)
-          val widthStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Width")
-          val width = widthStr.toIntOrNull() ?: 0
+            // Extract duration in milliseconds - handle both integer and decimal formats
+            val durationStr = mi.getInfo(MediaInfo.Stream.General, 0, "Duration")
+            val duration = durationStr.toDoubleOrNull()?.toLong() ?: 0L
 
-          val heightStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Height")
-          val height = heightStr.toIntOrNull() ?: 0
+            // Extract video resolution (width and height)
+            val widthStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Width")
+            val width = widthStr.toIntOrNull() ?: 0
 
-          // Extract framerate (fps)
-          val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
-          val fps = fpsStr.toFloatOrNull() ?: 0f
+            val heightStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Height")
+            val height = heightStr.toIntOrNull() ?: 0
 
-          val textCount = mi.Count_Get(MediaInfo.Stream.Text)
-          val hasEmbeddedSubtitles = textCount > 0
+            // Extract framerate (fps)
+            val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
+            val fps = fpsStr.toFloatOrNull() ?: 0f
 
-          val subtitleCodec =
-            if (hasEmbeddedSubtitles) {
-              val codecs = mutableSetOf<String>()
-              for (i in 0 until textCount) {
-                val codecId = mi.getInfo(MediaInfo.Stream.Text, i, "CodecID")
+            val textCount = mi.Count_Get(MediaInfo.Stream.Text)
+            val hasEmbeddedSubtitles = textCount > 0
 
-                val normalizedCodec =
-                  when {
-                    codecId.contains("PGS", ignoreCase = true) -> "PGS"
-                    codecId.contains("ASS", ignoreCase = true) -> "ASS"
-                    codecId.contains("SSA", ignoreCase = true) -> "SSA"
-                    codecId.contains("SRT", ignoreCase = true) -> "SRT"
-                    codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
-                    codecId.contains("VOBSUB", ignoreCase = true) -> "DVD"
-                    codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
-                    codecId.contains("UTF8", ignoreCase = true) -> "SRT"
-                    codecId.contains("HDMV", ignoreCase = true) -> "PGS"
-                    codecId.contains("DVB", ignoreCase = true) -> "DVB"
-                    codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
-                    codecId.isNotEmpty() -> {
-                      codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
+            val subtitleCodec =
+              if (hasEmbeddedSubtitles) {
+                val codecs = mutableSetOf<String>()
+                for (i in 0 until textCount) {
+                  val codecId = mi.getInfo(MediaInfo.Stream.Text, i, "CodecID")
+
+                  val normalizedCodec =
+                    when {
+                      codecId.contains("PGS", ignoreCase = true) -> "PGS"
+                      codecId.contains("ASS", ignoreCase = true) -> "ASS"
+                      codecId.contains("SSA", ignoreCase = true) -> "SSA"
+                      codecId.contains("SRT", ignoreCase = true) -> "SRT"
+                      codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
+                      codecId.contains("VOBSUB", ignoreCase = true) -> "DVD"
+                      codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
+                      codecId.contains("UTF8", ignoreCase = true) -> "SRT"
+                      codecId.contains("HDMV", ignoreCase = true) -> "PGS"
+                      codecId.contains("DVB", ignoreCase = true) -> "DVB"
+                      codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
+                      codecId.isNotEmpty() -> {
+                        codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
+                      }
+                      else -> ""
                     }
-                    else -> ""
+
+                  if (normalizedCodec.isNotEmpty()) {
+                    codecs.add(normalizedCodec)
                   }
-
-                if (normalizedCodec.isNotEmpty()) {
-                  codecs.add(normalizedCodec)
                 }
+                codecs.joinToString(" ")
+              } else {
+                ""
               }
-              codecs.joinToString(" ")
-            } else {
-              ""
-            }
 
-          val retrieverFallback =
-            if (duration <= 0L || width <= 0 || height <= 0 || fps <= 0f) {
-              extractRetrieverMetadata(context, uri)
-            } else {
-              null
-            }
+            val retrieverFallback =
+              if (duration <= 0L || width <= 0 || height <= 0 || fps <= 0f) {
+                extractRetrieverMetadata(context, uri)
+              } else {
+                null
+              }
 
-          VideoMetadata(
-            sizeBytes =
-              fileSize.takeIf { it > 0L }
-                ?: retrieverFallback?.sizeBytes
-                ?: pfd.statSize.takeIf { it > 0L }
-                ?: 0L,
-            durationMs = duration.takeIf { it > 0L } ?: retrieverFallback?.durationMs ?: 0L,
-            width = width.takeIf { it > 0 } ?: retrieverFallback?.width ?: 0,
-            height = height.takeIf { it > 0 } ?: retrieverFallback?.height ?: 0,
-            fps = fps.takeIf { it > 0f } ?: retrieverFallback?.fps ?: 0f,
-            hasEmbeddedSubtitles = hasEmbeddedSubtitles,
-            subtitleCodec = subtitleCodec,
-          )
-        } finally {
-          mi.Close()
-          pfd.close()
+            VideoMetadata(
+              sizeBytes =
+                fileSize.takeIf { it > 0L }
+                  ?: retrieverFallback?.sizeBytes
+                  ?: pfd.statSize.takeIf { it > 0L }
+                  ?: 0L,
+              durationMs = duration.takeIf { it > 0L } ?: retrieverFallback?.durationMs ?: 0L,
+              width = width.takeIf { it > 0 } ?: retrieverFallback?.width ?: 0,
+              height = height.takeIf { it > 0 } ?: retrieverFallback?.height ?: 0,
+              fps = fps.takeIf { it > 0f } ?: retrieverFallback?.fps ?: 0f,
+              hasEmbeddedSubtitles = hasEmbeddedSubtitles,
+              subtitleCodec = subtitleCodec,
+            )
+          } finally {
+            mi.Close()
+            pfd.close()
+          }
+        }
+
+      result.getOrNull()?.let { metadata ->
+        // Do not make a transient open/parse failure sticky. Successful metadata with at least one
+        // useful field is safe to reuse for the remainder of this process.
+        if (
+          metadata.sizeBytes > 0L || metadata.durationMs > 0L || metadata.width > 0 ||
+          metadata.height > 0 || metadata.fps > 0f || metadata.hasEmbeddedSubtitles
+        ) {
+          synchronized(basicMetadataCache) {
+            basicMetadataCache.put(cacheKey, metadata)
+          }
         }
       }
+      result
     }
 
   private fun extractRetrieverMetadata(
