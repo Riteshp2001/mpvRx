@@ -1,10 +1,7 @@
 import com.android.build.api.variant.FilterConfiguration
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-// Phone releases only need ARM by default. x86/x86_64 remain available for emulator/testing
-// builds with -PenableX86=true, avoiding two extra native stacks (mpv/libtorrent/etc.) in normal
-// release assembly and universal APKs.
-val enableX86 = project.findProperty("enableX86") == "true"
+val enableX86 = project.findProperty("enableX86") != "false"
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 
 plugins {
