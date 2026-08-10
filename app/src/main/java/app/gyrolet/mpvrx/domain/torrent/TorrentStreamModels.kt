@@ -17,10 +17,14 @@ data class TorrentStreamRequest(
 data class TorrentFileItem(
   val index: Int,
   val path: String,
-  val name: String,
+  var name: String,
   val size: Long,
   val mimeType: String,
-)
+) {
+  init {
+    name = normalizeTorrentDisplayName(name)
+  }
+}
 
 data class TorrentStreamResult(
   val localUrl: String,
@@ -28,9 +32,13 @@ data class TorrentStreamResult(
   /** A durable source. This is never the temporary loopback playback URL. */
   val source: String,
   val infoHash: String,
-  val torrentName: String,
+  var torrentName: String,
   val playableFiles: List<TorrentFileItem>,
-)
+) {
+  init {
+    torrentName = normalizeTorrentDisplayName(torrentName)
+  }
+}
 
 /** Metadata-only result used by the pre-player file picker. */
 data class TorrentCatalog(
@@ -38,9 +46,13 @@ data class TorrentCatalog(
   /** A durable source. This is never a content grant or loopback proxy URL. */
   val source: String,
   val infoHash: String,
-  val torrentName: String,
+  var torrentName: String,
   val playableFiles: List<TorrentFileItem>,
-)
+) {
+  init {
+    torrentName = normalizeTorrentDisplayName(torrentName)
+  }
+}
 
 data class ParsedMagnet(
   val infoHash: String,
@@ -198,7 +210,12 @@ fun parseMagnet(raw: String): ParsedMagnet? {
         null
       }
     }
-  val name = parameters.firstOrNull { it.first.equals("dn", true) }?.second?.takeIf(String::isNotBlank)
+  val name =
+    parameters
+      .firstOrNull { it.first.equals("dn", true) }
+      ?.second
+      ?.takeIf(String::isNotBlank)
+      ?.let(::normalizeTorrentDisplayName)
   val trackers = parameters.filter { it.first.equals("tr", true) }.map { it.second }.filter(String::isNotBlank).distinct()
   return ParsedMagnet(
     infoHash = hash,
@@ -256,6 +273,38 @@ internal fun hasV2OnlyMagnet(source: String): Boolean {
   if (!source.startsWith("magnet:?", true)) return false
   val topics = magnetParameters(source).filter { it.first.equals("xt", true) }.map { it.second }
   return topics.any { it.startsWith("urn:btmh:", true) } && topics.none { it.startsWith("urn:btih:", true) }
+}
+
+/**
+ * Repairs the byte-swapped ASCII mojibake produced by some malformed torrent metadata while
+ * leaving normal UTF-8/Unicode names untouched. The raw torrent path is never modified.
+ */
+internal fun normalizeTorrentDisplayName(value: String): String {
+  val text = value.trim()
+  if (text.length < 3) return text
+
+  val swappedCount =
+    text.count { character ->
+      val code = character.code
+      (code and 0xFF) == 0 && (code ushr 8) in 0x20..0x7E
+    }
+  if (swappedCount < 3 || swappedCount * 100 < text.length * 70) return text
+
+  val repaired =
+    buildString(text.length) {
+      text.forEach { character ->
+        val code = character.code
+        if ((code and 0xFF) == 0 && (code ushr 8) in 0x20..0x7E) {
+          append((code ushr 8).toChar())
+        } else {
+          append(character)
+        }
+      }
+    }.trim()
+
+  if (repaired.isEmpty()) return text
+  val printableCount = repaired.count { it.code in 0x20..0x7E || it.isWhitespace() }
+  return if (printableCount * 100 >= repaired.length * 80) repaired else text
 }
 
 private fun canonicalV1Hash(value: String): String? =

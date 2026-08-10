@@ -5,20 +5,20 @@
 package app.gyrolet.mpvrx.ui.torrent
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
@@ -42,17 +42,17 @@ class TorrentSelectionActivity : AppCompatActivity() {
   private var playerLaunched = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    setTheme(R.style.Theme_mpvrx_TorrentPicker)
     super.onCreate(savedInstanceState)
+    window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+    window.attributes = window.attributes.apply { dimAmount = 0.30f }
+
     val source = extractTorrentSource(intent)
     if (source.isNullOrBlank()) {
-      finish()
+      finishWithoutAnimation()
       return
     }
-
-    enableEdgeToEdge(
-      statusBarStyle = SystemBarStyle.dark(Color.Transparent.toArgb()),
-      navigationBarStyle = SystemBarStyle.dark(Color.Transparent.toArgb()),
-    )
 
     onBackPressedDispatcher.addCallback(
       this,
@@ -116,12 +116,18 @@ class TorrentSelectionActivity : AppCompatActivity() {
         putExtra("is_audio", request.file.mimeType.startsWith("audio/"))
       }
     startActivity(playbackIntent)
-    finish()
+    finishWithoutAnimation()
   }
 
   private fun closePicker() {
     if (!playerLaunched) viewModel.cancel()
+    finishWithoutAnimation()
+  }
+
+  @Suppress("DEPRECATION")
+  private fun finishWithoutAnimation() {
     finish()
+    overridePendingTransition(0, 0)
   }
 
   private fun extractTorrentSource(intent: Intent?): String? {

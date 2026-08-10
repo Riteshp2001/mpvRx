@@ -162,19 +162,21 @@ fun AudioTrackRow(
   isSelected: Boolean,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  enabled: Boolean = true,
 ) {
   Row(
     modifier =
       modifier
         .fillMaxWidth()
-        .clickable(onClick = onClick)
+        .clickable(enabled = enabled, onClick = onClick)
         .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
     RadioButton(
-      isSelected,
-      onClick,
+      selected = isSelected,
+      onClick = onClick,
+      enabled = enabled,
     )
     Text(
       title,

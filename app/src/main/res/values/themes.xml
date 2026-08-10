@@ -7,8 +7,15 @@
         <item name="android:windowBackground">@android:color/black</item>
     </style>
 
+    <style name="Theme.mpvrx.TorrentPicker" parent="Theme.mpvrx">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
     <style name="leak_canary_LeakCanary.Base" parent="Theme.AppCompat.Light.DarkActionBar">
         <item name="android:fitsSystemWindows">true</item>
     </style>
 </resources>
-

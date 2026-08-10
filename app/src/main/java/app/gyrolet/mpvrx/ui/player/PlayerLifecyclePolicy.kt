@@ -29,9 +29,13 @@ internal object PlayerLifecyclePolicy {
   ): Boolean = backgroundPlaybackEnabled && mediaReady
 
   fun shouldKeepBackgroundPlaybackAliveOnDestroy(
-    backgroundPlaybackEnabled: Boolean,
+    @Suppress("UNUSED_PARAMETER") backgroundPlaybackEnabled: Boolean,
     backgroundPlaybackSessionActive: Boolean,
-  ): Boolean = backgroundPlaybackEnabled && backgroundPlaybackSessionActive
+  ): Boolean =
+    // The detached service is also the owner of an in-app Mini Player session. Once that handoff
+    // is active, destroying PlayerActivity must not tear down the shared mpv core just because the
+    // separate background-playback preference is disabled.
+    backgroundPlaybackSessionActive
 
   fun shouldTreatStopAsPipDismissal(
     wasInPictureInPictureMode: Boolean,
