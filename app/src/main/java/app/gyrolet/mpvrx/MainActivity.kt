@@ -468,13 +468,16 @@ class MainActivity : AppCompatActivity() {
       } else {
         null
       }
-    val updateState by (
-      updateViewModel?.updateState ?: MutableStateFlow(
-        UpdateViewModel.UpdateState.Idle,
-      )
-    ).collectAsState()
-    val isDownloading by (updateViewModel?.isDownloading ?: MutableStateFlow(false)).collectAsState()
-    val downloadProgress by (updateViewModel?.downloadProgress ?: MutableStateFlow(0f)).collectAsState()
+
+    // These flows are only fallback state for builds where the updater is compiled out. Remember
+    // them once so navigator recompositions do not allocate three new StateFlow instances and
+    // create fresh collectAsState subscriptions.
+    val fallbackUpdateState = remember { MutableStateFlow<UpdateViewModel.UpdateState>(UpdateViewModel.UpdateState.Idle) }
+    val fallbackIsDownloading = remember { MutableStateFlow(false) }
+    val fallbackDownloadProgress = remember { MutableStateFlow(0f) }
+    val updateState by (updateViewModel?.updateState ?: fallbackUpdateState).collectAsState()
+    val isDownloading by (updateViewModel?.isDownloading ?: fallbackIsDownloading).collectAsState()
+    val downloadProgress by (updateViewModel?.downloadProgress ?: fallbackDownloadProgress).collectAsState()
 
     // Provide both LocalBackStack and the LazyList/Grid states to all screens
     CompositionLocalProvider(
