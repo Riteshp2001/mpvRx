@@ -116,8 +116,30 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
      currentScreen.javaClass.name.startsWith("app.gyrolet.mpvrx.ui.editor"))
 
   val currentItem = sessionState.currentItem
+  val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
+  val json: Json = koinInject()
+
+  val tracks = remember(trackListNode) { trackListNode?.toObject<List<TrackNode>>(json).orEmpty() }
+  val hasRealVideo = tracks.any { it.isVideo && !it.isAlbumArtwork }
+  val hasAlbumArt = tracks.any { it.isAlbumArtwork }
+
+  val ext = (currentItem?.originalUri ?: currentItem?.title ?: "").fileExtension()
+  val mimeIsAudio = currentItem?.mimeType?.startsWith("audio/", ignoreCase = true) == true
+  val extIsAudio = ext in FileTypeUtils.AUDIO_EXTENSIONS
+  val extIsVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
+
+  val isAudioOnlyItem =
+    if (hasRealVideo || extIsVideo) {
+      false
+    } else {
+      mimeIsAudio || extIsAudio || hasAlbumArt || tracks.any { it.isAudio }
+    }
+
+  val isMiniPlayerAllowed = isAudioOnlyItem || enableVideoMiniPlayer
+
   val isMediaActive = isServiceRunning && currentItem != null &&
     !isSettingsScreen &&
+    isMiniPlayerAllowed &&
     sessionState.phase != PlaybackPhase.IDLE &&
     sessionState.phase != PlaybackPhase.UNINITIALIZED &&
     sessionState.phase != PlaybackPhase.ERROR
@@ -137,6 +159,7 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
     MiniPlayerContent(
       context = context,
       enableVideoMiniPlayer = enableVideoMiniPlayer,
+      isAudioOnlyItem = isAudioOnlyItem,
     )
   }
 }
@@ -145,6 +168,7 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
 private fun MiniPlayerContent(
   context: Context,
   enableVideoMiniPlayer: Boolean,
+  isAudioOnlyItem: Boolean,
 ) {
   val sessionState by PlaybackSession.state.collectAsState()
   val currentItem = sessionState.currentItem
@@ -155,31 +179,11 @@ private fun MiniPlayerContent(
   val videoAspectRaw by PlaybackSession.propDouble["video-params/aspect"].collectAsState()
   val videoWidth by PlaybackSession.propLong["video-params/w"].collectAsState()
   val videoHeight by PlaybackSession.propLong["video-params/h"].collectAsState()
-  val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
-  val json: Json = koinInject()
 
   val isPlaying = paused == false
   val title = rawMediaTitle?.takeIf { it.isNotBlank() }
     ?: currentItem?.title?.takeIf { it.isNotBlank() }
     ?: "Media Track"
-
-  val tracks = remember(trackListNode) { trackListNode?.toObject<List<TrackNode>>(json).orEmpty() }
-  val hasRealVideo = tracks.any { it.isVideo && !it.isAlbumArtwork }
-  val hasAlbumArt = tracks.any { it.isAlbumArtwork }
-
-  val ext = (currentItem?.originalUri ?: currentItem?.title ?: "").fileExtension()
-  val mimeIsAudio = currentItem?.mimeType?.startsWith("audio/", ignoreCase = true) == true
-  val extIsAudio = ext in FileTypeUtils.AUDIO_EXTENSIONS
-  val extIsVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
-
-  // A real video track or a known video container always wins. Music is detected by
-  // mime type, audio extension, an album-art track, or any audio-only track list.
-  val isAudioOnlyItem =
-    if (hasRealVideo || extIsVideo) {
-      false
-    } else {
-      mimeIsAudio || extIsAudio || hasAlbumArt || tracks.any { it.isAudio }
-    }
 
   val isVideoMode = !isAudioOnlyItem && enableVideoMiniPlayer
 
