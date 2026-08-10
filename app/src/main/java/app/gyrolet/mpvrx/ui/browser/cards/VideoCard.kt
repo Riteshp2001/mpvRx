@@ -131,14 +131,6 @@ fun VideoCard(
   val showUnplayedOldVideoLabel = resolvedUiConfig.showUnplayedOldVideoLabel
   val unplayedOldVideoDays = resolvedUiConfig.unplayedOldVideoDays
   val showDurationField = resolvedUiConfig.showDurationField
-  val isWithinNewLabelAgeWindow =
-    if (unplayedOldVideoDays == 0) {
-      true
-    } else {
-      val videoAge = System.currentTimeMillis() - (video.dateModified * 1000)
-      val thresholdMillis = unplayedOldVideoDays * 24L * 60L * 60L * 1000L
-      videoAge <= thresholdMillis
-    }
   val displayName =
     if (resolvedUiConfig.showExtensionField) {
       video.displayName
@@ -303,25 +295,33 @@ fun VideoCard(
               )
             }
 
-            // 0 days means unlimited; otherwise enforce the configured age window.
-            if (showUnplayedOldVideoLabel && isOldAndUnplayed && isWithinNewLabelAgeWindow) {
-              Box(
-                modifier =
-                  Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .clip(AppShapeScale.extraSmall)
-                    .background(Color(0xFFD32F2F)) // Warning red color
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-              ) {
-                Text(
-                  text = stringResource(R.string.video_label_new),
-                  style =
-                    MaterialTheme.typography.labelSmall.copy(
-                      fontWeight = FontWeight.Bold,
-                    ),
-                  color = Color.White,
-                )
+            // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
+            // Like MX Player: show NEW for videos added within threshold days that haven't been played
+            if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
+              // Check if video is recently modified (within threshold days)
+              val currentTime = System.currentTimeMillis()
+              val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
+              val thresholdMillis = unplayedOldVideoDays * 24L * 60L * 60L * 1000L
+
+              if (unplayedOldVideoDays == 0 || videoAge <= thresholdMillis) {
+                Box(
+                  modifier =
+                    Modifier
+                      .align(Alignment.TopStart)
+                      .padding(6.dp)
+                      .clip(AppShapeScale.extraSmall)
+                      .background(Color(0xFFD32F2F)) // Warning red color
+                      .padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                  Text(
+                    text = stringResource(R.string.video_label_new),
+                    style =
+                      MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                      ),
+                    color = Color.White,
+                  )
+                }
               }
             }
 
@@ -592,25 +592,33 @@ fun VideoCard(
               )
             }
 
-            // 0 days means unlimited; otherwise enforce the configured age window.
-            if (showUnplayedOldVideoLabel && isOldAndUnplayed && isWithinNewLabelAgeWindow) {
-              Box(
-                modifier =
-                  Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .clip(AppShapeScale.extraSmall)
-                    .background(Color(0xFFD32F2F)) // Warning red color
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-              ) {
-                Text(
-                  text = stringResource(R.string.video_label_new),
-                  style =
-                    MaterialTheme.typography.labelSmall.copy(
-                      fontWeight = FontWeight.Bold,
-                    ),
-                  color = Color.White,
-                )
+            // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
+            // Like MX Player: show NEW for videos added within threshold days that haven't been played
+            if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
+              // Check if video is recently modified (within threshold days)
+              val currentTime = System.currentTimeMillis()
+              val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
+              val thresholdMillis = unplayedOldVideoDays * 24L * 60L * 60L * 1000L
+
+              if (unplayedOldVideoDays == 0 || videoAge <= thresholdMillis) {
+                Box(
+                  modifier =
+                    Modifier
+                      .align(Alignment.TopStart)
+                      .padding(6.dp)
+                      .clip(AppShapeScale.extraSmall)
+                      .background(Color(0xFFD32F2F)) // Warning red color
+                      .padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                  Text(
+                    text = stringResource(R.string.video_label_new),
+                    style =
+                      MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                      ),
+                    color = Color.White,
+                  )
+                }
               }
             }
 
