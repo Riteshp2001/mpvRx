@@ -91,7 +91,7 @@ class MediaLibraryViewModel(
     val playbackStates = playbackStateRepository.getAllPlaybackStates()
     val currentTime = System.currentTimeMillis()
     val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
-    val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
+    val thresholdMillis = thresholdDays * 24L * 60L * 60L * 1000L
     val watchedThreshold = browserPreferences.watchedThreshold.get()
     val playbackByTitle = playbackStates.associateBy { it.mediaTitle }
 
@@ -123,9 +123,10 @@ class MediaLibraryViewModel(
             false
           }
 
-        // "NEW" badge shows while the video is recent AND not yet watched. Removed once
-        // watched to the configured threshold percentage (0 = infinite, never removed).
-        val isOldAndUnplayed = !isWatched && videoAge <= thresholdMillis
+        // 0 days means no age expiry. Otherwise NEW is bounded by the configured
+        // age window and is removed sooner if the watched threshold is reached.
+        val isWithinNewLabelAgeWindow = thresholdDays == 0 || videoAge <= thresholdMillis
+        val isOldAndUnplayed = !isWatched && isWithinNewLabelAgeWindow
 
         VideoWithPlaybackInfo(
           video = video,

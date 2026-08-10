@@ -117,14 +117,13 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
 
   val currentItem = sessionState.currentItem
   val isMediaActive = isServiceRunning && currentItem != null &&
-    !NavigationBarState.isInSelectionMode &&
     !isSettingsScreen &&
     sessionState.phase != PlaybackPhase.IDLE &&
     sessionState.phase != PlaybackPhase.UNINITIALIZED &&
     sessionState.phase != PlaybackPhase.ERROR
 
-  // Expose visibility so MainScreen can slide the nav bar aside in
-  // landscape/tablet and raise it above the full-width bar in portrait.
+  // Keep the mini player alive while browser selection mode is active. Its outer
+  // placement is lifted above the selection actions instead of hiding/overlapping.
   SideEffect {
     NavigationBarState.isMiniPlayerVisible = isMediaActive
   }

@@ -531,8 +531,8 @@ class MainActivity : AppCompatActivity() {
                   .windowInsetsPadding(WindowInsets.navigationBars)
                   .padding(bottom = 12.dp, start = 12.dp, end = 12.dp)
 
-              // Portrait phones: full width with a small side margin, sitting above
-              // the pill nav bar (or at the very bottom when there is no nav bar).
+              // Portrait phones: full width with a small side margin. During selection,
+              // lift the mini player above the edit actions instead of covering them.
               isPortrait && !isTablet ->
                 Modifier
                   .align(Alignment.BottomCenter)
@@ -541,7 +541,17 @@ class MainActivity : AppCompatActivity() {
                   .padding(
                     start = 12.dp,
                     end = 12.dp,
-                    bottom = if (NavigationBarState.isNavBarVisible) 88.dp else 12.dp,
+                    bottom =
+                      (if (NavigationBarState.isNavBarVisible) {
+                        NavigationBarState.navigationBarClearance
+                      } else {
+                        12.dp
+                      }) +
+                        (if (NavigationBarState.isInSelectionMode) {
+                          NavigationBarState.selectionBarClearance
+                        } else {
+                          0.dp
+                        }),
                   )
 
               // Landscape/tablet single-pane: sit on the right side of the nav bar,

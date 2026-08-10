@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -96,9 +97,16 @@ fun BrowserBottomBar(
   val effectiveShowDelete = if (isSelectionMode) showDelete else lastShowDelete
   val effectiveShowAddToPlaylist = if (isSelectionMode) showAddToPlaylist else lastShowAddToPlaylist
 
+  val stackedModifier =
+    if (NavigationBarState.isNavBarVisible) {
+      modifier.padding(bottom = NavigationBarState.navigationBarClearance)
+    } else {
+      modifier
+    }
+
   AnimatedVisibility(
     visible = isSelectionMode,
-    modifier = modifier,
+    modifier = stackedModifier,
     enter =
       androidx.compose.animation.slideInVertically(
         animationSpec =

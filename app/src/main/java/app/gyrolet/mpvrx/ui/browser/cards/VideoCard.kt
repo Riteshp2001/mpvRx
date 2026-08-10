@@ -301,9 +301,9 @@ fun VideoCard(
               // Check if video is recently modified (within threshold days)
               val currentTime = System.currentTimeMillis()
               val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
-              val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
+              val thresholdMillis = unplayedOldVideoDays * 24L * 60L * 60L * 1000L
 
-              if (videoAge <= thresholdMillis) {
+              if (unplayedOldVideoDays == 0 || videoAge <= thresholdMillis) {
                 Box(
                   modifier =
                     Modifier
@@ -598,9 +598,9 @@ fun VideoCard(
               // Check if video is recently modified (within threshold days)
               val currentTime = System.currentTimeMillis()
               val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
-              val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
+              val thresholdMillis = unplayedOldVideoDays * 24L * 60L * 60L * 1000L
 
-              if (videoAge <= thresholdMillis) {
+              if (unplayedOldVideoDays == 0 || videoAge <= thresholdMillis) {
                 Box(
                   modifier =
                     Modifier

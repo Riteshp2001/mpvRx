@@ -25,9 +25,20 @@ object NavigationBarState {
 
   var isDualPaneFolderSelected: Boolean by mutableStateOf(false)
 
+  private var miniPlayerVisibleState: Boolean by mutableStateOf(false)
+
   // Mini player coordination state (published by MiniPlayer/MainScreen so the
   // browser layout can adapt when the mini player is on screen).
-  var isMiniPlayerVisible: Boolean by mutableStateOf(false)
+  var isMiniPlayerVisible: Boolean
+    get() = miniPlayerVisibleState
+    set(value) {
+      miniPlayerVisibleState = value
+      // While selecting with active playback, keep the navigation layer available
+      // so the three bottom layers can be stacked instead of covering one another.
+      if (isInSelectionMode) {
+        shouldHideNavigationBar = !value
+      }
+    }
 
   // True while the floating pill nav bar is actually on screen (MainScreen on top
   // and not hidden). Lets the mini player drop to the very bottom when there is no
@@ -37,6 +48,11 @@ object NavigationBarState {
   var navbarLeftOffset: Dp by mutableStateOf(0.dp)
 
   var navbarWidth: Dp by mutableStateOf(320.dp)
+
+  // Shared portrait clearances for the floating browser layers. These match the
+  // existing pill/mini-player geometry and keep selection actions between them.
+  val navigationBarClearance: Dp = 88.dp
+  val selectionBarClearance: Dp = 100.dp
 
   // Vertical space the mini player needs to clear from the bottom of the screen in
   // screens that sit below it without a nav bar (FABs/list content).
@@ -61,7 +77,10 @@ object NavigationBarState {
   ) {
     isInSelectionMode = inSelectionMode
     onlyVideosSelected = onlyVideos
-    shouldHideNavigationBar = inSelectionMode
+    // Preserve the old hide-on-selection behavior when there is no mini player.
+    // With active playback, keep navigation visible and stack the selection bar and
+    // mini player above it instead of letting either overlay cover the actions.
+    shouldHideNavigationBar = inSelectionMode && !isMiniPlayerVisible
   }
 
   fun updatePermissionState(denied: Boolean) {
