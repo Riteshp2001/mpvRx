@@ -12,7 +12,8 @@ enum class MusicTab(val title: String) {
   SONGS("Songs"),
   ALBUMS("Albums"),
   ARTISTS("Artists"),
-  PLAYLISTS("Playlists");
+  PLAYLISTS("Playlists"),
+  FOLDERS("Folders");
 
   companion object {
     val defaultTabs = entries.toList()
