@@ -119,8 +119,10 @@ private fun <T> VisualizerOverlay(
   // The overlay itself is only composed while a visualizer is visible. Keep Android's audio
   // capture pipeline scoped to this lifecycle so album-art-only playback does not hold a Visualizer
   // effect, poll capture freshness, or repeatedly retry the audio session in the background.
-  DisposableEffect(hasRecordPermission, features) {
-    val analyzer = if (hasRecordPermission) AudioSpectrumAnalyzer(features) else null
+  // A modal sheet covers the renderer, so suspend capture there too and let the UI consume zero
+  // analyzer work until the visualizer is visible again.
+  DisposableEffect(hasRecordPermission, features, isSheetOpen) {
+    val analyzer = if (hasRecordPermission && !isSheetOpen) AudioSpectrumAnalyzer(features) else null
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive && analyzer != null) {
@@ -150,12 +152,16 @@ private fun <T> VisualizerOverlay(
     },
     modifier = modifier,
     update = { view ->
-      view.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
       view.updatePalette(palette)
       if (isSheetOpen) {
+        // A sheet fully covers the expensive GLSurfaceView. Keep the last frame but stop the
+        // continuous render loop (particle/galaxy renderers otherwise burn GPU underneath it).
+        view.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        view.requestRender()
         view.setZOrderOnTop(false)
         view.setZOrderMediaOverlay(true)
       } else {
+        view.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         view.setZOrderMediaOverlay(false)
         view.setZOrderOnTop(true)
       }
