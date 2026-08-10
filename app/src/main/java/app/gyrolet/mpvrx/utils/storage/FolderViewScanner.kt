@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.ArrayDeque
 import java.util.Locale
 
 /**
@@ -73,6 +74,25 @@ object FolderViewScanner {
     var path: String,
     val videos: MutableList<VideoInfo> = mutableListOf(),
   )
+
+  private class NoMediaScanBudget(
+    private var remaining: Int,
+  ) {
+    private val visited = HashSet<String>()
+    var exhausted: Boolean = false
+      private set
+
+    fun tryEnter(path: String): Boolean {
+      val key = storagePathKey(path) ?: path.lowercase(Locale.ROOT)
+      if (!visited.add(key)) return false
+      if (remaining <= 0) {
+        exhausted = true
+        return false
+      }
+      remaining--
+      return true
+    }
+  }
 
   /**
    * Get all video folders for folder list view
@@ -172,6 +192,7 @@ object FolderViewScanner {
         val rootPath = normalizeStoragePath(root.absolutePath) ?: continue
         val entries = mutableListOf<DirectoryScanEntity>()
         val pending = mutableListOf<VideoFolder>()
+        val scanBudget = NoMediaScanBudget(MAX_INDEXED_DIRECTORIES_PER_ROOT)
         scanIndexedDirectory(
           directory = root,
           rootPath = rootPath,
@@ -180,6 +201,7 @@ object FolderViewScanner {
           cached = cached,
           isNoMediaRoot = true,
           entries = entries,
+          budget = scanBudget,
         ) { folder ->
           pending += folder
           if (pending.size >= EMIT_BATCH_SIZE) {
@@ -188,8 +210,15 @@ object FolderViewScanner {
           }
         }
         if (pending.isNotEmpty()) emit(pending.toList())
-        val changedEntries = entries.filter { entry -> cached[storagePathKey(entry.path)] != entry }
-        dao.reconcileRoot(scanKey, rootPath, entries.map { it.path }, changedEntries)
+
+        if (!scanBudget.exhausted) {
+          val changedEntries = entries.filter { entry -> cached[storagePathKey(entry.path)] != entry }
+          dao.reconcileRoot(scanKey, rootPath, entries.map { it.path }, changedEntries)
+        } else {
+          // Never reconcile a partial traversal: doing so would interpret folders beyond the budget
+          // as deleted and throw away otherwise valid cached entries.
+          Log.w(TAG, "Paused .nomedia indexing after $MAX_INDEXED_DIRECTORIES_PER_ROOT directories: $rootPath")
+        }
       }
     }
 
@@ -201,10 +230,12 @@ object FolderViewScanner {
     cached: Map<String?, DirectoryScanEntity>,
     isNoMediaRoot: Boolean,
     entries: MutableList<DirectoryScanEntity>,
+    budget: NoMediaScanBudget,
     onFolder: suspend (VideoFolder) -> Unit,
   ) {
-    val files = runCatching { directory.listFiles()?.toList().orEmpty() }.getOrElse { return }
     val path = normalizeStoragePath(directory.absolutePath) ?: return
+    if (!budget.tryEnter(path)) return
+    val files = runCatching { directory.listFiles()?.toList().orEmpty() }.getOrElse { return }
     val fingerprint = directoryFingerprint(directory, files)
     val previous = cached[storagePathKey(path)]
     val subdirectories = files.filter { it.isDirectory && shouldVisitDuringNoMediaScan(it) }
@@ -257,8 +288,10 @@ object FolderViewScanner {
         cached,
         isNoMediaRoot = false,
         entries = entries,
+        budget = budget,
         onFolder = onFolder,
       )
+      if (budget.exhausted) break
     }
   }
 
@@ -269,26 +302,37 @@ object FolderViewScanner {
     StorageVolumeUtils.getExternalStorageVolumes(context).mapNotNullTo(searchRoots) { volume ->
       StorageVolumeUtils.getVolumePath(volume)?.let(::File)
     }
-    val found = mutableListOf<File>()
-    searchRoots.forEach { discoverNoMediaRoots(it, found, 0) }
-    return found.distinctBy { storagePathKey(it.absolutePath) }
-  }
 
-  private fun discoverNoMediaRoots(
-    directory: File,
-    found: MutableList<File>,
-    depth: Int,
-  ) {
-    if (depth >= MAX_DISCOVERY_DEPTH || !directory.isDirectory || !directory.canRead()) return
-    if (File(directory, ".nomedia").isFile) {
-      found += directory
-      return
+    val found = mutableListOf<File>()
+    val pending = ArrayDeque<Pair<File, Int>>()
+    val visited = HashSet<String>()
+    searchRoots.forEach { root -> pending.addLast(root to 0) }
+    var remaining = MAX_DISCOVERY_DIRECTORIES
+
+    while (pending.isNotEmpty() && remaining > 0) {
+      val (directory, depth) = pending.removeFirst()
+      if (depth >= MAX_DISCOVERY_DEPTH || !directory.isDirectory || !directory.canRead()) continue
+      val pathKey = storagePathKey(directory.absolutePath) ?: directory.absolutePath.lowercase(Locale.ROOT)
+      if (!visited.add(pathKey)) continue
+      remaining--
+
+      if (File(directory, ".nomedia").isFile) {
+        found += directory
+        continue
+      }
+
+      runCatching { directory.listFiles() }
+        .getOrNull()
+        .orEmpty()
+        .asSequence()
+        .filter { it.isDirectory && shouldVisitDuringNoMediaScan(it) }
+        .forEach { child -> pending.addLast(child to (depth + 1)) }
     }
-    runCatching { directory.listFiles() }
-      .getOrNull()
-      .orEmpty()
-      .filter { it.isDirectory && shouldVisitDuringNoMediaScan(it) }
-      .forEach { discoverNoMediaRoots(it, found, depth + 1) }
+
+    if (pending.isNotEmpty()) {
+      Log.w(TAG, "Stopped .nomedia discovery after $MAX_DISCOVERY_DIRECTORIES directories")
+    }
+    return found.distinctBy { storagePathKey(it.absolutePath) }
   }
 
   private fun shouldVisitDuringNoMediaScan(directory: File): Boolean {
@@ -325,7 +369,9 @@ object FolderViewScanner {
   }
 
   private const val EMIT_BATCH_SIZE = 8
-  private const val MAX_DISCOVERY_DEPTH = 20
+  private const val MAX_DISCOVERY_DEPTH = 16
+  private const val MAX_DISCOVERY_DIRECTORIES = 6_000
+  private const val MAX_INDEXED_DIRECTORIES_PER_ROOT = 8_000
   private val NO_MEDIA_SCAN_SKIP_FOLDERS =
     setOf(
       ".thumbnails",
