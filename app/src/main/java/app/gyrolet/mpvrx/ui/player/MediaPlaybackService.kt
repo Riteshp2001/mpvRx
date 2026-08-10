@@ -104,7 +104,16 @@ class MediaPlaybackService :
     @Volatile
     private var activeInstance: MediaPlaybackService? = null
 
-    fun isRunning(): Boolean = isServiceRunning
+    /**
+     * True only while playback is detached from the foreground Activity.
+     *
+     * PlayerActivity historically used this query in onStart() as a signal to destroy the
+     * playback service. Keeping the physical service alive while the Activity owns the surface
+     * avoids tearing down and recreating the MediaSession/foreground notification on every
+     * notification tap. This mirrors the single long-lived notification-owner model used by
+     * MediaSessionService-style players.
+     */
+    fun isRunning(): Boolean = isServiceRunning && !activityForeground
 
     fun isForegroundActive(): Boolean = activeInstance?.foregroundReady == true
 
@@ -113,16 +122,21 @@ class MediaPlaybackService :
      * (e.g. the full player is visible and playing, including audio-only media that has no
      * attached video surface). The service must not steal audio focus from it.
      *
-     * Clearing this flag is also the boundary between a completed foreground handoff and a new
-     * detached playback cycle. A service instance can survive briefly because of Binder timing;
-     * never let a stale handoff marker poison the next notification/background start.
+     * Entering the foreground is an ownership handoff, not a service teardown: the service keeps
+     * the MediaSession/notification alive but releases audio focus to PlayerActivity. Leaving the
+     * foreground clears the handoff marker so detached playback can take ownership again.
      */
     @Volatile
     var activityForeground = false
       set(value) {
         field = value
-        if (!value) {
-          activeInstance?.handingBackToActivity = false
+        activeInstance?.let { service ->
+          if (value) {
+            service.handingBackToActivity = true
+            service.abandonAudioOwnership()
+          } else {
+            service.handingBackToActivity = false
+          }
         }
       }
 
