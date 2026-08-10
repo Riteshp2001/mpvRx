@@ -88,8 +88,11 @@ class CrashActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    lifecycle.coroutineScope.launch {
-      logcat = collectLogcat()
+    val debugLogsMode = intent.getBooleanExtra(EXTRA_DEBUG_LOGS_MODE, false)
+    if (!debugLogsMode) {
+      lifecycle.coroutineScope.launch {
+        logcat = collectLogcat()
+      }
     }
     setContent {
       val dark by appearancePreferences.darkMode.collectAsState()
@@ -102,7 +105,11 @@ class CrashActivity : AppCompatActivity() {
         ) { isDarkMode },
       )
       MpvrxTheme {
-        CrashScreen(intent.getStringExtra("exception") ?: "")
+        if (debugLogsMode) {
+          DebugLogsScreen(onNavigateBack = ::finish)
+        } else {
+          CrashScreen(intent.getStringExtra("exception") ?: "")
+        }
       }
     }
   }
@@ -163,12 +170,26 @@ class CrashActivity : AppCompatActivity() {
   }
 
   companion object {
+    private const val EXTRA_DEBUG_LOGS_MODE = "debug_logs_mode"
+
     suspend fun shareLogs(
       deviceInfo: String,
       exceptionString: String? = null,
       logcat: String,
       activity: Activity,
     ) {
+      // Advanced Settings calls this without an exception. In that case open the
+      // interactive log viewer instead of immediately throwing the user into a share sheet.
+      // Crash reports still use the original export/share flow below.
+      if (exceptionString == null) {
+        withContext(Dispatchers.Main) {
+          activity.startActivity(
+            Intent(activity, CrashActivity::class.java).putExtra(EXTRA_DEBUG_LOGS_MODE, true),
+          )
+        }
+        return
+      }
+
       withContext(NonCancellable) {
         val file = File(activity.cacheDir, "mpvrx_logs.txt")
         if (file.exists()) file.delete()

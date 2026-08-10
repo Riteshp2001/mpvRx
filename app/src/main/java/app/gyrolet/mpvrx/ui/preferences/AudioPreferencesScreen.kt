@@ -57,6 +57,7 @@ import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
@@ -125,6 +126,9 @@ object AudioPreferencesScreen : Screen {
                   if (!enabled) {
                     browserPreferences.mediaLibraryType.set(MediaLibraryType.Video)
                   }
+                  // Files/folders use the same MediaScanOptions as the rest of the browser.
+                  // Notify active browser screens immediately instead of waiting for a restart.
+                  MediaLibraryEvents.notifyChanged()
                 },
                 title = {
                   Text(
@@ -142,57 +146,66 @@ object AudioPreferencesScreen : Screen {
                 },
               )
 
-              if (includeAudioBrowser) {
-                PreferenceDivider()
-                val minimumAudioDurationSeconds by browserPreferences.minimumAudioDurationSeconds.collectAsState()
-                val maxMinimumDurationSeconds = 120f
-                val minimumDurationLabel =
-                  when {
-                    minimumAudioDurationSeconds <= 0 -> "Any duration"
-                    minimumAudioDurationSeconds < 60 -> "${minimumAudioDurationSeconds}s and longer"
-                    minimumAudioDurationSeconds % 60 == 0 -> "${minimumAudioDurationSeconds / 60} min and longer"
-                    else ->
-                      "${minimumAudioDurationSeconds / 60}m ${minimumAudioDurationSeconds % 60}s and longer"
-                  }
-
-                Column(
-                  modifier =
-                    Modifier
-                      .fillMaxWidth()
-                      .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_minimum_audio_duration),
-                    style = MaterialTheme.typography.bodyLarge,
-                  )
-                  Text(
-                    minimumDurationLabel,
-                    color = MaterialTheme.colorScheme.outline,
-                    style = MaterialTheme.typography.bodyMedium,
-                  )
-                  RangeSlider(
-                    value =
-                      minimumAudioDurationSeconds
-                        .toFloat()
-                        .coerceIn(0f, maxMinimumDurationSeconds)..maxMinimumDurationSeconds,
-                    onValueChange = { selectedRange ->
-                      // The highlighted range means "included": the left thumb is the minimum
-                      // duration and the right thumb represents no upper limit. Tracks longer than
-                      // the visual 2-minute endpoint are still included by design.
-                      browserPreferences.minimumAudioDurationSeconds.set(
-                        selectedRange.start.toInt().coerceIn(0, maxMinimumDurationSeconds.toInt()),
-                      )
-                    },
-                    valueRange = 0f..maxMinimumDurationSeconds,
-                    steps = 23,
-                  )
-                  Text(
-                    text = "Included range: ${if (minimumAudioDurationSeconds <= 0) "0s" else minimumDurationLabel.removeSuffix(" and longer")} – no limit",
-                    color = MaterialTheme.colorScheme.outline,
-                    style = MaterialTheme.typography.bodySmall,
-                  )
+              // Minimum duration is a library filter, not a child setting of "Include audio files".
+              // It always applies to the dedicated Music tab, and it also applies to audio shown
+              // alongside videos in Files/Folders whenever that separate switch is enabled.
+              PreferenceDivider()
+              val minimumAudioDurationSeconds by browserPreferences.minimumAudioDurationSeconds.collectAsState()
+              val maxMinimumDurationSeconds = 120f
+              val minimumDurationLabel =
+                when {
+                  minimumAudioDurationSeconds <= 0 -> "Any duration"
+                  minimumAudioDurationSeconds < 60 -> "${minimumAudioDurationSeconds}s and longer"
+                  minimumAudioDurationSeconds % 60 == 0 -> "${minimumAudioDurationSeconds / 60} min and longer"
+                  else ->
+                    "${minimumAudioDurationSeconds / 60}m ${minimumAudioDurationSeconds % 60}s and longer"
                 }
+
+              Column(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+              ) {
+                Text(
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_minimum_audio_duration),
+                  style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                  minimumDurationLabel,
+                  color = MaterialTheme.colorScheme.outline,
+                  style = MaterialTheme.typography.bodyMedium,
+                )
+                RangeSlider(
+                  value =
+                    minimumAudioDurationSeconds
+                      .toFloat()
+                      .coerceIn(0f, maxMinimumDurationSeconds)..maxMinimumDurationSeconds,
+                  onValueChange = { selectedRange ->
+                    // The left thumb is the lower bound; there is intentionally no upper limit.
+                    // Music reacts live via the preference flow. Files/Folders are refreshed once
+                    // the drag finishes so storage is not rescanned for every intermediate step.
+                    browserPreferences.minimumAudioDurationSeconds.set(
+                      selectedRange.start.toInt().coerceIn(0, maxMinimumDurationSeconds.toInt()),
+                    )
+                  },
+                  onValueChangeFinished = { MediaLibraryEvents.notifyChanged() },
+                  valueRange = 0f..maxMinimumDurationSeconds,
+                  steps = 23,
+                )
+                Text(
+                  text =
+                    "Applies to Music and audio in Files • Included: ${
+                      if (minimumAudioDurationSeconds <= 0) {
+                        "0s"
+                      } else {
+                        minimumDurationLabel.removeSuffix(" and longer")
+                      }
+                    } – no limit",
+                  color = MaterialTheme.colorScheme.outline,
+                  style = MaterialTheme.typography.bodySmall,
+                )
               }
             }
           }

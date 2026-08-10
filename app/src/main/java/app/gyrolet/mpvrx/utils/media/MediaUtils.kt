@@ -9,9 +9,11 @@
 
 package app.gyrolet.mpvrx.utils.media
 
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gyrolet.mpvrx.domain.media.model.Video
@@ -19,6 +21,7 @@ import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerLookupHints
 import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionActivity
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.Utils
 import java.io.File
 import kotlin.math.pow
@@ -83,8 +86,20 @@ object MediaUtils {
     val uri =
       when (source) {
         is Video -> {
-          val intent = Intent(Intent.ACTION_VIEW, source.uri)
-          val torrentSource = source.uri.toString().takeIf { isTorrentSource(it, source.mimeType) }
+          val localPath = source.path.takeIf { File(it).isFile }
+          // Recents stores a durable filesystem path, while normal library playback is usually
+          // launched with a MediaStore content:// URI. Playback state is keyed from the launch
+          // URI, so reopening the same file as file:// created a different key and restarted at 0.
+          // Resolve the path back to its MediaStore URI for history/quick-play launches so the
+          // existing playback-state key (and therefore the saved position) is reused.
+          val playbackUri =
+            if (launchSource.isHistoryResumeLaunch() && localPath != null) {
+              resolveMediaStoreUri(context, localPath, source.isAudio) ?: source.uri
+            } else {
+              source.uri
+            }
+          val intent = Intent(Intent.ACTION_VIEW, playbackUri)
+          val torrentSource = playbackUri.toString().takeIf { isTorrentSource(it, source.mimeType) }
           intent.setClass(
             context,
             if (torrentSource != null && torrentFileIndex == null && torrentPreparationId == null) {
@@ -96,7 +111,7 @@ object MediaUtils {
           intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
           intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
           intent.putExtra("internal_launch", true) // Enables subtitle autoload
-          source.path.takeIf { java.io.File(it).isFile }?.let { intent.putExtra("local_media_path", it) }
+          localPath?.let { intent.putExtra("local_media_path", it) }
           intent.putExtra("is_audio", source.isAudio)
           applyPlaybackExtras(
             intent = intent,
@@ -154,12 +169,28 @@ object MediaUtils {
         }
       }
 
-    val intent = Intent(Intent.ACTION_VIEW, uri)
+    val localPath =
+      when {
+        source is String && source.startsWith("file://", ignoreCase = true) -> source.removePrefix("file://")
+        source is String && source.startsWith("/") -> source
+        uri.scheme.equals("file", ignoreCase = true) -> uri.path
+        else -> null
+      }?.takeIf { File(it).isFile }
+
+    val playbackUri =
+      if (launchSource.isHistoryResumeLaunch() && localPath != null) {
+        val isAudio = File(localPath).extension.lowercase() in FileTypeUtils.AUDIO_EXTENSIONS
+        resolveMediaStoreUri(context, localPath, isAudio) ?: uri
+      } else {
+        uri
+      }
+
+    val intent = Intent(Intent.ACTION_VIEW, playbackUri)
     val torrentSource =
       when (source) {
         is String -> source.trim()
         is Uri -> source.toString()
-        else -> uri.toString()
+        else -> playbackUri.toString()
       }.takeIf { isTorrentSource(it) }
     intent.setClass(
       context,
@@ -171,6 +202,7 @@ object MediaUtils {
     )
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    localPath?.let { intent.putExtra("local_media_path", it) }
     applyPlaybackExtras(
       intent = intent,
       launchSource = launchSource,
@@ -188,6 +220,42 @@ object MediaUtils {
       backdropUrl = backdropUrl,
     )
     context.startActivity(intent)
+  }
+
+  private fun String?.isHistoryResumeLaunch(): Boolean =
+    this == "recently_played" ||
+      this == "recently_played_button" ||
+      this == "quick_play_fab"
+
+  @Suppress("DEPRECATION")
+  private fun resolveMediaStoreUri(
+    context: Context,
+    filePath: String,
+    isAudio: Boolean,
+  ): Uri? {
+    if (filePath.isBlank()) return null
+    val collection =
+      if (isAudio) {
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+      } else {
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+      }
+
+    return runCatching {
+      context.contentResolver
+        .query(
+          collection,
+          arrayOf(MediaStore.MediaColumns._ID),
+          "${MediaStore.MediaColumns.DATA} = ?",
+          arrayOf(filePath),
+          null,
+        )?.use { cursor ->
+          if (!cursor.moveToFirst()) return@use null
+          val idColumn = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
+          if (idColumn < 0) return@use null
+          ContentUris.withAppendedId(collection, cursor.getLong(idColumn))
+        }
+    }.getOrNull()
   }
 
   private fun applyPlaybackExtras(

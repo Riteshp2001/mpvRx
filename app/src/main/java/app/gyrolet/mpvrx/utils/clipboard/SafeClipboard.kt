@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets
 object SafeClipboard {
   const val MAX_CLIPBOARD_BYTES: Int = 512 * 1024
   private const val RETRY_BYTES: Int = 128 * 1024
+  private const val LEGACY_DEBUG_DUMP_LABEL = "mpvrx_logs"
 
   data class TruncatedText(
     val text: String,
@@ -41,19 +42,30 @@ object SafeClipboard {
     text: CharSequence,
     showToast: Boolean = true,
   ): CopyResult {
+    val rawText = text.toString()
+
+    // Advanced Settings historically copied the entire dump before opening the debug-log UI.
+    // The interactive viewer now owns explicit Copy/Share/Export actions, so opening "Dump logs"
+    // must not mutate the user's clipboard or show a misleading "Copied" toast. Keep this guard
+    // narrowly scoped to that legacy call site; crash-report and explicit-copy labels are unchanged.
+    if (label == LEGACY_DEBUG_DUMP_LABEL) {
+      val byteCount = rawText.toByteArray(StandardCharsets.UTF_8).size
+      return CopyResult(copiedBytes = 0, originalBytes = byteCount, truncated = false)
+    }
+
     val clipboard =
       context.getSystemService(ClipboardManager::class.java)
         ?: error("Clipboard service unavailable")
-    val first = truncateUtf8(text.toString(), MAX_CLIPBOARD_BYTES)
+    val first = truncateUtf8(rawText, MAX_CLIPBOARD_BYTES)
     return try {
       clipboard.setPrimaryClip(ClipData.newPlainText(label, first.text))
       if (showToast) showToast(context, first.toastMessage())
       CopyResult(first.copiedBytes, first.originalBytes, first.truncated)
     } catch (error: TransactionTooLargeException) {
-      retrySmallClipboard(context, clipboard, label, text.toString(), showToast)
+      retrySmallClipboard(context, clipboard, label, rawText, showToast)
     } catch (error: RuntimeException) {
       if (error.message?.contains("TransactionTooLarge", ignoreCase = true) == true) {
-        retrySmallClipboard(context, clipboard, label, text.toString(), showToast)
+        retrySmallClipboard(context, clipboard, label, rawText, showToast)
       } else {
         throw error
       }
