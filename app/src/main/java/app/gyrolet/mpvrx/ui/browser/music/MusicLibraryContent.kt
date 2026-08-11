@@ -243,6 +243,8 @@ fun MusicLibraryContent(
     MusicTab.FOLDERS -> songSelectionManager
   }
 
+  val visibleTabs by musicViewModel.visibleTabs.collectAsState()
+
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
   val quickPlayFabDirect by appearancePreferences.quickPlayFabDirect.collectAsState()
@@ -250,18 +252,29 @@ fun MusicLibraryContent(
   val isFabExpanded = remember { mutableStateOf(false) }
   val navigationBarHeight = LocalNavigationBarHeight.current
 
-  val pagerState = rememberPagerState(initialPage = selectedTab.ordinal) { MusicTab.defaultTabs.size }
+  val initialPageIndex = remember(selectedTab, visibleTabs) {
+    visibleTabs.indexOf(selectedTab).coerceAtLeast(0)
+  }
+  val pagerState = rememberPagerState(initialPage = initialPageIndex) { visibleTabs.size }
 
   LaunchedEffect(Unit) {
     musicViewModel.scanLibrary(context)
   }
 
-  LaunchedEffect(pagerState.settledPage) {
-    musicViewModel.setTab(MusicTab.defaultTabs[pagerState.settledPage])
+  LaunchedEffect(visibleTabs) {
+    if (selectedTab !in visibleTabs) {
+      visibleTabs.firstOrNull()?.let { musicViewModel.setTab(it) }
+    }
   }
 
-  LaunchedEffect(selectedTab) {
-    val targetIndex = MusicTab.defaultTabs.indexOf(selectedTab)
+  LaunchedEffect(pagerState.settledPage, visibleTabs) {
+    visibleTabs.getOrNull(pagerState.settledPage)?.let { tab ->
+      musicViewModel.setTab(tab)
+    }
+  }
+
+  LaunchedEffect(selectedTab, visibleTabs) {
+    val targetIndex = visibleTabs.indexOf(selectedTab)
     if (targetIndex >= 0 && pagerState.currentPage != targetIndex) {
       pagerState.animateScrollToPage(targetIndex)
     }
@@ -426,13 +439,13 @@ fun MusicLibraryContent(
         )
 
         ScrollableTabRow(
-          selectedTabIndex = pagerState.currentPage,
+          selectedTabIndex = pagerState.currentPage.coerceIn(0, (visibleTabs.size - 1).coerceAtLeast(0)),
           containerColor = Color.Transparent,
           contentColor = MaterialTheme.colorScheme.primary,
           edgePadding = 8.dp,
           divider = {}
         ) {
-          MusicTab.defaultTabs.forEachIndexed { index, tab ->
+          visibleTabs.forEachIndexed { index, tab ->
             Tab(
               selected = pagerState.currentPage == index,
               onClick = {
@@ -458,8 +471,8 @@ fun MusicLibraryContent(
       }
     },
     floatingActionButton = {
-      val isPlaylistsTab = MusicTab.defaultTabs.getOrNull(pagerState.currentPage) == MusicTab.PLAYLISTS
-      val isFoldersTab = MusicTab.defaultTabs.getOrNull(pagerState.currentPage) == MusicTab.FOLDERS
+      val isPlaylistsTab = visibleTabs.getOrNull(pagerState.currentPage) == MusicTab.PLAYLISTS
+      val isFoldersTab = visibleTabs.getOrNull(pagerState.currentPage) == MusicTab.FOLDERS
       if (isFoldersTab) {
         // FolderListScreen.MediaStoreFolderListContent renders its own FAB, skip ours.
       } else if (isPlaylistsTab) {
@@ -566,7 +579,8 @@ fun MusicLibraryContent(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
           ) { page ->
-            when (MusicTab.defaultTabs[page]) {
+            val activeTab = visibleTabs.getOrNull(page) ?: MusicTab.SONGS
+            when (activeTab) {
               MusicTab.SONGS -> SongsTabContent(
                 songs = songs,
                 viewMode = viewMode,

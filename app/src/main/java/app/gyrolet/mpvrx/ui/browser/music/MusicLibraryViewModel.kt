@@ -31,6 +31,17 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
 
   private val playlistRepository: PlaylistRepository by inject()
   private val browserPreferences: app.gyrolet.mpvrx.preferences.BrowserPreferences by inject()
+  private val audioPreferences: app.gyrolet.mpvrx.preferences.AudioPreferences by inject()
+
+  val visibleTabs: StateFlow<List<MusicTab>> = combine(
+    audioPreferences.musicTabOrder.changes(),
+    audioPreferences.enabledMusicTabs.changes(),
+  ) { orderList, enabledSet ->
+    val tabMap = MusicTab.entries.associateBy { it.name }
+    val orderedTabs = (orderList.mapNotNull { tabMap[it] } + (MusicTab.entries - orderList.mapNotNull { tabMap[it] }.toSet())).distinct()
+    val filtered = orderedTabs.filter { it.name in enabledSet }
+    if (filtered.isEmpty()) listOf(MusicTab.SONGS) else filtered
+  }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MusicTab.entries.toList())
 
   // Keep the unfiltered MediaStore result so changing the minimum-duration preference can update
   // Songs, Albums and Artists immediately without rescanning storage on every slider movement.

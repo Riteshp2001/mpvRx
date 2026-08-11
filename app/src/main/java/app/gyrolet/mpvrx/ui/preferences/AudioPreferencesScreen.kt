@@ -65,6 +65,16 @@ import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.TextFieldPreference
 import org.koin.compose.koinInject
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import app.gyrolet.mpvrx.ui.browser.music.MusicTab
+
 @Serializable
 object AudioPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
@@ -79,6 +89,8 @@ object AudioPreferencesScreen : Screen {
       rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
       ) { _ -> }
+
+    var showMusicTabsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
       topBar = {
@@ -205,6 +217,34 @@ object AudioPreferencesScreen : Screen {
                     } – no limit",
                   color = MaterialTheme.colorScheme.outline,
                   style = MaterialTheme.typography.bodySmall,
+                )
+              }
+
+              PreferenceDivider()
+              val enabledMusicTabs by preferences.enabledMusicTabs.collectAsState()
+              val musicTabOrder by preferences.musicTabOrder.collectAsState()
+              val musicTabsSummary = remember(enabledMusicTabs, musicTabOrder) {
+                val tabMap = MusicTab.entries.associateBy { it.name }
+                val orderedTabs = (musicTabOrder.mapNotNull { tabMap[it] } + (MusicTab.entries - musicTabOrder.mapNotNull { tabMap[it] }.toSet())).distinct()
+                val names = orderedTabs.filter { it.name in enabledMusicTabs }.map { it.title }
+                if (names.isEmpty()) "Songs" else names.joinToString(", ")
+              }
+
+              Column(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .clickable { showMusicTabsDialog = true }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+              ) {
+                Text(
+                  text = "Music Library Tabs",
+                  style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                  text = musicTabsSummary,
+                  color = MaterialTheme.colorScheme.outline,
+                  style = MaterialTheme.typography.bodyMedium,
                 )
               }
             }
@@ -443,6 +483,113 @@ object AudioPreferencesScreen : Screen {
           }
         }
       }
+    }
+
+    if (showMusicTabsDialog) {
+      val enabledMusicTabs by preferences.enabledMusicTabs.collectAsState()
+      val musicTabOrder by preferences.musicTabOrder.collectAsState()
+      val tabMap = remember { MusicTab.entries.associateBy { it.name } }
+      val currentOrderedTabs = remember(musicTabOrder) {
+        (musicTabOrder.mapNotNull { tabMap[it] } + (MusicTab.entries - musicTabOrder.mapNotNull { tabMap[it] }.toSet())).distinct()
+      }
+
+      AlertDialog(
+        onDismissRequest = { showMusicTabsDialog = false },
+        title = { Text("Music Library Tabs") },
+        text = {
+          Column {
+            Text(
+              text = "Toggle tabs or use arrows to rearrange order:",
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.outline,
+              modifier = Modifier.padding(bottom = 8.dp),
+            )
+            currentOrderedTabs.forEachIndexed { index, tab ->
+              val isChecked = tab.name in enabledMusicTabs
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Checkbox(
+                  checked = isChecked,
+                  onCheckedChange = { checked ->
+                    val current = enabledMusicTabs.toMutableSet()
+                    if (!checked) {
+                      if (current.size > 1) {
+                        current.remove(tab.name)
+                        preferences.enabledMusicTabs.set(current)
+                      }
+                    } else {
+                      current.add(tab.name)
+                      preferences.enabledMusicTabs.set(current)
+                    }
+                  },
+                )
+                Text(
+                  text = tab.title,
+                  style = MaterialTheme.typography.bodyLarge,
+                  modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                      val current = enabledMusicTabs.toMutableSet()
+                      if (isChecked) {
+                        if (current.size > 1) {
+                          current.remove(tab.name)
+                          preferences.enabledMusicTabs.set(current)
+                        }
+                      } else {
+                        current.add(tab.name)
+                        preferences.enabledMusicTabs.set(current)
+                      }
+                    }
+                    .padding(vertical = 8.dp),
+                )
+                IconButton(
+                  onClick = {
+                    if (index > 0) {
+                      val updatedList = currentOrderedTabs.map { it.name }.toMutableList()
+                      val item = updatedList.removeAt(index)
+                      updatedList.add(index - 1, item)
+                      preferences.musicTabOrder.set(updatedList)
+                    }
+                  },
+                  enabled = index > 0,
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.ExpandLess,
+                    contentDescription = "Move Up",
+                    tint = if (index > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
+                  )
+                }
+                IconButton(
+                  onClick = {
+                    if (index < currentOrderedTabs.size - 1) {
+                      val updatedList = currentOrderedTabs.map { it.name }.toMutableList()
+                      val item = updatedList.removeAt(index)
+                      updatedList.add(index + 1, item)
+                      preferences.musicTabOrder.set(updatedList)
+                    }
+                  },
+                  enabled = index < currentOrderedTabs.size - 1,
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.ExpandMore,
+                    contentDescription = "Move Down",
+                    tint = if (index < currentOrderedTabs.size - 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
+                  )
+                }
+              }
+            }
+          }
+        },
+        confirmButton = {
+          TextButton(onClick = { showMusicTabsDialog = false }) {
+            Text(stringResource(R.string.generic_ok))
+          }
+        },
+      )
     }
   }
 }
