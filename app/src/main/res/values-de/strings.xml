@@ -117,6 +117,9 @@
   <string name="pref_auto_pip_summary">Beim Drücken von Startseite oder Zurück automatisch in den PIP-Modus wechseln</string>
   <string name="pref_enable_video_mini_player_title">Video-Mini-Player aktivieren</string>
   <string name="pref_enable_video_mini_player_summary">Videowiedergabe beim Drücken der Zurück-Taste in einen schwebenden Mini-Player minimieren</string>
+  <string name="pref_video_mini_player_dependency_title">Video-Hintergrundwiedergabe aktivieren?</string>
+  <string name="pref_video_mini_player_dependency_message">Der Video-Mini-Player benötigt die Hintergrundwiedergabe des Video-Players, um die Videowiedergabe fortzusetzen, nachdem Sie den Vollbild-Player verlassen haben.</string>
+  <string name="pref_video_mini_player_dependency_confirm">Aktivieren und fortfahren</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Bildschirm bei Pause eingeschaltet lassen</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">Der Bildschirm bleibt eingeschaltet, während das Video pausiert ist</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">Der Bildschirm kann sich ausschalten, während das Video pausiert ist</string>

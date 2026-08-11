@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ui_no_recent_links">Aún no hay enlaces de streaming recientes ni torrents. Pega una URL de streaming arriba para empezar.</string>
+  <string name="syncplay_description">Mira vídeos sincronizados con tus amigos. Conéctate a un servidor de Syncplay para empezar a verlos juntos.</string>
+</resources>

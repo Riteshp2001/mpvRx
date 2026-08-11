@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ui_no_recent_links">还没有最近的流媒体链接或种子。请在上方粘贴流媒体 URL 以开始。</string>
+  <string name="syncplay_description">与朋友同步观看视频。连接到 Syncplay 服务器即可开始一起观看。</string>
+</resources>

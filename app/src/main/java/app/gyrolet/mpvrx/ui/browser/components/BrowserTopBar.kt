@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +60,7 @@ import org.koin.compose.koinInject
 /**
  * Unified top bar for browser screens that switches between normal and selection modes
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserTopBar(
   title: String,
@@ -139,7 +138,7 @@ fun BrowserTopBar(
 /**
  * Normal mode top bar
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NormalTopBar(
   title: String,
@@ -242,7 +241,7 @@ private fun NormalTopBar(
           if (forceHeadlineSmall || onBackClick != null) {
             MaterialTheme.typography.headlineSmall
           } else {
-            MaterialTheme.typography.headlineMediumEmphasized
+            MaterialTheme.typography.headlineMedium
           },
         fontWeight = FontWeight.ExtraBold,
         color = MaterialTheme.colorScheme.primary,
@@ -327,7 +326,7 @@ private fun NormalTopBar(
 /**
  * Selection mode top bar
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SelectionTopBar(
   selectedCount: Int,

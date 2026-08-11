@@ -5,12 +5,9 @@
 package app.gyrolet.mpvrx.ui.torrent
 
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -18,7 +15,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
@@ -42,11 +38,7 @@ class TorrentSelectionActivity : AppCompatActivity() {
   private var playerLaunched = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    setTheme(R.style.Theme_mpvrx_TorrentPicker)
     super.onCreate(savedInstanceState)
-    window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-    window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-    window.attributes = window.attributes.apply { dimAmount = 0.30f }
 
     val source = extractTorrentSource(intent)
     if (source.isNullOrBlank()) {

@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+﻿<?xml version='1.0' encoding='UTF-8'?>
 <resources>
   <string name="generic_reset">Réinitialiser</string>
   <string name="generic_share">Partager</string>
@@ -117,6 +117,9 @@
   <string name="pref_auto_pip_summary">Passer automatiquement en mode PIP en appuyant sur Accueil ou Retour</string>
   <string name="pref_enable_video_mini_player_title">Activer le mini-lecteur vidéo</string>
   <string name="pref_enable_video_mini_player_summary">Réduire la lecture vidéo dans un mini-lecteur flottant lors de l’appui sur Retour</string>
+  <string name="pref_video_mini_player_dependency_title">Activer la lecture vidéo en arrière-plan ?</string>
+  <string name="pref_video_mini_player_dependency_message">Le mini-lecteur vidéo a besoin de la lecture en arrière-plan du lecteur vidéo pour continuer à lire la vidéo après avoir quitté le lecteur complet.</string>
+  <string name="pref_video_mini_player_dependency_confirm">Activer et continuer</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Garder l’écran allumé en pause</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">L’écran reste allumé lorsque la vidéo est en pause</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">L’écran peut s’éteindre lorsque la vidéo est en pause</string>

@@ -972,6 +972,7 @@ class PlayerActivity :
       activity = this,
       mpvView = player,
       isAudioPlayer = { viewModel.isAudioOnly.value || isCurrentMediaKnownAudio() },
+      isVideoLoaded = { isReady },
     )
   }
 

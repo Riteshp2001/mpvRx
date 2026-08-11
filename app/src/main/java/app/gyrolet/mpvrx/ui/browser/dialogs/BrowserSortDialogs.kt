@@ -90,7 +90,7 @@ fun FolderSortDialog(
   val folderGridColumnSelector =
     if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
       GridColumnSelector(
-        label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        label = "Folder (${if (isLandscape) "Landscape" else "Portrait"})",
         currentValue = folderGridColumns.coerceIn(1, maxColumns),
         onValueChange = {
           if (isLandscape) {
@@ -109,7 +109,7 @@ fun FolderSortDialog(
   val videoGridColumnSelector =
     if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
       GridColumnSelector(
-        label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        label = "Video (${if (isLandscape) "Landscape" else "Portrait"})",
         currentValue = videoGridColumns.coerceIn(1, maxColumns),
         onValueChange = {
           if (isLandscape) {
@@ -366,7 +366,7 @@ fun VideoSortDialog(
   val folderGridColumnSelector =
     if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
       GridColumnSelector(
-        label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        label = "Folder (${if (isLandscape) "Landscape" else "Portrait"})",
         currentValue = folderGridColumns.coerceIn(1, maxColumns),
         onValueChange = {
           if (isLandscape) {
@@ -385,7 +385,7 @@ fun VideoSortDialog(
   val videoGridColumnSelector =
     if (activeLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
       GridColumnSelector(
-        label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        label = "Video (${if (isLandscape) "Landscape" else "Portrait"})",
         currentValue = videoGridColumns.coerceIn(1, maxColumns),
         onValueChange = {
           if (isLandscape) {
@@ -653,7 +653,7 @@ fun FileSystemSortDialog(
   val folderGridColumnSelector =
     if (mediaLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
       GridColumnSelector(
-        label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        label = "Folder (${if (isLandscape) "Landscape" else "Portrait"})",
         currentValue = folderGridColumns.coerceIn(1, maxColumns),
         onValueChange = {
           if (isLandscape) {
@@ -672,7 +672,7 @@ fun FileSystemSortDialog(
   val videoGridColumnSelector =
     if (mediaLayoutMode == MediaLayoutMode.GRID && manualGridColumnsEnabled) {
       GridColumnSelector(
-        label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+        label = "Video (${if (isLandscape) "Landscape" else "Portrait"})",
         currentValue = videoGridColumns.coerceIn(1, maxColumns),
         onValueChange = {
           if (isLandscape) {

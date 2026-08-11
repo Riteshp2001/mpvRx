@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-  <string name="pref_video_mini_player_dependency_title">Enable video background playback?</string>
-  <string name="pref_video_mini_player_dependency_message">Video Mini Player needs Video Player Background Playback to keep the video playing after you leave the full player.</string>
-  <string name="pref_video_mini_player_dependency_confirm">Enable and continue</string>
-</resources>

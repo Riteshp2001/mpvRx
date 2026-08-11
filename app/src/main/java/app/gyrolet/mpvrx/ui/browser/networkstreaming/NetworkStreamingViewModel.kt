@@ -215,8 +215,6 @@ class NetworkStreamingViewModel(
         ?.takeIf(String::isNotEmpty)
         ?.let { return it }
 
-      commonRoot(files)?.let { return it }
-
       runCatching {
         android.net.Uri.parse(source).lastPathSegment
           ?.substringAfterLast('/')
@@ -224,13 +222,57 @@ class NetworkStreamingViewModel(
           ?.trim()
       }.getOrNull()?.takeIf { it.isNotEmpty() && !it.startsWith("magnet:", ignoreCase = true) }?.let { return it }
 
+      commonRoot(files)
+        ?.takeIf { !looksLikeHash(it) }
+        ?.let { return it }
+
+      files.firstOrNull()?.fileName
+        ?.let { extractNameFromFileName(it) }
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?.let { return it }
+
       files.singleOrNull()?.fileName
         ?.substringBeforeLast('.', missingDelimiterValue = files.single().fileName)
         ?.trim()
         ?.takeIf(String::isNotEmpty)
         ?.let { return it }
 
+      commonRoot(files)?.let { return it }
+
       return infoHash?.take(8)?.uppercase()?.let { "Torrent $it" } ?: "Torrent"
+    }
+
+    private fun looksLikeHash(value: String): Boolean {
+      val trimmed = value.trim()
+      return trimmed.length >= 32 && trimmed.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+    }
+
+    private fun extractNameFromFileName(fileName: String): String? {
+      val cleaned = fileName
+        .substringBeforeLast('.')
+        .replace(Regex("[\\[_-]"), " ")
+        .trim()
+
+      val seasonEpisodeMatch = Regex("(?i)\\b[Ss](\\d{1,2})[\\s._-]*[Ee](\\d{1,3})\\b").find(cleaned)
+      if (seasonEpisodeMatch != null) {
+        val beforeMatch = cleaned.substring(0, seasonEpisodeMatch.range.first).trim()
+        if (beforeMatch.isNotEmpty()) return beforeMatch
+      }
+
+      val episodeMatch = Regex("(?i)\\b(?:episode|ep)[\\s._-]*(\\d{1,3})\\b").find(cleaned)
+      if (episodeMatch != null) {
+        val beforeMatch = cleaned.substring(0, episodeMatch.range.first).trim()
+        if (beforeMatch.isNotEmpty()) return beforeMatch
+      }
+
+      val qualityMatch = Regex("(?i)\\b(4K|2160p|1080p|720p|480p|HDR|HDRip|WEBRip|BluRay|BRRip|DVDRip)\\b").find(cleaned)
+      if (qualityMatch != null) {
+        val beforeMatch = cleaned.substring(0, qualityMatch.range.first).trim()
+        if (beforeMatch.isNotEmpty()) return beforeMatch
+      }
+
+      return cleaned.takeIf { it.length >= 3 }
     }
 
     private fun commonRoot(files: List<NetworkStreamEntryEntity>): String? {

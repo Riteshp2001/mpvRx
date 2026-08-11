@@ -235,6 +235,7 @@ class MainActivity : AppCompatActivity() {
     pipHelper = MPVPipHelper(
       activity = this,
       isAudioPlayer = { isCurrentMediaAudioOnly() },
+      isVideoLoaded = { isCurrentMediaVideoLoaded() },
     )
 
     PermissionUtils.setMediaAccessLauncher(mediaAccessLauncher)
@@ -401,6 +402,17 @@ class MainActivity : AppCompatActivity() {
       if (hasRealVideo) return false
     }
     return false
+  }
+
+  private fun isCurrentMediaVideoLoaded(): Boolean {
+    val isServiceRunning = MediaPlaybackService.isForegroundActive()
+    val sessionState = PlaybackSession.state.value
+    return isServiceRunning &&
+      sessionState.currentItem != null &&
+      NavigationBarState.isMiniPlayerVisible &&
+      sessionState.phase != PlaybackPhase.IDLE &&
+      sessionState.phase != PlaybackPhase.UNINITIALIZED &&
+      sessionState.phase != PlaybackPhase.ERROR
   }
 
   override fun onDestroy() {

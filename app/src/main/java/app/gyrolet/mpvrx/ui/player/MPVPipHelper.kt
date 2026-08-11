@@ -43,13 +43,15 @@ class MPVPipHelper(
   private val activity: AppCompatActivity,
   private val videoViewProvider: (() -> View?)? = null,
   private val isAudioPlayer: () -> Boolean = { false },
+  private val isVideoLoaded: () -> Boolean = { false },
 ) : KoinComponent {
 
   constructor(
     activity: AppCompatActivity,
     mpvView: MPVView,
     isAudioPlayer: () -> Boolean = { false },
-  ) : this(activity, { mpvView }, isAudioPlayer)
+    isVideoLoaded: () -> Boolean = { false },
+  ) : this(activity, { mpvView }, isAudioPlayer, isVideoLoaded)
 
   private val playerPreferences: PlayerPreferences by inject()
   private var pipReceiver: BroadcastReceiver? = null
@@ -109,7 +111,7 @@ class MPVPipHelper(
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          val autoPipAllowed = playerPreferences.autoPiPOnNavigation.get() && !isAudioPlayer()
+          val autoPipAllowed = playerPreferences.autoPiPOnNavigation.get() && !isAudioPlayer() && isVideoLoaded()
           setAutoEnterEnabled(autoPipAllowed)
           // Video surfaces can resize continuously, so let Android morph the
           // full-screen frame into and out of PiP instead of cross-fading it.
@@ -195,8 +197,8 @@ class MPVPipHelper(
   }
 
   fun enterPipMode() {
-    if (isAudioPlayer()) {
-      Log.d("MPVPipHelper", "PiP mode is disabled for audio playback")
+    if (isAudioPlayer() || !isVideoLoaded()) {
+      Log.d("MPVPipHelper", "PiP mode is disabled: audio=${isAudioPlayer()}, videoLoaded=${isVideoLoaded()}")
       return
     }
     runCatching {

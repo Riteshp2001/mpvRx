@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ui_no_recent_links">最近のストリームリンクやTorrentはまだありません。上にストリームURLを貼り付けて開始してください。</string>
+  <string name="syncplay_description">友達と動画を同期して視聴できます。一緒に視聴を始めるにはSyncplayサーバーに接続してください。</string>
+</resources>

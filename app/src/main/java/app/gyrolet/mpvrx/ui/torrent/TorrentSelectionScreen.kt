@@ -4,28 +4,42 @@
 
 package app.gyrolet.mpvrx.ui.torrent
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +48,9 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.torrent.TorrentFileItem
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
+import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 
 @Composable
 fun TorrentSelectionScreen(
@@ -43,67 +60,225 @@ fun TorrentSelectionScreen(
   onSelect: (Int) -> Unit,
 ) {
   when (state) {
-    TorrentSelectionUiState.Loading -> TorrentLoadingDialog(onBack)
-    is TorrentSelectionUiState.Error -> TorrentErrorDialog(state.message, onBack, onRetry)
-    is TorrentSelectionUiState.Ready -> TorrentFilePickerDialog(state, onBack, onSelect)
+    TorrentSelectionUiState.Loading -> TorrentLoadingScreen(onBack)
+    is TorrentSelectionUiState.Error -> TorrentErrorScreen(state.message, onBack, onRetry)
+    is TorrentSelectionUiState.Ready -> TorrentReadyScreen(state, onBack, onSelect)
   }
 }
 
 @Composable
-private fun TorrentFilePickerDialog(
+private fun TorrentReadyScreen(
   state: TorrentSelectionUiState.Ready,
   onBack: () -> Unit,
   onSelect: (Int) -> Unit,
 ) {
-  AlertDialog(
-    onDismissRequest = onBack,
-    title = {
-      Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(
-          text = stringResource(R.string.torrent_picker_choose_title),
-          style = MaterialTheme.typography.titleLarge,
-          fontWeight = FontWeight.Bold,
+  BackHandler { onBack() }
+  val artwork = state.artwork
+  val hasBackdrop = !artwork.backdropUrl.isNullOrBlank()
+
+  Surface(
+    modifier = Modifier.fillMaxSize(),
+    color = MaterialTheme.colorScheme.surface,
+  ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+      if (hasBackdrop) {
+        RemoteImage(
+          url = artwork.backdropUrl!!,
+          contentDescription = null,
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .aspectRatio(16f / 9f)
+              .blur(20.dp),
+          contentScale = ContentScale.Crop,
+          alpha = 0.4f,
         )
-        Text(
-          text = pluralStringResource(
-            R.plurals.torrent_picker_playable_count,
-            state.catalog.playableFiles.size,
-            state.catalog.playableFiles.size,
-          ),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Box(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .aspectRatio(16f / 9f)
+              .background(
+                Brush.verticalGradient(
+                  colors = listOf(Color.Transparent, MaterialTheme.colorScheme.surface),
+                ),
+              ),
         )
       }
-    },
-    text = {
-      LazyColumn(
+
+      Column(modifier = Modifier.fillMaxSize()) {
+        // Top bar
+        Row(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .statusBarsPadding()
+              .padding(horizontal = 4.dp, vertical = 4.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          IconButton(onClick = onBack) {
+            Icon(
+              imageVector = Icons.RoundedFilled.ArrowBack,
+              contentDescription = stringResource(android.R.string.cancel),
+            )
+          }
+          Text(
+            text = stringResource(R.string.torrent_picker_choose_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f),
+          )
+          if (state.launchingFileIndex != null) {
+            CircularProgressIndicator(
+              modifier =
+                Modifier
+                  .size(22.dp)
+                  .padding(end = 8.dp),
+              strokeWidth = 2.dp,
+            )
+          }
+        }
+
+        // Hero banner + metadata
+        if (hasBackdrop || artwork.title.isNotBlank()) {
+          TorrentHeroBanner(artwork)
+        }
+
+        // File list header
+        Column(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 20.dp, vertical = 8.dp),
+        ) {
+          Text(
+            text =
+              pluralStringResource(
+                R.plurals.torrent_picker_playable_count,
+                state.catalog.playableFiles.size,
+                state.catalog.playableFiles.size,
+              ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+
+        // File list
+        LazyColumn(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .weight(1f)
+              .padding(horizontal = 16.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          itemsIndexed(
+            items = state.catalog.playableFiles,
+            key = { _, file -> file.index },
+          ) { position, file ->
+            TorrentFileRow(
+              file = file,
+              position = position,
+              enabled = state.launchingFileIndex == null,
+              launching = state.launchingFileIndex == file.index,
+              onClick = { onSelect(file.index) },
+            )
+          }
+          item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun TorrentHeroBanner(artwork: TorrentArtwork) {
+  var expanded by remember { mutableStateOf(false) }
+  val hasBackdrop = !artwork.backdropUrl.isNullOrBlank()
+  val hasDescription = !artwork.description.isNullOrBlank()
+
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 20.dp)
+        .then(if (hasBackdrop) Modifier else Modifier.padding(top = 8.dp)),
+  ) {
+    if (hasBackdrop) {
+      Box(
         modifier =
           Modifier
             .fillMaxWidth()
-            .heightIn(max = 520.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .aspectRatio(16f / 9f)
+            .clip(RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.BottomStart,
       ) {
-        itemsIndexed(
-          items = state.catalog.playableFiles,
-          key = { _, file -> file.index },
-        ) { position, file ->
-          TorrentFileRow(
-            file = file,
-            position = position,
-            enabled = state.launchingFileIndex == null,
-            launching = state.launchingFileIndex == file.index,
-            onClick = { onSelect(file.index) },
-          )
-        }
+        RemoteImage(
+          url = artwork.backdropUrl!!,
+          contentDescription = artwork.title,
+          modifier = Modifier.fillMaxSize(),
+          contentScale = ContentScale.Crop,
+        )
+        Box(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .height(80.dp)
+              .background(
+                Brush.verticalGradient(
+                  colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                ),
+              ),
+        )
+        Text(
+          text = artwork.title,
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.Bold,
+          color = Color.White,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.padding(12.dp),
+        )
       }
-    },
-    confirmButton = {},
-    dismissButton = {
-      TextButton(onClick = onBack, enabled = state.launchingFileIndex == null) {
-        Text(stringResource(android.R.string.cancel))
-      }
-    },
-  )
+    } else {
+      Text(
+        text = artwork.title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+
+    val metadata =
+      listOfNotNull(
+        artwork.releaseYear,
+        artwork.mediaType,
+      ).joinToString("  •  ")
+
+    if (metadata.isNotBlank()) {
+      Text(
+        text = metadata,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 6.dp),
+      )
+    }
+
+    if (hasDescription) {
+      Text(
+        text = artwork.description!!,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = if (expanded) Int.MAX_VALUE else 3,
+        overflow = TextOverflow.Ellipsis,
+        modifier =
+          Modifier
+            .padding(top = 6.dp)
+            .clickable { expanded = !expanded },
+      )
+    }
+  }
 }
 
 @Composable
@@ -196,52 +371,86 @@ private fun TorrentFileRow(
 }
 
 @Composable
-private fun TorrentLoadingDialog(onBack: () -> Unit) {
-  AlertDialog(
-    onDismissRequest = onBack,
-    title = { Text(stringResource(R.string.torrent_picker_preparing_title)) },
-    text = {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-      ) {
-        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp)
-        Text(
-          text = stringResource(R.string.torrent_picker_preparing_description),
-          style = MaterialTheme.typography.bodyMedium,
-        )
-      }
-    },
-    confirmButton = {},
-    dismissButton = {
+private fun TorrentLoadingScreen(onBack: () -> Unit) {
+  BackHandler { onBack() }
+  Surface(
+    modifier = Modifier.fillMaxSize(),
+    color = MaterialTheme.colorScheme.surface,
+  ) {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .statusBarsPadding()
+          .padding(20.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center,
+    ) {
+      CircularProgressIndicator(modifier = Modifier.size(48.dp), strokeWidth = 3.dp)
+      Spacer(modifier = Modifier.height(20.dp))
+      Text(
+        text = stringResource(R.string.torrent_picker_preparing_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+      )
+      Spacer(modifier = Modifier.height(8.dp))
+      Text(
+        text = stringResource(R.string.torrent_picker_preparing_description),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      Spacer(modifier = Modifier.height(24.dp))
       TextButton(onClick = onBack) {
         Text(stringResource(android.R.string.cancel))
       }
-    },
-  )
+    }
+  }
 }
 
 @Composable
-private fun TorrentErrorDialog(
+private fun TorrentErrorScreen(
   message: String,
   onBack: () -> Unit,
   onRetry: () -> Unit,
 ) {
-  AlertDialog(
-    onDismissRequest = onBack,
-    title = { Text(stringResource(R.string.torrent_picker_error_title)) },
-    text = { Text(message) },
-    confirmButton = {
-      TextButton(onClick = onRetry) {
-        Text(stringResource(R.string.torrent_picker_retry))
+  BackHandler { onBack() }
+  Surface(
+    modifier = Modifier.fillMaxSize(),
+    color = MaterialTheme.colorScheme.surface,
+  ) {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .statusBarsPadding()
+          .padding(20.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center,
+    ) {
+      Text(
+        text = stringResource(R.string.torrent_picker_error_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+      )
+      Spacer(modifier = Modifier.height(12.dp))
+      Text(
+        text = message,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 4,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Spacer(modifier = Modifier.height(24.dp))
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        TextButton(onClick = onBack) {
+          Text(stringResource(android.R.string.cancel))
+        }
+        TextButton(onClick = onRetry) {
+          Text(stringResource(R.string.torrent_picker_retry))
+        }
       }
-    },
-    dismissButton = {
-      TextButton(onClick = onBack) {
-        Text(stringResource(android.R.string.cancel))
-      }
-    },
-  )
+    }
+  }
 }
 
 private data class ParsedEpisode(

@@ -119,6 +119,9 @@
   <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
   <string name="pref_enable_video_mini_player_title">Enable Video Mini Player</string>
   <string name="pref_enable_video_mini_player_summary">Minimize video playback into a floating Mini Player when pressing Back</string>
+  <string name="pref_video_mini_player_dependency_title">Enable video background playback?</string>
+  <string name="pref_video_mini_player_dependency_message">Video Mini Player needs Video Player Background Playback to keep the video playing after you leave the full player.</string>
+  <string name="pref_video_mini_player_dependency_confirm">Enable and continue</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Keep screen on when paused</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">Screen stays awake while video is paused</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">Screen can turn off while video is paused</string>
@@ -1207,6 +1210,7 @@
   <string name="ui_add_connection">Add Connection</string>
   <string name="ui_local_network">Local Network</string>
   <string name="ui_no_network_connections">No network connections</string>
+  <string name="ui_no_recent_links">No recent stream links or torrents yet. Paste a stream URL above to get started.</string>
   <string name="ui_add_smb_ftp_or_webdav_connections_to_browse_network_files">Add SMB, FTP, or WebDAV connections to browse network files</string>
   <string name="ui_stream_link">Stream Link</string>
   <string name="ui_enter_stream_url">Enter stream URL…</string>
@@ -1543,6 +1547,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Vibrant neon-like colors with edge</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Enhanced blacks for OLED displays</string>
   <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_description">Watch videos in sync with friends. Connect to a Syncplay server to start watching together.</string>
   <string name="syncplay_open">Open Syncplay</string>
   <string name="syncplay_connected_as">Connected as %1$s in room %2$s</string>
   <string name="syncplay_users_in_room">Users in room:</string>

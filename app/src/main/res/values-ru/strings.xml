@@ -117,6 +117,9 @@
   <string name="pref_auto_pip_summary">Автоматически переходить в режим PIP при нажатии «Домой» или «Назад»</string>
   <string name="pref_enable_video_mini_player_title">Включить видео мини-плеер</string>
   <string name="pref_enable_video_mini_player_summary">Сворачивать воспроизведение видео в плавающий мини-плеер при нажатии «Назад»</string>
+  <string name="pref_video_mini_player_dependency_title">Включить фоновое воспроизведение видео?</string>
+  <string name="pref_video_mini_player_dependency_message">Видео мини-плееру необходима функция фонового воспроизведения видео, чтобы видео продолжало воспроизводиться после выхода из полноценного проигрывателя.</string>
+  <string name="pref_video_mini_player_dependency_confirm">Включить и продолжить</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Не выключать экран во время паузы</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">Экран остаётся включённым, пока видео приостановлено</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">Экран может выключаться, пока видео приостановлено</string>

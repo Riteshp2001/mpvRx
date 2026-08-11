@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ui_no_recent_links">لا توجد روابط بث حديثة أو تورنتات بعد. الصق رابط بث أعلاه للبدء.</string>
+  <string name="syncplay_description">شاهد مقاطع الفيديو بشكل متزامن مع الأصدقاء. اتصل بخادم Syncplay لبدء المشاهدة معًا.</string>
+</resources>

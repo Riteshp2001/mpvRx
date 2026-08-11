@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ui_no_recent_links">Пока нет недавних ссылок на потоки или торрентов. Вставьте URL потока выше, чтобы начать.</string>
+  <string name="syncplay_description">Смотрите видео синхронно с друзьями. Подключитесь к серверу Syncplay, чтобы начать совместный просмотр.</string>
+</resources>

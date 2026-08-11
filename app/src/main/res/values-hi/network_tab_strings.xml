@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ui_no_recent_links">अभी तक कोई हाल का स्ट्रीम लिंक या टोरेंट नहीं है। शुरू करने के लिए ऊपर स्ट्रीम URL पेस्ट करें।</string>
+  <string name="syncplay_description">दोस्तों के साथ वीडियो सिंक में देखें। साथ देखना शुरू करने के लिए Syncplay सर्वर से कनेक्ट करें।</string>
+</resources>
