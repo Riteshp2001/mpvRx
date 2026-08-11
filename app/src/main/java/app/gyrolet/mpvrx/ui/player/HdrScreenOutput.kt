@@ -21,9 +21,9 @@ import app.gyrolet.mpvrx.domain.hdr.HdrToysProfile
  * by the previous mode.
  *
  * - [OFF]         — restore mpv's normal automatic SDR/HDR handling.
- * - [BT_2100_PQ]  — HDR10 hdr-toys pipeline.
- * - [BT_2100_HLG] — HLG hdr-toys pipeline.
- * - [BT_2020]     — BT.2020 hdr-toys gamut pipeline.
+ * - [BT_2100_PQ]  — HDR10 hdr-toys pipeline on gpu-next; native SDR mapping on legacy gpu.
+ * - [BT_2100_HLG] — HLG hdr-toys pipeline on gpu-next; native SDR mapping on legacy gpu.
+ * - [BT_2020]     — BT.2020 hdr-toys gamut pipeline on gpu-next; native SDR mapping on legacy gpu.
  * - [LINEAR]      — mpv-native gpu-next HDR path, without hdr-toys shaders.
  */
 enum class HdrScreenMode(
@@ -65,7 +65,6 @@ enum class HdrScreenMode(
   companion object {
     val selectableModes = listOf(BT_2100_PQ, BT_2100_HLG, BT_2020, LINEAR)
 
-    // The lightest hdr-toys profile; also works on the legacy GPU renderer.
     val defaultEnabledMode = BT_2020
   }
 }
@@ -92,17 +91,29 @@ private val HDR_OWNED_PROPERTIES =
     "glsl-shader-opts",
   )
 
+private val HDR_TOYS_SHADER_OPTION_KEYS =
+  HdrToysProfile.entries
+    .flatMap { profile -> profile.shaderOptions }
+    .map { (name, _) -> name }
+    .toSet()
+
 internal fun hdrScreenOutputSettings(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
   boostSdrToHdr: Boolean = false,
+  gpuNextRenderer: Boolean = true,
 ): List<Pair<String, String>> {
   val activeMode = if (pipelineReady) mode else HdrScreenMode.OFF
   val settings =
     when (activeMode) {
       HdrScreenMode.OFF -> offSettings()
       HdrScreenMode.LINEAR -> linearHdrSettings(boostSdrToHdr)
-      else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
+      else ->
+        if (gpuNextRenderer) {
+          hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
+        } else {
+          legacyGpuSdrSettings()
+        }
     }
 
   // Defensive invariant for future modes: never allow a partial color-state profile to ship.
@@ -155,8 +166,9 @@ private fun offSettings(): List<Pair<String, String>> =
 
 private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>> =
   commonSettings(
-    // hdr-toys owns transfer/gamut/tone processing in GLSL. Do not ask gpu-next to negotiate a
-    // second HDR output transform on top of the shader pipeline.
+    // hdr-toys intentionally performs its transfer/gamut/tone work in the OUTPUT shader chain.
+    // Keep its upstream target TRC/primaries intact on gpu-next and do not add another negotiated
+    // output transform on top of that chain.
     targetColorspaceHint = "no",
     targetColorspaceHintMode = "target",
     targetPrim = profile.targetPrim,
@@ -169,20 +181,38 @@ private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>>
     shaderOptions = profile.shaderOptionsValue,
   )
 
+/**
+ * hdr-toys targets gpu-next/libplacebo. Legacy vo=gpu gets a deterministic native SDR output
+ * profile instead of running that shader chain under different hook/color-management semantics.
+ */
+private fun legacyGpuSdrSettings(): List<Pair<String, String>> =
+  commonSettings(
+    targetColorspaceHint = "no",
+    targetColorspaceHintMode = "target",
+    targetPrim = "bt.709",
+    targetTrc = "bt.1886",
+    targetPeak = "auto",
+    inverseToneMapping = "no",
+    toneMapping = "auto",
+    gamutMappingMode = "auto",
+    hdrComputePeak = "auto",
+    shaderOptions = "",
+  )
+
 private fun linearHdrSettings(boostSdrToHdr: Boolean): List<Pair<String, String>> =
   commonSettings(
-    // Preserve the existing mpv-native HDR rendering policy, but reset every target value that a
-    // previous PQ/HLG/BT.2020 mode may have overridden. Without these resets Linear HDR depends on
-    // mode history and can keep rendering with stale primaries/TRC after the UI says Linear.
+    // Restore the adaptive gpu-next path that Linear HDR used before 4704d6c. Forcing clip/clip and
+    // peak computation made the renderer bypass the mapping decisions libplacebo needs for the
+    // active HDR source/display. Reset target metadata so mode switching cannot leave stale values.
     targetColorspaceHint = "yes",
     targetColorspaceHintMode = "target",
     targetPrim = "auto",
     targetTrc = "auto",
     targetPeak = "auto",
     inverseToneMapping = if (boostSdrToHdr) "yes" else "no",
-    toneMapping = "clip",
-    gamutMappingMode = "clip",
-    hdrComputePeak = "yes",
+    toneMapping = "auto",
+    gamutMappingMode = "auto",
+    hdrComputePeak = "auto",
     shaderOptions = "",
   )
 
@@ -192,8 +222,15 @@ fun applyHdrScreenOutputOptions(
   pipelineReady: Boolean,
   boostSdrToHdr: Boolean = false,
 ) {
-  hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr).forEach { (property, value) ->
-    PlaybackSession.setOptionString(property, value)
+  val gpuNextRenderer = RenderBackendCompat.isGpuNextOutput()
+  hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr, gpuNextRenderer).forEach { (property, value) ->
+    val resolvedValue =
+      if (property == "glsl-shader-opts") {
+        mergeHdrShaderOptions(PlaybackSession.getPropertyString(property), value)
+      } else {
+        value
+      }
+    PlaybackSession.setOptionString(property, resolvedValue)
   }
 }
 
@@ -209,7 +246,53 @@ fun applyHdrScreenOutputProperties(
   pipelineReady: Boolean,
   boostSdrToHdr: Boolean = false,
 ) {
-  hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr).forEach { (property, value) ->
-    PlaybackSession.setPropertyString(property, value)
+  val gpuNextRenderer = RenderBackendCompat.isGpuNextOutput()
+  hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr, gpuNextRenderer).forEach { (property, value) ->
+    val resolvedValue =
+      if (property == "glsl-shader-opts") {
+        mergeHdrShaderOptions(PlaybackSession.getPropertyString(property), value)
+      } else {
+        value
+      }
+    PlaybackSession.setPropertyString(property, resolvedValue)
   }
+}
+
+/** Replace only hdr-toys options; preserve Flow/Anime4K/other shader parameters. */
+private fun mergeHdrShaderOptions(
+  existing: String?,
+  desiredHdrOptions: String,
+): String {
+  val retained =
+    splitShaderOptions(existing.orEmpty()).filterNot { entry ->
+      HDR_TOYS_SHADER_OPTION_KEYS.contains(entry.substringBefore('=').trim())
+    }.toMutableList()
+  retained += splitShaderOptions(desiredHdrOptions)
+  return retained.joinToString(",")
+}
+
+private fun splitShaderOptions(raw: String): List<String> {
+  if (raw.isBlank()) return emptyList()
+  val result = mutableListOf<String>()
+  val current = StringBuilder()
+  var escaped = false
+  raw.forEach { char ->
+    when {
+      escaped -> {
+        current.append(char)
+        escaped = false
+      }
+      char == '\\' -> {
+        current.append(char)
+        escaped = true
+      }
+      char == ',' -> {
+        current.toString().trim().takeIf(String::isNotEmpty)?.let(result::add)
+        current.clear()
+      }
+      else -> current.append(char)
+    }
+  }
+  current.toString().trim().takeIf(String::isNotEmpty)?.let(result::add)
+  return result
 }
