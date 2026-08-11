@@ -262,7 +262,7 @@ class MPVView(
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
     applyAnime4KShaders(backend.vo, backend.gpuApi)
     // HDR Toys shaders (loaded after Anime4K so they append in the correct order)
-    applyHdrToysMode(hdrScreenMode, hdrPipelineReady)
+    applyHdrToysMode(hdrScreenMode, hdrPipelineReady, legacyGpu = backend.vo == "gpu")
 
     setupSubtitlesOptions()
     setupAudioOptions()
@@ -530,13 +530,14 @@ class MPVView(
   fun applyHdrToysMode(
     mode: HdrScreenMode,
     pipelineReady: Boolean,
+    legacyGpu: Boolean,
   ) {
     val profile = mode.hdrToysProfile
     if (!pipelineReady || profile == null) {
       hdrToysManager.clear()
       return
     }
-    if (!hdrToysManager.apply(profile)) {
+    if (!hdrToysManager.apply(profile, legacyGpu = legacyGpu)) {
       Log.w(TAG, "Skipping HDR Toys mode — bundled shaders unavailable: ${mode.name}")
     }
   }

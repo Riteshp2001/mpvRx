@@ -5327,7 +5327,8 @@ class PlayerViewModel : ViewModel(),
       hdrToysManager.clear()
       return
     }
-    if (!hdrToysManager.apply(profile)) {
+    val legacyGpu = PlaybackSession.getPropertyString("vo") == "gpu"
+    if (!hdrToysManager.apply(profile, legacyGpu = legacyGpu)) {
       playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(R.string.player_hdr_shaders_unavailable))
     }
   }
