@@ -15,8 +15,11 @@ import org.koin.core.context.GlobalContext
 /** Renderer capability lookup that also works while libmpv is still in initOptions(). */
 internal object RenderBackendCompat {
   fun isGpuNextOutput(): Boolean {
-    PlaybackSession.getPropertyString("vo")?.let { activeVo ->
-      return activeVo == "gpu-next"
+    when (PlaybackSession.getPropertyString("vo")) {
+      "gpu-next" -> return true
+      "gpu" -> return false
+      // `vo=null` is intentionally used while Android has no Surface. In that state the renderer
+      // choice has not changed, so fall through to the persisted backend selection below.
     }
 
     // Before MPVLib.init() properties are not readable yet, so mirror the backend-selection branch
