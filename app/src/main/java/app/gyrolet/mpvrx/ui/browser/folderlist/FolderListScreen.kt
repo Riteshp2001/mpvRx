@@ -511,7 +511,9 @@ object FolderListScreen : Screen {
       Scaffold(
         contentWindowInsets = if (embedded) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
         topBar = {
-          if (isSearching) {
+          if (embedded) {
+            // Embedded inside another screen (e.g. Music tab) which already renders its own top bar.
+          } else if (isSearching) {
             SearchBar(
               inputField = {
                 SearchBarDefaults.InputField(
@@ -567,7 +569,7 @@ object FolderListScreen : Screen {
             }
           } else {
             BrowserTopBar(
-              title = if (audioOnly) "Folders" else stringResource(app.gyrolet.mpvrx.R.string.app_name),
+              title = stringResource(app.gyrolet.mpvrx.R.string.app_name),
               isInSelectionMode = selectionManager.isInSelectionMode,
               selectedCount = selectionManager.selectedCount,
               totalCount = videoFolders.size,

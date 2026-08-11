@@ -314,113 +314,106 @@ fun MusicLibraryContent(
             if (MaterialTheme.colorScheme.background == Color.Black) Color.Black else MaterialTheme.colorScheme.surfaceContainer
           )
       ) {
-        // The Folders tab embeds FolderListScreen, which renders its own top bar with
-        // search/sort/select-all/pin controls wired to its own folder-aware view model.
-        // Showing the generic Music top bar here as well would either duplicate controls
-        // or silently no-op (musicViewModel's search/sort don't apply to folders), so it's
-        // skipped entirely for this tab and the folder screen's own bar is used instead.
-        if (selectedTab != MusicTab.FOLDERS) {
-          if (isSearchActive) {
-            SearchBar(
-              inputField = {
-                SearchBarDefaults.InputField(
-                  query = searchQuery,
-                  onQueryChange = { musicViewModel.setSearchQuery(it) },
-                  onSearch = { },
-                  expanded = false,
-                  onExpandedChange = { },
-                  placeholder = { Text("Search songs, albums, artists...") },
-                  leadingIcon = {
-                    IconButton(onClick = {
-                      isSearchActive = false
-                      musicViewModel.setSearchQuery("")
-                    }) {
-                      Icon(imageVector = Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
-                    }
-                  },
-                  trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                      IconButton(onClick = { musicViewModel.setSearchQuery("") }) {
-                        Icon(imageVector = Icons.RoundedFilled.Close, contentDescription = "Clear search")
-                      }
-                    }
-                  }
-                )
-              },
-              expanded = false,
-              onExpandedChange = { },
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-              shape = RoundedCornerShape(28.dp),
-              tonalElevation = 6.dp
-            ) { }
-          } else {
-            Box {
-              BrowserTopBar(
-                title = stringResource(R.string.ui_music),
-                isInSelectionMode = activeSelectionManager.isInSelectionMode,
-                selectedCount = activeSelectionManager.selectedCount,
-                totalCount = totalCount,
-                onBackClick = null,
-                onCancelSelection = { activeSelectionManager.clear() },
-                onSortClick = { isSortMenuExpanded = true },
-                onSearchClick = { isSearchActive = true },
-                onSettingsClick = {
-                  backStack.add(PreferencesScreen)
-                },
-                onSelectAll = { activeSelectionManager.selectAll() },
-                onInvertSelection = { activeSelectionManager.invertSelection() },
-                onDeselectAll = { activeSelectionManager.clear() },
-                onDeleteClick = null,
-                onShareClick = if (selectedTab == MusicTab.SONGS) {
-                  {
-                    @Suppress("UNCHECKED_CAST")
-                    val selected = activeSelectionManager.getSelectedItems() as List<MusicSong>
-                    if (selected.isNotEmpty()) {
-                      MediaUtils.shareVideos(context, selected.map { it.toVideo() })
-                    }
-                  }
-                } else null,
-                onPlayClick = {
-                  val items = activeSelectionManager.getSelectedItems()
-                  when (selectedTab) {
-                    MusicTab.SONGS -> {
-                      @Suppress("UNCHECKED_CAST")
-                      musicViewModel.playAllSongs(context, items as List<MusicSong>, shuffle = false)
-                    }
-                    MusicTab.ALBUMS -> {
-                      @Suppress("UNCHECKED_CAST")
-                      val selAlbums = items as List<MusicAlbum>
-                      val albumSongs = songs.filter { s -> selAlbums.any { a -> s.albumId == a.id || s.album.equals(a.title, ignoreCase = true) } }
-                      musicViewModel.playAllSongs(context, albumSongs, shuffle = false)
-                    }
-                    MusicTab.ARTISTS -> {
-                      @Suppress("UNCHECKED_CAST")
-                      val selArtists = items as List<MusicArtist>
-                      val artistSongs = songs.filter { s -> selArtists.any { ar -> s.artist.equals(ar.name, ignoreCase = true) } }
-                      musicViewModel.playAllSongs(context, artistSongs, shuffle = false)
-                    }
-                    MusicTab.PLAYLISTS -> { }
-                    MusicTab.FOLDERS -> { }
+        if (isSearchActive) {
+          SearchBar(
+            inputField = {
+              SearchBarDefaults.InputField(
+                query = searchQuery,
+                onQueryChange = { musicViewModel.setSearchQuery(it) },
+                onSearch = { },
+                expanded = false,
+                onExpandedChange = { },
+                placeholder = { Text("Search songs, albums, artists...") },
+                leadingIcon = {
+                  IconButton(onClick = {
+                    isSearchActive = false
+                    musicViewModel.setSearchQuery("")
+                  }) {
+                    Icon(imageVector = Icons.RoundedFilled.ArrowBack, contentDescription = "Back")
                   }
                 },
-                onAddToPlaylistClick = null
+                trailingIcon = {
+                  if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { musicViewModel.setSearchQuery("") }) {
+                      Icon(imageVector = Icons.RoundedFilled.Close, contentDescription = "Clear search")
+                    }
+                  }
+                }
               )
-            }
+            },
+            expanded = false,
+            onExpandedChange = { },
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp
+          ) { }
+        } else {
+          Box {
+            BrowserTopBar(
+              title = stringResource(R.string.ui_music),
+              isInSelectionMode = activeSelectionManager.isInSelectionMode,
+              selectedCount = activeSelectionManager.selectedCount,
+              totalCount = totalCount,
+              onBackClick = null,
+              onCancelSelection = { activeSelectionManager.clear() },
+              onSortClick = { isSortMenuExpanded = true },
+              onSearchClick = { isSearchActive = true },
+              onSettingsClick = {
+                backStack.add(PreferencesScreen)
+              },
+              onSelectAll = { activeSelectionManager.selectAll() },
+              onInvertSelection = { activeSelectionManager.invertSelection() },
+              onDeselectAll = { activeSelectionManager.clear() },
+              onDeleteClick = null,
+              onShareClick = if (selectedTab == MusicTab.SONGS) {
+                {
+                  @Suppress("UNCHECKED_CAST")
+                  val selected = activeSelectionManager.getSelectedItems() as List<MusicSong>
+                  if (selected.isNotEmpty()) {
+                    MediaUtils.shareVideos(context, selected.map { it.toVideo() })
+                  }
+                }
+              } else null,
+              onPlayClick = {
+                val items = activeSelectionManager.getSelectedItems()
+                when (selectedTab) {
+                  MusicTab.SONGS -> {
+                    @Suppress("UNCHECKED_CAST")
+                    musicViewModel.playAllSongs(context, items as List<MusicSong>, shuffle = false)
+                  }
+                  MusicTab.ALBUMS -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val selAlbums = items as List<MusicAlbum>
+                    val albumSongs = songs.filter { s -> selAlbums.any { a -> s.albumId == a.id || s.album.equals(a.title, ignoreCase = true) } }
+                    musicViewModel.playAllSongs(context, albumSongs, shuffle = false)
+                  }
+                  MusicTab.ARTISTS -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val selArtists = items as List<MusicArtist>
+                    val artistSongs = songs.filter { s -> selArtists.any { ar -> s.artist.equals(ar.name, ignoreCase = true) } }
+                    musicViewModel.playAllSongs(context, artistSongs, shuffle = false)
+                  }
+                  MusicTab.PLAYLISTS -> { }
+                  MusicTab.FOLDERS -> { }
+                }
+              },
+              onAddToPlaylistClick = null
+            )
           }
-
-          MusicSortDialog(
-            isOpen = isSortMenuExpanded,
-            onDismiss = { isSortMenuExpanded = false },
-            sortField = sortField,
-            sortOrder = sortOrder,
-            viewMode = viewMode,
-            onSortFieldChange = { musicViewModel.setSortField(it) },
-            onSortOrderChange = { musicViewModel.setSortOrder(it) },
-            onViewModeChange = { musicViewModel.setViewMode(it) }
-          )
         }
+
+        MusicSortDialog(
+          isOpen = isSortMenuExpanded,
+          onDismiss = { isSortMenuExpanded = false },
+          sortField = sortField,
+          sortOrder = sortOrder,
+          viewMode = viewMode,
+          onSortFieldChange = { musicViewModel.setSortField(it) },
+          onSortOrderChange = { musicViewModel.setSortOrder(it) },
+          onViewModeChange = { musicViewModel.setViewMode(it) }
+        )
 
         ScrollableTabRow(
           selectedTabIndex = pagerState.currentPage,
