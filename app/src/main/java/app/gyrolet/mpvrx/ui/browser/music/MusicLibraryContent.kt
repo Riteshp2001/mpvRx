@@ -285,8 +285,13 @@ fun MusicLibraryContent(
     }
   }
 
-  BackHandler(enabled = activeSelectionManager.isInSelectionMode) {
-    activeSelectionManager.clear()
+  BackHandler(enabled = isSearchActive || activeSelectionManager.isInSelectionMode) {
+    if (isSearchActive) {
+      isSearchActive = false
+      musicViewModel.setSearchQuery("")
+    } else if (activeSelectionManager.isInSelectionMode) {
+      activeSelectionManager.clear()
+    }
   }
 
   // Playlist detail overlay when a playlist is opened
@@ -323,7 +328,7 @@ fun MusicLibraryContent(
                 onSearch = { },
                 expanded = false,
                 onExpandedChange = { },
-                placeholder = { Text("Search songs, albums, artists...") },
+                placeholder = { Text(if (selectedTab == MusicTab.FOLDERS) "Search folders & songs..." else "Search songs, albums, artists...") },
                 leadingIcon = {
                   IconButton(onClick = {
                     isSearchActive = false
@@ -399,6 +404,11 @@ fun MusicLibraryContent(
                   MusicTab.FOLDERS -> { }
                 }
               },
+              onPinClick = null,
+              onBlacklistClick = null,
+              onRenameClick = null,
+              isSingleSelection = activeSelectionManager.isSingleSelection,
+              onInfoClick = null,
               onAddToPlaylistClick = null
             )
           }
@@ -630,7 +640,11 @@ fun MusicLibraryContent(
 
               // Reuse the exact same folder-browsing screen Home uses for videos,
               // just scoped to audio (audioOnly = true).
-              MusicTab.FOLDERS -> FolderListScreen.MediaStoreFolderListContent(audioOnly = true, embedded = true)
+              MusicTab.FOLDERS -> FolderListScreen.MediaStoreFolderListContent(
+                audioOnly = true,
+                embedded = true,
+                searchQuery = searchQuery,
+              )
             }
           }
         }

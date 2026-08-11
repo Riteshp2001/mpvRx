@@ -158,6 +158,7 @@ object FolderListScreen : Screen {
   internal fun MediaStoreFolderListContent(
     audioOnly: Boolean = false,
     embedded: Boolean = false,
+    searchQuery: String = "",
   ) {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
@@ -234,8 +235,10 @@ object FolderListScreen : Screen {
     val secureFolderProgress by secureFolderRepository.progress.collectAsState()
 
     // Search state
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    var isSearching by rememberSaveable { mutableStateOf(false) }
+    var internalSearchQuery by rememberSaveable { mutableStateOf("") }
+    var internalIsSearching by rememberSaveable { mutableStateOf(false) }
+    val effectiveSearchQuery = if (embedded) searchQuery else searchQuery.ifBlank { internalSearchQuery }
+    val effectiveIsSearching = if (embedded) searchQuery.isNotBlank() else (internalIsSearching || internalSearchQuery.isNotBlank())
     var searchResults by remember { mutableStateOf<List<FileSystemItem>>(emptyList()) }
     var isSearchLoading by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -243,15 +246,28 @@ object FolderListScreen : Screen {
     val foldersBlacklistedMessage = stringResource(app.gyrolet.mpvrx.R.string.pref_folders_blacklisted)
 
     // Search logic
-    LaunchedEffect(searchQuery, isSearching, audioOnly) {
-      if (isSearching && searchQuery.isNotBlank()) {
+    LaunchedEffect(effectiveSearchQuery, effectiveIsSearching, audioOnly, videoFolders) {
+      if (effectiveIsSearching && effectiveSearchQuery.isNotBlank()) {
         delay(250)
         isSearchLoading = true
         try {
           searchResults =
             if (audioOnly) {
-              app.gyrolet.mpvrx.repository.MediaFileRepository
-                .searchAudio(context, searchQuery)
+              val q = effectiveSearchQuery.trim().lowercase()
+              val matchingFolders = videoFolders.filter { folder ->
+                folder.name.lowercase().contains(q) || folder.path.lowercase().contains(q)
+              }.map { folder ->
+                FileSystemItem.Folder(
+                  name = folder.name,
+                  path = folder.path,
+                  lastModified = folder.lastModified,
+                  videoCount = folder.videoCount,
+                  totalSize = folder.totalSize,
+                  totalDuration = folder.totalDuration,
+                )
+              }
+              val matchingAudioFiles = app.gyrolet.mpvrx.repository.MediaFileRepository
+                .searchAudio(context, effectiveSearchQuery)
                 .map { audio ->
                   FileSystemItem.VideoFile(
                     name = audio.displayName,
@@ -260,8 +276,9 @@ object FolderListScreen : Screen {
                     video = audio,
                   )
                 }
+              matchingFolders + matchingAudioFiles
             } else {
-              searchFoldersAndVideos(context, searchQuery)
+              searchFoldersAndVideos(context, effectiveSearchQuery)
             }
         } catch (e: Exception) {
           Log.e("FolderListScreen", "Error during search", e)
@@ -479,16 +496,16 @@ object FolderListScreen : Screen {
     // Optimized back handler for immediate response
     val shouldHandleBack =
       selectionManager.isInSelectionMode ||
-        isSearching ||
+        (!embedded && internalIsSearching) ||
         isFabExpanded.value ||
         (isDualPaneActive && selectedFolderBucketId != null)
     androidx.activity.compose.BackHandler(enabled = shouldHandleBack) {
       when {
         isFabExpanded.value -> isFabExpanded.value = false
         selectionManager.isInSelectionMode -> selectionManager.clear()
-        isSearching -> {
-          isSearching = false
-          searchQuery = ""
+        !embedded && internalIsSearching -> {
+          internalIsSearching = false
+          internalSearchQuery = ""
         }
         isDualPaneActive && selectedFolderBucketId != null -> {
           selectedFolderBucketId = null
@@ -513,12 +530,12 @@ object FolderListScreen : Screen {
         topBar = {
           if (embedded) {
             // Embedded inside another screen (e.g. Music tab) which already renders its own top bar.
-          } else if (isSearching) {
+          } else if (internalIsSearching) {
             SearchBar(
               inputField = {
                 SearchBarDefaults.InputField(
-                  query = searchQuery,
-                  onQueryChange = { searchQuery = it },
+                  query = internalSearchQuery,
+                  onQueryChange = { internalSearchQuery = it },
                   onSearch = { },
                   expanded = false,
                   onExpandedChange = { },
@@ -540,8 +557,8 @@ object FolderListScreen : Screen {
                   trailingIcon = {
                     IconButton(
                       onClick = {
-                        isSearching = false
-                        searchQuery = ""
+                        internalIsSearching = false
+                        internalSearchQuery = ""
                       },
                     ) {
                       Icon(
@@ -577,7 +594,7 @@ object FolderListScreen : Screen {
               onCancelSelection = { selectionManager.clear() },
               onSortClick = { sortDialogOpen.value = true },
               onSearchClick = {
-                isSearching = !isSearching
+                internalIsSearching = !internalIsSearching
                 coroutineScope.launch {
                   buildSearchIndex(context)
                 }
@@ -805,7 +822,7 @@ object FolderListScreen : Screen {
       ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
           if (isPermissionSetupCompleted && permissionState.status == PermissionStatus.Granted) {
-              if (isSearching) {
+              if (effectiveIsSearching) {
                 // Show search results
                 Box(modifier = Modifier.fillMaxSize()) {
                   if (isSearchLoading) {
@@ -821,7 +838,7 @@ object FolderListScreen : Screen {
                     EmptyState(
                       icon = Icons.RoundedFilled.Search,
                       title = stringResource(R.string.ui_no_results_found),
-                      message = "No folders or videos match your search query",
+                      message = if (audioOnly) "No audio folders or songs match your search query" else "No folders or videos match your search query",
                       modifier = Modifier.fillMaxSize(),
                     )
                   } else {
@@ -833,8 +850,10 @@ object FolderListScreen : Screen {
                         if (isDualPaneActive) {
                           selectedFolderBucketId = folder.bucketId
                           selectedFolderName = folder.name
-                          isSearching = false
-                          searchQuery = ""
+                          if (!embedded) {
+                            internalIsSearching = false
+                            internalSearchQuery = ""
+                          }
                         } else {
                           backstack.add(
                             app.gyrolet.mpvrx.ui.browser.videolist
