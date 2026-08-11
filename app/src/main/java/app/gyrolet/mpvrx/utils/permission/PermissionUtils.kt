@@ -129,7 +129,7 @@ object PermissionUtils {
    * Returns READ_EXTERNAL_STORAGE permission for all Android versions.
    * On Android 11+, MANAGE_EXTERNAL_STORAGE provides full file access.
    */
-  fun getStoragePermission(): String =
+  fun getStoragePermission(audioOnly: Boolean = false): String =
     when {
       Build.VERSION.SDK_INT <= Build.VERSION_CODES.P -> {
         // Android 9 and below need WRITE permission to create folders/files (e.g., mpvsnaps)
@@ -137,8 +137,14 @@ object PermissionUtils {
       }
 
       Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-        // Android 13+: request media-specific permission
-        android.Manifest.permission.READ_MEDIA_VIDEO
+        // Android 13+: request media-specific permission.
+        // Audio-only browsers (e.g. Music > Folders) need READ_MEDIA_AUDIO, not READ_MEDIA_VIDEO,
+        // or MediaStore audio queries return nothing even though the user "granted" access.
+        if (audioOnly) {
+          android.Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+          android.Manifest.permission.READ_MEDIA_VIDEO
+        }
       }
 
       else -> android.Manifest.permission.READ_EXTERNAL_STORAGE
@@ -149,16 +155,23 @@ object PermissionUtils {
    */
   @OptIn(ExperimentalPermissionsApi::class)
   @Composable
-  fun rememberStoragePermissionState(): PermissionState = rememberPermissionState(getStoragePermission())
+  fun rememberStoragePermissionState(audioOnly: Boolean = false): PermissionState =
+    rememberPermissionState(getStoragePermission(audioOnly))
 
   /**
    * Handles storage permission and invokes [onPermissionGranted] when granted.
    * On Android 11+, also checks MANAGE_EXTERNAL_STORAGE permission.
+   *
+   * @param audioOnly When true, requests READ_MEDIA_AUDIO instead of READ_MEDIA_VIDEO on Android 13+,
+   * for screens that only browse the audio library (e.g. Music > Folders).
    */
   @OptIn(ExperimentalPermissionsApi::class)
   @Composable
-  fun handleStoragePermission(onPermissionGranted: () -> Unit): PermissionState {
-    val permissionState = rememberStoragePermissionState()
+  fun handleStoragePermission(
+    audioOnly: Boolean = false,
+    onPermissionGranted: () -> Unit,
+  ): PermissionState {
+    val permissionState = rememberStoragePermissionState(audioOnly)
     val context = LocalContext.current
     var lifecycleTrigger by remember { mutableIntStateOf(0) }
 

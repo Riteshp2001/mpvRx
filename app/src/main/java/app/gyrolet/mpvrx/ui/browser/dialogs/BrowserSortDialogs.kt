@@ -1050,9 +1050,33 @@ fun MusicSortDialog(
   onSortFieldChange: (MusicSortField) -> Unit,
   onSortOrderChange: (MusicSortOrder) -> Unit,
   onViewModeChange: (MusicViewMode) -> Unit,
+  // Restricts which sort fields are offered. Callers backed by a store that can't persist
+  // every MusicSortField (e.g. VideoSortType, which has no Artist/Album) should pass only the
+  // subset they can actually honor, otherwise selecting an unsupported field silently falls
+  // back to Title with no visible feedback.
+  availableFields: List<MusicSortField> =
+    listOf(
+      MusicSortField.TITLE,
+      MusicSortField.ARTIST,
+      MusicSortField.ALBUM,
+      MusicSortField.DURATION,
+      MusicSortField.DATE_ADDED,
+    ),
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val musicCoverArtSize by browserPreferences.musicCoverArtSize.collectAsState()
+
+  val fieldIcon = { field: MusicSortField ->
+    when (field) {
+      MusicSortField.TITLE -> Icons.RoundedFilled.Title
+      MusicSortField.ARTIST -> Icons.RoundedFilled.Mic
+      MusicSortField.ALBUM -> Icons.RoundedFilled.Audiotrack
+      MusicSortField.DURATION -> Icons.RoundedFilled.AccessTime
+      MusicSortField.DATE_ADDED -> Icons.RoundedFilled.CalendarToday
+      MusicSortField.TRACK_COUNT -> Icons.RoundedFilled.QueueMusic
+      MusicSortField.YEAR -> Icons.RoundedFilled.CalendarToday
+    }
+  }
 
   SortDialog(
     isOpen = isOpen,
@@ -1060,28 +1084,14 @@ fun MusicSortDialog(
     title = stringResource(R.string.sort_view_options),
     sortType = sortField.displayName,
     onSortTypeChange = { typeName ->
-      MusicSortField.entries.find { it.displayName == typeName }?.let(onSortFieldChange)
+      availableFields.find { it.displayName == typeName }?.let(onSortFieldChange)
     },
     sortOrderAsc = sortOrder == MusicSortOrder.ASCENDING,
     onSortOrderChange = { isAsc ->
       onSortOrderChange(if (isAsc) MusicSortOrder.ASCENDING else MusicSortOrder.DESCENDING)
     },
-    types =
-      listOf(
-        MusicSortField.TITLE.displayName,
-        MusicSortField.ARTIST.displayName,
-        MusicSortField.ALBUM.displayName,
-        MusicSortField.DURATION.displayName,
-        MusicSortField.DATE_ADDED.displayName,
-      ),
-    icons =
-      listOf(
-        Icons.RoundedFilled.Title,
-        Icons.RoundedFilled.Mic,
-        Icons.RoundedFilled.Audiotrack,
-        Icons.RoundedFilled.AccessTime,
-        Icons.RoundedFilled.CalendarToday,
-      ),
+    types = availableFields.map { it.displayName },
+    icons = availableFields.map(fieldIcon),
     getLabelForType = { type, _ ->
       when (type) {
         MusicSortField.TITLE.displayName,

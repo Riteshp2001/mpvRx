@@ -504,10 +504,13 @@ fun VideoCard(
         ) {
           val thumbnailRepository = koinInject<ThumbnailRepository>()
           // Audio artwork is square; video thumbnails retain their 16:9 presentation.
-          val thumbWidthDp = 128.dp
           val aspect = if (video.isAudio) 1f else 16f / 9f
-          val thumbWidthPx = with(LocalDensity.current) { thumbWidthDp.roundToPx() }
-          val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
+          // Respect a caller-supplied size (e.g. the configurable Music cover-art size) instead of
+          // always hardcoding 128dp, otherwise controls like the Cover Art Size slider have no effect
+          // on this list layout.
+          val thumbWidthPx = thumbnailWidthPx?.takeIf { it > 0 } ?: with(LocalDensity.current) { 128.dp.roundToPx() }
+          val thumbWidthDp = with(LocalDensity.current) { thumbWidthPx.toDp() }
+          val thumbHeightPx = thumbnailHeightPx?.takeIf { it > 0 } ?: (thumbWidthPx / aspect).roundToInt()
 
           // Load thumbnail with optimized state management
           // Key includes video identity to prevent reloading same thumbnail

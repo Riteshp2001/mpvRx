@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -153,7 +155,10 @@ object FolderListScreen : Screen {
 
   @OptIn(ExperimentalMaterial3ExpressiveApi::class)
   @Composable
-  internal fun MediaStoreFolderListContent(audioOnly: Boolean = false) {
+  internal fun MediaStoreFolderListContent(
+    audioOnly: Boolean = false,
+    embedded: Boolean = false,
+  ) {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -304,14 +309,17 @@ object FolderListScreen : Screen {
       var deleted = 0
       var failed = 0
       val deleteAll = browserPreferences.deleteFolderAllContents.get()
-      val includeAudio = browserPreferences.includeAudioBrowser.get()
+      // The audio-only folder browser must always be able to delete the audio files it shows,
+      // regardless of the general "include audio in browser" preference (which only governs the
+      // regular video browser). The regular (video) browser keeps its existing preference-driven behavior.
+      val includeAudio = audioOnly || browserPreferences.includeAudioBrowser.get()
       for (folder in folders) {
         try {
           if (deleteAll) {
             val ids = setOf(folder.bucketId)
             val videos =
               app.gyrolet.mpvrx.repository.MediaFileRepository
-                .getVideosForBuckets(context, ids)
+                .getVideosForBuckets(context, ids, includeAudioOverride = if (audioOnly) true else null)
             if (videos.isNotEmpty()) {
               val (d, f) = viewModel.deleteVideos(videos)
               deleted += d
@@ -332,7 +340,9 @@ object FolderListScreen : Screen {
               dir.listFiles()?.forEach { file ->
                 if (file.isFile) {
                   val ext = file.extension.lowercase()
-                  val isVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
+                  // In the audio-only browser, only touch audio files - never delete video files
+                  // that might live alongside them in the same on-disk folder.
+                  val isVideo = !audioOnly && ext in FileTypeUtils.VIDEO_EXTENSIONS
                   val isAudio = includeAudio && ext in FileTypeUtils.AUDIO_EXTENSIONS
                   if (isVideo || isAudio) {
                     if (file.delete()) deletedAny = true
@@ -370,7 +380,7 @@ object FolderListScreen : Screen {
       coroutineScope.launch {
         val allVideos =
           app.gyrolet.mpvrx.repository.MediaFileRepository
-            .getVideosForBuckets(context, selectedIds)
+            .getVideosForBuckets(context, selectedIds, includeAudioOverride = if (audioOnly) true else null)
         if (allVideos.isNotEmpty()) {
           val result = secureFolderRepository.moveIn(context, allVideos)
           result
@@ -409,7 +419,7 @@ object FolderListScreen : Screen {
           val selectedVideos =
             selectedFolders.flatMap { folder ->
               app.gyrolet.mpvrx.repository.MediaFileRepository
-                .getVideosForBuckets(context, setOf(folder.bucketId))
+                .getVideosForBuckets(context, setOf(folder.bucketId), includeAudioOverride = if (audioOnly) true else null)
             }
           if (selectedVideos.isNotEmpty()) {
             when (operationType.value) {
@@ -424,6 +434,7 @@ object FolderListScreen : Screen {
     // Permissions
     val permissionState =
       PermissionUtils.handleStoragePermission(
+        audioOnly = audioOnly,
         onPermissionGranted = { viewModel.refresh() },
       )
 
@@ -498,8 +509,11 @@ object FolderListScreen : Screen {
     @Composable
     fun FoldersPane() {
       Scaffold(
+        contentWindowInsets = if (embedded) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
         topBar = {
-          if (isSearching) {
+          if (embedded) {
+            // Embedded inside another screen (e.g. Music tab) which already renders its own top bar.
+          } else if (isSearching) {
             SearchBar(
               inputField = {
                 SearchBarDefaults.InputField(
@@ -581,7 +595,7 @@ object FolderListScreen : Screen {
                   val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
                   val allVideos =
                     app.gyrolet.mpvrx.repository.MediaFileRepository
-                      .getVideosForBuckets(context, selectedIds)
+                      .getVideosForBuckets(context, selectedIds, includeAudioOverride = if (audioOnly) true else null)
                   if (allVideos.isNotEmpty()) {
                     MediaUtils.shareVideos(context, allVideos)
                   }
@@ -592,7 +606,7 @@ object FolderListScreen : Screen {
                   val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
                   val allVideos =
                     app.gyrolet.mpvrx.repository.MediaFileRepository
-                      .getVideosForBuckets(context, selectedIds)
+                      .getVideosForBuckets(context, selectedIds, includeAudioOverride = if (audioOnly) true else null)
                   if (allVideos.isNotEmpty()) {
                     if (allVideos.size == 1) {
                       MediaUtils.playFile(allVideos.first(), context)
@@ -881,6 +895,7 @@ object FolderListScreen : Screen {
                     }
                   },
                   selectedFolderBucketId = selectedFolderBucketId,
+                  audioOnly = audioOnly,
                 )
               }
           } else {
@@ -994,6 +1009,7 @@ object FolderListScreen : Screen {
                         app.gyrolet.mpvrx.repository.MediaFileRepository.getVideosForBuckets(
                           context,
                           setOf(folder.bucketId),
+                          includeAudioOverride = if (audioOnly) true else null,
                         )
                       if (videos.isNotEmpty()) {
                         val subDest = File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
@@ -1012,6 +1028,7 @@ object FolderListScreen : Screen {
                       app.gyrolet.mpvrx.repository.MediaFileRepository.getVideosForBuckets(
                         context,
                         setOf(folder.bucketId),
+                        includeAudioOverride = if (audioOnly) true else null,
                       )
                     if (videos.isNotEmpty()) {
                       val subDest = File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
@@ -1169,6 +1186,7 @@ private fun FolderListContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
+  audioOnly: Boolean = false,
 ) {
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
   val showLoading = isLoading && !hasCompletedInitialLoad
@@ -1199,14 +1217,14 @@ private fun FolderListContent(
         if (showLoading) {
           LoadingState(
             icon = Icons.RoundedFilled.Folder,
-            title = stringResource(R.string.ui_scanning_for_videos),
-            message = scanStatus ?: "Please wait while we search your device",
+            title = if (audioOnly) "Scanning for songs" else stringResource(R.string.ui_scanning_for_videos),
+            message = scanStatus ?: if (audioOnly) "Please wait while we search your device" else "Please wait while we search your device",
           )
         } else if (showEmpty) {
           EmptyState(
             icon = Icons.RoundedFilled.Folder,
-            title = stringResource(R.string.ui_no_video_folders_found),
-            message = "Add some video files to your device to see them here",
+            title = if (audioOnly) "No song folders found" else stringResource(R.string.ui_no_video_folders_found),
+            message = if (audioOnly) "Add some audio files to your device to see them here" else "Add some video files to your device to see them here",
           )
         }
       }
@@ -1226,6 +1244,7 @@ private fun FolderListContent(
           onFolderLongClick = onFolderLongClick,
           onTogglePin = onTogglePin,
           selectedFolderBucketId = selectedFolderBucketId,
+          audioOnly = audioOnly,
         )
       } else {
         ListContent(
@@ -1242,6 +1261,7 @@ private fun FolderListContent(
           onFolderLongClick = onFolderLongClick,
           onTogglePin = onTogglePin,
           selectedFolderBucketId = selectedFolderBucketId,
+          audioOnly = audioOnly,
         )
       }
     }
@@ -1263,6 +1283,7 @@ private fun GridContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
+  audioOnly: Boolean = false,
 ) {
   val newCountByBucketId =
     remember(foldersWithNewCount) {
@@ -1339,6 +1360,7 @@ private fun GridContent(
             },
           isDualPane = isDualPane,
           isActive = isActive,
+          isAudioOnly = audioOnly,
         )
       }
     }
@@ -1375,6 +1397,7 @@ private fun ListContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
+  audioOnly: Boolean = false,
 ) {
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
@@ -1446,6 +1469,7 @@ private fun ListContent(
             },
           isDualPane = isDualPaneActive && selectedFolderBucketId != null,
           isActive = isActive,
+          isAudioOnly = audioOnly,
         )
       }
     }
