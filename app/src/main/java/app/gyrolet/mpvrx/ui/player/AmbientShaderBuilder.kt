@@ -290,53 +290,22 @@ object AmbientShaderBuilder {
 
   fun build(spec: AmbientShaderSpec): String =
     when (spec) {
-      is AmbientGlowShaderSpec -> {
-        FlowAmbientTemporalController.setActive(false)
-        buildGlow(spec)
-      }
-      is AmbientFrameExtendShaderSpec -> {
-        FlowAmbientTemporalController.setActive(false)
-        buildFrameExtend(spec)
-      }
-      is AmbientYouTubeShaderSpec -> {
-        FlowAmbientTemporalController.setActive(true)
-        buildYouTube(spec)
-      }
+      is AmbientGlowShaderSpec -> buildGlow(spec)
+      is AmbientFrameExtendShaderSpec -> buildFrameExtend(spec)
+      is AmbientYouTubeShaderSpec -> buildYouTube(spec)
     }
 
   /**
    * GPU-native adaptation of Flow's palette-selection idea.
    *
-   * The fallback picker remains in GLSL for startup/readback failures. During normal playback the
-   * temporal controller supplies a slowly sampled, scene-gated and smoothed colour through tunable
-   * shader parameters, so palette selection no longer changes on every rendered frame.
+   * The old YouTube mode averaged the frame, which naturally collapses mixed or dark scenes toward
+   * grey/brown. Instead, we score sampled colour candidates by saturation, preferred mid-luminance
+   * and approximate population, then use the best repeated vibrant colour. This deliberately stays
+   * inside mpv's OUTPUT shader so Ambient Mode does not introduce Surface readbacks or media-thread
+   * contention during playback.
    */
   private fun buildYouTube(spec: AmbientYouTubeShaderSpec): String =
     """
-//!PARAM flow_external
-//!TYPE float
-//!MINIMUM 0.0
-//!MAXIMUM 1.0
-0.0
-
-//!PARAM flow_r
-//!TYPE float
-//!MINIMUM 0.0
-//!MAXIMUM 1.0
-0.0
-
-//!PARAM flow_g
-//!TYPE float
-//!MINIMUM 0.0
-//!MAXIMUM 1.0
-0.0
-
-//!PARAM flow_b
-//!TYPE float
-//!MINIMUM 0.0
-//!MAXIMUM 1.0
-0.0
-
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!DESC Flow Palette Ambient Mode
@@ -423,24 +392,20 @@ vec4 hook() {
         return HOOKED_tex(video_uv);
     }
 
-    vec3 ambient_color;
-    if (flow_external > 0.5) {
-        ambient_color = clamp(vec3(flow_r, flow_g, flow_b), 0.0, 1.0);
-    } else {
-        vec3 palette[FLOW_SAMPLES];
-        vec3 scene_avg = vec3(0.0);
-        for (int i = 0; i < FLOW_SAMPLES; i++) {
+    vec3 palette[FLOW_SAMPLES];
+    vec3 scene_avg = vec3(0.0);
+    for (int i = 0; i < FLOW_SAMPLES; i++) {
 #if IS_LINEAR_HDR
-            vec3 sampled = to_perceptual(HOOKED_tex(FLOW_TAPS[i]).rgb);
+        vec3 sampled = to_perceptual(HOOKED_tex(FLOW_TAPS[i]).rgb);
 #else
-            vec3 sampled = HOOKED_tex(FLOW_TAPS[i]).rgb;
+        vec3 sampled = HOOKED_tex(FLOW_TAPS[i]).rgb;
 #endif
-            palette[i] = sampled;
-            scene_avg += sampled;
-        }
-        scene_avg /= float(FLOW_SAMPLES);
-        ambient_color = select_flow_color(palette, scene_avg);
+        palette[i] = sampled;
+        scene_avg += sampled;
     }
+    scene_avg /= float(FLOW_SAMPLES);
+
+    vec3 ambient_color = select_flow_color(palette, scene_avg);
 
     // Preserve the selected hue while giving the glow a modest extra colourfulness. The palette
     // scorer already avoids dull swatches, so this is intentionally gentler than brute-force boost.
