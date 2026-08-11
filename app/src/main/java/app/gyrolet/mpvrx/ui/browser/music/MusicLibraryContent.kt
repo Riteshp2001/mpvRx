@@ -630,7 +630,7 @@ fun MusicLibraryContent(
 
               // Reuse the exact same folder-browsing screen Home uses for videos,
               // just scoped to audio (audioOnly = true).
-              MusicTab.FOLDERS -> FolderListScreen.MediaStoreFolderListContent(audioOnly = true)
+              MusicTab.FOLDERS -> FolderListScreen.MediaStoreFolderListContent(audioOnly = true, embedded = true)
             }
           }
         }

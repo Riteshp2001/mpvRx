@@ -153,7 +153,10 @@ object FolderListScreen : Screen {
 
   @OptIn(ExperimentalMaterial3ExpressiveApi::class)
   @Composable
-  internal fun MediaStoreFolderListContent(audioOnly: Boolean = false) {
+  internal fun MediaStoreFolderListContent(
+    audioOnly: Boolean = false,
+    embedded: Boolean = false,
+  ) {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -499,7 +502,9 @@ object FolderListScreen : Screen {
     fun FoldersPane() {
       Scaffold(
         topBar = {
-          if (isSearching) {
+          if (embedded) {
+            // Embedded inside another screen (e.g. Music tab) which already renders its own top bar.
+          } else if (isSearching) {
             SearchBar(
               inputField = {
                 SearchBarDefaults.InputField(
@@ -881,6 +886,7 @@ object FolderListScreen : Screen {
                     }
                   },
                   selectedFolderBucketId = selectedFolderBucketId,
+                  audioOnly = audioOnly,
                 )
               }
           } else {
@@ -1169,6 +1175,7 @@ private fun FolderListContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
+  audioOnly: Boolean = false,
 ) {
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
   val showLoading = isLoading && !hasCompletedInitialLoad
@@ -1199,14 +1206,14 @@ private fun FolderListContent(
         if (showLoading) {
           LoadingState(
             icon = Icons.RoundedFilled.Folder,
-            title = stringResource(R.string.ui_scanning_for_videos),
-            message = scanStatus ?: "Please wait while we search your device",
+            title = if (audioOnly) "Scanning for songs" else stringResource(R.string.ui_scanning_for_videos),
+            message = scanStatus ?: if (audioOnly) "Please wait while we search your device" else "Please wait while we search your device",
           )
         } else if (showEmpty) {
           EmptyState(
             icon = Icons.RoundedFilled.Folder,
-            title = stringResource(R.string.ui_no_video_folders_found),
-            message = "Add some video files to your device to see them here",
+            title = if (audioOnly) "No song folders found" else stringResource(R.string.ui_no_video_folders_found),
+            message = if (audioOnly) "Add some audio files to your device to see them here" else "Add some video files to your device to see them here",
           )
         }
       }
@@ -1226,6 +1233,7 @@ private fun FolderListContent(
           onFolderLongClick = onFolderLongClick,
           onTogglePin = onTogglePin,
           selectedFolderBucketId = selectedFolderBucketId,
+          audioOnly = audioOnly,
         )
       } else {
         ListContent(
@@ -1242,6 +1250,7 @@ private fun FolderListContent(
           onFolderLongClick = onFolderLongClick,
           onTogglePin = onTogglePin,
           selectedFolderBucketId = selectedFolderBucketId,
+          audioOnly = audioOnly,
         )
       }
     }
@@ -1263,6 +1272,7 @@ private fun GridContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
+  audioOnly: Boolean = false,
 ) {
   val newCountByBucketId =
     remember(foldersWithNewCount) {
@@ -1339,6 +1349,7 @@ private fun GridContent(
             },
           isDualPane = isDualPane,
           isActive = isActive,
+          isAudioOnly = audioOnly,
         )
       }
     }
@@ -1375,6 +1386,7 @@ private fun ListContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
+  audioOnly: Boolean = false,
 ) {
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
@@ -1446,6 +1458,7 @@ private fun ListContent(
             },
           isDualPane = isDualPaneActive && selectedFolderBucketId != null,
           isActive = isActive,
+          isAudioOnly = audioOnly,
         )
       }
     }
