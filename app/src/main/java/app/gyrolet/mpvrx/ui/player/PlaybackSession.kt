@@ -595,8 +595,14 @@ object PlaybackSession : MPVLib.EventObserver {
     value: Double,
   ) = withCore(Unit) {
     when (property) {
-      "video-scale-x" -> setAmbientVideoScaleLocked(axis = 'x', value = value)
-      "video-scale-y" -> setAmbientVideoScaleLocked(axis = 'y', value = value)
+      "video-scale-x" -> {
+        desiredAmbientScaleX = value
+        MPVLib.setPropertyDouble(property, value)
+      }
+      "video-scale-y" -> {
+        desiredAmbientScaleY = value
+        MPVLib.setPropertyDouble(property, value)
+      }
       else -> MPVLib.setPropertyDouble(property, value)
     }
   }
@@ -926,31 +932,6 @@ object PlaybackSession : MPVLib.EventObserver {
     }
   }
 
-  /**
-   * Ambient Mode expands the real video quad and remaps it back in an OUTPUT shader. Applying the
-   * scale before that shader exists (or leaving it in place while the shader is replaced) exposes
-   * the expanded/cropped source frame directly. That is the intermittent full-frame corruption
-   * seen during file changes, HDR/Anime4K shader-stack rebuilds, and orientation changes.
-   *
-   * Non-1 ambient scales are therefore staged here and become visible only after the matching
-   * ambient shader has been appended. A scale of 1 is always applied immediately for teardown.
-   */
-  private fun setAmbientVideoScaleLocked(
-    axis: Char,
-    value: Double,
-  ) {
-    if (axis == 'x') desiredAmbientScaleX = value else desiredAmbientScaleY = value
-    if (kotlin.math.abs(value - 1.0) <= AMBIENT_SCALE_EPSILON) {
-      MPVLib.setPropertyDouble(if (axis == 'x') "video-scale-x" else "video-scale-y", 1.0)
-    }
-
-    // OFF/teardown writes x=1 then y=1. Purge again when both axes reach identity so an Ambient
-    // shader that raced between the ViewModel's remove and scale-reset calls cannot survive.
-    if (ambientScaleIsIdentityLocked()) {
-      clearAmbientShadersLocked(resetDesired = false)
-    }
-  }
-
   private fun handleAmbientShaderCommandLocked(command: Array<out String>): Boolean {
     if (command.size < 3 || command[0] != "change-list" || command[1] != "glsl-shaders") return false
 
@@ -1032,6 +1013,8 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   private fun applyDesiredAmbientScaleLocked() {
+    // Bypass the interceptor — we already hold the staged values and need them applied
+    // to the renderer immediately after the ambient shader has been installed.
     MPVLib.setPropertyDouble("video-scale-x", desiredAmbientScaleX)
     MPVLib.setPropertyDouble("video-scale-y", desiredAmbientScaleY)
   }
