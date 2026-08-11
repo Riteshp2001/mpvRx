@@ -531,6 +531,14 @@ data class VideoListScreen(
               app.gyrolet.mpvrx.ui.browser.music.MusicSortOrder.DESCENDING
             },
           viewMode = if (mediaLayoutMode == MediaLayoutMode.GRID) app.gyrolet.mpvrx.ui.browser.music.MusicViewMode.GRID else app.gyrolet.mpvrx.ui.browser.music.MusicViewMode.LIST,
+          // VideoSortType has no Artist/Album, so only offer the fields it can actually persist
+          // (Title/Duration/Date Added) instead of silently collapsing Artist/Album back to Title.
+          availableFields =
+            listOf(
+              app.gyrolet.mpvrx.ui.browser.music.MusicSortField.TITLE,
+              app.gyrolet.mpvrx.ui.browser.music.MusicSortField.DURATION,
+              app.gyrolet.mpvrx.ui.browser.music.MusicSortField.DATE_ADDED,
+            ),
           onSortFieldChange = { field ->
             val mapped =
               when (field) {
@@ -924,6 +932,10 @@ internal fun VideoListContent(
         val thumbWidthDp =
           if (mediaLayoutMode == MediaLayoutMode.GRID) {
             (usableWidth / videoGridColumns)
+          } else if (isAudio) {
+            // List mode for audio folders uses the configurable cover-art size instead of the
+            // fixed video thumbnail width, so the Music sort dialog's slider has any effect here.
+            musicCoverArtSize.dp
           } else {
             128.dp
           }

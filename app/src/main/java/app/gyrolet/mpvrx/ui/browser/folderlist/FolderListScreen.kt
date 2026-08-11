@@ -309,14 +309,17 @@ object FolderListScreen : Screen {
       var deleted = 0
       var failed = 0
       val deleteAll = browserPreferences.deleteFolderAllContents.get()
-      val includeAudio = browserPreferences.includeAudioBrowser.get()
+      // The audio-only folder browser must always be able to delete the audio files it shows,
+      // regardless of the general "include audio in browser" preference (which only governs the
+      // regular video browser). The regular (video) browser keeps its existing preference-driven behavior.
+      val includeAudio = audioOnly || browserPreferences.includeAudioBrowser.get()
       for (folder in folders) {
         try {
           if (deleteAll) {
             val ids = setOf(folder.bucketId)
             val videos =
               app.gyrolet.mpvrx.repository.MediaFileRepository
-                .getVideosForBuckets(context, ids)
+                .getVideosForBuckets(context, ids, includeAudioOverride = if (audioOnly) true else null)
             if (videos.isNotEmpty()) {
               val (d, f) = viewModel.deleteVideos(videos)
               deleted += d
@@ -337,7 +340,9 @@ object FolderListScreen : Screen {
               dir.listFiles()?.forEach { file ->
                 if (file.isFile) {
                   val ext = file.extension.lowercase()
-                  val isVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
+                  // In the audio-only browser, only touch audio files - never delete video files
+                  // that might live alongside them in the same on-disk folder.
+                  val isVideo = !audioOnly && ext in FileTypeUtils.VIDEO_EXTENSIONS
                   val isAudio = includeAudio && ext in FileTypeUtils.AUDIO_EXTENSIONS
                   if (isVideo || isAudio) {
                     if (file.delete()) deletedAny = true
@@ -375,7 +380,7 @@ object FolderListScreen : Screen {
       coroutineScope.launch {
         val allVideos =
           app.gyrolet.mpvrx.repository.MediaFileRepository
-            .getVideosForBuckets(context, selectedIds)
+            .getVideosForBuckets(context, selectedIds, includeAudioOverride = if (audioOnly) true else null)
         if (allVideos.isNotEmpty()) {
           val result = secureFolderRepository.moveIn(context, allVideos)
           result
@@ -414,7 +419,7 @@ object FolderListScreen : Screen {
           val selectedVideos =
             selectedFolders.flatMap { folder ->
               app.gyrolet.mpvrx.repository.MediaFileRepository
-                .getVideosForBuckets(context, setOf(folder.bucketId))
+                .getVideosForBuckets(context, setOf(folder.bucketId), includeAudioOverride = if (audioOnly) true else null)
             }
           if (selectedVideos.isNotEmpty()) {
             when (operationType.value) {
@@ -429,6 +434,7 @@ object FolderListScreen : Screen {
     // Permissions
     val permissionState =
       PermissionUtils.handleStoragePermission(
+        audioOnly = audioOnly,
         onPermissionGranted = { viewModel.refresh() },
       )
 
@@ -505,9 +511,7 @@ object FolderListScreen : Screen {
       Scaffold(
         contentWindowInsets = if (embedded) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
         topBar = {
-          if (embedded) {
-            // Embedded inside another screen (e.g. Music tab) which already renders its own top bar.
-          } else if (isSearching) {
+          if (isSearching) {
             SearchBar(
               inputField = {
                 SearchBarDefaults.InputField(
@@ -563,7 +567,7 @@ object FolderListScreen : Screen {
             }
           } else {
             BrowserTopBar(
-              title = stringResource(app.gyrolet.mpvrx.R.string.app_name),
+              title = if (audioOnly) "Folders" else stringResource(app.gyrolet.mpvrx.R.string.app_name),
               isInSelectionMode = selectionManager.isInSelectionMode,
               selectedCount = selectionManager.selectedCount,
               totalCount = videoFolders.size,
@@ -589,7 +593,7 @@ object FolderListScreen : Screen {
                   val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
                   val allVideos =
                     app.gyrolet.mpvrx.repository.MediaFileRepository
-                      .getVideosForBuckets(context, selectedIds)
+                      .getVideosForBuckets(context, selectedIds, includeAudioOverride = if (audioOnly) true else null)
                   if (allVideos.isNotEmpty()) {
                     MediaUtils.shareVideos(context, allVideos)
                   }
@@ -600,7 +604,7 @@ object FolderListScreen : Screen {
                   val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
                   val allVideos =
                     app.gyrolet.mpvrx.repository.MediaFileRepository
-                      .getVideosForBuckets(context, selectedIds)
+                      .getVideosForBuckets(context, selectedIds, includeAudioOverride = if (audioOnly) true else null)
                   if (allVideos.isNotEmpty()) {
                     if (allVideos.size == 1) {
                       MediaUtils.playFile(allVideos.first(), context)
@@ -1003,6 +1007,7 @@ object FolderListScreen : Screen {
                         app.gyrolet.mpvrx.repository.MediaFileRepository.getVideosForBuckets(
                           context,
                           setOf(folder.bucketId),
+                          includeAudioOverride = if (audioOnly) true else null,
                         )
                       if (videos.isNotEmpty()) {
                         val subDest = File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
@@ -1021,6 +1026,7 @@ object FolderListScreen : Screen {
                       app.gyrolet.mpvrx.repository.MediaFileRepository.getVideosForBuckets(
                         context,
                         setOf(folder.bucketId),
+                        includeAudioOverride = if (audioOnly) true else null,
                       )
                     if (videos.isNotEmpty()) {
                       val subDest = File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
