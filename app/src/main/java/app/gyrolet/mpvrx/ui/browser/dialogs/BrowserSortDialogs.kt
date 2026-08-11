@@ -1073,6 +1073,8 @@ fun MusicSortDialog(
       MusicSortField.ALBUM -> Icons.RoundedFilled.Audiotrack
       MusicSortField.DURATION -> Icons.RoundedFilled.AccessTime
       MusicSortField.DATE_ADDED -> Icons.RoundedFilled.CalendarToday
+      MusicSortField.TRACK_COUNT -> Icons.RoundedFilled.QueueMusic
+      MusicSortField.YEAR -> Icons.RoundedFilled.CalendarToday
     }
   }
 
