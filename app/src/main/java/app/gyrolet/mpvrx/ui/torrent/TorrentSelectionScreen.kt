@@ -4,6 +4,8 @@
 
 package app.gyrolet.mpvrx.ui.torrent
 
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +54,8 @@ import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+
+private const val VIEWED_TORRENT_FILES_PREFS = "torrent_viewed_files"
 
 @Composable
 fun TorrentSelectionScreen(
@@ -75,6 +80,15 @@ private fun TorrentReadyScreen(
   BackHandler { onBack() }
   val artwork = state.artwork
   val hasBackdrop = !artwork.backdropUrl.isNullOrBlank()
+  val context = LocalContext.current
+  val viewedPreferences =
+    remember(context) {
+      context.getSharedPreferences(VIEWED_TORRENT_FILES_PREFS, Context.MODE_PRIVATE)
+    }
+  var viewedFileIndices by
+    remember(state.catalog.infoHash) {
+      mutableStateOf(loadViewedFileIndices(viewedPreferences, state.catalog.infoHash))
+    }
 
   Surface(
     modifier = Modifier.fillMaxSize(),
@@ -181,7 +195,13 @@ private fun TorrentReadyScreen(
               position = position,
               enabled = state.launchingFileIndex == null,
               launching = state.launchingFileIndex == file.index,
-              onClick = { onSelect(file.index) },
+              viewed = file.index in viewedFileIndices,
+              onClick = {
+                val updatedViewedFiles = viewedFileIndices + file.index
+                viewedFileIndices = updatedViewedFiles
+                saveViewedFileIndices(viewedPreferences, state.catalog.infoHash, updatedViewedFiles)
+                onSelect(file.index)
+              },
             )
           }
           item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -287,6 +307,7 @@ private fun TorrentFileRow(
   position: Int,
   enabled: Boolean,
   launching: Boolean,
+  viewed: Boolean,
   onClick: () -> Unit,
 ) {
   val episode = parseEpisode(file.name) ?: parseEpisode(file.path)
@@ -360,11 +381,21 @@ private fun TorrentFileRow(
         )
       }
 
-      if (launching) {
-        CircularProgressIndicator(
-          modifier = Modifier.size(22.dp),
-          strokeWidth = 2.dp,
-        )
+      when {
+        launching -> {
+          CircularProgressIndicator(
+            modifier = Modifier.size(22.dp),
+            strokeWidth = 2.dp,
+          )
+        }
+        viewed -> {
+          Icon(
+            imageVector = Icons.RoundedFilled.CheckCircle,
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = MaterialTheme.colorScheme.primary,
+          )
+        }
       }
     }
   }
@@ -451,6 +482,27 @@ private fun TorrentErrorScreen(
       }
     }
   }
+}
+
+private fun loadViewedFileIndices(
+  preferences: SharedPreferences,
+  infoHash: String,
+): Set<Int> =
+  preferences
+    .getStringSet(infoHash, emptySet())
+    .orEmpty()
+    .mapNotNull(String::toIntOrNull)
+    .toSet()
+
+private fun saveViewedFileIndices(
+  preferences: SharedPreferences,
+  infoHash: String,
+  indices: Set<Int>,
+) {
+  preferences
+    .edit()
+    .putStringSet(infoHash, indices.map(Int::toString).toSet())
+    .apply()
 }
 
 private data class ParsedEpisode(
