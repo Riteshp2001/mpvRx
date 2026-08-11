@@ -76,6 +76,7 @@ import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
+import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -163,6 +164,7 @@ data class VideoListScreen(
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
     val mediaLayoutMode by browserPreferences.folderViewVideoLayoutMode.collectAsState()
+    val musicCoverArtSize by browserPreferences.musicCoverArtSize.collectAsState()
     val sortedVideosWithInfo =
       remember(videosWithPlaybackInfo, videoSortType, videoSortOrder) {
         val infoById = videosWithPlaybackInfo.associateBy { it.video.id }
@@ -472,6 +474,8 @@ data class VideoListScreen(
           modifier = Modifier.padding(padding),
           showFloatingBottomBar = showFloatingBottomBar,
           mediaLayoutMode = mediaLayoutMode,
+          isAudio = isAudio,
+          musicCoverArtSize = musicCoverArtSize,
         )
 
         // Floating Material 3 Button Group overlay with animation
@@ -510,15 +514,54 @@ data class VideoListScreen(
       }
 
       // Sort Dialog
-      VideoSortDialog(
-        isOpen = sortDialogOpen.value,
-        onDismiss = { sortDialogOpen.value = false },
-        sortType = videoSortType,
-        sortOrder = videoSortOrder,
-        onSortTypeChange = { browserPreferences.videoSortType.set(it) },
-        onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
-        isDualPane = isDualPane,
-      )
+      if (isAudio) {
+        app.gyrolet.mpvrx.ui.browser.dialogs.MusicSortDialog(
+          isOpen = sortDialogOpen.value,
+          onDismiss = { sortDialogOpen.value = false },
+          sortField =
+            when (videoSortType) {
+              app.gyrolet.mpvrx.preferences.VideoSortType.Duration -> app.gyrolet.mpvrx.ui.browser.music.MusicSortField.DURATION
+              app.gyrolet.mpvrx.preferences.VideoSortType.Date -> app.gyrolet.mpvrx.ui.browser.music.MusicSortField.DATE_ADDED
+              else -> app.gyrolet.mpvrx.ui.browser.music.MusicSortField.TITLE
+            },
+          sortOrder =
+            if (videoSortOrder.isAscending) {
+              app.gyrolet.mpvrx.ui.browser.music.MusicSortOrder.ASCENDING
+            } else {
+              app.gyrolet.mpvrx.ui.browser.music.MusicSortOrder.DESCENDING
+            },
+          viewMode = if (mediaLayoutMode == MediaLayoutMode.GRID) app.gyrolet.mpvrx.ui.browser.music.MusicViewMode.GRID else app.gyrolet.mpvrx.ui.browser.music.MusicViewMode.LIST,
+          onSortFieldChange = { field ->
+            val mapped =
+              when (field) {
+                app.gyrolet.mpvrx.ui.browser.music.MusicSortField.DURATION -> app.gyrolet.mpvrx.preferences.VideoSortType.Duration
+                app.gyrolet.mpvrx.ui.browser.music.MusicSortField.DATE_ADDED -> app.gyrolet.mpvrx.preferences.VideoSortType.Date
+                else -> app.gyrolet.mpvrx.preferences.VideoSortType.Title
+              }
+            browserPreferences.videoSortType.set(mapped)
+          },
+          onSortOrderChange = { order ->
+            browserPreferences.videoSortOrder.set(
+              if (order == app.gyrolet.mpvrx.ui.browser.music.MusicSortOrder.ASCENDING) SortOrder.Ascending else SortOrder.Descending,
+            )
+          },
+          onViewModeChange = { mode ->
+            browserPreferences.folderViewVideoLayoutMode.set(
+              if (mode == app.gyrolet.mpvrx.ui.browser.music.MusicViewMode.GRID) MediaLayoutMode.GRID else MediaLayoutMode.LIST,
+            )
+          },
+        )
+      } else {
+        VideoSortDialog(
+          isOpen = sortDialogOpen.value,
+          onDismiss = { sortDialogOpen.value = false },
+          sortType = videoSortType,
+          sortOrder = videoSortOrder,
+          onSortTypeChange = { browserPreferences.videoSortType.set(it) },
+          onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
+          isDualPane = isDualPane,
+        )
+      }
 
       // Delete Dialog
       DeleteConfirmationDialog(
@@ -763,6 +806,8 @@ internal fun VideoListContent(
   modifier: Modifier = Modifier,
   showFloatingBottomBar: Boolean = false,
   mediaLayoutMode: app.gyrolet.mpvrx.preferences.MediaLayoutMode,
+  isAudio: Boolean = false,
+  musicCoverArtSize: Int = 48,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val gesturePreferences = koinInject<GesturePreferences>()
@@ -1162,6 +1207,8 @@ internal fun VideoListContent(
                       allowThumbnailGeneration = false,
                       allowThumbnailLoading = !isScrollbarDragging,
                       uiConfig = videoCardUiConfig,
+                      thumbnailWidthPx = if (isAudio) with(density) { musicCoverArtSize.dp.roundToPx() } else null,
+                      thumbnailHeightPx = if (isAudio) with(density) { musicCoverArtSize.dp.roundToPx() } else null,
                     )
                   }
                 }

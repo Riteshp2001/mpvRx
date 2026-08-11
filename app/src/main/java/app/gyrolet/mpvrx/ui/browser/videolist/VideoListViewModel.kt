@@ -149,6 +149,9 @@ class VideoListViewModel(
             forceFileSystemCheck = forceFileSystemCheck,
             includeAudioOverride = if (includeAudio) true else null,
           )
+        if (includeAudio) {
+          videoList = videoList.filter { it.isAudio }
+        }
 
         // Enrich with metadata only if chips are enabled
         if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
@@ -187,6 +190,9 @@ class VideoListViewModel(
               forceFileSystemCheck = true,
               includeAudioOverride = if (includeAudio) true else null,
             )
+          if (includeAudio) {
+            retryVideoList = retryVideoList.filter { it.isAudio }
+          }
 
           // Enrich retry list if needed
           if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
