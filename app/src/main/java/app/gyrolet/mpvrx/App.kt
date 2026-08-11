@@ -26,6 +26,7 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.GlobalExceptionHandler
 import app.gyrolet.mpvrx.repository.NetworkRepository
+import app.gyrolet.mpvrx.ui.player.AmbientOutputInvariantGuard
 import app.gyrolet.mpvrx.ui.player.AndroidNativeCompat
 import app.gyrolet.mpvrx.ui.player.FlowPaletteCadenceController
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
@@ -80,6 +81,8 @@ class App :
       )
     }
     registerActivityLifecycleCallbacks(this)
+    val playerPreferences: PlayerPreferences = getKoin().get()
+    AmbientOutputInvariantGuard.install(applicationScope, playerPreferences)
     FlowPaletteCadenceController.install(applicationScope)
 
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))

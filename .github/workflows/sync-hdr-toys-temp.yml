@@ -1,0 +1,47 @@
+name: Temporary hdr-toys sync
+
+on:
+  push:
+    branches:
+      - fix/flow-linear-hdr-output
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mpvRx branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/flow-linear-hdr-output
+          fetch-depth: 0
+
+      - name: Sync pinned hdr-toys upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA="0cc0fb808d1199835db450eeb041a83cfd147e2c"
+          TARGET="app/src/main/assets/shaders/hdr-toys"
+          rm -rf /tmp/hdr-toys
+          git clone --quiet https://github.com/natural-harmonia-gropius/hdr-toys.git /tmp/hdr-toys
+          git -C /tmp/hdr-toys checkout --quiet "$UPSTREAM_SHA"
+          rm -rf "$TARGET"
+          mkdir -p "$TARGET"
+          cp -a /tmp/hdr-toys/shaders/. "$TARGET/"
+
+      - name: Commit exact upstream shader tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/assets/shaders/hdr-toys
+          if git diff --cached --quiet; then
+            echo "hdr-toys tree already matches pinned upstream"
+            exit 0
+          fi
+          git commit -m "chore(hdr): sync hdr-toys to 0cc0fb8"
+          git push origin HEAD:fix/flow-linear-hdr-output

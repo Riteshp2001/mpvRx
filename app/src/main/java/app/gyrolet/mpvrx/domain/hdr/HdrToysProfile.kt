@@ -69,30 +69,27 @@ enum class HdrToysProfile(
     shaderOptions =
       listOf(
         "spatial_stable_iterations" to "0",
-        "temporal_stable_window" to "0",
+        // Renamed upstream from temporal_stable_window.
+        "temporal_stable_duration" to "0",
         "enable_metering" to "1",
       ),
   ),
   ;
 
-  /** Comma-separated key=value string passed to mpv's glsl-shader-opts. */
   val shaderOptionsValue: String
     get() = shaderOptions.joinToString(",") { (name, value) -> "$name=$value" }
 
-  /** Absolute mpv paths using the ~~/shaders/ config-dir prefix. */
   val mpvShaderPaths: List<String>
     get() = shaderPaths.map { path -> "$MPV_SHADER_PREFIX$path" }
 
   companion object {
     private const val MPV_SHADER_PREFIX = "~~/shaders/"
 
-    /** Deduplicated set of relative shader paths across all profiles. */
     val allShaderPaths: Set<String> =
       entries
         .flatMap { it.shaderPaths }
         .toSet()
 
-    /** Deduplicated set of absolute mpv shader paths across all profiles. */
     val allMpvShaderPaths: Set<String> =
       allShaderPaths
         .map { path -> "$MPV_SHADER_PREFIX$path" }

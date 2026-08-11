@@ -12,21 +12,15 @@ package app.gyrolet.mpvrx.domain.hdr
 import android.content.Context
 import android.util.Log
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
-import app.gyrolet.mpvrx.ui.player.RenderBackendCompat
 import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Manages the hdr-toys GLSL shader pipeline.
+ * Manages the bundled hdr-toys GLSL pipeline.
  *
- * On first use it copies all bundled hdr-toys shaders from assets into
- * [Context.filesDir]/shaders/hdr-toys/ so that mpv can reference them via
- * the `~~/shaders/` config-dir prefix. Subsequent calls reuse the cached
- * files unless they have been deleted.
- *
- * hdr-toys is authored for mpv's gpu-next/libplacebo shader pipeline. On legacy `vo=gpu` the hook
- * ordering/color-management assumptions differ and can produce faded/washed output. Legacy renderers
- * therefore use mpv-native SDR tone/gamut mapping instead; no hdr-toys shader is appended there.
+ * mpvRx v2.0.0 applied these profile chains on both `vo=gpu` and `vo=gpu-next`; keep that behavior
+ * here. Renderer eligibility belongs only to the separate LINEAR mode, which never calls this
+ * manager and is restricted by PlayerViewModel to gpu-next + Vulkan.
  */
 class HdrToysManager(
   private val context: Context,
@@ -40,6 +34,8 @@ class HdrToysManager(
     return runCatching {
       val destination = File(context.filesDir, TARGET_DIR)
       destination.mkdirs()
+      // Always refresh bundled files on the first initialization of this process. This makes an
+      // app update replace an older hdr-toys copy already present in filesDir.
       copyAssetDirectory(ASSET_DIR, destination)
       val ready = requiredShadersExist()
       initialized = ready
@@ -50,17 +46,8 @@ class HdrToysManager(
     }.getOrDefault(false)
   }
 
-  /**
-   * Applies [profile]'s shader chain to the current mpv instance.
-   * Returns true if all shaders were successfully appended.
-   */
+  /** Apply a complete hdr-toys profile chain without imposing a gpu/gpu-next renderer gate. */
   fun apply(profile: HdrToysProfile): Boolean {
-    if (!RenderBackendCompat.isGpuNextOutput()) {
-      clear()
-      Log.i(TAG, "Skipping hdr-toys on legacy vo=gpu; using mpv-native color mapping")
-      return false
-    }
-
     if (!initialize()) {
       clear()
       return false
