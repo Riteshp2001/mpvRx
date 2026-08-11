@@ -32,6 +32,20 @@ class AudioPreferences(
   val audioVisualizerStyle = preferenceStore.getEnum("audio_visualizer_style", AudioVisualizerStyle.Blob)
   val audioOrientation = preferenceStore.getEnum("audio_player_orientation", AudioPlayerOrientation.Auto)
   val audioAmbientMode = preferenceStore.getBoolean("audio_ambient_mode", true)
+  val enabledMusicTabs = preferenceStore.getStringSet(
+    "enabled_music_tabs",
+    setOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
+  )
+  val musicTabOrder = preferenceStore.getObject(
+    key = "music_tab_order",
+    defaultValue = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
+    serializer = { list -> list.joinToString(",") },
+    deserializer = { str ->
+      val parsed = str.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+      val missing = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS") - parsed.toSet()
+      parsed + missing
+    },
+  )
 
   init {
     // Consolidate the old audio-only screen-lock switch into the single global setting.
