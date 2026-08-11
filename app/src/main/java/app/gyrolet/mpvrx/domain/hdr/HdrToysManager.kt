@@ -16,11 +16,15 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Manages the bundled hdr-toys GLSL pipeline.
+ * Manages HDR Toys for both mpv renderers used by mpvRx.
  *
- * mpvRx v2.0.0 applied these profile chains on both `vo=gpu` and `vo=gpu-next`; keep that behavior
- * here. Renderer eligibility belongs only to the separate LINEAR mode, which never calls this
- * manager and is restricted by PlayerViewModel to gpu-next + Vulkan.
+ * The main [LATEST_ROOT] is a byte-for-byte copy of current upstream HDR Toys and is used by
+ * gpu-next. Current upstream explicitly targets gpu-next and now relies on libplacebo shader
+ * features that legacy vo=gpu does not fully implement. To preserve mpvRx v2.0.0 behaviour on
+ * legacy gpu/OpenGL, [LEGACY_ROOT] carries the known-working HDR Toys tree from the v2.0.0 tag.
+ *
+ * LINEAR HDR is not an HDR Toys profile at runtime; PlayerViewModel/MPVView restrict it to
+ * gpu-next + Vulkan separately.
  */
 class HdrToysManager(
   private val context: Context,
@@ -32,45 +36,65 @@ class HdrToysManager(
     if (initialized && requiredShadersExist()) return true
 
     return runCatching {
-      val destination = File(context.filesDir, TARGET_DIR)
-      destination.mkdirs()
-      // Always refresh bundled files on the first initialization of this process. This makes an
-      // app update replace an older hdr-toys copy already present in filesDir.
-      copyAssetDirectory(ASSET_DIR, destination)
+      copyAssetDirectory(
+        assetPath = "$ASSET_BASE/$LATEST_ROOT",
+        destination = File(context.filesDir, "$TARGET_BASE/$LATEST_ROOT"),
+      )
+      copyAssetDirectory(
+        assetPath = "$ASSET_BASE/$LEGACY_ROOT",
+        destination = File(context.filesDir, "$TARGET_BASE/$LEGACY_ROOT"),
+      )
       val ready = requiredShadersExist()
       initialized = ready
       ready
     }.onFailure { error ->
       initialized = false
-      Log.w(TAG, "Failed to initialize hdr-toys shaders", error)
+      Log.w(TAG, "Failed to initialize HDR Toys shader sets", error)
     }.getOrDefault(false)
   }
 
-  /** Apply a complete hdr-toys profile chain without imposing a gpu/gpu-next renderer gate. */
-  fun apply(profile: HdrToysProfile): Boolean {
+  /**
+   * Apply the selected HDR Toys profile.
+   *
+   * [legacyGpu] selects the v2.0.0-compatible shader tree for vo=gpu. gpu-next always receives the
+   * latest pinned upstream shader set.
+   */
+  fun apply(
+    profile: HdrToysProfile,
+    legacyGpu: Boolean = false,
+  ): Boolean {
     if (!initialize()) {
       clear()
       return false
     }
+
     clear()
-    profile.mpvShaderPaths.forEach { shaderPath ->
+    val root = if (legacyGpu) LEGACY_ROOT else LATEST_ROOT
+    shaderPaths(profile, root).forEach { shaderPath ->
       PlaybackSession.command("change-list", "glsl-shaders", "append", shaderPath)
     }
+    Log.d(TAG, "Applied ${profile.name} using $root (${if (legacyGpu) "vo=gpu" else "gpu-next"})")
     return true
   }
 
-  /** Removes every hdr-toys shader from mpv's active glsl-shaders list. */
+  /** Removes both current and legacy HDR Toys paths without affecting other shader stacks. */
   fun clear() {
-    HdrToysProfile.allMpvShaderPaths
-      .toList()
-      .asReversed()
-      .forEach { shaderPath ->
-        runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", shaderPath) }
+    SHADER_ROOTS.forEach { root ->
+      HdrToysProfile.entries.forEach { profile ->
+        shaderPaths(profile, root)
+          .asReversed()
+          .forEach { shaderPath ->
+            runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", shaderPath) }
+          }
       }
-    HdrToysProfile.allShaderPaths.forEach { relPath ->
-      val absolutePath = File(context.filesDir, "shaders/$relPath").absolutePath
-      runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", absolutePath) }
+
+      HdrToysProfile.allShaderPaths.forEach { originalPath ->
+        val relative = stripOriginalRoot(originalPath)
+        val absolutePath = File(context.filesDir, "$TARGET_BASE/$root/$relative").absolutePath
+        runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", absolutePath) }
+      }
     }
+
     runCatching {
       val activeShaders = PlaybackSession.getPropertyString("glsl-shaders")
       if (!activeShaders.isNullOrEmpty()) {
@@ -84,10 +108,23 @@ class HdrToysManager(
     }
   }
 
+  private fun shaderPaths(
+    profile: HdrToysProfile,
+    root: String,
+  ): List<String> =
+    profile.shaderPaths.map { originalPath ->
+      "~~/shaders/$root/${stripOriginalRoot(originalPath)}"
+    }
+
+  private fun stripOriginalRoot(path: String): String = path.removePrefix("hdr-toys/")
+
   private fun requiredShadersExist(): Boolean =
-    HdrToysProfile.allShaderPaths.all { shaderPath ->
-      val file = File(context.filesDir, "shaders/$shaderPath")
-      file.exists() && file.length() > 0L
+    SHADER_ROOTS.all { root ->
+      HdrToysProfile.allShaderPaths.all { originalPath ->
+        val relative = stripOriginalRoot(originalPath)
+        val file = File(context.filesDir, "$TARGET_BASE/$root/$relative")
+        file.exists() && file.length() > 0L
+      }
     }
 
   private fun copyAssetDirectory(
@@ -100,7 +137,7 @@ class HdrToysManager(
       val childAssetPath = "$assetPath/$child"
       val childDestination = File(destination, child)
       val nestedChildren = context.assets.list(childAssetPath).orEmpty()
-      if (nestedChildren.isEmpty() && child.endsWith(".glsl")) {
+      if (nestedChildren.isEmpty()) {
         copyAssetFile(childAssetPath, childDestination)
       } else {
         copyAssetDirectory(childAssetPath, childDestination)
@@ -122,7 +159,10 @@ class HdrToysManager(
 
   private companion object {
     const val TAG = "HdrToysManager"
-    const val ASSET_DIR = "shaders/hdr-toys"
-    const val TARGET_DIR = "shaders/hdr-toys"
+    const val ASSET_BASE = "shaders"
+    const val TARGET_BASE = "shaders"
+    const val LATEST_ROOT = "hdr-toys"
+    const val LEGACY_ROOT = "hdr-toys-legacy"
+    val SHADER_ROOTS = listOf(LATEST_ROOT, LEGACY_ROOT)
   }
 }
