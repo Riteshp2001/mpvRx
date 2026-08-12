@@ -1,103 +1,222 @@
 name: Preview Build
 
-permissions:
-  contents: read
-
 on:
+  workflow_run:
+    workflows:
+      - CI/CD Build
+    types:
+      - completed
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: mpvrx-preview-pages
+  cancel-in-progress: true
+
 jobs:
-  build:
+  build-preview:
+    name: Build preview APKs
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'master' &&
+        github.event.workflow_run.event == 'push'
+      )
     runs-on: ubuntu-latest
-    outputs:
-      commit_count: ${{ steps.set_commit.outputs.commit_count }}
-      build_time: ${{ steps.set_commit.outputs.build_time }}
-      universal_size: ${{ steps.set_commit.outputs.universal_size }}
-      arm64-v8a_size: ${{ steps.set_commit.outputs.arm64-v8a_size }}
-      armeabi-v7a_size: ${{ steps.set_commit.outputs.armeabi-v7a_size }}
-      x86_size: ${{ steps.set_commit.outputs.x86_size }}
-      x86_64_size: ${{ steps.set_commit.outputs.x86_64_size }}
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout preview source
+        uses: actions/checkout@v6
         with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'gradle'
+      - name: Set build metadata
+        shell: bash
+        env:
+          SOURCE_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || github.run_id }}
+          SOURCE_RUN_NUMBER: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.run_number || github.run_number }}
+          SOURCE_RUN_URL: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.html_url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+        run: |
+          set -euo pipefail
+          commit_count="$(git rev-list --count HEAD)"
+          source_sha="$(git rev-parse HEAD)"
+          short_sha="$(git rev-parse --short HEAD)"
+          published_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-      - name: Make gradlew executable
+          echo "COMMIT_COUNT=$commit_count" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$short_sha" >> "$GITHUB_ENV"
+          echo "PUBLISHED_AT=$published_at" >> "$GITHUB_ENV"
+          echo "SOURCE_RUN_ID=$SOURCE_RUN_ID" >> "$GITHUB_ENV"
+          echo "SOURCE_RUN_NUMBER=$SOURCE_RUN_NUMBER" >> "$GITHUB_ENV"
+          echo "SOURCE_RUN_URL=$SOURCE_RUN_URL" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew assembleStandardPreview
+      - name: Build preview APKs
+        run: ./gradlew assembleStandardPreview --stacktrace --no-daemon
 
-      - name: Sign APKs
+      - name: Sign and verify preview APKs
+        shell: bash
         run: |
-          set -e
-          PREVIEW_DIR="app/build/outputs/apk/standard/preview"
-          
-          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
-          
-          APK_COUNT=$(find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | wc -l)
-          if [ "$APK_COUNT" -eq 0 ]; then
-            echo "No unsigned preview APK files found"
-            ls -lah "$PREVIEW_DIR"
-            rm release.keystore
+          set -euo pipefail
+          preview_dir="app/build/outputs/apk/standard/preview"
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+
+          if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" || -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
+            echo "Required signing secrets are missing; refusing to publish unsigned preview APKs."
             exit 1
           fi
-          
-          find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | while read -r apk; do
-            signed_apk="${apk/-unsigned/}"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+
+          test -d "$preview_dir"
+          test -x "$apksigner"
+          printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
+            unsigned="$preview_dir/app-standard-${abi}-preview-unsigned.apk"
+            signed="$preview_dir/app-standard-${abi}-preview.apk"
+            if [[ ! -f "$unsigned" ]]; then
+              echo "Missing expected $abi preview APK: $unsigned"
+              find "$preview_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            "$apksigner" sign \
               --ks release.keystore \
               --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
               --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
               --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --out "$signed_apk" \
-              "$apk"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
-            rm "$apk"
+              --out "$signed" \
+              "$unsigned"
+            "$apksigner" verify --verbose "$signed"
+            rm -f "$unsigned"
           done
-          
-          rm release.keystore
-          ls -lh "$PREVIEW_DIR"/app-standard-*-preview.apk
 
-      - name: Copy build artifacts
-        id: set_commit
+      - name: Stage GitHub Pages preview site
+        env:
+          SITE_BASE_URL: https://riteshp2001.github.io/mpvRx
+        shell: bash
         run: |
-          set -e
-          commit_count=$(git rev-list --count HEAD)
-          build_time=$(date -u +"%Y-%m-%d %H:%M UTC")
-          echo "commit_count=$commit_count" >> $GITHUB_OUTPUT
-          echo "build_time=$build_time" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          rm -rf site
+          mkdir -p site/downloads
+          cp fastlane/metadata/android/preview-site/index.html site/index.html
+          touch site/.nojekyll
 
-          declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
-          mkdir -p output
-          
-          for arch in "${apks[@]}"; do
-            src="app/build/outputs/apk/standard/preview/app-standard-${arch}-preview.apk"
-            dest="output/mpvRx-preview-r${commit_count}-${arch}.apk"
-            if [ -f "$src" ]; then
-              cp "$src" "$dest"
-              size=$(du -h "$dest" | cut -f1)
-            else
-              size="N/A"
-            fi
-            echo "${arch}_size=$size" >> $GITHUB_OUTPUT
-          done
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import shutil
+          from pathlib import Path
 
-      - name: Upload all artifacts
-        uses: actions/upload-artifact@v4
+          source_dir = Path("app/build/outputs/apk/standard/preview")
+          site_dir = Path("site")
+          downloads_dir = site_dir / "downloads"
+          base_url = os.environ["SITE_BASE_URL"].rstrip("/")
+          commit_count = int(os.environ["COMMIT_COUNT"])
+          source_sha = os.environ["SOURCE_SHA"]
+          published_at = os.environ["PUBLISHED_AT"]
+          run_id = int(os.environ["SOURCE_RUN_ID"])
+          run_number = int(os.environ["SOURCE_RUN_NUMBER"])
+          run_url = os.environ["SOURCE_RUN_URL"]
+
+          architectures = ["universal", "arm64-v8a", "armeabi-v7a", "x86", "x86_64"]
+          assets = []
+
+          for abi in architectures:
+              source = source_dir / f"app-standard-{abi}-preview.apk"
+              if not source.is_file():
+                  raise SystemExit(f"Missing signed APK for {abi}: {source}")
+
+              name = f"mpvRx-preview-r{commit_count}-{abi}.apk"
+              destination = downloads_dir / name
+              shutil.copy2(source, destination)
+
+              assets.append({
+                  "abi": abi,
+                  "browser_download_url": f"{base_url}/downloads/{name}",
+                  "name": name,
+                  "size": destination.stat().st_size,
+                  "content_type": "application/vnd.android.package-archive",
+                  "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+              })
+
+          manifest = {
+              "tag_name": f"preview-r{commit_count}",
+              "name": f"mpvRx Preview r{commit_count}",
+              "body": (
+                  f"Automated preview from successful CI/CD run #{run_number}. "
+                  f"Source commit: {source_sha[:7]}."
+              ),
+              "published_at": published_at,
+              "assets": assets,
+              "channel": "preview",
+              "commit_sha": source_sha,
+              "commit_count": commit_count,
+              "run_number": run_number,
+              "run_id": run_id,
+              "run_url": run_url,
+              "source_branch": "master",
+              "source_workflow": "CI/CD Build",
+              "pages_url": base_url + "/",
+          }
+
+          (site_dir / "latest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          python3 -m json.tool site/latest.json >/dev/null
+          find site -maxdepth 2 -type f -printf '%p %k KB\n' | sort
+
+      - name: Upload preview APKs as Actions artifact
+        uses: actions/upload-artifact@v7
         with:
-          name: preview-apks
-          path: output/
+          name: mpvRx-preview-r${{ env.COMMIT_COUNT }}
+          path: |
+            site/downloads/*.apk
+            site/latest.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-  # GitHub Pages removed — was failing consistently
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy-preview:
+    name: Publish preview download page
+    needs: build-preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

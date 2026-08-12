@@ -16,90 +16,135 @@ concurrency:
 
 jobs:
   build:
+    name: Build standard APKs
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Generate short SHA
-        id: set-short-sha
-        run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
-
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'gradle'
+          # BuildConfig.GIT_COUNT and preview build identities rely on the real repository history.
+          fetch-depth: 0
 
-      - name: Make gradlew executable
+      - name: Generate build metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          echo "COMMIT_COUNT=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew assembleStandardRelease
+      - name: Build standard release APKs
+        run: ./gradlew assembleStandardRelease --stacktrace --no-daemon
 
-      - name: Sign APKs
+      - name: Sign APKs when signing secrets are available
+        shell: bash
         run: |
-          set -e
-          STANDARD_RELEASE_DIR="app/build/outputs/apk/standard/release"
-          
-          if [ -z "${{ secrets.SIGNING_KEYSTORE }}" ]; then
-            echo "SIGNING_KEYSTORE secret is not available. Skipping signing step."
+          set -euo pipefail
+          release_dir="app/build/outputs/apk/standard/release"
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+
+          test -d "$release_dir"
+          test -x "$apksigner"
+
+          if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" ]]; then
+            echo "SIGNING_KEYSTORE is unavailable (expected for untrusted fork PRs); keeping CI APKs unsigned."
             exit 0
           fi
-          
-          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
-          
-          find "$STANDARD_RELEASE_DIR" -name "app-standard-*-release-unsigned.apk" -type f | while read -r apk; do
-            signed_apk="${apk/-unsigned/}"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+
+          if [[ -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
+            echo "SIGNING_KEYSTORE exists but one or more required signing secrets are missing."
+            exit 1
+          fi
+
+          printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
+            unsigned="$release_dir/app-standard-${abi}-release-unsigned.apk"
+            signed="$release_dir/app-standard-${abi}-release.apk"
+            if [[ ! -f "$unsigned" ]]; then
+              echo "Missing expected $abi release APK: $unsigned"
+              find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            "$apksigner" sign \
               --ks release.keystore \
               --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
               --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
               --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --out "$signed_apk" \
-              "$apk"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
-            rm "$apk"
+              --out "$signed" \
+              "$unsigned"
+            "$apksigner" verify --verbose "$signed"
+            rm -f "$unsigned"
           done
-          
-          rm release.keystore
-          echo "APKs signed and verified successfully."
 
-      - name: Upload app-arm64-v8a Artifact
-        uses: actions/upload-artifact@v4
+      - name: Verify expected architecture outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_dir="app/build/outputs/apk/standard/release"
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
+            if ! compgen -G "$release_dir/app-standard-${abi}-release*.apk" >/dev/null; then
+              echo "No release APK found for $abi"
+              exit 1
+            fi
+          done
+
+      - name: Upload arm64-v8a APK
+        uses: actions/upload-artifact@v7
         with:
           name: app-standard-arm64-v8a-release-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/standard/release/app-standard-arm64-v8a-release*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Upload app-armeabi-v7a Artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload armeabi-v7a APK
+        uses: actions/upload-artifact@v7
         with:
           name: app-standard-armeabi-v7a-release-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/standard/release/app-standard-armeabi-v7a-release*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Upload app-universal Artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload universal APK
+        uses: actions/upload-artifact@v7
         with:
           name: app-standard-universal-release-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/standard/release/app-standard-universal-release*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Upload app-x86 Artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload x86 APK
+        uses: actions/upload-artifact@v7
         with:
           name: app-standard-x86-release-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/standard/release/app-standard-x86-release*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Upload app-x86_64 Artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload x86_64 APK
+        uses: actions/upload-artifact@v7
         with:
           name: app-standard-x86_64-release-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/standard/release/app-standard-x86_64-release*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
