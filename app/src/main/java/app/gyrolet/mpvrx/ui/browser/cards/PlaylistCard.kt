@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.ui.browser.cards
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource

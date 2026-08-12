@@ -766,7 +766,6 @@ fun SeekThumbnailPreviewBubble(
               }
             }
           }
-        }
 
         Surface(
           modifier = Modifier.padding(top = 6.dp),
