@@ -1,8 +1,5 @@
 name: Make release
 
-permissions:
-  contents: write
-
 on:
   push:
     tags:
@@ -10,162 +7,149 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Tag to release
+        description: Tag to release (for example v2.1.0)
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   release-for-github:
-    name: "Release for GitHub"
+    name: Release for GitHub
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
-          java-version: 17
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
 
-      - name: Make gradlew executable
+      - name: Resolve and validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version_tag="${GITHUB_REF#refs/tags/}"
+          else
+            version_tag="${{ inputs.tag_name }}"
+          fi
+
+          if [[ ! "$version_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid stable release tag: $version_tag"
+            exit 1
+          fi
+          echo "VERSION_TAG=$version_tag" >> "$GITHUB_ENV"
+
+      - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build standard release with Gradle
-        run: ./gradlew assembleStandardRelease --stacktrace
+      - name: Build standard release APKs
+        run: ./gradlew assembleStandardRelease --stacktrace --no-daemon
 
-      - name: Get tag name
+      - name: Sign and verify release APKs
+        shell: bash
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "VERSION_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
-          else
-            echo "VERSION_TAG=${{ inputs.tag_name }}" >> "$GITHUB_ENV"
-          fi
+          set -euo pipefail
+          release_dir="app/build/outputs/apk/standard/release"
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
-      - name: Verify build output
-        run: |
-          STANDARD_RELEASE_DIR="app/build/outputs/apk/standard/release"
-          
-          if [ ! -d "$STANDARD_RELEASE_DIR" ]; then
-            echo "Standard release directory does not exist!"
-            find app/build/outputs -name "*.apk" -type f
+          if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" || -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
+            echo "Stable releases require all signing secrets."
             exit 1
           fi
-          
-          echo "Standard release APKs:"
-          ls -lah "$STANDARD_RELEASE_DIR"
+          test -d "$release_dir"
+          test -x "$apksigner"
 
-      - name: Sign APKs
-        run: |
-          set -e
-          STANDARD_RELEASE_DIR="app/build/outputs/apk/standard/release"
-          
-          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
-          
-          APK_COUNT=$(find "$STANDARD_RELEASE_DIR" -name "app-standard-*-release-unsigned.apk" -type f | wc -l)
-          if [ "$APK_COUNT" -eq 0 ]; then
-            echo "No unsigned standard APK files found"
-            ls -lah "$STANDARD_RELEASE_DIR"
-            rm release.keystore
-            exit 1
-          fi
-          
-          find "$STANDARD_RELEASE_DIR" -name "app-standard-*-release-unsigned.apk" -type f | while read -r apk; do
-            signed_apk="${apk/-unsigned/}"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+          printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
+            unsigned="$release_dir/app-standard-${abi}-release-unsigned.apk"
+            signed="$release_dir/app-standard-${abi}-release.apk"
+            if [[ ! -f "$unsigned" ]]; then
+              echo "Missing expected release APK for $abi: $unsigned"
+              find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            "$apksigner" sign \
               --ks release.keystore \
               --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
               --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
               --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --out "$signed_apk" \
-              "$apk"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
-            rm "$apk"
+              --out "$signed" \
+              "$unsigned"
+            "$apksigner" verify --verbose "$signed"
+            rm -f "$unsigned"
           done
-          
-          rm release.keystore
-          echo "Signed standard APKs:"
-          ls -lh "$STANDARD_RELEASE_DIR"/app-standard-*-release.apk
 
-      - name: Copy build artifacts
+      - name: Stage release assets and checksums
+        shell: bash
         run: |
           set -euo pipefail
-          
-          standard_apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
-          for abi in "${standard_apks[@]}"; do
-            src="app/build/outputs/apk/standard/release/app-standard-${abi}-release.apk"
-            if [ ! -f "$src" ]; then
-              echo "Skipping $abi (not built)"
-              continue
-            fi
-            dst="mpvRx-${abi}-${VERSION_TAG}.apk"
-            cp "$src" "$dst"
-            checksum=$(sha256sum "$dst" | awk '{ print $1 }')
-            varname="apk_${abi//-/_}_sha256"
-            echo "$varname=$checksum" >> "$GITHUB_ENV"
-          done
-          
-          ls -lah mpvRx-*.apk
+          release_dir="app/build/outputs/apk/standard/release"
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          : > checksums.txt
 
-      - name: Prepare release notes from changelog
+          for abi in "${architectures[@]}"; do
+            src="$release_dir/app-standard-${abi}-release.apk"
+            dst="mpvRx-${abi}-${VERSION_TAG}.apk"
+            test -f "$src"
+            cp "$src" "$dst"
+            sha256sum "$dst" | tee -a checksums.txt
+          done
+
+      - name: Prepare release notes
+        shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
-          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8').splitlines()
           section = []
           in_latest = False
-
           for line in changelog:
-              if line.startswith("## "):
+              if line.startswith('## '):
                   if in_latest:
                       break
                   in_latest = True
               if in_latest:
                   section.append(line)
 
-          latest = "\n".join(section).strip()
+          latest = '\n'.join(section).strip()
           if not latest:
-              raise SystemExit("Could not find latest changelog section")
-
-          Path("release-notes.md").write_text(latest + "\n", encoding="utf-8")
+              raise SystemExit('Could not find latest changelog section')
+          Path('release-notes.md').write_text(latest + '\n\n---\n### SHA-256 checksums\n\n```text\n', encoding='utf-8')
           PY
-          cat >> release-notes.md <<EOF
+          cat checksums.txt >> release-notes.md
+          printf '%s\n' '```' >> release-notes.md
 
-          ---
-          ### Checksums
-
-          | Variant | SHA-256 |
-          | ------- | ------- |
-          | arm64-v8a | ${apk_arm64_v8a_sha256} |
-          | armeabi-v7a | ${apk_armeabi_v7a_sha256} |
-          | Universal | ${apk_universal_sha256} |
-          | x86 | ${apk_x86_sha256:-not built} |
-          | x86_64 | ${apk_x86_64_sha256:-not built} |
-
-          EOF
-
-      - name: Create GitHub Release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
           name: mpvRx ${{ env.VERSION_TAG }}
           body_path: release-notes.md
           generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
           files: |
             mpvRx-universal-${{ env.VERSION_TAG }}.apk
             mpvRx-arm64-v8a-${{ env.VERSION_TAG }}.apk
             mpvRx-armeabi-v7a-${{ env.VERSION_TAG }}.apk
             mpvRx-x86-${{ env.VERSION_TAG }}.apk
             mpvRx-x86_64-${{ env.VERSION_TAG }}.apk
-
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

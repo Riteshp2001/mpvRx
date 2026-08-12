@@ -1,153 +1,145 @@
-name: Make Pre release
-
-permissions:
-  contents: write
+name: Make tagged pre-release
 
 on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+-preview.[0-9]+'
 
+permissions:
+  contents: write
+
 jobs:
   release-for-github:
-    name: "Preview Release for GitHub"
+    name: Tagged preview release for GitHub
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
-          java-version: 17
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Resolve release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_tag="${GITHUB_REF#refs/tags/}"
+          if [[ ! "$version_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]; then
+            echo "Invalid tagged preview version: $version_tag"
+            exit 1
+          fi
+          echo "VERSION_TAG=$version_tag" >> "$GITHUB_ENV"
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
       - name: Build preview APKs
-        run: ./gradlew assembleStandardPreview --stacktrace
+        run: ./gradlew assembleStandardPreview --stacktrace --no-daemon
 
-      - name: Get tag name
-        if: startsWith(github.ref, 'refs/tags/')
-        run: echo "VERSION_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-      - name: Verify build output
+      - name: Sign and verify preview APKs
+        shell: bash
         run: |
-          PREVIEW_DIR="app/build/outputs/apk/standard/preview"
-          if [ ! -d "$PREVIEW_DIR" ]; then
-            echo "Preview directory does not exist!"
-            find app/build/outputs -name "*.apk" -type f
+          set -euo pipefail
+          preview_dir="app/build/outputs/apk/standard/preview"
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+
+          if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" || -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
+            echo "Tagged preview releases require all signing secrets."
             exit 1
           fi
-          ls -lah "$PREVIEW_DIR"
+          test -d "$preview_dir"
+          test -x "$apksigner"
 
-      - name: Sign APKs
-        run: |
-          set -e
-          PREVIEW_DIR="app/build/outputs/apk/standard/preview"
-          
-          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
-          
-          APK_COUNT=$(find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | wc -l)
-          if [ "$APK_COUNT" -eq 0 ]; then
-            echo "No unsigned preview APK files found"
-            ls -lah "$PREVIEW_DIR"
-            rm release.keystore
-            exit 1
-          fi
-          
-          find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | while read -r apk; do
-            signed_apk="${apk/-unsigned/}"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+          printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
+            unsigned="$preview_dir/app-standard-${abi}-preview-unsigned.apk"
+            signed="$preview_dir/app-standard-${abi}-preview.apk"
+            if [[ ! -f "$unsigned" ]]; then
+              echo "Missing expected preview APK for $abi: $unsigned"
+              find "$preview_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            "$apksigner" sign \
               --ks release.keystore \
               --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
               --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
               --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --out "$signed_apk" \
-              "$apk"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
-            rm "$apk"
+              --out "$signed" \
+              "$unsigned"
+            "$apksigner" verify --verbose "$signed"
+            rm -f "$unsigned"
           done
-          
-          rm release.keystore
-          ls -lh "$PREVIEW_DIR"/app-standard-*-preview.apk
 
-      - name: Copy built artifacts
+      - name: Stage pre-release assets and checksums
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
+          preview_dir="app/build/outputs/apk/standard/preview"
           mkdir -p preview
-          declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
+          : > checksums.txt
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
 
-          for abi in "${apks[@]}"; do
-            src="app/build/outputs/apk/standard/preview/app-standard-${abi}-preview.apk"
-            dest="preview/mpvRx-preview-${abi}-${{ env.VERSION_TAG }}.apk"
-            if [ -f "$src" ]; then
-              cp "$src" "$dest"
-              sha=$(sha256sum "$dest" | awk '{ print $1 }')
-              echo "apk_${abi//-/_}_sha256=$sha" >> $GITHUB_ENV
-            fi
+          for abi in "${architectures[@]}"; do
+            src="$preview_dir/app-standard-${abi}-preview.apk"
+            dst="preview/mpvRx-preview-${abi}-${VERSION_TAG}.apk"
+            test -f "$src"
+            cp "$src" "$dst"
+            sha256sum "$dst" | tee -a checksums.txt
           done
 
-      - name: Prepare pre-release notes from changelog
+      - name: Prepare pre-release notes
+        shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
-          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8').splitlines()
           section = []
           in_latest = False
-
           for line in changelog:
-              if line.startswith("## "):
+              if line.startswith('## '):
                   if in_latest:
                       break
                   in_latest = True
               if in_latest:
                   section.append(line)
 
-          latest = "\n".join(section).strip()
+          latest = '\n'.join(section).strip()
           if not latest:
-              raise SystemExit("Could not find latest changelog section")
-
-          Path("pre-release-notes.md").write_text(latest + "\n", encoding="utf-8")
+              raise SystemExit('Could not find latest changelog section')
+          Path('pre-release-notes.md').write_text(latest + '\n\n---\n### SHA-256 checksums\n\n```text\n', encoding='utf-8')
           PY
-          cat >> pre-release-notes.md <<EOF
-
-          ---
-          ### Checksums
-
-          | Variant | SHA-256 |
-          | ------- | ------- |
-          | arm64-v8a | ${apk_arm64_v8a_sha256} |
-          | armeabi-v7a | ${apk_armeabi_v7a_sha256} |
-          | Universal | ${apk_universal_sha256} |
-          | x86 | ${apk_x86_sha256:-not built} |
-          | x86_64 | ${apk_x86_64_sha256:-not built} |
-
-          EOF
+          cat checksums.txt >> pre-release-notes.md
+          printf '%s\n' '```' >> pre-release-notes.md
 
       - name: Create GitHub pre-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
-          name: "mpvRx ${{ env.VERSION_TAG }}"
+          name: mpvRx ${{ env.VERSION_TAG }}
           body_path: pre-release-notes.md
           generate_release_notes: true
+          draft: false
+          prerelease: true
+          fail_on_unmatched_files: true
           files: |
             preview/mpvRx-preview-universal-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-arm64-v8a-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-armeabi-v7a-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-x86-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-x86_64-${{ env.VERSION_TAG }}.apk
-
-          draft: false
-          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

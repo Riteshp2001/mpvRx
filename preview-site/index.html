@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d12">
+  <meta name="description" content="Official mpvRx beta builds produced by the latest successful GitHub Actions CI run on master.">
+  <title>mpvRx Beta Builds</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b10;
+      --surface: #10131a;
+      --surface-2: #151923;
+      --line: rgba(255,255,255,.09);
+      --text: #f5f7fb;
+      --muted: #9aa3b2;
+      --soft: #c9d0dc;
+      --accent: #8ba9ff;
+      --accent-2: #b5c7ff;
+      --ok: #72d6a4;
+      --warn: #f3c77a;
+      --shadow: 0 24px 80px rgba(0,0,0,.32);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% -10%, rgba(109,142,255,.16), transparent 34rem),
+        radial-gradient(circle at 88% 14%, rgba(106,214,164,.08), transparent 26rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+
+    .topbar {
+      height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 720; letter-spacing: -.02em; }
+    .mark {
+      width: 38px; height: 38px; border-radius: 11px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, #eef3ff, #98b2ff);
+      color: #111522; font-weight: 900; letter-spacing: -.08em;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.5);
+    }
+    .brand small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-top: 1px; }
+
+    .repo-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line);
+      text-decoration: none; color: var(--soft); background: rgba(255,255,255,.025);
+      font-size: 13px; font-weight: 650;
+    }
+    .repo-link:hover { border-color: rgba(255,255,255,.18); color: var(--text); }
+
+    .hero { padding: 84px 0 42px; display: grid; grid-template-columns: 1.2fr .8fr; gap: 56px; align-items: end; }
+    .eyebrow { display: flex; gap: 10px; align-items: center; color: var(--accent-2); font-size: 12px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .status-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--ok); box-shadow: 0 0 0 5px rgba(114,214,164,.09); }
+    h1 { font-size: clamp(42px, 7vw, 82px); line-height: .98; letter-spacing: -.055em; margin: 18px 0 22px; max-width: 780px; }
+    .lead { color: var(--muted); font-size: clamp(16px, 2vw, 19px); line-height: 1.65; max-width: 670px; margin: 0; }
+
+    .build-panel {
+      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+      border: 1px solid var(--line); border-radius: 22px; padding: 22px; box-shadow: var(--shadow);
+    }
+    .panel-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .11em; font-weight: 800; }
+    .build-id { font-size: 30px; font-weight: 800; letter-spacing: -.035em; margin: 8px 0 18px; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .meta { padding: 12px; background: rgba(0,0,0,.18); border: 1px solid rgba(255,255,255,.055); border-radius: 12px; min-width: 0; }
+    .meta span { display:block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 750; margin-bottom: 5px; }
+    .meta strong { display:block; font-size: 13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin: 34px 0 18px; }
+    h2 { margin: 0; font-size: 25px; letter-spacing: -.03em; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .arch-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+    .arch-card {
+      min-height: 224px; padding: 20px; border: 1px solid var(--line); border-radius: 18px;
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      display: flex; flex-direction: column; transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .arch-card:hover { transform: translateY(-2px); border-color: rgba(139,169,255,.34); background: #151a25; }
+    .arch-card.recommended { border-color: rgba(139,169,255,.33); }
+    .card-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .chip-icon { width: 42px; height: 42px; border-radius: 12px; display:grid; place-items:center; background: rgba(139,169,255,.09); color: var(--accent-2); border: 1px solid rgba(139,169,255,.14); }
+    .badge { font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-2); padding: 6px 8px; border-radius: 999px; background: rgba(139,169,255,.09); border: 1px solid rgba(139,169,255,.13); }
+    .arch-card h3 { font-size: 18px; margin: 15px 0 4px; letter-spacing: -.02em; }
+    .abi { color: var(--accent-2); font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .desc { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 10px 0 18px; min-height: 40px; }
+    .file-meta { display:flex; justify-content:space-between; gap:10px; color: var(--muted); font-size: 11px; margin-top:auto; margin-bottom:12px; }
+    .download {
+      width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 12px;
+      border-radius:11px; background:#edf2ff; color:#121621; text-decoration:none; font-size:13px; font-weight:800;
+    }
+    .download:hover { background:#fff; }
+    .download[aria-disabled="true"] { opacity:.45; pointer-events:none; }
+
+    .trust {
+      margin: 16px 0 56px; padding: 18px 20px; border:1px solid var(--line); border-radius:16px;
+      display:flex; gap:16px; align-items:flex-start; background:rgba(255,255,255,.018);
+    }
+    .trust svg { flex:0 0 auto; color:var(--ok); margin-top:2px; }
+    .trust strong { display:block; font-size:13px; margin-bottom:4px; }
+    .trust p { margin:0; color:var(--muted); font-size:12px; line-height:1.55; }
+
+    footer { border-top:1px solid var(--line); padding:28px 0 42px; color:var(--muted); font-size:12px; }
+    .footer-row { display:flex; justify-content:space-between; gap:20px; align-items:center; }
+    .warning { color:var(--warn); }
+
+    .skeleton { animation: pulse 1.4s ease-in-out infinite; color: transparent !important; border-radius: 5px; background: rgba(255,255,255,.08); }
+    @keyframes pulse { 50% { opacity:.5; } }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns:1fr; gap:28px; padding-top:58px; }
+      .arch-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 620px) {
+      .shell { width:min(100% - 24px,1180px); }
+      .topbar { height:66px; }
+      .repo-link span { display:none; }
+      .hero { padding-top:44px; }
+      .arch-grid { grid-template-columns:1fr; }
+      .section-head, .footer-row { align-items:flex-start; flex-direction:column; }
+      .meta-grid { grid-template-columns:1fr 1fr; }
+      .arch-card { min-height:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">Rx</div>
+        <div>mpvRx<small>Preview Channel</small></div>
+      </div>
+      <a class="repo-link" href="https://github.com/Riteshp2001/mpvRx" target="_blank" rel="noreferrer">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.39.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.94 10.94 0 0 1 5.75 0c2.19-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.28 5.67.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg>
+        <span>View repository</span>
+      </a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <div class="eyebrow"><span class="status-dot"></span> Latest successful CI build</div>
+          <h1>Beta builds,<br>without the guesswork.</h1>
+          <p class="lead">Every APK here is produced from the latest successful <strong>master</strong> CI/CD run, signed by the project workflow, published with its architecture, and accompanied by a SHA-256 checksum.</p>
+        </div>
+
+        <aside class="build-panel" aria-label="Latest build information">
+          <div class="panel-label">Current beta</div>
+          <div id="build-id" class="build-id skeleton">r0000</div>
+          <div class="meta-grid">
+            <div class="meta"><span>Commit</span><strong id="commit" class="skeleton">0000000</strong></div>
+            <div class="meta"><span>Actions run</span><strong id="run" class="skeleton">#0000</strong></div>
+            <div class="meta"><span>Published</span><strong id="published" class="skeleton">Aug 12, 2026</strong></div>
+            <div class="meta"><span>Channel</span><strong>Beta · Master</strong></div>
+          </div>
+        </aside>
+      </section>
+
+      <section aria-labelledby="downloads-title">
+        <div class="section-head">
+          <div><h2 id="downloads-title">Choose your architecture</h2></div>
+          <p>Not sure? Use <strong>Universal</strong>. Modern phones usually use <strong>arm64-v8a</strong>.</p>
+        </div>
+        <div id="architectures" class="arch-grid" aria-live="polite"></div>
+      </section>
+
+      <div class="trust">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.55 2.94 8.66 7 10 4.06-1.34 7-5.45 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.7 12.1 2.1 2.1 4.6-4.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div><strong>Integrity checked before install</strong><p>The published manifest includes a SHA-256 digest for every APK. mpvRx verifies that digest after download; a mismatched or incomplete beta APK is deleted instead of being offered for installation.</p></div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-row">
+        <span>mpvRx Preview Channel · Generated by GitHub Actions</span>
+        <span class="warning">Beta builds may be unstable. Stable releases remain the default update channel.</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const catalogue = [
+      { abi: 'arm64-v8a', title: 'ARM 64-bit', badge: 'Recommended', desc: 'Best choice for most modern Android phones, tablets and TVs.' },
+      { abi: 'universal', title: 'Universal', badge: 'Safest choice', desc: 'Includes every supported native architecture. Larger download, widest compatibility.' },
+      { abi: 'armeabi-v7a', title: 'ARM 32-bit', badge: 'Legacy ARM', desc: 'For older 32-bit ARM Android devices that cannot install arm64 builds.' },
+      { abi: 'x86_64', title: 'x86 64-bit', badge: 'Emulator / x86', desc: 'For 64-bit x86 Android emulators, ChromeOS or compatible x86 devices.' },
+      { abi: 'x86', title: 'x86 32-bit', badge: 'Legacy x86', desc: 'For older 32-bit x86 Android environments and emulators.' }
+    ];
+
+    const chipIcon = (label) => `
+      <div class="chip-icon" aria-hidden="true">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+          <rect x="6" y="6" width="12" height="12" rx="2.4" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M9 2.8v3.1M12 2.8v3.1M15 2.8v3.1M9 18.1v3.1M12 18.1v3.1M15 18.1v3.1M2.8 9h3.1M2.8 12h3.1M2.8 15h3.1M18.1 9h3.1M18.1 12h3.1M18.1 15h3.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <text x="12" y="14.1" text-anchor="middle" fill="currentColor" font-size="5.3" font-family="system-ui" font-weight="800">${label}</text>
+        </svg>
+      </div>`;
+
+    const formatBytes = (bytes) => {
+      if (!Number.isFinite(bytes) || bytes <= 0) return 'Unknown size';
+      const units = ['B','KB','MB','GB'];
+      const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+      return `${(bytes / Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${units[i]}`;
+    };
+
+    function renderCard(info, asset) {
+      const card = document.createElement('article');
+      card.className = `arch-card${info.abi === 'arm64-v8a' ? ' recommended' : ''}`;
+      const iconLabel = info.abi === 'universal' ? 'ALL' : info.abi.includes('64') ? '64' : '32';
+      const checksum = asset?.sha256 ? asset.sha256.slice(0, 12) + '…' : 'Pending';
+      card.innerHTML = `
+        <div class="card-top">${chipIcon(iconLabel)}<span class="badge"></span></div>
+        <h3></h3><div class="abi"></div><p class="desc"></p>
+        <div class="file-meta"><span class="size"></span><span class="checksum"></span></div>
+        <a class="download" aria-disabled="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download APK
+        </a>`;
+      card.querySelector('.badge').textContent = info.badge;
+      card.querySelector('h3').textContent = info.title;
+      card.querySelector('.abi').textContent = info.abi;
+      card.querySelector('.desc').textContent = info.desc;
+      card.querySelector('.size').textContent = asset ? formatBytes(asset.size) : 'Not available';
+      card.querySelector('.checksum').textContent = `SHA ${checksum}`;
+      const link = card.querySelector('.download');
+      if (asset?.browser_download_url) {
+        link.href = asset.browser_download_url;
+        link.setAttribute('download', asset.name || '');
+        link.removeAttribute('aria-disabled');
+      }
+      return card;
+    }
+
+    async function loadBuild() {
+      const container = document.getElementById('architectures');
+      try {
+        const response = await fetch(`latest.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Manifest request failed: ${response.status}`);
+        const release = await response.json();
+        if (release.channel !== 'beta' || !Array.isArray(release.assets)) throw new Error('Invalid beta manifest');
+
+        document.getElementById('build-id').textContent = `r${release.commit_count}`;
+        document.getElementById('commit').textContent = String(release.commit_sha || '').slice(0, 7) || 'Unknown';
+        const run = document.getElementById('run');
+        run.textContent = `#${release.run_number || '—'}`;
+        if (release.run_url) {
+          const link = document.createElement('a');
+          link.href = release.run_url;
+          link.target = '_blank';
+          link.rel = 'noreferrer';
+          link.textContent = run.textContent;
+          link.style.textDecoration = 'none';
+          run.replaceChildren(link);
+        }
+        document.getElementById('published').textContent = new Date(release.published_at).toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+        document.querySelectorAll('.skeleton').forEach(el => el.classList.remove('skeleton'));
+
+        const byAbi = new Map(release.assets.map(asset => [asset.abi, asset]));
+        container.replaceChildren(...catalogue.map(info => renderCard(info, byAbi.get(info.abi))));
+      } catch (error) {
+        console.error(error);
+        document.getElementById('build-id').textContent = 'Unavailable';
+        document.getElementById('commit').textContent = '—';
+        document.getElementById('run').textContent = '—';
+        document.getElementById('published').textContent = 'Deployment pending';
+        document.querySelectorAll('.skeleton').forEach(el => el.classList.remove('skeleton'));
+        container.replaceChildren(...catalogue.map(info => renderCard(info, null)));
+      }
+    }
+
+    loadBuild();
+  </script>
+</body>
+</html>

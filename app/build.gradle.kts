@@ -90,7 +90,10 @@ android {
       initWith(getByName("release"))
       signingConfig = null
       applicationIdSuffix = ".preview"
-      versionNameSuffix = "-${getCommitCount()}"
+      versionNameSuffix = "-beta.r${getCommitCount()}"
+      // The About screen already renders app_name and BUILD_TYPE, so preview builds get a clear
+      // Beta marker without affecting the stable package identity or stable release version.
+      resValue("string", "app_name", "mpvRx Beta")
     }
 
     named("debug") {

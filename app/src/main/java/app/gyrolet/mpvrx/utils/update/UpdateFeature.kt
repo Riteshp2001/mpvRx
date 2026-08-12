@@ -60,6 +60,7 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -73,6 +74,11 @@ data class Release(
   @SerialName("body") val body: String,
   @SerialName("published_at") val publishedAt: String,
   @SerialName("assets") val assets: List<Asset>,
+  @SerialName("channel") val channel: String? = null,
+  @SerialName("commit_sha") val commitSha: String? = null,
+  @SerialName("commit_count") val commitCount: Int? = null,
+  @SerialName("run_number") val runNumber: Long? = null,
+  @SerialName("run_url") val runUrl: String? = null,
 )
 
 @Serializable
@@ -81,6 +87,7 @@ data class Asset(
   @SerialName("name") val name: String,
   @SerialName("size") val size: Long,
   @SerialName("content_type") val contentType: String,
+  @SerialName("sha256") val sha256: String? = null,
 )
 
 // --- Domain Manager ---
@@ -91,35 +98,48 @@ class UpdateManager(
   private val client = OkHttpClient()
   private val json = Json { ignoreUnknownKeys = true }
 
-  suspend fun checkForUpdate(forceShow: Boolean = false): Release? {
-    // Return null immediately if update feature is disabled (F-Droid flavor)
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return null
-    }
+  suspend fun checkForUpdate(
+    forceShow: Boolean = false,
+    includeBeta: Boolean = false,
+  ): Release? {
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return null
 
-    val release = getLatestRelease("https://api.github.com/repos/Riteshp2001/mpvRx/releases/latest")
-    val currentVersion = BuildConfig.VERSION_NAME.replace("-dev", "")
-    val remoteVersion = release.tagName.removePrefix("v")
+    val currentVersion = BuildConfig.VERSION_NAME.substringBefore('-')
     val prefs = context.getSharedPreferences("mpvrx_prefs", Context.MODE_PRIVATE)
     val ignoredVersion = prefs.getString("ignored_version", null)
 
-    // If this version was ignored, don't show it unless forced (manual check)
-    if (!forceShow && ignoredVersion == remoteVersion) {
-      return null
+    // Stable releases always have priority. Automatic checks intentionally stop here so beta
+    // builds are opt-in and never installed silently.
+    val stableResult = runCatching { getLatestRelease(STABLE_RELEASE_URL) }
+    val stableRelease = stableResult.getOrNull()
+    if (stableRelease != null) {
+      val remoteVersion = stableRelease.tagName.removePrefix("v")
+      val ignored = !forceShow && ignoredVersion == remoteVersion
+      if (!ignored && isNewerVersion(remoteVersion, currentVersion)) {
+        return stableRelease
+      }
     }
 
-    return if (isNewerVersion(remoteVersion, currentVersion)) {
-      release
-    } else {
-      null
+    if (includeBeta) {
+      val betaRelease = runCatching { getLatestRelease(BETA_RELEASE_URL) }.getOrNull()
+      if (betaRelease != null &&
+        isValidBetaManifest(betaRelease) &&
+        isBetaNewerThanCurrent(betaRelease) &&
+        (forceShow || ignoredVersion != betaRelease.tagName)
+      ) {
+        return betaRelease
+      }
     }
+
+    // Preserve the previous error behavior when GitHub itself is unavailable. A missing beta
+    // page is harmless before the first successful preview deployment and must not break stable
+    // update checks.
+    if (stableRelease == null) stableResult.getOrThrow()
+    return null
   }
 
   fun ignoreVersion(version: String) {
-    // No-op if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return
-    }
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return
 
     val prefs = context.getSharedPreferences("mpvrx_prefs", Context.MODE_PRIVATE)
     prefs
@@ -130,7 +150,12 @@ class UpdateManager(
 
   private suspend fun getLatestRelease(url: String): Release =
     withContext(Dispatchers.IO) {
-      val request = Request.Builder().url(url).build()
+      val request =
+        Request
+          .Builder()
+          .url(url)
+          .header("Cache-Control", "no-cache")
+          .build()
       client.newCall(request).execute().use { response ->
         if (!response.isSuccessful) throw IOException("Unexpected code $response")
         val responseBody = response.body.string()
@@ -154,49 +179,56 @@ class UpdateManager(
     return false
   }
 
-  fun downloadUpdate(release: Release): Flow<Float> {
-    // Return completed flow immediately if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return flowOf(100f)
+  private fun isValidBetaManifest(release: Release): Boolean {
+    if (release.channel != "beta") return false
+    if (!release.tagName.startsWith("beta-r")) return false
+    if ((release.commitCount ?: 0) <= 0) return false
+    if (release.assets.isEmpty()) return false
+
+    return release.assets.all { asset ->
+      asset.name.endsWith(".apk") &&
+        asset.downloadUrl.startsWith(BETA_DOWNLOAD_PREFIX) &&
+        asset.sha256?.matches(SHA256_REGEX) == true
     }
+  }
+
+  private fun isBetaNewerThanCurrent(release: Release): Boolean {
+    val betaCommitCount = release.commitCount ?: return false
+    return betaCommitCount > BuildConfig.GIT_COUNT
+  }
+
+  fun downloadUpdate(release: Release): Flow<Float> {
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return flowOf(100f)
 
     val asset =
       selectBestApkAsset(release.assets)
         ?: throw Exception("No compatible APK asset found")
 
     val destination = File(context.externalCacheDir, asset.name)
-    return downloadApk(asset.downloadUrl, destination)
+    return downloadApk(asset.downloadUrl, destination, asset.sha256)
   }
 
   private fun selectBestApkAsset(assets: List<Asset>): Asset? {
     val deviceArch = getDeviceArchitecture()
 
-    // First, try to find architecture-specific APK
     val archSpecificApk =
       assets.firstOrNull { asset ->
         asset.name.endsWith(".apk") && asset.name.contains(deviceArch, ignoreCase = true)
       }
 
-    if (archSpecificApk != null) {
-      return archSpecificApk
-    }
+    if (archSpecificApk != null) return archSpecificApk
 
-    // Fallback to universal APK
     val universalApk =
       assets.firstOrNull { asset ->
         asset.name.endsWith(".apk") && asset.name.contains("universal", ignoreCase = true)
       }
 
-    if (universalApk != null) {
-      return universalApk
-    }
+    if (universalApk != null) return universalApk
 
-    // Last resort: any APK
     return assets.firstOrNull { it.name.endsWith(".apk") }
   }
 
   private fun getDeviceArchitecture(): String {
-    // Get the primary ABI (Application Binary Interface)
     val primaryAbi =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         Build.SUPPORTED_ABIS[0]
@@ -205,59 +237,90 @@ class UpdateManager(
         Build.CPU_ABI
       }
 
-    // Map Android ABI names to your APK naming convention
     return when (primaryAbi) {
       "arm64-v8a" -> "arm64-v8a"
       "armeabi-v7a" -> "armeabi-v7a"
       "x86" -> "x86"
       "x86_64" -> "x86_64"
-      else -> "universal" // Fallback for unknown architectures
+      else -> "universal"
     }
   }
 
   private fun downloadApk(
     url: String,
     destination: File,
+    expectedSha256: String?,
   ): Flow<Float> =
     flow {
-      val request = Request.Builder().url(url).build()
-      val response = client.newCall(request).execute()
-      if (!response.isSuccessful) throw IOException("Unexpected code $response")
-
-      val body = response.body
-      val contentLength = body.contentLength()
-      val inputStream = body.byteStream()
-      val outputStream = FileOutputStream(destination)
+      val partialFile = File("${destination.absolutePath}.part")
+      partialFile.delete()
 
       try {
-        val buffer = ByteArray(8 * 1024)
-        var bytesRead: Int
-        var totalBytesRead: Long = 0
+        val request = Request.Builder().url(url).build()
+        client.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
-        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-          outputStream.write(buffer, 0, bytesRead)
-          totalBytesRead += bytesRead
-          val progress =
-            if (contentLength > 0) {
-              (totalBytesRead.toFloat() / contentLength.toFloat()) * 100
-            } else {
-              -1f
+          val body = response.body
+          val contentLength = body.contentLength()
+          body.byteStream().use { inputStream ->
+            FileOutputStream(partialFile).use { outputStream ->
+              val buffer = ByteArray(8 * 1024)
+              var bytesRead: Int
+              var totalBytesRead = 0L
+
+              while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                outputStream.write(buffer, 0, bytesRead)
+                totalBytesRead += bytesRead
+                val progress =
+                  if (contentLength > 0) {
+                    ((totalBytesRead.toFloat() / contentLength.toFloat()) * 99f).coerceAtMost(99f)
+                  } else {
+                    -1f
+                  }
+                emit(progress)
+              }
+              outputStream.flush()
             }
-          emit(progress)
+          }
         }
-        outputStream.flush()
+
+        if (!expectedSha256.isNullOrBlank()) {
+          val actualSha256 = calculateSha256(partialFile)
+          if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
+            throw IOException("Downloaded APK checksum does not match the published beta manifest")
+          }
+        }
+
+        if (destination.exists() && !destination.delete()) {
+          throw IOException("Could not replace cached APK")
+        }
+        if (!partialFile.renameTo(destination)) {
+          partialFile.copyTo(destination, overwrite = true)
+          partialFile.delete()
+        }
         emit(100f)
-      } finally {
-        inputStream.close()
-        outputStream.close()
+      } catch (error: Throwable) {
+        partialFile.delete()
+        destination.delete()
+        throw error
       }
     }.flowOn(Dispatchers.IO)
 
-  fun getApkFile(release: Release): File? {
-    // Return null if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return null
+  private fun calculateSha256(file: File): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    file.inputStream().buffered().use { input ->
+      val buffer = ByteArray(16 * 1024)
+      while (true) {
+        val read = input.read(buffer)
+        if (read <= 0) break
+        digest.update(buffer, 0, read)
+      }
     }
+    return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+  }
+
+  fun getApkFile(release: Release): File? {
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return null
 
     val asset = selectBestApkAsset(release.assets) ?: return null
     val file = File(context.externalCacheDir, asset.name)
@@ -265,14 +328,18 @@ class UpdateManager(
   }
 
   fun clearCache() {
-    // No-op if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return
-    }
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return
 
     context.externalCacheDir?.listFiles()?.forEach {
-      if (it.name.endsWith(".apk")) it.delete()
+      if (it.name.endsWith(".apk") || it.name.endsWith(".apk.part")) it.delete()
     }
+  }
+
+  private companion object {
+    const val STABLE_RELEASE_URL = "https://api.github.com/repos/Riteshp2001/mpvRx/releases/latest"
+    const val BETA_RELEASE_URL = "https://riteshp2001.github.io/mpvRx/latest.json"
+    const val BETA_DOWNLOAD_PREFIX = "https://riteshp2001.github.io/mpvRx/downloads/"
+    val SHA256_REGEX = Regex("^[a-fA-F0-9]{64}$")
   }
 }
 
@@ -300,10 +367,7 @@ class UpdateViewModel(
   val isAutoUpdateEnabled: StateFlow<Boolean> = _isAutoUpdateEnabled.asStateFlow()
 
   fun toggleAutoUpdate(enabled: Boolean) {
-    // No-op if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return
-    }
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return
 
     prefs.edit().putBoolean("auto_update", enabled).apply()
     _isAutoUpdateEnabled.value = enabled
@@ -313,14 +377,8 @@ class UpdateViewModel(
   }
 
   init {
-    // Only initialize auto-update if feature is enabled.
-    // The network check is deferred by a short delay so that it does not
-    // race with first-frame composition of the main UI. Previously the
-    // check fired synchronously inside the init block of the ViewModel,
-    // which is itself constructed during the very first Compose
-    // composition in MainActivity.Navigator() -- meaning the OkHttp
-    // client + GitHub API call competed with cold-start rendering.
-    // See issue 1.5 in the startup audit.
+    // Automatic startup checks intentionally remain stable-only. Beta is only considered after a
+    // manual check from About so users never opt into preview builds by accident.
     if (BuildConfig.ENABLE_UPDATE_FEATURE && isAutoUpdateEnabled.value) {
       viewModelScope.launch {
         kotlinx.coroutines.delay(UPDATE_CHECK_STARTUP_DELAY_MS)
@@ -330,12 +388,6 @@ class UpdateViewModel(
   }
 
   private companion object {
-    /**
-     * Delay before the auto-update network check fires after the
-     * UpdateViewModel is constructed. Long enough to let the first frame
-     * draw and the main navigation settle, short enough that the update
-     * dialog (if any) still appears within a few seconds of cold start.
-     */
     private const val UPDATE_CHECK_STARTUP_DELAY_MS = 1500L
   }
 
@@ -362,15 +414,16 @@ class UpdateViewModel(
   }
 
   fun checkForUpdate(manual: Boolean = false) {
-    // No-op if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return
-    }
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return
 
     viewModelScope.launch {
       _updateState.value = UpdateState.Loading
       try {
-        val release = updateManager.checkForUpdate(forceShow = manual)
+        val release =
+          updateManager.checkForUpdate(
+            forceShow = manual,
+            includeBeta = manual,
+          )
         if (release != null) {
           val existingFile = updateManager.getApkFile(release)
           if (existingFile != null) {
@@ -397,10 +450,7 @@ class UpdateViewModel(
   }
 
   fun downloadUpdate(release: Release) {
-    // No-op if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return
-    }
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return
 
     viewModelScope.launch {
       _isDownloading.value = true
@@ -419,10 +469,7 @@ class UpdateViewModel(
   }
 
   fun installUpdate(release: Release) {
-    // No-op if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return
-    }
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return
 
     val file = updateManager.getApkFile(release) ?: return
     val context = getApplication<Application>()
@@ -442,7 +489,6 @@ class UpdateViewModel(
   }
 
   fun dismiss() {
-    // Clean up downloaded APK when user dismisses the dialog
     updateManager.clearCache()
     _updateState.value = UpdateState.Idle
   }
@@ -468,15 +514,14 @@ fun UpdateDialog(
 ) {
   val downloadSize = release.assets.find { it.name.endsWith(".apk") }?.size ?: 0L
   val formattedDate = formatDate(release.publishedAt)
+  val isBeta = release.channel == "beta" || release.tagName.startsWith("beta-r")
 
   AlertDialog(
     onDismissRequest = onDismiss,
     icon = {
       Icon(
         imageVector =
-          if (actionLabel ==
-            "Install"
-          ) {
+          if (actionLabel == "Install") {
             Icons.RoundedFilled.SystemUpdate
           } else {
             Icons.RoundedFilled.CloudDownload
@@ -488,12 +533,18 @@ fun UpdateDialog(
     title = {
       Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-          text = if (actionLabel == "Install") "Ready to Install" else "Update Available",
+          text =
+            when {
+              actionLabel == "Install" && isBeta -> "Beta Ready to Install"
+              actionLabel == "Install" -> "Ready to Install"
+              isBeta -> "Beta Build Available"
+              else -> "Update Available"
+            },
           style = MaterialTheme.typography.titleLarge,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-          text = release.tagName.removePrefix("v"),
+          text = if (isBeta) release.name else release.tagName.removePrefix("v"),
           style = MaterialTheme.typography.titleMedium,
           color = MaterialTheme.colorScheme.primary,
         )
@@ -507,10 +558,16 @@ fun UpdateDialog(
             .verticalScroll(rememberScrollState()),
       ) {
         if (actionLabel != "Install") {
-          // Show version info for update available state
           InfoRow(label = "Current Version", value = currentVersion)
-          InfoRow(label = "Latest Version", value = release.tagName.removePrefix("v"))
-          InfoRow(label = "Release Date", value = formattedDate)
+          if (isBeta) {
+            InfoRow(label = "Channel", value = "GitHub Actions Beta")
+            release.commitCount?.let { InfoRow(label = "Build", value = "r$it") }
+            release.commitSha?.let { InfoRow(label = "Commit", value = it.take(7)) }
+            release.runNumber?.let { InfoRow(label = "Actions Run", value = "#$it") }
+          } else {
+            InfoRow(label = "Latest Version", value = release.tagName.removePrefix("v"))
+          }
+          InfoRow(label = "Build Date", value = formattedDate)
           InfoRow(label = "Size", value = formatFileSize(downloadSize))
         }
 
@@ -545,9 +602,7 @@ fun UpdateDialog(
       if (!isDownloading) {
         Button(onClick = onAction) {
           Text(
-            if (actionLabel ==
-              "Install"
-            ) {
+            if (actionLabel == "Install") {
               stringResource(R.string.ui_install)
             } else {
               stringResource(R.string.ui_download)
@@ -613,7 +668,6 @@ private fun formatFileSize(size: Long): String {
 
 private fun formatDate(dateString: String): String {
   return try {
-    // GitHub API returns ISO 8601 format: "2024-01-15T10:30:00Z"
     val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
     inputFormat.timeZone = TimeZone.getTimeZone("UTC")
     val date = inputFormat.parse(dateString) ?: return dateString
