@@ -225,6 +225,7 @@ fun LyricsSheet(
               itemsIndexed(
                 items = activeLyrics.synced,
                 key = { index, line -> "${line.time}_${index}" },
+                contentType = { _, _ -> "lyric_sheet_synced" },
               ) { index, line ->
                 val isActive = index == state.activeLineIndex
                 val textColor by animateColorAsState(
@@ -264,6 +265,7 @@ fun LyricsSheet(
               itemsIndexed(
                 items = activeLyrics.plain,
                 key = { index, _ -> index },
+                contentType = { _, _ -> "lyric_sheet_plain" },
               ) { _, lineText ->
                 Text(
                   text = lineText,

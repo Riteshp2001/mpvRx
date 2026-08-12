@@ -311,6 +311,7 @@ object CustomButtonScreen : Screen {
         itemsIndexed(
           items = buttonSlots.toList(),
           key = { index, item -> item?.id ?: "slot_$index" },
+          contentType = { _, _ -> "button_slot" },
         ) { index, button ->
           val side = if (index < 4) "L${index + 1}" else "R${index - 3}"
 
@@ -1185,6 +1186,7 @@ fun ImportSelectionScreen(
             button?.let { index to it }
           },
         key = { (index, _) -> "import_button_$index" },
+        contentType = { "import_button_slot" },
       ) { (index, button) ->
         val side = if (index < 4) "L${index + 1}" else "R${index - 3}"
         val isSelected = selectedSlots.contains(index)

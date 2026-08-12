@@ -733,10 +733,10 @@ fun SeekThumbnailPreviewBubble(
           tonalElevation = 0.dp,
           shadowElevation = 12.dp,
         ) {
-          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (bitmap != null && !bitmap.isRecycled) {
+            val imageBitmap = remember(bitmap) { bitmap?.takeIf { !it.isRecycled }?.asImageBitmap() }
+            if (imageBitmap != null) {
               Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = imageBitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -852,25 +852,24 @@ private fun SquigglySeekbar(
       return@LaunchedEffect
     }
 
-    scope.launch {
-      val shouldFlatten = isPaused || isScrubbing
-      val targetHeight = if (shouldFlatten) 0f else 1f
-      val duration = if (shouldFlatten) 550 else 800
-      val startDelay = if (shouldFlatten) 0L else 60L
+    val shouldFlatten = isPaused || isScrubbing
+    val targetHeight = if (shouldFlatten) 0f else 1f
+    val startDelay = if (shouldFlatten) 0L else 60L
 
+    if (startDelay > 0L) {
       kotlinx.coroutines.delay(startDelay)
+    }
 
-      val animator = Animatable(heightFraction)
-      animator.animateTo(
-        targetValue = targetHeight,
-        animationSpec =
-          spring(
-            dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
-            stiffness = AppMotion.Spatial.Expressive.stiffness,
-          ),
-      ) {
-        heightFraction = value
-      }
+    val animator = Animatable(heightFraction)
+    animator.animateTo(
+      targetValue = targetHeight,
+      animationSpec =
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        ),
+    ) {
+      heightFraction = value
     }
   }
 
@@ -1460,24 +1459,24 @@ fun StandardSeekbar(
 
   // Animate height fraction based on paused state and scrubbing state (same as SquigglySeekbar)
   LaunchedEffect(isPaused, isScrubbing) {
-    scope.launch {
-      val shouldFlatten = isPaused || isScrubbing
-      val targetHeight = if (shouldFlatten) 0.7f else 1f // Slightly less dramatic for standard seekbar
-      val startDelay = if (shouldFlatten) 0L else 60L
+    val shouldFlatten = isPaused || isScrubbing
+    val targetHeight = if (shouldFlatten) 0.7f else 1f // Slightly less dramatic for standard seekbar
+    val startDelay = if (shouldFlatten) 0L else 60L
 
+    if (startDelay > 0L) {
       kotlinx.coroutines.delay(startDelay)
+    }
 
-      val animator = Animatable(heightFraction)
-      animator.animateTo(
-        targetValue = targetHeight,
-        animationSpec =
-          spring(
-            dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
-            stiffness = AppMotion.Spatial.Expressive.stiffness,
-          ),
-      ) {
-        heightFraction = value
-      }
+    val animator = Animatable(heightFraction)
+    animator.animateTo(
+      targetValue = targetHeight,
+      animationSpec =
+        spring(
+          dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+          stiffness = AppMotion.Spatial.Expressive.stiffness,
+        ),
+    ) {
+      heightFraction = value
     }
   }
 

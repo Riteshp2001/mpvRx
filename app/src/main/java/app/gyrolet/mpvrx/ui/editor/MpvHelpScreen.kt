@@ -304,6 +304,7 @@ data class MpvHelpScreen(
               items(
                 items = entries,
                 key = { "${it.kind}:${it.name}" },
+                contentType = { "help_entry_card" },
               ) { entry ->
                 HelpEntryCard(
                   entry = entry,
