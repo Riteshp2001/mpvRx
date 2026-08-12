@@ -7,83 +7,111 @@
 //!BIND LUT
 //!DESC LUT
 
-vec3 tetrahedral(sampler3D lut, vec3 color) {
-    float lut_size = float(textureSize(lut, 0).x);
-    vec3 coord = color * (lut_size - 1.0);
+// Resource adapter for the read-only sampled LUT.
+ivec3 lut_dimensions() {
+    return textureSize(LUT, 0);
+}
 
-    vec3 b = floor(coord);
-    vec3 f = fract(coord);
+vec3 lut_fetch(ivec3 index) {
+    return texelFetch(LUT, index, 0).rgb;
+}
 
-    float texel_size = 1.0 / lut_size;
-    vec3 base_coord = (b + 0.5) * texel_size;
+vec3 sample_lut_trilinear(vec3 color) {
+    vec3 dimensions = vec3(lut_dimensions());
+    vec3 texel_position = clamp(color, 0.0, 1.0)
+                        * (dimensions - vec3(1.0));
+    vec3 texture_coordinates = (texel_position + vec3(0.5)) / dimensions;
+    return textureLod(LUT, texture_coordinates, 0.0).rgb;
+}
 
-    vec3 c000 = base_coord;
-    vec3 c100 = base_coord + vec3(texel_size, 0.0, 0.0);
-    vec3 c010 = base_coord + vec3(0.0, texel_size, 0.0);
-    vec3 c110 = base_coord + vec3(texel_size, texel_size, 0.0);
-    vec3 c001 = base_coord + vec3(0.0, 0.0, texel_size);
-    vec3 c101 = base_coord + vec3(texel_size, 0.0, texel_size);
-    vec3 c011 = base_coord + vec3(0.0, texel_size, texel_size);
-    vec3 c111 = base_coord + vec3(texel_size, texel_size, texel_size);
-
-    vec3 v000 = texture(lut, c000).rgb;
-    vec3 v100 = texture(lut, c100).rgb;
-    vec3 v010 = texture(lut, c010).rgb;
-    vec3 v110 = texture(lut, c110).rgb;
-    vec3 v001 = texture(lut, c001).rgb;
-    vec3 v101 = texture(lut, c101).rgb;
-    vec3 v011 = texture(lut, c011).rgb;
-    vec3 v111 = texture(lut, c111).rgb;
-
-    vec3 result;
-    if (f.x >= f.y && f.y >= f.z) {
-        // Tetrahedron 1: x >= y >= z
-        result = (1.0 - f.x) * v000 +
-                 (f.x - f.y) * v100 +
-                 (f.y - f.z) * v110 +
-                 f.z * v111;
-    } else if (f.x >= f.z && f.z >= f.y) {
-        // Tetrahedron 2: x >= z >= y
-        result = (1.0 - f.x) * v000 +
-                 (f.x - f.z) * v100 +
-                 (f.z - f.y) * v101 +
-                 f.y * v111;
-    } else if (f.y >= f.x && f.x >= f.z) {
-        // Tetrahedron 3: y >= x >= z
-        result = (1.0 - f.y) * v000 +
-                 (f.y - f.x) * v010 +
-                 (f.x - f.z) * v110 +
-                 f.z * v111;
-    } else if (f.y >= f.z && f.z >= f.x) {
-        // Tetrahedron 4: y >= z >= x
-        result = (1.0 - f.y) * v000 +
-                 (f.y - f.z) * v010 +
-                 (f.z - f.x) * v011 +
-                 f.x * v111;
-    } else if (f.z >= f.x && f.x >= f.y) {
-        // Tetrahedron 5: z >= x >= y
-        result = (1.0 - f.z) * v000 +
-                 (f.z - f.x) * v001 +
-                 (f.x - f.y) * v101 +
-                 f.y * v111;
+// Select the two middle vertices of the tetrahedron and sort the fractional
+// coordinates into the corresponding interpolation order.
+void select_tetrahedron(
+    vec3 fraction,
+    out ivec3 second_offset,
+    out ivec3 third_offset,
+    out vec3 weights
+) {
+    if (fraction.x >= fraction.y) {
+        if (fraction.y >= fraction.z) {
+            second_offset = ivec3(1, 0, 0);
+            third_offset = ivec3(1, 1, 0);
+            weights = fraction.xyz;
+        } else if (fraction.x >= fraction.z) {
+            second_offset = ivec3(1, 0, 0);
+            third_offset = ivec3(1, 0, 1);
+            weights = fraction.xzy;
+        } else {
+            second_offset = ivec3(0, 0, 1);
+            third_offset = ivec3(1, 0, 1);
+            weights = fraction.zxy;
+        }
     } else {
-        // Tetrahedron 6: z >= y >= x
-        result = (1.0 - f.z) * v000 +
-                 (f.z - f.y) * v001 +
-                 (f.y - f.x) * v011 +
-                 f.x * v111;
+        if (fraction.x >= fraction.z) {
+            second_offset = ivec3(0, 1, 0);
+            third_offset = ivec3(1, 1, 0);
+            weights = fraction.yxz;
+        } else if (fraction.y >= fraction.z) {
+            second_offset = ivec3(0, 1, 0);
+            third_offset = ivec3(0, 1, 1);
+            weights = fraction.yzx;
+        } else {
+            second_offset = ivec3(0, 0, 1);
+            third_offset = ivec3(0, 1, 1);
+            weights = fraction.zyx;
+        }
     }
+}
 
-    return result;
+void lut_cell(vec3 color, out ivec3 base_texel, out vec3 fraction) {
+    ivec3 last_texel = lut_dimensions() - ivec3(1);
+    vec3 position = clamp(color, 0.0, 1.0) * vec3(last_texel);
+
+    // Keep the base inside the final complete cell. At the upper boundary,
+    // fraction becomes 1.0 and selects the last texel without extra clamps.
+    base_texel = min(ivec3(floor(position)), last_texel - ivec3(1));
+    fraction = position - vec3(base_texel);
+}
+
+vec3 sample_lut_tetrahedral(vec3 color) {
+    ivec3 base_texel;
+    vec3 fraction;
+    lut_cell(color, base_texel, fraction);
+
+    ivec3 second_offset;
+    ivec3 third_offset;
+    vec3 weights;
+    select_tetrahedron(fraction, second_offset, third_offset, weights);
+
+    ivec3 texel0 = base_texel;
+    ivec3 texel1 = base_texel + second_offset;
+    ivec3 texel2 = base_texel + third_offset;
+    ivec3 texel3 = base_texel + ivec3(1);
+
+    vec3 value0 = lut_fetch(texel0);
+    vec3 value1 = lut_fetch(texel1);
+    vec3 value2 = lut_fetch(texel2);
+    vec3 value3 = lut_fetch(texel3);
+
+    return value0
+         + weights.x * (value1 - value0)
+         + weights.y * (value2 - value1)
+         + weights.z * (value3 - value2);
+}
+
+vec3 sample_lut(vec3 color) {
+    // Select the interpolation method here.
+    return sample_lut_tetrahedral(color);
 }
 
 vec4 hook() {
     vec4 color = HOOKED_tex(HOOKED_pos);
-    color.rgb = tetrahedral(LUT, color.rgb);
+    color.rgb = sample_lut(color.rgb);
     return color;
 }
 
 //!TEXTURE LUT
 //!SIZE 65 65 65
 //!FORMAT rgba16hf
-//!FILTER NEAREST
+//!FILTER LINEAR
+//!BORDER CLAMP
