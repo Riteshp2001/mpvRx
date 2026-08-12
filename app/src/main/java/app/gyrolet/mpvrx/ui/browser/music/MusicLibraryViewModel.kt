@@ -32,6 +32,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   private val playlistRepository: PlaylistRepository by inject()
   private val browserPreferences: app.gyrolet.mpvrx.preferences.BrowserPreferences by inject()
   private val audioPreferences: app.gyrolet.mpvrx.preferences.AudioPreferences by inject()
+  private val foldersPreferences: app.gyrolet.mpvrx.preferences.FoldersPreferences by inject()
 
   val visibleTabs: StateFlow<List<MusicTab>> = combine(
     audioPreferences.musicTabOrder.changes(),
@@ -95,10 +96,14 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
 
   init {
     viewModelScope.launch {
-      browserPreferences.minimumAudioDurationSeconds
-        .changes()
+      combine(
+        browserPreferences.minimumAudioDurationSeconds.changes(),
+        foldersPreferences.blacklistedAudioFolders.changes()
+      ) { minimumSeconds, blacklist ->
+        Pair(minimumSeconds, blacklist)
+      }
         .distinctUntilChanged()
-        .collect { minimumSeconds -> applyDurationFilter(minimumSeconds) }
+        .collect { (minimumSeconds, blacklist) -> applyFilters(minimumSeconds, blacklist) }
     }
   }
 
@@ -164,7 +169,10 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     _isLoading.value = true
     try {
       _allSongs.value = MusicLibraryScanner.scanSongs(context)
-      applyDurationFilter(browserPreferences.minimumAudioDurationSeconds.get())
+      applyFilters(
+        browserPreferences.minimumAudioDurationSeconds.get(),
+        foldersPreferences.blacklistedAudioFolders.get()
+      )
     } catch (e: Exception) {
       e.printStackTrace()
     } finally {
@@ -175,15 +183,15 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   /**
    * Minimum duration is a lower bound only. There is intentionally no upper bound: if the user
    * selects 30 seconds, every 30s, 3min, 30min, or multi-hour audio file remains in the library.
+   * Also filters out songs whose path starts with any blacklisted audio folder path.
    */
-  private fun applyDurationFilter(minimumSeconds: Int) {
+  private fun applyFilters(minimumSeconds: Int, blacklist: Set<String>) {
     val minimumMs = minimumSeconds.coerceAtLeast(0).toLong() * 1000L
-    val visibleSongs =
-      if (minimumMs == 0L) {
-        _allSongs.value
-      } else {
-        _allSongs.value.filter { song -> song.durationMs >= minimumMs }
-      }
+    val visibleSongs = _allSongs.value.filter { song ->
+      val meetsDuration = (minimumMs == 0L || song.durationMs >= minimumMs)
+      val isNotBlacklisted = blacklist.none { folderPath -> song.path.startsWith(folderPath) }
+      meetsDuration && isNotBlacklisted
+    }
 
     _songs.value = visibleSongs
     _albums.value = buildAlbums(visibleSongs)

@@ -187,6 +187,7 @@ fun MusicLibraryContent(
   val isPlaybackActive by musicViewModel.isPlaybackActive.collectAsState()
 
   val browserPreferences = koinInject<BrowserPreferences>()
+  val foldersPreferences = koinInject<app.gyrolet.mpvrx.preferences.FoldersPreferences>()
   val coverArtSizeDp by browserPreferences.musicCoverArtSize.collectAsState()
 
   val isRefreshing = remember { mutableStateOf(false) }
@@ -418,7 +419,19 @@ fun MusicLibraryContent(
                 }
               },
               onPinClick = null,
-              onBlacklistClick = null,
+              onBlacklistClick = {
+                val selectedItems = activeSelectionManager.getSelectedItems()
+                val selectedPaths = selectedItems.mapNotNull { item ->
+                  when (item) {
+                    is MusicSong -> java.io.File(item.path).parent
+                    else -> null
+                  }
+                }.toSet()
+                if (selectedPaths.isNotEmpty()) {
+                  foldersPreferences.addBlacklistedFolders(selectedPaths, app.gyrolet.mpvrx.preferences.BlacklistScope.AUDIO_ONLY)
+                  activeSelectionManager.clear()
+                }
+              },
               onRenameClick = null,
               isSingleSelection = activeSelectionManager.isSingleSelection,
               onInfoClick = null,
