@@ -54,6 +54,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -105,7 +106,7 @@ import kotlin.math.roundToInt
 fun MiniPlayer(modifier: Modifier = Modifier) {
   val isServiceRunning = MediaPlaybackService.isForegroundActive()
   val context = LocalContext.current
-  val sessionState by PlaybackSession.state.collectAsState()
+  val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
   val playerPreferences: PlayerPreferences = koinInject()
   val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
 
@@ -116,7 +117,7 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
      currentScreen.javaClass.name.startsWith("app.gyrolet.mpvrx.ui.editor"))
 
   val currentItem = sessionState.currentItem
-  val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
+  val trackListNode by PlaybackSession.propNode["track-list"].collectAsStateWithLifecycle()
   val json: Json = koinInject()
 
   val tracks = remember(trackListNode) { trackListNode?.toObject<List<TrackNode>>(json).orEmpty() }
@@ -170,15 +171,15 @@ private fun MiniPlayerContent(
   enableVideoMiniPlayer: Boolean,
   isAudioOnlyItem: Boolean,
 ) {
-  val sessionState by PlaybackSession.state.collectAsState()
+  val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
   val currentItem = sessionState.currentItem
-  val paused by PlaybackSession.propBoolean["pause"].collectAsState()
-  val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
-  val duration by PlaybackSession.propInt["duration"].collectAsState()
-  val position by PlaybackSession.propInt["time-pos"].collectAsState()
-  val videoAspectRaw by PlaybackSession.propDouble["video-params/aspect"].collectAsState()
-  val videoWidth by PlaybackSession.propLong["video-params/w"].collectAsState()
-  val videoHeight by PlaybackSession.propLong["video-params/h"].collectAsState()
+  val paused by PlaybackSession.propBoolean["pause"].collectAsStateWithLifecycle()
+  val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
+  val duration by PlaybackSession.propInt["duration"].collectAsStateWithLifecycle()
+  val position by PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
+  val videoAspectRaw by PlaybackSession.propDouble["video-params/aspect"].collectAsStateWithLifecycle()
+  val videoWidth by PlaybackSession.propLong["video-params/w"].collectAsStateWithLifecycle()
+  val videoHeight by PlaybackSession.propLong["video-params/h"].collectAsStateWithLifecycle()
 
   val isPlaying = paused == false
   val title = rawMediaTitle?.takeIf { it.isNotBlank() }
@@ -200,10 +201,6 @@ private fun MiniPlayerContent(
     currentItem?.originalUri?.takeIf { it.isNotBlank() }
       ?: currentItem?.playableUri?.takeIf { it.isNotBlank() }
   val coverArt = rememberMiniPlayerCoverArt(if (isAudioOnlyItem) coverArtPath else null)
-
-  val dur = duration?.toFloat() ?: 0f
-  val pos = position?.toFloat() ?: 0f
-  val progressFraction = if (dur > 0f) (pos / dur).coerceIn(0f, 1f) else 0f
 
   val coroutineScope = rememberCoroutineScope()
   var offsetX by remember { mutableFloatStateOf(0f) }
@@ -407,6 +404,9 @@ private fun MiniPlayerContent(
         modifier = Modifier
           .fillMaxWidth()
           .drawBehind {
+            val dur = duration?.toFloat() ?: 0f
+            val pos = position?.toFloat() ?: 0f
+            val progressFraction = if (dur > 0f) (pos / dur).coerceIn(0f, 1f) else 0f
             if (progressFraction > 0f) {
               drawRect(
                 color = primaryContainerColor.copy(alpha = 0.35f),

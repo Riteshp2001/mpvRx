@@ -1225,6 +1225,8 @@ fun SeekbarStylePreview(
   val primaryColor = MaterialTheme.colorScheme.primary
   val previewProgress = progress
 
+  val slimPath = remember { Path() }
+
   if (style == SeekbarStyle.Wavy) {
     SquigglySeekbar(
       positionProvider = { previewProgress * 100f },
@@ -1254,8 +1256,8 @@ fun SeekbarStylePreview(
             cornerRadius = CornerRadius(radius),
           )
           if (playedPx > 0f) {
-            val path = Path()
-            path.addRoundRect(
+            slimPath.reset()
+            slimPath.addRoundRect(
               androidx.compose.ui.geometry.RoundRect(
                 left = 0f,
                 top = centerY - radius,
@@ -1285,7 +1287,7 @@ fun SeekbarStylePreview(
                   ),
               ),
             )
-            drawPath(path, primaryColor)
+            drawPath(slimPath, primaryColor)
           }
         }
         SeekbarStyle.Standard -> {
