@@ -27,7 +27,7 @@ class DecoderPreferences(
   val lastHdrMode = preferenceStore.getEnum("hdr_last_selected_mode", HdrScreenMode.BT_2020)
 
   /** Boost SDR content into the HDR range when using the Linear HDR pipeline. */
-  val boostSdrToHdr = preferenceStore.getBoolean("boost_sdr_to_hdr", false)
+  val boostSdrToHdr = preferenceStore.getBoolean("boost_sdr_to_hdr", true)
   val useYUV420P = preferenceStore.getBoolean("use_yuv420p", false)
 
   val debanding = preferenceStore.getEnum("debanding", Debanding.None)
