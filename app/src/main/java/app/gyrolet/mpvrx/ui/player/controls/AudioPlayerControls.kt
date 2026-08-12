@@ -1792,7 +1792,6 @@ private fun UpNextPlaylistItemRow(
             }
           }
         }
-      }
 
       Spacer(modifier = Modifier.width(12.dp))
 
