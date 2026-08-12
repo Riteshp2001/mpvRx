@@ -176,7 +176,7 @@ private fun MiniPlayerContent(
   val paused by PlaybackSession.propBoolean["pause"].collectAsStateWithLifecycle()
   val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
   val duration by PlaybackSession.propInt["duration"].collectAsStateWithLifecycle()
-  val position by PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
+  val positionState = PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
   val videoAspectRaw by PlaybackSession.propDouble["video-params/aspect"].collectAsStateWithLifecycle()
   val videoWidth by PlaybackSession.propLong["video-params/w"].collectAsStateWithLifecycle()
   val videoHeight by PlaybackSession.propLong["video-params/h"].collectAsStateWithLifecycle()
@@ -405,7 +405,7 @@ private fun MiniPlayerContent(
           .fillMaxWidth()
           .drawBehind {
             val dur = duration?.toFloat() ?: 0f
-            val pos = position?.toFloat() ?: 0f
+            val pos = positionState.value?.toFloat() ?: 0f
             val progressFraction = if (dur > 0f) (pos / dur).coerceIn(0f, 1f) else 0f
             if (progressFraction > 0f) {
               drawRect(
@@ -428,10 +428,10 @@ private fun MiniPlayerContent(
             .background(MaterialTheme.colorScheme.surfaceVariant),
           contentAlignment = Alignment.Center,
         ) {
-          val artwork = coverArt
-          if (artwork != null) {
+          val artworkImageBitmap = remember(coverArt) { coverArt?.asImageBitmap() }
+          if (artworkImageBitmap != null) {
             Image(
-              bitmap = artwork.asImageBitmap(),
+              bitmap = artworkImageBitmap,
               contentDescription = null,
               contentScale = ContentScale.Crop,
               modifier = Modifier.fillMaxSize(),

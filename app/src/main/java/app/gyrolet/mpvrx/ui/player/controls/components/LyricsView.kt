@@ -208,6 +208,7 @@ fun LyricsView(
               itemsIndexed(
                 items = activeLyrics.synced,
                 key = { index, line -> "${line.time}_${index}" },
+                contentType = { _, _ -> "lyric_synced_line" },
               ) { index, line ->
                 val isActiveLine = index == state.activeLineIndex
                 val (ogText, transText) = remember(line.line, line.translation) {
@@ -346,6 +347,7 @@ fun LyricsView(
               itemsIndexed(
                 items = activeLyrics.plain,
                 key = { index, _ -> index },
+                contentType = { _, _ -> "lyric_plain_line" },
               ) { _, lineText ->
                 val textToDisplay = if (lineText.isBlank()) ". . ." else lineText
                 Text(

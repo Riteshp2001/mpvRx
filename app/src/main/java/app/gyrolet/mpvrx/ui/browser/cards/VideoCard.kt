@@ -280,6 +280,8 @@ fun VideoCard(
             }
           }
 
+          val thumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+
           // Thumbnail
           Box(
             modifier =
@@ -295,9 +297,9 @@ fun VideoCard(
             contentAlignment = Alignment.Center,
           ) {
             if (showThumbnails) {
-              thumbnail?.let {
+              thumbnailBitmap?.let {
                 Image(
-                  bitmap = it.asImageBitmap(),
+                  bitmap = it,
                   contentDescription =
                     androidx.compose.ui.res
                       .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
@@ -581,6 +583,8 @@ fun VideoCard(
             }
           }
 
+          val listThumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+
           Box(
             modifier =
               Modifier
@@ -595,9 +599,9 @@ fun VideoCard(
             contentAlignment = Alignment.Center,
           ) {
             if (showThumbnails) {
-              thumbnail?.let {
+              listThumbnailBitmap?.let {
                 Image(
-                  bitmap = it.asImageBitmap(),
+                  bitmap = it,
                   contentDescription =
                     androidx.compose.ui.res
                       .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),

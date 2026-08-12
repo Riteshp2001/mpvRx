@@ -902,6 +902,7 @@ object CodecCapabilitiesScreen : Screen {
           items(
             items = filteredCodecs,
             key = { "${it.name}_${it.mimeType}" },
+            contentType = { "codec_card" },
           ) { codec ->
             CodecDetailCard(codec = codec)
           }

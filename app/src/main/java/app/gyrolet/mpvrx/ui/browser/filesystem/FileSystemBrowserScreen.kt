@@ -1836,6 +1836,7 @@ private fun FileSystemSearchContent(
                 items(
                   items = searchFolders,
                   key = { "search_folder_${it.path}" },
+                  contentType = { "folder_item" },
                   span = { GridItemSpan(spansInfo.folderSpan) },
                 ) { folder ->
                   val folderModel =
@@ -1865,6 +1866,7 @@ private fun FileSystemSearchContent(
                 items(
                   items = searchVideos,
                   key = { "search_video_${it.video.id}_${it.video.path}" },
+                  contentType = { "video_item" },
                   span = { GridItemSpan(spansInfo.videoSpan) },
                 ) { videoFile ->
                   VideoCard(
@@ -1916,6 +1918,7 @@ private fun FileSystemSearchContent(
               items(
                 items = searchFolders,
                 key = { "search_folder_${it.path}" },
+                contentType = { "folder_item" },
               ) { folder ->
                 val folderModel =
                   app.gyrolet.mpvrx.domain.media.model.VideoFolder(
@@ -1944,6 +1947,7 @@ private fun FileSystemSearchContent(
               items(
                 items = searchVideos,
                 key = { "search_video_${it.video.id}_${it.video.path}" },
+                contentType = { "video_item" },
               ) { videoFile ->
                 VideoCard(
                   video = videoFile.video,

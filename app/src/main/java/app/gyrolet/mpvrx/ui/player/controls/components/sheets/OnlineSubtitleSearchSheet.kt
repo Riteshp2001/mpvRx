@@ -357,6 +357,7 @@ fun OnlineSubtitleSearchSheet(
               is OnlineSubtitleItem.Divider -> "divider"
             }
           },
+          contentType = { item -> item.javaClass.simpleName },
         ) { item ->
           when (item) {
             is OnlineSubtitleItem.OnlineTrack -> {
