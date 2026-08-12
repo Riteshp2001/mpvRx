@@ -84,6 +84,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -361,8 +362,6 @@ fun AudioPlayerControls(
 ) {
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
-  val position by PlaybackSession.propInt["time-pos"].collectAsState()
-  val precisePosition by viewModel.precisePosition.collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
 
   var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
@@ -474,7 +473,6 @@ fun AudioPlayerControls(
     }
 
    val isPlaying = paused == false
-   val currentPosSec = if (precisePosition > 0f) precisePosition else position?.toFloat() ?: 0f
    val currentDurSec = if (preciseDuration > 0f) preciseDuration else duration?.toFloat() ?: 0f
    val currentVolumePercent by viewModel.currentVolumePercent.collectAsState()
    val volumeScale = currentVolumePercent / 100f
@@ -1141,6 +1139,10 @@ fun AudioPlayerControls(
     }
 
     val seekbarView = @Composable {
+      val position by PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
+      val precisePosition by viewModel.precisePosition.collectAsStateWithLifecycle()
+      val currentPosSec = if (precisePosition > 0f) precisePosition else position?.toFloat() ?: 0f
+
       SeekbarWithTimers(
         position = currentPosSec,
         committedPosition = currentPosSec,
