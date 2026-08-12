@@ -250,30 +250,36 @@ fun VolumeSlider(
   }
 }
 
-val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
-  { volume, mpvVolume, boostVolume, percentage, displayAsPercentage ->
-    when {
-      mpvVolume == 100 ->
-        if (displayAsPercentage) {
-          "$percentage"
-        } else {
-          "$volume"
-        }
-
-      mpvVolume > 100 -> {
-        if (displayAsPercentage) {
-          "${percentage + boostVolume}"
-        } else {
-          stringResource(R.string.volume_slider_absolute_value, volume + boostVolume)
-        }
+@Composable
+fun getVolumeSliderText(
+  volume: Int,
+  mpvVolume: Int,
+  boostVolume: Int,
+  percentage: Int,
+  displayAsPercentage: Boolean,
+): String {
+  return when {
+    mpvVolume == 100 ->
+      if (displayAsPercentage) {
+        "$percentage"
+      } else {
+        "$volume"
       }
 
-      else -> {
-        if (displayAsPercentage) {
-          "$percentage"
-        } else {
-          "$volume"
-        }
+    mpvVolume > 100 -> {
+      if (displayAsPercentage) {
+        "${percentage + boostVolume}"
+      } else {
+        stringResource(R.string.volume_slider_absolute_value, volume + boostVolume)
+      }
+    }
+
+    else -> {
+      if (displayAsPercentage) {
+        "$percentage"
+      } else {
+        "$volume"
       }
     }
   }
+}

@@ -282,9 +282,10 @@ fun FolderCard(
                 ),
             contentAlignment = Alignment.Center,
           ) {
+            val folderImageBitmap = remember(folderThumbnail) { folderThumbnail?.asImageBitmap() }
             val resolvedThumbnail =
               if (showFolderThumbnails) {
-                thumbnail ?: folderThumbnail?.asImageBitmap()
+                thumbnail ?: folderImageBitmap
               } else {
                 null
               }
