@@ -36,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,20 +57,16 @@ import app.gyrolet.mpvrx.ui.player.PlayerActivity
 fun AudioMiniPlayer(modifier: Modifier = Modifier) {
   val isServiceRunning = MediaPlaybackService.isForegroundActive()
   val context = LocalContext.current
-  val sessionState by PlaybackSession.state.collectAsState()
-  val paused by PlaybackSession.propBoolean["pause"].collectAsState()
-  val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
-  val duration by PlaybackSession.propInt["duration"].collectAsState()
-  val position by PlaybackSession.propInt["time-pos"].collectAsState()
+  val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
+  val paused by PlaybackSession.propBoolean["pause"].collectAsStateWithLifecycle()
+  val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
+  val duration by PlaybackSession.propInt["duration"].collectAsStateWithLifecycle()
+  val position by PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
 
   if (!isServiceRunning || sessionState.currentItem == null) return
 
   val isPlaying = paused == false
   val title = rawMediaTitle?.takeIf { it.isNotBlank() } ?: "Audio Track"
-
-  val dur = duration?.toFloat() ?: 0f
-  val pos = position?.toFloat() ?: 0f
-  val progressFraction = if (dur > 0f) (pos / dur).coerceIn(0f, 1f) else 0f
 
   Surface(
     modifier =
@@ -100,6 +97,9 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
         Modifier
           .fillMaxWidth()
           .drawBehind {
+            val dur = duration?.toFloat() ?: 0f
+            val pos = position?.toFloat() ?: 0f
+            val progressFraction = if (dur > 0f) (pos / dur).coerceIn(0f, 1f) else 0f
             if (progressFraction > 0f) {
               drawRect(
                 color = primaryContainerColor.copy(alpha = 0.35f),
