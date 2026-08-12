@@ -197,10 +197,10 @@ fun M3UVideoCard(
             ),
         contentAlignment = Alignment.Center,
       ) {
-        val currentThumbnail = thumbnail
-        if (currentThumbnail != null) {
+        val currentImageBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+        if (currentImageBitmap != null) {
           androidx.compose.foundation.Image(
-            bitmap = currentThumbnail.asImageBitmap(),
+            bitmap = currentImageBitmap,
             contentDescription = null,
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,

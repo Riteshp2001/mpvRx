@@ -160,10 +160,10 @@ private fun PlaylistThumbnail(
     }
   }
 
-  val currentThumbnail = bitmap
-  if (currentThumbnail != null) {
+  val currentImageBitmap = remember(bitmap) { bitmap?.asImageBitmap() }
+  if (currentImageBitmap != null) {
     androidx.compose.foundation.Image(
-      bitmap = currentThumbnail.asImageBitmap(),
+      bitmap = currentImageBitmap,
       contentDescription = contentDescription,
       modifier = modifier,
       contentScale = contentScale,

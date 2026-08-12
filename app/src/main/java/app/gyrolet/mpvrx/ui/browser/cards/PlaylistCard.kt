@@ -85,6 +85,8 @@ fun PlaylistCard(
     )
   }
 
+  val thumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+
   // Use the FolderCard component with playlist-specific customizations
   FolderCard(
     folder = folderModel,
@@ -98,6 +100,6 @@ fun PlaylistCard(
     modifier = modifier,
     customChipContent = customChipRenderer,
     isGridMode = isGridMode,
-    thumbnail = thumbnail?.asImageBitmap(),
+    thumbnail = thumbnailBitmap,
   )
 }

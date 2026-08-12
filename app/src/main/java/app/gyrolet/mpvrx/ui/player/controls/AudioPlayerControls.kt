@@ -323,9 +323,10 @@ private fun CuboidSpectrumCaptureEffect(
 
 @Composable
 private fun CoverArtCardImage(bitmap: Bitmap?) {
-  if (bitmap != null) {
+  val imageBitmap = remember(bitmap) { bitmap?.asImageBitmap() }
+  if (imageBitmap != null) {
     Image(
-      bitmap = bitmap.asImageBitmap(),
+      bitmap = imageBitmap,
       contentDescription = null,
       contentScale = ContentScale.Crop,
       modifier = Modifier.fillMaxSize(),
@@ -1750,10 +1751,10 @@ private fun UpNextPlaylistItemRow(
         shape = RoundedCornerShape(10.dp),
         color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
       ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-          if (itemCoverArt != null) {
+          val itemImageBitmap = remember(itemCoverArt) { itemCoverArt?.asImageBitmap() }
+          if (itemImageBitmap != null) {
             Image(
-              bitmap = itemCoverArt.asImageBitmap(),
+              bitmap = itemImageBitmap,
               contentDescription = null,
               contentScale = ContentScale.Crop,
               modifier = Modifier.fillMaxSize(),
