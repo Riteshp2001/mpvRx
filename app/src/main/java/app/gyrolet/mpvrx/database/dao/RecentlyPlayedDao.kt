@@ -27,21 +27,21 @@ interface RecentlyPlayedDao {
   @Query("SELECT * FROM RecentlyPlayedEntity WHERE filePath = :filePath LIMIT 1")
   suspend fun getByFilePath(filePath: String): RecentlyPlayedEntity?
 
-  // id is the INTEGER PRIMARY KEY and therefore already indexed by SQLite. New history entries are
-  // inserted with autoGenerate=true, so ordering by id avoids building a temporary timestamp sort
-  // for the hot recent-history queries without introducing a database migration solely for indexes.
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY id DESC LIMIT 1")
+  // Existing history rows keep their id when they are replayed, while timestamp is refreshed.
+  // Recency must therefore be ordered by timestamp (with id only as a deterministic tie-breaker)
+  // or the browser can keep highlighting an older row as the current/recently played video.
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC, id DESC LIMIT 1")
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
 
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY id DESC LIMIT 1")
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC, id DESC LIMIT 1")
   fun observeLastPlayed(): Flow<RecentlyPlayedEntity?>
 
   @Query(
     """
-    SELECT * FROM RecentlyPlayedEntity 
+    SELECT * FROM RecentlyPlayedEntity
     WHERE (launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list')
     AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
-    ORDER BY id DESC 
+    ORDER BY timestamp DESC, id DESC
     LIMIT 1
   """,
   )
@@ -49,10 +49,10 @@ interface RecentlyPlayedDao {
 
   @Query(
     """
-    SELECT * FROM RecentlyPlayedEntity 
+    SELECT * FROM RecentlyPlayedEntity
     WHERE (launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list')
     AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
-    ORDER BY id DESC 
+    ORDER BY timestamp DESC, id DESC
     LIMIT 1
   """,
   )
@@ -60,9 +60,9 @@ interface RecentlyPlayedDao {
 
   @Query(
     """
-    SELECT * FROM RecentlyPlayedEntity 
-    WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%')) 
-    ORDER BY id DESC 
+    SELECT * FROM RecentlyPlayedEntity
+    WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
+    ORDER BY timestamp DESC, id DESC
     LIMIT :limit
   """,
   )
@@ -70,9 +70,9 @@ interface RecentlyPlayedDao {
 
   @Query(
     """
-    SELECT * FROM RecentlyPlayedEntity 
-    WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%')) 
-    ORDER BY id DESC 
+    SELECT * FROM RecentlyPlayedEntity
+    WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
+    ORDER BY timestamp DESC, id DESC
     LIMIT :limit
   """,
   )
@@ -80,10 +80,10 @@ interface RecentlyPlayedDao {
 
   @Query(
     """
-    SELECT * FROM RecentlyPlayedEntity 
+    SELECT * FROM RecentlyPlayedEntity
     WHERE launchSource = :launchSource
     AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
-    ORDER BY id DESC 
+    ORDER BY timestamp DESC, id DESC
     LIMIT :limit
   """,
   )
@@ -132,7 +132,7 @@ interface RecentlyPlayedDao {
   @Query(
     """
     SELECT DISTINCT playlistId, MAX(timestamp) as timestamp
-    FROM RecentlyPlayedEntity 
+    FROM RecentlyPlayedEntity
     WHERE playlistId IS NOT NULL
     GROUP BY playlistId
     ORDER BY timestamp DESC
@@ -144,7 +144,7 @@ interface RecentlyPlayedDao {
   @Query(
     """
     SELECT DISTINCT playlistId, MAX(timestamp) as timestamp
-    FROM RecentlyPlayedEntity 
+    FROM RecentlyPlayedEntity
     WHERE playlistId IS NOT NULL
     GROUP BY playlistId
     ORDER BY timestamp DESC
@@ -158,7 +158,7 @@ interface RecentlyPlayedDao {
     val timestamp: Long,
   )
 
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY id DESC")
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC, id DESC")
   suspend fun getAllRecentlyPlayed(): List<RecentlyPlayedEntity>
 
   @Query("SELECT COUNT(*) FROM RecentlyPlayedEntity")

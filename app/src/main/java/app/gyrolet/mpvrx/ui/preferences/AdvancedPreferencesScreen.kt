@@ -485,6 +485,7 @@ object AdvancedPreferencesScreen : Screen {
             PreferenceCard {
               var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
               var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
+              val mpvConfOverridesAppSettings by preferences.mpvConfOverridesAppSettings.collectAsState()
 
               // Load config files when storage location changes
               LaunchedEffect(mpvConfStorageLocation) {
@@ -537,6 +538,20 @@ object AdvancedPreferencesScreen : Screen {
                 },
                 onClick = {
                   backStack.add(ConfigEditorScreen(ConfigEditorScreen.ConfigType.MPV_CONF))
+                },
+              )
+
+              PreferenceDivider()
+
+              SwitchPreference(
+                value = mpvConfOverridesAppSettings,
+                onValueChange = preferences.mpvConfOverridesAppSettings::set,
+                title = { Text(stringResource(R.string.pref_mpv_conf_overrides_app_settings_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_mpv_conf_overrides_app_settings_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
                 },
               )
 

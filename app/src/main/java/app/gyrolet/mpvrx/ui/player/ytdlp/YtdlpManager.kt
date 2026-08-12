@@ -9,13 +9,12 @@
 
 package app.gyrolet.mpvrx.ui.player.ytdlp
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import android.content.Context
 import android.system.Os
 import android.util.Log
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.*
@@ -129,7 +128,10 @@ object YtdlpManager {
     val settings = YtdlpOptionSettings.fromPreferences(ytdlPreferences, subtitlesPreferences)
     val resolvedOptions = YtdlpOptionsBuilder.build(settings)
     val ua = ytdlPreferences.customUserAgent.get().ifBlank { YtdlpOptionsBuilder.DEFAULT_USER_AGENT }
-    val allFormats = if (settings.audioPreference == YtdlAudioPreference.AUTO) "no" else "yes"
+    // Keep mpv's delay-loaded all-format path enabled for every audio preference. Disabling it for
+    // the default Auto mode was a post-v1.4.1 regression: split video/audio URLs then depended on a
+    // single eagerly selected result and some supported sites failed before mpv could choose tracks.
+    val allFormats = "yes"
 
     // Create script-opts/ytdl_hook.conf to ensure the script picks up our bridge
     // This is the most reliable way to override ytdl_hook options
