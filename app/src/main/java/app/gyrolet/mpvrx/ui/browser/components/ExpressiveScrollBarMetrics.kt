@@ -206,6 +206,32 @@ fun fastScrollGlyph(value: String?): String? {
   }
 }
 
+internal fun medianOrNull(values: FloatArray, size: Int = values.size): Float? {
+  if (size == 0) return null
+  var validCount = 0
+  for (i in 0 until size) {
+    val v = values[i]
+    if (v.isFinite() && v > 0f) validCount++
+  }
+  if (validCount == 0) return null
+  val sorted = FloatArray(validCount)
+  var idx = 0
+  for (i in 0 until size) {
+    val v = values[i]
+    if (v.isFinite() && v > 0f) {
+      sorted[idx++] = v
+    }
+  }
+  sorted.sort()
+
+  val middleIndex = validCount / 2
+  return if (validCount % 2 == 0) {
+    (sorted[middleIndex - 1] + sorted[middleIndex]) / 2f
+  } else {
+    sorted[middleIndex]
+  }
+}
+
 internal fun medianOrNull(values: Iterable<Float>): Float? {
   val sorted =
     values

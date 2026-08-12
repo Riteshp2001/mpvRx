@@ -205,7 +205,10 @@ fun LyricsView(
               modifier = Modifier.fillMaxSize(),
               verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-              itemsIndexed(activeLyrics.synced) { index, line ->
+              itemsIndexed(
+                items = activeLyrics.synced,
+                key = { index, line -> "${line.time}_${index}" },
+              ) { index, line ->
                 val isActiveLine = index == state.activeLineIndex
                 val (ogText, transText) = remember(line.line, line.translation) {
                   val rawTrans = line.translation?.trim()
@@ -340,7 +343,10 @@ fun LyricsView(
               modifier = Modifier.fillMaxSize(),
               verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-              itemsIndexed(activeLyrics.plain) { _, lineText ->
+              itemsIndexed(
+                items = activeLyrics.plain,
+                key = { index, _ -> index },
+              ) { _, lineText ->
                 val textToDisplay = if (lineText.isBlank()) ". . ." else lineText
                 Text(
                   text = textToDisplay,
