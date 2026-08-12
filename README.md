@@ -86,11 +86,10 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 
 | Feature | Description |
 |---|---|
-| **Shader-Based HDR Pipeline** | Powered by [hdr-toys](https://github.com/natural-harmonia-gropius/hdr-toys) — 77 bundled GLSL shaders |
-| **Four HDR Modes** | BT.2100 PQ (HDR10), BT.2100 HLG, BT.2020 gamut mapping, Linear HDR |
+| **Four HDR Modes** | PQ, HLG and BT.2020 HDR/WCG-to-SDR conversion on both renderers; native mpv Linear HDR on Vulkan + `gpu-next` only |
 | **SDR-to-HDR Boost** | Boost SDR content into HDR range when using Linear HDR pipeline |
 | **GPU Deband** | CPU (gradfun) or GPU deband with configurable iterations, threshold, range, grain |
-| **Smart Render Backend** | Auto-selects between OpenGL/Vulkan and gpu/gpu-next based on device support |
+| **Single Resolved Pipeline** | UI, initialization and runtime refreshes share the effective backend/HDR state, including Vulkan fallback |
 
 </details>
 
@@ -270,7 +269,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 
 First Pro Tip Keep Mpv Conf empty if you are newbie
 
-- **Use `gpu` not `gpu-next`** — gpu-next is a Vulkan-based renderer that keeps the GPU awake for no reason when playing normal video. The classic `gpu` backend is lighter and uses the OpenGL driver stack, which on most Android devices has better power characteristics.
+- **Prefer `gpu` for lighter playback** — both renderers can use OpenGL or Vulkan in mpvRx. On many Android devices, the `gpu` + OpenGL combination has better power characteristics for ordinary video than the more advanced `gpu-next` path.
 - **Disable Vulkan entirely.** Vulkan is great for Video Playback but also Heavy.
 - **Use the `fast` mpv profile.** It's literally built into mpvRx use that Mpv Profiles and Set it to Default  or in _mpv.conf_ `profile=fast`
 - **Don't use shaders.** That Anime4K preset you using that's what's eating your battery. Shaders run on the GPU every single frame. If you're watching 24fps content and you have a shader pipeline running, congratulations — you're doing 24 unnecessary GPU compute passes per second for a Minute amount of visible benefit on a phone screen .

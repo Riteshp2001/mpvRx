@@ -1814,19 +1814,17 @@ class PlayerActivity :
   }
 
   private fun initializePlayerWithRendererFallback(): Boolean {
-    player.forceOpenGlFallback = false
-
     val firstAttempt = player.initializeSession(filesDir.path, cacheDir.path)
     if (firstAttempt.isSuccess) return true
 
     val firstError = firstAttempt.exceptionOrNull()
-    if (!decoderPreferences.useVulkan.get()) {
+    if (!player.shouldRetryWithOpenGl()) {
       Log.e(TAG, "Failed to initialize MPV", firstError)
       return false
     }
 
-    Log.w(TAG, "MPV Vulkan init failed, retrying with OpenGL fallback for this session", firstError)
-    player.forceOpenGlFallback = true
+    Log.w(TAG, "MPV Vulkan init failed, retrying with the matching OpenGL fallback", firstError)
+    player.rememberOpenGlFallback()
     val fallbackAttempt = player.initializeSession(filesDir.path, cacheDir.path)
     fallbackAttempt.exceptionOrNull()?.let { error -> Log.e(TAG, "Failed to initialize MPV", error) }
     return fallbackAttempt.isSuccess

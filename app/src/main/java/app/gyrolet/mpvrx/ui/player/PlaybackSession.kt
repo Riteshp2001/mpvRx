@@ -89,7 +89,6 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
-  private const val AMBIENT_SCALE_EPSILON = 0.000001
 
   private data class NetworkStreamRegistration(
     val proxy: NetworkStreamingProxy,
@@ -140,6 +139,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private val activeAmbientShaderPaths = linkedSetOf<String>()
   private var desiredAmbientScaleX = 1.0
   private var desiredAmbientScaleY = 1.0
+  private var ambientInstallGeneration = 0L
+  private var ambientInstallEnabled = false
 
   val isInitialized: Boolean
     get() = initialized
@@ -607,6 +608,71 @@ object PlaybackSession : MPVLib.EventObserver {
     }
   }
 
+  /** Stages the scale baked into the next Ambient shader without distorting the active pass. */
+  fun stageAmbientScale(
+    scaleX: Double,
+    scaleY: Double,
+    generation: Long,
+  ): Boolean =
+    withCore(false) {
+      if (!ambientInstallEnabled || generation != ambientInstallGeneration) return@withCore false
+      desiredAmbientScaleX = scaleX
+      desiredAmbientScaleY = scaleY
+      true
+    }
+
+  fun beginAmbientInstallGeneration(): Long =
+    withCore(0L) {
+      ambientInstallEnabled = true
+      ++ambientInstallGeneration
+    }
+
+  fun invalidateAmbientInstallGeneration() = withCore(Unit) { invalidateAmbientInstallGenerationLocked() }
+
+  /** Replaces one Ambient shader list entry in a single property snapshot, then exposes its scale. */
+  fun replaceAmbientShader(
+    oldPath: String?,
+    newPath: String,
+    generation: Long,
+  ): Boolean =
+    withCore(false) {
+      if (!ambientInstallEnabled || generation != ambientInstallGeneration) return@withCore false
+      val current =
+        MpvPathList.decode(MPVLib.getPropertyString("glsl-shaders"))
+      val next =
+        current
+          .filterNot { path -> path == oldPath }
+          .let { retained -> if (newPath in retained) retained else retained + newPath }
+      MPVLib.setPropertyString("glsl-shaders", MpvPathList.encode(next))
+      oldPath?.let(activeAmbientShaderPaths::remove)
+      activeAmbientShaderPaths += newPath
+      applyDesiredAmbientScaleLocked()
+      true
+    }
+
+  /** Serializes a read-transform-write update of mpv's shared shader list. */
+  fun updateShaderList(transform: (List<String>) -> List<String>): Boolean =
+    withCore(false) {
+      val current =
+        MpvPathList.decode(MPVLib.getPropertyString("glsl-shaders"))
+      val next = transform(current)
+      if (next == current) return@withCore true
+      MPVLib.setPropertyString("glsl-shaders", MpvPathList.encode(next))
+      true
+    }
+
+  /** Serializes a read-transform-write cycle for a shared string property. */
+  fun updateStringProperty(
+    property: String,
+    transform: (String) -> String,
+  ): Boolean =
+    withCore(false) {
+      val current = MPVLib.getPropertyString(property).orEmpty()
+      val next = transform(current)
+      if (next != current) MPVLib.setPropertyString(property, next)
+      true
+    }
+
   fun getPropertyFloat(property: String): Float? = withCore(null) { MPVLib.getPropertyFloat(property) }
 
   fun setPropertyFloat(
@@ -963,14 +1029,12 @@ object PlaybackSession : MPVLib.EventObserver {
         MPVLib.command(*command)
       }
       "append", "add", "pre", "set" -> {
-        // A cancelled/debounced Ambient coroutine may finish its file write after Ambient was turned
-        // off. Identity scale is the process-wide teardown state, so never let that late shader
-        // resurrect itself. This is especially important for Flow because SCALE_X/Y are baked into
-        // the GLSL and can crop the centre picture even after the real video scale was reset.
-        if (ambientScaleIsIdentityLocked()) {
+        // Ambient can legitimately use identity scale when the video and output aspects match.
+        // Installation authority is therefore explicit and must not be inferred from scale values.
+        if (!ambientInstallEnabled) {
           activeAmbientShaderPaths.remove(path)
           resetActiveAmbientScaleLocked()
-          Log.w(TAG, "Ignored stale Ambient shader install while scale is identity: $path")
+          Log.w(TAG, "Ignored stale Ambient shader install without an active generation: $path")
           return true
         }
 
@@ -990,11 +1054,8 @@ object PlaybackSession : MPVLib.EventObserver {
     return fileName.startsWith(AMBIENT_SHADER_PREFIX) && fileName.endsWith(AMBIENT_SHADER_SUFFIX)
   }
 
-  private fun ambientScaleIsIdentityLocked(): Boolean =
-    kotlin.math.abs(desiredAmbientScaleX - 1.0) <= AMBIENT_SCALE_EPSILON &&
-      kotlin.math.abs(desiredAmbientScaleY - 1.0) <= AMBIENT_SCALE_EPSILON
-
   private fun clearAmbientShadersLocked(resetDesired: Boolean) {
+    invalidateAmbientInstallGenerationLocked()
     // Reset the real video quad before removing OUTPUT remappers. This avoids exposing a single
     // expanded/cropped frame during teardown.
     resetActiveAmbientScaleLocked()
@@ -1025,9 +1086,15 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   private fun resetAmbientShaderTrackingLocked() {
+    invalidateAmbientInstallGenerationLocked()
     activeAmbientShaderPaths.clear()
     desiredAmbientScaleX = 1.0
     desiredAmbientScaleY = 1.0
+  }
+
+  private fun invalidateAmbientInstallGenerationLocked() {
+    ambientInstallEnabled = false
+    ambientInstallGeneration++
   }
 
   private fun suspendVideoTrackForSurfaceLossLocked() {

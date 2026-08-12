@@ -278,16 +278,6 @@ object AmbientShaderBuilder {
       buildSpiralTapTable("FRAME_GLOW_TAPS", glowSamples) { _, indexNorm -> indexNorm }
     }
 
-  private val flowTapTable: String by lazy {
-    // Twelve low-discrepancy samples are enough to estimate both palette population and scene
-    // coverage without adding Android PixelCopy/Palette readbacks to the playback hot path.
-    val taps =
-      (1..12).joinToString(",\n") { i ->
-        "    vec2(${glslFloat(halton(i, 2))}, ${glslFloat(halton(i, 3))})"
-      }
-    "const vec2 FLOW_TAPS[12] = vec2[12](\n$taps\n);"
-  }
-
   fun build(spec: AmbientShaderSpec): String =
     when (spec) {
       is AmbientGlowShaderSpec -> buildGlow(spec)
@@ -296,16 +286,46 @@ object AmbientShaderBuilder {
     }
 
   /**
-   * GPU-native adaptation of Flow's palette-selection idea.
+   * Flow palette renderer fed by the serialized low-cadence sampler.
    *
    * The old YouTube mode averaged the frame, which naturally collapses mixed or dark scenes toward
-   * grey/brown. Instead, we score sampled colour candidates by saturation, preferred mid-luminance
-   * and approximate population, then use the best repeated vibrant colour. This deliberately stays
-   * inside mpv's OUTPUT shader so Ambient Mode does not introduce Surface readbacks or media-thread
-   * contention during playback.
+   * grey/brown. FlowAmbientController now scores patch-averaged candidates infrequently and this
+   * single OUTPUT pass owns the continuous transition and final SDR/Linear-HDR conversion.
    */
   private fun buildYouTube(spec: AmbientYouTubeShaderSpec): String =
     """
+//!PARAM PTS
+//!TYPE float
+0.0
+
+//!PARAM mpvrx_flow_external
+//!TYPE float
+//!MINIMUM 0.0
+//!MAXIMUM 1.0
+0.0
+
+//!PARAM mpvrx_flow_prev_r
+//!TYPE float
+0.18
+//!PARAM mpvrx_flow_prev_g
+//!TYPE float
+0.18
+//!PARAM mpvrx_flow_prev_b
+//!TYPE float
+0.18
+//!PARAM mpvrx_flow_target_r
+//!TYPE float
+0.18
+//!PARAM mpvrx_flow_target_g
+//!TYPE float
+0.18
+//!PARAM mpvrx_flow_target_b
+//!TYPE float
+0.18
+//!PARAM mpvrx_flow_start
+//!TYPE float
+0.0
+
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!DESC Flow Palette Ambient Mode
@@ -315,72 +335,16 @@ object AmbientShaderBuilder {
 #define OPACITY          ${spec.shared.opacity}
 #define VIGNETTE_STR     ${spec.shared.vignetteStrength}
 #define IS_LINEAR_HDR    ${if (spec.context.isLinearHdr) 1 else 0}
-#define FLOW_SAMPLES     12
-#define PREFERRED_LUMA   0.56
-#define MIN_FLOW_LUMA    0.20
-#define MAX_FLOW_LUMA    0.86
-
-#if IS_LINEAR_HDR
-vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
-vec3 to_linear(vec3 c)     { return c * c; }
-#endif
-
-${flowTapTable}
+#define FLOW_TRANSITION_SEC 1.30
 
 precision mediump float;
 
+#if IS_LINEAR_HDR
+vec3 to_linear(vec3 c)     { return c * c; }
+#endif
+
 float flow_luma(vec3 rgb) {
     return dot(rgb, vec3(0.2126, 0.7152, 0.0722));
-}
-
-float flow_saturation(vec3 rgb) {
-    float mx = max(max(rgb.r, rgb.g), rgb.b);
-    float mn = min(min(rgb.r, rgb.g), rgb.b);
-    return mx <= 1e-5 ? 0.0 : (mx - mn) / mx;
-}
-
-float flow_population(vec3 candidate, vec3 palette[FLOW_SAMPLES]) {
-    float population = 0.0;
-    for (int j = 0; j < FLOW_SAMPLES; j++) {
-        // Soft population estimate: nearby sampled colours vote for the candidate. Squaring the
-        // similarity suppresses unrelated colours while keeping gradients/fades in one cluster.
-        float similarity = 1.0 - clamp(length(candidate - palette[j]) / 0.48, 0.0, 1.0);
-        population += similarity * similarity;
-    }
-    return population / float(FLOW_SAMPLES);
-}
-
-vec3 select_flow_color(vec3 palette[FLOW_SAMPLES], vec3 scene_avg) {
-    vec3 preferred = scene_avg;
-    vec3 fallback = scene_avg;
-    float preferred_score = -1.0;
-    float fallback_score = -1.0;
-
-    for (int i = 0; i < FLOW_SAMPLES; i++) {
-        vec3 candidate = palette[i];
-        float lum = flow_luma(candidate);
-        float saturation = flow_saturation(candidate);
-        float luma_fit = 1.0 - clamp(abs(lum - PREFERRED_LUMA) / PREFERRED_LUMA, 0.0, 1.0);
-        float population = flow_population(candidate, palette);
-
-        // Same selection priorities as Flow: saturated colours first, favour useful mid-luminance,
-        // then reward colours that represent a meaningful portion of the sampled frame.
-        float score = (saturation * 1.5 + luma_fit) * (0.30 + population * 1.70);
-
-        if (score > fallback_score) {
-            fallback_score = score;
-            fallback = candidate;
-        }
-        if (lum >= MIN_FLOW_LUMA && lum <= MAX_FLOW_LUMA && score > preferred_score) {
-            preferred_score = score;
-            preferred = candidate;
-        }
-    }
-
-    vec3 picked = preferred_score >= 0.0 ? preferred : fallback;
-    // A small scene-average contribution damps one-sample outliers/cuts without washing the picked
-    // colour back into the dull average that the old implementation used.
-    return mix(picked, scene_avg, 0.12);
 }
 
 vec4 hook() {
@@ -392,20 +356,17 @@ vec4 hook() {
         return HOOKED_tex(video_uv);
     }
 
-    vec3 palette[FLOW_SAMPLES];
-    vec3 scene_avg = vec3(0.0);
-    for (int i = 0; i < FLOW_SAMPLES; i++) {
-#if IS_LINEAR_HDR
-        vec3 sampled = to_perceptual(HOOKED_tex(FLOW_TAPS[i]).rgb);
-#else
-        vec3 sampled = HOOKED_tex(FLOW_TAPS[i]).rgb;
-#endif
-        palette[i] = sampled;
-        scene_avg += sampled;
+    vec3 ambient_color;
+    if (mpvrx_flow_external >= 0.5) {
+        vec3 previous_color = vec3(mpvrx_flow_prev_r, mpvrx_flow_prev_g, mpvrx_flow_prev_b);
+        vec3 target_color = vec3(mpvrx_flow_target_r, mpvrx_flow_target_g, mpvrx_flow_target_b);
+        float linear_t = clamp((PTS - mpvrx_flow_start) / FLOW_TRANSITION_SEC, 0.0, 1.0);
+        float transition_t = linear_t * linear_t * (3.0 - 2.0 * linear_t);
+        ambient_color = mix(previous_color, target_color, transition_t);
+    } else {
+        // Stable fallback: never re-enter the former per-frame winner-take-all palette path.
+        ambient_color = vec3(0.18);
     }
-    scene_avg /= float(FLOW_SAMPLES);
-
-    vec3 ambient_color = select_flow_color(palette, scene_avg);
 
     // Preserve the selected hue while giving the glow a modest extra colourfulness. The palette
     // scorer already avoids dull swatches, so this is intentionally gentler than brute-force boost.

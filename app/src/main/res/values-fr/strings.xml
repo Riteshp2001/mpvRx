@@ -941,12 +941,12 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Expérimental)</string>
   <string name="hdr_mode_off">Désactivé</string>
   <string name="hdr_mode_off_description">Sortie SDR normale</string>
-  <string name="hdr_mode_bt2100_pq_description">PQ de type HDR10 avec tone mapping Astra et gamut mapping Bottosson</string>
-  <string name="hdr_mode_bt2100_hlg_description">HDR HLG via la chaîne de shaders Astra et Bottosson de hdr-toys</string>
-  <string name="hdr_mode_bt2020_description">Conversion BT.2020 / BT.1886 avec le gamut mapping de hdr-toys</string>
+  <string name="hdr_mode_bt2100_pq_description">PQ source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2100_hlg_description">HLG source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2020_description">BT.2020 / BT.1886 conversion using HDR Toys gamut mapping</string>
   <string name="hdr_mode_linear">HDR linéaire</string>
   <string name="hdr_mode_linear_short">Linéaire</string>
-  <string name="hdr_mode_linear_description">Pipeline HDR linéaire via la chaîne de shaders Astra et Bottosson de hdr-toys</string>
+  <string name="hdr_mode_linear_description">Native mpv Linear HDR output; requires the active GPU Next and Vulkan renderer</string>
   <string name="hdr_mode_output_diagnostic">HDR - Sortie du mode %1$s</string>
   <string name="pref_section_support">Assistance</string>
   <string name="pref_section_updates">Mises à jour</string>
@@ -1262,7 +1262,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_slide_to_unlock">Faites glisser pour déverrouiller</string>
   <string name="ui_hdr_output">Sortie HDR</string>
   <string name="ui_hdr_cannot_be_enabled">Impossible d’activer le HDR</string>
-  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">Activez GPU Next et Vulkan avant d’utiliser les modes HDR</string>
+  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">GPU Next and Vulkan are required only for Linear HDR</string>
   <string name="ui_s">s</string>
   <string name="ui_enable_ass_override">Activer le remplacement ASS</string>
   <string name="ui_filter_presets">Préréglages de filtres</string>

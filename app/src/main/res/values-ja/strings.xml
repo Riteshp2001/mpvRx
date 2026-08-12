@@ -941,12 +941,12 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan（試験的）</string>
   <string name="hdr_mode_off">オフ</string>
   <string name="hdr_mode_off_description">通常のSDR出力</string>
-  <string name="hdr_mode_bt2100_pq_description">AstraトーンマッピングとBottosson色域マッピングを使用したHDR10形式のPQ</string>
-  <string name="hdr_mode_bt2100_hlg_description">hdr-toysのAstraおよびBottossonシェーダーチェーンによるHLG HDR</string>
-  <string name="hdr_mode_bt2020_description">hdr-toysの色域マッピングを使用したBT.2020 / BT.1886変換</string>
+  <string name="hdr_mode_bt2100_pq_description">PQ source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2100_hlg_description">HLG source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2020_description">BT.2020 / BT.1886 conversion using HDR Toys gamut mapping</string>
   <string name="hdr_mode_linear">リニアHDR</string>
   <string name="hdr_mode_linear_short">リニア</string>
-  <string name="hdr_mode_linear_description">hdr-toys の Astra および Bottosson シェーダーによるリニア HDR パイプライン</string>
+  <string name="hdr_mode_linear_description">Native mpv Linear HDR output; requires the active GPU Next and Vulkan renderer</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$sモード出力</string>
   <string name="pref_section_support">サポート</string>
   <string name="pref_section_updates">アップデート</string>
@@ -1262,7 +1262,7 @@
   <string name="ui_slide_to_unlock">スライドしてロック解除</string>
   <string name="ui_hdr_output">HDR出力</string>
   <string name="ui_hdr_cannot_be_enabled">HDRを有効にできません</string>
-  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">HDRモードを使用する前にGPU NextとVulkanを有効にしてください</string>
+  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">GPU Next and Vulkan are required only for Linear HDR</string>
   <string name="ui_s">秒</string>
   <string name="ui_enable_ass_override">ASS上書きを有効化</string>
   <string name="ui_filter_presets">フィルタープリセット</string>

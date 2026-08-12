@@ -941,12 +941,12 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (экспериментально)</string>
   <string name="hdr_mode_off">Выкл.</string>
   <string name="hdr_mode_off_description">Обычный вывод SDR</string>
-  <string name="hdr_mode_bt2100_pq_description">PQ в стиле HDR10 с тональным отображением Astra и преобразованием гаммы Bottosson</string>
-  <string name="hdr_mode_bt2100_hlg_description">HLG HDR через цепочку шейдеров Astra и Bottosson из hdr-toys</string>
-  <string name="hdr_mode_bt2020_description">Преобразование BT.2020 / BT.1886 с отображением гаммы hdr-toys</string>
+  <string name="hdr_mode_bt2100_pq_description">PQ source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2100_hlg_description">HLG source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2020_description">BT.2020 / BT.1886 conversion using HDR Toys gamut mapping</string>
   <string name="hdr_mode_linear">Линейный HDR</string>
   <string name="hdr_mode_linear_short">Линейный</string>
-  <string name="hdr_mode_linear_description">Линейный HDR-конвейер через шейдеры Astra и Bottosson от hdr-toys</string>
+  <string name="hdr_mode_linear_description">Native mpv Linear HDR output; requires the active GPU Next and Vulkan renderer</string>
   <string name="hdr_mode_output_diagnostic">HDR — вывод в режиме %1$s</string>
   <string name="pref_section_support">Поддержка</string>
   <string name="pref_section_updates">Обновления</string>
@@ -1262,7 +1262,7 @@
   <string name="ui_slide_to_unlock">Проведите, чтобы разблокировать</string>
   <string name="ui_hdr_output">Вывод HDR</string>
   <string name="ui_hdr_cannot_be_enabled">Не удаётся включить HDR</string>
-  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">Включите GPU Next и Vulkan перед использованием режимов HDR</string>
+  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">GPU Next and Vulkan are required only for Linear HDR</string>
   <string name="ui_s">с</string>
   <string name="ui_enable_ass_override">Включить переопределение ASS</string>
   <string name="ui_filter_presets">Предустановки фильтров</string>

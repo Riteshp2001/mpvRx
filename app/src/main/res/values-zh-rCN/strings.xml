@@ -941,12 +941,12 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan（实验性）</string>
   <string name="hdr_mode_off">关闭</string>
   <string name="hdr_mode_off_description">普通 SDR 输出</string>
-  <string name="hdr_mode_bt2100_pq_description">采用 Astra 色调映射和 Bottosson 色域映射的 HDR10 风格 PQ</string>
-  <string name="hdr_mode_bt2100_hlg_description">通过 hdr-toys 的 Astra 和 Bottosson 着色器链实现 HLG HDR</string>
-  <string name="hdr_mode_bt2020_description">使用 hdr-toys 色域映射进行 BT.2020 / BT.1886 转换</string>
+  <string name="hdr_mode_bt2100_pq_description">PQ source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2100_hlg_description">HLG source conversion with the HDR Toys chain selected for the active renderer</string>
+  <string name="hdr_mode_bt2020_description">BT.2020 / BT.1886 conversion using HDR Toys gamut mapping</string>
   <string name="hdr_mode_linear">线性 HDR</string>
   <string name="hdr_mode_linear_short">线性</string>
-  <string name="hdr_mode_linear_description">通过 hdr-toys 的 Astra 和 Bottosson 着色器链实现的线性 HDR</string>
+  <string name="hdr_mode_linear_description">Native mpv Linear HDR output; requires the active GPU Next and Vulkan renderer</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s 模式输出</string>
   <string name="pref_section_support">支持</string>
   <string name="pref_section_updates">更新</string>
@@ -1262,7 +1262,7 @@
   <string name="ui_slide_to_unlock">滑动解锁</string>
   <string name="ui_hdr_output">HDR 输出</string>
   <string name="ui_hdr_cannot_be_enabled">无法启用 HDR</string>
-  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">使用 HDR 模式前请启用 GPU Next 和 Vulkan</string>
+  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">GPU Next and Vulkan are required only for Linear HDR</string>
   <string name="ui_s">秒</string>
   <string name="ui_enable_ass_override">启用 ASS 覆盖</string>
   <string name="ui_filter_presets">滤镜预设</string>

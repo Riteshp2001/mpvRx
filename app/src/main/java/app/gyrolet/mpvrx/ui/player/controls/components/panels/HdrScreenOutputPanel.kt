@@ -49,9 +49,11 @@ fun HdrScreenOutputPanel(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val mode by viewModel.hdrScreenMode.collectAsState()
-  val pipelineReady by viewModel.isHdrScreenOutputPipelineReady.collectAsState()
-  val isLinearHdrAvailable by viewModel.isLinearHdrAvailable.collectAsState()
+  val pipeline by viewModel.hdrPipelineState.collectAsState()
+  // Keep the durable request visible even while playback uses a safe backend fallback.
+  val mode = pipeline.requestedMode
+  val showLinearStatus =
+    pipeline.requestedMode == HdrScreenMode.LINEAR && !pipeline.isLinearAvailable
 
   DraggablePanel(
     modifier = modifier,
@@ -82,8 +84,14 @@ fun HdrScreenOutputPanel(
       modifier = Modifier.padding(MaterialTheme.spacing.medium),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
-      if (!pipelineReady) {
-        HdrPipelineUnavailableStatus()
+      if (showLinearStatus || pipeline.isCurrentPipelineDegraded) {
+        HdrPipelineStatus(
+          shaderFailure =
+            !pipeline.hdrToysReady &&
+              pipeline.requestedMode.hdrToysProfile != null,
+          linearUnavailable = showLinearStatus,
+          effectiveFallback = pipeline.effectiveMode.takeIf { it != pipeline.requestedMode },
+        )
       }
       // OFF is the default state controlled by the HDR toggle button, not shown here.
       // Only the four selectable HDR modes are presented in the panel.
@@ -91,7 +99,7 @@ fun HdrScreenOutputPanel(
         HdrModeOption(
           mode = option,
           selected = mode == option,
-          enabled = pipelineReady && (option != HdrScreenMode.LINEAR || isLinearHdrAvailable),
+          enabled = pipeline.isModeAvailable(option),
           onClick = { viewModel.setHdrScreenMode(option) },
         )
       }
@@ -100,10 +108,17 @@ fun HdrScreenOutputPanel(
 }
 
 @Composable
-private fun HdrPipelineUnavailableStatus(modifier: Modifier = Modifier) {
+private fun HdrPipelineStatus(
+  shaderFailure: Boolean,
+  linearUnavailable: Boolean,
+  effectiveFallback: HdrScreenMode?,
+  modifier: Modifier = Modifier,
+) {
   val colors = MaterialTheme.colorScheme
-  val containerColor = colors.errorContainer.copy(alpha = 0.72f)
-  val contentColor = colors.onErrorContainer
+  val containerColor =
+    if (shaderFailure) colors.errorContainer.copy(alpha = 0.72f)
+    else colors.secondaryContainer.copy(alpha = 0.72f)
+  val contentColor = if (shaderFailure) colors.onErrorContainer else colors.onSecondaryContainer
 
   Surface(
     modifier = modifier.fillMaxWidth(),
@@ -139,18 +154,42 @@ private fun HdrPipelineUnavailableStatus(modifier: Modifier = Modifier) {
         Text(
           text =
             androidx.compose.ui.res
-              .stringResource(app.gyrolet.mpvrx.R.string.ui_hdr_cannot_be_enabled),
+              .stringResource(
+                if (shaderFailure) {
+                  app.gyrolet.mpvrx.R.string.ui_hdr_cannot_be_enabled
+                } else {
+                  app.gyrolet.mpvrx.R.string.ui_linear_hdr_unavailable
+                },
+              ),
           style = MaterialTheme.typography.titleLarge,
           fontWeight = FontWeight.SemiBold,
         )
         Text(
           text =
             androidx.compose.ui.res.stringResource(
-              app.gyrolet.mpvrx.R.string.ui_enable_gpu_next_and_vulkan_before_using_hdr_modes,
+              if (shaderFailure) {
+                app.gyrolet.mpvrx.R.string.player_hdr_shaders_unavailable
+              } else if (linearUnavailable) {
+                app.gyrolet.mpvrx.R.string.ui_linear_hdr_requires_active_backend
+              } else {
+                app.gyrolet.mpvrx.R.string.ui_enable_gpu_next_and_vulkan_before_using_hdr_modes
+              },
             ),
           style = MaterialTheme.typography.bodySmall,
           color = contentColor.copy(alpha = 0.78f),
         )
+        effectiveFallback?.let { fallback ->
+          Text(
+            text =
+              stringResource(
+                app.gyrolet.mpvrx.R.string.ui_hdr_effective_fallback,
+                stringResource(fallback.shortTitleRes),
+              ),
+            style = MaterialTheme.typography.bodySmall,
+            color = contentColor.copy(alpha = 0.9f),
+            fontWeight = FontWeight.Medium,
+          )
+        }
       }
     }
   }

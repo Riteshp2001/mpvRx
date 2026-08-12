@@ -193,15 +193,14 @@ private val VIDEO_GEOMETRY_STRING_PROPS =
   )
 
 private fun currentShaderList(): List<String> =
-  PlaybackSession
-    .getPropertyString("glsl-shaders")
-    ?.split(":")
-    ?.map { it.trim() }
-    ?.filter { it.isNotEmpty() }
-    .orEmpty()
+  app.gyrolet.mpvrx.ui.player.MpvPathList.decode(PlaybackSession.getPropertyString("glsl-shaders"))
 
 private fun setShaderList(shaderPaths: List<String>) {
-  PlaybackSession.setPropertyString("glsl-shaders", shaderPaths.joinToString(":"))
+  PlaybackSession.updateShaderList { current ->
+    val requestedAnimeShaders = shaderPaths.filter(::isBuiltInAnime4KShaderPath)
+    val retained = current.filterNot(::isBuiltInAnime4KShaderPath)
+    requestedAnimeShaders + retained
+  }
 }
 
 private fun isBuiltInAnime4KShaderPath(path: String): Boolean {

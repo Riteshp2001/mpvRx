@@ -35,7 +35,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
-import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.hdr.HdrOutputController
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayFile
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayPlaybackState
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
@@ -165,7 +165,7 @@ class PlayerViewModel : ViewModel(),
   private val advancedPreferences: AdvancedPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
-  private val hdrToysManager: HdrToysManager by inject()
+  private val hdrOutputController: HdrOutputController by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
   private val aiService: app.gyrolet.mpvrx.repository.ai.AiService by inject()
@@ -1119,21 +1119,24 @@ class PlayerViewModel : ViewModel(),
   private val _transformState = MutableStateFlow(TransformState())
   val transformState: StateFlow<TransformState> = _transformState.asStateFlow()
 
-  private val _hdrScreenMode = MutableStateFlow(initialHdrScreenMode())
-  val hdrScreenMode: StateFlow<HdrScreenMode> = _hdrScreenMode.asStateFlow()
-
-  private val _isGpuNextEnabled = MutableStateFlow(decoderPreferences.gpuNext.get())
-  private val _isVulkanEnabled = MutableStateFlow(decoderPreferences.useVulkan.get())
+  /** All HDR UI state is derived from the controller's resolved effective pipeline. */
+  val hdrPipelineState = hdrOutputController.state
+  val hdrScreenMode: StateFlow<HdrScreenMode> =
+    hdrPipelineState
+      .map { it.effectiveMode }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, hdrPipelineState.value.effectiveMode)
   val isLinearHdrAvailable: StateFlow<Boolean> =
-    combine(_isGpuNextEnabled, _isVulkanEnabled) { gpuNext, vulkan -> gpuNext && vulkan }
-      .stateIn(viewModelScope, SharingStarted.Eagerly, _isGpuNextEnabled.value && _isVulkanEnabled.value)
-
-  private val _isHdrScreenOutputPipelineReady = MutableStateFlow(isHdrScreenOutputAvailable())
-  val isHdrScreenOutputPipelineReady: StateFlow<Boolean> = _isHdrScreenOutputPipelineReady.asStateFlow()
-
-  private val _isHdrScreenOutputEnabled =
-    MutableStateFlow(_isHdrScreenOutputPipelineReady.value && _hdrScreenMode.value != HdrScreenMode.OFF)
-  val isHdrScreenOutputEnabled: StateFlow<Boolean> = _isHdrScreenOutputEnabled.asStateFlow()
+    hdrPipelineState
+      .map { it.isLinearAvailable }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, hdrPipelineState.value.isLinearAvailable)
+  val isHdrScreenOutputPipelineReady: StateFlow<Boolean> =
+    hdrPipelineState
+      .map { it.pipelineReady }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, hdrPipelineState.value.pipelineReady)
+  val isHdrScreenOutputEnabled: StateFlow<Boolean> =
+    hdrPipelineState
+      .map { it.isEnabled }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, hdrPipelineState.value.isEnabled)
 
   // ==================== Ambience Mode ======================================
   private val _isAmbientEnabled = MutableStateFlow(playerPreferences.isAmbientEnabled.get())
@@ -1279,18 +1282,6 @@ class PlayerViewModel : ViewModel(),
             loadLyricsForCurrentTrack()
           }
         }
-    }
-    viewModelScope.launch {
-      decoderPreferences.gpuNext.changes().collect { enabled ->
-        _isGpuNextEnabled.value = enabled
-        reconcileHdrModeWithRenderer()
-      }
-    }
-    viewModelScope.launch {
-      decoderPreferences.useVulkan.changes().collect { enabled ->
-        _isVulkanEnabled.value = enabled
-        reconcileHdrModeWithRenderer()
-      }
     }
     syncplayManager.playbackStateProvider = { currentSyncplayPlaybackState() }
     syncplayManager.fileInfoProvider = { currentSyncplayFileInfo() }
@@ -5176,93 +5167,33 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun toggleHdrScreenOutput() {
-    val nextMode =
-      if (_hdrScreenMode.value == HdrScreenMode.OFF) {
-        val lastMode = decoderPreferences.lastHdrMode.get()
-        val targetMode = if (lastMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else lastMode
-        if (targetMode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-          HdrScreenMode.defaultEnabledMode
-        } else {
-          targetMode
-        }
-      } else {
-        HdrScreenMode.OFF
-      }
-    setHdrScreenMode(nextMode)
+    val wasLinear = hdrPipelineState.value.effectiveMode == HdrScreenMode.LINEAR
+    val resolved = hdrOutputController.toggle()
+    onHdrPipelineChanged(resolved.effectiveMode, wasLinear)
   }
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
-    val resolvedMode =
-      if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-        HdrScreenMode.defaultEnabledMode
-      } else {
-        mode
-      }
-    val pipelineReady = isHdrScreenOutputAvailable(resolvedMode)
+    val wasLinear = hdrPipelineState.value.effectiveMode == HdrScreenMode.LINEAR
+    val resolved = hdrOutputController.select(mode)
+    onHdrPipelineChanged(resolved.effectiveMode, wasLinear)
+  }
 
-    _hdrScreenMode.value = resolvedMode
-    _isHdrScreenOutputEnabled.value = pipelineReady && resolvedMode != HdrScreenMode.OFF
-    decoderPreferences.hdrScreenMode.set(resolvedMode)
-    decoderPreferences.hdrScreenOutput.set(resolvedMode != HdrScreenMode.OFF)
-    if (resolvedMode != HdrScreenMode.OFF) {
-      decoderPreferences.lastHdrMode.set(resolvedMode)
-    }
-    applyHdrScreenOutput(resolvedMode)
+  private fun onHdrPipelineChanged(
+    resolvedMode: HdrScreenMode,
+    wasLinear: Boolean,
+  ) {
     // Ambient shader encodes IS_LINEAR_HDR at compile time — regenerate it so the
     // new mode (linear vs SDR/hdr-toys) is immediately reflected in the GLSL output.
-    restartAmbientIfActive()
+    if (wasLinear != (resolvedMode == HdrScreenMode.LINEAR)) restartAmbientIfActive()
     playerUpdate.value =
       PlayerUpdates.ShowText(
         appContext.getString(R.string.hdr_screen_output_update, appContext.getString(resolvedMode.shortTitleRes)),
       )
   }
 
-  private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean =
-    mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
-
-  private fun initialHdrScreenMode(): HdrScreenMode {
-    if (!decoderPreferences.hdrScreenOutput.get()) {
-      return HdrScreenMode.OFF
-    }
-    val savedMode = decoderPreferences.hdrScreenMode.get()
-    if (savedMode == HdrScreenMode.OFF) {
-      return HdrScreenMode.OFF
-    }
-    return if (savedMode == HdrScreenMode.LINEAR &&
-      !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
-    ) HdrScreenMode.defaultEnabledMode else savedMode
-  }
-
-  private fun reconcileHdrModeWithRenderer() {
-    if (_hdrScreenMode.value == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-      setHdrScreenMode(HdrScreenMode.defaultEnabledMode)
-    } else {
-      refreshHdrScreenOutputPipelineState()
-    }
-  }
-
-  private fun refreshHdrScreenOutputPipelineState(): Boolean {
-    val pipelineReady = isHdrScreenOutputAvailable()
-    _isHdrScreenOutputPipelineReady.value = pipelineReady
-    _isHdrScreenOutputEnabled.value = pipelineReady && _hdrScreenMode.value != HdrScreenMode.OFF
-    return pipelineReady
-  }
-
-  private fun applyHdrScreenOutput(mode: HdrScreenMode) {
-    val pipelineReady = refreshHdrScreenOutputPipelineState()
-    runCatching {
-      val boostSdr = decoderPreferences.boostSdrToHdr.get()
-      applyHdrScreenOutputOptions(mode, pipelineReady, boostSdr)
-      applyHdrScreenOutputProperties(mode, pipelineReady, boostSdr)
-      applyHdrToysMode(mode, pipelineReady)
-    }.onFailure { e ->
-      Log.e(TAG, "Error applying HDR screen output: mode=$mode, pipelineReady=$pipelineReady", e)
-    }
-  }
-
   /** Re-applies the current HDR mode to a newly loaded video. */
   fun refreshHdrScreenOutputForCurrentVideo() {
-    applyHdrScreenOutput(_hdrScreenMode.value)
+    hdrOutputController.refreshRuntime()
   }
 
   fun selectAnime4KMode(mode: Anime4KManager.Mode) {
@@ -5314,21 +5245,10 @@ class PlayerViewModel : ViewModel(),
    * the shader stack, then the ambient shader is moved back to the final pass.
    */
   fun restartHdrScreenOutputAndAmbientIfActive() {
+    val wasLinear = hdrPipelineState.value.effectiveMode == HdrScreenMode.LINEAR
     refreshHdrScreenOutputForCurrentVideo()
-    restartAmbientIfActive()
-  }
-
-  private fun applyHdrToysMode(
-    mode: HdrScreenMode,
-    pipelineReady: Boolean,
-  ) {
-    val profile = mode.hdrToysProfile
-    if (!pipelineReady || profile == null) {
-      hdrToysManager.clear()
-      return
-    }
-    if (!hdrToysManager.apply(profile)) {
-      playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(R.string.player_hdr_shaders_unavailable))
+    if (wasLinear != (hdrPipelineState.value.effectiveMode == HdrScreenMode.LINEAR)) {
+      restartAmbientIfActive()
     }
   }
 
@@ -5350,6 +5270,7 @@ class PlayerViewModel : ViewModel(),
   /** Disables the ambient shader and resets video scale. Safe to call from any state. */
   private fun disableAmbientShader() {
     ambientDebounceJob?.cancel()
+    PlaybackSession.invalidateAmbientInstallGeneration()
     ambientShaderFile?.let { file ->
       runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", file.absolutePath) }
       file.delete()
@@ -5396,21 +5317,12 @@ class PlayerViewModel : ViewModel(),
    */
   fun restartAmbientIfActive() {
     if (!_isAmbientEnabled.value) return
-    ambientShaderFile?.let { oldFile ->
-      runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
-      oldFile.delete()
-    }
-    ambientShaderFile = null
     lastAmbientScaleX = -1.0 // Force scale recalculation
     lastAmbientScaleY = -1.0
-    lastCompiledSpec = null // Invalidate cache — the old file is gone, must recompile
-    // Small delay to let Anime4K shaders settle
-    ambientDebounceJob?.cancel()
-    ambientDebounceJob =
-      viewModelScope.launch(renderPrepDispatcher) {
-        delay(200)
-        updateAmbientStretch()
-      }
+    // Keep the current pass visible until updateAmbientStretch has fully written its replacement.
+    // This removes the former 200 ms neutral flash and lets Flow preserve its palette transition.
+    lastCompiledSpec = null
+    scheduleAmbientUpdate(0)
   }
 
   fun updateAmbientVisualMode(mode: AmbientVisualMode) {
@@ -5635,6 +5547,7 @@ class PlayerViewModel : ViewModel(),
 
   suspend fun updateAmbientStretch() {
     if (!_isAmbientEnabled.value) return
+    val ambientGeneration = PlaybackSession.beginAmbientInstallGeneration()
 
     runCatching {
       val osdW = PlaybackSession.getPropertyInt("osd-width") ?: 1920
@@ -5682,8 +5595,6 @@ class PlayerViewModel : ViewModel(),
       ) {
         lastAmbientScaleX = scaleX
         lastAmbientScaleY = scaleY
-        PlaybackSession.setPropertyDouble("video-scale-x", scaleX)
-        PlaybackSession.setPropertyDouble("video-scale-y", scaleY)
       }
       val blendMode = if (subtitlesPreferences.blendSubtitlesWithVideo.get()) "video" else "no"
       PlaybackSession.setPropertyString("blend-subtitles", blendMode)
@@ -5731,7 +5642,6 @@ class PlayerViewModel : ViewModel(),
       if (spec == lastCompiledSpec && ambientShaderFile?.exists() == true) {
         return
       }
-      lastCompiledSpec = spec
 
       // Each reload gets a unique filename so MPV never reuses a cached
       // compiled shader — incrementing seq guarantees a fresh compile every time.
@@ -5748,12 +5658,19 @@ class PlayerViewModel : ViewModel(),
         newFile.delete() // Orphan cleanup — job cancelled after write completed.
         throw e
       }
-      ambientShaderFile?.let { oldFile ->
-        runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
-        oldFile.delete()
+      val oldFile = ambientShaderFile
+      // Stage the exact scale baked into this shader only after its file is complete. The
+      // generation check prevents an old/cancelled update from changing renderer state, and the
+      // immediately following replacement applies the staged values after the new pass is active.
+      if (!PlaybackSession.stageAmbientScale(sx, sy, ambientGeneration) ||
+        !PlaybackSession.replaceAmbientShader(oldFile?.absolutePath, newFile.absolutePath, ambientGeneration)
+      ) {
+        newFile.delete()
+        return
       }
-      PlaybackSession.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
       ambientShaderFile = newFile
+      lastCompiledSpec = spec
+      oldFile?.delete()
     }.onFailure { e ->
       // runCatching catches Throwable including CancellationException — rethrow it so
       // structured concurrency is not broken and debounce cancellation does not log
@@ -5783,7 +5700,12 @@ class PlayerViewModel : ViewModel(),
     fadeCurve: Float,
     opacity: Float,
   ): AmbientShaderSpec {
-    val context = AmbientRenderContext(scaleX = sx, scaleY = sy, isLinearHdr = _hdrScreenMode.value == HdrScreenMode.LINEAR)
+    val context =
+      AmbientRenderContext(
+        scaleX = sx,
+        scaleY = sy,
+        isLinearHdr = hdrPipelineState.value.effectiveMode == HdrScreenMode.LINEAR,
+      )
     val shared =
       AmbientSharedShaderConfig(
         bezelDepth = if (_ambientVisualMode.value == AmbientVisualMode.FRAME_EXTEND) bezelDepth else 0f,

@@ -976,15 +976,15 @@
   <string name="hdr_mode_off_description">Normal SDR output</string>
   <string name="hdr_mode_bt2100_pq" translatable="false">BT.2100 PQ</string>
   <string name="hdr_mode_pq_short" translatable="false">PQ</string>
-  <string name="hdr_mode_bt2100_pq_description">HDR10-style PQ with Astra tone mapping and Bottosson gamut mapping</string>
+  <string name="hdr_mode_bt2100_pq_description">PQ source conversion with the HDR Toys chain selected for the active renderer</string>
   <string name="hdr_mode_bt2100_hlg" translatable="false">BT.2100 HLG</string>
   <string name="hdr_mode_hlg_short" translatable="false">HLG</string>
-  <string name="hdr_mode_bt2100_hlg_description">HLG HDR through the hdr-toys Astra and Bottosson shader chain</string>
+  <string name="hdr_mode_bt2100_hlg_description">HLG source conversion with the HDR Toys chain selected for the active renderer</string>
   <string name="hdr_mode_bt2020" translatable="false">BT.2020</string>
-  <string name="hdr_mode_bt2020_description">BT.2020 / BT.1886 conversion using hdr-toys gamut mapping</string>
+  <string name="hdr_mode_bt2020_description">BT.2020 / BT.1886 conversion using HDR Toys gamut mapping</string>
   <string name="hdr_mode_linear">Linear HDR</string>
   <string name="hdr_mode_linear_short">Linear</string>
-  <string name="hdr_mode_linear_description">Linear light HDR pipeline with hdr-toys Astra and Bottosson shaders</string>
+  <string name="hdr_mode_linear_description">Native mpv Linear HDR output; requires the active GPU Next and Vulkan renderer</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s Mode Output</string>
   <string name="pref_section_support">Support</string>
   <string name="pref_section_updates">Updates</string>
@@ -1308,7 +1308,10 @@
   <string name="ui_slide_to_unlock">Slide to Unlock</string>
   <string name="ui_hdr_output">HDR Output</string>
   <string name="ui_hdr_cannot_be_enabled">HDR cannot be enabled</string>
-  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">Enable GPU Next and Vulkan before using HDR modes</string>
+  <string name="ui_linear_hdr_unavailable">Linear HDR unavailable</string>
+  <string name="ui_linear_hdr_requires_active_backend">Linear HDR requires the active GPU Next + Vulkan renderer. HDR Toys modes remain available with GPU and GPU Next.</string>
+  <string name="ui_enable_gpu_next_and_vulkan_before_using_hdr_modes">GPU Next and Vulkan are required only for Linear HDR</string>
+  <string name="ui_hdr_effective_fallback">Playback is currently using %1$s</string>
   <string name="ui_s">s</string>
   <string name="ui_enable_ass_override">Enable ASS Override</string>
   <string name="ui_filter_presets">Filter Presets</string>

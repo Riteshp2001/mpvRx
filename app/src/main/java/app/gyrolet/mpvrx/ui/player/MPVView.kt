@@ -17,7 +17,7 @@ import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import androidx.core.view.WindowInsetsCompat
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
-import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.hdr.HdrOutputController
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -51,10 +51,10 @@ class MPVView(
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val ytdlPreferences: YtdlPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
-  private val hdrToysManager: HdrToysManager by inject()
+  private val hdrOutputController: HdrOutputController by inject()
 
   var isExiting = false
-  var forceOpenGlFallback = false
+  private var pendingBackend: RenderBackendSelection? = null
   var isSurfaceReady = false
     private set
   var onSurfaceReady: (() -> Unit)? = null
@@ -70,7 +70,7 @@ class MPVView(
     // The libmpv core is process-wide, so returning to the player can reuse a core created with
     // older renderer preferences. Keep fallbacks stable for the lifetime of that preference
     // selection, but recreate the core when gpu-next/Vulkan selection actually changes.
-    val requestedBackend = selectRenderBackend(ignoreForcedOpenGlFallback = true)
+    val requestedBackend = selectRenderBackend().also { pendingBackend = it }
     val result =
       PlaybackSession.initialize(
         context = context.applicationContext,
@@ -95,16 +95,6 @@ class MPVView(
       isSurfaceReady = false
       PlaybackSession.unbindSurface(this)
     }
-  }
-
-  private data class RenderBackendSelection(
-    val vo: String,
-    val gpuApi: String,
-    val gpuContext: String,
-    val reason: String,
-  ) {
-    val configurationKey: String
-      get() = "$vo|$gpuApi|$gpuContext"
   }
 
   fun getVideoOutAspect(): Double? {
@@ -176,32 +166,11 @@ class MPVView(
   override fun initOptions() {
     val profile = decoderPreferences.profile.get()
     PlaybackSession.setOptionString("profile", profile)
-    val backend = selectRenderBackend()
-    val useVulkan = backend.gpuApi == "vulkan"
+    val backend = pendingBackend ?: selectRenderBackend()
     val hwdecMode = preferredHwdecMode()
     PlaybackSession.setVideoOutput(backend.vo)
     PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
     PlaybackSession.setOptionString("gpu-context", backend.gpuContext)
-
-    val hdrScreenOutputEnabled = decoderPreferences.hdrScreenOutput.get()
-    val isLinearAvailable = useVulkan && backend.vo == "gpu-next"
-    val hdrScreenMode =
-      if (!hdrScreenOutputEnabled) {
-        HdrScreenMode.OFF
-      } else {
-        val mode = decoderPreferences.hdrScreenMode.get()
-        if (mode == HdrScreenMode.LINEAR && !isLinearAvailable) {
-          HdrScreenMode.defaultEnabledMode
-        } else {
-          mode
-        }
-      }
-    val hdrPipelineReady = hdrScreenMode != HdrScreenMode.LINEAR || isLinearAvailable
-    applyHdrScreenOutputOptions(
-      mode = hdrScreenMode,
-      pipelineReady = hdrPipelineReady,
-      boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
-    )
 
     // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
     PlaybackSession.setOptionString(
@@ -259,10 +228,10 @@ class MPVView(
     // match the video frame rate (e.g., 24fps content on 60Hz display).
     PlaybackSession.setOptionString("video-sync", "audio")
 
-    // Anime4K shader initialization (MUST be in initOptions, not after file load!)
-    applyAnime4KShaders(backend.vo, backend.gpuApi)
-    // HDR Toys shaders (loaded after Anime4K so they append in the correct order)
-    applyHdrToysMode(hdrScreenMode, hdrPipelineReady)
+    // Build the complete initial shader stack with option APIs before mpv initialization.
+    val initialAnime4KShaders = initialAnime4KShaderPaths(backend.vo, backend.gpuApi)
+    // Resolve and apply the complete HDR state after Anime4K so color conversion stays last.
+    hdrOutputController.applyForInitialization(backend, initialAnime4KShaders)
 
     setupSubtitlesOptions()
     setupAudioOptions()
@@ -522,25 +491,6 @@ class MPVView(
     )
   }
 
-  /**
-   * Copies bundled hdr-toys GLSL shaders to filesDir on first use, then appends
-   * the chosen profile's shader chain to mpv's glsl-shaders list.
-   * Safe to call on every init — clears previous hdr-toys shaders before re-applying.
-   */
-  fun applyHdrToysMode(
-    mode: HdrScreenMode,
-    pipelineReady: Boolean,
-  ) {
-    val profile = mode.hdrToysProfile
-    if (!pipelineReady || profile == null) {
-      hdrToysManager.clear()
-      return
-    }
-    if (!hdrToysManager.apply(profile)) {
-      Log.w(TAG, "Skipping HDR Toys mode — bundled shaders unavailable: ${mode.name}")
-    }
-  }
-
   private fun applyAnime4KShaders(
     activeVo: String,
     activeGpuApi: String,
@@ -609,21 +559,6 @@ class MPVView(
     }
   }
 
-  private fun shouldUseVulkan(ignoreForcedOpenGlFallback: Boolean = false): Boolean {
-    if (forceOpenGlFallback && !ignoreForcedOpenGlFallback) {
-      return false
-    }
-    if (!decoderPreferences.useVulkan.get()) {
-      return false
-    }
-
-    val supported = VulkanUtils.isVulkanSupported(context)
-    if (!supported) {
-      Log.w(TAG, "Vulkan support checks failed. Falling back to OpenGL.")
-    }
-    return supported
-  }
-
   private fun preferredHwdecMode(): String {
     if (!decoderPreferences.tryHWDecoding.get()) {
       return "no"
@@ -632,69 +567,79 @@ class MPVView(
     return "mediacodec,mediacodec-copy,no"
   }
 
-  private fun selectRenderBackend(ignoreForcedOpenGlFallback: Boolean = false): RenderBackendSelection {
+  private fun selectRenderBackend(): RenderBackendSelection {
     val anime4kEnabled =
       decoderPreferences.enableAnime4K.get() &&
         (decoderPreferences.anime4kMode.get() != "OFF")
-    val gpuNextEnabled = decoderPreferences.gpuNext.get()
-    val vulkanEnabled = shouldUseVulkan(ignoreForcedOpenGlFallback)
-
-    if (anime4kEnabled && gpuNextEnabled && !vulkanEnabled) {
-      return RenderBackendSelection(
-        vo = "gpu",
-        gpuApi = "opengl",
-        gpuContext = "android",
-        reason = "Anime4K with gpu-next but without Vulkan is unsupported: fallback to legacy gpu/opengl",
-      )
+    val vulkanRequested = decoderPreferences.useVulkan.get()
+    val vulkanSupported = !vulkanRequested || VulkanUtils.isVulkanSupported(context)
+    if (vulkanRequested && !vulkanSupported) {
+      Log.w(TAG, "Vulkan support checks failed. Falling back to OpenGL.")
     }
-
-    if (gpuNextEnabled && vulkanEnabled) {
-      return RenderBackendSelection(
-        vo = "gpu-next",
-        gpuApi = "vulkan",
-        gpuContext = "androidvk",
-        reason =
-          if (anime4kEnabled) {
-            "Anime4K active with gpu-next and Vulkan enabled: keep gpu-next/vulkan path"
-          } else {
-            "gpu-next and Vulkan enabled: use gpu-next/vulkan"
-          },
-      )
-    }
-
-    if (gpuNextEnabled) {
-      return RenderBackendSelection(
-        vo = "gpu-next",
-        gpuApi = "opengl",
-        gpuContext = "android",
-        reason = "gpu-next enabled without Vulkan: use gpu-next/opengl",
-      )
-    }
-
-    if (vulkanEnabled) {
-      return RenderBackendSelection(
-        vo = "gpu",
-        gpuApi = "vulkan",
-        gpuContext = "androidvk",
-        reason =
-          if (anime4kEnabled) {
-            "Anime4K active with legacy gpu and Vulkan enabled: use gpu/vulkan"
-          } else {
-            "Vulkan enabled with legacy gpu selected: use gpu/vulkan"
-          },
-      )
-    }
-
-    return RenderBackendSelection(
-      vo = "gpu",
-      gpuApi = "opengl",
-      gpuContext = "android",
-      reason =
-        if (anime4kEnabled) {
-          "Anime4K active with legacy gpu selected: use gpu/opengl"
-        } else {
-          "gpu-next and Vulkan disabled: use gpu/opengl"
-        },
+    return RenderBackendResolver.resolve(
+      gpuNextRequested = decoderPreferences.gpuNext.get(),
+      vulkanRequested = vulkanRequested,
+      vulkanSupported = vulkanSupported,
+      anime4kActive = anime4kEnabled,
+      forceOpenGlFallback = failedVulkanPreferenceKey == rendererPreferenceKey(),
     )
+  }
+
+  /** True only when the failed initialization actually attempted a Vulkan renderer. */
+  fun shouldRetryWithOpenGl(): Boolean = pendingBackend?.gpuApi == "vulkan"
+
+  private fun initialAnime4KShaderPaths(
+    activeVo: String,
+    activeGpuApi: String,
+  ): List<String> =
+    runCatching {
+      val enabled = decoderPreferences.enableAnime4K.get()
+      val modeName = decoderPreferences.anime4kMode.get()
+      if (!enabled || modeName == "OFF") return@runCatching emptyList()
+      if (activeVo == "gpu-next" && activeGpuApi != "vulkan") {
+        Log.w(TAG, "Skipping standard Anime4K — gpu-next without Vulkan")
+        return@runCatching emptyList()
+      }
+
+      val requestedMode = runCatching { Anime4KManager.Mode.valueOf(modeName) }.getOrDefault(Anime4KManager.Mode.OFF)
+      val selection =
+        selectRuntimeStableAnime4K(
+          mode = requestedMode,
+          quality = decoderPreferences.anime4kQuality.get(),
+          context = context,
+          enableIn4k = decoderPreferences.anime4kIn4k.get(),
+        )
+      selection.reason?.let { reason -> Log.i(TAG, "Anime4K thermal guard: $reason") }
+      if (selection.mode == Anime4KManager.Mode.OFF || !anime4kManager.initialize()) {
+        return@runCatching emptyList()
+      }
+
+      anime4kManager.setPostFilters(
+        darken = decoderPreferences.anime4kDarken.get(),
+        thin = decoderPreferences.anime4kThin.get(),
+        deblur = decoderPreferences.anime4kDeblur.get(),
+      )
+      anime4kManager.getShaderPaths(selection.mode, selection.quality).also { paths ->
+        if (paths.isNotEmpty()) applyAnime4KStabilityOptions(useVulkan = activeGpuApi == "vulkan")
+      }
+    }.onFailure { error ->
+      Log.w(TAG, "Failed to prepare initial Anime4K shader chain", error)
+    }.getOrDefault(emptyList())
+
+  fun rememberOpenGlFallback() {
+    failedVulkanPreferenceKey = rendererPreferenceKey()
+  }
+
+  private fun rendererPreferenceKey(): String =
+    listOf(
+      decoderPreferences.gpuNext.get(),
+      decoderPreferences.useVulkan.get(),
+      decoderPreferences.enableAnime4K.get(),
+      decoderPreferences.anime4kMode.get(),
+    ).joinToString("|")
+
+  companion object {
+    @Volatile
+    private var failedVulkanPreferenceKey: String? = null
   }
 }

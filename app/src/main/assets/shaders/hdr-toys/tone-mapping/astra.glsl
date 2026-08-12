@@ -166,7 +166,7 @@
 
 //!BUFFER METERED
 //!VAR uint metered_max_i
-//!VAR uint metered_peak_i
+//!VAR uint metered_max_rgb
 //!VAR uint metered_min_i
 //!VAR uint metered_avg_i
 //!VAR uint metered_histogram[1024]
@@ -203,6 +203,7 @@
 
 //!BUFFER METADATA
 //!VAR float max_i
+//!VAR float max_rgb
 //!VAR float min_i
 //!VAR float avg_i
 //!VAR float input_max_i
@@ -230,7 +231,7 @@
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!SAVE METERING
-//!COMPONENTS 1
+//!COMPONENTS 2
 //!WHEN enable_metering 0 > max_pq_y 0 = * scene_max_r 0 = * scene_max_g 0 = * scene_max_b 0 = * preview_metering +
 //!DESC metering (intensity map)
 
@@ -257,9 +258,20 @@ float metering_intensity(vec3 rgb) {
     return pq_eotf_inv(y_abs);
 }
 
+float metering_max_rgb(vec3 rgb) {
+    float maximum = max(max(rgb.r, rgb.g), rgb.b);
+    float maximum_abs = clamp(maximum * reference_white, 0.0, pw);
+    return pq_eotf_inv(maximum_abs);
+}
+
 vec4 hook() {
-    float intensity = metering_intensity(HOOKED_tex(HOOKED_pos).rgb);
-    return vec4(vec3(intensity), 1.0);
+    vec3 rgb = HOOKED_tex(HOOKED_pos).rgb;
+    return vec4(
+        metering_intensity(rgb),
+        metering_max_rgb(rgb),
+        0.0,
+        1.0
+    );
 }
 
 // The metering map used to be reduced to 512x288 in a single step. At 4K that
@@ -721,8 +733,10 @@ vec4 hook() {
 void clear_metering_histogram_bin(uint index) {
     if (index < 1024u)
         metered_histogram[index] = 0u;
-    if (index == 0u)
+    if (index == 0u) {
+        metered_max_rgb = 0u;
         metered_zone_valid = 0u;
+    }
 }
 
 void hook() {
@@ -740,6 +754,7 @@ void hook() {
 //!DESC metering (histogram)
 
 shared uint shistogram[1024];
+shared uint smax_rgb;
 
 uint to_uint(float x) {
     return uint(x * 4095.0 + 0.5);
@@ -749,29 +764,40 @@ uint to_histogram_bin(float x) {
     return min(to_uint(x) >> 2u, 1023u);
 }
 
-float fetch_metering(ivec2 position) {
-    return (METERING_mul * texelFetch(METERING_raw, position, 0)).x;
+vec2 fetch_metering(ivec2 position) {
+    return (METERING_mul * texelFetch(METERING_raw, position, 0)).xy;
 }
 
-vec4 fetch_metering_quad(ivec2 position) {
-    return vec4(
-        fetch_metering(position),
-        fetch_metering(position + ivec2(1, 0)),
-        fetch_metering(position + ivec2(0, 1)),
-        fetch_metering(position + ivec2(1, 1))
-    );
+void fetch_metering_quad(
+    ivec2 position,
+    out vec4 intensities,
+    out vec4 maxima
+) {
+    vec2 sample0 = fetch_metering(position);
+    vec2 sample1 = fetch_metering(position + ivec2(1, 0));
+    vec2 sample2 = fetch_metering(position + ivec2(0, 1));
+    vec2 sample3 = fetch_metering(position + ivec2(1, 1));
+    intensities = vec4(sample0.x, sample1.x, sample2.x, sample3.x);
+    maxima = vec4(sample0.y, sample1.y, sample2.y, sample3.y);
 }
 
 void clear_workgroup_histogram(uint tid) {
     for (uint i = tid; i < 1024u; i += 256u)
         shistogram[i] = 0u;
+    if (tid == 0u)
+        smax_rgb = 0u;
 }
 
-void accumulate_workgroup_histogram(vec4 values) {
-    atomicAdd(shistogram[to_histogram_bin(values.x)], 1u);
-    atomicAdd(shistogram[to_histogram_bin(values.y)], 1u);
-    atomicAdd(shistogram[to_histogram_bin(values.z)], 1u);
-    atomicAdd(shistogram[to_histogram_bin(values.w)], 1u);
+void accumulate_workgroup_metering(vec4 intensities, vec4 maxima) {
+    atomicAdd(shistogram[to_histogram_bin(intensities.x)], 1u);
+    atomicAdd(shistogram[to_histogram_bin(intensities.y)], 1u);
+    atomicAdd(shistogram[to_histogram_bin(intensities.z)], 1u);
+    atomicAdd(shistogram[to_histogram_bin(intensities.w)], 1u);
+    atomicMax(
+        smax_rgb,
+        max(max(to_uint(maxima.x), to_uint(maxima.y)),
+            max(to_uint(maxima.z), to_uint(maxima.w)))
+    );
 }
 
 void merge_workgroup_histogram(uint tid) {
@@ -782,18 +808,22 @@ void merge_workgroup_histogram(uint tid) {
         if (count > 0u)
             atomicAdd(metered_histogram[i], count);
     }
+    if (tid == 0u)
+        atomicMax(metered_max_rgb, smax_rgb);
 }
 
 void hook() {
     ivec2 block_base = ivec2(gl_WorkGroupID.xy) * 32;
     ivec2 position = block_base + ivec2(gl_LocalInvocationID.xy) * 2;
-    vec4 values = fetch_metering_quad(position);
+    vec4 intensities;
+    vec4 maxima;
+    fetch_metering_quad(position, intensities, maxima);
     uint tid = gl_LocalInvocationIndex;
 
     clear_workgroup_histogram(tid);
     barrier();
 
-    accumulate_workgroup_histogram(values);
+    accumulate_workgroup_metering(intensities, maxima);
     barrier();
 
     merge_workgroup_histogram(tid);
@@ -992,10 +1022,9 @@ const uint METERING_ZONE_ROWS = 9u;
 const uint METERING_ZONE_COUNT = METERING_ZONE_COLUMNS * METERING_ZONE_ROWS;
 const float METERING_BLACK_PERCENTILE = 0.005;
 // A robust white point constrains automatic exposure without allowing one
-// unstable highlight sample to move the whole frame. The actual peak is
-// measured separately so the tone curve still contains every input pixel.
+// unstable highlight sample to move the whole frame. The maximum RGB channel
+// is measured separately to define the tone-curve endpoint.
 const float METERING_WHITE_PERCENTILE = 0.995;
-const float METERING_PEAK_PERCENTILE = 1.0;
 const float METERING_AVERAGE_TRIM_PERCENTILE = 0.05;
 const float METERING_MATRIX_WEIGHT_MIN = 0.50;
 const float METERING_MATRIX_WEIGHT_MAX = 0.75;
@@ -1021,7 +1050,6 @@ shared vec2 matrix_partial[METERING_REDUCTION_SIZE];
 shared float robust_global_average;
 shared uint black_bin;
 shared uint white_bin;
-shared uint peak_bin;
 shared uvec4 matrix_active_bounds;
 shared float matrix_border_confidence;
 
@@ -1387,11 +1415,6 @@ void locate_percentiles(uint tid, uint first, uvec4 counts) {
         uint(ceil(float(METERING_SAMPLE_COUNT) * METERING_WHITE_PERCENTILE)),
         1u
     );
-    uint peak_target = max(
-        uint(ceil(float(METERING_SAMPLE_COUNT) * METERING_PEAK_PERCENTILE)),
-        1u
-    );
-
     if (cumulative_before < black_target && cumulative >= black_target) {
         black_bin = find_percentile_bin(
             counts,
@@ -1408,14 +1431,6 @@ void locate_percentiles(uint tid, uint first, uvec4 counts) {
             white_target
         );
     }
-    if (cumulative_before < peak_target && cumulative >= peak_target) {
-        peak_bin = find_percentile_bin(
-            counts,
-            first,
-            cumulative_before,
-            peak_target
-        );
-    }
 }
 
 void reduce_metering_histogram() {
@@ -1426,7 +1441,6 @@ void reduce_metering_histogram() {
     if (tid == 0u) {
         black_bin = 0u;
         white_bin = METERING_HISTOGRAM_SIZE - 1u;
-        peak_bin = METERING_HISTOGRAM_SIZE - 1u;
     }
 
     scan_histogram_blocks(tid, sum_histogram_block(counts));
@@ -1464,7 +1478,6 @@ void reduce_metering_histogram() {
     if (tid == 0u) {
         metered_min_i = black_bin << 2u;
         metered_max_i = min((white_bin << 2u) + 3u, 4095u);
-        metered_peak_i = min((peak_bin << 2u) + 3u, 4095u);
     }
 
     publish_matrix_average(tid);
@@ -1807,10 +1820,10 @@ float to_float(uint x) {
 }
 
 struct MeteringMetrics {
-    // maximum is the robust white used by exposure constraints; peak is the
-    // true endpoint used by the tone curve.
+    // maximum is the robust intensity white used by exposure constraints;
+    // max_rgb is the maximum channel value used by the tone curve.
     float maximum;
-    float peak;
+    float max_rgb;
     float minimum;
     float average;
 };
@@ -1839,10 +1852,14 @@ MeteringMetrics resolve_metering_metrics() {
     else
         metrics.maximum = pq_eotf_inv(1000.0);
 
-    if (use_measured)
-        metrics.peak = to_float(metered_peak_i);
+    if (has_scene_peak)
+        metrics.max_rgb = pq_eotf_inv(
+            max(max(scene_max_rgb.r, scene_max_rgb.g), scene_max_rgb.b)
+        );
+    else if (use_measured)
+        metrics.max_rgb = to_float(metered_max_rgb);
     else
-        metrics.peak = metrics.maximum;
+        metrics.max_rgb = metrics.maximum;
 
     if (use_measured)
         metrics.minimum = to_float(metered_min_i);
@@ -2000,7 +2017,7 @@ void apply_exposure_to_range(inout MeteringMetrics metrics, float scale) {
         return;
 
     metrics.maximum = pq_eotf_inv(pq_eotf(metrics.maximum) * scale);
-    metrics.peak = pq_eotf_inv(pq_eotf(metrics.peak) * scale);
+    metrics.max_rgb = pq_eotf_inv(pq_eotf(metrics.max_rgb) * scale);
     metrics.minimum = pq_eotf_inv(pq_eotf(metrics.minimum) * scale);
 }
 
@@ -2011,13 +2028,14 @@ bool automatic_exposure_enabled(MeteringMetrics metrics) {
 }
 
 void publish_metering_metadata(MeteringMetrics metrics) {
-    max_i = metrics.peak;
+    max_i = metrics.maximum;
+    max_rgb = metrics.max_rgb;
     min_i = metrics.minimum;
     avg_i = metrics.average;
 }
 
 void publish_input_metering_metadata(MeteringMetrics metrics) {
-    input_max_i = metrics.peak;
+    input_max_i = metrics.maximum;
     input_min_i = metrics.minimum;
     input_avg_i = metrics.average;
 }
@@ -2509,7 +2527,7 @@ float f(float x, float iw, float ib, float ow, float ob) {
 float curve(float x) {
     float ow = output_white_j;
     float ob = output_black_j;
-    float iw = I_to_J(iz_eotf_inv(pq_eotf(max_i)));
+    float iw = I_to_J(iz_eotf_inv(pq_eotf(max_rgb)));
     float ib = I_to_J(iz_eotf_inv(pq_eotf(min_i)));
 
     iw = max(iw, ow);
@@ -3283,7 +3301,7 @@ float to_float(uint x) {
 
 vec4 draw_highlights(float value) {
     vec3 metrics = vec3(
-        to_float(metered_peak_i),
+        to_float(metered_max_i),
         to_float(metered_avg_i),
         to_float(metered_min_i)
     );

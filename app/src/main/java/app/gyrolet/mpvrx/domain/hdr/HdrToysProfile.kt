@@ -9,93 +9,103 @@
 
 package app.gyrolet.mpvrx.domain.hdr
 
+import app.gyrolet.mpvrx.ui.player.HdrToysRenderer
+
 enum class HdrToysProfile(
-  val configSection: String,
   val targetPrim: String,
   val targetTrc: String,
   val shaderPaths: List<String>,
+  val gpuShaderPaths: List<String>,
   val shaderOptions: List<Pair<String, String>> = emptyList(),
 ) {
   BT_2100_PQ(
-    configSection = "bt.2100-pq",
     targetPrim = "bt.2020",
     targetTrc = "pq",
     shaderPaths =
       listOf(
-        "hdr-toys/utils/clip_both.glsl",
-        "hdr-toys/transfer-function/pq_inv.glsl",
-        "hdr-toys/tone-mapping/astra.glsl",
-        "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
+        "utils/clip_both.glsl",
+        "transfer-function/pq_inv.glsl",
+        "tone-mapping/astra.glsl",
+        "gamut-mapping/bottosson.glsl",
+        "transfer-function/bt1886.glsl",
       ),
-    shaderOptions = listOf("auto_exposure_limit_positive" to "1.02"),
+    gpuShaderPaths =
+      listOf(
+        "utils/clip_both.glsl",
+        "transfer-function/pq_inv.glsl",
+        "tone-mapping/reinhard.glsl",
+        "gamut-mapping/jedypod.glsl",
+        "transfer-function/bt1886.glsl",
+      ),
+    shaderOptions = listOf("astra/auto_exposure_limit_positive" to "1.02"),
   ),
   BT_2100_HLG(
-    configSection = "bt.2100-hlg",
     targetPrim = "bt.2020",
     targetTrc = "hlg",
     shaderPaths =
       listOf(
-        "hdr-toys/utils/clip_both.glsl",
-        "hdr-toys/transfer-function/hlg_inv.glsl",
-        "hdr-toys/tone-mapping/astra.glsl",
-        "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
+        "utils/clip_both.glsl",
+        "transfer-function/hlg_inv.glsl",
+        "tone-mapping/astra.glsl",
+        "gamut-mapping/bottosson.glsl",
+        "transfer-function/bt1886.glsl",
+      ),
+    gpuShaderPaths =
+      listOf(
+        "utils/clip_both.glsl",
+        "transfer-function/hlg_inv.glsl",
+        "tone-mapping/reinhard.glsl",
+        "gamut-mapping/jedypod.glsl",
+        "transfer-function/bt1886.glsl",
       ),
   ),
   BT_2020(
-    configSection = "bt.2020",
     targetPrim = "bt.2020",
     targetTrc = "bt.1886",
     shaderPaths =
       listOf(
-        "hdr-toys/transfer-function/bt1886_inv.glsl",
-        "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
+        "transfer-function/bt1886_inv.glsl",
+        "gamut-mapping/bottosson.glsl",
+        "transfer-function/bt1886.glsl",
       ),
-  ),
-  LINEAR(
-    configSection = "linear",
-    targetPrim = "bt.2020",
-    targetTrc = "linear",
-    shaderPaths =
+    gpuShaderPaths =
       listOf(
-        "hdr-toys/utils/clip_black.glsl",
-        "hdr-toys/utils/clip_alpha.glsl",
-        "hdr-toys/tone-mapping/astra.glsl",
-        "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
-      ),
-    shaderOptions =
-      listOf(
-        "spatial_stable_iterations" to "0",
-        "temporal_stable_window" to "0",
-        "enable_metering" to "1",
+        "transfer-function/bt1886_inv.glsl",
+        "gamut-mapping/jedypod.glsl",
+        "transfer-function/bt1886.glsl",
       ),
   ),
   ;
 
-  /** Comma-separated key=value string passed to mpv's glsl-shader-opts. */
-  val shaderOptionsValue: String
-    get() = shaderOptions.joinToString(",") { (name, value) -> "$name=$value" }
-
-  /** Absolute mpv paths using the ~~/shaders/ config-dir prefix. */
-  val mpvShaderPaths: List<String>
-    get() = shaderPaths.map { path -> "$MPV_SHADER_PREFIX$path" }
+  /** Absolute mpv paths from one pinned snapshot, with a renderer-compatible profile chain. */
+  fun mpvShaderPaths(renderer: HdrToysRenderer): List<String> {
+    val paths =
+      when (renderer) {
+        HdrToysRenderer.GPU_NEXT -> shaderPaths
+        HdrToysRenderer.GPU -> gpuShaderPaths
+      }
+    return paths.map { path -> "$MPV_SHADER_PREFIX$CURRENT_TARGET_DIR/$path" }
+  }
 
   companion object {
     private const val MPV_SHADER_PREFIX = "~~/shaders/"
 
-    /** Deduplicated set of relative shader paths across all profiles. */
-    val allShaderPaths: Set<String> =
+    fun allShaderPaths(renderer: HdrToysRenderer): Set<String> =
       entries
-        .flatMap { it.shaderPaths }
+        .flatMap { profile ->
+          when (renderer) {
+            HdrToysRenderer.GPU_NEXT -> profile.shaderPaths
+            HdrToysRenderer.GPU -> profile.gpuShaderPaths
+          }
+        }
         .toSet()
 
-    /** Deduplicated set of absolute mpv shader paths across all profiles. */
-    val allMpvShaderPaths: Set<String> =
-      allShaderPaths
-        .map { path -> "$MPV_SHADER_PREFIX$path" }
-        .toSet()
+    val allShaderPaths: Set<String> =
+      entries.flatMap { profile -> profile.shaderPaths + profile.gpuShaderPaths }.toSet()
+
+    const val CURRENT_TARGET_DIR = "hdr-toys-220ba8e"
+
+    fun allMpvShaderPaths(renderer: HdrToysRenderer): Set<String> =
+      entries.flatMap { it.mpvShaderPaths(renderer) }.toSet()
   }
 }
