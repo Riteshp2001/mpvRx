@@ -27,7 +27,6 @@ import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.GlobalExceptionHandler
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.AndroidNativeCompat
-import app.gyrolet.mpvrx.ui.player.FlowAmbientController
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import `is`.xyz.mpv.FastThumbnails
@@ -80,8 +79,6 @@ class App :
       )
     }
     registerActivityLifecycleCallbacks(this)
-    FlowAmbientController.install(applicationScope)
-
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
     startIdleMpvCoreReaper()
 

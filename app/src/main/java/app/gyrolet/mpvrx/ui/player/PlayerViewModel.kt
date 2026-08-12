@@ -1286,11 +1286,12 @@ class PlayerViewModel : ViewModel(),
     syncplayManager.playbackStateProvider = { currentSyncplayPlaybackState() }
     syncplayManager.fileInfoProvider = { currentSyncplayFileInfo() }
     syncplayManager.onRemotePause = { shouldPause ->
-      viewModelScope.launch(Dispatchers.IO) {
+      viewModelScope.launch(playbackStateDispatcher) {
         val currentlyPaused = PlaybackSession.getPropertyBoolean("pause") ?: false
         if (currentlyPaused != shouldPause) {
           if (!shouldPause) {
-            withContext(Dispatchers.Main) { host.requestAudioFocus() }
+            val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
+            if (!focusGranted) return@launch
           }
           PlaybackSession.setPropertyBoolean("pause", shouldPause)
           if (shouldPause) {
@@ -1323,7 +1324,9 @@ class PlayerViewModel : ViewModel(),
     //   500 ms – paused
     viewModelScope.launch(playbackStateDispatcher) {
       while (isActive) {
-        if (!_isMpvCoreReady.value) {
+        val playbackPhase = PlaybackSession.state.value.phase
+        val hasActiveTimeline = playbackPhase == PlaybackPhase.READY || playbackPhase == PlaybackPhase.BACKGROUND
+        if (!_isMpvCoreReady.value || !hasActiveTimeline) {
           delay(250L)
           continue
         }
@@ -1432,6 +1435,7 @@ class PlayerViewModel : ViewModel(),
     // Observe volume boost cap changes to enforce limits dynamically (in PiP)
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.volumeBoostCap.changes().collect { cap ->
+        if (advancedPreferences.mpvConfOverridesAppSettings.get()) return@collect
         val maxVol = 100 + cap
         runCatching {
           PlaybackSession.setPropertyString("volume-max", maxVol.toString())
@@ -1454,6 +1458,7 @@ class PlayerViewModel : ViewModel(),
         audioPreferences.audioChannels.changes(),
       ) { _, _, _ -> }.collect {
         if (!_isMpvCoreReady.value) return@collect
+        if (advancedPreferences.mpvConfOverridesAppSettings.get()) return@collect
         applyEqualizerMpvFilters(immediate = true)
       }
     }
@@ -1464,6 +1469,7 @@ class PlayerViewModel : ViewModel(),
         Pair(duration, abLoop)
       }.collect { (duration, abLoop) ->
         if (!_isMpvCoreReady.value) return@collect
+        if (advancedPreferences.mpvConfOverridesAppSettings.get()) return@collect
         val videoDuration = duration ?: 0
         val isLoopActive = abLoop.a != null || abLoop.b != null
         val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120 || isLoopActive
@@ -1620,7 +1626,9 @@ class PlayerViewModel : ViewModel(),
       }
     }
     syncplayManager.updateFileInfo(currentSyncplayFileInfo())
-    applyEqualizerMpvFilters()
+    if (!advancedPreferences.mpvConfOverridesAppSettings.get()) {
+      applyEqualizerMpvFilters()
+    }
   }
 
   private fun currentSyncplayPlaybackState(): SyncplayPlaybackState =
@@ -2584,6 +2592,7 @@ class PlayerViewModel : ViewModel(),
 
   fun setMediaTitle(mediaTitle: String) {
     if (currentMediaTitle != mediaTitle) {
+      val mpvConfHasPriority = advancedPreferences.mpvConfOverridesAppSettings.get()
       currentMediaTitle = mediaTitle
       lastAutoSelectedMediaTitle = null
       introLookupJob?.cancel()
@@ -2593,12 +2602,18 @@ class PlayerViewModel : ViewModel(),
       _externalSubtitles.clear()
       // Reset subtitle hash when media changes.
       _videoHash.value = null
-      // Scan for previously downloaded/added subtitles
-      scanLocalSubtitles(mediaTitle)
+      // Let mpv.conf retain its automatic subtitle/track policy when requested. Subtitles added
+      // explicitly from the player remain normal user actions and still take effect.
+      if (!mpvConfHasPriority) {
+        scanLocalSubtitles(mediaTitle)
+      }
       syncplayManager.updateFileInfo(currentSyncplayFileInfo())
 
-      // Restore persisted aspect mode, while zoom and pan continue to reset per file.
-      restoreSavedVideoAspect(showUpdate = false)
+      // In config-priority mode mpv.conf owns automatic presentation defaults. Explicit aspect
+      // changes from the player UI still take effect through changeVideoAspect/setCustomAspectRatio.
+      if (!mpvConfHasPriority) {
+        restoreSavedVideoAspect(showUpdate = false)
+      }
       skippedSegmentTypes.clear()
       chapterDerivedSegments = emptyList()
       introDbSegments = emptyList()
@@ -2617,19 +2632,21 @@ class PlayerViewModel : ViewModel(),
         }
       lookupIntroSegments(mediaTitle)
 
-      // 2. Reset Video Zoom
-      if (_videoZoom.value != 0f) {
-        _videoZoom.value = 0f
-        runCatching { PlaybackSession.setPropertyDouble("video-zoom", 0.0) }
-      }
+      if (!mpvConfHasPriority) {
+        // 2. Reset Video Zoom
+        if (_videoZoom.value != 0f) {
+          _videoZoom.value = 0f
+          runCatching { PlaybackSession.setPropertyDouble("video-zoom", 0.0) }
+        }
 
-      // 3. Reset Video Pan
-      if (_videoPanX.value != 0f || _videoPanY.value != 0f) {
-        _videoPanX.value = 0f
-        _videoPanY.value = 0f
-        runCatching {
-          PlaybackSession.setPropertyDouble("video-pan-x", 0.0)
-          PlaybackSession.setPropertyDouble("video-pan-y", 0.0)
+        // 3. Reset Video Pan
+        if (_videoPanX.value != 0f || _videoPanY.value != 0f) {
+          _videoPanX.value = 0f
+          _videoPanY.value = 0f
+          runCatching {
+            PlaybackSession.setPropertyDouble("video-pan-x", 0.0)
+            PlaybackSession.setPropertyDouble("video-pan-y", 0.0)
+          }
         }
       }
       // ---------------------------------------------------
@@ -3540,21 +3557,23 @@ class PlayerViewModel : ViewModel(),
   // ==================== Playback Control ====================
 
   fun pauseUnpause() {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(playbackStateDispatcher) {
       val wasPaused = PlaybackSession.getPropertyBoolean("pause") ?: PlaybackSession.state.value.paused
       if (wasPaused) {
-        withContext(Dispatchers.Main) { host.requestAudioFocus() }
-      }
-      val isPaused = PlaybackSession.togglePause() ?: return@launch
-      syncplayManager.updatePlayerState(precisePosition.value.toDouble(), isPaused, doSeek = false)
-      if (isPaused) {
+        val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
+        if (!focusGranted) return@launch
+        PlaybackSession.setPropertyBoolean("pause", false)
+        syncplayManager.updatePlayerState(precisePosition.value.toDouble(), false, doSeek = false)
+      } else {
+        PlaybackSession.setPropertyBoolean("pause", true)
+        syncplayManager.updatePlayerState(precisePosition.value.toDouble(), true, doSeek = false)
         withContext(Dispatchers.Main) { host.abandonAudioFocus() }
       }
     }
   }
 
   fun pause() {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch(playbackStateDispatcher) {
       PlaybackSession.setPropertyBoolean("pause", true)
       syncplayManager.updatePlayerState(precisePosition.value.toDouble(), true, doSeek = false)
       withContext(Dispatchers.Main) { host.abandonAudioFocus() }
@@ -3562,8 +3581,9 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun unpause() {
-    viewModelScope.launch(Dispatchers.IO) {
-      withContext(Dispatchers.Main) { host.requestAudioFocus() }
+    viewModelScope.launch(playbackStateDispatcher) {
+      val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
+      if (!focusGranted) return@launch
       PlaybackSession.setPropertyBoolean("pause", false)
       syncplayManager.updatePlayerState(precisePosition.value.toDouble(), false, doSeek = false)
     }

@@ -19,6 +19,7 @@ class AdvancedPreferences(
 ) {
   val mpvConfStorageUri = preferenceStore.getString("mpv_conf_storage_location_uri")
   val mpvConf = preferenceStore.getString("mpv.conf")
+  val mpvConfOverridesAppSettings = preferenceStore.getBoolean("mpv_conf_overrides_app_settings", false)
   val inputConf = preferenceStore.getString("input.conf")
 
   val verboseLogging = preferenceStore.getBoolean("verbose_logging", BuildConfig.BUILD_TYPE != "release")

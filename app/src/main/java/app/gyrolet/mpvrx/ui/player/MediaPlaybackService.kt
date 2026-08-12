@@ -233,6 +233,7 @@ class MediaPlaybackService :
   private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
   private var audioFocusRequest: AudioFocusRequest? = null
   private var ownsAudioFocus = false
+  private var hasAudioFocus = false
   @Volatile
   private var handingBackToActivity = false
   private var resumeAfterFocusGain = false
@@ -254,7 +255,9 @@ class MediaPlaybackService :
           abandonAudioOwnership()
         }
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-          resumeAfterFocusGain = PlaybackSession.getPropertyBoolean("pause") == false
+          hasAudioFocus = false
+          resumeAfterFocusGain =
+            resumeAfterFocusGain || PlaybackSession.getPropertyBoolean("pause") == false
           PlaybackSession.setPropertyBoolean("pause", true)
         }
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
@@ -266,6 +269,8 @@ class MediaPlaybackService :
           }
         }
         AudioManager.AUDIOFOCUS_GAIN -> {
+          if (!ownsAudioFocus) return@OnAudioFocusChangeListener
+          hasAudioFocus = true
           restoreDuckedVolume()
           if (resumeAfterFocusGain) PlaybackSession.setPropertyBoolean("pause", false)
           resumeAfterFocusGain = false
@@ -560,7 +565,10 @@ class MediaPlaybackService :
     // Do not request focus and bounce it back to PlayerActivity; that focus ping-pong is exactly
     // what can turn a notification tap into an unexpected pause.
     if (activityForeground || handingBackToActivity) return true
-    if (ownsAudioFocus) return true
+    if (ownsAudioFocus) {
+      if (!hasAudioFocus) resumeAfterFocusGain = true
+      return hasAudioFocus
+    }
     val request =
       audioFocusRequest ?: AudioFocusRequest
         .Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -573,8 +581,9 @@ class MediaPlaybackService :
         ).setOnAudioFocusChangeListener(audioFocusChangeListener)
         .build()
         .also { audioFocusRequest = it }
-    ownsAudioFocus = audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-    return ownsAudioFocus
+    hasAudioFocus = audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    ownsAudioFocus = hasAudioFocus
+    return hasAudioFocus
   }
 
   private fun abandonAudioOwnership() {
@@ -585,6 +594,7 @@ class MediaPlaybackService :
     }
     audioFocusRequest?.let { request -> audioManager.abandonAudioFocusRequest(request) }
     ownsAudioFocus = false
+    hasAudioFocus = false
     resumeAfterFocusGain = false
   }
 

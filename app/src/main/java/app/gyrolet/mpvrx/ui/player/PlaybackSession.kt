@@ -18,6 +18,7 @@ import android.util.Log
 import android.view.Surface
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
+import app.gyrolet.mpvrx.utils.media.fileExtension
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -126,7 +127,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private var initialized = false
   private var applicationContext: Context? = null
   private var desiredVideoOutput = "gpu"
-  private var activeRendererConfigurationKey: String? = null
+  private var activeCoreConfigurationKey: String? = null
+  private var activeMpvConfOverridesAppSettings = false
   private var attachedSurfaceOwner: Any? = null
   private var activeNetworkStream: NetworkStreamRegistration? = null
   private val auxiliaryNetworkStreams = linkedMapOf<String, NetworkStreamRegistration>()
@@ -158,22 +160,24 @@ object PlaybackSession : MPVLib.EventObserver {
     context: Context,
     configDir: String,
     cacheDir: String,
-    rendererConfigurationKey: String,
+    coreConfigurationKey: String,
+    mpvConfOverridesAppSettings: Boolean,
     initOptions: () -> Unit,
     postInitOptions: () -> Unit,
     observeProperties: () -> Unit,
   ): Result<Boolean> =
     runCatching {
       nativeLock.withLock {
-        if (initialized && activeRendererConfigurationKey == rendererConfigurationKey) {
+        if (initialized && activeCoreConfigurationKey == coreConfigurationKey) {
           return@withLock false
         }
         if (initialized) {
-          Log.i(TAG, "Renderer configuration changed; recreating the libmpv core")
+          Log.i(TAG, "Playback core configuration changed; recreating the libmpv core")
           destroyLocked()
         }
 
         applicationContext = context.applicationContext
+        activeMpvConfOverridesAppSettings = mpvConfOverridesAppSettings
         observedProperties.clear()
         suspendedVideoTrack = null
         desiredPaused = true
@@ -187,6 +191,8 @@ object PlaybackSession : MPVLib.EventObserver {
           MPVLib.setOptionString("config-dir", configDir)
           MPVLib.setOptionString("gpu-shader-cache-dir", cacheDir)
           MPVLib.setOptionString("icc-cache-dir", cacheDir)
+          // Keep app defaults before initialization. libmpv then parses the native mpv.conf once
+          // during init, preserving its profiles, includes and quoting without runtime replay.
           initOptions()
           MPVLib.init()
           postInitOptions()
@@ -196,14 +202,15 @@ object PlaybackSession : MPVLib.EventObserver {
           reobserveTrackedProperties()
           observeProperties()
           initialized = true
-          activeRendererConfigurationKey = rendererConfigurationKey
+          activeCoreConfigurationKey = coreConfigurationKey
           updateState { it.copy(phase = PlaybackPhase.IDLE, paused = true, error = null) }
           true
         } catch (error: Throwable) {
           runCatching { MPVLib.removeObserver(this) }
           runCatching { MPVLib.destroy() }
           initialized = false
-          activeRendererConfigurationKey = null
+          activeCoreConfigurationKey = null
+          activeMpvConfOverridesAppSettings = false
           suspendedVideoTrack = null
           desiredPaused = true
           clearSeekAudioGuardLocked(restoreMute = false)
@@ -277,6 +284,26 @@ object PlaybackSession : MPVLib.EventObserver {
     desiredVideoOutput = videoOutput
     withCore(Unit, allowInitializing = true) {
       MPVLib.setOptionString("vo", videoOutput)
+    }
+  }
+
+  /**
+   * Restores the Android renderer contract after mpv.conf has been parsed.
+   *
+   * These three options cannot follow the optional config-priority policy: surface binding,
+   * Vulkan fallback and renderer-specific shader compatibility were all resolved from them before
+   * core creation. Ordinary playback options remain untouched here.
+   */
+  fun enforceRendererContract(
+    videoOutput: String,
+    gpuApi: String,
+    gpuContext: String,
+  ) {
+    desiredVideoOutput = videoOutput
+    withCore(Unit, allowInitializing = true) {
+      MPVLib.setPropertyString("vo", videoOutput)
+      MPVLib.setPropertyString("gpu-api", gpuApi)
+      MPVLib.setPropertyString("gpu-context", gpuContext)
     }
   }
 
@@ -361,7 +388,8 @@ object PlaybackSession : MPVLib.EventObserver {
     observedProperties.clear()
     resetAmbientShaderTrackingLocked()
     initialized = false
-    activeRendererConfigurationKey = null
+    activeCoreConfigurationKey = null
+    activeMpvConfOverridesAppSettings = false
     updateState { PlaybackSessionState(phase = PlaybackPhase.UNINITIALIZED) }
   }
 
@@ -521,13 +549,26 @@ object PlaybackSession : MPVLib.EventObserver {
           .joinToString(",") { (name, value) -> "$name: ${value.replace(",", "\\,")}" }
       MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
       MPVLib.setPropertyString("http-header-fields", headerFields)
-      MPVLib.setPropertyString("force-media-title", "")
+      if (!activeMpvConfOverridesAppSettings) {
+        MPVLib.setPropertyString("force-media-title", "")
+      }
 
       // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
       // render Surface is attached, explicitly make vid=auto file-local to this new load. This
       // prevents a preceding vid=no from producing "No video or audio streams selected" on
       // video-only files while preserving video suppression for true background/no-Surface loads.
-      val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes"
+      val loadOptions =
+        buildList {
+          add("pause=yes")
+          if (selectVideoForNewFile) add("vid=auto")
+          if (resolvedItem.requiresMatroskaProbeFallback()) {
+            // Some otherwise playable MKV files have very large/corrupt leading metadata. Scope
+            // the expensive, permissive probe to local Matroska files instead of slowing every
+            // stream or weakening format detection globally.
+            add("demuxer-lavf-probesize=52428800")
+            add("demuxer-lavf-probescore=1")
+          }
+        }.joinToString(",")
       MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
       propBoolean.emit("pause", false)
       generation
@@ -900,6 +941,16 @@ object PlaybackSession : MPVLib.EventObserver {
             schedulePlaybackTransitionAudioGuardRestoreLocked(PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS)
             true
           }
+          MPVLib.MpvEvent.MPV_EVENT_END_FILE -> {
+            // A failed/finished file no longer has readable timeline properties. Publishing IDLE
+            // prevents UI polling from repeatedly querying unavailable time-pos/duration values.
+            val current = _state.value
+            if (current.activeGeneration == current.generation) {
+              updateState { it.copy(phase = PlaybackPhase.IDLE, activeGeneration = 0L, paused = true) }
+              propBoolean.emit("pause", true)
+            }
+            true
+          }
           MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
             releaseActiveNetworkStream()
             releaseAuxiliaryNetworkStreams()
@@ -1148,6 +1199,14 @@ object PlaybackSession : MPVLib.EventObserver {
     if (!item.playableUri.startsWith("content://")) return ResolvedPlayable(item.playableUri)
     val context = applicationContext ?: return ResolvedPlayable(item.playableUri)
     return ResolvedPlayable(Uri.parse(item.playableUri).openContentFd(context) ?: item.playableUri)
+  }
+
+  private fun PlaybackItem.requiresMatroskaProbeFallback(): Boolean {
+    if (networkSource != null || playableUri.startsWith("http://") || playableUri.startsWith("https://")) {
+      return false
+    }
+    if (mimeType.equals("video/x-matroska", ignoreCase = true)) return true
+    return sequenceOf(originalUri, playableUri, title.orEmpty()).any { it.fileExtension() == "mkv" }
   }
 
   private fun releaseActiveNetworkStream() {

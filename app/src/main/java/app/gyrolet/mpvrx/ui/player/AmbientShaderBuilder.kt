@@ -39,9 +39,7 @@ enum class AmbientVisualMode(
 ) {
   GLOW("Glow"),
   FRAME_EXTEND("Frame Extend"),
-  // Keep the enum key for compatibility with existing saved preferences. The old YouTube-style
-  // average-color implementation has been replaced by the Flow-style palette scorer below.
-  YOUTUBE("Flow"),
+  YOUTUBE("YouTube"),
 }
 
 sealed interface AmbientShaderSpec {
@@ -278,6 +276,14 @@ object AmbientShaderBuilder {
       buildSpiralTapTable("FRAME_GLOW_TAPS", glowSamples) { _, indexNorm -> indexNorm }
     }
 
+  private val youtubeTapTable: String by lazy {
+    val taps =
+      (1..8).joinToString(",\n") { i ->
+        "    vec2(${glslFloat(halton(i, 2))}, ${glslFloat(halton(i, 3))})"
+      }
+    "const vec2 YOUTUBE_TAPS[8] = vec2[8](\n$taps\n);"
+  }
+
   fun build(spec: AmbientShaderSpec): String =
     when (spec) {
       is AmbientGlowShaderSpec -> buildGlow(spec)
@@ -285,117 +291,89 @@ object AmbientShaderBuilder {
       is AmbientYouTubeShaderSpec -> buildYouTube(spec)
     }
 
-  /**
-   * Flow palette renderer fed by the serialized low-cadence sampler.
-   *
-   * The old YouTube mode averaged the frame, which naturally collapses mixed or dark scenes toward
-   * grey/brown. FlowAmbientController now scores patch-averaged candidates infrequently and this
-   * single OUTPUT pass owns the continuous transition and final SDR/Linear-HDR conversion.
-   */
   private fun buildYouTube(spec: AmbientYouTubeShaderSpec): String =
     """
-//!PARAM PTS
-//!TYPE float
-0.0
-
-//!PARAM mpvrx_flow_external
-//!TYPE float
-//!MINIMUM 0.0
-//!MAXIMUM 1.0
-0.0
-
-//!PARAM mpvrx_flow_prev_r
-//!TYPE float
-0.18
-//!PARAM mpvrx_flow_prev_g
-//!TYPE float
-0.18
-//!PARAM mpvrx_flow_prev_b
-//!TYPE float
-0.18
-//!PARAM mpvrx_flow_target_r
-//!TYPE float
-0.18
-//!PARAM mpvrx_flow_target_g
-//!TYPE float
-0.18
-//!PARAM mpvrx_flow_target_b
-//!TYPE float
-0.18
-//!PARAM mpvrx_flow_start
-//!TYPE float
-0.0
-
 //!HOOK OUTPUT
 //!BIND HOOKED
-//!DESC Flow Palette Ambient Mode
+//!DESC YouTube-Style Ambient Mode
 
-#define SCALE_X          ${spec.context.scaleX}
-#define SCALE_Y          ${spec.context.scaleY}
-#define OPACITY          ${spec.shared.opacity}
-#define VIGNETTE_STR     ${spec.shared.vignetteStrength}
-#define IS_LINEAR_HDR    ${if (spec.context.isLinearHdr) 1 else 0}
-#define FLOW_TRANSITION_SEC 1.30
-
-precision mediump float;
+#define SCALE_X       ${spec.context.scaleX}
+#define SCALE_Y       ${spec.context.scaleY}
+// IS_LINEAR_HDR=1 → Vulkan gpu-next linear swapchain (target-colorspace-hint=yes).
+// HOOKED_tex values are raw linear-light where 1.0 = 203 nits.  We must work in
+// perceptual space (sqrt ≈ γ0.5) for colour averaging so bright highlights do not
+// overwhelm dark colours, then convert back to linear and scale to ~0.08 linear
+// (≈16 nits) for a visible but non-blinding ambient glow.
+#define IS_LINEAR_HDR ${if (spec.context.isLinearHdr) 1 else 0}
 
 #if IS_LINEAR_HDR
+vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
 vec3 to_linear(vec3 c)     { return c * c; }
 #endif
 
-float flow_luma(vec3 rgb) {
-    return dot(rgb, vec3(0.2126, 0.7152, 0.0722));
-}
+// 8 Halton(2,3) positions precomputed in Kotlin — better spatial coverage than
+// 20 pseudo-random scatter points, 60% fewer texture fetches per ambient pixel.
+${youtubeTapTable}
+
+// Colour math is mediump (fp16) — cheaper on mobile, no perceptual quality loss.
+// UV coordinate variables below are explicitly highp (fp32): on 1080p+ screens
+// mediump step size (~0.001) is coarser than a pixel (~0.0004), causing the
+// video_uv remapping to jump in 2-3 pixel blocks and damage fine video lines.
+precision mediump float;
 
 vec4 hook() {
     highp vec2 uv = HOOKED_pos;
     highp vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
+    // Return video pixel if inside video bounds
     if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
         video_uv.y >= 0.0 && video_uv.y <= 1.0) {
         return HOOKED_tex(video_uv);
     }
 
-    vec3 ambient_color;
-    if (mpvrx_flow_external >= 0.5) {
-        vec3 previous_color = vec3(mpvrx_flow_prev_r, mpvrx_flow_prev_g, mpvrx_flow_prev_b);
-        vec3 target_color = vec3(mpvrx_flow_target_r, mpvrx_flow_target_g, mpvrx_flow_target_b);
-        float linear_t = clamp((PTS - mpvrx_flow_start) / FLOW_TRANSITION_SEC, 0.0, 1.0);
-        float transition_t = linear_t * linear_t * (3.0 - 2.0 * linear_t);
-        ambient_color = mix(previous_color, target_color, transition_t);
-    } else {
-        // Stable fallback: never re-enter the former per-frame winner-take-all palette path.
-        ambient_color = vec3(0.18);
+    // Sample 8 well-distributed positions across the entire video frame.
+    // In Linear HDR mode: convert to perceptual space before averaging so that
+    // bright linear highlights do not dominate dark colours in the blend.
+    vec3 avg_color = vec3(0.0);
+    for (int i = 0; i < 8; i++) {
+#if IS_LINEAR_HDR
+        avg_color += to_perceptual(HOOKED_tex(YOUTUBE_TAPS[i]).rgb);
+#else
+        avg_color += HOOKED_tex(YOUTUBE_TAPS[i]).rgb;
+#endif
     }
+    avg_color /= 8.0;
 
-    // Preserve the selected hue while giving the glow a modest extra colourfulness. The palette
-    // scorer already avoids dull swatches, so this is intentionally gentler than brute-force boost.
-    float lum = flow_luma(ambient_color);
-    ambient_color = clamp(mix(vec3(lum), ambient_color, 1.16), 0.0, 1.0);
+    // Boost saturation slightly for more vibrant glow
+    float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
+    avg_color = mix(vec3(luma), avg_color, 1.3); // 30% saturation boost
 
 #if IS_LINEAR_HDR
-    // The palette calculations above happen in perceptual space. Return to linear light for the
-    // gpu-next HDR pipeline and keep roughly the same ambient luminance budget as the existing mode.
-    ambient_color = to_linear(ambient_color) * 0.40;
+    // Reference white in gpu-next linear light = 1.0 = 203 nits.
+    // 0.08 was too conservative (~2-5 nits after edge_fade): invisible on OLED.
+    // 0.40 targets ~70-85 nits at the video edge for a mid-bright scene:
+    //   avg perceptual ~0.65 → to_linear = 0.42 → 0.42 * 0.40 * 203 ≈ 34 nits base,
+    //   before edge falloff.  Adjust down if content is too bright on your display.
+    avg_color = to_linear(avg_color) * 0.40;
 #else
-    ambient_color *= 0.34;
+    // SDR / hdr-toys mode: values are already gamma-encoded, scale normally.
+    avg_color *= 0.30;
 #endif
 
+    // Smooth fade based on distance from video edge
     highp vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
     float dist = length(video_uv - edge_uv);
-    float fade = exp(-dist * 2.35);
-    ambient_color *= fade;
+    float fade = exp(-dist * 2.5);
+    avg_color *= fade;
 
-    float vig_r = length(uv - 0.5) * 2.0;
-    ambient_color *= mix(1.0, smoothstep(1.3, 0.1, vig_r), VIGNETTE_STR);
-    ambient_color *= OPACITY;
-
-    // Cheap deterministic dither prevents visible banding in large flat glow areas.
+    // Debanding via Interleaved Gradient Noise (Jimenez 2014).
+    // Replaces the previous sin-based hash() — uses only fract + dot,
+    // eliminating the last GPU sin() call from this shader.
     highp vec2 screen_pos = floor(uv * HOOKED_size);
     float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
-    ambient_color = clamp(ambient_color + (ign - 0.5) * 0.004, 0.0, 1.0);
+    avg_color = clamp(avg_color + (ign - 0.5) * 0.004, 0.0, 1.0);
 
-    return vec4(ambient_color, 1.0);
+    return vec4(avg_color, 1.0);
 }
     """.trimIndent()
 
