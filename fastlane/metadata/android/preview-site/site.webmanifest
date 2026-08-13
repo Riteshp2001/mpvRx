@@ -1,0 +1,18 @@
+{
+  "name": "mpvRx Preview Builds",
+  "short_name": "mpvRx Preview",
+  "description": "Official preview APKs for the mpvRx Android media player.",
+  "start_url": "/mpvRx/",
+  "scope": "/mpvRx/",
+  "display": "standalone",
+  "background_color": "#f3efe7",
+  "theme_color": "#6f4ee8",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "324x324",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

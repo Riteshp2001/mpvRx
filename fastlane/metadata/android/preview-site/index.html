@@ -4,406 +4,654 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#090b10">
-  <meta name="description" content="Official mpvRx Preview builds from the latest successful master CI run.">
-  <title>mpvRx Preview Builds</title>
+  <title>mpvRx Preview Builds for Android</title>
+  <meta name="description" content="Download verified Standard and Fongmi preview APKs for the mpvRx Android media player.">
+  <meta name="robots" content="noindex,follow">
+  <meta name="theme-color" content="#6f4ee8">
+  <link rel="canonical" href="https://riteshp2001.github.io/mpvRx/">
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="site.webmanifest">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="mpvRx">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="mpvRx Preview Builds for Android">
+  <meta property="og:description" content="Verified Standard and Fongmi preview APKs, published directly from GitHub Actions.">
+  <meta property="og:url" content="https://riteshp2001.github.io/mpvRx/">
+  <meta property="og:image" content="https://riteshp2001.github.io/mpvRx/icon.png">
+  <meta property="og:image:width" content="324">
+  <meta property="og:image:height" content="324">
+  <meta property="og:image:alt" content="mpvRx app logo">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="mpvRx Preview Builds for Android">
+  <meta name="twitter:description" content="Verified Standard and Fongmi preview APKs from GitHub Actions.">
+  <meta name="twitter:image" content="https://riteshp2001.github.io/mpvRx/icon.png">
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "mpvRx Preview Builds",
+      "url": "https://riteshp2001.github.io/mpvRx/",
+      "description": "Official preview APKs for the mpvRx Android media player."
+    }
+  </script>
+
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #090b10;
-      --card: #11151d;
-      --card2: #161b25;
-      --line: rgba(255, 255, 255, .09);
-      --text: #f7f8fb;
-      --muted: #9aa4b3;
-      --accent: #9db5ff;
-      --ok: #6ed6a0;
-      --warn: #efc978
+      color-scheme: light;
+      --paper: #f3efe7;
+      --paper-raised: #fbf8f1;
+      --ink: #19161f;
+      --ink-soft: #5e5867;
+      --violet: #6f4ee8;
+      --violet-deep: #4e32b6;
+      --violet-soft: #e6ddff;
+      --acid: #c9f45a;
+      --line: color-mix(in srgb, var(--ink) 16%, transparent);
+      --shadow: 0 22px 60px rgba(34, 24, 52, .12);
+      --ease-out: cubic-bezier(.22, 1, .36, 1);
     }
 
-    * {
-      box-sizing: border-box
-    }
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
-      background: radial-gradient(circle at 20% -10%, rgba(105, 138, 255, .18), transparent 34rem), var(--bg);
-      color: var(--text);
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+      min-width: 320px;
+      background:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px),
+        var(--paper);
+      background-size: 48px 48px;
+      color: var(--ink);
+      font-family: Aptos, "Segoe UI Variable Text", "Helvetica Neue", sans-serif;
+      text-rendering: optimizeLegibility;
     }
 
-    a {
-      color: inherit
+    a { color: inherit; }
+
+    button, a { -webkit-tap-highlight-color: transparent; }
+
+    :focus-visible {
+      outline: 3px solid var(--violet);
+      outline-offset: 4px;
     }
 
-    .shell {
-      width: min(1160px, calc(100% - 32px));
-      margin: auto
+    .page {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
     }
 
-    .top {
-      height: 72px;
+    .topbar {
       display: flex;
+      min-height: 86px;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--line)
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
     }
 
     .brand {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 11px;
-      font-weight: 800
+      gap: 12px;
+      text-decoration: none;
     }
 
-    .logo {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
+    .brand-mark {
+      width: 48px;
+      height: 48px;
       display: grid;
       place-items: center;
-      background: linear-gradient(145deg, #f3f6ff, #9db5ff);
-      color: #111522;
-      font-weight: 900
-    }
-
-    .brand small {
-      display: block;
-      color: var(--muted);
-      font-size: 10px;
-      letter-spacing: .11em;
-      text-transform: uppercase;
-      margin-top: 2px
-    }
-
-    .repo {
+      overflow: hidden;
       border: 1px solid var(--line);
-      border-radius: 11px;
-      padding: 9px 12px;
-      text-decoration: none;
-      color: #cbd2dd;
-      font-size: 13px
+      border-radius: 14px;
+      background: var(--ink);
+      box-shadow: 5px 5px 0 var(--violet-soft);
     }
+
+    .brand-mark img { width: 100%; height: 100%; object-fit: contain; }
+
+    .brand-name { font-size: 19px; font-weight: 850; letter-spacing: -.03em; }
+
+    .brand-name small {
+      display: block;
+      margin-top: 2px;
+      color: var(--ink-soft);
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .navlinks { display: flex; align-items: center; gap: 9px; }
+
+    .navlink {
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--paper-raised) 76%, transparent);
+      font-size: 13px;
+      font-weight: 750;
+      text-decoration: none;
+      transition: transform 180ms var(--ease-out), background 180ms ease, border-color 180ms ease;
+    }
+
+    .navlink:hover { transform: translateY(-2px); border-color: var(--violet); background: var(--paper-raised); }
 
     .hero {
-      padding: 74px 0 36px;
       display: grid;
-      grid-template-columns: 1.25fr .75fr;
-      gap: 46px;
-      align-items: end
+      grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr);
+      gap: clamp(32px, 7vw, 92px);
+      align-items: center;
+      padding: clamp(64px, 10vw, 122px) 0 clamp(56px, 8vw, 96px);
     }
 
-    .eyebrow {
+    .kicker {
       display: flex;
-      gap: 9px;
       align-items: center;
-      color: #c2d0ff;
+      gap: 10px;
       font-size: 11px;
       font-weight: 850;
-      letter-spacing: .12em;
-      text-transform: uppercase
+      letter-spacing: .15em;
+      text-transform: uppercase;
     }
 
-    .dot {
-      width: 8px;
-      height: 8px;
+    .live-dot {
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
-      background: var(--ok);
-      box-shadow: 0 0 0 5px rgba(110, 214, 160, .09)
+      background: var(--violet);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--violet) 13%, transparent);
+      animation: breathe 2.4s ease-in-out infinite;
+    }
+
+    h1, h2 {
+      font-family: Charter, "Bitstream Charter", "Iowan Old Style", serif;
+      font-weight: 700;
     }
 
     h1 {
-      font-size: clamp(42px, 7vw, 78px);
-      line-height: .98;
-      letter-spacing: -.055em;
-      margin: 18px 0 20px
+      max-width: 820px;
+      margin: 22px 0 24px;
+      font-size: clamp(52px, 8vw, 102px);
+      line-height: .91;
+      letter-spacing: -.065em;
     }
+
+    h1 em { color: var(--violet); font-style: italic; font-weight: 600; }
 
     .lead {
-      color: var(--muted);
-      font-size: 17px;
+      max-width: 650px;
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: clamp(16px, 2vw, 19px);
       line-height: 1.65;
-      max-width: 680px
     }
 
-    .panel {
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      padding: 20px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .018));
-      box-shadow: 0 24px 70px rgba(0, 0, 0, .3)
-    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 
-    .label {
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: .1em;
-      text-transform: uppercase
-    }
-
-    .build {
-      font-size: 30px;
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 48px;
+      padding: 0 18px;
+      border: 1px solid var(--ink);
+      border-radius: 8px;
+      font-size: 13px;
       font-weight: 850;
-      letter-spacing: -.04em;
-      margin: 8px 0 18px
+      text-decoration: none;
+      transition: transform 150ms var(--ease-out), box-shadow 180ms var(--ease-out), background 180ms ease;
     }
 
-    .meta {
+    .button:hover { transform: translateY(-3px); box-shadow: 5px 5px 0 var(--ink); }
+    .button:active { transform: translateY(0) scale(.98); box-shadow: 2px 2px 0 var(--ink); }
+    .button.primary { background: var(--violet); color: #fcfaff; }
+    .button.secondary { background: var(--paper-raised); }
+
+    .build-ticket {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      min-height: 390px;
+      padding: 30px;
+      border-radius: 4px 28px 4px 28px;
+      background: var(--ink);
+      color: #f8f4ff;
+      box-shadow: 14px 14px 0 var(--violet-soft), var(--shadow);
+    }
+
+    .build-ticket::after {
+      content: "Rx";
+      position: absolute;
+      z-index: -1;
+      right: -18px;
+      bottom: -55px;
+      color: rgba(130, 96, 255, .24);
+      font-family: Charter, "Bitstream Charter", serif;
+      font-size: 220px;
+      font-style: italic;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .ticket-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+    .ticket-label { font-size: 10px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+
+    .channel {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: var(--acid);
+      color: #20250e;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .build-number {
+      margin: 40px 0 36px;
+      font-family: Charter, "Bitstream Charter", serif;
+      font-size: clamp(60px, 9vw, 96px);
+      font-weight: 700;
+      letter-spacing: -.06em;
+      line-height: .8;
+    }
+
+    .build-number.loading { opacity: .46; animation: loading 1.25s ease-in-out infinite alternate; }
+
+    .build-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: rgba(255,255,255,.18); }
+
+    .build-meta div { min-width: 0; padding: 14px; background: var(--ink); }
+    .build-meta span { display: block; margin-bottom: 5px; color: #a9a0b4; font-size: 9px; letter-spacing: .11em; text-transform: uppercase; }
+    .build-meta strong { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .build-meta a { text-decoration-color: var(--violet-soft); text-underline-offset: 3px; }
+
+    .warning-strip {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: start;
+      margin-bottom: clamp(64px, 9vw, 112px);
+      padding: 18px 0;
+      border-block: 1px solid var(--line);
+    }
+
+    .warning-strip strong { color: var(--violet-deep); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .warning-strip p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.55; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 1fr minmax(260px, 430px);
+      gap: 32px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+
+    .section-index { display: block; margin-bottom: 9px; color: var(--violet-deep); font-size: 11px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+    h2 { margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: .96; letter-spacing: -.045em; }
+    .section-head p { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
+
+    .choice-guide {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px
+      margin-bottom: 28px;
+      border-block: 1px solid var(--line);
     }
 
-    .meta div {
-      padding: 11px;
-      border: 1px solid rgba(255, 255, 255, .06);
-      background: rgba(0, 0, 0, .17);
-      border-radius: 11px
-    }
+    .choice-guide div { padding: 20px 24px 20px 0; }
+    .choice-guide div + div { padding-left: 24px; border-left: 1px solid var(--line); }
+    .choice-guide strong { display: block; margin-bottom: 6px; font-size: 13px; }
+    .choice-guide span { color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
 
-    .meta span {
-      display: block;
-      color: var(--muted);
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      margin-bottom: 5px
-    }
-
-    .meta strong {
-      font-size: 12px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis
-    }
-
-    .section {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 18px;
-      margin: 32px 0 16px
-    }
-
-    .section h2 {
-      font-size: 24px;
-      margin: 0;
-      letter-spacing: -.03em
-    }
-
-    .section p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 12px
-    }
-
-    .grid {
+    .downloads {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 13px
+      gap: 14px;
+      min-height: 260px;
     }
 
-    .card {
-      min-height: 218px;
-      padding: 19px;
+    .download-card {
+      --card-bg: var(--paper-raised);
+      display: flex;
+      min-height: 270px;
+      flex-direction: column;
+      padding: 22px;
       border: 1px solid var(--line);
-      border-radius: 18px;
-      background: linear-gradient(180deg, var(--card2), var(--card));
+      border-radius: 18px 4px 18px 4px;
+      background: var(--card-bg);
+      box-shadow: 0 1px 0 rgba(255,255,255,.55) inset;
+      contain: content;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: card-in 480ms var(--ease-out) forwards;
+      animation-delay: calc(var(--card-index, 0) * 70ms);
+      transition: transform 220ms var(--ease-out), border-color 180ms ease, box-shadow 220ms var(--ease-out);
+    }
+
+    .download-card:hover { transform: translateY(-6px); border-color: color-mix(in srgb, var(--violet) 58%, transparent); box-shadow: var(--shadow); }
+    .download-card.recommended { grid-column: span 2; --card-bg: var(--violet); color: #fffaff; border-color: var(--violet); }
+    .download-card.fongmi { background: var(--ink); color: #f9f5ff; }
+
+    .card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pill { padding: 6px 8px; border: 1px solid currentColor; border-radius: 999px; font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .format { color: var(--ink-soft); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .recommended .format, .fongmi .format { color: rgba(255,255,255,.68); }
+    .download-card h3 { margin: 28px 0 5px; font-family: Charter, "Bitstream Charter", serif; font-size: 28px; letter-spacing: -.035em; }
+    .target { color: var(--violet-deep); font-size: 11px; font-weight: 850; letter-spacing: .07em; }
+    .recommended .target, .fongmi .target { color: var(--acid); }
+    .card-description { margin: 14px 0 24px; color: var(--ink-soft); font-size: 13px; line-height: 1.55; }
+    .recommended .card-description, .fongmi .card-description { color: rgba(255,255,255,.72); }
+
+    .file-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 14px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); font-size: 10px; }
+    .sha-button { padding: 0; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+    .sha-button.copied { color: var(--violet-deep); transform: scale(1.04); }
+    .recommended .sha-button.copied, .fongmi .sha-button.copied { color: var(--acid); }
+
+    .download-link {
       display: flex;
-      flex-direction: column
-    }
-
-    .card.recommended {
-      border-color: rgba(157, 181, 255, .35)
-    }
-
-    .card h3 {
-      margin: 14px 0 3px;
-      font-size: 18px
-    }
-
-    .abi {
-      font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace;
-      color: #c3d0ff
-    }
-
-    .desc {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.55;
-      margin: 10px 0 16px
-    }
-
-    .file {
-      display: flex;
+      align-items: center;
       justify-content: space-between;
-      color: var(--muted);
-      font-size: 10px;
-      margin-top: auto;
-      margin-bottom: 11px
-    }
-
-    .download {
-      display: flex;
-      justify-content: center;
+      margin-top: 14px;
+      padding: 13px 14px;
+      border: 1px solid var(--ink);
+      border-radius: 7px;
+      background: var(--ink);
+      color: #fffaff;
+      font-size: 12px;
+      font-weight: 900;
       text-decoration: none;
-      background: #edf2ff;
-      color: #10141e;
-      border-radius: 11px;
-      padding: 11px;
-      font-size: 12px;
-      font-weight: 850
+      transition: transform 140ms var(--ease-out), background 180ms ease, color 180ms ease;
     }
 
-    .trust {
-      margin: 16px 0 52px;
-      padding: 17px 19px;
+    .download-link:hover { transform: translateX(3px); background: var(--acid); color: #1f240f; }
+    .recommended .download-link, .fongmi .download-link { background: #fffaff; color: var(--ink); }
+    .download-link::after { content: "↓"; font-size: 17px; }
+
+    .loading-card { min-height: 270px; border: 1px solid var(--line); border-radius: 18px 4px; background: linear-gradient(100deg, var(--paper-raised) 30%, var(--violet-soft) 50%, var(--paper-raised) 70%); background-size: 220% 100%; animation: skeleton 1.4s ease infinite; }
+
+    .provenance {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 18px;
+      align-items: center;
+      margin: 28px 0 clamp(70px, 10vw, 120px);
+      padding: 22px;
       border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(255, 255, 255, .018)
+      background: color-mix(in srgb, var(--paper-raised) 82%, transparent);
     }
 
-    .trust strong {
-      font-size: 13px
+    .seal { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; background: var(--acid); font-size: 20px; }
+    .provenance strong { display: block; margin-bottom: 3px; font-size: 13px; }
+    .provenance p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+    .provenance code { font-size: 10px; color: var(--violet-deep); }
+
+    footer { padding: 28px 0 44px; border-top: 1px solid var(--line); }
+    .footer-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--ink-soft); font-size: 11px; }
+    .footer-row strong { color: var(--ink); }
+
+    .reveal { opacity: 0; transform: translateY(18px); animation: reveal 680ms var(--ease-out) forwards; }
+    .delay-1 { animation-delay: 80ms; }
+    .delay-2 { animation-delay: 160ms; }
+    .delay-3 { animation-delay: 240ms; }
+
+    @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+    @keyframes card-in { to { opacity: 1; transform: translateY(0); } }
+    @keyframes breathe { 50% { opacity: .52; transform: scale(.82); } }
+    @keyframes loading { to { opacity: .75; } }
+    @keyframes skeleton { to { background-position: -220% 0; } }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --paper: #16131b;
+        --paper-raised: #201b27;
+        --ink: #f2edf7;
+        --ink-soft: #b8afc1;
+        --violet: #8b6cff;
+        --violet-deep: #b9a7ff;
+        --violet-soft: #31264b;
+        --line: rgba(242, 237, 247, .14);
+        --shadow: 0 22px 60px rgba(0, 0, 0, .32);
+      }
+      .brand-mark, .build-ticket, .fongmi { background: #0f0c13; }
+      .build-meta div { background: #0f0c13; }
+      .button.primary { color: #fffaff; }
+      .download-link { background: #f2edf7; color: #17131c; }
+      .recommended .download-link, .fongmi .download-link { background: #fffaff; color: #17131c; }
     }
 
-    .trust p {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
-      margin: 4px 0 0
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .build-ticket { min-height: 340px; }
+      .downloads { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
-    footer {
-      border-top: 1px solid var(--line);
-      padding: 25px 0 38px;
-      color: var(--muted);
-      font-size: 11px
+    @media (max-width: 640px) {
+      .page { width: min(100% - 24px, 1180px); }
+      .topbar { min-height: 76px; }
+      .brand-name small { display: none; }
+      .navlink:first-child { display: none; }
+      .hero { padding-top: 52px; }
+      h1 { font-size: clamp(48px, 15vw, 70px); }
+      .build-ticket { padding: 22px; }
+      .section-head { grid-template-columns: 1fr; gap: 16px; }
+      .choice-guide { grid-template-columns: 1fr; }
+      .choice-guide div { padding: 17px 0; }
+      .choice-guide div + div { padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
+      .downloads { grid-template-columns: 1fr; }
+      .download-card.recommended { grid-column: auto; }
+      .provenance { grid-template-columns: auto 1fr; }
+      .provenance code { display: none; }
+      .footer-row { align-items: flex-start; flex-direction: column; }
     }
 
-    .foot {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px
-    }
-
-    .warning {
-      color: var(--warn)
-    }
-
-    @media(max-width:860px) {
-      .hero {
-        grid-template-columns: 1fr;
-        padding-top: 48px
-      }
-
-      .grid {
-        grid-template-columns: repeat(2, 1fr)
-      }
-    }
-
-    @media(max-width:600px) {
-      .grid {
-        grid-template-columns: 1fr
-      }
-
-      .hero {
-        padding-top: 38px
-      }
-
-      .section,
-      .foot {
-        align-items: flex-start;
-        flex-direction: column
-      }
-
-      .repo {
-        font-size: 0
-      }
-
-      .repo:after {
-        content: "GitHub";
-        font-size: 12px
-      }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
   </style>
 </head>
 
 <body>
-  <div class="shell">
-    <header class="top">
-      <div class="brand">
-        <div class="logo">Rx</div>
-        <div>mpvRx<small>Preview Builds</small></div>
-      </div>
-      <a class="repo" href="https://github.com/Riteshp2001/mpvRx" target="_blank" rel="noreferrer">View repository</a>
+  <div class="page">
+    <header class="topbar reveal">
+      <a class="brand" href="./" aria-label="mpvRx Preview home">
+        <span class="brand-mark"><img src="icon.png" alt="" width="48" height="48"></span>
+        <span class="brand-name">mpvRx<small>Android preview builds</small></span>
+      </a>
+      <nav class="navlinks" aria-label="External links">
+        <a class="navlink" href="https://github.com/Riteshp2001/mpvRx/releases" target="_blank" rel="noreferrer">Stable releases</a>
+        <a class="navlink" href="https://github.com/Riteshp2001/mpvRx" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
     </header>
+
     <main>
       <section class="hero">
         <div>
-          <div class="eyebrow"><span class="dot"></span>Latest successful master CI build</div>
-          <h1>Preview builds.<br>Clearly verified.</h1>
-          <p class="lead">Download the latest mpvRx Preview APK for your Android architecture. Every file on this page
-            comes from the published Preview Build workflow and includes its build number, source commit and SHA-256
-            checksum.</p>
+          <div class="kicker reveal delay-1"><span class="live-dot" aria-hidden="true"></span>Built from the latest selected source</div>
+          <h1 class="reveal delay-2">The next mpvRx,<br><em>ready to test.</em></h1>
+          <p class="lead reveal delay-3">Official Standard and Fongmi preview APKs for Android, signed and published directly from GitHub Actions with a traceable commit and SHA-256 checksum.</p>
+          <div class="hero-actions reveal delay-3">
+            <a class="button primary" href="#downloads">Choose a build <span aria-hidden="true">↓</span></a>
+            <a class="button secondary" href="https://github.com/Riteshp2001/mpvRx/releases" target="_blank" rel="noreferrer">Use stable instead</a>
+          </div>
         </div>
-        <aside class="panel">
-          <div class="label">Current preview</div>
-          <div id="build" class="build">Loading…</div>
-          <div class="meta">
+
+        <aside class="build-ticket reveal delay-2" aria-label="Current preview details">
+          <div class="ticket-head">
+            <span class="ticket-label">Current preview</span>
+            <span class="channel">Live manifest</span>
+          </div>
+          <div id="build" class="build-number loading">r—</div>
+          <div class="build-meta">
             <div><span>Commit</span><strong id="commit">—</strong></div>
             <div><span>Actions run</span><strong id="run">—</strong></div>
             <div><span>Published</span><strong id="published">—</strong></div>
-            <div><span>Channel</span><strong>Preview · master</strong></div>
+            <div><span>Flavor set</span><strong id="flavor">—</strong></div>
           </div>
         </aside>
       </section>
-      <section>
-        <div class="section">
-          <h2>Choose your architecture</h2>
-          <p>Most modern Android devices use <strong>arm64-v8a</strong>. Use Universal if unsure.</p>
-        </div>
-        <div id="downloads" class="grid"></div>
-      </section>
-      <div class="trust"><strong>Build provenance and integrity included</strong>
-        <p>The page is regenerated from the latest published Preview workflow. Every APK card shows the exact file size
-          and SHA-256 digest so the build can be identified independently.</p>
+
+      <div class="warning-strip reveal delay-3" role="note">
+        <strong>Preview channel</strong>
+        <p>These builds may be unstable. Back up important settings or choose a stable release for everyday playback.</p>
       </div>
+
+      <section id="downloads" aria-labelledby="downloads-title">
+        <div class="section-head">
+          <div>
+            <span class="section-index">01 / Downloads</span>
+            <h2 id="downloads-title">Pick the build that fits.</h2>
+          </div>
+          <p>Standard is the default choice. Fongmi is a universal alternate mpv core. If you are unsure about CPU architecture, choose Universal.</p>
+        </div>
+
+        <div class="choice-guide" aria-label="Build flavor guide">
+          <div><strong>Standard</strong><span>The regular mpvRx core, available as Universal and architecture-specific APKs.</span></div>
+          <div><strong>Fongmi</strong><span>An alternate Vulkan-capable mpv core packaged as one Universal APK.</span></div>
+        </div>
+
+        <div id="download-grid" class="downloads" aria-live="polite" aria-busy="true">
+          <div class="loading-card" aria-hidden="true"></div>
+          <div class="loading-card" aria-hidden="true"></div>
+          <div class="loading-card" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <aside class="provenance">
+        <span class="seal" aria-hidden="true">✓</span>
+        <div><strong>Build provenance included</strong><p>Each card reports the published file size and exact SHA-256 digest from the workflow manifest.</p></div>
+        <code>latest.json</code>
+      </aside>
     </main>
+
     <footer>
-      <div class="foot"><span>mpvRx Preview Builds · GitHub Pages</span><span class="warning">Preview builds may be
-          unstable. Stable releases remain available on GitHub Releases.</span></div>
+      <div class="footer-row">
+        <span><strong>mpvRx</strong> · Feature-rich Android media player powered by libmpv.</span>
+        <span>AGPL-3.0 · No ads · No trackers</span>
+      </div>
     </footer>
   </div>
+
   <script>
-    const info = {
-      "arm64-v8a": ["ARM 64-bit", "Recommended", "Best choice for most modern Android phones, tablets and TVs."],
-      "universal": ["Universal", "Universal", "Includes all supported ABIs and works when you are unsure which architecture to choose."],
-      "armeabi-v7a": ["ARM 32-bit", "Legacy", "For older 32-bit ARM Android hardware."],
-      "x86_64": ["x86 64-bit", "Emulator", "For 64-bit x86 Android emulators and compatible devices."],
-      "x86": ["x86 32-bit", "Legacy", "For older 32-bit x86 Android environments."]
+    const buildInfo = {
+      "arm64-v8a": { title: "ARM 64-bit", badge: "Recommended", target: "STANDARD · ARM64", description: "Best for most modern Android phones, tablets, and TVs." },
+      "universal": { title: "Universal", badge: "All architectures", target: "STANDARD · UNIVERSAL", description: "Includes every supported ABI. Choose this when you are unsure." },
+      "fongmi": { title: "Fongmi", badge: "Alternate core", target: "FONGMI · UNIVERSAL", description: "Universal APK using the Vulkan-capable Fongmi mpv library." },
+      "armeabi-v7a": { title: "ARM 32-bit", badge: "Legacy", target: "STANDARD · ARM32", description: "For older 32-bit ARM Android hardware." },
+      "x86_64": { title: "x86 64-bit", badge: "Emulator", target: "STANDARD · X86_64", description: "For 64-bit x86 Android emulators and compatible devices." },
+      "x86": { title: "x86 32-bit", badge: "Legacy", target: "STANDARD · X86", description: "For older 32-bit x86 Android environments." }
     };
-    const size = n => { if (!n) return "—"; const u = ["B", "KB", "MB", "GB"]; let i = 0, v = n; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ } return `${v.toFixed(i ? 1 : 0)} ${u[i]}` };
-    const short = s => s ? `${s.slice(0, 10)}…${s.slice(-8)}` : "—";
-    fetch("./latest.json", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("manifest"); return r.json() }).then(m => {
-      document.getElementById("build").textContent = `r${m.commit_count}`;
-      document.getElementById("commit").textContent = (m.commit_sha || "").slice(0, 7);
-      const run = document.getElementById("run"); run.innerHTML = m.run_url ? `<a href="${m.run_url}" target="_blank" rel="noreferrer">#${m.run_number}</a>` : `#${m.run_number}`;
-      document.getElementById("published").textContent = new Date(m.published_at).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      const root = document.getElementById("downloads");
-      const order = ["arm64-v8a", "universal", "armeabi-v7a", "x86_64", "x86"];
-      order.forEach(abi => {
-        const a = (m.assets || []).find(x => x.abi === abi); if (!a) return;
-        const [title, badge, desc] = info[abi] || [abi, "Build", "Preview APK"];
-        const card = document.createElement("article"); card.className = "card" + (abi === "arm64-v8a" ? " recommended" : "");
-        card.innerHTML = `<div class="label">${badge}</div><h3>${title}</h3><div class="abi">${abi}</div><p class="desc">${desc}</p><div class="file"><span>${size(a.size)}</span><span title="${a.sha256}">SHA ${short(a.sha256)}</span></div><a class="download" href="${a.browser_download_url}">Download APK</a>`;
-        root.appendChild(card);
+
+    const order = ["arm64-v8a", "universal", "fongmi", "armeabi-v7a", "x86_64", "x86"];
+    const formatSize = bytes => {
+      if (!bytes) return "Unknown size";
+      const units = ["B", "KB", "MB", "GB"];
+      let value = bytes;
+      let unit = 0;
+      while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit += 1; }
+      return `${value.toFixed(unit ? 1 : 0)} ${units[unit]}`;
+    };
+    const shortHash = hash => hash ? `${hash.slice(0, 8)}…${hash.slice(-6)}` : "Unavailable";
+    const safeFlavorLabel = value => ({ both: "Standard + Fongmi", standard: "Standard", fongmi: "Fongmi" }[value] || "Selected builds");
+
+    function createDownloadCard(asset, index) {
+      const key = asset.abi;
+      const info = buildInfo[key] || { title: key, badge: "Preview", target: key.toUpperCase(), description: "Android preview APK." };
+      const card = document.createElement("article");
+      card.className = `download-card${key === "arm64-v8a" ? " recommended" : ""}${key === "fongmi" ? " fongmi" : ""}`;
+      card.style.setProperty("--card-index", index);
+
+      const top = document.createElement("div");
+      top.className = "card-top";
+      top.innerHTML = `<span class="pill">${info.badge}</span><span class="format">APK</span>`;
+
+      const title = document.createElement("h3");
+      title.textContent = info.title;
+      const target = document.createElement("div");
+      target.className = "target";
+      target.textContent = info.target;
+      const description = document.createElement("p");
+      description.className = "card-description";
+      description.textContent = info.description;
+
+      const meta = document.createElement("div");
+      meta.className = "file-meta";
+      const fileSize = document.createElement("span");
+      fileSize.textContent = formatSize(asset.size);
+      const hash = document.createElement("button");
+      hash.type = "button";
+      hash.className = "sha-button";
+      hash.textContent = `SHA ${shortHash(asset.sha256)}`;
+      hash.title = "Copy full SHA-256 checksum";
+      hash.addEventListener("click", async () => {
+        if (!asset.sha256) return;
+        try {
+          await navigator.clipboard.writeText(asset.sha256);
+          hash.textContent = "Checksum copied";
+          hash.classList.add("copied");
+          window.setTimeout(() => { hash.textContent = `SHA ${shortHash(asset.sha256)}`; hash.classList.remove("copied"); }, 1400);
+        } catch (_) {
+          hash.textContent = asset.sha256;
+        }
       });
-    }).catch(() => {
-      document.getElementById("build").textContent = "No preview published";
-      document.getElementById("downloads").innerHTML = '<article class="card"><h3>Preview unavailable</h3><p class="desc">Run the Preview Build workflow or wait for the next successful master CI build to publish this page.</p></article>';
-    });
+      meta.append(fileSize, hash);
+
+      const download = document.createElement("a");
+      download.className = "download-link";
+      download.href = asset.browser_download_url;
+      download.textContent = "Download APK";
+      download.setAttribute("aria-label", `Download ${info.title} preview APK`);
+
+      card.append(top, title, target, description, meta, download);
+      return card;
+    }
+
+    fetch("./latest.json", { cache: "no-store" })
+      .then(response => { if (!response.ok) throw new Error("Manifest unavailable"); return response.json(); })
+      .then(manifest => {
+        const build = document.getElementById("build");
+        build.textContent = `r${manifest.commit_count}`;
+        build.classList.remove("loading");
+        document.getElementById("commit").textContent = (manifest.commit_sha || "").slice(0, 7) || "Unknown";
+        document.getElementById("published").textContent = new Date(manifest.published_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+        document.getElementById("flavor").textContent = safeFlavorLabel(manifest.selected_flavor);
+
+        const run = document.getElementById("run");
+        if (manifest.run_url) {
+          const link = document.createElement("a");
+          link.href = manifest.run_url;
+          link.target = "_blank";
+          link.rel = "noreferrer";
+          link.textContent = `#${manifest.run_number}`;
+          run.replaceChildren(link);
+        } else {
+          run.textContent = `#${manifest.run_number || "—"}`;
+        }
+
+        const grid = document.getElementById("download-grid");
+        const assets = order.map(key => (manifest.assets || []).find(asset => asset.abi === key)).filter(Boolean);
+        grid.replaceChildren(...assets.map((asset, index) => createDownloadCard(asset, index)));
+        grid.setAttribute("aria-busy", "false");
+      })
+      .catch(() => {
+        const build = document.getElementById("build");
+        build.textContent = "Offline";
+        build.classList.remove("loading");
+        const grid = document.getElementById("download-grid");
+        const message = document.createElement("article");
+        message.className = "download-card";
+        message.innerHTML = "<h3>Preview unavailable</h3><p class=\"card-description\">Run the Preview Build workflow or use the latest stable GitHub release.</p>";
+        grid.replaceChildren(message);
+        grid.setAttribute("aria-busy", "false");
+      });
   </script>
 </body>
 

@@ -6,6 +6,16 @@ on:
       - master
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_flavor:
+        description: APK flavor to build
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - standard
+          - fongmi
 
 permissions:
   contents: read
@@ -14,11 +24,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  SELECTED_FLAVOR: ${{ inputs.build_flavor || 'both' }}
+
 jobs:
   build:
-    name: Build standard APKs
+    name: Build all APK flavors
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -44,17 +57,25 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build standard release APKs
-        run: ./gradlew assembleStandardRelease --stacktrace --no-daemon
+      - name: Build selected release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          tasks=()
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            tasks+=(assembleStandardRelease)
+          fi
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            tasks+=(assembleFongmiRelease)
+          fi
+          ./gradlew "${tasks[@]}" --stacktrace --no-daemon
 
       - name: Sign APKs when signing secrets are available
         shell: bash
         run: |
           set -euo pipefail
-          release_dir="app/build/outputs/apk/standard/release"
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
-          test -d "$release_dir"
           test -x "$apksigner"
 
           if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" ]]; then
@@ -70,13 +91,13 @@ jobs:
           printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
           trap 'rm -f release.keystore' EXIT
 
-          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-          for abi in "${architectures[@]}"; do
-            unsigned="$release_dir/app-standard-${abi}-release-unsigned.apk"
-            signed="$release_dir/app-standard-${abi}-release.apk"
+          sign_apk() {
+            local unsigned="$1"
+            local signed="$2"
+            local label="$3"
             if [[ ! -f "$unsigned" ]]; then
-              echo "Missing expected $abi release APK: $unsigned"
-              find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              echo "Missing expected $label APK: $unsigned"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
 
@@ -89,22 +110,61 @@ jobs:
               "$unsigned"
             "$apksigner" verify --verbose "$signed"
             rm -f "$unsigned"
-          done
+          }
 
-      - name: Verify expected architecture outputs
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            release_dir="app/build/outputs/apk/standard/release"
+            test -d "$release_dir"
+            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+            for abi in "${architectures[@]}"; do
+              sign_apk \
+                "$release_dir/app-standard-${abi}-release-unsigned.apk" \
+                "$release_dir/app-standard-${abi}-release.apk" \
+                "standard $abi release"
+            done
+          fi
+
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            flavor="fongmi"
+            flavor_dir="app/build/outputs/apk/fongmi/release"
+            test -d "$flavor_dir"
+            sign_apk \
+              "$flavor_dir/app-${flavor}-universal-release-unsigned.apk" \
+              "$flavor_dir/app-${flavor}-universal-release.apk" \
+              "$flavor universal release"
+          fi
+
+      - name: Verify expected flavor outputs
         shell: bash
         run: |
           set -euo pipefail
-          release_dir="app/build/outputs/apk/standard/release"
-          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-          for abi in "${architectures[@]}"; do
-            if ! compgen -G "$release_dir/app-standard-${abi}-release*.apk" >/dev/null; then
-              echo "No release APK found for $abi"
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            release_dir="app/build/outputs/apk/standard/release"
+            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+            for abi in "${architectures[@]}"; do
+              if ! compgen -G "$release_dir/app-standard-${abi}-release*.apk" >/dev/null; then
+                echo "No standard release APK found for $abi"
+                exit 1
+              fi
+            done
+          fi
+
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            flavor="fongmi"
+            flavor_dir="app/build/outputs/apk/fongmi/release"
+            if ! compgen -G "$flavor_dir/app-${flavor}-universal-release*.apk" >/dev/null; then
+              echo "No universal release APK found for $flavor"
               exit 1
             fi
-          done
+            if find "$flavor_dir" -maxdepth 1 -type f -name "app-${flavor}-*-release*.apk" ! -name "app-${flavor}-universal-release*.apk" | grep -q .; then
+              echo "$flavor produced an unexpected ABI-specific APK"
+              find "$flavor_dir" -maxdepth 1 -type f -name '*.apk' -print
+              exit 1
+            fi
+          fi
 
       - name: Upload arm64-v8a APK
+        if: ${{ env.SELECTED_FLAVOR == 'both' || env.SELECTED_FLAVOR == 'standard' }}
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-arm64-v8a-release-${{ env.SHORT_SHA }}
@@ -114,6 +174,7 @@ jobs:
           compression-level: 0
 
       - name: Upload armeabi-v7a APK
+        if: ${{ env.SELECTED_FLAVOR == 'both' || env.SELECTED_FLAVOR == 'standard' }}
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-armeabi-v7a-release-${{ env.SHORT_SHA }}
@@ -123,6 +184,7 @@ jobs:
           compression-level: 0
 
       - name: Upload universal APK
+        if: ${{ env.SELECTED_FLAVOR == 'both' || env.SELECTED_FLAVOR == 'standard' }}
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-universal-release-${{ env.SHORT_SHA }}
@@ -132,6 +194,7 @@ jobs:
           compression-level: 0
 
       - name: Upload x86 APK
+        if: ${{ env.SELECTED_FLAVOR == 'both' || env.SELECTED_FLAVOR == 'standard' }}
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-x86-release-${{ env.SHORT_SHA }}
@@ -141,10 +204,21 @@ jobs:
           compression-level: 0
 
       - name: Upload x86_64 APK
+        if: ${{ env.SELECTED_FLAVOR == 'both' || env.SELECTED_FLAVOR == 'standard' }}
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-x86_64-release-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/standard/release/app-standard-x86_64-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload Fongmi universal APK
+        if: ${{ env.SELECTED_FLAVOR == 'both' || env.SELECTED_FLAVOR == 'fongmi' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-fongmi-release-${{ env.SHORT_SHA }}
+          path: app/build/outputs/apk/fongmi/release/app-fongmi-universal-release*.apk
           if-no-files-found: error
           retention-days: 14
           compression-level: 0

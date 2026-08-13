@@ -2,6 +2,16 @@ name: Preview Build
 
 on:
   workflow_dispatch:
+    inputs:
+      build_flavor:
+        description: APK flavor to publish
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - standard
+          - fongmi
 
 permissions:
   contents: read
@@ -12,11 +22,14 @@ concurrency:
   group: mpvrx-preview-pages
   cancel-in-progress: true
 
+env:
+  SELECTED_FLAVOR: ${{ inputs.build_flavor }}
+
 jobs:
   build-preview:
     name: Build preview APKs
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout preview source
@@ -57,14 +70,23 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build preview APKs
-        run: ./gradlew assembleStandardPreview --stacktrace --no-daemon
+      - name: Build selected preview APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          tasks=()
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            tasks+=(assembleStandardPreview)
+          fi
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            tasks+=(assembleFongmiPreview)
+          fi
+          ./gradlew "${tasks[@]}" --stacktrace --no-daemon
 
       - name: Sign and verify preview APKs
         shell: bash
         run: |
           set -euo pipefail
-          preview_dir="app/build/outputs/apk/standard/preview"
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
           if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" || -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
@@ -72,18 +94,17 @@ jobs:
             exit 1
           fi
 
-          test -d "$preview_dir"
           test -x "$apksigner"
           printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
           trap 'rm -f release.keystore' EXIT
 
-          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-          for abi in "${architectures[@]}"; do
-            unsigned="$preview_dir/app-standard-${abi}-preview-unsigned.apk"
-            signed="$preview_dir/app-standard-${abi}-preview.apk"
+          sign_apk() {
+            local unsigned="$1"
+            local signed="$2"
+            local label="$3"
             if [[ ! -f "$unsigned" ]]; then
-              echo "Missing expected $abi preview APK: $unsigned"
-              find "$preview_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              echo "Missing expected $label APK: $unsigned"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
 
@@ -96,7 +117,29 @@ jobs:
               "$unsigned"
             "$apksigner" verify --verbose "$signed"
             rm -f "$unsigned"
-          done
+          }
+
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            preview_dir="app/build/outputs/apk/standard/preview"
+            test -d "$preview_dir"
+            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+            for abi in "${architectures[@]}"; do
+              sign_apk \
+                "$preview_dir/app-standard-${abi}-preview-unsigned.apk" \
+                "$preview_dir/app-standard-${abi}-preview.apk" \
+                "standard $abi preview"
+            done
+          fi
+
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            flavor="fongmi"
+            flavor_dir="app/build/outputs/apk/fongmi/preview"
+            test -d "$flavor_dir"
+            sign_apk \
+              "$flavor_dir/app-${flavor}-universal-preview-unsigned.apk" \
+              "$flavor_dir/app-${flavor}-universal-preview.apk" \
+              "$flavor universal preview"
+          fi
 
       - name: Stage GitHub Pages preview site
         env:
@@ -107,6 +150,8 @@ jobs:
           rm -rf site
           mkdir -p site/downloads
           cp fastlane/metadata/android/preview-site/index.html site/index.html
+          cp fastlane/metadata/android/en-US/images/icon.png site/icon.png
+          cp fastlane/metadata/android/preview-site/site.webmanifest site/site.webmanifest
           touch site/.nojekyll
 
           python3 - <<'PY'
@@ -116,7 +161,6 @@ jobs:
           import shutil
           from pathlib import Path
 
-          source_dir = Path("app/build/outputs/apk/standard/preview")
           site_dir = Path("site")
           downloads_dir = site_dir / "downloads"
           base_url = os.environ["SITE_BASE_URL"].rstrip("/")
@@ -126,21 +170,33 @@ jobs:
           run_id = int(os.environ["SOURCE_RUN_ID"])
           run_number = int(os.environ["SOURCE_RUN_NUMBER"])
           run_url = os.environ["SOURCE_RUN_URL"]
+          selected_flavor = os.environ["SELECTED_FLAVOR"]
 
-          architectures = ["universal", "arm64-v8a", "armeabi-v7a", "x86", "x86_64"]
+          builds = []
+          if selected_flavor in {"both", "standard"}:
+              builds.extend([
+                  ("standard", "universal", "universal"),
+                  ("standard", "arm64-v8a", "arm64-v8a"),
+                  ("standard", "armeabi-v7a", "armeabi-v7a"),
+                  ("standard", "x86", "x86"),
+                  ("standard", "x86_64", "x86_64"),
+              ])
+          if selected_flavor in {"both", "fongmi"}:
+              builds.append(("fongmi", "universal", "fongmi"))
           assets = []
 
-          for abi in architectures:
-              source = source_dir / f"app-standard-{abi}-preview.apk"
+          for flavor, output, public_name in builds:
+              source_dir = Path("app/build/outputs/apk") / flavor / "preview"
+              source = source_dir / f"app-{flavor}-{output}-preview.apk"
               if not source.is_file():
-                  raise SystemExit(f"Missing signed APK for {abi}: {source}")
+                  raise SystemExit(f"Missing signed APK for {public_name}: {source}")
 
-              name = f"mpvRx-preview-r{commit_count}-{abi}.apk"
+              name = f"mpvRx-preview-r{commit_count}-{public_name}.apk"
               destination = downloads_dir / name
               shutil.copy2(source, destination)
 
               assets.append({
-                  "abi": abi,
+                  "abi": public_name,
                   "browser_download_url": f"{base_url}/downloads/{name}",
                   "name": name,
                   "size": destination.stat().st_size,
@@ -165,6 +221,7 @@ jobs:
               "run_url": run_url,
               "source_branch": os.environ["SOURCE_BRANCH"],
               "source_workflow": "Preview Build",
+              "selected_flavor": selected_flavor,
               "pages_url": base_url + "/",
           }
 

@@ -12,7 +12,7 @@ jobs:
   release-for-github:
     name: Tagged preview release for GitHub
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -42,32 +42,35 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build preview APKs
-        run: ./gradlew assembleStandardPreview --stacktrace --no-daemon
+        run: >-
+          ./gradlew
+          assembleStandardPreview
+          assembleFongmiPreview
+          --stacktrace
+          --no-daemon
 
       - name: Sign and verify preview APKs
         shell: bash
         run: |
           set -euo pipefail
-          preview_dir="app/build/outputs/apk/standard/preview"
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
           if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" || -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
             echo "Tagged preview releases require all signing secrets."
             exit 1
           fi
-          test -d "$preview_dir"
           test -x "$apksigner"
 
           printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
           trap 'rm -f release.keystore' EXIT
 
-          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-          for abi in "${architectures[@]}"; do
-            unsigned="$preview_dir/app-standard-${abi}-preview-unsigned.apk"
-            signed="$preview_dir/app-standard-${abi}-preview.apk"
+          sign_apk() {
+            local unsigned="$1"
+            local signed="$2"
+            local label="$3"
             if [[ ! -f "$unsigned" ]]; then
-              echo "Missing expected preview APK for $abi: $unsigned"
-              find "$preview_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              echo "Missing expected $label APK: $unsigned"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
 
@@ -80,7 +83,24 @@ jobs:
               "$unsigned"
             "$apksigner" verify --verbose "$signed"
             rm -f "$unsigned"
+          }
+
+          preview_dir="app/build/outputs/apk/standard/preview"
+          test -d "$preview_dir"
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
+            sign_apk \
+              "$preview_dir/app-standard-${abi}-preview-unsigned.apk" \
+              "$preview_dir/app-standard-${abi}-preview.apk" \
+              "standard $abi preview"
           done
+
+          flavor_dir="app/build/outputs/apk/fongmi/preview"
+          test -d "$flavor_dir"
+          sign_apk \
+            "$flavor_dir/app-fongmi-universal-preview-unsigned.apk" \
+            "$flavor_dir/app-fongmi-universal-preview.apk" \
+            "fongmi universal preview"
 
       - name: Stage pre-release assets and checksums
         shell: bash
@@ -98,6 +118,12 @@ jobs:
             cp "$src" "$dst"
             sha256sum "$dst" | tee -a checksums.txt
           done
+
+          src="app/build/outputs/apk/fongmi/preview/app-fongmi-universal-preview.apk"
+          dst="preview/mpvRx-preview-fongmi-${VERSION_TAG}.apk"
+          test -f "$src"
+          cp "$src" "$dst"
+          sha256sum "$dst" | tee -a checksums.txt
 
       - name: Prepare pre-release notes
         shell: bash
@@ -141,5 +167,6 @@ jobs:
             preview/mpvRx-preview-armeabi-v7a-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-x86-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-x86_64-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-fongmi-${{ env.VERSION_TAG }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

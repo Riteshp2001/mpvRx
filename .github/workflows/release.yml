@@ -10,15 +10,27 @@ on:
         description: Tag to release (for example v2.1.0)
         required: true
         type: string
+      build_flavor:
+        description: APK flavor to release
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - standard
+          - fongmi
 
 permissions:
   contents: write
+
+env:
+  SELECTED_FLAVOR: ${{ inputs.build_flavor || 'both' }}
 
 jobs:
   release-for-github:
     name: Release for GitHub
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -52,33 +64,41 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build standard release APKs
-        run: ./gradlew assembleStandardRelease --stacktrace --no-daemon
+      - name: Build selected release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          tasks=()
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            tasks+=(assembleStandardRelease)
+          fi
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            tasks+=(assembleFongmiRelease)
+          fi
+          ./gradlew "${tasks[@]}" --stacktrace --no-daemon
 
       - name: Sign and verify release APKs
         shell: bash
         run: |
           set -euo pipefail
-          release_dir="app/build/outputs/apk/standard/release"
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
           if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" || -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
             echo "Stable releases require all signing secrets."
             exit 1
           fi
-          test -d "$release_dir"
           test -x "$apksigner"
 
           printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
           trap 'rm -f release.keystore' EXIT
 
-          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-          for abi in "${architectures[@]}"; do
-            unsigned="$release_dir/app-standard-${abi}-release-unsigned.apk"
-            signed="$release_dir/app-standard-${abi}-release.apk"
+          sign_apk() {
+            local unsigned="$1"
+            local signed="$2"
+            local label="$3"
             if [[ ! -f "$unsigned" ]]; then
-              echo "Missing expected release APK for $abi: $unsigned"
-              find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print || true
+              echo "Missing expected $label APK: $unsigned"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
 
@@ -91,23 +111,56 @@ jobs:
               "$unsigned"
             "$apksigner" verify --verbose "$signed"
             rm -f "$unsigned"
-          done
+          }
+
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            release_dir="app/build/outputs/apk/standard/release"
+            test -d "$release_dir"
+            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+            for abi in "${architectures[@]}"; do
+              sign_apk \
+                "$release_dir/app-standard-${abi}-release-unsigned.apk" \
+                "$release_dir/app-standard-${abi}-release.apk" \
+                "standard $abi release"
+            done
+          fi
+
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            flavor="fongmi"
+            flavor_dir="app/build/outputs/apk/fongmi/release"
+            test -d "$flavor_dir"
+            sign_apk \
+              "$flavor_dir/app-${flavor}-universal-release-unsigned.apk" \
+              "$flavor_dir/app-${flavor}-universal-release.apk" \
+              "$flavor universal release"
+          fi
 
       - name: Stage release assets and checksums
         shell: bash
         run: |
           set -euo pipefail
-          release_dir="app/build/outputs/apk/standard/release"
-          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          mkdir -p release-assets
           : > checksums.txt
 
-          for abi in "${architectures[@]}"; do
-            src="$release_dir/app-standard-${abi}-release.apk"
-            dst="mpvRx-${abi}-${VERSION_TAG}.apk"
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
+            release_dir="app/build/outputs/apk/standard/release"
+            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+            for abi in "${architectures[@]}"; do
+              src="$release_dir/app-standard-${abi}-release.apk"
+              dst="release-assets/mpvRx-${abi}-${VERSION_TAG}.apk"
+              test -f "$src"
+              cp "$src" "$dst"
+              sha256sum "$dst" | tee -a checksums.txt
+            done
+          fi
+
+          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
+            src="app/build/outputs/apk/fongmi/release/app-fongmi-universal-release.apk"
+            dst="release-assets/mpvRx-fongmi-${VERSION_TAG}.apk"
             test -f "$src"
             cp "$src" "$dst"
             sha256sum "$dst" | tee -a checksums.txt
-          done
+          fi
 
       - name: Prepare release notes
         shell: bash
@@ -145,11 +198,6 @@ jobs:
           draft: false
           prerelease: false
           fail_on_unmatched_files: true
-          files: |
-            mpvRx-universal-${{ env.VERSION_TAG }}.apk
-            mpvRx-arm64-v8a-${{ env.VERSION_TAG }}.apk
-            mpvRx-armeabi-v7a-${{ env.VERSION_TAG }}.apk
-            mpvRx-x86-${{ env.VERSION_TAG }}.apk
-            mpvRx-x86_64-${{ env.VERSION_TAG }}.apk
+          files: release-assets/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
