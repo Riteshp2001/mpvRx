@@ -18,6 +18,7 @@ import android.view.KeyEvent
 import androidx.core.view.WindowInsetsCompat
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -222,8 +223,8 @@ class MPVView(
     val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
     PlaybackSession.setOptionString("msg-level", "all=$logLevel")
 
-    PlaybackSession.setPropertyBoolean("keep-open", true)
-    PlaybackSession.setPropertyBoolean("input-default-bindings", true)
+    PlaybackSession.setOptionString("keep-open", "yes")
+    PlaybackSession.setOptionString("input-default-bindings", "yes")
 
     PlaybackSession.setOptionString("tls-verify", "yes")
     PlaybackSession.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
@@ -246,6 +247,19 @@ class MPVView(
     // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
     PlaybackSession.setOptionString("hls-bitrate", "no")
     PlaybackSession.setOptionString("http-allow-redirect", "yes")
+    PlaybackSession.setOptionString("cookies", "yes")
+    PlaybackSession.setOptionString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
+    PlaybackSession.setOptionString("cache", "auto")
+    PlaybackSession.setOptionString("cache-pause", "yes")
+    PlaybackSession.setOptionString("cache-pause-wait", "2")
+    PlaybackSession.setOptionString("demuxer-max-bytes", "64MiB")
+    // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
+    // Do not use reconnect_at_eof globally: a legitimate VOD EOF must still finish normally.
+    PlaybackSession.setOptionString(
+      "demuxer-lavf-o",
+      "reconnect=1,reconnect_on_network_error=1,reconnect_streamed=1," +
+        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
+    )
     // Drop only video-output-bound late frames when rendering cannot keep up.
     // This prevents long-term jitter buildup without aggressively sacrificing smoothness.
     PlaybackSession.setOptionString("framedrop", "vo")

@@ -20,9 +20,11 @@ import app.gyrolet.mpvrx.utils.media.M3UPlaylistItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import okhttp3.OkHttpClient
 
 class PlaylistRepository(
   private val playlistDao: PlaylistDao,
+  private val httpClient: OkHttpClient,
 ) {
   // Playlist operations
   suspend fun createPlaylist(
@@ -262,7 +264,7 @@ class PlaylistRepository(
     userAgent: String? = null,
   ): Result<Long> =
     try {
-      val parseResult = M3UParser.parseFromUrl(url, userAgent)
+      val parseResult = M3UParser.parseFromUrl(url, userAgent, httpClient = httpClient)
 
       when (parseResult) {
         is M3UParseResult.Success -> {
@@ -374,7 +376,7 @@ class PlaylistRepository(
         return Result.failure(Exception("Not an M3U playlist or no source URL available"))
       }
 
-      val parseResult = M3UParser.parseFromUrl(playlist.m3uSourceUrl, playlist.userAgent)
+      val parseResult = M3UParser.parseFromUrl(playlist.m3uSourceUrl, playlist.userAgent, httpClient = httpClient)
 
       when (parseResult) {
         is M3UParseResult.Success -> {

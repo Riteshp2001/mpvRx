@@ -80,6 +80,8 @@ import app.gyrolet.mpvrx.domain.torrent.TorrentStreamException
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.domain.torrent.canonicalInfoHash
 import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
+import app.gyrolet.mpvrx.network.AndroidCookieJar
+import app.gyrolet.mpvrx.network.NetworkUserAgent
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.AudioChannels
@@ -132,6 +134,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
+import okhttp3.OkHttpClient
 import java.io.File
 import kotlin.math.pow
 
@@ -204,6 +207,10 @@ class PlayerActivity :
   private val torrentStreamingEngine: TorrentStreamingEngine by inject()
 
   private val networkStreamEntryRepository: NetworkStreamEntryRepository by inject()
+
+  private val networkHttpClient: OkHttpClient by inject()
+
+  private val androidCookieJar: AndroidCookieJar by inject()
 
   /**
    * Repository for managing playlists.
@@ -306,6 +313,7 @@ class PlayerActivity :
    */
   private var networkPlaylistPaths: List<String> = emptyList()
   private var networkPlaylistTitles: List<String> = emptyList()
+  private var networkPlaylistHeaders: List<Map<String, String>> = emptyList()
   private var networkPlaylistConnectionId: Long = -1L
 
   /**
@@ -1300,6 +1308,7 @@ class PlayerActivity :
             playlistTotalCount = playlist.size
             networkPlaylistPaths = queueItems.map { queued -> queued.networkSource?.relativePath.orEmpty() }
             networkPlaylistTitles = queueItems.map { queued -> queued.title.orEmpty() }
+            networkPlaylistHeaders = queueItems.map(PlaybackItem::headers)
             networkPlaylistConnectionId = item.networkSource?.connectionId ?: -1L
             fileName = item.title?.takeIf { it.isNotBlank() } ?: getFileNameFromUri(Uri.parse(item.originalUri))
             legacyMediaIdentifier = null
@@ -1819,6 +1828,7 @@ class PlayerActivity :
     playlistTotalCount = playlist.size
     networkPlaylistPaths = queueState.items.map { item -> item.networkSource?.relativePath.orEmpty() }
     networkPlaylistTitles = queueState.items.map { item -> item.title.orEmpty() }
+    networkPlaylistHeaders = queueState.items.map(PlaybackItem::headers)
     networkPlaylistConnectionId = currentItem.networkSource?.connectionId ?: -1L
 
     fileName = currentItem.title?.takeIf { it.isNotBlank() } ?: getFileNameFromUri(Uri.parse(currentItem.originalUri))
@@ -1884,6 +1894,7 @@ class PlayerActivity :
     playlistTotalCount = playlist.size
     networkPlaylistPaths = queueState.items.map { item -> item.networkSource?.relativePath.orEmpty() }
     networkPlaylistTitles = queueState.items.map { item -> item.title.orEmpty() }
+    networkPlaylistHeaders = queueState.items.map(PlaybackItem::headers)
     networkPlaylistConnectionId = currentItem.networkSource?.connectionId ?: -1L
     return true
   }
@@ -2740,35 +2751,9 @@ class PlayerActivity :
    * @param extras Bundle containing HTTP headers
    */
   private fun setHttpHeadersFromExtras(extras: Bundle?) {
-    // Build header map starting with auto-detected referer
-    val headerMap = mutableMapOf<String, String>()
-    var userAgent: String? = null
-
-    // Automatically extract and set referer domain from the URL
     val uri = extractUriFromIntent(intent)
-    if (uri != null && HttpUtils.isNetworkStream(uri)) {
-      HttpUtils.extractRefererDomain(uri)?.let { referer ->
-        headerMap["Referer"] = referer
-        Log.d(TAG, "Auto-detected Referer: $referer")
-      }
-    }
-
-    // Process headers from extras (these can override the auto-detected referer)
-    extras?.getStringArray("headers")?.let { headers ->
-      headers
-        .asList()
-        .chunked(2)
-        .filter { it.size == 2 }
-        .forEach { (key, value) ->
-          if (key.equals("User-Agent", ignoreCase = true)) {
-            userAgent = value
-          } else {
-            headerMap[key] = value
-          }
-        }
-    }
-
-    applyHttpHeaders(userAgent, headerMap)
+    val headers = buildPlaybackHeaders(uri, PlaybackHttpHeaders.fromFlatPairs(extras?.getStringArray("headers")))
+    applyHttpHeaders(headers)
   }
 
   /**
@@ -2779,20 +2764,21 @@ class PlayerActivity :
    */
   private fun setHttpHeadersForUri(uri: Uri) {
     if (!HttpUtils.isNetworkStream(uri)) {
-      applyHttpHeaders(userAgent = null, headers = emptyMap())
+      applyHttpHeaders(emptyMap())
       return
     }
 
-    val headerMap = mutableMapOf<String, String>()
     val playlistItem = getPlaylistItemByUri(uri)
-
-    // Automatically extract and set referer domain from the URI
-    HttpUtils.extractRefererDomain(uri)?.let { referer ->
-      headerMap["Referer"] = referer
-      Log.d(TAG, "Auto-detected Referer for playlist item: $referer")
-    }
-
-    applyHttpHeaders(getEffectiveUserAgent(playlistItem), headerMap)
+    val itemHeaders =
+      PlaybackSession.queue.value.items
+        .getOrNull(playlistIndex)
+        ?.headers
+        .orEmpty()
+    val storedHeaders =
+      getEffectiveUserAgent(playlistItem)
+        ?.let { userAgent -> mapOf("User-Agent" to userAgent) }
+        .orEmpty()
+    applyHttpHeaders(buildPlaybackHeaders(uri, itemHeaders, storedHeaders))
   }
 
   /**
@@ -2967,20 +2953,23 @@ class PlayerActivity :
     item?.userAgent?.takeIf { it.isNotBlank() }
       ?: playlistEntity?.userAgent?.takeIf { it.isNotBlank() }
 
-  private fun applyHttpHeaders(
-    userAgent: String?,
-    headers: Map<String, String>,
-  ) {
-    PlaybackSession.setPropertyString("user-agent", userAgent.orEmpty())
+  private fun buildPlaybackHeaders(
+    uri: Uri?,
+    vararg sources: Map<String, String>,
+  ): Map<String, String> {
+    if (!HttpUtils.isNetworkStream(uri)) return emptyMap()
+    var headers = PlaybackHttpHeaders.merge(*sources)
+    headers = PlaybackHttpHeaders.withDefault(headers, "Referer", HttpUtils.extractRefererDomain(uri))
+    headers = PlaybackHttpHeaders.withDefault(headers, "User-Agent", NetworkUserAgent.resolve(this))
+    return headers
+  }
 
-    val headersString =
-      headers.entries.joinToString(",") { (key, value) ->
-        "$key: ${value.replace(",", "\\,")}"
-      }
-    PlaybackSession.setPropertyString("http-header-fields", headersString)
+  private fun applyHttpHeaders(headers: Map<String, String>) {
+    PlaybackSession.setPropertyString("user-agent", PlaybackHttpHeaders.userAgent(headers).orEmpty())
+    PlaybackSession.setPropertyString("http-header-fields", PlaybackHttpHeaders.toMpvHeaderFields(headers))
 
-    if (userAgent != null || headers.isNotEmpty()) {
-      Log.d(TAG, "Applied HTTP headers (ua=${userAgent != null}, count=${headers.size})")
+    if (headers.isNotEmpty()) {
+      Log.d(TAG, "Applied HTTP headers (ua=${PlaybackHttpHeaders.userAgent(headers) != null}, count=${headers.size})")
     }
   }
 
@@ -4372,6 +4361,7 @@ class PlayerActivity :
       isM3uPlaylist = false
       networkPlaylistPaths = emptyList()
       networkPlaylistTitles = emptyList()
+      networkPlaylistHeaders = emptyList()
       networkPlaylistConnectionId = -1L
       PlaybackSession.clearQueue()
     }
@@ -4487,6 +4477,12 @@ class PlayerActivity :
     val requestedQueueItem = PlaybackSession.queue.value.items.getOrNull(requestedPlaylistIndex)
     val requestGeneration = mediaRequestGeneration
     val requestedSource = originalUri ?: extractUriFromIntent(sourceIntent)?.toString() ?: playableUri
+    val requestedHeaders =
+      buildPlaybackHeaders(
+        Uri.parse(requestedSource),
+        PlaybackHttpHeaders.fromFlatPairs(sourceIntent.extras?.getStringArray("headers")),
+        requestedQueueItem?.headers.orEmpty(),
+      )
     val requestedTorrentFileIndex = sourceIntent.getIntExtra("torrent_file_index", -1).takeIf { it >= 0 }
     val isTorrentRequest =
       isTorrentSource(requestedSource, sourceIntent.type) || isTorrentSource(playableUri, sourceIntent.type)
@@ -4587,7 +4583,7 @@ class PlayerActivity :
             }
           val item =
             if (!isTorrentRequest) {
-              requestedQueueItem?.copy(playableUri = resolvedPlayableUri)
+              requestedQueueItem?.copy(playableUri = resolvedPlayableUri, headers = requestedHeaders)
             } else {
               null
             }
@@ -4597,8 +4593,17 @@ class PlayerActivity :
                 playableUri = resolvedPlayableUri,
                 title = resolvedFileName,
                 mimeType = resolvedMimeType,
+                headers = requestedHeaders,
                 networkSource = networkSource,
               )
+          val cookieSource =
+            sequenceOf(resolvedPlayableUri, resolvedOriginalUri)
+              .firstOrNull { value -> value.startsWith("http://", true) || value.startsWith("https://", true) }
+          if (cookieSource != null) {
+            androidCookieJar
+              .exportForPlayback(cookieSource, AndroidCookieJar.playbackCookieFile(this@PlayerActivity))
+              .onFailure { error -> Log.w(TAG, "Failed to prepare playback cookies", error) }
+          }
           if (requestedQueueItem == null || isTorrentRequest) PlaybackSession.replaceQueue(listOf(item), 0)
           PlaybackSession.load(item)
         } catch (error: CancellationException) {
@@ -5507,6 +5512,9 @@ class PlayerActivity :
     if (networkPlaylistTitles.size == playlist.size) {
       networkPlaylistTitles = networkPlaylistTitles.toMutableList().apply { add(to, removeAt(from)) }
     }
+    if (networkPlaylistHeaders.size == playlist.size) {
+      networkPlaylistHeaders = networkPlaylistHeaders.toMutableList().apply { add(to, removeAt(from)) }
+    }
 
     if (playlistItems.isNotEmpty() && from in playlistItems.indices && to in playlistItems.indices) {
       val mutableItems = playlistItems.toMutableList()
@@ -5989,6 +5997,7 @@ class PlayerActivity :
   private fun loadNetworkPlaylistMetadata(intent: Intent) {
     networkPlaylistPaths = intent.getStringArrayListExtra("network_playlist_paths") ?: emptyList()
     networkPlaylistTitles = intent.getStringArrayListExtra("network_playlist_titles") ?: emptyList()
+    networkPlaylistHeaders = emptyList()
     networkPlaylistConnectionId = intent.getLongExtra("network_playlist_connection_id", -1L)
   }
 
@@ -6046,12 +6055,13 @@ class PlayerActivity :
           databaseItem?.fileName?.takeIf { it.isNotBlank() }
             ?: networkPlaylistTitles.getOrNull(index)?.takeIf { it.isNotBlank() }
             ?: getFileNameFromUri(uri)
-        val headers =
+        val storedHeaders =
           databaseItem
             ?.userAgent
             ?.takeIf { it.isNotBlank() }
             ?.let { userAgent -> mapOf("User-Agent" to userAgent) }
             .orEmpty()
+        val headers = buildPlaybackHeaders(uri, networkPlaylistHeaders.getOrNull(index).orEmpty(), storedHeaders)
 
         PlaybackItem.fromUri(
           uri = uri.toString(),
@@ -6255,6 +6265,7 @@ class PlayerActivity :
         playlistItems = syntheticItems
         isM3uPlaylist = false
         playlist = playlistUris
+        networkPlaylistHeaders = emptyList()
         playlistWindowOffset = 0
         playlistTotalCount = playlistUris.size
         playlistIndex =
@@ -6287,6 +6298,7 @@ class PlayerActivity :
       playlistItems = loadedItems
       isM3uPlaylist = loadedPlaylist?.isM3uPlaylist == true
       playlist = items
+      networkPlaylistHeaders = emptyList()
       playlistIndex = if (items.isEmpty()) 0 else playlistIndex.coerceIn(items.indices)
       playlistWindowOffset = 0
       playlistTotalCount = totalCount
@@ -6337,6 +6349,7 @@ class PlayerActivity :
         playlistItems = emptyList()
         isM3uPlaylist = false
         playlist = siblingFiles.map { it.toUri() }
+        networkPlaylistHeaders = emptyList()
         playlistIndex = newIndex
         val restoredSavedSelection = applyPendingSavedSelection(playlist)
         if (pendingSavedPlaylistSelection != null) pendingSavedPlaylistSelection = null
@@ -6361,17 +6374,21 @@ class PlayerActivity :
     uriString: String,
     sourceIntent: Intent,
   ): Boolean {
-    val userAgent =
-      sourceIntent.extras
-        ?.getStringArray("headers")
-        ?.asList()
-        ?.chunked(2)
-        ?.firstOrNull { pair -> pair.size == 2 && pair[0].equals("User-Agent", ignoreCase = true) }
-        ?.get(1)
+    val requestHeaders =
+      buildPlaybackHeaders(
+        Uri.parse(uriString),
+        PlaybackHttpHeaders.fromFlatPairs(sourceIntent.extras?.getStringArray("headers")),
+      )
+    val userAgent = PlaybackHttpHeaders.userAgent(requestHeaders)
     val parseResult =
       when {
         uriString.startsWith("http://") || uriString.startsWith("https://") ->
-          M3UParser.parseFromUrl(uriString, userAgent)
+          M3UParser.parseFromUrl(
+            url = uriString,
+            userAgent = userAgent,
+            headers = requestHeaders,
+            httpClient = networkHttpClient,
+          )
         uriString.startsWith("content://") || uriString.startsWith("file://") ->
           M3UParser.parseFromUri(this, Uri.parse(uriString))
         else -> {
@@ -6394,6 +6411,14 @@ class PlayerActivity :
           playlist = items.map { Uri.parse(it.url) }
           networkPlaylistTitles = items.map { it.title ?: extractFileNameFromUri(Uri.parse(it.url)) }
           networkPlaylistPaths = items.map { it.url }
+          networkPlaylistHeaders =
+            items.map { item ->
+              buildPlaybackHeaders(
+                Uri.parse(item.url),
+                requestHeaders,
+                item.userAgent?.let { mapOf("User-Agent" to it) }.orEmpty(),
+              )
+            }
           playlistWindowOffset = 0
           playlistTotalCount = items.size
 

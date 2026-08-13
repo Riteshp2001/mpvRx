@@ -125,6 +125,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   @Volatile
   private var initialized = false
+  private var nativeCoreReady = false
   private var applicationContext: Context? = null
   private var desiredVideoOutput = "gpu"
   private var activeCoreConfigurationKey: String? = null
@@ -173,6 +174,7 @@ object PlaybackSession : MPVLib.EventObserver {
         }
 
         applicationContext = context.applicationContext
+        nativeCoreReady = false
         observedProperties.clear()
         suspendedVideoTrack = null
         desiredPaused = true
@@ -190,6 +192,9 @@ object PlaybackSession : MPVLib.EventObserver {
           // during init, preserving its profiles, includes and quoting without runtime replay.
           initOptions()
           MPVLib.init()
+          // Runtime properties do not exist between MPVLib.create() and MPVLib.init(). Keep option
+          // writes available in that window, but permit property reads only from this point on.
+          nativeCoreReady = true
           postInitOptions()
           MPVLib.setOptionString("force-window", "no")
           MPVLib.setOptionString("idle", "yes")
@@ -204,6 +209,7 @@ object PlaybackSession : MPVLib.EventObserver {
           runCatching { MPVLib.removeObserver(this) }
           runCatching { MPVLib.destroy() }
           initialized = false
+          nativeCoreReady = false
           activeCoreConfigurationKey = null
           suspendedVideoTrack = null
           desiredPaused = true
@@ -362,6 +368,7 @@ object PlaybackSession : MPVLib.EventObserver {
     observedProperties.clear()
     resetAmbientShaderTrackingLocked()
     initialized = false
+    nativeCoreReady = false
     activeCoreConfigurationKey = null
     updateState { PlaybackSessionState(phase = PlaybackPhase.UNINITIALIZED) }
   }
@@ -515,11 +522,8 @@ object PlaybackSession : MPVLib.EventObserver {
           error = null,
         )
       }
-      val userAgent = resolvedItem.headers.entries.firstOrNull { it.key.equals("User-Agent", ignoreCase = true) }?.value
-      val headerFields =
-        resolvedItem.headers.entries
-          .filterNot { it.key.equals("User-Agent", ignoreCase = true) }
-          .joinToString(",") { (name, value) -> "$name: ${value.replace(",", "\\,")}" }
+      val userAgent = PlaybackHttpHeaders.userAgent(resolvedItem.headers)
+      val headerFields = PlaybackHttpHeaders.toMpvHeaderFields(resolvedItem.headers)
       MPVLib.setPropertyString("user-agent", userAgent.orEmpty())
       MPVLib.setPropertyString("http-header-fields", headerFields)
       MPVLib.setPropertyString("force-media-title", "")
@@ -580,7 +584,7 @@ object PlaybackSession : MPVLib.EventObserver {
     value: String,
   ): Int = withCore(-1, allowInitializing = true) { MPVLib.setOptionString(name, value) }
 
-  fun getPropertyInt(property: String): Int? = withCore(null) { MPVLib.getPropertyInt(property) }
+  fun getPropertyInt(property: String): Int? = withReadyCore(null) { MPVLib.getPropertyInt(property) }
 
   fun setPropertyInt(
     property: String,
@@ -590,7 +594,7 @@ object PlaybackSession : MPVLib.EventObserver {
     if (property == "vid" && value > 0) suspendedVideoTrack = null
   }
 
-  fun getPropertyDouble(property: String): Double? = withCore(null) { MPVLib.getPropertyDouble(property) }
+  fun getPropertyDouble(property: String): Double? = withReadyCore(null) { MPVLib.getPropertyDouble(property) }
 
   fun setPropertyDouble(
     property: String,
@@ -609,14 +613,14 @@ object PlaybackSession : MPVLib.EventObserver {
     }
   }
 
-  fun getPropertyFloat(property: String): Float? = withCore(null) { MPVLib.getPropertyFloat(property) }
+  fun getPropertyFloat(property: String): Float? = withReadyCore(null) { MPVLib.getPropertyFloat(property) }
 
   fun setPropertyFloat(
     property: String,
     value: Float,
   ) = withCore(Unit) { MPVLib.setPropertyFloat(property, value) }
 
-  fun getPropertyBoolean(property: String): Boolean? = withCore(null) { MPVLib.getPropertyBoolean(property) }
+  fun getPropertyBoolean(property: String): Boolean? = withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
 
   fun setPropertyBoolean(
     property: String,
@@ -660,9 +664,9 @@ object PlaybackSession : MPVLib.EventObserver {
       nextPaused
     }
 
-  fun getPropertyString(property: String): String? = withCore(null) { MPVLib.getPropertyString(property) }
+  fun getPropertyString(property: String): String? = withReadyCore(null) { MPVLib.getPropertyString(property) }
 
-  fun getPropertyNode(property: String): MPVNode? = withCore(null) { MPVLib.getPropertyNode(property) }
+  fun getPropertyNode(property: String): MPVNode? = withReadyCore(null) { MPVLib.getPropertyNode(property) }
 
   fun setPropertyString(
     property: String,
@@ -855,6 +859,7 @@ object PlaybackSession : MPVLib.EventObserver {
             clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
             resetAmbientShaderTrackingLocked()
             initialized = false
+            nativeCoreReady = false
             updateState { it.copy(phase = PlaybackPhase.UNINITIALIZED, surfaceAttached = false, paused = true) }
             true
           }
@@ -1147,6 +1152,15 @@ object PlaybackSession : MPVLib.EventObserver {
       if (!initialized && !(allowInitializing && _state.value.phase == PlaybackPhase.INITIALIZING)) {
         return@withLock default
       }
+      block()
+    }
+
+  private inline fun <T> withReadyCore(
+    default: T,
+    block: () -> T,
+  ): T =
+    nativeLock.withLock {
+      if (!nativeCoreReady) return@withLock default
       block()
     }
 

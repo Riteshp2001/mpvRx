@@ -79,7 +79,7 @@ data class M3ULimits(
 /** Bounded parser/loader for simple and extended M3U playlists. */
 object M3UParser {
   private const val TIMEOUT_MS = 30_000L
-  private const val DEFAULT_USER_AGENT = "mpvRx/1.0"
+  private const val DEFAULT_USER_AGENT = "mpvRx/2.0"
   private const val EXTINF_PREFIX = "#EXTINF:"
   private const val KODIPROP_PREFIX = "#KODIPROP:"
   private const val EXTVLCOPT_PREFIX = "#EXTVLCOPT:"
@@ -91,7 +91,7 @@ object M3UParser {
   private val defaultLimits = M3ULimits()
   private val extinfAttributeRegex =
     Regex("""([A-Za-z0-9_.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))""")
-  private val httpClient by lazy {
+  private val defaultHttpClient by lazy {
     OkHttpClient
       .Builder()
       .connectTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -103,11 +103,21 @@ object M3UParser {
   suspend fun parseFromUrl(
     url: String,
     userAgent: String? = null,
-  ): M3UParseResult = parseFromUrl(url, userAgent, defaultLimits)
+    headers: Map<String, String> = emptyMap(),
+    httpClient: OkHttpClient = defaultHttpClient,
+  ): M3UParseResult = parseFromUrl(url, userAgent, headers, httpClient, defaultLimits)
 
   suspend fun parseFromUrl(
     url: String,
     userAgent: String?,
+    limits: M3ULimits,
+  ): M3UParseResult = parseFromUrl(url, userAgent, emptyMap(), defaultHttpClient, limits)
+
+  suspend fun parseFromUrl(
+    url: String,
+    userAgent: String?,
+    headers: Map<String, String>,
+    httpClient: OkHttpClient,
     limits: M3ULimits,
   ): M3UParseResult {
     val originalUrl = url.toHttpUrlOrNull() ?: return error("Invalid playlist URL")
@@ -116,15 +126,17 @@ object M3UParser {
     val safeUrl = originalUrl.newBuilder().username("").password("").build()
     val request =
       runCatching {
-        Request
-          .Builder()
-          .url(safeUrl)
-          .header("User-Agent", userAgent?.takeIf(String::isNotBlank) ?: DEFAULT_USER_AGENT)
-          .apply {
-            if (username.isNotEmpty() || password.isNotEmpty()) {
-              header("Authorization", Credentials.basic(username, password))
-            }
-          }.build()
+        val builder = Request.Builder().url(safeUrl)
+        headers.forEach { (name, value) -> builder.header(name, value) }
+        if (headers.keys.none { it.equals("User-Agent", ignoreCase = true) }) {
+          builder.header("User-Agent", userAgent?.takeIf(String::isNotBlank) ?: DEFAULT_USER_AGENT)
+        }
+        if ((username.isNotEmpty() || password.isNotEmpty()) &&
+          headers.keys.none { it.equals("Authorization", ignoreCase = true) }
+        ) {
+          builder.header("Authorization", Credentials.basic(username, password))
+        }
+        builder.build()
       }.getOrElse { return error("Invalid playlist request") }
 
     return try {

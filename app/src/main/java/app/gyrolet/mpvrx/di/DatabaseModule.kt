@@ -705,6 +705,7 @@ val DatabaseModule =
     single {
       PlaylistRepository(
         playlistDao = get<MpvRxDatabase>().playlistDao(),
+        httpClient = get(),
       )
     }
 

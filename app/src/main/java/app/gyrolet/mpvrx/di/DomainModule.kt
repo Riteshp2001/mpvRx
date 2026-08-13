@@ -40,13 +40,14 @@ import java.util.concurrent.TimeUnit
 
 val domainModule =
   module {
+    single { AndroidCookieJar() }
     single {
       OkHttpClient
         .Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .cookieJar(AndroidCookieJar())
+        .cookieJar(get<AndroidCookieJar>())
         .build()
     }
     single { Anime4KManager(androidContext()) }
