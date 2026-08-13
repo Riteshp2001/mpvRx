@@ -55,7 +55,7 @@ object M3uPlaybackPolicy {
     if (candidates.any(::hasM3u8Marker)) return true
 
     val normalizedMimeType = mimeType?.substringBefore(';')?.trim()?.lowercase()
-    return normalizedMimeType in hlsMimeTypes
+    return normalizedMimeType != null && normalizedMimeType in hlsMimeTypes
   }
 
   private fun hasM3uMarker(value: String): Boolean =
