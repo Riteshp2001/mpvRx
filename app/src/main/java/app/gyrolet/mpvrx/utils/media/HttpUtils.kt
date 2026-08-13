@@ -198,32 +198,19 @@ object HttpUtils {
   }
 
   /**
-   * Extracts the referer domain from a Uri.
-   * Returns the full origin (scheme + host + port) to be used as Referer header.
+   * Automatic Referer inference is intentionally disabled.
    *
-   * @param uri The Uri to extract the referer from
-   * @return The referer origin string, or null if extraction fails
+   * A media/CDN URL only identifies the resource being requested; it does not identify the web
+   * page that embedded that resource. Sending the media origin as a fabricated Referer can break
+   * anti-hotlink rules and signed streams. Callers that actually know the required Referer should
+   * pass it explicitly in their HTTP headers instead.
+   *
+   * This method remains as a compatibility boundary for the existing player call sites and
+   * deliberately returns null so they do not synthesize a Referer.
    */
   fun extractRefererDomain(uri: Uri?): String? {
     if (uri == null) return null
-
-    return try {
-      val scheme = uri.scheme ?: return null
-      val host = uri.host ?: return null
-      val port = uri.port
-
-      // Build the referer origin
-      if (port != -1 && port != 80 && port != 443) {
-        // Include non-standard port
-        "$scheme://$host:$port"
-      } else {
-        // Standard port or no port specified
-        "$scheme://$host"
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error extracting referer domain: ${e.message}")
-      null
-    }
+    return null
   }
 
   /**
