@@ -1457,6 +1457,9 @@ private fun FileSystemBrowserContent(
       val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
       val isGridMode = mediaLayoutMode == app.gyrolet.mpvrx.preferences.MediaLayoutMode.GRID
 
+      val folderItems = remember(items) { items.filterIsInstance<FileSystemItem.Folder>() }
+      val videoItems = remember(items) { items.filterIsInstance<FileSystemItem.VideoFile>() }
+
       PullRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
@@ -1499,7 +1502,7 @@ private fun FileSystemBrowserContent(
 
                 // Folders first
                 items(
-                  items = items.filterIsInstance<FileSystemItem.Folder>(),
+                  items = folderItems,
                   key = { it.path },
                   contentType = { "folder_item" },
                   span = { GridItemSpan(spansInfo.folderSpan) },
@@ -1534,7 +1537,7 @@ private fun FileSystemBrowserContent(
 
                 // Videos second
                 items(
-                  items = items.filterIsInstance<FileSystemItem.VideoFile>(),
+                  items = videoItems,
                   key = { "${it.video.id}_${it.video.path}" },
                   contentType = { "video_item" },
                   span = { GridItemSpan(spansInfo.videoSpan) },
@@ -1575,11 +1578,11 @@ private fun FileSystemBrowserContent(
 
               if (hasEnoughItems && scrollbarAlpha > 0.01f) {
                 val scrollbarLabels =
-                  remember(items, isAtRoot, breadcrumbs) {
+                  remember(folderItems, videoItems, isAtRoot, breadcrumbs) {
                     buildList<String?> {
                       if (!isAtRoot && breadcrumbs.isNotEmpty()) add(null)
-                      items.filterIsInstance<FileSystemItem.Folder>().forEach { add(it.name) }
-                      items.filterIsInstance<FileSystemItem.VideoFile>().forEach { add(it.video.displayName) }
+                      folderItems.forEach { add(it.name) }
+                      videoItems.forEach { add(it.video.displayName) }
                     }
                   }
 
@@ -1619,7 +1622,7 @@ private fun FileSystemBrowserContent(
 
               // Folders first
               items(
-                items = items.filterIsInstance<FileSystemItem.Folder>(),
+                items = folderItems,
                 key = { it.path },
                 contentType = { "folder_item" },
               ) { folder ->
@@ -1653,7 +1656,7 @@ private fun FileSystemBrowserContent(
 
               // Videos second
               items(
-                items = items.filterIsInstance<FileSystemItem.VideoFile>(),
+                items = videoItems,
                 key = { "${it.video.id}_${it.video.path}" },
                 contentType = { "video_item" },
               ) { videoFile ->
@@ -1903,6 +1906,7 @@ private fun FileSystemSearchContent(
                 items(
                   items = searchFolders,
                   key = { "search_folder_${it.path}" },
+                  contentType = { "folder_item" },
                   span = { GridItemSpan(spansInfo.folderSpan) },
                 ) { folder ->
                   val folderModel =
@@ -1932,6 +1936,7 @@ private fun FileSystemSearchContent(
                 items(
                   items = searchVideos,
                   key = { "search_video_${it.video.id}_${it.video.path}" },
+                  contentType = { "video_item" },
                   span = { GridItemSpan(spansInfo.videoSpan) },
                 ) { videoFile ->
                   VideoCard(
@@ -1983,6 +1988,7 @@ private fun FileSystemSearchContent(
               items(
                 items = searchFolders,
                 key = { "search_folder_${it.path}" },
+                contentType = { "folder_item" },
               ) { folder ->
                 val folderModel =
                   app.gyrolet.mpvrx.domain.media.model.VideoFolder(
@@ -2011,6 +2017,7 @@ private fun FileSystemSearchContent(
               items(
                 items = searchVideos,
                 key = { "search_video_${it.video.id}_${it.video.path}" },
+                contentType = { "video_item" },
               ) { videoFile ->
                 VideoCard(
                   video = videoFile.video,

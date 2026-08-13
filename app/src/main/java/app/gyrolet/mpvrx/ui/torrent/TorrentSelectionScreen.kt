@@ -189,6 +189,7 @@ private fun TorrentReadyScreen(
           itemsIndexed(
             items = state.catalog.playableFiles,
             key = { _, file -> file.index },
+            contentType = { _, _ -> "torrent_file_row" },
           ) { position, file ->
             TorrentFileRow(
               file = file,

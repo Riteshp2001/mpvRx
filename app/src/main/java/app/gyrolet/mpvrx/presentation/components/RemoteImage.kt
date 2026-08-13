@@ -54,9 +54,10 @@ fun RemoteImage(
     }
   }
 
-  bitmap?.let { loaded ->
+  val imageBitmap = remember(bitmap) { bitmap?.asImageBitmap() }
+  if (imageBitmap != null) {
     Image(
-      bitmap = loaded.asImageBitmap(),
+      bitmap = imageBitmap,
       contentDescription = contentDescription,
       modifier = modifier,
       contentScale = contentScale,

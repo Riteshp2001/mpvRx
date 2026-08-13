@@ -416,6 +416,7 @@ fun SubtitlesSheet(
               is SubtitleItem.Divider -> "divider"
             }
           },
+          contentType = { item -> item.javaClass.simpleName },
         ) { item ->
           when (item) {
             is SubtitleItem.Track -> {

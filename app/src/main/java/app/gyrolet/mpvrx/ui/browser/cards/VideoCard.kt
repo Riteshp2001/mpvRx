@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -106,21 +107,50 @@ fun VideoCard(
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
+
+  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
+  val showSizeChipPref by browserPreferences.showSizeChip.collectAsState()
+  val showResolutionChipPref by browserPreferences.showResolutionChip.collectAsState()
+  val showFramerateInResolutionConfig by browserPreferences.showFramerateInResolution.collectAsState()
+  val showProgressBarConfig by browserPreferences.showProgressBar.collectAsState()
+  val showDateChipConfig by browserPreferences.showDateChip.collectAsState()
+  val showUnplayedOldVideoLabelConfig by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
+  val unplayedOldVideoDaysConfig by appearancePreferences.unplayedOldVideoDays.collectAsState()
+  val showExtensionField by browserPreferences.showExtensionField.collectAsState()
+  val showDurationFieldConfig by browserPreferences.showDurationField.collectAsState()
+  val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
+
   val resolvedUiConfig =
-    uiConfig ?: VideoCardUiConfig(
-      unlimitedNameLines = appearancePreferences.unlimitedNameLines.collectAsState().value,
-      showThumbnails = browserPreferences.showVideoThumbnails.collectAsState().value,
-      showSizeChip = browserPreferences.showSizeChip.collectAsState().value,
-      showResolutionChip = browserPreferences.showResolutionChip.collectAsState().value,
-      showFramerateInResolution = browserPreferences.showFramerateInResolution.collectAsState().value,
-      showProgressBar = browserPreferences.showProgressBar.collectAsState().value,
-      showDateChip = browserPreferences.showDateChip.collectAsState().value,
-      showUnplayedOldVideoLabel = appearancePreferences.showUnplayedOldVideoLabel.collectAsState().value,
-      unplayedOldVideoDays = appearancePreferences.unplayedOldVideoDays.collectAsState().value,
-      showExtensionField = browserPreferences.showExtensionField.collectAsState().value,
-      showDurationField = browserPreferences.showDurationField.collectAsState().value,
-      centerGridTitles = browserPreferences.centerGridTitles.collectAsState().value,
-    )
+    uiConfig ?: remember(
+      unlimitedNameLines,
+      showVideoThumbnails,
+      showSizeChipPref,
+      showResolutionChipPref,
+      showFramerateInResolutionConfig,
+      showProgressBarConfig,
+      showDateChipConfig,
+      showUnplayedOldVideoLabelConfig,
+      unplayedOldVideoDaysConfig,
+      showExtensionField,
+      showDurationFieldConfig,
+      centerGridTitles,
+    ) {
+      VideoCardUiConfig(
+        unlimitedNameLines = unlimitedNameLines,
+        showThumbnails = showVideoThumbnails,
+        showSizeChip = showSizeChipPref,
+        showResolutionChip = showResolutionChipPref,
+        showFramerateInResolution = showFramerateInResolutionConfig,
+        showProgressBar = showProgressBarConfig,
+        showDateChip = showDateChipConfig,
+        showUnplayedOldVideoLabel = showUnplayedOldVideoLabelConfig,
+        unplayedOldVideoDays = unplayedOldVideoDaysConfig,
+        showExtensionField = showExtensionField,
+        showDurationField = showDurationFieldConfig,
+        centerGridTitles = centerGridTitles,
+      )
+    }
   val maxLines = if (resolvedUiConfig.unlimitedNameLines) Int.MAX_VALUE else 2
 
   val showThumbnails = resolvedUiConfig.showThumbnails
@@ -250,6 +280,8 @@ fun VideoCard(
             }
           }
 
+          val thumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+
           // Thumbnail
           Box(
             modifier =
@@ -265,9 +297,9 @@ fun VideoCard(
             contentAlignment = Alignment.Center,
           ) {
             if (showThumbnails) {
-              thumbnail?.let {
+              thumbnailBitmap?.let {
                 Image(
-                  bitmap = it.asImageBitmap(),
+                  bitmap = it,
                   contentDescription =
                     androidx.compose.ui.res
                       .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
@@ -551,6 +583,8 @@ fun VideoCard(
             }
           }
 
+          val listThumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+
           Box(
             modifier =
               Modifier
@@ -565,9 +599,9 @@ fun VideoCard(
             contentAlignment = Alignment.Center,
           ) {
             if (showThumbnails) {
-              thumbnail?.let {
+              listThumbnailBitmap?.let {
                 Image(
-                  bitmap = it.asImageBitmap(),
+                  bitmap = it,
                   contentDescription =
                     androidx.compose.ui.res
                       .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),

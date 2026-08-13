@@ -222,7 +222,11 @@ fun LyricsSheet(
               modifier = Modifier.fillMaxSize(),
               verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-              itemsIndexed(activeLyrics.synced) { index, line ->
+              itemsIndexed(
+                items = activeLyrics.synced,
+                key = { index, line -> "${line.time}_${index}" },
+                contentType = { _, _ -> "lyric_sheet_synced" },
+              ) { index, line ->
                 val isActive = index == state.activeLineIndex
                 val textColor by animateColorAsState(
                   targetValue = if (isActive) {
@@ -258,7 +262,11 @@ fun LyricsSheet(
               modifier = Modifier.fillMaxSize(),
               verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-              itemsIndexed(activeLyrics.plain) { _, lineText ->
+              itemsIndexed(
+                items = activeLyrics.plain,
+                key = { index, _ -> index },
+                contentType = { _, _ -> "lyric_sheet_plain" },
+              ) { _, lineText ->
                 Text(
                   text = lineText,
                   color = MaterialTheme.colorScheme.onSurface,

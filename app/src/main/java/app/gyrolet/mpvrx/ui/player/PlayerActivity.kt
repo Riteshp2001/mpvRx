@@ -558,9 +558,10 @@ class PlayerActivity :
     // A detached background session belongs to PlaybackSession, not to the old Activity.
     // Notification re-entry attaches this new surface to that live core without reloading it.
     releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
-    if (!setupMPV()) {
+    val setupResult = setupMPV()
+    if (setupResult != null) {
       isUserFinishing = true
-      Toast.makeText(this, R.string.toast_playback_load_failed, Toast.LENGTH_LONG).show()
+      Toast.makeText(this, getString(R.string.toast_playback_load_failed) + ": " + setupResult, Toast.LENGTH_LONG).show()
       finish()
       return
     }
@@ -1891,7 +1892,7 @@ class PlayerActivity :
    * Initializes the MPV player with the necessary paths and observers.
    * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
-  private fun setupMPV(): Boolean {
+  private fun setupMPV(): String? {
     // Prepare config and user MPV assets before initializing MPV.
     runCatching {
       syncBundledAssetsIfNeeded()
@@ -1909,7 +1910,8 @@ class PlayerActivity :
     }
 
     // NOW initialize MPV - it will find and load the scripts we just copied
-    if (!initializePlayerWithRendererFallback()) return false
+    val initError = initializePlayerWithRendererFallback()
+    if (initError != null) return initError
     runCatching { PlaybackSession.setThumbnailJavaVM(applicationContext) }
     mpvInitialized = true
     Log.d(TAG, "MPV initialized")
@@ -1918,26 +1920,25 @@ class PlayerActivity :
     PlaybackSession.addObserver(playerObserver)
 
     scheduleDeferredSubtitleFontsSync()
-    return true
+    return null
   }
 
-  private fun initializePlayerWithRendererFallback(): Boolean {
+  private fun initializePlayerWithRendererFallback(): String? {
     player.forceOpenGlFallback = false
-
     val firstAttempt = player.initializeSession(filesDir.path, cacheDir.path)
-    if (firstAttempt.isSuccess) return true
+    if (firstAttempt.isSuccess) return null
 
     val firstError = firstAttempt.exceptionOrNull()
     if (!decoderPreferences.useVulkan.get()) {
       Log.e(TAG, "Failed to initialize MPV", firstError)
-      return false
+      return firstError?.message ?: firstError?.toString() ?: "Unknown error"
     }
 
     Log.w(TAG, "MPV Vulkan init failed, retrying with OpenGL fallback for this session", firstError)
     player.forceOpenGlFallback = true
     val fallbackAttempt = player.initializeSession(filesDir.path, cacheDir.path)
     fallbackAttempt.exceptionOrNull()?.let { error -> Log.e(TAG, "Failed to initialize MPV", error) }
-    return fallbackAttempt.isSuccess
+    return if (fallbackAttempt.isSuccess) null else fallbackAttempt.exceptionOrNull()?.message ?: fallbackAttempt.exceptionOrNull()?.toString() ?: "Unknown fallback error"
   }
 
   /**

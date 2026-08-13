@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.ui.browser.cards
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
@@ -85,6 +86,8 @@ fun PlaylistCard(
     )
   }
 
+  val thumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+
   // Use the FolderCard component with playlist-specific customizations
   FolderCard(
     folder = folderModel,
@@ -98,6 +101,6 @@ fun PlaylistCard(
     modifier = modifier,
     customChipContent = customChipRenderer,
     isGridMode = isGridMode,
-    thumbnail = thumbnail?.asImageBitmap(),
+    thumbnail = thumbnailBitmap,
   )
 }
