@@ -42,12 +42,11 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build preview APKs
-        run: >-
-          ./gradlew
-          assembleStandardPreview
-          assembleFongmiPreview
-          --stacktrace
-          --no-daemon
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew assembleStandardPreview --stacktrace --no-daemon --max-workers=2
+          ./gradlew assembleFongmiPreview --stacktrace --no-daemon --max-workers=2
 
       - name: Sign and verify preview APKs
         shell: bash

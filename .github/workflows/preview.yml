@@ -74,14 +74,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tasks=()
           if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
-            tasks+=(assembleStandardPreview)
+            ./gradlew assembleStandardPreview --stacktrace --no-daemon --max-workers=2
           fi
           if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
-            tasks+=(assembleFongmiPreview)
+            ./gradlew assembleFongmiPreview --stacktrace --no-daemon --max-workers=2
           fi
-          ./gradlew "${tasks[@]}" --stacktrace --no-daemon
 
       - name: Sign and verify preview APKs
         shell: bash
