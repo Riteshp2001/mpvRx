@@ -16,6 +16,7 @@ import android.util.Log
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import androidx.core.view.WindowInsetsCompat
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.network.AndroidCookieJar
@@ -32,7 +33,7 @@ import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
 import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
-import app.gyrolet.mpvrx.ui.preferences.VulkanUtils
+import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.KeyMapping
 import `is`.xyz.mpv.MPVLib
@@ -624,18 +625,17 @@ class MPVView(
   }
 
   private fun shouldUseVulkan(ignoreForcedOpenGlFallback: Boolean = false): Boolean {
-    if (forceOpenGlFallback && !ignoreForcedOpenGlFallback) {
-      return false
+    val canUseVulkan =
+      RendererBackendPolicy.canUseVulkan(
+        buildIncludesVulkan = BuildConfig.MPV_SUPPORTS_VULKAN,
+        deviceSupportsVulkan = VulkanCapabilities.isDeviceSupported(context),
+        userEnabledVulkan = decoderPreferences.useVulkan.get(),
+        forceOpenGlFallback = forceOpenGlFallback && !ignoreForcedOpenGlFallback,
+      )
+    if (decoderPreferences.useVulkan.get() && !canUseVulkan) {
+      Log.w(TAG, "Vulkan is unavailable for this build or device. Forcing OpenGL.")
     }
-    if (!decoderPreferences.useVulkan.get()) {
-      return false
-    }
-
-    val supported = VulkanUtils.isVulkanSupported(context)
-    if (!supported) {
-      Log.w(TAG, "Vulkan support checks failed. Falling back to OpenGL.")
-    }
-    return supported
+    return canUseVulkan
   }
 
   private fun preferredHwdecMode(): String {

@@ -243,6 +243,11 @@ Weiter: NEXT</string>
   <string name="pref_decoder_vulkan_title">Vulkan verwenden</string>
   <string name="pref_decoder_vulkan_summary">Vulkan-Rendering auf unterstützten Geräten aktivieren (kann die Leistung verbessern)</string>
   <string name="pref_decoder_vulkan_not_supported">Nicht unterstützt (erfordert Android 13+ mit Vulkan 1.3)</string>
+  <string name="pref_decoder_vulkan_excluded_supported_device">Nur OpenGL; für Vulkan die Standardversion installieren.</string>
+  <string name="pref_decoder_vulkan_excluded_unsupported_device">Nur OpenGL; dieses Gerät unterstützt Vulkan 1.3 nicht.</string>
+  <string name="renderer_build_notice_title">Version ohne Vulkan</string>
+  <string name="renderer_build_notice_supported_device">OpenGL wird verwendet; für Vulkan die Standardversion installieren.</string>
+  <string name="renderer_build_notice_unsupported_device">OpenGL wird verwendet; dieses Gerät unterstützt Vulkan 1.3 nicht.</string>
   <string name="pref_decoder_yuv420p_title">YUV420P-Pixelformat verwenden</string>
   <string name="pref_decoder_yuv420p_summary">Kann schwarze Bildschirme bei einigen Videocodecs beheben und die Leistung auf Kosten der Qualität verbessern</string>
   <string name="pref_subtitles">Untertitel</string>

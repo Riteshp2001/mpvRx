@@ -230,6 +230,11 @@
   <string name="pref_decoder_vulkan_title">Vulkan इस्तेमाल करें</string>
   <string name="pref_decoder_vulkan_summary">समर्थित डिवाइसों पर Vulkan रेंडरिंग सक्षम करें (परफॉर्मेंस बेहतर हो सकती है)</string>
   <string name="pref_decoder_vulkan_not_supported">समर्थित नहीं (Android 13+ और Vulkan 1.3 चाहिए)</string>
+  <string name="pref_decoder_vulkan_excluded_supported_device">केवल OpenGL; Vulkan के लिए स्टैंडर्ड बिल्ड इंस्टॉल करें।</string>
+  <string name="pref_decoder_vulkan_excluded_unsupported_device">केवल OpenGL; यह डिवाइस Vulkan 1.3 समर्थित नहीं करता।</string>
+  <string name="renderer_build_notice_title">नॉन-Vulkan बिल्ड</string>
+  <string name="renderer_build_notice_supported_device">OpenGL इस्तेमाल हो रहा है; Vulkan के लिए स्टैंडर्ड बिल्ड इंस्टॉल करें।</string>
+  <string name="renderer_build_notice_unsupported_device">OpenGL इस्तेमाल हो रहा है; यह डिवाइस Vulkan 1.3 समर्थित नहीं करता।</string>
   <string name="pref_decoder_yuv420p_title">YUV420P पिक्सल फॉर्मेट इस्तेमाल करें</string>
   <string name="pref_decoder_yuv420p_summary">कुछ वीडियो कोडेक्स पर काली स्क्रीन ठीक कर सकता है, क्वालिटी की कीमत पर परफॉर्मेंस भी बेहतर कर सकता है</string>
   <string name="pref_subtitles">सबटाइटल</string>

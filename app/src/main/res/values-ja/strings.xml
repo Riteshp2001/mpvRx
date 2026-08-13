@@ -243,6 +243,11 @@
   <string name="pref_decoder_vulkan_title">Vulkanを使用</string>
   <string name="pref_decoder_vulkan_summary">対応端末でVulkanレンダリングを有効にします（性能が向上する場合があります）</string>
   <string name="pref_decoder_vulkan_not_supported">非対応（Vulkan 1.3搭載のAndroid 13以降が必要）</string>
+  <string name="pref_decoder_vulkan_excluded_supported_device">OpenGLのみ（Vulkanには標準ビルドが必要）</string>
+  <string name="pref_decoder_vulkan_excluded_unsupported_device">OpenGLのみ（この端末はVulkan 1.3非対応）</string>
+  <string name="renderer_build_notice_title">Vulkanなしビルド</string>
+  <string name="renderer_build_notice_supported_device">OpenGLを使用中（Vulkanには標準ビルドが必要）</string>
+  <string name="renderer_build_notice_unsupported_device">OpenGLを使用中（この端末はVulkan 1.3非対応）</string>
   <string name="pref_decoder_yuv420p_title">YUV420Pピクセル形式を使用</string>
   <string name="pref_decoder_yuv420p_summary">一部の動画コーデックで黒画面を解消し、画質と引き換えに性能も向上する場合があります</string>
   <string name="pref_subtitles">字幕</string>

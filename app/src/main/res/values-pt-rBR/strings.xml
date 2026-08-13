@@ -243,6 +243,11 @@ Próximo: NEXT</string>
   <string name="pref_decoder_vulkan_title">Usar Vulkan</string>
   <string name="pref_decoder_vulkan_summary">Ativar renderização Vulkan em dispositivos compatíveis (pode melhorar o desempenho)</string>
   <string name="pref_decoder_vulkan_not_supported">Não compatível (requer Android 13+ com Vulkan 1.3)</string>
+  <string name="pref_decoder_vulkan_excluded_supported_device">Somente OpenGL; instale a versão padrão para usar Vulkan.</string>
+  <string name="pref_decoder_vulkan_excluded_unsupported_device">Somente OpenGL; este dispositivo não suporta Vulkan 1.3.</string>
+  <string name="renderer_build_notice_title">Versão sem Vulkan</string>
+  <string name="renderer_build_notice_supported_device">Usando OpenGL; instale a versão padrão para usar Vulkan.</string>
+  <string name="renderer_build_notice_unsupported_device">Usando OpenGL; este dispositivo não suporta Vulkan 1.3.</string>
   <string name="pref_decoder_yuv420p_title">Usar formato de pixel YUV420P</string>
   <string name="pref_decoder_yuv420p_summary">Pode corrigir telas pretas em alguns codecs de vídeo e também melhorar o desempenho em troca de qualidade</string>
   <string name="pref_subtitles">Legendas</string>

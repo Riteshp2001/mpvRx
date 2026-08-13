@@ -243,6 +243,11 @@
   <string name="pref_decoder_vulkan_title">استخدام Vulkan</string>
   <string name="pref_decoder_vulkan_summary">تفعيل العرض باستخدام Vulkan على الأجهزة المدعومة (قد يحسن الأداء)</string>
   <string name="pref_decoder_vulkan_not_supported">غير مدعوم (يتطلب Android 13+ مع Vulkan 1.3)</string>
+  <string name="pref_decoder_vulkan_excluded_supported_device">OpenGL فقط؛ ثبّت الإصدار القياسي لاستخدام Vulkan.</string>
+  <string name="pref_decoder_vulkan_excluded_unsupported_device">OpenGL فقط؛ هذا الجهاز لا يدعم Vulkan 1.3.</string>
+  <string name="renderer_build_notice_title">إصدار بلا Vulkan</string>
+  <string name="renderer_build_notice_supported_device">يُستخدم OpenGL؛ ثبّت الإصدار القياسي لاستخدام Vulkan.</string>
+  <string name="renderer_build_notice_unsupported_device">يُستخدم OpenGL؛ هذا الجهاز لا يدعم Vulkan 1.3.</string>
   <string name="pref_decoder_yuv420p_title">استخدام تنسيق البكسل YUV420P</string>
   <string name="pref_decoder_yuv420p_summary">قد يعالج الشاشة السوداء مع بعض برامج ترميز الفيديو، وقد يحسن الأداء أيضًا على حساب الجودة</string>
   <string name="pref_subtitles">الترجمة</string>

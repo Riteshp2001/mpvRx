@@ -668,6 +668,12 @@ private fun collectSystemStats(context: Context): List<Pair<String, String>> {
     "CPU Cores" to "$cores cores",
     "RAM" to ramStr,
     "OpenGL ES" to glesVersion,
+    "mpv Renderer Build" to
+      if (BuildConfig.MPV_SUPPORTS_VULKAN) {
+        "OpenGL + Vulkan"
+      } else {
+        "OpenGL only (non-Vulkan)"
+      },
     "Vulkan" to vulkanStr,
     "GPU Renderer" to (Build.HARDWARE.ifBlank { "Unknown" }),
     "Board" to Build.BOARD,

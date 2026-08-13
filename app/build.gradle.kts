@@ -53,6 +53,14 @@ android {
       dimension = "distribution"
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
+      buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
+    }
+
+    create("noVulkan") {
+      dimension = "distribution"
+      buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
+      buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
+      buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "false")
     }
   }
 
@@ -152,11 +160,17 @@ androidComponents {
   }
 
   onVariants { variant ->
+    val isNoVulkan = variant.productFlavors.contains("distribution" to "noVulkan")
+
     variant.outputs.forEach { output ->
       val abi =
         output.filters
           .find { it.filterType == FilterConfiguration.FilterType.ABI }
           ?.identifier
+
+      if (isNoVulkan && abi != null) {
+        output.enabled.set(false)
+      }
 
       output.versionCode.set(
         (output.versionCode.orNull ?: 0) * 10 + (abiCodes[abi] ?: 0),
@@ -243,7 +257,8 @@ dependencies {
   implementation(libs.androidx.profileinstaller)
   implementation(libs.google.cast.framework)
 
-  implementation(files("libs/mpvlib.aar"))
+  "standardImplementation"(files("libs/mpvlib.aar"))
+  "noVulkanImplementation"(files("libs/mpvlib-no-vulkun.aar"))
 
   // Network protocol libraries
   implementation(libs.smbj)

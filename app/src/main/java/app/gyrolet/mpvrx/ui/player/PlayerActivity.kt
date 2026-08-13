@@ -101,6 +101,7 @@ import app.gyrolet.mpvrx.ui.player.controls.PlayerControls
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionActivity
+import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.JellyfinSessionReporter
@@ -1940,7 +1941,7 @@ class PlayerActivity :
     if (firstAttempt.isSuccess) return null
 
     val firstError = firstAttempt.exceptionOrNull()
-    if (!decoderPreferences.useVulkan.get()) {
+    if (!decoderPreferences.useVulkan.get() || !VulkanCapabilities.isAvailable(this)) {
       Log.e(TAG, "Failed to initialize MPV", firstError)
       return firstError?.message ?: firstError?.toString() ?: "Unknown error"
     }

@@ -21,6 +21,7 @@ local.properties
 *.aab
 *.aar
 !app/libs/mpvlib.aar
+!app/libs/mpvlib-no-vulkun.aar
 
 # Release folders
 app/release/

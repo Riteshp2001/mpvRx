@@ -243,6 +243,11 @@
   <string name="pref_decoder_vulkan_title">使用 Vulkan</string>
   <string name="pref_decoder_vulkan_summary">在受支持的设备上启用 Vulkan 渲染（可能提高性能）</string>
   <string name="pref_decoder_vulkan_not_supported">不支持（需要 Android 13+ 和 Vulkan 1.3）</string>
+  <string name="pref_decoder_vulkan_excluded_supported_device">仅支持 OpenGL；如需 Vulkan，请安装标准版。</string>
+  <string name="pref_decoder_vulkan_excluded_unsupported_device">仅支持 OpenGL；此设备不支持 Vulkan 1.3。</string>
+  <string name="renderer_build_notice_title">无 Vulkan 版本</string>
+  <string name="renderer_build_notice_supported_device">正在使用 OpenGL；如需 Vulkan，请安装标准版。</string>
+  <string name="renderer_build_notice_unsupported_device">正在使用 OpenGL；此设备不支持 Vulkan 1.3。</string>
   <string name="pref_decoder_yuv420p_title">使用 YUV420P 像素格式</string>
   <string name="pref_decoder_yuv420p_summary">可能修复部分视频编解码器的黑屏问题，也可牺牲画质来提升性能</string>
   <string name="pref_subtitles">字幕</string>
