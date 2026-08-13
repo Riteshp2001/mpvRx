@@ -12,10 +12,9 @@ package app.gyrolet.mpvrx.ui.player
 import java.net.URI
 
 object M3uPlaybackPolicy {
-  private val networkSchemes =
-    setOf("http", "https", "ftp", "ftps", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh")
   private val m3uMimeTypes =
     setOf("application/x-mpegurl", "application/vnd.apple.mpegurl", "audio/x-mpegurl", "video/x-mpegurl")
+  private val hlsMimeTypes = setOf("application/vnd.apple.mpegurl")
 
   fun shouldExpandInApp(
     playableUri: String,
@@ -26,12 +25,13 @@ object M3uPlaybackPolicy {
     hasPlaylistId: Boolean,
   ): Boolean {
     if (hasExistingPlaylist || hasPlaylistId) return false
-    if (!looksLikeM3uForPlayback(playableUri, originalUri, fileName, mimeType)) return false
 
-    // Remote M3U/HLS URLs often need mpv's own HTTP stack, ytdl hook, cookies,
-    // headers, redirects, and stream-specific playlist handling.
-    // For IPTV-style links, we should still expand them in-app even when they are remote.
-    return true
+    // HLS is a native libmpv/libavformat streaming format. Do not pre-download an .m3u8 manifest
+    // just to discover #EXT-X-* and then request the same signed/tokenized URL a second time.
+    // Ordinary .m3u IPTV playlists still use MpvRx's in-app expansion below.
+    if (looksLikeHlsForDirectPlayback(playableUri, originalUri, fileName, mimeType)) return false
+
+    return looksLikeM3uForPlayback(playableUri, originalUri, fileName, mimeType)
   }
 
   internal fun looksLikeM3uForPlayback(
@@ -42,27 +42,24 @@ object M3uPlaybackPolicy {
   ): Boolean {
     val candidates = listOfNotNull(playableUri, originalUri, fileName).map { it.lowercase() }
     return candidates.any(::hasM3uMarker) ||
-      mimeType?.lowercase()?.let { type ->
-        type.contains("mpegurl") || type.contains("x-mpegurl") || type.contains("vnd.apple.mpegurl")
-      } == true ||
-      mimeType?.lowercase()?.let { type ->
-        m3uMimeTypes.contains(type)
-      } == true
+      mimeType?.substringBefore(';')?.trim()?.lowercase()?.let(m3uMimeTypes::contains) == true
   }
 
-  private fun hasM3uMarker(value: String): Boolean {
-    val uriParts =
-      runCatching { URI(value) }
-        .map { uri -> listOfNotNull(uri.rawPath, uri.rawQuery, uri.rawFragment) }
-        .getOrDefault(
-          listOf(
-            value.substringBefore('?').substringBefore('#'),
-            value.substringAfter('?', "").substringBefore('#'),
-            value.substringAfter('#', ""),
-          ),
-        )
+  internal fun looksLikeHlsForDirectPlayback(
+    playableUri: String,
+    originalUri: String?,
+    fileName: String,
+    mimeType: String?,
+  ): Boolean {
+    val candidates = listOfNotNull(playableUri, originalUri, fileName).map { it.lowercase() }
+    if (candidates.any(::hasM3u8Marker)) return true
 
-    return uriParts.any { part ->
+    val normalizedMimeType = mimeType?.substringBefore(';')?.trim()?.lowercase()
+    return normalizedMimeType in hlsMimeTypes
+  }
+
+  private fun hasM3uMarker(value: String): Boolean =
+    uriParts(value).any { part ->
       val lowerPart = part.lowercase()
       lowerPart.endsWith(".m3u") ||
         lowerPart.endsWith(".m3u8") ||
@@ -75,11 +72,25 @@ object M3uPlaybackPolicy {
         lowerPart.contains("=m3u") ||
         lowerPart.contains("=m3u8")
     }
-  }
 
-  private fun isNetworkUri(value: String?): Boolean {
-    if (value.isNullOrBlank()) return false
-    val scheme = value.substringBefore(":", missingDelimiterValue = "").lowercase()
-    return scheme in networkSchemes
-  }
+  private fun hasM3u8Marker(value: String): Boolean =
+    uriParts(value).any { part ->
+      val lowerPart = part.lowercase()
+      lowerPart.endsWith(".m3u8") ||
+        lowerPart.contains(".m3u8?") ||
+        lowerPart.contains(".m3u8#") ||
+        lowerPart.contains(".m3u8&") ||
+        lowerPart.contains("=m3u8")
+    }
+
+  private fun uriParts(value: String): List<String> =
+    runCatching { URI(value) }
+      .map { uri -> listOfNotNull(uri.rawPath, uri.rawQuery, uri.rawFragment) }
+      .getOrDefault(
+        listOf(
+          value.substringBefore('?').substringBefore('#'),
+          value.substringAfter('?', "").substringBefore('#'),
+          value.substringAfter('#', ""),
+        ),
+      )
 }
