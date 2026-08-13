@@ -19,11 +19,8 @@ data class AmbientRenderContext(
   val scaleX: Double,
   val scaleY: Double,
   /**
-   * True when mpv is running in Linear HDR mode (target-colorspace-hint=yes on Vulkan
-   * gpu-next swapchain).  HOOKED_tex samples are raw linear-light values where reference
-   * white = 1.0 = 203 nits.  The ambient shader must work in perceptual space for its
-   * blur/saturation math, then convert back to linear at the correct nit budget before
-   * output — otherwise the glow is 40× too dark and effectively invisible.
+   * Retained for call-site compatibility. HDR output no longer changes Ambient shader
+   * color math: v2.0.0 used the same Ambient path for SDR and Linear HDR.
    */
   val isLinearHdr: Boolean = false,
 )
@@ -299,12 +296,8 @@ object AmbientShaderBuilder {
 
 #define SCALE_X       ${spec.context.scaleX}
 #define SCALE_Y       ${spec.context.scaleY}
-// IS_LINEAR_HDR=1 → Vulkan gpu-next linear swapchain (target-colorspace-hint=yes).
-// HOOKED_tex values are raw linear-light where 1.0 = 203 nits.  We must work in
-// perceptual space (sqrt ≈ γ0.5) for colour averaging so bright highlights do not
-// overwhelm dark colours, then convert back to linear and scale to ~0.08 linear
-// (≈16 nits) for a visible but non-blinding ambient glow.
-#define IS_LINEAR_HDR ${if (spec.context.isLinearHdr) 1 else 0}
+// v2.0.0 behavior: Ambient color math is independent of HDR output mode.
+#define IS_LINEAR_HDR 0
 
 #if IS_LINEAR_HDR
 vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
@@ -332,8 +325,7 @@ vec4 hook() {
     }
 
     // Sample 8 well-distributed positions across the entire video frame.
-    // In Linear HDR mode: convert to perceptual space before averaging so that
-    // bright linear highlights do not dominate dark colours in the blend.
+    // The HDR-specific branch is intentionally compiled out to match v2.0.0.
     vec3 avg_color = vec3(0.0);
     for (int i = 0; i < 8; i++) {
 #if IS_LINEAR_HDR
@@ -349,14 +341,8 @@ vec4 hook() {
     avg_color = mix(vec3(luma), avg_color, 1.3); // 30% saturation boost
 
 #if IS_LINEAR_HDR
-    // Reference white in gpu-next linear light = 1.0 = 203 nits.
-    // 0.08 was too conservative (~2-5 nits after edge_fade): invisible on OLED.
-    // 0.40 targets ~70-85 nits at the video edge for a mid-bright scene:
-    //   avg perceptual ~0.65 → to_linear = 0.42 → 0.42 * 0.40 * 203 ≈ 34 nits base,
-    //   before edge falloff.  Adjust down if content is too bright on your display.
     avg_color = to_linear(avg_color) * 0.40;
 #else
-    // SDR / hdr-toys mode: values are already gamma-encoded, scale normally.
     avg_color *= 0.30;
 #endif
 
@@ -397,11 +383,8 @@ precision mediump float;
 #define OPACITY          ${spec.shared.opacity}
 #define SCALE_X          ${spec.context.scaleX}
 #define SCALE_Y          ${spec.context.scaleY}
-// IS_LINEAR_HDR=1 → Vulkan gpu-next linear swapchain (target-colorspace-hint=yes).
-// Samples from HOOKED_tex are raw linear-light (1.0 = 203 nits).  Convert to
-// perceptual space (sqrt) for accumulation/saturation math, then back to linear
-// (x²) and scale to ~0.08 linear (≈16 nits) on output so the glow is visible.
-#define IS_LINEAR_HDR    ${if (spec.context.isLinearHdr) 1 else 0}
+// v2.0.0 behavior: Ambient color math is independent of HDR output mode.
+#define IS_LINEAR_HDR    0
 
 #if IS_LINEAR_HDR
 vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
@@ -463,9 +446,6 @@ vec4 hook() {
             base_offset.x * jitter_s + base_offset.y * jitter_c
         ) * aspect_fix;
         highp vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
-        // In Linear HDR mode: convert to perceptual space so luma weighting
-        // and saturation math operate on visually uniform values, not raw
-        // energy-linear values where highlights dominate by 40x.
 #if IS_LINEAR_HDR
         vec3 sample_rgb = to_perceptual(HOOKED_tex(sample_uv).rgb);
 #else
@@ -480,12 +460,6 @@ vec4 hook() {
         acc_weight += weight;
     }
 
-    // In Linear HDR: glow is still in perceptual space here — convert to linear
-    // and scale to 203-nit reference budget before applying GLOW_INTENSITY.
-    // Unlike YouTube mode, Glow applies edge_fade + vignette AFTER this scale,
-    // reducing effective brightness by ~50-70%.  0.45 base compensates for that:
-    //   0.45 * GLOW_INTENSITY (1.2-1.5) * avg_linear (0.42) * 203 ≈ 46-58 nits
-    //   at the video boundary — nicely visible on HDR OLED.
 #if IS_LINEAR_HDR
     vec3 glow = to_linear(acc_color / max(acc_weight, 1e-5)) * 0.45 * GLOW_INTENSITY;
 #else
@@ -540,10 +514,8 @@ precision highp float;
 #define OPACITY           ${spec.shared.opacity}
 #define SCALE_X           ${spec.context.scaleX}
 #define SCALE_Y           ${spec.context.scaleY}
-// IS_LINEAR_HDR=1 → Vulkan gpu-next linear swapchain (target-colorspace-hint=yes).
-// The fallback soft-glow uses perceptual (sqrt) sampling for correct brightness;
-// the predictive-fill path extends real edge colours and is already linear-correct.
-#define IS_LINEAR_HDR     ${if (spec.context.isLinearHdr) 1 else 0}
+// v2.0.0 behavior: Ambient color math is independent of HDR output mode.
+#define IS_LINEAR_HDR     0
 
 #if IS_LINEAR_HDR
 vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
@@ -599,8 +571,6 @@ vec3 sample_soft_glow(vec2 edge_origin, vec2 uv, float outside_norm) {
             base_offset.x * jitter_s + base_offset.y * jitter_c
         ) * aspect_fix;
         vec2 sample_uv = clamp(edge_origin + offset, 0.0, 1.0);
-        // Linear HDR: sample in perceptual space so luma weighting is perceptually
-        // uniform; the result is converted back to linear at the call-site below.
 #if IS_LINEAR_HDR
         vec3 sample_rgb = to_perceptual(HOOKED_tex(sample_uv).rgb);
 #else
@@ -611,10 +581,6 @@ vec3 sample_soft_glow(vec2 edge_origin, vec2 uv, float outside_norm) {
         acc_weight += weight;
     }
 
-    // In Linear HDR: result is in perceptual space — convert back to linear.
-    // 0.08 was too dim; 0.28 gives ~55-70 nits at the video edge on mid-bright HDR
-    // content.  This path is the fallback glow when frame-extend confidence is low.
-    // In SDR/hdr-toys: pass through; callers blend this with the extend path.
 #if IS_LINEAR_HDR
     return to_linear(acc / max(acc_weight, 1e-5)) * 0.28;
 #else
@@ -696,7 +662,6 @@ vec4 sample_predictive_fill(vec2 edge_origin, vec3 edge_rgb, vec2 inward_dir, ve
         acc_weight += weight;
         confidence_acc += confidence * weight;
     }
-
     return vec4(acc / max(acc_weight, 1e-5), confidence_acc / max(acc_weight, 1e-5));
 }
 
