@@ -56,6 +56,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.RadioButton
+import app.gyrolet.mpvrx.preferences.BlacklistScope
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
@@ -83,7 +87,8 @@ object FoldersPreferencesScreen : Screen {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val blacklistedFolders by preferences.blacklistedFolders.collectAsState()
+    val blacklistedVideoFolders by preferences.blacklistedFolders.collectAsState()
+    val blacklistedAudioFolders by preferences.blacklistedAudioFolders.collectAsState()
     val includeNoMediaFolders by preferences.includeNoMediaFolders.collectAsState()
     var availableFolders by remember { mutableStateOf<List<VideoFolder>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -91,7 +96,9 @@ object FoldersPreferencesScreen : Screen {
     var selectionState by remember { mutableStateOf(SelectionState<String>()) }
     var showClearAllDialog by remember { mutableStateOf(false) }
 
-    val blacklistedFoldersList = remember(blacklistedFolders) { blacklistedFolders.toList() }
+    val allBlacklistedFolders = remember(blacklistedVideoFolders, blacklistedAudioFolders) {
+      (blacklistedVideoFolders + blacklistedAudioFolders).toList().sorted()
+    }
 
     Scaffold(
       topBar = {
@@ -101,7 +108,7 @@ object FoldersPreferencesScreen : Screen {
           forceHeadlineSmall = true,
           isInSelectionMode = selectionState.isInSelectionMode,
           selectedCount = selectionState.selectedCount,
-          totalCount = blacklistedFoldersList.size,
+          totalCount = allBlacklistedFolders.size,
           onCancelSelection = { selectionState = selectionState.clear() },
           onBackClick =
             if (LocalShowSettingsBackArrow.current) {
@@ -110,18 +117,14 @@ object FoldersPreferencesScreen : Screen {
               null
             },
           onDeleteClick = {
-            val updated =
-              blacklistedFolders.toMutableSet().apply {
-                removeAll(selectionState.selectedIds)
-              }
-            preferences.blacklistedFolders.set(updated)
+            preferences.removeBlacklistedFolders(selectionState.selectedIds)
             selectionState = selectionState.clear()
           },
-          onSelectAll = { selectionState = selectionState.selectAll(blacklistedFoldersList) },
-          onInvertSelection = { selectionState = selectionState.invertSelection(blacklistedFoldersList) },
+          onSelectAll = { selectionState = selectionState.selectAll(allBlacklistedFolders) },
+          onInvertSelection = { selectionState = selectionState.invertSelection(allBlacklistedFolders) },
           onDeselectAll = { selectionState = selectionState.clear() },
           additionalActions = {
-            if (!selectionState.isInSelectionMode && blacklistedFolders.isNotEmpty()) {
+            if (!selectionState.isInSelectionMode && allBlacklistedFolders.isNotEmpty()) {
               IconButton(
                 onClick = { showClearAllDialog = true },
                 modifier = Modifier.padding(horizontal = 2.dp),
@@ -174,7 +177,7 @@ object FoldersPreferencesScreen : Screen {
           Spacer(modifier = Modifier.height(8.dp))
         }
 
-        if (blacklistedFolders.isEmpty()) {
+        if (allBlacklistedFolders.isEmpty()) {
           Box(
             modifier =
               Modifier
@@ -192,14 +195,25 @@ object FoldersPreferencesScreen : Screen {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            items(blacklistedFoldersList, key = { it }) { folderPath ->
+            items(allBlacklistedFolders, key = { it }) { folderPath ->
+              val isVideo = folderPath in blacklistedVideoFolders
+              val isAudio = folderPath in blacklistedAudioFolders
+              val scope = when {
+                isVideo && isAudio -> BlacklistScope.BOTH
+                isVideo -> BlacklistScope.VIDEO_ONLY
+                else -> BlacklistScope.AUDIO_ONLY
+              }
+
               BlacklistedFolderItem(
                 folderPath = folderPath,
+                scope = scope,
                 isSelected = selectionState.isSelected(folderPath),
                 isInSelectionMode = selectionState.isInSelectionMode,
                 onRemove = {
-                  val updated = blacklistedFolders.toMutableSet().apply { remove(folderPath) }
-                  preferences.blacklistedFolders.set(updated)
+                  preferences.removeBlacklistedFolder(folderPath)
+                },
+                onScopeChange = { newScope ->
+                  preferences.addBlacklistedFolders(setOf(folderPath), newScope)
                 },
                 onLongClick = { selectionState = selectionState.toggle(folderPath) },
                 onClick = {
@@ -222,7 +236,7 @@ object FoldersPreferencesScreen : Screen {
                   isLoading = true
                   coroutineScope.launch(Dispatchers.IO) {
                     try {
-                      availableFolders = scanAllVideoFolders(context.applicationContext as Application)
+                      availableFolders = scanAllMediaFolders(context.applicationContext as Application)
                     } finally {
                       isLoading = false
                     }
@@ -261,12 +275,11 @@ object FoldersPreferencesScreen : Screen {
     if (showAddDialog) {
       AddFolderDialog(
         folders = availableFolders,
-        blacklistedFolders = blacklistedFolders,
+        blacklistedFolders = allBlacklistedFolders.toSet(),
         isLoading = isLoading,
         onDismiss = { showAddDialog = false },
-        onAddFolders = { folderPaths ->
-          val updated = blacklistedFolders.toMutableSet().apply { addAll(folderPaths) }
-          preferences.blacklistedFolders.set(updated)
+        onAddFolders = { folderPaths, scope ->
+          preferences.addBlacklistedFolders(folderPaths, scope)
         },
       )
     }
@@ -278,7 +291,7 @@ object FoldersPreferencesScreen : Screen {
         text = { Text(stringResource(R.string.pref_folders_clear_all_confirm_message)) },
         confirmButton = {
           TextButton(onClick = {
-            preferences.blacklistedFolders.set(emptySet())
+            preferences.clearAllBlacklistedFolders()
             showClearAllDialog = false
           }) {
             Text(stringResource(R.string.generic_confirm))
@@ -340,9 +353,11 @@ private fun NoMediaPreferenceCard(
 @Composable
 private fun BlacklistedFolderItem(
   folderPath: String,
+  scope: BlacklistScope,
   isSelected: Boolean,
   isInSelectionMode: Boolean,
   onRemove: () -> Unit,
+  onScopeChange: (BlacklistScope) -> Unit,
   onLongClick: () -> Unit,
   onClick: () -> Unit,
 ) {
@@ -382,6 +397,29 @@ private fun BlacklistedFolderItem(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
+          if (!isInSelectionMode) {
+            Spacer(modifier = Modifier.height(4.dp))
+            AssistChip(
+              onClick = {
+                val nextScope = when (scope) {
+                  BlacklistScope.BOTH -> BlacklistScope.VIDEO_ONLY
+                  BlacklistScope.VIDEO_ONLY -> BlacklistScope.AUDIO_ONLY
+                  BlacklistScope.AUDIO_ONLY -> BlacklistScope.BOTH
+                }
+                onScopeChange(nextScope)
+              },
+              label = {
+                Text(
+                  text = when (scope) {
+                    BlacklistScope.BOTH -> "Both (Video & Audio)"
+                    BlacklistScope.VIDEO_ONLY -> "Videos Only"
+                    BlacklistScope.AUDIO_ONLY -> "Audio Only"
+                  },
+                  style = MaterialTheme.typography.labelSmall
+                )
+              }
+            )
+          }
         }
       }
       if (!isInSelectionMode) {
@@ -403,10 +441,11 @@ private fun AddFolderDialog(
   blacklistedFolders: Set<String>,
   isLoading: Boolean,
   onDismiss: () -> Unit,
-  onAddFolders: (Set<String>) -> Unit,
+  onAddFolders: (Set<String>, BlacklistScope) -> Unit,
 ) {
   var selectionState by remember { mutableStateOf(SelectionState<String>()) }
   var showDropdown by remember { mutableStateOf(false) }
+  var selectedScope by remember { mutableStateOf(BlacklistScope.BOTH) }
 
   val availableFolders =
     remember(folders, blacklistedFolders) {
@@ -462,28 +501,75 @@ private fun AddFolderDialog(
       } else if (availableFolders.isEmpty()) {
         Text(stringResource(R.string.pref_folders_no_folders))
       } else {
-        LazyColumn(modifier = Modifier.fillMaxWidth().height(400.dp)) {
-          items(availableFolders, key = { it.path }) { folder ->
-            Row(
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .clickable { selectionState = selectionState.toggle(folder.path) }
-                  .padding(vertical = 8.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Checkbox(
-                checked = selectionState.isSelected(folder.path),
-                onCheckedChange = { selectionState = selectionState.toggle(folder.path) },
-              )
-              Column(modifier = Modifier.padding(start = 8.dp)) {
-                Text(text = folder.name, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                  text = folder.path,
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Column {
+          LazyColumn(modifier = Modifier.fillMaxWidth().height(280.dp)) {
+            items(availableFolders, key = { it.path }) { folder ->
+              Row(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .clickable { selectionState = selectionState.toggle(folder.path) }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Checkbox(
+                  checked = selectionState.isSelected(folder.path),
+                  onCheckedChange = { selectionState = selectionState.toggle(folder.path) },
                 )
+                Column(modifier = Modifier.padding(start = 8.dp)) {
+                  Text(text = folder.name, style = MaterialTheme.typography.bodyLarge)
+                  Text(
+                    text = folder.path,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
               }
+            }
+          }
+
+          HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+          Text(
+            text = "Blacklist for",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+          )
+
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.clickable { selectedScope = BlacklistScope.BOTH },
+            ) {
+              RadioButton(
+                selected = selectedScope == BlacklistScope.BOTH,
+                onClick = { selectedScope = BlacklistScope.BOTH },
+              )
+              Text("Both", style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.clickable { selectedScope = BlacklistScope.VIDEO_ONLY },
+            ) {
+              RadioButton(
+                selected = selectedScope == BlacklistScope.VIDEO_ONLY,
+                onClick = { selectedScope = BlacklistScope.VIDEO_ONLY },
+              )
+              Text("Video", style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.clickable { selectedScope = BlacklistScope.AUDIO_ONLY },
+            ) {
+              RadioButton(
+                selected = selectedScope == BlacklistScope.AUDIO_ONLY,
+                onClick = { selectedScope = BlacklistScope.AUDIO_ONLY },
+              )
+              Text("Audio", style = MaterialTheme.typography.bodyMedium)
             }
           }
         }
@@ -492,7 +578,7 @@ private fun AddFolderDialog(
     confirmButton = {
       TextButton(
         onClick = {
-          onAddFolders(selectionState.selectedIds)
+          onAddFolders(selectionState.selectedIds, selectedScope)
           onDismiss()
         },
         enabled = selectionState.isInSelectionMode && !isLoading,
@@ -577,6 +663,30 @@ internal fun getSimplifiedStoragePath(uriString: String): String =
     uriString
   }
 
-private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder> =
-  app.gyrolet.mpvrx.repository.MediaFileRepository
-    .getAllVideoFoldersFast(context = context)
+private suspend fun scanAllMediaFolders(context: Application): List<VideoFolder> {
+  val repoFolders = app.gyrolet.mpvrx.repository.MediaFileRepository
+    .getAllVideoFoldersFast(context = context, includeAudioOverride = true)
+
+  val songs = try {
+    app.gyrolet.mpvrx.ui.browser.music.MusicLibraryScanner.scanSongs(context)
+  } catch (_: Exception) {
+    emptyList()
+  }
+
+  val audioFolderPaths = songs.mapNotNull { java.io.File(it.path).parent }.toSet()
+  val existingPaths = repoFolders.map { it.path.lowercase() }.toSet()
+
+  val extraAudioFolders = audioFolderPaths.filter { path -> path.lowercase() !in existingPaths }.map { path ->
+    VideoFolder(
+      bucketId = path,
+      name = path.substringAfterLast('/'),
+      path = path,
+      videoCount = 0,
+      totalSize = 0L,
+      totalDuration = 0L,
+      lastModified = 0L,
+    )
+  }
+
+  return (repoFolders + extraAudioFolders).sortedBy { it.name.lowercase() }
+}
