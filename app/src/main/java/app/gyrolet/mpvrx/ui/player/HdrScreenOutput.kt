@@ -92,6 +92,7 @@ private val HDR_OWNED_PROPERTIES =
     "glsl-shader-opts",
   )
 
+@Suppress("UNUSED_PARAMETER")
 internal fun hdrScreenOutputSettings(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
@@ -101,7 +102,7 @@ internal fun hdrScreenOutputSettings(
   val settings =
     when (activeMode) {
       HdrScreenMode.OFF -> offSettings()
-      HdrScreenMode.LINEAR -> linearHdrSettings(boostSdrToHdr)
+      HdrScreenMode.LINEAR -> linearHdrSettings()
       else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
     }
 
@@ -169,17 +170,17 @@ private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>>
     shaderOptions = profile.shaderOptionsValue,
   )
 
-private fun linearHdrSettings(boostSdrToHdr: Boolean): List<Pair<String, String>> =
+private fun linearHdrSettings(): List<Pair<String, String>> =
   commonSettings(
-    // Preserve the existing mpv-native HDR rendering policy, but reset every target value that a
-    // previous PQ/HLG/BT.2020 mode may have overridden. Without these resets Linear HDR depends on
-    // mode history and can keep rendering with stale primaries/TRC after the UI says Linear.
+    // Match the v2.0.0 Linear HDR policy: Linear HDR always enables inverse tone mapping.
+    // Keep the newer explicit target resets so switching from PQ/HLG/BT.2020 cannot leak stale
+    // primaries, transfer characteristics or peak values into the Linear renderer.
     targetColorspaceHint = "yes",
     targetColorspaceHintMode = "target",
     targetPrim = "auto",
     targetTrc = "auto",
     targetPeak = "auto",
-    inverseToneMapping = if (boostSdrToHdr) "yes" else "no",
+    inverseToneMapping = "yes",
     toneMapping = "clip",
     gamutMappingMode = "clip",
     hdrComputePeak = "yes",
