@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 val enableX86 = project.findProperty("enableX86") != "false"
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
+val universalOnlyDistributions = setOf("noVulkan", "fongmi")
 
 plugins {
   alias(libs.plugins.android.application)
@@ -61,6 +62,13 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "false")
+    }
+
+    create("fongmi") {
+      dimension = "distribution"
+      buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
+      buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
+      buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
     }
   }
 
@@ -160,7 +168,10 @@ androidComponents {
   }
 
   onVariants { variant ->
-    val isNoVulkan = variant.productFlavors.contains("distribution" to "noVulkan")
+    val isUniversalOnly =
+      variant.productFlavors.any { (dimension, flavor) ->
+        dimension == "distribution" && flavor in universalOnlyDistributions
+      }
 
     variant.outputs.forEach { output ->
       val abi =
@@ -168,7 +179,7 @@ androidComponents {
           .find { it.filterType == FilterConfiguration.FilterType.ABI }
           ?.identifier
 
-      if (isNoVulkan && abi != null) {
+      if (isUniversalOnly && abi != null) {
         output.enabled.set(false)
       }
 
@@ -259,6 +270,7 @@ dependencies {
 
   "standardImplementation"(files("libs/mpvlib.aar"))
   "noVulkanImplementation"(files("libs/mpvlib-no-vulkun.aar"))
+  "fongmiImplementation"(files("libs/mpvlib-fongmi.aar"))
 
   // Network protocol libraries
   implementation(libs.smbj)
