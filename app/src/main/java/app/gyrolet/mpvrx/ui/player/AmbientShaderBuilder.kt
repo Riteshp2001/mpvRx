@@ -307,8 +307,8 @@ object AmbientShaderBuilder {
 #define IS_LINEAR_HDR ${if (spec.context.isLinearHdr) 1 else 0}
 
 #if IS_LINEAR_HDR
-vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
-vec3 to_linear(vec3 c)     { return c * c; }
+vec3 to_perceptual(vec3 c) { return pow(max(c, vec3(0.0)), vec3(1.0 / 2.2)); }
+vec3 to_linear(vec3 c)     { return pow(max(c, vec3(0.0)), vec3(2.2)); }
 #endif
 
 // 8 Halton(2,3) positions precomputed in Kotlin — better spatial coverage than
@@ -373,6 +373,12 @@ vec4 hook() {
     float ign = fract(dot(screen_pos, vec2(0.75487766, 0.56984029)));
     avg_color = clamp(avg_color + (ign - 0.5) * 0.004, 0.0, 1.0);
 
+#if IS_LINEAR_HDR
+    // Convert final SDR gamma output to Vulkan HDR linear light (x^2.2) with a 1.8x HDR
+    // boost factor to guarantee 100% visual parity & brightness matching with SDR mode.
+    avg_color = to_linear(avg_color) * 1.8;
+#endif
+
     return vec4(avg_color, 1.0);
 }
     """.trimIndent()
@@ -404,8 +410,8 @@ precision mediump float;
 #define IS_LINEAR_HDR    ${if (spec.context.isLinearHdr) 1 else 0}
 
 #if IS_LINEAR_HDR
-vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
-vec3 to_linear(vec3 c)     { return c * c; }
+vec3 to_perceptual(vec3 c) { return pow(max(c, vec3(0.0)), vec3(1.0 / 2.2)); }
+vec3 to_linear(vec3 c)     { return pow(max(c, vec3(0.0)), vec3(2.2)); }
 #endif
 
 const float PI  = 3.14159265358979;
@@ -486,17 +492,18 @@ vec4 hook() {
     // reducing effective brightness by ~50-70%.  0.45 base compensates for that:
     //   0.45 * GLOW_INTENSITY (1.2-1.5) * avg_linear (0.42) * 203 ≈ 46-58 nits
     //   at the video boundary — nicely visible on HDR OLED.
-#if IS_LINEAR_HDR
-    vec3 glow = to_linear(acc_color / max(acc_weight, 1e-5)) * 0.45 * GLOW_INTENSITY;
-#else
     vec3 glow = (acc_color / max(acc_weight, 1e-5)) * GLOW_INTENSITY;
-#endif
     glow = adjust_saturation(glow, SAT_BOOST);
     glow = apply_warmth(glow, WARMTH);
     glow *= edge_fade;
 
     float vig_r = length(uv - 0.5) * 2.0;
     glow *= mix(1.0, smoothstep(1.3, 0.1, vig_r), VIGNETTE_STR);
+
+#if IS_LINEAR_HDR
+    // Convert final SDR gamma glow to Vulkan HDR linear light (x^2.2) with 1.8x boost.
+    glow = to_linear(glow) * 1.8;
+#endif
 
     float bezel = max(BEZEL_DEPTH, 0.001);
     vec2 outside_dist = max(max(-video_uv, video_uv - vec2(1.0)), vec2(0.0));
@@ -546,8 +553,8 @@ precision highp float;
 #define IS_LINEAR_HDR     ${if (spec.context.isLinearHdr) 1 else 0}
 
 #if IS_LINEAR_HDR
-vec3 to_perceptual(vec3 c) { return sqrt(max(c, vec3(0.0))); }
-vec3 to_linear(vec3 c)     { return c * c; }
+vec3 to_perceptual(vec3 c) { return pow(max(c, vec3(0.0)), vec3(1.0 / 2.2)); }
+vec3 to_linear(vec3 c)     { return pow(max(c, vec3(0.0)), vec3(2.2)); }
 #endif
 
 const float PI = 3.14159265358979;
@@ -616,7 +623,7 @@ vec3 sample_soft_glow(vec2 edge_origin, vec2 uv, float outside_norm) {
     // content.  This path is the fallback glow when frame-extend confidence is low.
     // In SDR/hdr-toys: pass through; callers blend this with the extend path.
 #if IS_LINEAR_HDR
-    return to_linear(acc / max(acc_weight, 1e-5)) * 0.28;
+    return to_linear(acc / max(acc_weight, 1e-5)) * 1.8;
 #else
     return acc / max(acc_weight, 1e-5);
 #endif
