@@ -660,11 +660,9 @@ object FolderListScreen : Screen {
               onBlacklistClick = {
                 coroutineScope.launch {
                   val selectedFolders = selectionManager.getSelectedItems()
-                  val blacklistedFolders = foldersPreferences.blacklistedFolders.get().toMutableSet()
-                  selectedFolders.forEach { folder ->
-                    blacklistedFolders.add(folder.path)
-                  }
-                  foldersPreferences.blacklistedFolders.set(blacklistedFolders)
+                  val paths = selectedFolders.map { it.path }.toSet()
+                  val scope = if (audioOnly) app.gyrolet.mpvrx.preferences.BlacklistScope.AUDIO_ONLY else app.gyrolet.mpvrx.preferences.BlacklistScope.VIDEO_ONLY
+                  foldersPreferences.addBlacklistedFolders(paths, scope)
                   selectionManager.clear()
                   viewModel.refresh()
                   android.widget.Toast
