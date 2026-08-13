@@ -41,8 +41,12 @@ object M3uPlaybackPolicy {
     mimeType: String?,
   ): Boolean {
     val candidates = listOfNotNull(playableUri, originalUri, fileName).map { it.lowercase() }
+    val normalizedMimeType = mimeType?.substringBefore(';')?.trim()?.lowercase()
     return candidates.any(::hasM3uMarker) ||
-      mimeType?.substringBefore(';')?.trim()?.lowercase()?.let(m3uMimeTypes::contains) == true
+      normalizedMimeType?.let { type ->
+        type.contains("mpegurl") || type.contains("x-mpegurl") || type.contains("vnd.apple.mpegurl") ||
+          type in m3uMimeTypes
+      } == true
   }
 
   internal fun looksLikeHlsForDirectPlayback(
