@@ -308,8 +308,6 @@
   <string name="pref_app_language_restart_now">Restart now</string>
   <string name="pref_advanced_mpv_conf_storage_location">Pick configuration storage location</string>
   <string name="pref_advanced_mpv_conf">Edit mpv.conf</string>
-  <string name="pref_mpv_conf_overrides_app_settings_title">Prefer mpv.conf settings</string>
-  <string name="pref_mpv_conf_overrides_app_settings_summary">Keeps mpv.conf values above automatic app playback defaults. Player controls and saved resume or track choices still work; mpvRx reserves Android renderer, surface, safe-area, media-source, and session-safety options. Reopen the player after changing this or mpv.conf.</string>
   <string name="pref_advanced_input_conf">Edit input.conf</string>
   <string name="pref_advanced_dump_logs_title">Dump logs</string>
   <string name="pref_advanced_dump_logs_summary">Dumps and copies the logs to be shared with the developers</string>

@@ -1069,17 +1069,15 @@ class PlayerActivity :
   }
 
   private fun setupAudio() {
-    if (!advancedPreferences.mpvConfOverridesAppSettings.get()) {
-      audioPreferences.audioChannels.get().let {
-        runCatching {
-          if (it == AudioChannels.ReverseStereo) {
-            PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
-          } else {
-            PlaybackSession.setPropertyString(it.property, it.value)
-          }
-        }.onFailure { e ->
-          Log.e(TAG, "Error setting audio channels: ${it.property}=${it.value}", e)
+    audioPreferences.audioChannels.get().let {
+      runCatching {
+        if (it == AudioChannels.ReverseStereo) {
+          PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
+        } else {
+          PlaybackSession.setPropertyString(it.property, it.value)
         }
+      }.onFailure { e ->
+        Log.e(TAG, "Error setting audio channels: ${it.property}=${it.value}", e)
       }
     }
 
@@ -3268,7 +3266,7 @@ class PlayerActivity :
   ) {
     when (property) {
       "sub-text" -> {
-        if (!advancedPreferences.mpvConfOverridesAppSettings.get() && isSecondarySubtitleActive()) {
+        if (isSecondarySubtitleActive()) {
           val primaryPosition = subtitlesPreferences.subPos.get()
           val width = player.width.takeIf { it > 0 }?.toFloat()
           val height = player.height.takeIf { it > 0 }?.toFloat()
@@ -3339,7 +3337,7 @@ class PlayerActivity :
         }
       }
       "sub-scale" -> {
-        if (!advancedPreferences.mpvConfOverridesAppSettings.get() && isSecondarySubtitleActive()) {
+        if (isSecondarySubtitleActive()) {
           val primaryPosition = subtitlesPreferences.subPos.get()
           val width = player.width.takeIf { it > 0 }?.toFloat()
           val height = player.height.takeIf { it > 0 }?.toFloat()
@@ -3381,11 +3379,9 @@ class PlayerActivity :
 
         if (pendingVideoParamRefreshRequiresShaderReload) {
           pendingVideoParamRefreshRequiresShaderReload = false
-          if (!advancedPreferences.mpvConfOverridesAppSettings.get()) {
-            withContext(playbackRenderDispatcher) {
-              player.applyAnime4KShaders()
-              viewModel.restartHdrScreenOutputAndAmbientIfActive()
-            }
+          withContext(playbackRenderDispatcher) {
+            player.applyAnime4KShaders()
+            viewModel.restartHdrScreenOutputAndAmbientIfActive()
           }
         }
       }
@@ -3449,7 +3445,6 @@ class PlayerActivity :
    */
   private fun handleFileLoaded(loadGeneration: Long) {
     if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
-    val mpvConfHasPriority = advancedPreferences.mpvConfOverridesAppSettings.get()
     // Extract fileName from intent only if not already set
     // This preserves fileName set in onNewIntent or onCreate
     if (fileName.isBlank()) {
@@ -3495,9 +3490,7 @@ class PlayerActivity :
     viewModel.clearABLoop()
 
     // Drop the old ambient shader file, but keep the user's ambient preference/style.
-    if (!mpvConfHasPriority) {
-      viewModel.prepareAmbientForNewVideo()
-    }
+    viewModel.prepareAmbientForNewVideo()
 
     setIntentExtras(intent.extras)
 
@@ -3512,12 +3505,10 @@ class PlayerActivity :
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
 
       // Apply track selection logic (defaults only apply when no saved state)
-      if (!mpvConfHasPriority) {
-        trackSelector.onFileLoaded(hasState)
-      }
+      trackSelector.onFileLoaded(hasState)
 
       // Apply default zoom only if there's no saved state
-      if (!hasState && !mpvConfHasPriority) {
+      if (!hasState) {
         withContext(Dispatchers.Main) {
           if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
           val zoomPreference = playerPreferences.defaultVideoZoom.get()
@@ -3575,33 +3566,27 @@ class PlayerActivity :
       }
     }
 
-    if (!mpvConfHasPriority) {
-      applySubtitlePreferences()
-      applyVideoFilterPreferences()
-      viewModel.restoreSavedVideoAspect(showUpdate = false)
-    }
+    applySubtitlePreferences()
+    applyVideoFilterPreferences()
+    viewModel.restoreSavedVideoAspect(showUpdate = false)
 
     if (shouldForceCurrentMediaTitle()) {
       val preferredTitle = getPreferredCurrentTitle()
-      if (!mpvConfHasPriority) {
-        PlaybackSession.setPropertyString("force-media-title", preferredTitle)
-      }
+      PlaybackSession.setPropertyString("force-media-title", preferredTitle)
       viewModel.setMediaTitle(preferredTitle)
     }
 
     viewModel.unpause()
 
-    if (!mpvConfHasPriority) {
-      lifecycleScope.launch {
-        withContext(playbackRenderDispatcher) {
-          if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
-          player.applyAnime4KShaders()
-          viewModel.restartHdrScreenOutputAndAmbientIfActive()
-        }
+    lifecycleScope.launch {
+      withContext(playbackRenderDispatcher) {
+        if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
+        player.applyAnime4KShaders()
+        viewModel.restartHdrScreenOutputAndAmbientIfActive()
       }
     }
 
-    if (!mpvConfHasPriority &&
+    if (
       subtitlesPreferences.autoEnableSubtitles.get() &&
       subtitlesPreferences.autoloadMatchingSubtitles.get()
     ) {
@@ -3704,9 +3689,7 @@ class PlayerActivity :
           // Update MPV title
           withContext(Dispatchers.Main) {
             if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
-            if (!advancedPreferences.mpvConfOverridesAppSettings.get()) {
-              PlaybackSession.setPropertyString("force-media-title", betterFilename)
-            }
+            PlaybackSession.setPropertyString("force-media-title", betterFilename)
             viewModel.setMediaTitle(betterFilename)
 
             // Update media session
@@ -4037,8 +4020,7 @@ class PlayerActivity :
    * Applies saved playback state to MPV.
    *
    * Restores subtitle delay, audio delay, audio and track selections, and playback speed.
-   * Also restores saved time position if enabled. In mpv.conf-priority mode, presentation values
-   * remain config-owned while explicit saved track choices and resume position are still restored.
+   * Also restores saved time position if enabled. Explicit player state remains authoritative.
    *
    * @param state The saved playback state entity
    */
@@ -4047,7 +4029,6 @@ class PlayerActivity :
 
     val subDelay = state.subDelay / DELAY_DIVISOR
     val audioDelay = state.audioDelay / DELAY_DIVISOR
-    val mpvConfHasPriority = advancedPreferences.mpvConfOverridesAppSettings.get()
 
     // Restore external subtitles first
     if (state.externalSubtitles.isNotBlank()) {
@@ -4071,32 +4052,28 @@ class PlayerActivity :
       Log.d(TAG, "Restored secondary subtitle track: ${state.secondarySid} (user selection)")
     }
 
-    if (!mpvConfHasPriority) {
-      applySubtitleLayout(
-        primaryPosition = subtitlesPreferences.subPos.get(),
-        forceAssOverride = subtitlesPreferences.overrideAssSubs.get(),
-        screenWidth = player.width.takeIf { it > 0 }?.toFloat(),
-        screenHeight = player.height.takeIf { it > 0 }?.toFloat(),
-      )
-    }
+    applySubtitleLayout(
+      primaryPosition = subtitlesPreferences.subPos.get(),
+      forceAssOverride = subtitlesPreferences.overrideAssSubs.get(),
+      screenWidth = player.width.takeIf { it > 0 }?.toFloat(),
+      screenHeight = player.height.takeIf { it > 0 }?.toFloat(),
+    )
 
     if (state.aid > 0) {
       player.aid = state.aid
       Log.d(TAG, "Restored audio track: ${state.aid} (user selection)")
     }
 
-    if (!mpvConfHasPriority) {
-      PlaybackSession.setPropertyDouble("sub-delay", subDelay)
-      PlaybackSession.setPropertyDouble("speed", state.playbackSpeed)
-      // Re-apply audio-pitch-correction after speed change, as mpv resets it to default
-      PlaybackSession.setPropertyBoolean("audio-pitch-correction", audioPreferences.audioPitchCorrection.get())
-      PlaybackSession.setPropertyDouble("audio-delay", audioDelay)
-      PlaybackSession.setPropertyDouble("sub-speed", state.subSpeed)
+    PlaybackSession.setPropertyDouble("sub-delay", subDelay)
+    PlaybackSession.setPropertyDouble("speed", state.playbackSpeed)
+    // Re-apply audio-pitch-correction after speed change, as mpv resets it to default
+    PlaybackSession.setPropertyBoolean("audio-pitch-correction", audioPreferences.audioPitchCorrection.get())
+    PlaybackSession.setPropertyDouble("audio-delay", audioDelay)
+    PlaybackSession.setPropertyDouble("sub-speed", state.subSpeed)
 
-      // Restore video zoom from saved state
-      PlaybackSession.setPropertyDouble("video-zoom", state.videoZoom.toDouble())
-      viewModel.setVideoZoom(state.videoZoom)
-    }
+    // Restore video zoom from saved state
+    PlaybackSession.setPropertyDouble("video-zoom", state.videoZoom.toDouble())
+    viewModel.setVideoZoom(state.videoZoom)
 
     if (playerPreferences.savePositionOnQuit.get() &&
       state.lastPosition != 0 &&
@@ -4115,7 +4092,7 @@ class PlayerActivity :
    * @param state The saved playback state entity (null if no saved state)
    */
   private fun applyDefaultSettings(state: PlaybackStateEntity?) {
-    if (state == null && !advancedPreferences.mpvConfOverridesAppSettings.get()) {
+    if (state == null) {
       val defaultSubSpeed = subtitlesPreferences.defaultSubSpeed.get().toDouble()
       PlaybackSession.setPropertyDouble("sub-speed", defaultSubSpeed)
     }
@@ -5699,9 +5676,7 @@ class PlayerActivity :
       getPlaylistItemByIndex(index)?.fileName?.isNotBlank() == true ||
         !(uri.toString().lowercase().contains(".m3u8") || uri.toString().lowercase().contains(".m3u"))
     if (shouldForceTitle) {
-      if (!advancedPreferences.mpvConfOverridesAppSettings.get()) {
-        PlaybackSession.setPropertyString("force-media-title", fileName)
-      }
+      PlaybackSession.setPropertyString("force-media-title", fileName)
       viewModel.setMediaTitle(fileName)
     }
 

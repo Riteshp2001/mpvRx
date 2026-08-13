@@ -1163,6 +1163,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_add_connection">Ajouter une connexion</string>
   <string name="ui_local_network">Réseau local</string>
   <string name="ui_no_network_connections">Aucune connexion réseau</string>
+  <string name="ui_no_recent_links">Aucun lien de flux ni torrent récent pour le moment. Collez une URL de flux ci-dessus pour commencer.</string>
   <string name="ui_add_smb_ftp_or_webdav_connections_to_browse_network_files">Ajoutez des connexions SMB, FTP ou WebDAV pour parcourir les fichiers réseau</string>
   <string name="ui_stream_link">Lien de flux</string>
   <string name="ui_enter_stream_url">Saisissez l’URL du flux…</string>
@@ -1492,6 +1493,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Couleurs néon éclatantes et tranchées</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Noirs renforcés pour les écrans OLED</string>
   <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_description">Regardez des vidéos en synchronisation avec vos amis. Connectez-vous à un serveur Syncplay pour commencer à regarder ensemble.</string>
   <string name="syncplay_open">Ouvrir Syncplay</string>
   <string name="syncplay_connected_as">Connecté en tant que %1$s dans le salon %2$s</string>
   <string name="syncplay_users_in_room">Utilisateurs dans le salon :</string>
@@ -1661,8 +1663,8 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_codecs_min_resolution">Résolution min : %s</string>
   <string name="pref_codecs_alignment">Alignement des pixels : %1$dx%2$d</string>
   <string name="ui_music">Music</string>
-  <string name="pref_nav_music_title">Show Music tab</string>
-  <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="pref_nav_music_title">Afficher l’onglet Musique</string>
+  <string name="pref_nav_music_summary">Afficher ou masquer Musique dans la barre de navigation inférieure</string>
   <string name="player_up_next_title">File d\'attente</string>
   <string name="player_lyrics_title">Paroles</string>
   <string name="lyrics_source_embedded">Intégrées</string>

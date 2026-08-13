@@ -1163,6 +1163,7 @@
   <string name="ui_add_connection">Добавить подключение</string>
   <string name="ui_local_network">Локальная сеть</string>
   <string name="ui_no_network_connections">Нет сетевых подключений</string>
+  <string name="ui_no_recent_links">Пока нет недавних ссылок на трансляции или торрентов. Вставьте URL трансляции выше, чтобы начать.</string>
   <string name="ui_add_smb_ftp_or_webdav_connections_to_browse_network_files">Добавьте подключения SMB, FTP или WebDAV для просмотра сетевых файлов</string>
   <string name="ui_stream_link">Ссылка на поток</string>
   <string name="ui_enter_stream_url">Введите URL потока…</string>
@@ -1492,6 +1493,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Яркие неоновые цвета с выразительными гранями</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Улучшенный чёрный для OLED-дисплеев</string>
   <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_description">Смотрите видео синхронно с друзьями. Подключитесь к серверу Syncplay, чтобы начать совместный просмотр.</string>
   <string name="syncplay_open">Открыть Syncplay</string>
   <string name="syncplay_connected_as">Подключено как %1$s к комнате %2$s</string>
   <string name="syncplay_users_in_room">Пользователи в комнате:</string>
@@ -1661,8 +1663,8 @@
   <string name="pref_codecs_min_resolution">Мин. разрешение: %s</string>
   <string name="pref_codecs_alignment">Выравнивание пикселей: %1$dx%2$d</string>
   <string name="ui_music">Music</string>
-  <string name="pref_nav_music_title">Show Music tab</string>
-  <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="pref_nav_music_title">Показывать вкладку «Музыка»</string>
+  <string name="pref_nav_music_summary">Показывать или скрывать «Музыку» на нижней панели навигации</string>
   <string name="player_up_next_title">Плейлист</string>
   <string name="player_lyrics_title">Текст песни</string>
   <string name="lyrics_source_embedded">Встроенный</string>

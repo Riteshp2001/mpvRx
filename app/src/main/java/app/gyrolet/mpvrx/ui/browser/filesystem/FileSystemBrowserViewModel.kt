@@ -21,6 +21,7 @@ import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
+import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
@@ -82,6 +83,9 @@ class FileSystemBrowserViewModel(
   // Set of videos that should show the NEW label in tree view
   private val _newVideoIds = MutableStateFlow<Set<Long>>(emptySet())
   val newVideoIds: StateFlow<Set<Long>> = _newVideoIds.asStateFlow()
+
+  private val _watchedVideoIds = MutableStateFlow<Set<Long>>(emptySet())
+  val watchedVideoIds: StateFlow<Set<Long>> = _watchedVideoIds.asStateFlow()
 
   // Loading state - similar to Fossify's showProgressBar/hideProgressBar
   private val _isLoading = MutableStateFlow(false)
@@ -437,6 +441,7 @@ class FileSystemBrowserViewModel(
           _unsortedItems.value = roots
           _videoFilesWithPlayback.value = emptyMap()
           _newVideoIds.value = emptySet()
+          _watchedVideoIds.value = emptySet()
           Log.d(TAG, "Loaded ${roots.size} storage roots")
         } else {
           // Update breadcrumbs for real paths
@@ -517,6 +522,7 @@ class FileSystemBrowserViewModel(
               _unsortedItems.value = emptyList()
               _videoFilesWithPlayback.value = emptyMap()
               _newVideoIds.value = emptySet()
+              _watchedVideoIds.value = emptySet()
               Log.e(TAG, "Error loading directory: $path", error)
             }
         }
@@ -525,6 +531,7 @@ class FileSystemBrowserViewModel(
         _unsortedItems.value = emptyList()
         _videoFilesWithPlayback.value = emptyMap()
         _newVideoIds.value = emptySet()
+        _watchedVideoIds.value = emptySet()
         Log.e(TAG, "Exception loading directory", e)
       } finally {
         _isLoading.value = false
@@ -541,37 +548,88 @@ class FileSystemBrowserViewModel(
     val playbackStates = playbackStateRepository.getAllPlaybackStates().associateBy { it.mediaTitle }
     val playbackMap = mutableMapOf<Long, Float>()
     val newIds = mutableSetOf<Long>()
+    val watchedIds = mutableSetOf<Long>()
     val currentTime = System.currentTimeMillis()
     val showNewLabels = appearancePreferences.showUnplayedOldVideoLabel.get()
     val thresholdMillis = appearancePreferences.unplayedOldVideoDays.get().toLong() * 24L * 60L * 60L * 1000L
+    val watchedThreshold = browserPreferences.watchedThreshold.get()
 
     Log.d(TAG, "Loading playback info for ${videoFiles.size} videos")
 
     videoFiles.forEach { videoFile ->
       val video = videoFile.video
-      val playbackState = playbackStates[video.displayName]
-
-      if (playbackState != null && video.duration > 0) {
-        val durationSeconds = video.duration / 1000
-        val timeRemaining = playbackState.timeRemaining.toLong()
-        val watched = durationSeconds - timeRemaining
-        val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-
-        // Only show progress for videos that are 1-99% complete
-        // Similar to how media players show partial progress
-        if (progressValue in 0.01f..0.99f) {
-          playbackMap[video.id] = progressValue
+      val playbackIdentifiers =
+        linkedSetOf(
+          PlaybackIdentity.forUri(video.uri.toString()),
+          PlaybackIdentity.forUri(video.path),
+          PlaybackIdentity.forUri("file://${video.path}"),
+          video.displayName,
+        )
+      val playbackState = playbackIdentifiers.firstNotNullOfOrNull { playbackStates[it] }
+      val progressValue =
+        if (playbackState != null && video.duration > 0) {
+          val durationSeconds = video.duration / 1000
+          val watched = durationSeconds - playbackState.timeRemaining.toLong()
+          (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+        } else {
+          0f
         }
-      } else if (showNewLabels) {
-        val videoAge = currentTime - (video.dateModified * 1000L)
-        if (videoAge <= thresholdMillis) {
-          newIds += video.id
-        }
+      val isWatched =
+        playbackState?.hasBeenWatched == true ||
+          (watchedThreshold > 0 && progressValue >= watchedThreshold / 100f)
+      if (isWatched) watchedIds += video.id
+
+      if (playbackState != null && progressValue in 0.01f..0.99f) {
+        playbackMap[video.id] = progressValue
+      }
+
+      val videoAge = currentTime - (video.dateModified * 1000L)
+      val isWithinNewWindow = thresholdMillis == 0L || videoAge <= thresholdMillis
+      if (showNewLabels && !isWatched && isWithinNewWindow) {
+        newIds += video.id
       }
     }
 
     _videoFilesWithPlayback.value = playbackMap
     _newVideoIds.value = newIds
+    _watchedVideoIds.value = watchedIds
     Log.d(TAG, "Loaded playback info for ${playbackMap.size} videos with progress")
+  }
+
+  fun setWatched(video: Video, watched: Boolean) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val durationSeconds = (video.duration / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+      val identifiers =
+        linkedSetOf(
+          PlaybackIdentity.forUri(video.uri.toString()),
+          PlaybackIdentity.forUri(video.path),
+          PlaybackIdentity.forUri("file://${video.path}"),
+          video.displayName,
+        )
+      val existing = playbackStateRepository.getAllPlaybackStates().firstNotNullOfOrNull { state ->
+        if (state.mediaTitle in identifiers) state else null
+      }
+      playbackStateRepository.upsert(
+        (existing ?: app.gyrolet.mpvrx.database.entities.PlaybackStateEntity(
+          mediaTitle = PlaybackIdentity.forUri(video.uri.toString()),
+          lastPosition = 0,
+          playbackSpeed = 1.0,
+          sid = -1,
+          secondarySid = -1,
+          subDelay = 0,
+          subSpeed = 1.0,
+          aid = -1,
+          audioDelay = 0,
+          timeRemaining = durationSeconds,
+          hasBeenWatched = false,
+        )).copy(
+          mediaTitle = PlaybackIdentity.forUri(video.uri.toString()),
+          lastPosition = 0,
+          timeRemaining = if (watched) 0 else durationSeconds,
+          hasBeenWatched = watched,
+        ),
+      )
+      PlaybackStateEvents.notifyChanged(PlaybackIdentity.forUri(video.uri.toString()))
+    }
   }
 }

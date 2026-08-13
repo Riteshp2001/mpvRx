@@ -1163,6 +1163,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_add_connection">Verbindung hinzufügen</string>
   <string name="ui_local_network">Lokales Netzwerk</string>
   <string name="ui_no_network_connections">Keine Netzwerkverbindungen</string>
+  <string name="ui_no_recent_links">Noch keine aktuellen Stream-Links oder Torrents. Füge oben eine Stream-URL ein, um zu beginnen.</string>
   <string name="ui_add_smb_ftp_or_webdav_connections_to_browse_network_files">SMB-, FTP- oder WebDAV-Verbindungen hinzufügen, um Netzwerkdateien zu durchsuchen</string>
   <string name="ui_stream_link">Stream-Link</string>
   <string name="ui_enter_stream_url">Stream-URL eingeben…</string>
@@ -1492,6 +1493,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Kräftige neonartige Farben mit markanter Wirkung</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Verbesserte Schwarztöne für OLED-Displays</string>
   <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_description">Sieh dir Videos synchron mit Freunden an. Verbinde dich mit einem Syncplay-Server, um gemeinsam zu schauen.</string>
   <string name="syncplay_open">Syncplay öffnen</string>
   <string name="syncplay_connected_as">Als %1$s mit Raum %2$s verbunden</string>
   <string name="syncplay_users_in_room">Benutzer im Raum:</string>
@@ -1661,8 +1663,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_codecs_min_resolution">Min. Auflösung: %s</string>
   <string name="pref_codecs_alignment">Pixelausrichtung: %1$dx%2$d</string>
   <string name="ui_music">Music</string>
-  <string name="pref_nav_music_title">Show Music tab</string>
-  <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="pref_nav_music_title">Musik-Tab anzeigen</string>
+  <string name="pref_nav_music_summary">Musik in der unteren Navigationsleiste anzeigen oder ausblenden</string>
   <string name="player_up_next_title">Wiedergabeliste</string>
   <string name="player_lyrics_title">Songtext</string>
   <string name="lyrics_source_embedded">Eingebettet</string>

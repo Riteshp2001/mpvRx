@@ -463,7 +463,7 @@
   <string name="show_splash_ovals_on_double_tap_to_seek">डबल टैप सीक पर रिपल दिखाएं</string>
   <string name="show_time_on_double_tap_to_seek">सीक टाइम दिखाएं</string>
   <string name="player_sheets_frame_navigation_title">फ्रेम नेविगेशन</string>
-  <string name="player_sheets_frame_navigation_snapshot_saved">Saved to Pictures/mpvSnaps</string>
+  <string name="player_sheets_frame_navigation_snapshot_saved">Pictures/mpvSnaps में सहेजा गया</string>
   <string name="player_sheets_frame_navigation_include_subtitles">स्नैपशॉट में सबटाइटल शामिल करें</string>
   <string name="player_sheets_zoom_slider_label">वीडियो ज़ूम</string>
   <plurals name="seconds">
@@ -1101,6 +1101,7 @@
   <string name="ui_add_connection">कनेक्शन जोड़ें</string>
   <string name="ui_local_network">लोकल नेटवर्क</string>
   <string name="ui_no_network_connections">कोई नेटवर्क कनेक्शन नहीं</string>
+  <string name="ui_no_recent_links">अभी तक कोई हालिया स्ट्रीम लिंक या टोरेंट नहीं है। शुरू करने के लिए ऊपर स्ट्रीम URL चिपकाएँ।</string>
   <string name="ui_add_smb_ftp_or_webdav_connections_to_browse_network_files">नेटवर्क फाइलें ब्राउज़ करने के लिए SMB, FTP या WebDAV कनेक्शन जोड़ें</string>
   <string name="ui_stream_link">स्ट्रीम लिंक</string>
   <string name="ui_enter_stream_url">स्ट्रीम URL डालें…</string>
@@ -1239,7 +1240,7 @@
   <string name="ui_by_ritesh_pandit">Ritesh Pandit द्वारा</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">डिवाइस जानकारी</string>
-  <string name="ui_buy_me_a_coffee">Buy Me a Coffee</string>
+  <string name="ui_buy_me_a_coffee">मुझे कॉफ़ी पिलाएँ</string>
   <string name="ui_if_you_enjoy_mpvrx_consider_supporting_its_development_every_bit">अगर आपको mpvRx पसंद है, तो इसके डेवलपमेंट को सपोर्ट करने पर विचार करें। हर छोटी मदद मायने रखती है!</string>
   <string name="ui_upi_id">UPI ID</string>
   <string name="ui_panditritesh2001_okhdfcbank">panditritesh2001@okhdfcbank</string>
@@ -1437,6 +1438,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">एज के साथ जीवंत नियॉन जैसे रंग</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">OLED डिस्प्ले के लिए बेहतर ब्लैक</string>
   <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_description">दोस्तों के साथ वीडियो एक साथ देखें। साथ में देखना शुरू करने के लिए Syncplay सर्वर से कनेक्ट करें।</string>
   <string name="syncplay_open">Syncplay खोलें</string>
   <string name="syncplay_connected_as">रूम %2$s में %1$s के रूप में कनेक्ट है</string>
   <string name="syncplay_users_in_room">रूम में यूज़र:</string>
@@ -1570,8 +1572,8 @@
   <string name="pref_codecs_min_resolution">न्यूनतम रिज़ॉल्यूशन: %s</string>
   <string name="pref_codecs_alignment">पिक्सल अलाइनमेंट: %1$dx%2$d</string>
   <string name="ui_music">Music</string>
-  <string name="pref_nav_music_title">Show Music tab</string>
-  <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="pref_nav_music_title">म्यूज़िक टैब दिखाएँ</string>
+  <string name="pref_nav_music_summary">नीचे दिए नेविगेशन बार में म्यूज़िक दिखाएँ या छिपाएँ</string>
   <string name="player_up_next_title">प्लेलिस्ट</string>
   <string name="player_lyrics_title">बोल</string>
   <string name="lyrics_source_embedded">एंबेडेड</string>

@@ -91,6 +91,7 @@ import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
+import app.gyrolet.mpvrx.ui.browser.cards.SwipeableVideoActions
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
@@ -189,6 +190,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val items by viewModel.items.collectAsState()
   val videoFilesWithPlayback by viewModel.videoFilesWithPlayback.collectAsState()
   val newVideoIds by viewModel.newVideoIds.collectAsState()
+  val watchedVideoIds by viewModel.watchedVideoIds.collectAsState()
   val isLoading by viewModel.isLoading.collectAsState()
   val error by viewModel.error.collectAsState()
   val isAtRoot by viewModel.isAtRoot.collectAsState()
@@ -208,6 +210,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
   var deleteDialogOpen by rememberSaveable { mutableStateOf(false) }
   val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
+  var swipeRenameVideo by remember { mutableStateOf<app.gyrolet.mpvrx.domain.media.model.Video?>(null) }
+  var swipeDeleteVideo by remember { mutableStateOf<app.gyrolet.mpvrx.domain.media.model.Video?>(null) }
   val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
   val compressorDialogOpen = rememberSaveable { mutableStateOf(false) }
 
@@ -799,6 +803,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 items = items,
                 videoFilesWithPlayback = videoFilesWithPlayback,
                 newVideoIds = newVideoIds,
+                watchedVideoIds = watchedVideoIds,
                 isLoading = isLoading && items.isEmpty(),
                 isRefreshing = isRefreshing,
                 error = error,
@@ -854,6 +859,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 onVideoLongClick = { videoFile ->
                   selectionManager.handleLongClick(videoFile)
                 },
+                onWatchedChange = { videoFile, watched -> viewModel.setWatched(videoFile.video, watched) },
+                onRename = { video -> swipeRenameVideo = video },
+                onDelete = { video -> swipeDeleteVideo = video },
                 onBreadcrumbClick = { component ->
                   // Navigate to the breadcrumb by popping until we reach it
                   // or pushing if it's a new path
@@ -963,6 +971,23 @@ fun FileSystemBrowserScreen(path: String? = null) {
       )
     }
 
+    swipeDeleteVideo?.let { video ->
+      DeleteConfirmationDialog(
+        isOpen = true,
+        onDismiss = { swipeDeleteVideo = null },
+        onConfirm = {
+          swipeDeleteVideo = null
+          coroutineScope.launch {
+            viewModel.deleteVideos(listOf(video))
+            viewModel.refresh()
+          }
+        },
+        itemType = "video",
+        itemCount = 1,
+        itemNames = listOf(video.displayName),
+      )
+    }
+
     // Rename Dialog
     if (renameDialogOpen.value) {
       val selectedItem = selectedItems.firstOrNull()
@@ -999,6 +1024,27 @@ fun FileSystemBrowserScreen(path: String? = null) {
 
         null -> Unit
       }
+    }
+
+    swipeRenameVideo?.let { video ->
+      val extension =
+        video.displayName.substringAfterLast('.', "")
+          .takeIf { it.isNotBlank() }
+          ?.let { ".$it" }
+      RenameDialog(
+        isOpen = true,
+        onDismiss = { swipeRenameVideo = null },
+        onConfirm = { newName ->
+          swipeRenameVideo = null
+          coroutineScope.launch {
+            viewModel.renameVideo(video, newName)
+            viewModel.refresh()
+          }
+        },
+        currentName = video.displayName.substringBeforeLast('.'),
+        itemType = "video",
+        extension = extension,
+      )
     }
 
     // Video Compressor Overlay (for file system browser)
@@ -1243,6 +1289,7 @@ private fun FileSystemBrowserContent(
   items: List<FileSystemItem>,
   videoFilesWithPlayback: Map<Long, Float>,
   newVideoIds: Set<Long>,
+  watchedVideoIds: Set<Long>,
   isLoading: Boolean,
   isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
   error: String?,
@@ -1257,6 +1304,9 @@ private fun FileSystemBrowserContent(
   onFolderLongClick: (FileSystemItem.Folder) -> Unit,
   onVideoClick: (FileSystemItem.VideoFile) -> Unit,
   onVideoLongClick: (FileSystemItem.VideoFile) -> Unit,
+  onWatchedChange: ((FileSystemItem.VideoFile, Boolean) -> Unit)? = null,
+  onRename: ((app.gyrolet.mpvrx.domain.media.model.Video) -> Unit)? = null,
+  onDelete: ((app.gyrolet.mpvrx.domain.media.model.Video) -> Unit)? = null,
   onBreadcrumbClick: (app.gyrolet.mpvrx.domain.browser.PathComponent) -> Unit,
   selectionManager: app.gyrolet.mpvrx.ui.browser.selection.SelectionManager<FileSystemItem, String>,
   modifier: Modifier = Modifier,
@@ -1489,27 +1539,37 @@ private fun FileSystemBrowserContent(
                   contentType = { "video_item" },
                   span = { GridItemSpan(spansInfo.videoSpan) },
                 ) { videoFile ->
-                  VideoCard(
-                    video = videoFile.video,
-                    progressPercentage = videoFilesWithPlayback[videoFile.video.id],
-                    isRecentlyPlayed = false,
-                    isSelected = selectionManager.isSelected(videoFile),
-                    onClick = { onVideoClick(videoFile) },
-                    onLongClick = { onVideoLongClick(videoFile) },
-                    onThumbClick =
-                      if (tapThumbnailToSelect) {
-                        { selectionManager.toggle(videoFile) }
-                      } else {
-                        { onVideoClick(videoFile) }
-                      },
-                    isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
-                    isGridMode = true,
-                    showSubtitleIndicator = showSubtitleIndicator,
-                    overrideShowSizeChip = null,
-                    overrideShowResolutionChip = null,
-                    useFolderNameStyle = false,
-                    uiConfig = videoCardUiConfig,
-                  )
+                  SwipeableVideoActions(
+                    itemKey = videoFile.video.path,
+                    enabled = !isInSelectionMode && onWatchedChange != null,
+                    isWatched = watchedVideoIds.contains(videoFile.video.id),
+                    onWatchedChange = { watched -> onWatchedChange?.invoke(videoFile, watched) },
+                    onRename = { onRename?.invoke(videoFile.video) },
+                    onDelete = { onDelete?.invoke(videoFile.video) },
+                  ) {
+                    VideoCard(
+                      video = videoFile.video,
+                      progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                      isRecentlyPlayed = false,
+                      isSelected = selectionManager.isSelected(videoFile),
+                      onClick = { onVideoClick(videoFile) },
+                      onLongClick = { onVideoLongClick(videoFile) },
+                      onThumbClick =
+                        if (tapThumbnailToSelect) {
+                          { selectionManager.toggle(videoFile) }
+                        } else {
+                          { onVideoClick(videoFile) }
+                        },
+                      isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
+                      isWatched = watchedVideoIds.contains(videoFile.video.id),
+                      isGridMode = true,
+                      showSubtitleIndicator = showSubtitleIndicator,
+                      overrideShowSizeChip = null,
+                      overrideShowResolutionChip = null,
+                      useFolderNameStyle = false,
+                      uiConfig = videoCardUiConfig,
+                    )
+                  }
                 }
               }
 
@@ -1597,27 +1657,37 @@ private fun FileSystemBrowserContent(
                 key = { "${it.video.id}_${it.video.path}" },
                 contentType = { "video_item" },
               ) { videoFile ->
-                VideoCard(
-                  video = videoFile.video,
-                  progressPercentage = videoFilesWithPlayback[videoFile.video.id],
-                  isRecentlyPlayed = false,
-                  isSelected = selectionManager.isSelected(videoFile),
-                  onClick = { onVideoClick(videoFile) },
-                  onLongClick = { onVideoLongClick(videoFile) },
-                  onThumbClick =
-                    if (tapThumbnailToSelect) {
-                      { selectionManager.toggle(videoFile) }
-                    } else {
-                      { onVideoClick(videoFile) }
-                    },
-                  isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
-                  isGridMode = false,
-                  showSubtitleIndicator = showSubtitleIndicator,
-                  overrideShowSizeChip = null,
-                  overrideShowResolutionChip = null,
-                  useFolderNameStyle = false,
-                  uiConfig = videoCardUiConfig,
-                )
+                SwipeableVideoActions(
+                  itemKey = videoFile.video.path,
+                  enabled = !isInSelectionMode && onWatchedChange != null,
+                  isWatched = watchedVideoIds.contains(videoFile.video.id),
+                  onWatchedChange = { watched -> onWatchedChange?.invoke(videoFile, watched) },
+                  onRename = { onRename?.invoke(videoFile.video) },
+                  onDelete = { onDelete?.invoke(videoFile.video) },
+                ) {
+                  VideoCard(
+                    video = videoFile.video,
+                    progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                    isRecentlyPlayed = false,
+                    isSelected = selectionManager.isSelected(videoFile),
+                    onClick = { onVideoClick(videoFile) },
+                    onLongClick = { onVideoLongClick(videoFile) },
+                    onThumbClick =
+                      if (tapThumbnailToSelect) {
+                        { selectionManager.toggle(videoFile) }
+                      } else {
+                        { onVideoClick(videoFile) }
+                      },
+                    isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
+                    isWatched = watchedVideoIds.contains(videoFile.video.id),
+                    isGridMode = false,
+                    showSubtitleIndicator = showSubtitleIndicator,
+                    overrideShowSizeChip = null,
+                    overrideShowResolutionChip = null,
+                    useFolderNameStyle = false,
+                    uiConfig = videoCardUiConfig,
+                  )
+                }
               }
             }
 

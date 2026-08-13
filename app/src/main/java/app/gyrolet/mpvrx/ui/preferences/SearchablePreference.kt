@@ -968,15 +968,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_mpv_conf_overrides_app_settings_title,
-          summaryRes = R.string.pref_mpv_conf_overrides_app_settings_summary,
-          keywords = listOf("mpv", "conf", "override", "priority", "app settings", "custom options"),
-          category = "Advanced",
-          screen = AdvancedPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_advanced_input_conf,
           keywords = listOf("input", "conf", "keybindings", "shortcuts", "keys", "controls"),
           category = "Advanced",

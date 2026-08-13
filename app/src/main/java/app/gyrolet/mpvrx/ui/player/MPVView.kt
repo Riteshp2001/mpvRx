@@ -77,7 +77,6 @@ class MPVView(
         configDir = configDir,
         cacheDir = cacheDir,
         coreConfigurationKey = requestedBackend.configurationKey,
-        mpvConfOverridesAppSettings = advancedPreferences.mpvConfOverridesAppSettings.get(),
         initOptions = ::initOptions,
         postInitOptions = ::postInitOptions,
         observeProperties = ::observeProperties,

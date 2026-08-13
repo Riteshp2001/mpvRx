@@ -1163,6 +1163,7 @@
   <string name="ui_add_connection">إضافة اتصال</string>
   <string name="ui_local_network">الشبكة المحلية</string>
   <string name="ui_no_network_connections">لا توجد اتصالات شبكة</string>
+  <string name="ui_no_recent_links">لا توجد روابط بث أو ملفات تورنت حديثة حتى الآن. الصق رابط بث أعلاه للبدء.</string>
   <string name="ui_add_smb_ftp_or_webdav_connections_to_browse_network_files">أضف اتصالات SMB أو FTP أو WebDAV لتصفح ملفات الشبكة</string>
   <string name="ui_stream_link">رابط البث</string>
   <string name="ui_enter_stream_url">أدخل رابط البث…</string>
@@ -1492,6 +1493,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">ألوان نيون زاهية وحادّة</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">درجات سوداء محسّنة لشاشات OLED</string>
   <string name="syncplay_title">Syncplay</string>
+  <string name="syncplay_description">شاهد مقاطع الفيديو متزامنة مع أصدقائك. اتصل بخادم Syncplay لبدء المشاهدة معًا.</string>
   <string name="syncplay_open">فتح Syncplay</string>
   <string name="syncplay_connected_as">متصل باسم %1$s في الغرفة %2$s</string>
   <string name="syncplay_users_in_room">المستخدمون في الغرفة:</string>
@@ -1661,8 +1663,8 @@
   <string name="pref_codecs_min_resolution">أدنى دقة: %s</string>
   <string name="pref_codecs_alignment">محاذاة البكسل: %1$dx%2$d</string>
   <string name="ui_music">Music</string>
-  <string name="pref_nav_music_title">Show Music tab</string>
-  <string name="pref_nav_music_summary">Show or hide Music in the bottom navigation bar</string>
+  <string name="pref_nav_music_title">إظهار تبويب الموسيقى</string>
+  <string name="pref_nav_music_summary">إظهار الموسيقى أو إخفاؤها في شريط التنقل السفلي</string>
   <string name="player_up_next_title">قائمة التشغيل</string>
   <string name="player_lyrics_title">كلمات الأغاني</string>
   <string name="lyrics_source_embedded">مضمنة</string>

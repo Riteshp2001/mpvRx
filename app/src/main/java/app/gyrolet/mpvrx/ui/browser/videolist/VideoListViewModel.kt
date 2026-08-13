@@ -263,6 +263,9 @@ class VideoListViewModel(
 
   private suspend fun loadPlaybackInfo(videos: List<Video>) {
     val watchedThreshold = browserPreferences.watchedThreshold.get()
+    val newLabelDays = appearancePreferences.unplayedOldVideoDays.get()
+    val newLabelWindowMillis = newLabelDays.toLong() * 24L * 60L * 60L * 1000L
+    val now = System.currentTimeMillis()
     val videosWithInfo =
       videos.map { video ->
         val playbackState = findPlaybackState(video)
@@ -298,7 +301,9 @@ class VideoListViewModel(
 
         // "NEW" badge shows while the video is recent AND not yet watched. It is removed
         // once the video is watched to the configured threshold percentage.
-        val isOldAndUnplayed = !isWatched
+        val videoAge = now - (video.dateModified * 1000L)
+        val isWithinNewLabelWindow = newLabelDays == 0 || videoAge <= newLabelWindowMillis
+        val isOldAndUnplayed = !isWatched && isWithinNewLabelWindow
 
         VideoWithPlaybackInfo(
           video = video,
@@ -321,7 +326,7 @@ class VideoListViewModel(
           item.copy(
             timeRemaining = if (watched) 0L else (video.duration / 1000L).coerceAtLeast(0L),
             progressPercentage = null,
-            isOldAndUnplayed = !watched,
+            isOldAndUnplayed = item.isOldAndUnplayed && !watched,
             isWatched = watched,
           )
         } else {
