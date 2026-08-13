@@ -46,7 +46,7 @@ data class PlaybackItem(
   val playableUri: String = originalUri,
   val title: String? = null,
   val mimeType: String? = null,
-  val headers: Map<String, String> = NetworkStreamHeaderPolicy.withHttpDefaults(originalUri),
+  val headers: Map<String, String> = NetworkStreamHeaderPolicy.captureCurrentHttpHeaders(originalUri),
   val networkSource: NetworkPlaybackSource? = null,
   val playlistItemId: Int? = null,
   val artworkUri: String? = null,
