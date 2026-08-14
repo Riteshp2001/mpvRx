@@ -4935,6 +4935,33 @@ class PlayerActivity :
         return true
       }
 
+      KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+        viewModel.handleMediaPrevious()
+        return true
+      }
+
+      KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+      KeyEvent.KEYCODE_HEADSETHOOK,
+      -> {
+        viewModel.handleMediaPlayPause()
+        return true
+      }
+
+      KeyEvent.KEYCODE_MEDIA_NEXT -> {
+        viewModel.handleMediaNext()
+        return true
+      }
+
+      KeyEvent.KEYCODE_MEDIA_PLAY -> {
+        viewModel.unpause()
+        return true
+      }
+
+      KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+        viewModel.pause()
+        return true
+      }
+
       else -> {
         event?.let { player.onKey(it) }
         return super.onKeyDown(keyCode, event)

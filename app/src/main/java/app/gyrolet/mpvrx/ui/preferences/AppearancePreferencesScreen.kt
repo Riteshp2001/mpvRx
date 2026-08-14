@@ -182,11 +182,15 @@ object AppearancePreferencesScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
+        val (settingsListState, settingsHighlight) =
+          rememberSettingsSearchList(AppearancePreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
+          state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding),
+              .padding(padding)
+              .then(settingsHighlight),
         ) {
           item {
             PreferenceSectionHeader(title = stringResource(id = R.string.pref_appearance_category_theme))

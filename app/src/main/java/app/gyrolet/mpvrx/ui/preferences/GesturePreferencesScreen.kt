@@ -101,11 +101,15 @@ object GesturePreferencesScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
+        val (settingsListState, settingsHighlight) =
+          rememberSettingsSearchList(GesturePreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
+          state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding),
+              .padding(padding)
+              .then(settingsHighlight),
         ) {
           // ── Swipe & Speed ──────────────────────────────────────────────
           item { PreferenceSectionHeader(title = stringResource(R.string.pref_section_swipe_speed)) }

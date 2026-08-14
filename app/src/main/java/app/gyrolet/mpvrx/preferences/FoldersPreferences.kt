@@ -33,9 +33,6 @@ class FoldersPreferences(
   val pinnedFolders = preferenceStore.getStringSet("pinned_folders", emptySet())
   val includeNoMediaFolders = preferenceStore.getBoolean("include_nomedia_folders", false)
 
-  // Dedicated folder where downloaded movies are stored
-  val movieFolder = preferenceStore.getString("movie_folder", "")
-
   fun addBlacklistedFolders(paths: Set<String>, scope: BlacklistScope) {
     val currentVideo = blacklistedFolders.get().toMutableSet()
     val currentAudio = blacklistedAudioFolders.get().toMutableSet()

@@ -4473,6 +4473,43 @@ class PlayerViewModel : ViewModel(),
     }
   }
 
+  fun handleMediaPrevious() {
+    when (gesturePreferences.mediaPreviousGesture.get()) {
+      SingleActionGesture.Seek -> leftSeek()
+      SingleActionGesture.PlayPause -> pauseUnpause()
+      SingleActionGesture.Custom ->
+        viewModelScope.launch(Dispatchers.IO) {
+          PlaybackSession.command("keypress", CustomKeyCodes.MediaPrevious.keyCode)
+        }
+      SingleActionGesture.None -> {}
+    }
+  }
+
+  fun handleMediaPlayPause() {
+    when (gesturePreferences.mediaPlayGesture.get()) {
+      SingleActionGesture.PlayPause -> pauseUnpause()
+      SingleActionGesture.Custom ->
+        viewModelScope.launch(Dispatchers.IO) {
+          PlaybackSession.command("keypress", CustomKeyCodes.MediaPlay.keyCode)
+        }
+      SingleActionGesture.Seek,
+      SingleActionGesture.None,
+      -> {}
+    }
+  }
+
+  fun handleMediaNext() {
+    when (gesturePreferences.mediaNextGesture.get()) {
+      SingleActionGesture.Seek -> rightSeek()
+      SingleActionGesture.PlayPause -> pauseUnpause()
+      SingleActionGesture.Custom ->
+        viewModelScope.launch(Dispatchers.IO) {
+          PlaybackSession.command("keypress", CustomKeyCodes.MediaNext.keyCode)
+        }
+      SingleActionGesture.None -> {}
+    }
+  }
+
   // ==================== Video Zoom ====================
 
   fun setVideoZoom(zoom: Float) {

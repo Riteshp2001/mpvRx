@@ -49,6 +49,7 @@ import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
@@ -194,6 +195,7 @@ class MediaPlaybackService :
   private val advancedPreferences: AdvancedPreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val browserPreferences: BrowserPreferences by inject()
+  private val gesturePreferences: GesturePreferences by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val torrentStreamingEngine: TorrentStreamingEngine by inject()
 
@@ -619,6 +621,50 @@ class MediaPlaybackService :
     PlaybackSession.playPrevious()?.let(::applySessionItem) ?: refreshTransportControls()
   }
 
+  private fun handleMediaPreviousAction() {
+    when (gesturePreferences.mediaPreviousGesture.get()) {
+      SingleActionGesture.Seek -> seekByConfiguredInterval(direction = -1)
+      SingleActionGesture.PlayPause -> togglePlaybackFromNotification()
+      SingleActionGesture.Custom -> PlaybackSession.command("keypress", CustomKeyCodes.MediaPrevious.keyCode)
+      SingleActionGesture.None -> Unit
+    }
+  }
+
+  private fun handleMediaNextAction() {
+    when (gesturePreferences.mediaNextGesture.get()) {
+      SingleActionGesture.Seek -> seekByConfiguredInterval(direction = 1)
+      SingleActionGesture.PlayPause -> togglePlaybackFromNotification()
+      SingleActionGesture.Custom -> PlaybackSession.command("keypress", CustomKeyCodes.MediaNext.keyCode)
+      SingleActionGesture.None -> Unit
+    }
+  }
+
+  private fun handleMediaPlayAction(shouldPlay: Boolean) {
+    when (gesturePreferences.mediaPlayGesture.get()) {
+      SingleActionGesture.PlayPause -> {
+        if (shouldPlay && !PlaybackSession.state.value.surfaceAttached && !takeAudioOwnership()) return
+        PlaybackSession.setPropertyBoolean("pause", !shouldPlay)
+        refreshTransportControls()
+      }
+      SingleActionGesture.Custom -> PlaybackSession.command("keypress", CustomKeyCodes.MediaPlay.keyCode)
+      SingleActionGesture.Seek,
+      SingleActionGesture.None,
+      -> Unit
+    }
+  }
+
+  private fun seekByConfiguredInterval(direction: Int) {
+    val seconds = gesturePreferences.doubleTapToSeekDuration.get() * direction
+    val seekMode =
+      if (playerPreferences.usePreciseSeeking.get()) {
+        "relative+exact"
+      } else {
+        "relative+keyframes"
+      }
+    PlaybackSession.command("seek", seconds.toString(), seekMode)
+    refreshTransportControls()
+  }
+
   private fun applySessionItem(item: PlaybackItem) {
     val itemChanged = mediaIdentifier != item.stableId || mediaUri != item.originalUri
     notificationIsAudio = resolveNotificationIsAudio(item, notificationIsAudio)
@@ -812,14 +858,12 @@ class MediaPlaybackService :
           object : MediaSessionCompat.Callback() {
             override fun onPlay() {
               Log.d(TAG, "onPlay called")
-              if (PlaybackSession.state.value.surfaceAttached || takeAudioOwnership()) {
-                PlaybackSession.setPropertyBoolean("pause", false)
-              }
+              handleMediaPlayAction(shouldPlay = true)
             }
 
             override fun onPause() {
               Log.d(TAG, "onPause called")
-              PlaybackSession.setPropertyBoolean("pause", true)
+              handleMediaPlayAction(shouldPlay = false)
             }
 
             override fun onStop() {
@@ -829,12 +873,12 @@ class MediaPlaybackService :
 
             override fun onSkipToNext() {
               Log.d(TAG, "onSkipToNext called")
-              playNextFromSession()
+              handleMediaNextAction()
             }
 
             override fun onSkipToPrevious() {
               Log.d(TAG, "onSkipToPrevious called")
-              playPreviousFromSession()
+              handleMediaPreviousAction()
             }
 
             override fun onSkipToQueueItem(id: Long) {

@@ -97,6 +97,9 @@ object AboutScreen : Screen {
       packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName ?: BuildConfig.VERSION_NAME
     val buildType = BuildConfig.BUILD_TYPE
     val githubRepoUrl = stringResource(R.string.github_repo_url)
+    val settingsScrollState = rememberScrollState()
+    val settingsHighlight =
+      rememberSettingsSearchHighlight(AboutScreen, settingsScrollState, MaterialTheme.colorScheme.primary)
 
     // Conditionally initialize update feature based on build config
     val updateViewModel: UpdateViewModel? =
@@ -171,7 +174,8 @@ object AboutScreen : Screen {
         modifier =
           Modifier
             .padding(paddingValues)
-            .verticalScroll(rememberScrollState()),
+            .then(settingsHighlight)
+            .verticalScroll(settingsScrollState),
       ) {
         PreferenceCard {
           Box(

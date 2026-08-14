@@ -645,11 +645,15 @@ object CodecCapabilitiesScreen : Screen {
         )
       },
     ) { innerPadding ->
+      val (settingsListState, settingsHighlight) =
+        rememberSettingsSearchList(CodecCapabilitiesScreen, MaterialTheme.colorScheme.primary)
       LazyColumn(
+        state = settingsListState,
         modifier = Modifier
           .fillMaxSize()
           .padding(innerPadding)
-          .padding(horizontal = 16.dp),
+          .padding(horizontal = 16.dp)
+          .then(settingsHighlight),
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         // Hero Diagnostics Summary Banner with Live Stat Pills
