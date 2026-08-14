@@ -2,16 +2,6 @@ name: Preview Build
 
 on:
   workflow_dispatch:
-    inputs:
-      build_flavor:
-        description: APK flavor to publish
-        required: true
-        default: both
-        type: choice
-        options:
-          - both
-          - standard
-          - fongmi
 
 permissions:
   contents: read
@@ -21,9 +11,6 @@ permissions:
 concurrency:
   group: mpvrx-preview-pages
   cancel-in-progress: true
-
-env:
-  SELECTED_FLAVOR: ${{ inputs.build_flavor }}
 
 jobs:
   build-preview:
@@ -74,12 +61,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
-            ./gradlew assembleStandardPreview --stacktrace --no-daemon --max-workers=2
-          fi
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
-            ./gradlew assembleFongmiPreview --stacktrace --no-daemon --max-workers=2
-          fi
+          ./gradlew assembleStandardPreview --stacktrace --no-daemon --max-workers=2
+          ./gradlew assembleFongmiPreview --stacktrace --no-daemon --max-workers=2
+          ./gradlew assembleNoVulkanPreview --stacktrace --no-daemon --max-workers=2
 
       - name: Sign and verify preview APKs
         shell: bash
@@ -117,27 +101,29 @@ jobs:
             rm -f "$unsigned"
           }
 
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
-            preview_dir="app/build/outputs/apk/standard/preview"
-            test -d "$preview_dir"
-            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-            for abi in "${architectures[@]}"; do
-              sign_apk \
-                "$preview_dir/app-standard-${abi}-preview-unsigned.apk" \
-                "$preview_dir/app-standard-${abi}-preview.apk" \
-                "standard $abi preview"
-            done
-          fi
-
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
-            flavor="fongmi"
-            flavor_dir="app/build/outputs/apk/fongmi/preview"
-            test -d "$flavor_dir"
+          preview_dir="app/build/outputs/apk/standard/preview"
+          test -d "$preview_dir"
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
             sign_apk \
-              "$flavor_dir/app-${flavor}-universal-preview-unsigned.apk" \
-              "$flavor_dir/app-${flavor}-universal-preview.apk" \
-              "$flavor universal preview"
-          fi
+              "$preview_dir/app-standard-${abi}-preview-unsigned.apk" \
+              "$preview_dir/app-standard-${abi}-preview.apk" \
+              "standard $abi preview"
+          done
+
+          flavor_dir="app/build/outputs/apk/fongmi/preview"
+          test -d "$flavor_dir"
+          sign_apk \
+            "$flavor_dir/app-fongmi-universal-preview-unsigned.apk" \
+            "$flavor_dir/app-fongmi-universal-preview.apk" \
+            "fongmi universal preview"
+
+          flavor_dir="app/build/outputs/apk/noVulkan/preview"
+          test -d "$flavor_dir"
+          sign_apk \
+            "$flavor_dir/app-noVulkan-universal-preview-unsigned.apk" \
+            "$flavor_dir/app-noVulkan-universal-preview.apk" \
+            "non-Vulkan universal preview"
 
       - name: Stage GitHub Pages preview site
         env:
@@ -168,19 +154,17 @@ jobs:
           run_id = int(os.environ["SOURCE_RUN_ID"])
           run_number = int(os.environ["SOURCE_RUN_NUMBER"])
           run_url = os.environ["SOURCE_RUN_URL"]
-          selected_flavor = os.environ["SELECTED_FLAVOR"]
+          selected_flavor = "all"
 
-          builds = []
-          if selected_flavor in {"both", "standard"}:
-              builds.extend([
-                  ("standard", "universal", "universal"),
-                  ("standard", "arm64-v8a", "arm64-v8a"),
-                  ("standard", "armeabi-v7a", "armeabi-v7a"),
-                  ("standard", "x86", "x86"),
-                  ("standard", "x86_64", "x86_64"),
-              ])
-          if selected_flavor in {"both", "fongmi"}:
-              builds.append(("fongmi", "universal", "fongmi"))
+          builds = [
+              ("standard", "universal", "universal"),
+              ("standard", "arm64-v8a", "arm64-v8a"),
+              ("standard", "armeabi-v7a", "armeabi-v7a"),
+              ("standard", "x86", "x86"),
+              ("standard", "x86_64", "x86_64"),
+              ("fongmi", "universal", "fongmi"),
+              ("noVulkan", "universal", "no-vulkan"),
+          ]
           assets = []
 
           for flavor, output, public_name in builds:

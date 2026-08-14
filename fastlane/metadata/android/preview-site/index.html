@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>mpvRx Preview Builds for Android</title>
-  <meta name="description" content="Download verified Standard and Fongmi preview APKs for the mpvRx Android media player.">
+  <meta name="description" content="Download verified Standard, Fongmi, and non-Vulkan preview APKs for the mpvRx Android media player.">
   <meta name="robots" content="noindex,follow">
   <meta name="theme-color" content="#6f4ee8">
   <link rel="canonical" href="https://riteshp2001.github.io/mpvRx/">
@@ -17,7 +17,7 @@
   <meta property="og:site_name" content="mpvRx">
   <meta property="og:locale" content="en_US">
   <meta property="og:title" content="mpvRx Preview Builds for Android">
-  <meta property="og:description" content="Verified Standard and Fongmi preview APKs, published directly from GitHub Actions.">
+  <meta property="og:description" content="Verified Standard, Fongmi, and non-Vulkan preview APKs, published directly from GitHub Actions.">
   <meta property="og:url" content="https://riteshp2001.github.io/mpvRx/">
   <meta property="og:image" content="https://riteshp2001.github.io/mpvRx/icon.png">
   <meta property="og:image:width" content="324">
@@ -25,7 +25,7 @@
   <meta property="og:image:alt" content="mpvRx app logo">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="mpvRx Preview Builds for Android">
-  <meta name="twitter:description" content="Verified Standard and Fongmi preview APKs from GitHub Actions.">
+  <meta name="twitter:description" content="Verified Standard, Fongmi, and non-Vulkan preview APKs from GitHub Actions.">
   <meta name="twitter:image" content="https://riteshp2001.github.io/mpvRx/icon.png">
 
   <script type="application/ld+json">
@@ -62,10 +62,9 @@
       margin: 0;
       min-width: 320px;
       background:
-        linear-gradient(var(--line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--line) 1px, transparent 1px),
+        radial-gradient(ellipse 80% 60% at 20% 0%, color-mix(in srgb, var(--violet) 8%, transparent), transparent 70%),
+        radial-gradient(ellipse 60% 50% at 90% 100%, color-mix(in srgb, var(--violet) 6%, transparent), transparent 60%),
         var(--paper);
-      background-size: 48px 48px;
       color: var(--ink);
       font-family: Aptos, "Segoe UI Variable Text", "Helvetica Neue", sans-serif;
       text-rendering: optimizeLegibility;
@@ -300,7 +299,7 @@
 
     .choice-guide {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       margin-bottom: 28px;
       border-block: 1px solid var(--line);
     }
@@ -312,7 +311,8 @@
 
     .downloads {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-auto-rows: auto;
       gap: 14px;
       min-height: 260px;
     }
@@ -336,8 +336,12 @@
     }
 
     .download-card:hover { transform: translateY(-6px); border-color: color-mix(in srgb, var(--violet) 58%, transparent); box-shadow: var(--shadow); }
-    .download-card.recommended { grid-column: span 2; --card-bg: var(--violet); color: #fffaff; border-color: var(--violet); }
-    .download-card.fongmi { background: var(--ink); color: #f9f5ff; }
+    .download-card.recommended { grid-column: span 2; grid-row: span 2; --card-bg: var(--violet); color: #fffaff; border-color: var(--violet); }
+    .download-card.fongmi { grid-column: span 2; background: linear-gradient(135deg, #2a1f4e, #1c1535); color: #ece4ff; border-color: color-mix(in srgb, var(--violet) 30%, transparent); }
+    .download-card.fongmi .card-description { color: #b8a7d4; }
+    .download-card.fongmi .target { color: #c9b5ff; }
+    .download-card.fongmi .pill { border-color: #9580cc; color: #d4c5ff; }
+    .download-card.no-vulkan { background: color-mix(in srgb, var(--acid) 12%, var(--paper-raised)); }
 
     .card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .pill { padding: 6px 8px; border: 1px solid currentColor; border-radius: 999px; font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
@@ -420,7 +424,8 @@
         --line: rgba(242, 237, 247, .14);
         --shadow: 0 22px 60px rgba(0, 0, 0, .32);
       }
-      .brand-mark, .build-ticket, .fongmi { background: #0f0c13; }
+      .brand-mark, .build-ticket { background: #0f0c13; }
+      .download-card.fongmi { background: linear-gradient(135deg, #1e1640, #150f2e); }
       .build-meta div { background: #0f0c13; }
       .button.primary { color: #fffaff; }
       .download-link { background: #f2edf7; color: #17131c; }
@@ -431,6 +436,7 @@
       .hero { grid-template-columns: 1fr; }
       .build-ticket { min-height: 340px; }
       .downloads { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .download-card.recommended { grid-row: span 1; }
     }
 
     @media (max-width: 640px) {
@@ -446,7 +452,8 @@
       .choice-guide div { padding: 17px 0; }
       .choice-guide div + div { padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
       .downloads { grid-template-columns: 1fr; }
-      .download-card.recommended { grid-column: auto; }
+      .download-card.recommended { grid-column: auto; grid-row: auto; }
+      .download-card.fongmi { grid-column: auto; }
       .provenance { grid-template-columns: auto 1fr; }
       .provenance code { display: none; }
       .footer-row { align-items: flex-start; flex-direction: column; }
@@ -477,7 +484,7 @@
         <div>
           <div class="kicker reveal delay-1"><span class="live-dot" aria-hidden="true"></span>Built from the latest selected source</div>
           <h1 class="reveal delay-2">The next mpvRx,<br><em>ready to test.</em></h1>
-          <p class="lead reveal delay-3">Official Standard and Fongmi preview APKs for Android, signed and published directly from GitHub Actions with a traceable commit and SHA-256 checksum.</p>
+          <p class="lead reveal delay-3">Official Standard, Fongmi, and non-Vulkan preview APKs for Android, signed and published directly from GitHub Actions with a traceable commit and SHA-256 checksum.</p>
           <div class="hero-actions reveal delay-3">
             <a class="button primary" href="#downloads">Choose a build <span aria-hidden="true">↓</span></a>
             <a class="button secondary" href="https://github.com/Riteshp2001/mpvRx/releases" target="_blank" rel="noreferrer">Use stable instead</a>
@@ -510,12 +517,13 @@
             <span class="section-index">01 / Downloads</span>
             <h2 id="downloads-title">Pick the build that fits.</h2>
           </div>
-          <p>Standard is the default choice. Fongmi is a universal alternate mpv core. If you are unsure about CPU architecture, choose Universal.</p>
+          <p>Standard is the default. Fongmi enables its alternate Vulkan/MediaCodec core, while non-Vulkan provides a safe OpenGL-only Universal build.</p>
         </div>
 
         <div class="choice-guide" aria-label="Build flavor guide">
           <div><strong>Standard</strong><span>The regular mpvRx core, available as Universal and architecture-specific APKs.</span></div>
-          <div><strong>Fongmi</strong><span>An alternate Vulkan-capable mpv core packaged as one Universal APK.</span></div>
+          <div><strong>Fongmi</strong><span>Universal Vulkan core with direct MediaCodec and Dolby Vision support.</span></div>
+          <div><strong>Non-Vulkan</strong><span>Universal OpenGL-only core for devices without the required Vulkan support.</span></div>
         </div>
 
         <div id="download-grid" class="downloads" aria-live="polite" aria-busy="true">
@@ -544,13 +552,14 @@
     const buildInfo = {
       "arm64-v8a": { title: "ARM 64-bit", badge: "Recommended", target: "STANDARD · ARM64", description: "Best for most modern Android phones, tablets, and TVs." },
       "universal": { title: "Universal", badge: "All architectures", target: "STANDARD · UNIVERSAL", description: "Includes every supported ABI. Choose this when you are unsure." },
-      "fongmi": { title: "Fongmi", badge: "Alternate core", target: "FONGMI · UNIVERSAL", description: "Universal APK using the Vulkan-capable Fongmi mpv library." },
+      "fongmi": { title: "Fongmi", badge: "MediaCodec + Vulkan", target: "FONGMI · UNIVERSAL", description: "Alternate core with direct MediaCodec/Vulkan and Dolby Vision playback support." },
+      "no-vulkan": { title: "Non-Vulkan", badge: "OpenGL only", target: "NON-VULKAN · UNIVERSAL", description: "Safe Universal build for devices that do not meet Vulkan requirements." },
       "armeabi-v7a": { title: "ARM 32-bit", badge: "Legacy", target: "STANDARD · ARM32", description: "For older 32-bit ARM Android hardware." },
       "x86_64": { title: "x86 64-bit", badge: "Emulator", target: "STANDARD · X86_64", description: "For 64-bit x86 Android emulators and compatible devices." },
       "x86": { title: "x86 32-bit", badge: "Legacy", target: "STANDARD · X86", description: "For older 32-bit x86 Android environments." }
     };
 
-    const order = ["arm64-v8a", "universal", "fongmi", "armeabi-v7a", "x86_64", "x86"];
+    const order = ["arm64-v8a", "universal", "fongmi", "no-vulkan", "armeabi-v7a", "x86_64", "x86"];
     const formatSize = bytes => {
       if (!bytes) return "Unknown size";
       const units = ["B", "KB", "MB", "GB"];
@@ -560,13 +569,13 @@
       return `${value.toFixed(unit ? 1 : 0)} ${units[unit]}`;
     };
     const shortHash = hash => hash ? `${hash.slice(0, 8)}…${hash.slice(-6)}` : "Unavailable";
-    const safeFlavorLabel = value => ({ both: "Standard + Fongmi", standard: "Standard", fongmi: "Fongmi" }[value] || "Selected builds");
+    const safeFlavorLabel = value => ({ all: "All three", dual: "Standard + Fongmi", standard: "Standard", fongmi: "Fongmi", no_vulkan: "Non-Vulkan" }[value] || "Selected builds");
 
     function createDownloadCard(asset, index) {
       const key = asset.abi;
       const info = buildInfo[key] || { title: key, badge: "Preview", target: key.toUpperCase(), description: "Android preview APK." };
       const card = document.createElement("article");
-      card.className = `download-card${key === "arm64-v8a" ? " recommended" : ""}${key === "fongmi" ? " fongmi" : ""}`;
+      card.className = `download-card${key === "arm64-v8a" ? " recommended" : ""}${key === "fongmi" ? " fongmi" : ""}${key === "no-vulkan" ? " no-vulkan" : ""}`;
       card.style.setProperty("--card-index", index);
 
       const top = document.createElement("div");

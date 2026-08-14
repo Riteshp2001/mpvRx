@@ -180,7 +180,7 @@ class MPVView(
     PlaybackSession.setOptionString("profile", profile)
     val backend = selectRenderBackend()
     val useVulkan = backend.gpuApi == "vulkan"
-    val hwdecMode = preferredHwdecMode()
+    val hwdecMode = preferredHwdecMode(useVulkan)
     PlaybackSession.setVideoOutput(backend.vo)
     PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
     PlaybackSession.setOptionString("gpu-context", backend.gpuContext)
@@ -205,7 +205,7 @@ class MPVView(
       boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
     )
 
-    // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
+    // Fongmi can map direct MediaCodec frames into Vulkan; other Vulkan builds start with copy mode.
     PlaybackSession.setOptionString(
       "hwdec",
       hwdecMode,
@@ -638,13 +638,12 @@ class MPVView(
     return canUseVulkan
   }
 
-  private fun preferredHwdecMode(): String {
-    if (!decoderPreferences.tryHWDecoding.get()) {
-      return "no"
-    }
-
-    return "mediacodec,mediacodec-copy,no"
-  }
+  private fun preferredHwdecMode(usesVulkan: Boolean): String =
+    RendererBackendPolicy.preferredHwdecMode(
+      hardwareDecodingEnabled = decoderPreferences.tryHWDecoding.get(),
+      usesVulkan = usesVulkan,
+      buildSupportsMediaCodecVulkan = BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN,
+    )
 
   private fun selectRenderBackend(ignoreForcedOpenGlFallback: Boolean = false): RenderBackendSelection {
     val anime4kEnabled =

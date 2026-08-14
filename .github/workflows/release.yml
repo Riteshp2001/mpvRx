@@ -10,21 +10,9 @@ on:
         description: Tag to release (for example v2.1.0)
         required: true
         type: string
-      build_flavor:
-        description: APK flavor to release
-        required: true
-        default: both
-        type: choice
-        options:
-          - both
-          - standard
-          - fongmi
 
 permissions:
   contents: write
-
-env:
-  SELECTED_FLAVOR: ${{ inputs.build_flavor || 'both' }}
 
 jobs:
   release-for-github:
@@ -68,12 +56,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
-            ./gradlew assembleStandardRelease --stacktrace --no-daemon --max-workers=2
-          fi
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
-            ./gradlew assembleFongmiRelease --stacktrace --no-daemon --max-workers=2
-          fi
+          ./gradlew assembleStandardRelease --stacktrace --no-daemon --max-workers=2
+          ./gradlew assembleFongmiRelease --stacktrace --no-daemon --max-workers=2
+          ./gradlew assembleNoVulkanRelease --stacktrace --no-daemon --max-workers=2
 
       - name: Sign and verify release APKs
         shell: bash
@@ -111,27 +96,29 @@ jobs:
             rm -f "$unsigned"
           }
 
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
-            release_dir="app/build/outputs/apk/standard/release"
-            test -d "$release_dir"
-            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-            for abi in "${architectures[@]}"; do
-              sign_apk \
-                "$release_dir/app-standard-${abi}-release-unsigned.apk" \
-                "$release_dir/app-standard-${abi}-release.apk" \
-                "standard $abi release"
-            done
-          fi
-
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
-            flavor="fongmi"
-            flavor_dir="app/build/outputs/apk/fongmi/release"
-            test -d "$flavor_dir"
+          release_dir="app/build/outputs/apk/standard/release"
+          test -d "$release_dir"
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
             sign_apk \
-              "$flavor_dir/app-${flavor}-universal-release-unsigned.apk" \
-              "$flavor_dir/app-${flavor}-universal-release.apk" \
-              "$flavor universal release"
-          fi
+              "$release_dir/app-standard-${abi}-release-unsigned.apk" \
+              "$release_dir/app-standard-${abi}-release.apk" \
+              "standard $abi release"
+          done
+
+          flavor_dir="app/build/outputs/apk/fongmi/release"
+          test -d "$flavor_dir"
+          sign_apk \
+            "$flavor_dir/app-fongmi-universal-release-unsigned.apk" \
+            "$flavor_dir/app-fongmi-universal-release.apk" \
+            "fongmi universal release"
+
+          flavor_dir="app/build/outputs/apk/noVulkan/release"
+          test -d "$flavor_dir"
+          sign_apk \
+            "$flavor_dir/app-noVulkan-universal-release-unsigned.apk" \
+            "$flavor_dir/app-noVulkan-universal-release.apk" \
+            "non-Vulkan universal release"
 
       - name: Stage release assets and checksums
         shell: bash
@@ -140,25 +127,27 @@ jobs:
           mkdir -p release-assets
           : > checksums.txt
 
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "standard" ]]; then
-            release_dir="app/build/outputs/apk/standard/release"
-            architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-            for abi in "${architectures[@]}"; do
-              src="$release_dir/app-standard-${abi}-release.apk"
-              dst="release-assets/mpvRx-${abi}-${VERSION_TAG}.apk"
-              test -f "$src"
-              cp "$src" "$dst"
-              sha256sum "$dst" | tee -a checksums.txt
-            done
-          fi
-
-          if [[ "$SELECTED_FLAVOR" == "both" || "$SELECTED_FLAVOR" == "fongmi" ]]; then
-            src="app/build/outputs/apk/fongmi/release/app-fongmi-universal-release.apk"
-            dst="release-assets/mpvRx-fongmi-${VERSION_TAG}.apk"
+          release_dir="app/build/outputs/apk/standard/release"
+          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+          for abi in "${architectures[@]}"; do
+            src="$release_dir/app-standard-${abi}-release.apk"
+            dst="release-assets/mpvRx-${abi}-${VERSION_TAG}.apk"
             test -f "$src"
             cp "$src" "$dst"
             sha256sum "$dst" | tee -a checksums.txt
-          fi
+          done
+
+          src="app/build/outputs/apk/fongmi/release/app-fongmi-universal-release.apk"
+          dst="release-assets/mpvRx-fongmi-${VERSION_TAG}.apk"
+          test -f "$src"
+          cp "$src" "$dst"
+          sha256sum "$dst" | tee -a checksums.txt
+
+          src="app/build/outputs/apk/noVulkan/release/app-noVulkan-universal-release.apk"
+          dst="release-assets/mpvRx-no-vulkan-${VERSION_TAG}.apk"
+          test -f "$src"
+          cp "$src" "$dst"
+          sha256sum "$dst" | tee -a checksums.txt
 
       - name: Prepare release notes
         shell: bash

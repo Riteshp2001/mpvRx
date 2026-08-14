@@ -55,6 +55,7 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
+      buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
     }
 
     create("noVulkan") {
@@ -62,6 +63,7 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "false")
+      buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
     }
 
     create("fongmi") {
@@ -69,6 +71,7 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
+      buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "true")
     }
   }
 

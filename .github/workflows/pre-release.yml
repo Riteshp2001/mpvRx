@@ -47,6 +47,7 @@ jobs:
           set -euo pipefail
           ./gradlew assembleStandardPreview --stacktrace --no-daemon --max-workers=2
           ./gradlew assembleFongmiPreview --stacktrace --no-daemon --max-workers=2
+          ./gradlew assembleNoVulkanPreview --stacktrace --no-daemon --max-workers=2
 
       - name: Sign and verify preview APKs
         shell: bash
@@ -101,6 +102,13 @@ jobs:
             "$flavor_dir/app-fongmi-universal-preview.apk" \
             "fongmi universal preview"
 
+          flavor_dir="app/build/outputs/apk/noVulkan/preview"
+          test -d "$flavor_dir"
+          sign_apk \
+            "$flavor_dir/app-noVulkan-universal-preview-unsigned.apk" \
+            "$flavor_dir/app-noVulkan-universal-preview.apk" \
+            "non-Vulkan universal preview"
+
       - name: Stage pre-release assets and checksums
         shell: bash
         run: |
@@ -120,6 +128,12 @@ jobs:
 
           src="app/build/outputs/apk/fongmi/preview/app-fongmi-universal-preview.apk"
           dst="preview/mpvRx-preview-fongmi-${VERSION_TAG}.apk"
+          test -f "$src"
+          cp "$src" "$dst"
+          sha256sum "$dst" | tee -a checksums.txt
+
+          src="app/build/outputs/apk/noVulkan/preview/app-noVulkan-universal-preview.apk"
+          dst="preview/mpvRx-preview-no-vulkan-${VERSION_TAG}.apk"
           test -f "$src"
           cp "$src" "$dst"
           sha256sum "$dst" | tee -a checksums.txt
@@ -167,5 +181,6 @@ jobs:
             preview/mpvRx-preview-x86-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-x86_64-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-fongmi-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-no-vulkan-${{ env.VERSION_TAG }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

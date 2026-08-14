@@ -20,4 +20,23 @@ internal object RendererBackendPolicy {
       deviceSupportsVulkan &&
       userEnabledVulkan &&
       !forceOpenGlFallback
+
+  fun canUseDirectMediaCodec(
+    usesVulkan: Boolean,
+    buildSupportsMediaCodecVulkan: Boolean,
+  ): Boolean = !usesVulkan || buildSupportsMediaCodecVulkan
+
+  fun preferredHwdecMode(
+    hardwareDecodingEnabled: Boolean,
+    usesVulkan: Boolean,
+    buildSupportsMediaCodecVulkan: Boolean,
+  ): String {
+    if (!hardwareDecodingEnabled) return "no"
+
+    return if (canUseDirectMediaCodec(usesVulkan, buildSupportsMediaCodecVulkan)) {
+      "mediacodec,mediacodec-copy,no"
+    } else {
+      "mediacodec-copy,no"
+    }
+  }
 }
