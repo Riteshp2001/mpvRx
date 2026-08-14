@@ -120,6 +120,7 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
+import app.gyrolet.mpvrx.ui.browser.dialogs.FolderSortDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.MusicSortDialog
 import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistDetailScreen
@@ -188,6 +189,8 @@ fun MusicLibraryContent(
 
   val browserPreferences = koinInject<BrowserPreferences>()
   val foldersPreferences = koinInject<app.gyrolet.mpvrx.preferences.FoldersPreferences>()
+  val folderSortType by browserPreferences.folderSortType.collectAsState()
+  val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
   val coverArtSizeDp by browserPreferences.musicCoverArtSize.collectAsState()
 
   val isRefreshing = remember { mutableStateOf(false) }
@@ -440,16 +443,28 @@ fun MusicLibraryContent(
           }
         }
 
-        MusicSortDialog(
-          isOpen = isSortMenuExpanded,
-          onDismiss = { isSortMenuExpanded = false },
-          sortField = sortField,
-          sortOrder = sortOrder,
-          viewMode = viewMode,
-          onSortFieldChange = { musicViewModel.setSortField(it) },
-          onSortOrderChange = { musicViewModel.setSortOrder(it) },
-          onViewModeChange = { musicViewModel.setViewMode(it) }
-        )
+        if (selectedTab == MusicTab.FOLDERS) {
+          FolderSortDialog(
+            isOpen = isSortMenuExpanded,
+            onDismiss = { isSortMenuExpanded = false },
+            sortType = folderSortType,
+            sortOrder = folderSortOrder,
+            onSortTypeChange = { browserPreferences.folderSortType.set(it) },
+            onSortOrderChange = { browserPreferences.folderSortOrder.set(it) },
+            embeddedAlbumView = true,
+          )
+        } else {
+          MusicSortDialog(
+            isOpen = isSortMenuExpanded,
+            onDismiss = { isSortMenuExpanded = false },
+            sortField = sortField,
+            sortOrder = sortOrder,
+            viewMode = viewMode,
+            onSortFieldChange = { musicViewModel.setSortField(it) },
+            onSortOrderChange = { musicViewModel.setSortOrder(it) },
+            onViewModeChange = { musicViewModel.setViewMode(it) },
+          )
+        }
 
         ScrollableTabRow(
           selectedTabIndex = pagerState.currentPage.coerceIn(0, (visibleTabs.size - 1).coerceAtLeast(0)),

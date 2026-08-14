@@ -39,6 +39,7 @@ fun FolderSortDialog(
   onSortTypeChange: (FolderSortType) -> Unit,
   onSortOrderChange: (SortOrder) -> Unit,
   isDualPane: Boolean = false,
+  embeddedAlbumView: Boolean = false,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -84,7 +85,10 @@ fun FolderSortDialog(
   val dynamicFolderColumns = (usableFolderWidth / folderMinWidth).toInt().coerceIn(1, maxColumns)
   val dynamicVideoColumns = (usableVideoWidth / videoMinWidth).toInt().coerceIn(1, maxColumns)
 
-  val isAlbumView = folderViewMode == FolderViewMode.AlbumView
+  // The Music > Folders tab embeds the album-style folder list regardless of the Home screen's
+  // selected folder view. Its controls must therefore read and update the album-view preferences,
+  // and must not offer navigation modes that the embedded host cannot display.
+  val isAlbumView = embeddedAlbumView || folderViewMode == FolderViewMode.AlbumView
   val activeLayoutMode = if (isAlbumView) folderViewFolderLayoutMode else mediaLayoutMode
 
   val folderGridColumnSelector =
@@ -144,47 +148,54 @@ fun FolderSortDialog(
         FolderSortType.Title.displayName,
         FolderSortType.Date.displayName,
         FolderSortType.Size.displayName,
+        FolderSortType.VideoCount.displayName,
       ),
     icons =
       listOf(
         Icons.RoundedFilled.Title,
         Icons.RoundedFilled.CalendarToday,
         Icons.RoundedFilled.SwapVert,
+        Icons.RoundedFilled.VideoLibrary,
       ),
     getLabelForType = { type, _ ->
       when (type) {
         FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")
         FolderSortType.Date.displayName -> Pair("Oldest", "Newest")
         FolderSortType.Size.displayName -> Pair("Smallest", "Largest")
+        FolderSortType.VideoCount.displayName -> Pair("Fewest", "Most")
         else -> Pair("Asc", "Desc")
       }
     },
     showSortOptions = isAlbumView,
     viewModeSelector =
-      MultiViewModeSelector(
-        label = "View Mode",
-        options =
-          listOf(
-            ViewModeOption(
-              label = "Folder",
-              icon = Icons.RoundedFilled.ViewModule,
-              isSelected = folderViewMode == FolderViewMode.AlbumView,
-              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
+      if (embeddedAlbumView) {
+        null
+      } else {
+        MultiViewModeSelector(
+          label = "View Mode",
+          options =
+            listOf(
+              ViewModeOption(
+                label = "Folder",
+                icon = Icons.RoundedFilled.ViewModule,
+                isSelected = folderViewMode == FolderViewMode.AlbumView,
+                onClick = { browserPreferences.folderViewMode.set(FolderViewMode.AlbumView) },
+              ),
+              ViewModeOption(
+                label = "Tree",
+                icon = Icons.RoundedFilled.AccountTree,
+                isSelected = folderViewMode == FolderViewMode.FileManager,
+                onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
+              ),
+              ViewModeOption(
+                label = "Library",
+                icon = Icons.RoundedFilled.VideoLibrary,
+                isSelected = folderViewMode == FolderViewMode.MediaLibrary,
+                onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
+              ),
             ),
-            ViewModeOption(
-              label = "Tree",
-              icon = Icons.RoundedFilled.AccountTree,
-              isSelected = folderViewMode == FolderViewMode.FileManager,
-              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.FileManager) },
-            ),
-            ViewModeOption(
-              label = "Library",
-              icon = Icons.RoundedFilled.VideoLibrary,
-              isSelected = folderViewMode == FolderViewMode.MediaLibrary,
-              onClick = { browserPreferences.folderViewMode.set(FolderViewMode.MediaLibrary) },
-            ),
-          ),
-      ),
+        )
+      },
     layoutModeSelector =
       ViewModeSelector(
         label = "Layout",
