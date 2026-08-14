@@ -606,6 +606,7 @@ object CodecCapabilitiesScreen : Screen {
           title = {
             Column {
               Text(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_codecs_title),
                 text = stringResource(R.string.pref_codecs_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,

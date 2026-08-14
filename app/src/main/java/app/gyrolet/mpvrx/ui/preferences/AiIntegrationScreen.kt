@@ -258,7 +258,12 @@ object AiIntegrationScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
-          item { PreferenceSectionHeader(title = stringResource(R.string.pref_ai_features_section)) }
+          item {
+            PreferenceSectionHeader(
+              title = stringResource(R.string.pref_ai_features_section),
+              modifier = Modifier.settingsSearchTarget(R.string.pref_section_ai_title),
+            )
+          }
 
           item {
             PreferenceCard {
@@ -288,6 +293,7 @@ object AiIntegrationScreen : Screen {
               PreferenceCard {
                 val providers = AiProvider.values().toList()
                 ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_ai_provider_title),
                   value = provider,
                   onValueChange = {
                     preferences.provider.set(it)
@@ -365,7 +371,12 @@ val apiKeyInfo =
                 }
 
               if (apiKeyInfo != null) {
-                item { PreferenceSectionHeader(title = stringResource(R.string.pref_api_config_section)) }
+                item {
+                  PreferenceSectionHeader(
+                    title = stringResource(R.string.pref_api_config_section),
+                    modifier = Modifier.settingsSearchTarget(R.string.search_api_key_config_title),
+                  )
+                }
 
                 item {
                   PreferenceCard {
@@ -495,7 +506,12 @@ val apiKeyInfo =
                   }
                 }
 
-                item { PreferenceSectionHeader(title = stringResource(R.string.pref_model_section)) }
+                item {
+                  PreferenceSectionHeader(
+                    title = stringResource(R.string.pref_model_section),
+                    modifier = Modifier.settingsSearchTarget(R.string.search_ai_model_selection_title),
+                  )
+                }
 
                 item {
                   PreferenceCard {
@@ -740,6 +756,7 @@ val apiKeyInfo =
             item {
               PreferenceCard {
                 SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_ai_rename_title),
                   value = renameWithAi,
                   onValueChange = { preferences.renameWithAi.set(it) },
                   title = {
@@ -760,6 +777,7 @@ val apiKeyInfo =
                 PreferenceDivider()
 
                 SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_ai_search_title),
                   value = subtitleFormatWithAi,
                   onValueChange = { preferences.subtitleFormatWithAi.set(it) },
                   title = {
@@ -779,7 +797,12 @@ val apiKeyInfo =
               }
             }
 
-            item { PreferenceSectionHeader(title = stringResource(R.string.pref_stt_section)) }
+            item {
+              PreferenceSectionHeader(
+                title = stringResource(R.string.pref_stt_section),
+                modifier = Modifier.settingsSearchTarget(R.string.search_stt_title),
+              )
+            }
 
               item {
                 PreferenceCard {
@@ -869,6 +892,7 @@ val apiKeyInfo =
 
                   val sttLanguage by preferences.sttLanguage.collectAsState()
                   ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_translation_section),
                     value = sttLanguage,
                     onValueChange = { preferences.sttLanguage.set(it) },
                     values =
@@ -970,7 +994,12 @@ val apiKeyInfo =
                 }
               }
 
-            item { PreferenceSectionHeader(title = stringResource(R.string.pref_custom_prompt_section)) }
+            item {
+              PreferenceSectionHeader(
+                title = stringResource(R.string.pref_custom_prompt_section),
+                modifier = Modifier.settingsSearchTarget(R.string.search_custom_ai_prompts_title),
+              )
+            }
 
             item {
               PreferenceCard {

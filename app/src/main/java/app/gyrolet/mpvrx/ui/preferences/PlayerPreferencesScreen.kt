@@ -125,11 +125,17 @@ object PlayerPreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           // ── General ───────────────────────────────────────────────────────
-          item { PreferenceSectionHeader(title = stringResource(R.string.pref_section_general)) }
+          item {
+            PreferenceSectionHeader(
+              title = stringResource(R.string.pref_section_general),
+              modifier = Modifier.settingsSearchTarget(R.string.pref_player),
+            )
+          }
           item {
             PreferenceCard {
               val orientation by preferences.orientation.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_orientation),
                 value = orientation,
                 onValueChange = preferences.orientation::set,
                 values = PlayerOrientation.entries,
@@ -142,6 +148,7 @@ object PlayerPreferencesScreen : Screen {
 
               val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_save_position_on_quit),
                 value = savePositionOnQuit,
                 onValueChange = preferences.savePositionOnQuit::set,
                 title = { Text(stringResource(R.string.pref_player_save_position_on_quit)) },
@@ -151,6 +158,7 @@ object PlayerPreferencesScreen : Screen {
 
               val closeAfterEndOfVideo by preferences.closeAfterReachingEndOfVideo.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_close_after_eof),
                 value = closeAfterEndOfVideo,
                 onValueChange = preferences.closeAfterReachingEndOfVideo::set,
                 title = { Text(stringResource(R.string.pref_player_close_after_eof)) },
@@ -160,6 +168,7 @@ object PlayerPreferencesScreen : Screen {
 
               val videoBackgroundPlayback by audioPreferences.backgroundPlayback.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_video_background_playback_title),
                 value = videoBackgroundPlayback,
                 onValueChange = { enabled ->
                   audioPreferences.backgroundPlayback.set(enabled)
@@ -194,6 +203,7 @@ object PlayerPreferencesScreen : Screen {
                 notificationStyle.takeIf { it.isSupportedOn(Build.VERSION.SDK_INT) }
                   ?: NotificationStyle.Media
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_notification_style),
                 value = selectedNotificationStyle,
                 onValueChange = advancedPreferences.notificationStyle::set,
                 values = supportedNotificationStyles,
@@ -211,6 +221,7 @@ object PlayerPreferencesScreen : Screen {
 
               val autoplayNextVideo by preferences.autoplayNextVideo.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_autoplay_next_video_title),
                 value = autoplayNextVideo,
                 onValueChange = preferences.autoplayNextVideo::set,
                 title = { Text(stringResource(R.string.pref_autoplay_next_video_title)) },
@@ -249,6 +260,7 @@ object PlayerPreferencesScreen : Screen {
 
               val rememberBrightness by preferences.rememberBrightness.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_remember_brightness),
                 value = rememberBrightness,
                 onValueChange = preferences.rememberBrightness::set,
                 title = { Text(stringResource(R.string.pref_player_remember_brightness)) },
@@ -258,6 +270,7 @@ object PlayerPreferencesScreen : Screen {
 
               val autoPiPOnNavigation by preferences.autoPiPOnNavigation.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_auto_pip_title),
                 value = autoPiPOnNavigation,
                 onValueChange = preferences.autoPiPOnNavigation::set,
                 title = { Text(stringResource(R.string.pref_auto_pip_title)) },
@@ -297,6 +310,7 @@ object PlayerPreferencesScreen : Screen {
 
               val keepScreenOnWhenPaused by preferences.keepScreenOnWhenPaused.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_keep_screen_on_when_paused_title),
                 value = keepScreenOnWhenPaused,
                 onValueChange = preferences.keepScreenOnWhenPaused::set,
                 title = { Text(stringResource(R.string.pref_player_keep_screen_on_when_paused_title)) },
@@ -316,6 +330,7 @@ object PlayerPreferencesScreen : Screen {
 
               val autoplayAfterScreenUnlock by preferences.autoplayAfterScreenUnlock.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_autoplay_after_screen_unlock_title),
                 value = autoplayAfterScreenUnlock,
                 onValueChange = preferences.autoplayAfterScreenUnlock::set,
                 title = { Text(stringResource(R.string.pref_player_autoplay_after_screen_unlock_title)) },
@@ -378,6 +393,7 @@ object PlayerPreferencesScreen : Screen {
             PreferenceCard {
               val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.show_splash_ovals_on_double_tap_to_seek),
                 value = showDoubleTapOvals,
                 onValueChange = preferences.showDoubleTapOvals::set,
                 title = { Text(stringResource(R.string.show_splash_ovals_on_double_tap_to_seek)) },
@@ -387,6 +403,7 @@ object PlayerPreferencesScreen : Screen {
 
               val showSeekTimeWhileSeeking by preferences.showSeekTimeWhileSeeking.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.show_time_on_double_tap_to_seek),
                 value = showSeekTimeWhileSeeking,
                 onValueChange = preferences.showSeekTimeWhileSeeking::set,
                 title = { Text(stringResource(R.string.show_time_on_double_tap_to_seek)) },
@@ -426,6 +443,7 @@ object PlayerPreferencesScreen : Screen {
 
               val usePreciseSeeking by preferences.usePreciseSeeking.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_use_precise_seeking),
                 value = usePreciseSeeking,
                 onValueChange = preferences.usePreciseSeeking::set,
                 title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
@@ -435,6 +453,7 @@ object PlayerPreferencesScreen : Screen {
 
               val useThumbFastSeekPreview by preferences.useThumbFastSeekPreview.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_seek_preview_thumbfast_title),
                 value = useThumbFastSeekPreview,
                 onValueChange = preferences.useThumbFastSeekPreview::set,
                 title = { Text(stringResource(R.string.pref_player_seek_preview_thumbfast_title)) },
@@ -450,6 +469,7 @@ object PlayerPreferencesScreen : Screen {
 
               val customSkipDuration by preferences.customSkipDuration.collectAsState()
               SliderPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_custom_skip_duration_title),
                 value = customSkipDuration.toFloat(),
                 onValueChange = { preferences.customSkipDuration.set(it.roundToInt()) },
                 title = { Text(stringResource(R.string.pref_player_custom_skip_duration_title)) },
@@ -468,6 +488,7 @@ object PlayerPreferencesScreen : Screen {
 
               val enableIntroDb by preferences.enableIntroDb.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_online_skip_markers_title),
                 value = enableIntroDb,
                 onValueChange = preferences.enableIntroDb::set,
                 title = { Text(stringResource(R.string.pref_online_skip_markers_title)) },
@@ -484,6 +505,7 @@ object PlayerPreferencesScreen : Screen {
 
                 val introSegmentProvider by preferences.introSegmentProvider.collectAsState()
                 ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_marker_provider_title),
                   value = introSegmentProvider,
                   onValueChange = preferences.introSegmentProvider::set,
                   values = IntroSegmentProvider.entries,
@@ -502,6 +524,7 @@ object PlayerPreferencesScreen : Screen {
 
               val detectFromChapters by preferences.detectIntroOutroFromChapters.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_chapter_detect_title),
                 value = detectFromChapters,
                 onValueChange = preferences.detectIntroOutroFromChapters::set,
                 title = { Text(stringResource(R.string.pref_chapter_detect_title)) },
@@ -619,6 +642,7 @@ object PlayerPreferencesScreen : Screen {
 
               val autoSkipIntro by preferences.autoSkipIntro.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_auto_skip_intro_title),
                 value = autoSkipIntro,
                 onValueChange = preferences.autoSkipIntro::set,
                 title = { Text(stringResource(R.string.pref_auto_skip_intro_title)) },
@@ -634,6 +658,7 @@ object PlayerPreferencesScreen : Screen {
 
               val autoSkipOutro by preferences.autoSkipOutro.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_auto_skip_outro_title),
                 value = autoSkipOutro,
                 onValueChange = preferences.autoSkipOutro::set,
                 title = { Text(stringResource(R.string.pref_auto_skip_outro_title)) },
@@ -653,6 +678,7 @@ object PlayerPreferencesScreen : Screen {
             PreferenceCard {
               val showSystemStatusBar by preferences.showSystemStatusBar.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_display_show_status_bar),
                 value = showSystemStatusBar,
                 onValueChange = preferences.showSystemStatusBar::set,
                 title = { Text(stringResource(R.string.pref_player_display_show_status_bar)) },
@@ -662,6 +688,7 @@ object PlayerPreferencesScreen : Screen {
 
               val showSystemNavigationBar by preferences.showSystemNavigationBar.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_nav_bar_title),
                 value = showSystemNavigationBar,
                 onValueChange = preferences.showSystemNavigationBar::set,
                 title = { Text(stringResource(R.string.pref_nav_bar_title)) },
@@ -692,6 +719,7 @@ object PlayerPreferencesScreen : Screen {
 
               val reduceMotion by preferences.reduceMotion.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_display_reduce_player_animation),
                 value = reduceMotion,
                 onValueChange = preferences.reduceMotion::set,
                 title = { Text(stringResource(R.string.pref_player_display_reduce_player_animation)) },
@@ -701,6 +729,7 @@ object PlayerPreferencesScreen : Screen {
 
               val showLoadingCircle by preferences.showLoadingCircle.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_controls_show_loading_circle),
                 value = showLoadingCircle,
                 onValueChange = preferences.showLoadingCircle::set,
                 title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) },
@@ -710,6 +739,7 @@ object PlayerPreferencesScreen : Screen {
 
               val allowGesturesInPanels by preferences.allowGesturesInPanels.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_controls_allow_gestures_in_panels),
                 value = allowGesturesInPanels,
                 onValueChange = preferences.allowGesturesInPanels::set,
                 title = { Text(stringResource(R.string.pref_player_controls_allow_gestures_in_panels)) },
@@ -719,6 +749,7 @@ object PlayerPreferencesScreen : Screen {
 
               val swapVolumeAndBrightness by preferences.swapVolumeAndBrightness.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.swap_the_volume_and_brightness_slider),
                 value = swapVolumeAndBrightness,
                 onValueChange = preferences.swapVolumeAndBrightness::set,
                 title = { Text(stringResource(R.string.swap_the_volume_and_brightness_slider)) },

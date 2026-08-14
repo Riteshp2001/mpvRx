@@ -350,7 +350,10 @@ object AdvancedPreferencesScreen : Screen {
         ) {
           // App Language Section
           item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_app_language))
+            PreferenceSectionHeader(
+              title = stringResource(R.string.pref_section_app_language),
+              modifier = Modifier.settingsSearchTarget(R.string.pref_advanced),
+            )
           }
 
           item {
@@ -381,6 +384,7 @@ object AdvancedPreferencesScreen : Screen {
           item {
             PreferenceCard {
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_export_settings_title),
                 title = { Text(text = stringResource(R.string.pref_export_settings_title)) },
                 summary = {
                   Text(
@@ -403,6 +407,7 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_import_settings_title),
                 title = { Text(text = stringResource(R.string.pref_import_settings_title)) },
                 summary = {
                   Text(
@@ -432,6 +437,7 @@ object AdvancedPreferencesScreen : Screen {
           item {
             PreferenceCard {
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf_storage_location),
                 title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
                 summary = {
                   Text(
@@ -530,6 +536,7 @@ object AdvancedPreferencesScreen : Screen {
               }
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf),
                 title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
                 summary = {
                   val firstLine = mpvConf.lines().firstOrNull()
@@ -547,6 +554,7 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_input_conf),
                 title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
                 summary = {
                   val firstLine = inputConf.lines().firstOrNull()
@@ -596,6 +604,7 @@ object AdvancedPreferencesScreen : Screen {
               val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
 
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_enable_lua_scripts_title),
                 value = enableLuaScripts,
                 onValueChange = preferences.enableLuaScripts::set,
                 title = { Text(stringResource(R.string.pref_enable_lua_scripts_title)) },
@@ -610,6 +619,7 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_manage_lua_scripts_title),
                 title = { Text(stringResource(R.string.pref_manage_lua_scripts_title)) },
                 summary = {
                   when {
@@ -717,6 +727,7 @@ object AdvancedPreferencesScreen : Screen {
               }
 
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_enable_recently_played_title),
                 value = enableRecentlyPlayed,
                 onValueChange = preferences.enableRecentlyPlayed::set,
                 title = { Text(stringResource(R.string.pref_advanced_enable_recently_played_title)) },
@@ -738,6 +749,7 @@ object AdvancedPreferencesScreen : Screen {
                 }
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_clear_playback_history),
                 title = { Text(stringResource(R.string.pref_advanced_clear_playback_history)) },
                 summary = {
                   Column {
@@ -847,6 +859,7 @@ object AdvancedPreferencesScreen : Screen {
               }
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_clear_config_cache_title),
                 title = { Text(text = stringResource(R.string.pref_clear_config_cache_title)) },
                 summary = {
                   val sizeStr = formatFileSize(configCacheSize)
@@ -884,6 +897,7 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_clear_thumbnail_cache_title),
                 title = { Text(text = stringResource(R.string.pref_clear_thumbnail_cache_title)) },
                 summary = {
                   val sizeStr = formatFileSize(thumbnailCacheSize)
@@ -943,6 +957,7 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_clear_fonts_cache),
                 title = { Text(text = stringResource(id = R.string.pref_advanced_clear_fonts_cache)) },
                 summary = {
                   val sizeStr = formatFileSize(fontsCacheSize)
@@ -991,6 +1006,7 @@ object AdvancedPreferencesScreen : Screen {
               val verboseLogging by preferences.verboseLogging.collectAsState()
 
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_verbose_logging_title),
                 value = verboseLogging,
                 onValueChange = preferences.verboseLogging::set,
                 title = { Text(stringResource(R.string.pref_advanced_verbose_logging_title)) },
@@ -1005,6 +1021,7 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
 
               Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_dump_logs_title),
                 title = { Text(stringResource(R.string.pref_advanced_dump_logs_title)) },
                 summary = {
                   Text(

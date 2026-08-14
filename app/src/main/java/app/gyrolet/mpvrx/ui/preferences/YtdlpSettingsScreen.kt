@@ -242,7 +242,10 @@ object YtdlpSettingsScreen : Screen {
             }
           }
 
-          PreferenceSectionHeader(title = stringResource(R.string.ytdlp_engine_installer))
+          PreferenceSectionHeader(
+            title = stringResource(R.string.ytdlp_engine_installer),
+            modifier = Modifier.settingsSearchTarget(R.string.ui_yt_dlp_manager),
+          )
 
           PreferenceCard {
             Column(

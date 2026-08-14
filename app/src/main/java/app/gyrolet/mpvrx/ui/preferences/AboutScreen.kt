@@ -135,6 +135,7 @@ object AboutScreen : Screen {
         TopAppBar(
           title = {
             Text(
+              modifier = Modifier.settingsSearchTarget(R.string.pref_about_title),
               text = stringResource(id = R.string.pref_about_title),
               style = MaterialTheme.typography.headlineSmall,
               fontWeight = FontWeight.ExtraBold,

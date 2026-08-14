@@ -151,12 +151,16 @@ object PlayerControlsPreferencesScreen : Screen {
         ) {
           // Landscape Controls Section
           item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_landscape_controls))
+            PreferenceSectionHeader(
+              title = stringResource(R.string.pref_section_landscape_controls),
+              modifier = Modifier.settingsSearchTarget(R.string.pref_layout_title),
+            )
           }
 
           item {
             PreferenceCard {
               PreferenceCategoryWithEditButton(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_layout_top_right_controls),
                 title = stringResource(id = R.string.pref_layout_top_right_controls),
                 onClick = {
                   backstack.add(ControlLayoutEditorScreen(ControlRegion.TOP_RIGHT))
@@ -167,6 +171,7 @@ object PlayerControlsPreferencesScreen : Screen {
               PreferenceDivider()
 
               PreferenceCategoryWithEditButton(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_layout_bottom_right_controls),
                 title = stringResource(id = R.string.pref_layout_bottom_right_controls),
                 onClick = {
                   backstack.add(ControlLayoutEditorScreen(ControlRegion.BOTTOM_RIGHT))
@@ -177,6 +182,7 @@ object PlayerControlsPreferencesScreen : Screen {
               PreferenceDivider()
 
               PreferenceCategoryWithEditButton(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_layout_bottom_left_controls),
                 title = stringResource(id = R.string.pref_layout_bottom_left_controls),
                 onClick = {
                   backstack.add(ControlLayoutEditorScreen(ControlRegion.BOTTOM_LEFT))
@@ -194,6 +200,7 @@ object PlayerControlsPreferencesScreen : Screen {
           item {
             PreferenceCard {
               PreferenceCategoryWithEditButton(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_layout_portrait_bottom_controls),
                 title = stringResource(id = R.string.pref_layout_portrait_bottom_controls),
                 onClick = {
                   backstack.add(ControlLayoutEditorScreen(ControlRegion.PORTRAIT_BOTTOM))
@@ -284,6 +291,7 @@ object PlayerControlsPreferencesScreen : Screen {
               PreferenceDivider()
 
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_hide_player_buttons_background_title),
                 value = hidePlayerButtonsBackground,
                 onValueChange = { appearancePrefs.hidePlayerButtonsBackground.set(it) },
                 title = {
@@ -301,6 +309,7 @@ object PlayerControlsPreferencesScreen : Screen {
               PreferenceDivider()
 
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_display_hide_player_control_time),
                 value = if (isCustomTimeValue) -1 else playerTimeToDisappear,
                 onValueChange = { newValue ->
                   if (newValue == -1) {
@@ -406,10 +415,11 @@ object PlayerControlsPreferencesScreen : Screen {
   private fun PreferenceCategoryWithEditButton(
     title: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
   ) {
     Row(
       modifier =
-        Modifier
+        modifier
           .fillMaxWidth()
           .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
       // Apply padding to Row - minimal padding for tighter appearance

@@ -260,6 +260,7 @@ object CustomButtonScreen : Screen {
           title = {
             Column {
               Text(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_custom_lua_title),
                 text =
                   androidx.compose.ui.res.stringResource(
                     app.gyrolet.mpvrx.R.string.pref_custom_lua_title,

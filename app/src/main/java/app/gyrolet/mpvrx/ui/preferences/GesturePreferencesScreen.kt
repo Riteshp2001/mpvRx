@@ -112,11 +112,17 @@ object GesturePreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           // ── Swipe & Speed ──────────────────────────────────────────────
-          item { PreferenceSectionHeader(title = stringResource(R.string.pref_section_swipe_speed)) }
+          item {
+            PreferenceSectionHeader(
+              title = stringResource(R.string.pref_section_swipe_speed),
+              modifier = Modifier.settingsSearchTarget(R.string.pref_gesture),
+            )
+          }
           item {
             PreferenceCard {
               val brightnessGesture by playerPreferences.brightnessGesture.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_brightness),
                 value = brightnessGesture,
                 onValueChange = playerPreferences.brightnessGesture::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_brightness)) },
@@ -126,6 +132,7 @@ object GesturePreferencesScreen : Screen {
 
               val volumeGesture by playerPreferences.volumeGesture.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_volume),
                 value = volumeGesture,
                 onValueChange = playerPreferences.volumeGesture::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_volume)) },
@@ -135,6 +142,7 @@ object GesturePreferencesScreen : Screen {
 
               val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_pinch_to_zoom),
                 value = pinchToZoomGesture,
                 onValueChange = playerPreferences.pinchToZoomGesture::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_pinch_to_zoom)) },
@@ -177,6 +185,7 @@ object GesturePreferencesScreen : Screen {
 
               val horizontalSwipeToSeek by playerPreferences.horizontalSwipeToSeek.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_horizontal_swipe_to_seek),
                 value = horizontalSwipeToSeek,
                 onValueChange = playerPreferences.horizontalSwipeToSeek::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_horizontal_swipe_to_seek)) },
@@ -195,6 +204,7 @@ object GesturePreferencesScreen : Screen {
 
               val horizontalSwipeSensitivity by playerPreferences.horizontalSwipeSensitivity.collectAsState()
               SliderPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_horizontal_swipe_sensitivity),
                 value = horizontalSwipeSensitivity,
                 onValueChange = { playerPreferences.horizontalSwipeSensitivity.set(it.toFixed(3)) },
                 title = { Text(stringResource(R.string.pref_player_gestures_horizontal_swipe_sensitivity)) },
@@ -221,6 +231,7 @@ object GesturePreferencesScreen : Screen {
               val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
               val holdSpeedSliderValue = snapHoldSpeedBoost(holdForMultipleSpeed)
               SliderPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_hold_for_multiple_speed),
                 value = holdSpeedSliderValue,
                 onValueChange = { playerPreferences.holdForMultipleSpeed.set(snapHoldSpeedBoost(it).toFixed(2)) },
                 title = { Text(stringResource(R.string.pref_player_gestures_hold_for_multiple_speed)) },
@@ -253,6 +264,7 @@ object GesturePreferencesScreen : Screen {
               val isCustomValue = !predefinedValues.contains(doubleTapSeekDuration)
 
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_double_tap_seek_duration),
                 value = if (isCustomValue) -1 else doubleTapSeekDuration,
                 onValueChange = { newValue ->
                   if (newValue == -1) {
@@ -331,6 +343,7 @@ object GesturePreferencesScreen : Screen {
               val seekAreaValues = listOf(20, 25, 30, 35, 40, 45)
 
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_double_tap_seek_area_width_title),
                 value = doubleTapSeekAreaWidth,
                 onValueChange = { preferences.doubleTapSeekAreaWidth.set(it) },
                 values = seekAreaValues,
@@ -348,6 +361,7 @@ object GesturePreferencesScreen : Screen {
 
               val leftDoubleTap by preferences.leftSingleActionGesture.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_left_title),
                 value = leftDoubleTap,
                 onValueChange = { preferences.leftSingleActionGesture.set(it) },
                 values = SingleActionGesture.entries,
@@ -365,6 +379,7 @@ object GesturePreferencesScreen : Screen {
 
               val centerDoubleTap by preferences.centerSingleActionGesture.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_center_title),
                 value = centerDoubleTap,
                 onValueChange = { preferences.centerSingleActionGesture.set(it) },
                 values =
@@ -394,6 +409,7 @@ object GesturePreferencesScreen : Screen {
 
               val rightDoubleTap by preferences.rightSingleActionGesture.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_right_title),
                 value = rightDoubleTap,
                 onValueChange = { preferences.rightSingleActionGesture.set(it) },
                 values = SingleActionGesture.entries,
@@ -411,6 +427,7 @@ object GesturePreferencesScreen : Screen {
 
               val useSingleTapForCenter by preferences.useSingleTapForCenter.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_use_single_tap_for_center_title),
                 value = useSingleTapForCenter,
                 onValueChange = { preferences.useSingleTapForCenter.set(it) },
                 title = {
@@ -486,6 +503,7 @@ object GesturePreferencesScreen : Screen {
             PreferenceCard {
               val mediaPreviousGesture by preferences.mediaPreviousGesture.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_previous),
                 value = mediaPreviousGesture,
                 onValueChange = { preferences.mediaPreviousGesture.set(it) },
                 values = SingleActionGesture.entries,
@@ -502,6 +520,7 @@ object GesturePreferencesScreen : Screen {
               PreferenceDivider()
               val mediaPlayGesture by preferences.mediaPlayGesture.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_play),
                 value = mediaPlayGesture,
                 onValueChange = { preferences.mediaPlayGesture.set(it) },
                 values =
@@ -523,6 +542,7 @@ object GesturePreferencesScreen : Screen {
               PreferenceDivider()
               val mediaNextGesture by preferences.mediaNextGesture.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_next),
                 value = mediaNextGesture,
                 onValueChange = { preferences.mediaNextGesture.set(it) },
                 values = SingleActionGesture.entries,

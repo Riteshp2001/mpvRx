@@ -35,10 +35,11 @@ fun SwitchPreference(
   titleStyle: TextStyle = MaterialTheme.typography.bodyLarge,
   summaryStyle: TextStyle = MaterialTheme.typography.bodyMedium,
   switchModifier: Modifier = Modifier,
+  modifier: Modifier = Modifier,
 ) {
   Row(
     modifier =
-      Modifier
+      modifier
         .fillMaxWidth()
         .clickable(enabled = enabled) { onValueChange(!value) }
         .padding(horizontal = 16.dp, vertical = 12.dp),

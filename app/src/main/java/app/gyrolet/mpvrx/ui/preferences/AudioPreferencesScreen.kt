@@ -129,7 +129,10 @@ object AudioPreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_media_library_section))
+            PreferenceSectionHeader(
+              title = stringResource(R.string.pref_media_library_section),
+              modifier = Modifier.settingsSearchTarget(R.string.pref_audio),
+            )
           }
 
           item {
@@ -262,6 +265,7 @@ object AudioPreferencesScreen : Screen {
             PreferenceCard {
               val audioVisualizerStyle by preferences.audioVisualizerStyle.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_visualizer_style_title),
                 value = audioVisualizerStyle,
                 onValueChange = { preferences.audioVisualizerStyle.set(it) },
                 values = AudioVisualizerStyle.entries,
@@ -310,6 +314,7 @@ object AudioPreferencesScreen : Screen {
               PreferenceDivider()
               val audioOrientation by preferences.audioOrientation.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_orientation_title),
                 value = audioOrientation,
                 onValueChange = { preferences.audioOrientation.set(it) },
                 values = AudioPlayerOrientation.entries,
@@ -347,6 +352,7 @@ object AudioPreferencesScreen : Screen {
             PreferenceCard {
               val preferredLanguages by preferences.preferredLanguages.collectAsState()
               TextFieldPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_preferred_languages),
                 value = preferredLanguages,
                 onValueChange = { preferences.preferredLanguages.set(it) },
                 textToValue = { input ->
@@ -385,6 +391,7 @@ object AudioPreferencesScreen : Screen {
               PreferenceDivider()
               val audioPitchCorrection by preferences.audioPitchCorrection.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_pitch_correction_title),
                 value = audioPitchCorrection,
                 onValueChange = { preferences.audioPitchCorrection.set(it) },
                 title = { Text(stringResource(R.string.pref_audio_pitch_correction_title)) },
@@ -399,6 +406,7 @@ object AudioPreferencesScreen : Screen {
               PreferenceDivider()
               val volumeNormalization by preferences.volumeNormalization.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_volume_normalization_title),
                 value = volumeNormalization,
                 onValueChange = { preferences.volumeNormalization.set(it) },
                 title = { Text(stringResource(R.string.pref_audio_volume_normalization_title)) },
@@ -427,6 +435,7 @@ object AudioPreferencesScreen : Screen {
               PreferenceDivider()
               val audioBackgroundPlayback by preferences.audioBackgroundPlayback.collectAsState()
               SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_background_playback_title),
                 value = audioBackgroundPlayback,
                 onValueChange = { enabled ->
                   preferences.audioBackgroundPlayback.set(enabled)
@@ -450,6 +459,7 @@ object AudioPreferencesScreen : Screen {
               PreferenceDivider()
               val audioChannel by preferences.audioChannels.collectAsState()
               ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_channels),
                 value = audioChannel,
                 onValueChange = { preferences.audioChannels.set(it) },
                 values = AudioChannels.entries,
@@ -466,6 +476,7 @@ object AudioPreferencesScreen : Screen {
               PreferenceDivider()
               val volumeBoostCap by preferences.volumeBoostCap.collectAsState()
               SliderPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_volume_boost_cap),
                 value = volumeBoostCap.toFloat(),
                 onValueChange = { preferences.volumeBoostCap.set(it.toInt()) },
                 title = { Text(stringResource(R.string.pref_audio_volume_boost_cap)) },
