@@ -227,10 +227,23 @@ class ThumbnailRepository(
     }
 
     diskCacheLock.write {
-      runCatching { File(context.cacheDir, "thumbnails").deleteRecursively() }
-      runCatching { File(context.filesDir, "thumbnails").deleteRecursively() }
-      localDiskDir.mkdirs()
-      networkDiskDir.mkdirs()
+      listOf(
+        File(context.cacheDir, "thumbnails"),
+        File(context.filesDir, "thumbnails"),
+        File(context.cacheDir, "remote_images"),
+      ).forEach(::deleteCacheDirectory)
+      check(localDiskDir.mkdirs() || localDiskDir.isDirectory) {
+        "Unable to recreate thumbnail cache directory: ${localDiskDir.absolutePath}"
+      }
+      check(networkDiskDir.mkdirs() || networkDiskDir.isDirectory) {
+        "Unable to recreate thumbnail cache directory: ${networkDiskDir.absolutePath}"
+      }
+    }
+  }
+
+  private fun deleteCacheDirectory(directory: File) {
+    if (directory.exists() && !directory.deleteRecursively()) {
+      error("Unable to clear cache directory: ${directory.absolutePath}")
     }
   }
 

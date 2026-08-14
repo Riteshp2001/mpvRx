@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.preferences
 
 enum class SeekbarStyle {
+  Normal,
   Standard,
   Wavy,
   Thick,

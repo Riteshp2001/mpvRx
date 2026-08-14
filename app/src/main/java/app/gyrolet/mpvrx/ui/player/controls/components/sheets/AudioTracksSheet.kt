@@ -108,7 +108,7 @@ fun AudioTracksSheet(
                   onClick = {
                     audioPreferences.audioChannels.set(it)
                     if (it == AudioChannels.ReverseStereo) {
-                      PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
+                      PlaybackSession.setPropertyString(AudioChannels.Auto.property, AudioChannels.Auto.value)
                     } else {
                       PlaybackSession.setPropertyString(it.property, it.value)
                     }

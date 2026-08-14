@@ -877,18 +877,40 @@ object AdvancedPreferencesScreen : Screen {
                 },
                 onClick = {
                   scope.launch(Dispatchers.IO) {
-                    val mpvConfFile = File(context.filesDir, "mpv.conf")
-                    mpvConfFile.delete()
-                    // Clear preferences too
-                    preferences.mpvConf.delete()
-                    withContext(Dispatchers.Main) {
-                      mpvConf = ""
-                      Toast
-                        .makeText(
-                          context,
-                          context.getString(R.string.pref_config_cache_cleared_toast),
-                          Toast.LENGTH_SHORT,
-                        ).show()
+                    runCatching {
+                      listOf(
+                        File(context.filesDir, "mpv.conf"),
+                        File(context.filesDir, "input.conf"),
+                      ).forEach { file ->
+                        check(!file.exists() || file.delete()) {
+                          "Unable to clear config cache file: ${file.absolutePath}"
+                        }
+                      }
+                      preferences.mpvConf.delete()
+                      preferences.inputConf.delete()
+                    }.onSuccess {
+                      withContext(Dispatchers.Main) {
+                        mpvConf = ""
+                        configCacheSize = 0L
+                        Toast
+                          .makeText(
+                            context,
+                            context.getString(R.string.pref_config_cache_cleared_toast),
+                            Toast.LENGTH_SHORT,
+                          ).show()
+                      }
+                    }.onFailure { error ->
+                      withContext(Dispatchers.Main) {
+                        Toast
+                          .makeText(
+                            context,
+                            context.getString(
+                              R.string.pref_failed_to_clear,
+                              error.message ?: context.getString(R.string.generic_unknown_error),
+                            ),
+                            Toast.LENGTH_LONG,
+                          ).show()
+                      }
                     }
                   }
                 },
@@ -927,6 +949,7 @@ object AdvancedPreferencesScreen : Screen {
                       }.onSuccess {
                         withContext(Dispatchers.Main) {
                           isClearThumbsConfirmShown = false
+                          thumbnailCacheSize = 0L
                           Toast
                             .makeText(
                               context,
@@ -969,25 +992,33 @@ object AdvancedPreferencesScreen : Screen {
                 onClick = {
                   scope.launch(Dispatchers.IO) {
                     val fontsDir = File(context.filesDir, "fonts")
-                    if (fontsDir.exists()) {
-                      fontsDir.listFiles()?.forEach { file ->
-                        // Delete all font files
-                        if (file.isFile &&
-                          file.name
-                            .lowercase()
-                            .matches(".*\\.[ot]tf$".toRegex())
-                        ) {
-                          file.delete()
-                        }
+                    runCatching {
+                      check(!fontsDir.exists() || fontsDir.deleteRecursively()) {
+                        "Unable to clear fonts cache directory: ${fontsDir.absolutePath}"
                       }
-                    }
-                    withContext(Dispatchers.Main) {
-                      Toast
-                        .makeText(
-                          context,
-                          fontsCacheClearedMessage,
-                          Toast.LENGTH_SHORT,
-                        ).show()
+                    }.onSuccess {
+                      withContext(Dispatchers.Main) {
+                        fontsCacheSize = 0L
+                        fontsFileCount = 0
+                        Toast
+                          .makeText(
+                            context,
+                            fontsCacheClearedMessage,
+                            Toast.LENGTH_SHORT,
+                          ).show()
+                      }
+                    }.onFailure { error ->
+                      withContext(Dispatchers.Main) {
+                        Toast
+                          .makeText(
+                            context,
+                            context.getString(
+                              R.string.pref_failed_to_clear,
+                              error.message ?: context.getString(R.string.generic_unknown_error),
+                            ),
+                            Toast.LENGTH_LONG,
+                          ).show()
+                      }
                     }
                   }
                 },

@@ -20,7 +20,9 @@ class AudioPreferences(
   val preferredLanguages = preferenceStore.getString("audio_preferred_languages")
   val defaultAudioDelay = preferenceStore.getInt("audio_delay_default")
   val audioPitchCorrection = preferenceStore.getBoolean("audio_pitch_correction", true)
-  val audioChannels = preferenceStore.getEnum("audio_channels", AudioChannels.AutoSafe)
+  // `auto-safe` deliberately restricts output to the system's safe (usually stereo) layout.
+  // Prefer mpv's source-preserving `auto` mode for new installations.
+  val audioChannels = preferenceStore.getEnum("audio_channels", AudioChannels.Auto)
   val volumeBoostCap = preferenceStore.getInt("audio_volume_boost_cap", 30)
   val backgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
   /** Audio-player-only background playback; video retains [backgroundPlayback]. */

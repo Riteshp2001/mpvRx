@@ -450,6 +450,7 @@ private fun SeekbarContent(
     }
   val overlayTrackHeight =
     when (seekbarStyle) {
+      SeekbarStyle.Normal -> 8.dp
       SeekbarStyle.Slim ->
         when {
           isVisuallyInteracting -> 15.dp
@@ -513,6 +514,15 @@ private fun SeekbarContent(
       contentAlignment = Alignment.Center,
     ) {
       when (seekbarStyle) {
+        SeekbarStyle.Normal -> {
+          NormalSeekbar(
+            position = safeCommittedPosition,
+            thumbPosition = safeThumbPosition,
+            duration = safeDuration,
+            chapters = seekerSegments,
+            bufferDuration = bufferDuration,
+          )
+        }
         SeekbarStyle.Standard -> {
           StandardSeekbar(
             positionProvider = positionProvider,
@@ -663,6 +673,47 @@ private fun SeekbarContent(
           .graphicsLayer(alpha = 0f),
     )
   }
+}
+
+/**
+ * A conventional media timeline with a circular thumb, buffered range, and chapter segments.
+ * Touch handling remains in [SeekbarContent] so every style has the same seek behavior.
+ */
+@Composable
+private fun NormalSeekbar(
+  position: Float,
+  thumbPosition: Float,
+  duration: Float,
+  chapters: List<Segment>,
+  bufferDuration: Float?,
+  modifier: Modifier = Modifier,
+) {
+  val safeDuration = duration.takeIf { it.isFinite() && it > 0f } ?: 0.1f
+  val range = 0f..safeDuration
+  val playedPosition = position.coerceIn(range)
+
+  Seeker(
+    value = playedPosition,
+    thumbValue = thumbPosition.coerceIn(range),
+    range = range,
+    readAheadValue =
+      normalizedReadAheadValue(
+        bufferPosition = bufferDuration,
+        playedPosition = playedPosition,
+        duration = safeDuration,
+      ).coerceIn(range),
+    segments = chapters,
+    colors =
+      SeekerDefaults.seekerColors(
+        progressColor = MaterialTheme.colorScheme.primary,
+        thumbColor = MaterialTheme.colorScheme.primary,
+        trackColor = MaterialTheme.colorScheme.background,
+        readAheadColor = MaterialTheme.colorScheme.inversePrimary,
+      ),
+    onValueChange = {},
+    onValueChangeFinished = {},
+    modifier = modifier.fillMaxWidth(),
+  )
 }
 
 @Composable
@@ -1244,6 +1295,23 @@ fun SeekbarStylePreview(
       val centerY = size.height / 2f
 
       when (style) {
+        SeekbarStyle.Normal -> {
+          val trackHeight = 4.dp.toPx()
+          val thumbRadius = 7.dp.toPx()
+          drawRoundRect(
+            color = primaryColor.copy(alpha = 0.24f),
+            topLeft = Offset(0f, centerY - trackHeight / 2f),
+            size = Size(size.width, trackHeight),
+            cornerRadius = CornerRadius(trackHeight / 2f),
+          )
+          drawRoundRect(
+            color = primaryColor.copy(alpha = 0.55f),
+            topLeft = Offset(0f, centerY - trackHeight / 2f),
+            size = Size(playedPx, trackHeight),
+            cornerRadius = CornerRadius(trackHeight / 2f),
+          )
+          drawCircle(primaryColor, radius = thumbRadius, center = Offset(playedPx, centerY))
+        }
         SeekbarStyle.Slim -> {
           val height = 10.dp.toPx()
           val radius = height / 2f
