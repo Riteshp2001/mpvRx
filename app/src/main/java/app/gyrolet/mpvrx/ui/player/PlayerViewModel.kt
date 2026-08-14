@@ -2201,6 +2201,7 @@ class PlayerViewModel : ViewModel(),
           if (select) {
             withContext(Dispatchers.Main) {
               runCatching { PlaybackSession.setPropertyInt("sid", existingTrack.id) }
+              syncSubtitleLayout()
             }
           }
           // Still track it in _externalSubtitles if it's not there
@@ -2215,6 +2216,7 @@ class PlayerViewModel : ViewModel(),
 
         withContext(Dispatchers.Main) {
           PlaybackSession.command("sub-add", mpvPath, mode)
+          if (select) syncSubtitleLayout()
         }
 
         // Track external subtitle URI for persistence
