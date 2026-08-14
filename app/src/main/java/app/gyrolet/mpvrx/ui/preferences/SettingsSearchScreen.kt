@@ -398,6 +398,7 @@ object SettingsSearchScreen : Screen {
                     }
                     searchHistoryPref.set(currentHistory.joinToString("|"))
                   }
+                  SettingsSearchNavigation.open(preference)
                   backstack.add(preference.screen)
                 },
               )

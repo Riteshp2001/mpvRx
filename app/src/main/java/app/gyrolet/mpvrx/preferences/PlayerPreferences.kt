@@ -141,7 +141,6 @@ class PlayerPreferences(
   val ambientBezelDepth = preferenceStore.getFloat("ambient_bezel_depth", 0.0f)
   val ambientVignetteStrength = preferenceStore.getFloat("ambient_vignette_strength", 0.5f)
   val ambientWarmth = preferenceStore.getFloat("ambient_warmth", 0.0f)
-  val ambientEdgeSmooth = preferenceStore.getFloat("ambient_edge_smooth", 0.02f)
   val ambientFadeCurve = preferenceStore.getFloat("ambient_fade_curve", 1.5f)
   val ambientOpacity = preferenceStore.getFloat("ambient_opacity", 1.0f)
   val ambientVisualMode = preferenceStore.getEnum("ambient_visual_mode", AmbientVisualMode.GLOW)

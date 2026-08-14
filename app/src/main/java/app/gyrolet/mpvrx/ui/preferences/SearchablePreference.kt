@@ -1219,6 +1219,145 @@ object SearchablePreferences {
     }
 
   /**
+   * Screen-level fallback terms for controls that do not need a dedicated result card. This keeps
+   * every settings area discoverable without duplicating each Compose control in two registries.
+   * Dedicated entries above still win whenever they match.
+   */
+  private val screenFallbackPreferences: List<SearchablePreference> =
+    listOf(
+      SearchablePreference(
+        titleRes = R.string.pref_appearance_title,
+        summaryRes = R.string.pref_appearance_summary,
+        keywords =
+          listOf(
+            "theme dark light system dynamic amoled font names labels thumbnails frame quality position",
+            "navigation home music recents playlists network quick play fab auto scroll watched threshold",
+            "grid columns list folder cards video cards chips path extension duration resolution framerate subtitle",
+          ),
+        category = "Appearance",
+        screen = AppearancePreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_player,
+        keywords =
+          listOf(
+            "orientation speed background playback mini player close end eof notification media info pip screen unlock",
+            "seeking precise thumbfast buffered chapters brightness volume zoom pan system bars safe area controls timeout clock",
+            "screenshot snapshot format template quality compression subtitles playlist repeat shuffle intro outro skip overlays animations",
+          ),
+        category = "Player",
+        screen = PlayerPreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_decoder,
+        summaryRes = R.string.pref_decoder_summary,
+        keywords =
+          listOf(
+            "profile hardware software decoding mediacodec gpu next vulkan hdr sdr yuv420p",
+            "deband iterations threshold range grain brightness saturation gamma contrast hue sharpness anime4k restore upscale darken thin deblur",
+          ),
+        category = "Decoder",
+        screen = DecoderPreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_audio,
+        summaryRes = R.string.pref_audio_summary,
+        keywords =
+          listOf(
+            "preferred language delay pitch correction channels volume boost normalization drc",
+            "audio player background playback visualizer style blob galaxy cuboid orientation ambient music tabs order minimum duration",
+          ),
+        category = "Audio",
+        screen = AudioPreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_gesture,
+        summaryRes = R.string.pref_gesture_summary,
+        keywords =
+          listOf(
+            "double tap seek area left center right single tap media previous play pause next custom key",
+            "subtitle pinch zoom swipe invert direction playlist center swipe thumbnail select",
+          ),
+        category = "Gestures",
+        screen = GesturePreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_layout_title,
+        summaryRes = R.string.pref_layout_summary,
+        keywords =
+          listOf(
+            "control layout editor buttons top left top right bottom left bottom right portrait landscape",
+            "seekbar wavy custom button script icon action long press position reset",
+          ),
+        category = "Controls",
+        screen = PlayerControlsPreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_subtitles,
+        summaryRes = R.string.pref_subtitles_summary,
+        keywords =
+          listOf(
+            "preferred language autoload auto enable font folder size scale border bold italic colors shadow background justification position",
+            "ass override window blend delay speed save folder download online search subtitle hub wyzie sources formats encodings hearing impaired api key",
+          ),
+        category = "Subtitles",
+        screen = SubtitlesPreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_folders_title,
+        summaryRes = R.string.pref_folders_summary,
+        keywords =
+          listOf(
+            "folder blacklist exclude hidden audio video nomedia scan add remove clear storage pinned",
+          ),
+        category = "Folders",
+        screen = FoldersPreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_section_ai_title,
+        summaryRes = R.string.pref_section_ai_summary,
+        keywords =
+          listOf(
+            "enable provider opencode groq openai anthropic openrouter together api key model verify",
+            "rename subtitle format translation speech text stt realtime whisper language output prompt custom auto translate",
+          ),
+        category = "AI",
+        screen = AiIntegrationScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_advanced,
+        keywords =
+          listOf(
+            "language backup restore storage folder mpv config input conf lua scripts p2p torrent logs verbose history cache fonts",
+            "network streaming ytdlp youtube cookies proxy user agent sponsorblock update configuration editor",
+          ),
+        category = "Advanced",
+        screen = AdvancedPreferencesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_codecs_title,
+        summaryRes = R.string.pref_codecs_summary,
+        keywords = listOf("codec capability hardware software av1 hevc h264 vp9 audio video mime device decoder report"),
+        category = "Codecs",
+        screen = CodecCapabilitiesScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_about_title,
+        summaryRes = R.string.pref_about_summary,
+        keywords = listOf("version update auto update changelog release license open source libraries github privacy about"),
+        category = "About",
+        screen = AboutScreen,
+      ),
+    )
+
+  fun positionOnScreen(preference: SearchablePreference): Pair<Int, Int> {
+    val screenPreferences = staticPreferences.filter { it.screen == preference.screen }
+    if (screenPreferences.isEmpty()) return 0 to 1
+    val ordinal = screenPreferences.indexOf(preference).coerceAtLeast(0)
+    return ordinal to screenPreferences.size
+  }
+
+  /**
    * Search preferences by query.
    * Simple case-insensitive search against title, summary, keywords, and category.
    */
@@ -1230,25 +1369,28 @@ object SearchablePreferences {
 
     val normalizedQuery = query.lowercase().trim()
 
-    return staticPreferences.filter { pref ->
-      val title = (if (pref.titleRes != null) getStringRes(pref.titleRes) else pref.title ?: "").lowercase()
-      val summary =
-        (
-          if (pref.summaryRes !=
-            null
-          ) {
-            getStringRes(pref.summaryRes)
-          } else {
-            pref.summary ?: ""
-          }
-        ).lowercase()
-      val keywords = pref.keywords.joinToString(" ").lowercase()
-      val category = pref.category.lowercase()
-
-      title.contains(normalizedQuery) ||
-        summary.contains(normalizedQuery) ||
-        keywords.contains(normalizedQuery) ||
-        category.contains(normalizedQuery)
+    val directResults = staticPreferences.filter { pref ->
+      pref.matches(normalizedQuery, getStringRes)
     }
+    if (directResults.isNotEmpty()) return directResults
+
+    return screenFallbackPreferences.filter { pref ->
+      pref.matches(normalizedQuery, getStringRes)
+    }
+  }
+
+  private fun SearchablePreference.matches(
+    normalizedQuery: String,
+    getStringRes: (Int) -> String,
+  ): Boolean {
+    val resolvedTitle = (titleRes?.let(getStringRes) ?: title.orEmpty()).lowercase()
+    val resolvedSummary = (summaryRes?.let(getStringRes) ?: summary.orEmpty()).lowercase()
+    val normalizedKeywords = keywords.joinToString(" ").lowercase()
+    val normalizedCategory = category.lowercase()
+
+    return resolvedTitle.contains(normalizedQuery) ||
+      resolvedSummary.contains(normalizedQuery) ||
+      normalizedKeywords.contains(normalizedQuery) ||
+      normalizedCategory.contains(normalizedQuery)
   }
 }

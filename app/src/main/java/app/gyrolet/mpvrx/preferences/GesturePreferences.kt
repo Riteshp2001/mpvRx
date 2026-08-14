@@ -22,7 +22,7 @@ class GesturePreferences(
   val centerSingleActionGesture = preferenceStore.getEnum("center_drag_gesture", SingleActionGesture.PlayPause)
   val rightSingleActionGesture = preferenceStore.getEnum("right_drag_gesture", SingleActionGesture.Seek)
   val useSingleTapForCenter = preferenceStore.getBoolean("use_single_tap_for_center", false)
-  val mediaPreviousGesture = preferenceStore.getEnum("meda_previous_gesture", SingleActionGesture.Seek)
+  val mediaPreviousGesture = preferenceStore.getEnum("media_previous_gesture", SingleActionGesture.Seek)
   val mediaPlayGesture = preferenceStore.getEnum("media_play_gesture", SingleActionGesture.PlayPause)
   val mediaNextGesture = preferenceStore.getEnum("media_next_gesture", SingleActionGesture.Seek)
   val tapThumbnailToSelect = preferenceStore.getBoolean("tap_thumbnail_to_select", false)
@@ -36,4 +36,15 @@ class GesturePreferences(
     preferenceStore.getBoolean("swipe_subtitles_to_seek_dialog", true)
   val swipeSubtitlesInvertDirection =
     preferenceStore.getBoolean("swipe_subtitles_invert_direction", false)
+
+  init {
+    val legacyMediaPreviousGesture =
+      preferenceStore.getEnum("meda_previous_gesture", SingleActionGesture.Seek)
+    if (!mediaPreviousGesture.isSet() && legacyMediaPreviousGesture.isSet()) {
+      mediaPreviousGesture.set(legacyMediaPreviousGesture.get())
+    }
+    if (legacyMediaPreviousGesture.isSet()) {
+      legacyMediaPreviousGesture.delete()
+    }
+  }
 }

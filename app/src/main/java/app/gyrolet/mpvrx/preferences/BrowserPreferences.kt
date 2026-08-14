@@ -103,8 +103,6 @@ class BrowserPreferences(
 
   // Maximum single-child folder levels skipped in one Tree View navigation step.
   val treeFlattenDepth = preferenceStore.getEnum("tree_flatten_depth", TreeFlattenDepth.Unlimited)
-  val includeAudio = preferenceStore.getBoolean("include_audio", false)
-  val minimumAudioDuration = preferenceStore.getEnum("minimum_audio_duration", MinimumAudioDuration.Any)
   val includeAudioBrowser = preferenceStore.getBoolean("include_audio_browser", false)
   val minimumAudioDurationSeconds = preferenceStore.getInt("minimum_audio_duration_seconds", 0)
   val mediaLibraryType = preferenceStore.getEnum("media_library_type", MediaLibraryType.Video)
@@ -215,16 +213,6 @@ enum class TreeFlattenDepth(
   Four(4, "4 levels"),
   Five(5, "5 levels"),
   Unlimited(-1, "Unlimited"),
-}
-
-enum class MinimumAudioDuration(
-  val seconds: Int,
-  val displayName: String,
-) {
-  Any(0, "Any"),
-  FifteenSeconds(15, "15 sec"),
-  ThirtySeconds(30, "30 sec"),
-  OneMinute(60, "1 min"),
 }
 
 enum class MediaLayoutMode {

@@ -338,11 +338,15 @@ object AdvancedPreferencesScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
+        val (settingsListState, settingsHighlight) =
+          rememberSettingsSearchList(AdvancedPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
+          state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding),
+              .padding(padding)
+              .then(settingsHighlight),
         ) {
           // App Language Section
           item {

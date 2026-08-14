@@ -95,6 +95,8 @@ object FoldersPreferencesScreen : Screen {
     var isLoading by remember { mutableStateOf(false) }
     var selectionState by remember { mutableStateOf(SelectionState<String>()) }
     var showClearAllDialog by remember { mutableStateOf(false) }
+    val settingsHighlight =
+      rememberSettingsSearchHighlight(FoldersPreferencesScreen, MaterialTheme.colorScheme.primary)
 
     val allBlacklistedFolders = remember(blacklistedVideoFolders, blacklistedAudioFolders) {
       (blacklistedVideoFolders + blacklistedAudioFolders).toList().sorted()
@@ -147,7 +149,8 @@ object FoldersPreferencesScreen : Screen {
           Modifier
             .fillMaxSize()
             .padding(padding)
-            .padding(16.dp),
+            .padding(16.dp)
+            .then(settingsHighlight),
       ) {
         if (!selectionState.isInSelectionMode) {
           // ── Media Library ─────────────────────────────────────────────

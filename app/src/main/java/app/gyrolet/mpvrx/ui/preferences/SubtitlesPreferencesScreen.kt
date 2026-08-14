@@ -214,11 +214,15 @@ object SubtitlesPreferencesScreen : Screen {
             }
         }
 
+        val (settingsListState, settingsHighlight) =
+          rememberSettingsSearchList(SubtitlesPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
+          state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding),
+              .padding(padding)
+              .then(settingsHighlight),
         ) {
           // === GENERAL SECTION ===
           item {
