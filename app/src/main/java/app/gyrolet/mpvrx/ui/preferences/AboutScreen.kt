@@ -275,7 +275,7 @@ object AboutScreen : Screen {
                     ),
                 ) {
                   Icon(
-                    imageVector = Icons.RoundedFilled.Code,
+                    painter = painterResource(id = R.drawable.ic_library_cube),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                   )

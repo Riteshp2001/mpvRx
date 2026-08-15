@@ -74,6 +74,7 @@
   <!-- Theme names -->
   <string name="theme_default">افتراضي</string>
   <string name="theme_dynamic">ديناميكي</string>
+  <string name="theme_aurora">الشفق القطبي</string>
   <string name="theme_cloudflare">Cloudflare</string>
   <string name="theme_cotton_candy">حلوى القطن</string>
   <string name="theme_doom">Doom</string>
