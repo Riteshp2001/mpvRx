@@ -18,6 +18,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.LruCache
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -387,6 +388,9 @@ fun AudioPlayerControls(
 
   val audioCodec by PlaybackSession.propString["audio-codec-name"].collectAsState()
   val sampleRate by PlaybackSession.propInt["audio-params/samplerate"].collectAsState()
+  val audioFormat by PlaybackSession.propString["audio-params/format"].collectAsState()
+  val bitsPerSample by PlaybackSession.propString["metadata/by-key/BITS_PER_SAMPLE"].collectAsState()
+  val bitsPerSampleAlt by PlaybackSession.propString["metadata/by-key/bits_per_sample"].collectAsState()
   val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
 
   val isLosslessCodecOrExt =
@@ -406,6 +410,57 @@ fun AudioPlayerControls(
   val isHiRes =
     remember(sampleRate, isLosslessCodecOrExt) {
       isLosslessCodecOrExt && (sampleRate ?: 0) >= 88200
+    }
+
+  var showLosslessDetails by remember { mutableStateOf(false) }
+
+  LaunchedEffect(mediaPath) {
+    showLosslessDetails = false
+  }
+
+  val fullLosslessDetailString =
+    remember(isHiRes, sampleRate, audioFormat, bitsPerSample, bitsPerSampleAlt, audioCodec, isLosslessCodecOrExt) {
+      val baseLabel = if (isHiRes) "HI-RES LOSSLESS" else "LOSSLESS"
+      val sr = sampleRate ?: 0
+      val khzStr =
+        if (sr > 0) {
+          val khz = sr / 1000f
+          if (sr % 1000 == 0) "${sr / 1000} kHz" else String.format(java.util.Locale.US, "%.1f kHz", khz)
+        } else {
+          ""
+        }
+
+      val bps = bitsPerSample?.takeIf { it.isNotBlank() } ?: bitsPerSampleAlt?.takeIf { it.isNotBlank() }
+      val bitStr =
+        when {
+          !bps.isNullOrBlank() && bps.toIntOrNull() != null -> "${bps.toInt()}-bit"
+          audioFormat?.contains("24") == true || audioFormat == "s24" || audioFormat == "s24p" -> "24-bit"
+          audioFormat?.contains("16") == true || audioFormat == "s16" || audioFormat == "s16p" -> "16-bit"
+          audioFormat?.contains("32") == true || audioFormat == "s32" || audioFormat == "s32p" || audioFormat == "flt" || audioFormat == "fltp" -> "32-bit"
+          audioFormat?.contains("8") == true || audioFormat == "u8" -> "8-bit"
+          isHiRes -> "24-bit"
+          isLosslessCodecOrExt -> "16-bit"
+          else -> ""
+        }
+
+      val specsStr =
+        when {
+          bitStr.isNotBlank() && khzStr.isNotBlank() -> "$bitStr/$khzStr"
+          khzStr.isNotBlank() -> khzStr
+          bitStr.isNotBlank() -> bitStr
+          else -> ""
+        }
+
+      val codecName = audioCodec?.uppercase().orEmpty()
+      buildString {
+        append(baseLabel)
+        if (specsStr.isNotBlank()) {
+          append(" - ").append(specsStr)
+        }
+        if (codecName.isNotBlank()) {
+          append(" ").append(codecName)
+        }
+      }
     }
 
   val currentAudioPresentation = rememberAudioPresentationMetadata(mediaPath)
@@ -683,9 +738,21 @@ fun AudioPlayerControls(
           shape = RoundedCornerShape(4.dp),
           color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
           border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+          modifier =
+            Modifier.clickable(
+              interactionSource = remember { MutableInteractionSource() },
+              indication = null,
+            ) {
+              showLosslessDetails = !showLosslessDetails
+            },
         ) {
           Text(
-            text = if (isHiRes) "HI-RES LOSSLESS" else "LOSSLESS",
+            text =
+              if (showLosslessDetails && fullLosslessDetailString.isNotBlank()) {
+                fullLosslessDetailString
+              } else {
+                if (isHiRes) "HI-RES LOSSLESS" else "LOSSLESS"
+              },
             style =
               MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.Bold,
@@ -1247,7 +1314,6 @@ fun AudioPlayerControls(
       Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         ReactiveIconButton(
           onClick = { onOpenSheet(Sheets.Equalizer) },
@@ -1267,94 +1333,178 @@ fun AudioPlayerControls(
             )
           }
         }
-        Row(
-          modifier =
-            Modifier
-              .clip(CircleShape)
-              .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
-              )
-              .widthIn(max = 188.dp)
-              .horizontalScroll(rememberScrollState())
-              .padding(horizontal = 8.dp, vertical = 4.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-          ReactiveIconButton(
-            onClick = viewModel::toggleShuffle,
-            enabled = playlistModeEnabled,
-            modifier = Modifier.size(40.dp),
+        if (isTabletLandscape) {
+          Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterEnd,
           ) {
-            Icon(
-              imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
-              contentDescription = null,
-              tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-          ReactiveIconButton(
-            onClick = viewModel::cycleRepeatMode,
-            modifier = Modifier.size(40.dp),
-          ) {
-            Icon(
-              imageVector =
-                when (repeatMode) {
-                  RepeatMode.OFF -> Icons.RoundedFilled.Repeat
-                  RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
-                  RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
-                },
-              contentDescription = null,
-              tint =
-                if (repeatMode !=
-                  RepeatMode.OFF
-                ) {
-                  MaterialTheme.colorScheme.primary
-                } else {
-                  MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
-          }
-          ReactiveIconButton(
-            onClick = { viewModel.toggleAudioVisualizer() },
-            onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-            modifier = Modifier.size(40.dp),
-          ) {
-            Icon(
-              imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
-              contentDescription = null,
-              tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-          if (!isTabletLandscape) {
-            ReactiveIconButton(
-              onClick = { showInPlaceLyrics = !showInPlaceLyrics },
-              modifier = Modifier.size(40.dp),
+            Row(
+              modifier =
+                Modifier
+                  .clip(CircleShape)
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
+                  )
+                  .horizontalScroll(rememberScrollState())
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Lyrics,
-                contentDescription = "Lyrics",
-                tint = if (showInPlaceLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-              )
+              ReactiveIconButton(
+                onClick = viewModel::toggleShuffle,
+                enabled = playlistModeEnabled,
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
+                  contentDescription = null,
+                  tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              ReactiveIconButton(
+                onClick = viewModel::cycleRepeatMode,
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector =
+                    when (repeatMode) {
+                      RepeatMode.OFF -> Icons.RoundedFilled.Repeat
+                      RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
+                      RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
+                    },
+                  contentDescription = null,
+                  tint =
+                    if (repeatMode !=
+                      RepeatMode.OFF
+                    ) {
+                      MaterialTheme.colorScheme.primary
+                    } else {
+                      MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+              }
+              ReactiveIconButton(
+                onClick = { viewModel.toggleAudioVisualizer() },
+                onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
+                  contentDescription = null,
+                  tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              ReactiveIconButton(
+                onClick = {
+                  val act = context as? PlayerActivity
+                  if (act != null) {
+                    act.toggleAudioBackgroundPlayback()
+                  } else {
+                    audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
+                  }
+                },
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Headset,
+                  contentDescription = stringResource(R.string.btn_label_background_playback),
+                  tint = if (backgroundPlaybackEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
             }
           }
-          ReactiveIconButton(
-            onClick = {
-              val act = context as? PlayerActivity
-              if (act != null) {
-                act.toggleAudioBackgroundPlayback()
-              } else {
-                audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
-              }
-            },
-            modifier = Modifier.size(40.dp),
+        } else {
+          Spacer(modifier = Modifier.width(12.dp))
+          Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.Center,
           ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Headset,
-              contentDescription = stringResource(R.string.btn_label_background_playback),
-              tint = if (backgroundPlaybackEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+              modifier =
+                Modifier
+                  .clip(CircleShape)
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
+                  )
+                  .horizontalScroll(rememberScrollState())
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+              ReactiveIconButton(
+                onClick = viewModel::toggleShuffle,
+                enabled = playlistModeEnabled,
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
+                  contentDescription = null,
+                  tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              ReactiveIconButton(
+                onClick = viewModel::cycleRepeatMode,
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector =
+                    when (repeatMode) {
+                      RepeatMode.OFF -> Icons.RoundedFilled.Repeat
+                      RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
+                      RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
+                    },
+                  contentDescription = null,
+                  tint =
+                    if (repeatMode !=
+                      RepeatMode.OFF
+                    ) {
+                      MaterialTheme.colorScheme.primary
+                    } else {
+                      MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+              }
+              ReactiveIconButton(
+                onClick = { viewModel.toggleAudioVisualizer() },
+                onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
+                  contentDescription = null,
+                  tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              ReactiveIconButton(
+                onClick = { showInPlaceLyrics = !showInPlaceLyrics },
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Lyrics,
+                  contentDescription = "Lyrics",
+                  tint = if (showInPlaceLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              ReactiveIconButton(
+                onClick = {
+                  val act = context as? PlayerActivity
+                  if (act != null) {
+                    act.toggleAudioBackgroundPlayback()
+                  } else {
+                    audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
+                  }
+                },
+                modifier = Modifier.size(40.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Headset,
+                  contentDescription = stringResource(R.string.btn_label_background_playback),
+                  tint = if (backgroundPlaybackEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+            }
           }
-        }
-        if (!isTabletLandscape) {
+          Spacer(modifier = Modifier.width(12.dp))
           ReactiveIconButton(
             onClick = { onOpenSheet(Sheets.Playlist) },
             modifier =
