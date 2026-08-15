@@ -248,6 +248,7 @@ fun SeekbarWithTimers(
   position: Float,
   duration: Float,
   committedPosition: Float = position,
+  onValueChangeStarted: () -> Unit = {},
   onValueChange: (Float) -> Unit,
   onValueChangeFinished: (Float) -> Unit,
   timersInverted: Pair<Boolean, Boolean>,
@@ -315,6 +316,7 @@ fun SeekbarWithTimers(
         bufferDuration = bufferDuration,
         onUserInteractionChange = { isUserInteracting = it },
         onUserPositionChange = { userPosition = it },
+        onValueChangeStarted = onValueChangeStarted,
         onValueChange = onValueChange,
         onValueChangeFinished = onValueChangeFinished,
         scope = scope,
@@ -381,6 +383,7 @@ fun SeekbarWithTimers(
         bufferDuration = bufferDuration,
         onUserInteractionChange = { isUserInteracting = it },
         onUserPositionChange = { userPosition = it },
+        onValueChangeStarted = onValueChangeStarted,
         onValueChange = onValueChange,
         onValueChangeFinished = onValueChangeFinished,
         scope = scope,
@@ -419,6 +422,7 @@ private fun SeekbarContent(
   bufferDuration: Float?,
   onUserInteractionChange: (Boolean) -> Unit,
   onUserPositionChange: (Float) -> Unit,
+  onValueChangeStarted: () -> Unit,
   onValueChange: (Float) -> Unit,
   onValueChangeFinished: (Float) -> Unit,
   scope: kotlinx.coroutines.CoroutineScope,
@@ -462,6 +466,7 @@ private fun SeekbarContent(
       SeekbarStyle.Wavy -> 8.dp
     }
   var latestInteractionPosition by remember { mutableFloatStateOf(currentPos) }
+  var interactionStarted by remember { mutableStateOf(false) }
 
   LaunchedEffect(currentPos, isUserInteracting) {
     if (!isUserInteracting) {
@@ -652,6 +657,10 @@ private fun SeekbarContent(
         ),
       onValueChange = { newPosition ->
         val targetPosition = newPosition.coerceIn(0f, safeDuration)
+        if (!interactionStarted) {
+          interactionStarted = true
+          onValueChangeStarted()
+        }
         onUserInteractionChange(true)
         latestInteractionPosition = targetPosition
         onUserPositionChange(targetPosition)
@@ -662,6 +671,7 @@ private fun SeekbarContent(
         scope.launch {
           animatedPosition.snapTo(targetPosition)
           onUserPositionChange(targetPosition)
+          interactionStarted = false
           onValueChangeFinished(targetPosition)
           onUserInteractionChange(false)
         }
@@ -735,7 +745,14 @@ fun SeekThumbnailPreviewBubble(
   ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
       val previewWidth = if (isPortrait) 152.dp else 132.dp
-      val previewHeight = previewWidth * 9f / 16f
+      val previewAspectRatio =
+        remember(bitmap) {
+          bitmap
+            ?.takeIf { !it.isRecycled && it.width > 0 && it.height > 0 }
+            ?.let { it.width.toFloat() / it.height.toFloat() }
+            ?.coerceIn(0.5f, 2.4f)
+            ?: (16f / 9f)
+        }
       val progress = (position / duration).coerceIn(0f, 1f)
       val maxOffset = (maxWidth - previewWidth).coerceAtLeast(0.dp)
       val xOffset = maxOffset * progress
@@ -775,7 +792,7 @@ fun SeekThumbnailPreviewBubble(
           modifier =
             Modifier
               .fillMaxWidth()
-              .aspectRatio(16f / 9f)
+              .aspectRatio(previewAspectRatio)
               .clip(previewShape),
           shape = previewShape,
           color = Color.Black.copy(alpha = 0.72f),
@@ -784,39 +801,39 @@ fun SeekThumbnailPreviewBubble(
           tonalElevation = 0.dp,
           shadowElevation = 12.dp,
         ) {
-            val imageBitmap = remember(bitmap) { bitmap?.takeIf { !it.isRecycled }?.asImageBitmap() }
-            if (imageBitmap != null) {
-              Image(
-                bitmap = imageBitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-              )
-            } else {
-              Box(
-                modifier =
-                  Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)),
-              )
-            }
+          val imageBitmap = remember(bitmap) { bitmap?.takeIf { !it.isRecycled }?.asImageBitmap() }
+          if (imageBitmap != null) {
+            Image(
+              bitmap = imageBitmap,
+              contentDescription = null,
+              contentScale = ContentScale.Fit,
+              modifier = Modifier.fillMaxSize(),
+            )
+          } else {
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxSize()
+                  .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)),
+            )
+          }
 
-            if (isLoading) {
-              Box(
-                modifier =
-                  Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.20f)),
-                contentAlignment = Alignment.Center,
-              ) {
-                CircularProgressIndicator(
-                  modifier = Modifier.size(18.dp),
-                  color = Color.White,
-                  strokeWidth = 2.dp,
-                )
-              }
+          if (isLoading) {
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxSize()
+                  .background(Color.Black.copy(alpha = 0.20f)),
+              contentAlignment = Alignment.Center,
+            ) {
+              CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                color = Color.White,
+                strokeWidth = 2.dp,
+              )
             }
           }
+        }
 
         Surface(
           modifier = Modifier.padding(top = 6.dp),

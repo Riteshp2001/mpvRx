@@ -423,7 +423,9 @@ fun PlayerControls(
   val animSpeed by playerPreferences.animationSpeed.collectAsState()
 
   LaunchedEffect(useThumbFastSeekPreview) {
-    if (!useThumbFastSeekPreview) {
+    if (useThumbFastSeekPreview) {
+      viewModel.cancelLegacySeekPreview()
+    } else {
       viewModel.hideSeekThumbnailPreview()
     }
   }
@@ -1462,15 +1464,18 @@ fun PlayerControls(
               position = displayedSeekbarPosition,
               committedPosition = precisePosition,
               duration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f,
+              onValueChangeStarted = {
+                if (!useThumbFastSeekPreview) {
+                  viewModel.beginLegacySeekPreview()
+                }
+              },
               onValueChange = {
                 isSeeking = true
                 resetControlsTimestamp = System.currentTimeMillis()
                 if (useThumbFastSeekPreview) {
                   viewModel.updateSeekThumbnailPreview(it, seekbarDuration)
                 } else {
-                  // Legacy mode previews on the actual video surface. The ViewModel conflates
-                  // pointer events so this remains responsive instead of issuing a seek per pixel.
-                  viewModel.previewSeekTo(it.toInt())
+                  viewModel.updateLegacySeekPreview(it.toDouble(), seekbarDuration.toDouble())
                 }
               },
               onValueChangeFinished = { targetPosition ->
@@ -1478,8 +1483,10 @@ fun PlayerControls(
                 resetControlsTimestamp = System.currentTimeMillis()
                 if (useThumbFastSeekPreview) {
                   viewModel.hideSeekThumbnailPreview()
+                  viewModel.seekTo(targetPosition.toDouble(), fast = false)
+                } else {
+                  viewModel.commitLegacySeekPreview(targetPosition.toDouble(), seekbarDuration.toDouble())
                 }
-                viewModel.seekTo(targetPosition.toInt(), fast = false)
                 viewModel.showControls()
               },
               timersInverted = Pair(false, invertDuration),

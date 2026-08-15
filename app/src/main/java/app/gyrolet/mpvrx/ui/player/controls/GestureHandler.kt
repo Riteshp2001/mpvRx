@@ -84,6 +84,7 @@ import app.gyrolet.mpvrx.ui.player.getSubtitleHitboxBounds
 import app.gyrolet.mpvrx.ui.player.getTrackSelectionId
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -156,8 +157,6 @@ fun GestureHandler(
   val panelShown by viewModel.panelShown.collectAsState()
   val allowGesturesInPanels by playerPreferences.allowGesturesInPanels.collectAsState()
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
-  val duration by PlaybackSession.propInt["duration"].collectAsState()
-  val position by PlaybackSession.propInt["time-pos"].collectAsState()
   val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
   val controlsShown by viewModel.controlsShown.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
@@ -1051,13 +1050,30 @@ fun GestureHandler(
 
             var gestureType: String? = null
             var hasStartedSeeking = false
-            var initialVideoPosition = 0f
-            var pendingSeekPosition: Float? = null
+            var initialVideoPosition = 0.0
+            var pendingSeekPosition: Double? = null
+            var legacySeekPreviewActive = false
             // Use the sensitivity preference instead of hardcoded value
             val seekSensitivity = horizontalSwipeSensitivity
+            val mediaDuration =
+              (
+                PlaybackSession.getPropertyDouble("duration")
+                  ?: viewModel.preciseDuration.value.toDouble()
+              ).takeIf { it.isFinite() && it > 0.0 } ?: 0.0
 
             do {
-              val event = awaitPointerEvent()
+              val event =
+                try {
+                  awaitPointerEvent()
+                } catch (cancellation: CancellationException) {
+                  if (legacySeekPreviewActive) {
+                    viewModel.cancelLegacySeekPreview()
+                    legacySeekPreviewActive = false
+                  } else if (hasStartedSeeking && gestureType == "horizontal_seek") {
+                    viewModel.hideSeekThumbnailPreview()
+                  }
+                  throw cancellation
+                }
               val pointerCount = event.changes.count { it.pressed }
 
               if (pointerCount == 1) {
@@ -1108,8 +1124,16 @@ fun GestureHandler(
 
                       gestureType = "horizontal_seek"
                       hasStartedSeeking = true
-                      initialVideoPosition = position?.toFloat() ?: 0f
+                      initialVideoPosition =
+                        (
+                          PlaybackSession.getPropertyDouble("time-pos")
+                            ?: viewModel.precisePosition.value.toDouble()
+                        ).takeIf { it.isFinite() } ?: 0.0
                       pendingSeekPosition = initialVideoPosition
+                      if (!useThumbFastSeekPreview) {
+                        viewModel.beginLegacySeekPreview()
+                        legacySeekPreviewActive = true
+                      }
 
                       // Show seekbar and start seeking mode (same as seekbar scrubbing)
                       viewModel.showSeekBar()
@@ -1118,15 +1142,15 @@ fun GestureHandler(
 
                     if (gestureType == "horizontal_seek" && hasStartedSeeking) {
                       // Calculate seek amount based on horizontal movement
-                      val seekAmount = deltaX * seekSensitivity
-                      val targetPosition = (initialVideoPosition + seekAmount).coerceAtLeast(0f)
-                      val maxDuration = duration?.toFloat() ?: 0f
-                      val clampedPosition = targetPosition.coerceAtMost(maxDuration)
+                      val seekAmount = (deltaX * seekSensitivity).toDouble()
+                      val targetPosition = (initialVideoPosition + seekAmount).coerceAtLeast(0.0)
+                      val clampedPosition =
+                        if (mediaDuration > 0.0) targetPosition.coerceAtMost(mediaDuration) else targetPosition
                       pendingSeekPosition = clampedPosition
                       if (useThumbFastSeekPreview) {
-                        viewModel.updateSeekThumbnailPreview(clampedPosition, maxDuration)
+                        viewModel.updateSeekThumbnailPreview(clampedPosition.toFloat(), mediaDuration.toFloat())
                       } else {
-                        viewModel.previewSeekTo(clampedPosition.toInt())
+                        viewModel.updateLegacySeekPreview(clampedPosition, mediaDuration)
                       }
 
                       // Format and display time position updates
@@ -1159,6 +1183,9 @@ fun GestureHandler(
                   // Clean up seeking state without showing controls
                   if (useThumbFastSeekPreview) {
                     viewModel.hideSeekThumbnailPreview()
+                  } else if (legacySeekPreviewActive) {
+                    viewModel.cancelLegacySeekPreview()
+                    legacySeekPreviewActive = false
                   }
                   viewModel.playerUpdate.update { PlayerUpdates.None }
                   if (gestureType == "horizontal_seek") {
@@ -1172,10 +1199,11 @@ fun GestureHandler(
             // Apply the final seek when gesture ends
             if (hasStartedSeeking) {
               if (useThumbFastSeekPreview) {
-                pendingSeekPosition?.let { viewModel.seekTo(it.toInt()) }
+                pendingSeekPosition?.let { viewModel.seekTo(it, fast = false) }
                 viewModel.hideSeekThumbnailPreview()
               } else {
-                pendingSeekPosition?.let { viewModel.seekTo(it.toInt(), fast = false) }
+                pendingSeekPosition?.let { viewModel.commitLegacySeekPreview(it, mediaDuration) }
+                legacySeekPreviewActive = false
               }
               if (gestureType == "subtitle_dialog_seek") {
                 coroutineScope.launch {
