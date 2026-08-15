@@ -302,9 +302,14 @@ internal fun normalizeTorrentDisplayName(value: String): String {
       }
     }.trim()
 
-  if (repaired.isEmpty()) return text
-  val printableCount = repaired.count { it.code in 0x20..0x7E || it.isWhitespace() }
-  return if (printableCount * 100 >= repaired.length * 80) repaired else text
+  if (repaired.isEmpty() || repaired == text) return text
+  // Only trust the repair when it actually produces readable words and the original was not
+  // already readable. This avoids corrupting legitimate names that merely contain a few high
+  // code points such as decorative box-drawing characters (e.g. "──── Release ────").
+  val originalLetters = text.count { it.isLetter() }
+  val repairedLetters = repaired.count { it.isLetter() }
+  if (repairedLetters < 3 || repairedLetters <= originalLetters) return text
+  return repaired
 }
 
 private fun canonicalV1Hash(value: String): String? =

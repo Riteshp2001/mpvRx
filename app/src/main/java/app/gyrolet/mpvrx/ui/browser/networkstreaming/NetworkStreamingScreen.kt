@@ -73,7 +73,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -621,11 +620,8 @@ private fun AnimeTorrentCard(
 
   var expanded by rememberSaveable(group.id) { mutableStateOf(false) }
   var overviewExpanded by rememberSaveable(group.id) { mutableStateOf(false) }
+  var overviewOverflow by remember(group.id) { mutableStateOf(false) }
   val showFiles = forceExpanded || expanded
-
-  val hasBackdrop = !group.backdropUrl.isNullOrBlank()
-  val hasPoster = !group.posterUrl.isNullOrBlank()
-  val hasOverview = !group.overview.isNullOrBlank()
 
   val fileCountLabel =
     pluralStringResource(
@@ -658,75 +654,6 @@ private fun AnimeTorrentCard(
     shape = RoundedCornerShape(20.dp),
   ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-      // 1. Hero Backdrop Banner (if available)
-      if (group.backdropUrl != null) {
-        val backdropUrl = group.backdropUrl
-        Box(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .aspectRatio(16f / 9f)
-              .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-          contentAlignment = Alignment.BottomStart,
-        ) {
-          RemoteImage(
-            url = backdropUrl,
-            contentDescription = group.title,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-          )
-          Box(
-            modifier =
-              Modifier
-                .fillMaxSize()
-                .background(
-                  Brush.verticalGradient(
-                    colors =
-                      listOf(
-                        Color.Transparent,
-                        Color.Black.copy(alpha = 0.4f),
-                        Color.Black.copy(alpha = 0.85f),
-                      ),
-                  ),
-                ),
-          )
-
-          // Media Badge over Banner
-          Row(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.SpaceBetween,
-          ) {
-            Column(modifier = Modifier.weight(1f)) {
-              Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-              ) {
-                Text(
-                  text = mediaTypeLabel.uppercase(),
-                  style = MaterialTheme.typography.labelSmall,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
-              }
-              Spacer(modifier = Modifier.height(6.dp))
-              Text(
-                text = group.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-              )
-            }
-          }
-        }
-      }
-
       // 2. Main Card Content (Header & Info)
       Column(
         modifier =
@@ -735,83 +662,79 @@ private fun AnimeTorrentCard(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
       ) {
-        if (!hasBackdrop) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.Top,
-          ) {
-            if (group.posterUrl != null) {
-              val posterUrl = group.posterUrl
-              Box(
-                modifier =
-                  Modifier
-                    .width(72.dp)
-                    .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(12.dp)),
-              ) {
-                RemoteImage(
-                  url = posterUrl,
-                  contentDescription = group.title,
-                  modifier = Modifier.fillMaxSize(),
-                  contentScale = ContentScale.Crop,
-                )
-              }
-            } else {
-              Surface(
-                modifier = Modifier.size(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-              ) {
-                Box(contentAlignment = Alignment.Center) {
-                  Icon(
-                    imageVector = Icons.RoundedFilled.Movie,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(28.dp),
-                  )
-                }
-              }
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-              Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              ) {
-                Text(
-                  text = mediaTypeLabel.uppercase(),
-                  style = MaterialTheme.typography.labelSmall,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-              }
-              Spacer(modifier = Modifier.height(4.dp))
-              Text(
-                text = group.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-              )
-            }
-          }
-        }
-
-        // Meta tags row: Year, Size, Episodes
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(14.dp),
+          verticalAlignment = Alignment.Top,
         ) {
-          group.releaseYear?.takeIf(String::isNotBlank)?.let { year ->
-            MetaChip(text = year)
+          if (group.posterUrl != null) {
+            val posterUrl = group.posterUrl
+            Box(
+              modifier =
+                Modifier
+                  .width(72.dp)
+                  .aspectRatio(2f / 3f)
+                  .clip(RoundedCornerShape(12.dp)),
+            ) {
+              RemoteImage(
+                url = posterUrl,
+                contentDescription = group.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+              )
+            }
+          } else {
+            Surface(
+              modifier = Modifier.size(52.dp),
+              shape = RoundedCornerShape(14.dp),
+              color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Movie,
+                  contentDescription = null,
+                  tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                  modifier = Modifier.size(28.dp),
+                )
+              }
+            }
           }
-          if (group.totalSize > 0L) {
-            MetaChip(text = formatTorrentBytes(group.totalSize))
+
+          Column(modifier = Modifier.weight(1f)) {
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = MaterialTheme.colorScheme.secondaryContainer,
+              contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) {
+              Text(
+                text = mediaTypeLabel.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+              )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+              text = group.title,
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(6.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              group.releaseYear?.takeIf(String::isNotBlank)?.let { year ->
+                MetaChip(text = year)
+              }
+              if (group.totalSize > 0L) {
+                MetaChip(text = formatTorrentBytes(group.totalSize))
+              }
+              MetaChip(text = fileCountLabel)
+            }
           }
-          MetaChip(text = fileCountLabel)
         }
 
         // Synopsis / Description (if available)
@@ -829,14 +752,17 @@ private fun AnimeTorrentCard(
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               maxLines = if (overviewExpanded) Int.MAX_VALUE else 2,
               overflow = TextOverflow.Ellipsis,
+              onTextLayout = { result -> overviewOverflow = result.hasVisualOverflow },
             )
-            Text(
-              text = stringResource(if (overviewExpanded) R.string.ui_show_less else R.string.ui_show_more),
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.primary,
-              fontWeight = FontWeight.SemiBold,
-              modifier = Modifier.padding(top = 2.dp),
-            )
+            if (overviewExpanded || overviewOverflow) {
+              Text(
+                text = stringResource(if (overviewExpanded) R.string.ui_show_less else R.string.ui_show_more),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 2.dp),
+              )
+            }
           }
         }
 

@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -24,6 +25,8 @@ import app.gyrolet.mpvrx.domain.torrent.parseMagnet
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult
+import app.gyrolet.mpvrx.repository.wyzie.bestTmdbResult
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -61,7 +64,7 @@ class NetworkStreamingViewModel(
   private val streamEntryRepository: NetworkStreamEntryRepository by inject()
   private val wyzieSearchRepository: WyzieSearchRepository by inject()
 
-  private val enrichedHashes = mutableSetOf<String>()
+  private val enrichmentAttempts = mutableMapOf<String, Long>()
 
   /**
    * Observable list of all saved network connections
@@ -112,7 +115,9 @@ class NetworkStreamingViewModel(
       torrentGroups.collect { groups ->
         groups.forEach { group ->
           val hash = group.infoHash ?: return@forEach
-          if (group.posterUrl.isNullOrBlank() && group.backdropUrl.isNullOrBlank() && enrichedHashes.add(hash)) {
+          if ((group.posterUrl.isNullOrBlank() || group.backdropUrl.isNullOrBlank()) &&
+            shouldAttemptEnrichment(hash)
+          ) {
             launchArtworkEnrichment(group)
           }
         }
@@ -120,31 +125,73 @@ class NetworkStreamingViewModel(
     }
   }
 
+  private fun shouldAttemptEnrichment(hash: String): Boolean {
+    val now = System.currentTimeMillis()
+    val lastAttempt = enrichmentAttempts[hash] ?: 0L
+    if (now - lastAttempt < ENRICHMENT_RETRY_MS) return false
+    enrichmentAttempts[hash] = now
+    return true
+  }
+
   private fun launchArtworkEnrichment(group: TorrentStreamGroup) {
     val infoHash = group.infoHash ?: return
     viewModelScope.launch {
-      runCatching {
-        val query = cleanSearchTitle(group.title)
-        if (query.length >= MIN_SEARCH_LENGTH) {
-          val match =
-            wyzieSearchRepository.searchMedia(query).getOrNull()
-              ?.firstOrNull { result -> isStrongTitleMatch(query, result) }
-          if (match != null) {
-            val poster = tmdbImageUrl(match.poster, "w500")
-            val backdrop = tmdbImageUrl(match.backdrop, "w1280")
-            streamEntryRepository.updateTorrentArtwork(
-              infoHash = infoHash,
-              title = match.title.takeIf(String::isNotBlank) ?: group.title,
-              posterUrl = poster,
-              backdropUrl = backdrop,
-              overview = match.overview?.take(MAX_DESCRIPTION_LENGTH),
-              releaseYear = match.releaseYear,
-              mediaType = match.mediaType,
-            )
-          }
-        }
+      val rawTitle = group.title
+      val parsed = MediaInfoParser.parse(rawTitle)
+      val query = parsed.title.ifBlank { cleanSearchTitle(rawTitle) }
+      if (query.length < MIN_SEARCH_LENGTH) {
+        logTorrentEnrichment(rawTitle, query, parsed.year, results = null, match = null, error = "query-too-short")
+        return@launch
+      }
+      val search = wyzieSearchRepository.searchMedia(query)
+      val results = search.getOrNull()
+      if (results == null) {
+        logTorrentEnrichment(
+          rawTitle = rawTitle,
+          query = query,
+          year = parsed.year,
+          results = null,
+          match = null,
+          error = search.exceptionOrNull()?.message ?: "search-failed",
+        )
+        return@launch
+      }
+      val match = bestTmdbResult(results, parsed.year)
+      logTorrentEnrichment(rawTitle, query, parsed.year, results, match)
+      if (match != null) {
+        val poster = tmdbImageUrl(match.poster, "w500")
+        val backdrop = tmdbImageUrl(match.backdrop, "w1280")
+        streamEntryRepository.updateTorrentArtwork(
+          infoHash = infoHash,
+          title = match.title.takeIf(String::isNotBlank) ?: group.title,
+          posterUrl = poster,
+          backdropUrl = backdrop,
+          overview = match.overview?.take(MAX_DESCRIPTION_LENGTH),
+          releaseYear = match.releaseYear,
+          mediaType = match.mediaType,
+        )
       }
     }
+  }
+
+  private fun logTorrentEnrichment(
+    rawTitle: String,
+    query: String,
+    year: String?,
+    results: List<WyzieTmdbResult>?,
+    match: WyzieTmdbResult?,
+    error: String? = null,
+  ) {
+    val outcome =
+      when {
+        error != null -> "error=$error"
+        results == null -> "search=failed"
+        match == null -> "no-match(results=${results.size})"
+        else ->
+          "match=\"${match.title}\" (${match.releaseYear ?: "?"}) results=${results.size} " +
+            "poster=${match.poster != null} backdrop=${match.backdrop != null}"
+      }
+    Log.d(ENRICHMENT_TAG, "artwork raw=\"$rawTitle\" query=\"$query\" year=$year $outcome")
   }
 
   fun recordSubmittedLink(url: String) {
@@ -232,6 +279,8 @@ class NetworkStreamingViewModel(
   companion object {
     private const val MAX_DESCRIPTION_LENGTH = 2000
     private const val MIN_SEARCH_LENGTH = 3
+    private const val ENRICHMENT_RETRY_MS = 60_000L
+    private const val ENRICHMENT_TAG = "MpvRxTorrentArtwork"
 
     private fun groupTorrentFiles(entries: List<NetworkStreamEntryEntity>): List<TorrentStreamGroup> =
       entries
@@ -279,7 +328,7 @@ class NetworkStreamingViewModel(
     ): String {
       runCatching { parseMagnet(source)?.displayName?.trim() }
         .getOrNull()
-        ?.takeIf(String::isNotEmpty)
+        ?.takeIf { it.isNotEmpty() && !looksLikeHash(it) && !looksLikeGarbage(it) }
         ?.let { return it }
 
       runCatching {
@@ -287,10 +336,15 @@ class NetworkStreamingViewModel(
           ?.substringAfterLast('/')
           ?.removeSuffix(".torrent")
           ?.trim()
-      }.getOrNull()?.takeIf { it.isNotEmpty() && !it.startsWith("magnet:", ignoreCase = true) }?.let { return it }
+      }.getOrNull()?.takeIf {
+        it.isNotEmpty() &&
+          !it.startsWith("magnet:", ignoreCase = true) &&
+          !looksLikeHash(it) &&
+          !looksLikeGarbage(it)
+      }?.let { return it }
 
       commonRoot(files)
-        ?.takeIf { !looksLikeHash(it) }
+        ?.takeIf { !looksLikeHash(it) && !looksLikeGarbage(it) }
         ?.let { return it }
 
       files.firstOrNull()?.fileName
@@ -302,17 +356,26 @@ class NetworkStreamingViewModel(
       files.singleOrNull()?.fileName
         ?.substringBeforeLast('.', missingDelimiterValue = files.single().fileName)
         ?.trim()
-        ?.takeIf(String::isNotEmpty)
+        ?.takeIf { it.isNotEmpty() && !looksLikeHash(it) && !looksLikeGarbage(it) }
         ?.let { return it }
-
-      commonRoot(files)?.let { return it }
 
       return infoHash?.take(8)?.uppercase()?.let { "Torrent $it" } ?: "Torrent"
     }
 
     private fun looksLikeHash(value: String): Boolean {
       val trimmed = value.trim()
-      return trimmed.length >= 32 && trimmed.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+      if (trimmed.length < 16) return false
+      if (trimmed.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) return true
+      if (trimmed.length >= 32 && trimmed.all { it in 'A'..'Z' || it in '2'..'7' }) return true
+      return Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$").matches(trimmed)
+    }
+
+    private fun looksLikeGarbage(value: String): Boolean {
+      val trimmed = value.trim()
+      if (trimmed.isEmpty()) return true
+      if (trimmed.count { it.isLetter() } == 0) return true
+      val alphanumeric = trimmed.count { it.isLetterOrDigit() }
+      return alphanumeric * 100 < trimmed.length * 50
     }
 
     private fun extractNameFromFileName(fileName: String): String? {
@@ -383,7 +446,6 @@ class NetworkStreamingViewModel(
   }
 }
 
-private val yearRegex = Regex("\\b(?:19|20)\\d{2}\\b")
 private val seasonEpisodeRegex = Regex("(?i)\\bS\\d{1,2}[ ._-]*E\\d{1,3}\\b")
 private val seasonRegex = Regex("(?i)\\bS(?:eason)?[ ._-]*\\d{1,2}\\b")
 private val knownExtensionRegex = Regex("(?i)\\.(?:torrent|mkv|mp4|m4v|webm|avi|mov|ts|m2ts|mp3|m4a|flac|ogg)$")
@@ -392,8 +454,6 @@ private val releaseNoiseRegex =
     "(?i)\\b(?:2160p|1080p|720p|480p|uhd|hdr10?|dv|dolby[ ._-]*vision|bluray|brrip|" +
       "web[ ._-]*dl|webrip|hdtv|x26[45]|hevc|av1|aac|dts|atmos|proper|repack)\\b.*$",
   )
-private val titleTokenRegex = Regex("[\\p{L}\\p{N}]+")
-private val ignoredTitleTokens = setOf("the", "a", "an")
 
 private fun prettyTorrentTitle(value: String): String =
   value
@@ -411,31 +471,6 @@ private fun cleanSearchTitle(value: String): String =
   prettyTorrentTitle(value)
     .replace(Regex("\\s+"), " ")
     .trim()
-
-private fun isStrongTitleMatch(
-  query: String,
-  result: WyzieTmdbResult,
-): Boolean {
-  val queryTokens = normalizedTitleTokens(query)
-  val resultTokens = normalizedTitleTokens(result.title)
-  if (queryTokens.isEmpty() || resultTokens.isEmpty()) return false
-  val queryYear = yearRegex.find(query)?.value
-  if (queryYear != null && result.releaseYear != null && !result.releaseYear.startsWith(queryYear)) return false
-  if (queryTokens == resultTokens) {
-    return queryTokens.size >= 2 ||
-      (queryYear != null && result.releaseYear?.startsWith(queryYear) == true)
-  }
-  val shared = queryTokens.intersect(resultTokens).size.toFloat()
-  val coverage = shared / maxOf(queryTokens.size, resultTokens.size).toFloat()
-  return shared >= 2f && coverage >= 0.82f
-}
-
-private fun normalizedTitleTokens(value: String): Set<String> =
-  titleTokenRegex
-    .findAll(value.lowercase())
-    .map { it.value }
-    .filterNot { it in ignoredTitleTokens || yearRegex.matches(it) }
-    .toSet()
 
 private fun tmdbImageUrl(
   path: String?,

@@ -684,6 +684,24 @@ class WyzieSearchRepository(
       }
     }
 
+  /**
+   * Resolves the single best TMDB result for [query], preferring a release-year match and
+   * falling back to the top relevance result. Mirrors the subtitle search selection so
+   * posters/backdrops resolve exactly like the online subtitle flow.
+   */
+  suspend fun findBestMediaMatch(
+    query: String,
+    year: String? = null,
+  ): Result<WyzieTmdbResult?> =
+    withContext(Dispatchers.IO) {
+      try {
+        Result.success(bestTmdbResult(tmdbSearch(query), year))
+      } catch (e: Exception) {
+        Log.w("WyzieSearchRepository", "TMDB best-match search failed: ${e.message}")
+        Result.failure(e)
+      }
+    }
+
   suspend fun trendingMedia(limit: Int = 20): Result<List<WyzieTmdbResult>> =
     withContext(Dispatchers.IO) {
       Result.failure(IOException("Trending endpoint no longer available"))
@@ -847,3 +865,19 @@ private fun OnlineSubtitle.toWyzieSubtitle(): WyzieSubtitle =
     downloadCount = downloadCount,
     isHashMatch = isHashMatch,
   )
+
+/**
+ * Resolves the single best TMDB result from [results], preferring an exact release-year match,
+ * then a release-year prefix match, and finally the top relevance result. Mirrors the subtitle
+ * search selection so posters/backdrops resolve exactly like the online subtitle flow.
+ */
+fun bestTmdbResult(
+  results: List<WyzieTmdbResult>,
+  year: String?,
+): WyzieTmdbResult? {
+  if (results.isEmpty()) return null
+  if (year == null) return results[0]
+  return results.firstOrNull { it.releaseYear == year }
+    ?: results.firstOrNull { it.releaseYear?.startsWith(year.take(3)) == true }
+    ?: results[0]
+}

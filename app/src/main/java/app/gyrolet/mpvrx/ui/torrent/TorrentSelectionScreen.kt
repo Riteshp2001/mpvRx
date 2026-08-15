@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -216,7 +217,13 @@ private fun TorrentReadyScreen(
 private fun TorrentHeroBanner(artwork: TorrentArtwork) {
   var expanded by remember { mutableStateOf(false) }
   val hasBackdrop = !artwork.backdropUrl.isNullOrBlank()
+  val hasPoster = !artwork.posterUrl.isNullOrBlank()
   val hasDescription = !artwork.description.isNullOrBlank()
+  val metadata =
+    listOfNotNull(
+      artwork.releaseYear,
+      artwork.mediaType,
+    ).joinToString("  •  ")
 
   Column(
     modifier =
@@ -232,7 +239,6 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(16.dp)),
-        contentAlignment = Alignment.BottomStart,
       ) {
         RemoteImage(
           url = artwork.backdropUrl!!,
@@ -244,46 +250,98 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
           modifier =
             Modifier
               .fillMaxWidth()
-              .height(80.dp)
+              .height(140.dp)
+              .align(Alignment.BottomCenter)
               .background(
                 Brush.verticalGradient(
-                  colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                  colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
                 ),
               ),
         )
-        Text(
-          text = artwork.title,
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.Bold,
-          color = Color.White,
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.padding(12.dp),
-        )
+        Row(
+          modifier =
+            Modifier
+              .align(Alignment.BottomStart)
+              .padding(12.dp),
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+          verticalAlignment = Alignment.Bottom,
+        ) {
+          if (hasPoster) {
+            Box(
+              modifier =
+                Modifier
+                  .width(84.dp)
+                  .aspectRatio(2f / 3f)
+                  .clip(RoundedCornerShape(10.dp)),
+            ) {
+              RemoteImage(
+                url = artwork.posterUrl!!,
+                contentDescription = artwork.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+              )
+            }
+          }
+          Column(modifier = Modifier.weight(1f)) {
+            Text(
+              text = artwork.title,
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+              color = Color.White,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+            if (metadata.isNotBlank()) {
+              Text(
+                text = metadata,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.padding(top = 4.dp),
+              )
+            }
+          }
+        }
       }
     } else {
-      Text(
-        text = artwork.title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-      )
-    }
-
-    val metadata =
-      listOfNotNull(
-        artwork.releaseYear,
-        artwork.mediaType,
-      ).joinToString("  •  ")
-
-    if (metadata.isNotBlank()) {
-      Text(
-        text = metadata,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 6.dp),
-      )
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.Top,
+      ) {
+        if (hasPoster) {
+          Box(
+            modifier =
+              Modifier
+                .width(84.dp)
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(12.dp)),
+          ) {
+            RemoteImage(
+              url = artwork.posterUrl!!,
+              contentDescription = artwork.title,
+              modifier = Modifier.fillMaxSize(),
+              contentScale = ContentScale.Crop,
+            )
+          }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = artwork.title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
+          if (metadata.isNotBlank()) {
+            Text(
+              text = metadata,
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.padding(top = 6.dp),
+            )
+          }
+        }
+      }
     }
 
     if (hasDescription) {
@@ -295,7 +353,7 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
         overflow = TextOverflow.Ellipsis,
         modifier =
           Modifier
-            .padding(top = 6.dp)
+            .padding(top = 10.dp)
             .clickable { expanded = !expanded },
       )
     }
