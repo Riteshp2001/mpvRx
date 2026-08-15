@@ -77,6 +77,22 @@ object M3uPlaybackPolicy {
     }
   }
 
+  fun shouldProxyHls(
+    playableUri: String,
+    mimeType: String? = null,
+    enableHlsProxy: Boolean = true,
+  ): Boolean {
+    if (!enableHlsProxy) return false
+    val lower = playableUri.lowercase()
+    if (!(lower.startsWith("http://") || lower.startsWith("https://"))) return false
+    if (lower.contains("127.0.0.1") || lower.contains("localhost")) return false
+    return lower.contains(".m3u8") ||
+      mimeType?.lowercase()?.contains("mpegurl") == true ||
+      lower.contains("/hls/") ||
+      lower.contains("=m3u8") ||
+      lower.contains("format=m3u8")
+  }
+
   private fun isNetworkUri(value: String?): Boolean {
     if (value.isNullOrBlank()) return false
     val scheme = value.substringBefore(":", missingDelimiterValue = "").lowercase()

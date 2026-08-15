@@ -32,6 +32,8 @@ class AdvancedPreferences(
 
   val enableP2pStreaming = preferenceStore.getBoolean("enable_p2p_streaming", true)
 
+  val enableHlsProxy = preferenceStore.getBoolean("enable_hls_proxy", true)
+
   /** Notification style for the playback service (Media vs Progress-centric on Android 16+). */
   val notificationStyle = preferenceStore.getEnum("notification_style", NotificationStyle.Media)
 }

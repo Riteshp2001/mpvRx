@@ -145,6 +145,8 @@
   <string name="pref_enable_lua_scripts_summary">Load scripts from your MPV configuration directory</string>
   <string name="pref_enable_p2p_streaming_title">Enable P2P torrent streaming</string>
   <string name="pref_enable_p2p_streaming_summary">Stream playable media from magnet links and torrent files</string>
+  <string name="pref_enable_hls_proxy_title">Enable HLS streaming proxy</string>
+  <string name="pref_enable_hls_proxy_summary">Normalize adaptive HLS manifests and handle split audio/video streams</string>
   <string name="pref_manage_lua_scripts_title">Manage scripts</string>
   <string name="pref_manage_lua_scripts_summary">Manage enabled scripts</string>
   <string name="pref_clear_config_cache_title">Clear config cache</string>

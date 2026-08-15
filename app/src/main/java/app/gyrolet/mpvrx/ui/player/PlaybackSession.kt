@@ -16,6 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.Surface
+import app.gyrolet.mpvrx.data.network.proxy.HlsStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import `is`.xyz.mpv.MPVLib
@@ -92,7 +93,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val AMBIENT_SCALE_EPSILON = 0.000001
 
   private data class NetworkStreamRegistration(
-    val proxy: NetworkStreamingProxy,
+    val proxy: NetworkStreamingProxy? = null,
+    val hlsProxy: HlsStreamingProxy? = null,
     val streamId: String,
   )
 
@@ -756,7 +758,7 @@ object PlaybackSession : MPVLib.EventObserver {
           fileSize = fileSize,
           mimeType = mimeType,
         )
-      auxiliaryNetworkStreams[uri] = NetworkStreamRegistration(proxy, streamId)
+      auxiliaryNetworkStreams[uri] = NetworkStreamRegistration(proxy = proxy, streamId = streamId)
       uri
     }
 
@@ -1111,7 +1113,22 @@ object PlaybackSession : MPVLib.EventObserver {
           filePath = reference.path.value,
           mimeType = item.mimeType ?: "application/octet-stream",
         )
-      return ResolvedPlayable(uri, NetworkStreamRegistration(proxy, streamId))
+      return ResolvedPlayable(uri, NetworkStreamRegistration(proxy = proxy, streamId = streamId))
+    }
+
+    if (M3uPlaybackPolicy.shouldProxyHls(item.playableUri, item.mimeType)) {
+      val hlsProxy = HlsStreamingProxy.getInstance()
+      val streamId = "hls-${streamSequence.incrementAndGet()}"
+      val userAgent = PlaybackHttpHeaders.userAgent(item.headers)
+      val uri =
+        hlsProxy.registerStream(
+          streamId = streamId,
+          sourceUrl = item.playableUri,
+          headers = item.headers,
+          userAgent = userAgent,
+        )
+      Log.d(TAG, "Routing HLS stream through HlsStreamingProxy: $uri")
+      return ResolvedPlayable(uri, NetworkStreamRegistration(hlsProxy = hlsProxy, streamId = streamId))
     }
 
     if (!item.playableUri.startsWith("content://")) return ResolvedPlayable(item.playableUri)
@@ -1145,8 +1162,10 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   private fun releaseNetworkStream(registration: NetworkStreamRegistration) {
-    runCatching { registration.proxy.unregisterStream(registration.streamId) }
-      .onFailure { error -> Log.w(TAG, "Failed to release network stream", error) }
+    runCatching {
+      registration.proxy?.unregisterStream(registration.streamId)
+      registration.hlsProxy?.unregisterStream(registration.streamId)
+    }.onFailure { error -> Log.w(TAG, "Failed to release network stream", error) }
   }
 
   private fun observerSnapshot(): List<MPVLib.EventObserver> = observers.toList()
