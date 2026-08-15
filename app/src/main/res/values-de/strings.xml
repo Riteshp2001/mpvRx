@@ -74,6 +74,7 @@
   <!-- Theme names -->
   <string name="theme_default">Standard</string>
   <string name="theme_dynamic">Dynamisch</string>
+  <string name="theme_aurora">Polarlicht</string>
   <string name="theme_cloudflare">Cloudflare</string>
   <string name="theme_cotton_candy">Zuckerwatte</string>
   <string name="theme_doom">Doom</string>

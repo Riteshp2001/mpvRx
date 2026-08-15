@@ -74,6 +74,7 @@
   <!-- Theme names -->
   <string name="theme_default">デフォルト</string>
   <string name="theme_dynamic">ダイナミック</string>
+  <string name="theme_aurora">オーロラ</string>
   <string name="theme_cloudflare">Cloudflare</string>
   <string name="theme_cotton_candy">コットンキャンディ</string>
   <string name="theme_doom">Doom</string>

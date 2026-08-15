@@ -74,6 +74,7 @@
   <!-- Theme names -->
   <string name="theme_default">默认</string>
   <string name="theme_dynamic">动态</string>
+  <string name="theme_aurora">极光</string>
   <string name="theme_cloudflare">Cloudflare</string>
   <string name="theme_cotton_candy">棉花糖</string>
   <string name="theme_doom">Doom</string>
