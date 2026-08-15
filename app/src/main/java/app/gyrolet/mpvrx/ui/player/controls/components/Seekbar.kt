@@ -717,8 +717,8 @@ private fun NormalSeekbar(
       SeekerDefaults.seekerColors(
         progressColor = MaterialTheme.colorScheme.primary,
         thumbColor = MaterialTheme.colorScheme.primary,
-        trackColor = MaterialTheme.colorScheme.background,
-        readAheadColor = MaterialTheme.colorScheme.inversePrimary,
+        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
+        readAheadColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
       ),
     onValueChange = {},
     onValueChangeFinished = {},

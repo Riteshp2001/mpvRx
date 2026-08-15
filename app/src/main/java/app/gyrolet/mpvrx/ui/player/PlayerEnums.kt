@@ -175,7 +175,7 @@ sealed class PlayerUpdates {
 /**
  * Filter presets for quick video color adjustments.
  * Each preset defines specific values for brightness, saturation, contrast, gamma, hue, and sharpness.
- * Sharpness uses MPV's 'sharpen' property which ranges from -5 (blur) to 5 (sharp).
+ * Sharpness uses MPV's 'sharpen' property which ranges from -10 (blur) to 10 (sharp).
  */
 enum class FilterPreset(
   @StringRes val displayNameRes: Int,
@@ -345,8 +345,8 @@ enum class VideoFilters(
     titleRes = R.string.player_sheets_filters_sharpness,
     preference = { it.sharpnessFilter },
     mpvProperty = "sharpen",
-    min = -5,
-    max = 5,
+    min = -10,
+    max = 10,
   ),
 }
 
