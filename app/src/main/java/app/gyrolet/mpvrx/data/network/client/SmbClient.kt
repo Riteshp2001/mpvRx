@@ -219,29 +219,30 @@ class SmbClient(
               sess.connectShare(shareName) as? DiskShare
                 ?: throw IOException("Configured SMB share is not a disk share")
 
-            diskShare.use { ds ->
-              val rawFiles: List<FileIdBothDirectoryInformation> =
-                try {
-                  withTimeout(15_000) { ds.list(directory.relative) }
-                } catch (_: TimeoutCancellationException) {
-                  throw IOException("SMB directory listing timed out")
-                }
-
-              rawFiles.mapNotNull { fileInfo ->
-                val fileName = fileInfo.fileName
-                if (fileName == "." || fileName == "..") return@mapNotNull null
-                runCatching {
-                  val isDirectory = fileInfo.fileAttributes and 0x10 != 0L
-                  NetworkFile(
-                    name = fileName,
-                    path = directory.child(fileName).value,
-                    isDirectory = isDirectory,
-                    size = if (isDirectory) 0L else fileInfo.endOfFile,
-                    lastModified = fileInfo.lastWriteTime.toEpochMillis(),
-                    mimeType = if (!isDirectory) NetworkMimeTypes.forFileName(fileName) else null,
-                  )
-                }.getOrNull()
+            // The DiskShare returned by Session.connectShare() is cached and shared by
+            // all requests on this session. Never close it from a per-request operation:
+            // closing it here would disconnect the tree out from under active streams.
+            val rawFiles: List<FileIdBothDirectoryInformation> =
+              try {
+                withTimeout(15_000) { diskShare.list(directory.relative) }
+              } catch (_: TimeoutCancellationException) {
+                throw IOException("SMB directory listing timed out")
               }
+
+            rawFiles.mapNotNull { fileInfo ->
+              val fileName = fileInfo.fileName
+              if (fileName == "." || fileName == "..") return@mapNotNull null
+              runCatching {
+                val isDirectory = fileInfo.fileAttributes and 0x10 != 0L
+                NetworkFile(
+                  name = fileName,
+                  path = directory.child(fileName).value,
+                  isDirectory = isDirectory,
+                  size = if (isDirectory) 0L else fileInfo.endOfFile,
+                  lastModified = fileInfo.lastWriteTime.toEpochMillis(),
+                  mimeType = if (!isDirectory) NetworkMimeTypes.forFileName(fileName) else null,
+                )
+              }.getOrNull()
             }
           }
         Result.success(result)
@@ -339,14 +340,17 @@ class SmbClient(
                   override fun close() {
                     if (closed) return
                     closed = true
+                    // Close only the per-request file handle. The DiskShare is the
+                    // session-cached tree connect and is shared with concurrent range
+                    // streams; closing it here triggers TREE_DISCONNECT and breaks any
+                    // sibling stream that is still reading.
                     runCatching { file.close() }
-                    runCatching { diskShare.close() }
                   }
                 }
 
               BufferedInputStream(inputStream, SMB_STREAM_BUFFER_SIZE)
             } catch (e: Exception) {
-              diskShare.close()
+              // See above: the cached DiskShare must not be closed here either.
               throw IOException("Failed to open SMB file", e)
             }
           }
@@ -381,9 +385,9 @@ class SmbClient(
               file.use { it.fileInformation.standardInformation.endOfFile }
             } catch (e: Exception) {
               throw IOException("Failed to get SMB file size", e)
-            } finally {
-              runCatching { diskShare.close() }
             }
+            // Do not close the session-cached DiskShare here: this size probe can run
+            // while another range stream is still using the same tree connect.
           }
         Result.success(result)
       } catch (cancellation: CancellationException) {
