@@ -489,10 +489,9 @@ object PlaybackSession : MPVLib.EventObserver {
     item: PlaybackItem? = null,
   ): Long =
     withCore(default = -1L) {
-      // The outgoing file can be intentionally left at vid=no while its Surface/decoder is being
-      // replaced. Never let that file-local track selection leak into the new foreground file.
-      // Using a loadfile option selects the new file's default video track atomically, without
-      // briefly re-enabling the outgoing decoder before the replacement command executes.
+      // A preceding surface detach may have left the outgoing file at vid=no. Select video for the
+      // incoming file only when a valid render Surface is attached, and make that choice file-local
+      // in the load command instead of mutating the process-wide vid property during replacement.
       val selectVideoForNewFile = _state.value.surfaceAttached
 
       // An OUTPUT Ambient shader bakes the previous video's aspect ratio into its GLSL. Because the
@@ -840,7 +839,6 @@ object PlaybackSession : MPVLib.EventObserver {
               Log.d(TAG, "Ignoring stale FILE_LOADED generation ${current.activeGeneration}; current=${current.generation}")
               false
             } else {
-
               // Track/decoder replacement is now complete. Apply the latest user/service intent
               // once instead of allowing pause writes to race the load operation.
               MPVLib.setPropertyBoolean("pause", desiredPaused)

@@ -11,9 +11,8 @@ package app.gyrolet.mpvrx.ui.player
 
 import java.math.BigDecimal
 import java.net.URI
-import kotlin.math.roundToInt
 
-internal const val SEEK_PREVIEW_CACHE_BUCKETS_PER_SECOND = 4.0
+internal const val SEEK_PREVIEW_CACHE_BUCKETS_PER_SECOND = 1.0
 internal const val SEEK_PREVIEW_EOF_MARGIN_SECONDS = 0.1
 
 internal fun normalizeSeekPreviewPosition(
@@ -36,7 +35,7 @@ internal fun formatSeekPreviewSeconds(positionSeconds: Double): String =
 
 internal fun seekPreviewBucket(positionSeconds: Double): Int =
   (normalizeSeekPreviewPosition(positionSeconds, Double.NaN) * SEEK_PREVIEW_CACHE_BUCKETS_PER_SECOND)
-    .roundToInt()
+    .toInt()
     .coerceAtLeast(0)
 
 internal fun seekPreviewBucketStart(bucket: Int): Double =
@@ -47,8 +46,9 @@ internal fun safeSeekThumbnailTime(
   durationSeconds: Double,
 ): Double {
   val normalized = normalizeSeekPreviewPosition(positionSeconds, durationSeconds)
-  if (!durationSeconds.isFinite() || durationSeconds <= 0.0) return normalized
-  return normalized.coerceAtMost((durationSeconds - SEEK_PREVIEW_EOF_MARGIN_SECONDS).coerceAtLeast(0.0))
+  val perSecondTarget = seekPreviewBucketStart(seekPreviewBucket(normalized))
+  if (!durationSeconds.isFinite() || durationSeconds <= 0.0) return perSecondTarget
+  return perSecondTarget.coerceAtMost((durationSeconds - SEEK_PREVIEW_EOF_MARGIN_SECONDS).coerceAtLeast(0.0))
 }
 
 internal fun firstSeekPreviewSource(vararg candidates: String?): String? =
