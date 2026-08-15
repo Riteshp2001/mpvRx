@@ -340,21 +340,6 @@ object PlaybackSession : MPVLib.EventObserver {
     releaseAuxiliaryNetworkStreams()
   }
 
-  /**
-   * Silences the native output at the start of a foreground player teardown.
-   *
-   * The transition guard carries the user's prior mute state through the next replacement load,
-   * so stopping a video cannot leave the next one permanently muted.
-   */
-  fun silenceForTeardown() {
-    withCore(Unit) {
-      clearSeekAudioGuardLocked(restoreMute = true)
-      beginPlaybackTransitionAudioGuardLocked()
-      desiredPaused = true
-      runCatching { MPVLib.setPropertyBoolean("pause", true) }
-      propBoolean.emit("pause", true)
-    }
-  }
 
   /** Native destruction is reserved for process-level shutdown or an unrecoverable init reset. */
   fun destroy() {
@@ -543,9 +528,12 @@ object PlaybackSession : MPVLib.EventObserver {
       MPVLib.setPropertyString("http-header-fields", headerFields)
       MPVLib.setPropertyString("force-media-title", "")
 
-      // Let loadfile replace perform the decoder handoff atomically. Setting the process-wide
-      // vid property to no immediately before this command can survive into the replacement on
-      // some libmpv/MediaCodec combinations, producing audio-only playback with a black Surface.
+
+
+      // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
+      // render Surface is attached, explicitly make vid=auto file-local to this new load. This
+      // prevents a preceding vid=no from producing "No video or audio streams selected" on
+      // video-only files while preserving video suppression for true background/no-Surface loads.
       val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes"
       MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
       propBoolean.emit("pause", false)
