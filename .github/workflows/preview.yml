@@ -9,7 +9,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: mpvrx-preview-pages
+  group: replay-preview-pages
   cancel-in-progress: true
 
 jobs:
@@ -127,7 +127,7 @@ jobs:
 
       - name: Stage GitHub Pages preview site
         env:
-          SITE_BASE_URL: https://riteshp2001.github.io/mpvRx
+          SITE_BASE_URL: https://utsavrajputt.github.io/Replay
         shell: bash
         run: |
           set -euo pipefail
@@ -173,7 +173,7 @@ jobs:
               if not source.is_file():
                   raise SystemExit(f"Missing signed APK for {public_name}: {source}")
 
-              name = f"mpvRx-preview-r{commit_count}-{public_name}.apk"
+              name = f"Replay-preview-r{commit_count}-{public_name}.apk"
               destination = downloads_dir / name
               shutil.copy2(source, destination)
 
@@ -188,7 +188,7 @@ jobs:
 
           manifest = {
               "tag_name": f"preview-r{commit_count}",
-              "name": f"mpvRx Preview r{commit_count}",
+              "name": f"Replay Preview r{commit_count}",
               "body": (
                   f"Manually published preview from workflow run #{run_number}. "
                   f"Source commit: {source_sha[:7]}."
@@ -219,7 +219,7 @@ jobs:
       - name: Upload preview APKs as Actions artifact
         uses: actions/upload-artifact@v7
         with:
-          name: mpvRx-preview-r${{ env.COMMIT_COUNT }}
+          name: Replay-preview-r${{ env.COMMIT_COUNT }}
           path: |
             site/downloads/*.apk
             site/latest.json

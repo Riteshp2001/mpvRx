@@ -1,0 +1,48 @@
+name: Rebase Master Branch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # daily at midnight UTC
+
+permissions:
+  contents: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/Riteshp2001/mpvRx.git
+
+      - name: Fetch upstream
+        run: git fetch upstream master
+
+      - name: Rebase master onto upstream/master
+        id: rebase
+        run: |
+          if ! git rebase upstream/master; then
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            echo "## ❌ Rebase conflict detected" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Conflicted files:" >> "$GITHUB_STEP_SUMMARY"
+            git diff --name-only --diff-filter=U | tee -a "$GITHUB_STEP_SUMMARY"
+            git rebase --abort
+            exit 1
+          fi
+
+      - name: Force push rebased master
+        if: success()
+        run: git push origin master --force-with-lease

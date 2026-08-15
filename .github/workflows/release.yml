@@ -131,20 +131,20 @@ jobs:
           architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
           for abi in "${architectures[@]}"; do
             src="$release_dir/app-standard-${abi}-release.apk"
-            dst="release-assets/mpvRx-${abi}-${VERSION_TAG}.apk"
+            dst="release-assets/Replay-${abi}-${VERSION_TAG}.apk"
             test -f "$src"
             cp "$src" "$dst"
             sha256sum "$dst" | tee -a checksums.txt
           done
 
           src="app/build/outputs/apk/fongmi/release/app-fongmi-universal-release.apk"
-          dst="release-assets/mpvRx-fongmi-${VERSION_TAG}.apk"
+          dst="release-assets/Replay-fongmi-${VERSION_TAG}.apk"
           test -f "$src"
           cp "$src" "$dst"
           sha256sum "$dst" | tee -a checksums.txt
 
           src="app/build/outputs/apk/noVulkan/release/app-noVulkan-universal-release.apk"
-          dst="release-assets/mpvRx-no-vulkan-${VERSION_TAG}.apk"
+          dst="release-assets/Replay-no-vulkan-${VERSION_TAG}.apk"
           test -f "$src"
           cp "$src" "$dst"
           sha256sum "$dst" | tee -a checksums.txt
@@ -179,7 +179,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
-          name: mpvRx ${{ env.VERSION_TAG }}
+          name: Replay ${{ env.VERSION_TAG }}
           body_path: release-notes.md
           generate_release_notes: true
           draft: false

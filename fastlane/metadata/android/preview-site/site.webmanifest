@@ -1,12 +1,12 @@
 {
-  "name": "mpvRx Preview Builds",
-  "short_name": "mpvRx Preview",
-  "description": "Official preview APKs for the mpvRx Android media player.",
-  "start_url": "/mpvRx/",
-  "scope": "/mpvRx/",
+  "name": "Replay Preview Builds",
+  "short_name": "Replay Preview",
+  "description": "Official preview APKs for the Replay Android media player.",
+  "start_url": "/Replay/",
+  "scope": "/Replay/",
   "display": "standalone",
-  "background_color": "#f3efe7",
-  "theme_color": "#6f4ee8",
+  "background_color": "#EFF4FF",
+  "theme_color": "#1460F4",
   "icons": [
     {
       "src": "icon.png",
