@@ -504,10 +504,9 @@ object PlaybackSession : MPVLib.EventObserver {
     item: PlaybackItem? = null,
   ): Long =
     withCore(default = -1L) {
-      // The outgoing file can be intentionally left at vid=no while its Surface/decoder is being
-      // replaced. Never let that file-local track selection leak into the new foreground file.
-      // Using a loadfile option selects the new file's default video track atomically, without
-      // briefly re-enabling the outgoing decoder before the replacement command executes.
+      // A preceding surface detach may have left the outgoing file at vid=no. Select video for the
+      // incoming file only when a valid render Surface is attached, and make that choice file-local
+      // in the load command instead of mutating the process-wide vid property during replacement.
       val selectVideoForNewFile = _state.value.surfaceAttached
 
       // An OUTPUT Ambient shader bakes the previous video's aspect ratio into its GLSL. Because the
@@ -544,16 +543,9 @@ object PlaybackSession : MPVLib.EventObserver {
       MPVLib.setPropertyString("http-header-fields", headerFields)
       MPVLib.setPropertyString("force-media-title", "")
 
-      // Quiesce the outgoing decoder while holding the same native lock as loadfile. Previously
-      // PlayerActivity did this in a separate call, which left a scheduling window where the old
-      // GPU frame could overlap the new decoder output during a playlist switch.
-      runCatching { MPVLib.setPropertyBoolean("pause", true) }
-      runCatching { MPVLib.setPropertyString("vid", "no") }
-
-      // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
-      // render Surface is attached, explicitly make vid=auto file-local to this new load. This
-      // prevents a preceding vid=no from producing "No video or audio streams selected" on
-      // video-only files while preserving video suppression for true background/no-Surface loads.
+      // Let loadfile replace perform the decoder handoff atomically. Setting the process-wide
+      // vid property to no immediately before this command can survive into the replacement on
+      // some libmpv/MediaCodec combinations, producing audio-only playback with a black Surface.
       val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes"
       MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
       propBoolean.emit("pause", false)
@@ -859,14 +851,6 @@ object PlaybackSession : MPVLib.EventObserver {
               Log.d(TAG, "Ignoring stale FILE_LOADED generation ${current.activeGeneration}; current=${current.generation}")
               false
             } else {
-              // The outgoing decoder was disabled with vid=no before the replacement command.
-              // Re-enable video only after the new file has loaded, while it is still paused: this
-              // preserves the no-overlap guarantee without leaving the replacement file black.
-              if (current.surfaceAttached) {
-                runCatching { MPVLib.setPropertyString("vid", "auto") }
-                  .onFailure { error -> Log.w(TAG, "Failed to activate video for replacement load", error) }
-              }
-
               // Track/decoder replacement is now complete. Apply the latest user/service intent
               // once instead of allowing pause writes to race the load operation.
               MPVLib.setPropertyBoolean("pause", desiredPaused)
