@@ -3982,7 +3982,14 @@ class PlayerActivity :
       var state = playbackStateRepository.getVideoDataByTitle(identifier)
       if (state == null) {
         val legacyKey = legacyIdentifier?.takeIf { it.isNotBlank() && it != identifier }
-        val legacyState = legacyKey?.let { playbackStateRepository.getVideoDataByTitle(it) }
+        // Only migrate legacy records whose key is collision-resistant (e.g. contains a
+        // URI hash like "name_123456" for remote files). Bare filenames used by older
+        // versions for local files are ambiguous — two files in different directories
+        // share the same display name, so migrating would steal one file's state.
+        val isCollisionResistant = legacyKey != null && legacyKey.contains('_')
+        val legacyState = legacyKey
+          ?.takeIf { isCollisionResistant }
+          ?.let { playbackStateRepository.getVideoDataByTitle(it) }
         if (legacyState != null) {
           val migratedState = legacyState.copy(mediaTitle = identifier)
           state = migratedState
@@ -5652,7 +5659,7 @@ class PlayerActivity :
       } else if (isRemotePlaybackUri(uri)) {
         "${fileName}_${uri.toString().hashCode()}"
       } else {
-        fileName
+        null
       }
     mediaIdentifier =
       if (networkFilePath != null && resolvedNetworkConnectionId != null) {
@@ -6020,7 +6027,9 @@ class PlayerActivity :
     }
     val uri = extractUriFromIntent(intent)
     if (uri != null && NetworkPlaybackUri.parse(uri.toString()) != null) return null
-    return if (uri != null && isRemotePlaybackUri(uri)) "${fileName}_${uri.toString().hashCode()}" else fileName
+    // Local files must not use the bare filename as a legacy key — it is ambiguous when
+    // multiple directories contain files with the same display name (issue #382).
+    return if (uri != null && isRemotePlaybackUri(uri)) "${fileName}_${uri.toString().hashCode()}" else null
   }
 
   private fun loadNetworkPlaylistMetadata(intent: Intent) {

@@ -20,6 +20,7 @@ import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
+import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
@@ -275,7 +276,9 @@ class FolderListViewModel(
 
                     // A video counts as "unplayed" until it has been watched to the
                     // configured threshold. Threshold 0 ("Infinitely") keeps it unplayed.
-                    val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+                    val playbackState = playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri(video.uri.toString()))
+                      ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri(video.path))
+                      ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri("file://${video.path}"))
                     val isUnplayed =
                       if (playbackState != null && video.duration > 0) {
                         val durationSeconds = video.duration / 1000

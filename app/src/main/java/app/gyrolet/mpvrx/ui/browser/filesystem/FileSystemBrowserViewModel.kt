@@ -563,7 +563,6 @@ class FileSystemBrowserViewModel(
           PlaybackIdentity.forUri(video.uri.toString()),
           PlaybackIdentity.forUri(video.path),
           PlaybackIdentity.forUri("file://${video.path}"),
-          video.displayName,
         )
       val playbackState = playbackIdentifiers.firstNotNullOfOrNull { playbackStates[it] }
       val progressValue =
@@ -604,7 +603,6 @@ class FileSystemBrowserViewModel(
           PlaybackIdentity.forUri(video.uri.toString()),
           PlaybackIdentity.forUri(video.path),
           PlaybackIdentity.forUri("file://${video.path}"),
-          video.displayName,
         )
       val existing = playbackStateRepository.getAllPlaybackStates().firstNotNullOfOrNull { state ->
         if (state.mediaTitle in identifiers) state else null

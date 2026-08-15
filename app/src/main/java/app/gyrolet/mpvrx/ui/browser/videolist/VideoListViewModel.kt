@@ -250,7 +250,6 @@ class VideoListViewModel(
         PlaybackIdentity.forUri(video.uri.toString()),
         PlaybackIdentity.forUri(video.path),
         PlaybackIdentity.forUri("file://${video.path}"),
-        video.displayName,
       )
 
     for (identifier in identifiers) {
