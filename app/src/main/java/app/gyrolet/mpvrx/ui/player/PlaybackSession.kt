@@ -340,21 +340,6 @@ object PlaybackSession : MPVLib.EventObserver {
     releaseAuxiliaryNetworkStreams()
   }
 
-  /**
-   * Silences the native output at the start of a foreground player teardown.
-   *
-   * The transition guard carries the user's prior mute state through the next replacement load,
-   * so stopping a video cannot leave the next one permanently muted.
-   */
-  fun silenceForTeardown() {
-    withCore(Unit) {
-      clearSeekAudioGuardLocked(restoreMute = true)
-      beginPlaybackTransitionAudioGuardLocked()
-      desiredPaused = true
-      runCatching { MPVLib.setPropertyBoolean("pause", true) }
-      propBoolean.emit("pause", true)
-    }
-  }
 
   /** Native destruction is reserved for process-level shutdown or an unrecoverable init reset. */
   fun destroy() {
@@ -544,11 +529,7 @@ object PlaybackSession : MPVLib.EventObserver {
       MPVLib.setPropertyString("http-header-fields", headerFields)
       MPVLib.setPropertyString("force-media-title", "")
 
-      // Quiesce the outgoing decoder while holding the same native lock as loadfile. Previously
-      // PlayerActivity did this in a separate call, which left a scheduling window where the old
-      // GPU frame could overlap the new decoder output during a playlist switch.
-      runCatching { MPVLib.setPropertyBoolean("pause", true) }
-      runCatching { MPVLib.setPropertyString("vid", "no") }
+
 
       // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
       // render Surface is attached, explicitly make vid=auto file-local to this new load. This
@@ -859,13 +840,6 @@ object PlaybackSession : MPVLib.EventObserver {
               Log.d(TAG, "Ignoring stale FILE_LOADED generation ${current.activeGeneration}; current=${current.generation}")
               false
             } else {
-              // The outgoing decoder was disabled with vid=no before the replacement command.
-              // Re-enable video only after the new file has loaded, while it is still paused: this
-              // preserves the no-overlap guarantee without leaving the replacement file black.
-              if (current.surfaceAttached) {
-                runCatching { MPVLib.setPropertyString("vid", "auto") }
-                  .onFailure { error -> Log.w(TAG, "Failed to activate video for replacement load", error) }
-              }
 
               // Track/decoder replacement is now complete. Apply the latest user/service intent
               // once instead of allowing pause writes to race the load operation.
