@@ -56,6 +56,8 @@
   <string name="pref_quick_play_fab_summary">在浏览器界面中显示快速播放悬浮按钮</string>
   <string name="pref_quick_play_fab_direct_title">直接快速播放</string>
   <string name="pref_quick_play_fab_direct_summary">点击悬浮按钮时直接播放最近播放的视频，而不显示选项菜单</string>
+  <string name="pref_celestial_effects_title">星幕效果</string>
+  <string name="pref_celestial_effects_summary">首页极光丝带/光晕、顶部栏配色和悬浮按钮发光边框</string>
   <string name="pref_appearance_nav_style_slide">滑动</string>
   <string name="pref_appearance_nav_style_fade">淡入淡出</string>
   <string name="pref_appearance_nav_style_none">无（立即）</string>
@@ -81,7 +83,6 @@
   <string name="theme_green_apple">青苹果</string>
   <string name="theme_lavender">薰衣草</string>
   <string name="theme_midnight">午夜</string>
-  <string name="theme_aurora">极光</string>
   <string name="theme_mocha">摩卡</string>
   <string name="theme_strawberry">草莓</string>
   <string name="theme_tidal">Tidal</string>

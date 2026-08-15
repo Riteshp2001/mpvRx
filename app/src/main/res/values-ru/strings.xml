@@ -56,6 +56,8 @@
   <string name="pref_quick_play_fab_summary">Показывать плавующую кнопку быстрого воспроизведения на экранах браузера</string>
   <string name="pref_quick_play_fab_direct_title">Прямое быстрое воспроизведение</string>
   <string name="pref_quick_play_fab_direct_summary">Воспроизводить недавнее видео сразу при нажатии на кнопку вместо показа вариантов</string>
+  <string name="pref_celestial_effects_title">Небесные эффекты</string>
+  <string name="pref_celestial_effects_summary">Ленты/свечение авроры на главном экране, окрашенная верхняя панель и светящаяся рамка FAB</string>
   <string name="pref_appearance_nav_style_slide">Скольжение</string>
   <string name="pref_appearance_nav_style_fade">Затухание</string>
   <string name="pref_appearance_nav_style_none">Нет (мгновенно)</string>
@@ -81,7 +83,6 @@
   <string name="theme_green_apple">Зелёное яблоко</string>
   <string name="theme_lavender">Лаванда</string>
   <string name="theme_midnight">Полночь</string>
-  <string name="theme_aurora">Аврора</string>
   <string name="theme_mocha">Мокко</string>
   <string name="theme_strawberry">Клубника</string>
   <string name="theme_tidal">Tidal</string>

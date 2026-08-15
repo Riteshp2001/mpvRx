@@ -56,6 +56,8 @@
   <string name="pref_quick_play_fab_summary">Afficher le bouton d\’action flottant de lecture rapide dans les écrans du navigateur</string>
   <string name="pref_quick_play_fab_direct_title">Lecture rapide directe</string>
   <string name="pref_quick_play_fab_direct_summary">Lire directement la dernière vidéo lue en appuyant sur le bouton au lieu d\’afficher les options</string>
+  <string name="pref_celestial_effects_title">Effets célestes</string>
+  <string name="pref_celestial_effects_summary">Rubans/lueur d\’aurore sur l\’accueil, barre supérieure teintée et bordure lumineuse du bouton flottant</string>
   <string name="pref_appearance_nav_style_slide">Glissement</string>
   <string name="pref_appearance_nav_style_fade">Fondu</string>
   <string name="pref_appearance_nav_style_none">Aucun (instantané)</string>
@@ -81,7 +83,6 @@
   <string name="theme_green_apple">Pomme verte</string>
   <string name="theme_lavender">Lavande</string>
   <string name="theme_midnight">Minuit</string>
-  <string name="theme_aurora">Aurore</string>
   <string name="theme_mocha">Moka</string>
   <string name="theme_strawberry">Fraise</string>
   <string name="theme_tidal">Tidal</string>

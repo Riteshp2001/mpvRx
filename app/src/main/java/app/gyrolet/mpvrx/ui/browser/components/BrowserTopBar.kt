@@ -155,18 +155,28 @@ private fun NormalTopBar(
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
+  val showCelestialEffects by preferences.showCelestialEffects.collectAsState()
   val darkTheme = isSystemInDarkTheme()
   val themeTransition = LocalThemeTransitionState.current
   val coroutineScope = rememberCoroutineScope()
   // A softer, less saturated tone for the header so the title/icons read
   // as premium accents rather than a flat wash of color.
   val celestialTitleColor =
-    androidx.compose.ui.graphics.lerp(
-      MaterialTheme.colorScheme.primary,
-      MaterialTheme.colorScheme.onSurface,
-      0.4f,
-    )
-  val celestialIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+    if (showCelestialEffects) {
+      androidx.compose.ui.graphics.lerp(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.onSurface,
+        0.4f,
+      )
+    } else {
+      MaterialTheme.colorScheme.onSurface
+    }
+  val celestialIconColor =
+    if (showCelestialEffects) {
+      MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+      MaterialTheme.colorScheme.onSurface
+    }
 
   // Track title bounds for animation position
   val titleBounds = remember { mutableStateOf(Rect.Zero) }

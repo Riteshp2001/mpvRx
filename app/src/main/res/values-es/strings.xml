@@ -56,6 +56,8 @@
   <string name="pref_quick_play_fab_summary">Mostrar el botón flotante de reproducción rápida en las pantallas del navegador</string>
   <string name="pref_quick_play_fab_direct_title">Reproducción rápida directa</string>
   <string name="pref_quick_play_fab_direct_summary">Reproducir directamente el último video al tocar el botón en lugar de mostrar opciones</string>
+  <string name="pref_celestial_effects_title">Efectos celestiales</string>
+  <string name="pref_celestial_effects_summary">Cintas/resplandor de aurora en Inicio, barra superior con tinte y borde brillante del FAB</string>
   <string name="pref_appearance_nav_style_slide">Deslizar</string>
   <string name="pref_appearance_nav_style_fade">Desvanecer</string>
   <string name="pref_appearance_nav_style_none">Ninguno (instantáneo)</string>
@@ -81,7 +83,6 @@
   <string name="theme_green_apple">Manzana verde</string>
   <string name="theme_lavender">Lavanda</string>
   <string name="theme_midnight">Medianoche</string>
-  <string name="theme_aurora">Aurora</string>
   <string name="theme_mocha">Moca</string>
   <string name="theme_strawberry">Fresa</string>
   <string name="theme_tidal">Tidal</string>

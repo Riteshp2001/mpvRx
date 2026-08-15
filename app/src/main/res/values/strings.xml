@@ -60,6 +60,8 @@
   <string name="pref_quick_play_fab_summary">Show the quick play floating action button in browser screens</string>
   <string name="pref_quick_play_fab_direct_title">Direct Quick Play</string>
   <string name="pref_quick_play_fab_direct_summary">Directly play recently played video when tapping FAB instead of showing options</string>
+  <string name="pref_celestial_effects_title">Celestial effects</string>
+  <string name="pref_celestial_effects_summary">Aurora ribbons/glow on Home, tinted top bar, and glowing FAB border</string>
   <string name="pref_appearance_nav_style_slide">Slide</string>
   <string name="pref_appearance_nav_style_fade">Fade</string>
   <string name="pref_appearance_nav_style_none">None (Instant)</string>
@@ -81,7 +83,6 @@
   <string name="theme_aurora">Aurora</string>
   <string name="theme_cloudflare">Cloudflare</string>
   <string name="theme_cotton_candy">Candy</string>
-  <string name="theme_aurora">Aurora</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">Green Apple</string>
   <string name="theme_lavender">Lavender</string>

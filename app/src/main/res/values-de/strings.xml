@@ -56,6 +56,8 @@
   <string name="pref_quick_play_fab_summary">Schnellwiedergabe-Button in Browser-Bildschirmen anzeigen</string>
   <string name="pref_quick_play_fab_direct_title">Direkte Schnellwiedergabe</string>
   <string name="pref_quick_play_fab_direct_summary">Zuletzt wiedergegebenes Video beim Tippen auf den Button direkt abspielen, statt Optionen anzuzeigen</string>
+  <string name="pref_celestial_effects_title">Himmlische Effekte</string>
+  <string name="pref_celestial_effects_summary">Aurora-Bänder/Leuchten auf der Startseite, gefärbte Titelleiste und leuchtender FAB-Rand</string>
   <string name="pref_appearance_nav_style_slide">Schieben</string>
   <string name="pref_appearance_nav_style_fade">Überblenden</string>
   <string name="pref_appearance_nav_style_none">Keine (sofort)</string>
@@ -81,7 +83,6 @@
   <string name="theme_green_apple">Grüner Apfel</string>
   <string name="theme_lavender">Lavendel</string>
   <string name="theme_midnight">Mitternacht</string>
-  <string name="theme_aurora">Polarlicht</string>
   <string name="theme_mocha">Mokka</string>
   <string name="theme_strawberry">Erdbeere</string>
   <string name="theme_tidal">Tidal</string>

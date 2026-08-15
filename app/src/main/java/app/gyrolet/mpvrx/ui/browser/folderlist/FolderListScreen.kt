@@ -194,6 +194,7 @@ object FolderListScreen : Screen {
     val appearancePreferences = koinInject<AppearancePreferences>()
     val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
     val quickPlayFabDirect by appearancePreferences.quickPlayFabDirect.collectAsState()
+    val showCelestialEffects by appearancePreferences.showCelestialEffects.collectAsState()
 
     // State collection
     val videoFolders by viewModel.videoFolders.collectAsState()
@@ -744,7 +745,13 @@ object FolderListScreen : Screen {
                               .getPermissionDeniedState() &&
                             !(isDualPaneActive && selectedFolderBucketId != null),
                         alignment = Alignment.BottomEnd,
-                      ).border(1.dp, fabBorderColor, CircleShape),
+                      ).let {
+                        if (showCelestialEffects) {
+                          it.border(1.dp, fabBorderColor, CircleShape)
+                        } else {
+                          it
+                        }
+                      },
                   containerColor = { progress ->
                     androidx.compose.ui.graphics.lerp(
                       fabSurfaceContainerHigh,
@@ -847,7 +854,9 @@ object FolderListScreen : Screen {
         },
       ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-          CelestialFolderListBackground()
+          if (showCelestialEffects) {
+            CelestialFolderListBackground()
+          }
           if (isPermissionSetupCompleted && permissionState.status == PermissionStatus.Granted) {
               if (effectiveIsSearching) {
                 // Show search results

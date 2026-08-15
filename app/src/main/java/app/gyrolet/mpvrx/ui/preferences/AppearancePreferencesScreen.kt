@@ -853,6 +853,21 @@ object AppearancePreferencesScreen : Screen {
                   )
                 },
               )
+
+              PreferenceDivider()
+
+              val showCelestialEffects by preferences.showCelestialEffects.collectAsState()
+              SwitchPreference(
+                value = showCelestialEffects,
+                onValueChange = preferences.showCelestialEffects::set,
+                title = { Text(text = stringResource(id = R.string.pref_celestial_effects_title)) },
+                summary = {
+                  Text(
+                    text = stringResource(id = R.string.pref_celestial_effects_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
             }
           }
 

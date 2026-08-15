@@ -56,6 +56,8 @@
   <string name="pref_quick_play_fab_summary">ブラウザー画面にクイック再生フローティングアクションボタンを表示</string>
   <string name="pref_quick_play_fab_direct_title">ダイレクト・クイック再生</string>
   <string name="pref_quick_play_fab_direct_summary">ボタンをタップした際にオプションを表示せず、最近再生した動画を直接再生します</string>
+  <string name="pref_celestial_effects_title">セレスティアルエフェクト</string>
+  <string name="pref_celestial_effects_summary">ホーム画面のオーロラリボン／グロー、色付きトップバー、光るFABの枠線</string>
   <string name="pref_appearance_nav_style_slide">スライド</string>
   <string name="pref_appearance_nav_style_fade">フェード</string>
   <string name="pref_appearance_nav_style_none">なし（即時）</string>
@@ -81,7 +83,6 @@
   <string name="theme_green_apple">グリーンアップル</string>
   <string name="theme_lavender">ラベンダー</string>
   <string name="theme_midnight">ミッドナイト</string>
-  <string name="theme_aurora">オーロラ</string>
   <string name="theme_mocha">モカ</string>
   <string name="theme_strawberry">ストロベリー</string>
   <string name="theme_tidal">Tidal</string>

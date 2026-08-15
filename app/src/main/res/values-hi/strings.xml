@@ -56,6 +56,8 @@
   <string name="pref_quick_play_fab_summary">ब्राउज़र स्क्रीन में क्विक प्ले फ्लोटिंग एक्शन बटन दिखाएं</string>
   <string name="pref_quick_play_fab_direct_title">डायरेक्ट क्विक प्ले</string>
   <string name="pref_quick_play_fab_direct_summary">FAB टैप करने पर विकल्प दिखाने की बजाय हाल ही में चलाई गई वीडियो सीधे चलाएं</string>
+  <string name="pref_celestial_effects_title">सेलेस्टियल इफेक्ट्स</string>
+  <string name="pref_celestial_effects_summary">होम पर ऑरोरा रिबन/ग्लो, रंगीन टॉप बार, और चमकती FAB बॉर्डर</string>
   <string name="pref_appearance_nav_style_slide">स्लाइड</string>
   <string name="pref_appearance_nav_style_fade">फेड</string>
   <string name="pref_appearance_nav_style_none">कोई नहीं (तुरंत)</string>
@@ -80,7 +82,6 @@
   <string name="theme_green_apple">Green Apple</string>
   <string name="theme_lavender">Lavender</string>
   <string name="theme_midnight">Midnight</string>
-  <string name="theme_aurora">Aurora</string>
   <string name="theme_mocha">Mocha</string>
   <string name="theme_strawberry">Strawberry</string>
   <string name="theme_tidal">Tidal</string>
