@@ -12,7 +12,7 @@ import app.gyrolet.mpvrx.domain.torrent.TorrentCatalog
 import app.gyrolet.mpvrx.domain.torrent.TorrentFileItem
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
-import app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -187,12 +187,13 @@ class TorrentSelectionViewModel(
     currentArtwork: TorrentArtwork,
   ) {
     viewModelScope.launch {
-      val query = cleanSearchTitle(currentArtwork.title.ifBlank { catalog.torrentName })
+      val rawTitle = currentArtwork.title.ifBlank { catalog.torrentName }
+      val parsed = MediaInfoParser.parse(rawTitle)
+      val query = parsed.title.ifBlank { cleanSearchTitle(rawTitle) }
       val match =
         query
           .takeIf { it.length >= MIN_SEARCH_LENGTH }
-          ?.let { wyzieSearchRepository.searchMedia(it).getOrNull() }
-          ?.firstOrNull { result -> isStrongTitleMatch(query, result) }
+          ?.let { wyzieSearchRepository.findBestMediaMatch(it, parsed.year).getOrNull() }
 
       val ready = _uiState.value as? TorrentSelectionUiState.Ready ?: return@launch
       if (ready.catalog.preparationId != catalog.preparationId || ready.launchingFileIndex != null) return@launch
@@ -267,7 +268,6 @@ class TorrentSelectionViewModel(
   }
 }
 
-private val yearRegex = Regex("\\b(?:19|20)\\d{2}\\b")
 private val seasonEpisodeRegex = Regex("(?i)\\bS\\d{1,2}[ ._-]*E\\d{1,3}\\b")
 private val seasonRegex = Regex("(?i)\\bS(?:eason)?[ ._-]*\\d{1,2}\\b")
 private val knownExtensionRegex = Regex("(?i)\\.(?:torrent|mkv|mp4|m4v|webm|avi|mov|ts|m2ts|mp3|m4a|flac|ogg)$")
@@ -276,8 +276,6 @@ private val releaseNoiseRegex =
     "(?i)\\b(?:2160p|1080p|720p|480p|uhd|hdr10?|dv|dolby[ ._-]*vision|bluray|brrip|" +
       "web[ ._-]*dl|webrip|hdtv|x26[45]|hevc|av1|aac|dts|atmos|proper|repack)\\b.*$",
   )
-private val titleTokenRegex = Regex("[\\p{L}\\p{N}]+")
-private val ignoredTitleTokens = setOf("the", "a", "an")
 
 private fun prettyTorrentTitle(value: String): String =
   value
@@ -295,31 +293,6 @@ private fun cleanSearchTitle(value: String): String =
   prettyTorrentTitle(value)
     .replace(Regex("\\s+"), " ")
     .trim()
-
-private fun isStrongTitleMatch(
-  query: String,
-  result: WyzieTmdbResult,
-): Boolean {
-  val queryTokens = normalizedTitleTokens(query)
-  val resultTokens = normalizedTitleTokens(result.title)
-  if (queryTokens.isEmpty() || resultTokens.isEmpty()) return false
-  val queryYear = yearRegex.find(query)?.value
-  if (queryYear != null && result.releaseYear != null && !result.releaseYear.startsWith(queryYear)) return false
-  if (queryTokens == resultTokens) {
-    return queryTokens.size >= 2 ||
-      (queryYear != null && result.releaseYear?.startsWith(queryYear) == true)
-  }
-  val shared = queryTokens.intersect(resultTokens).size.toFloat()
-  val coverage = shared / maxOf(queryTokens.size, resultTokens.size).toFloat()
-  return shared >= 2f && coverage >= 0.82f
-}
-
-private fun normalizedTitleTokens(value: String): Set<String> =
-  titleTokenRegex
-    .findAll(value.lowercase())
-    .map { it.value }
-    .filterNot { it in ignoredTitleTokens || yearRegex.matches(it) }
-    .toSet()
 
 private fun tmdbImageUrl(
   path: String?,
