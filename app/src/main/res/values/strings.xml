@@ -706,6 +706,19 @@
   <!-- Advanced Preferences                                       -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <string name="pref_section_backup_restore">Backup &amp; Restore</string>
+    <string name="ui_recent_streams">Recent Stream Links</string>
+  <string name="ui_autofill_stream_url">Autofill stream URL</string>
+  <string name="ui_torrent_media_anime">Anime</string>
+  <string name="ui_torrent_media_series">Series</string>
+  <string name="ui_torrent_media_movie">Movie</string>
+  <string name="ui_torrent_media_torrent">Torrent</string>
+  <string name="ui_resume_playback">Resume</string>
+  <string name="ui_play_now">Play</string>
+  <string name="ui_show_more">Show more</string>
+  <string name="ui_show_less">Show less</string>
+  <string name="ui_episodes">Episodes</string>
+  <string name="ui_no_torrents_title">No Torrents Saved</string>
+  <string name="ui_no_torrents_description">Paste a magnet link or torrent URL above to stream anime and movies.</string>
   <string name="pref_export_complete_title">Export Complete</string>
   <string name="pref_export_complete_text">Successfully exported %1$d items!</string>
   <string name="pref_import_complete_title">Import Complete</string>

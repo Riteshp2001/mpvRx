@@ -196,19 +196,31 @@ class TorrentSelectionViewModel(
 
       val ready = _uiState.value as? TorrentSelectionUiState.Ready ?: return@launch
       if (ready.catalog.preparationId != catalog.preparationId || ready.launchingFileIndex != null) return@launch
+      val updatedArtwork =
+        currentArtwork.copy(
+          title = currentArtwork.title.ifBlank { match?.title.orEmpty() }.ifBlank { catalog.torrentName },
+          description = currentArtwork.description ?: match?.overview.safeText(MAX_DESCRIPTION_LENGTH),
+          posterUrl = currentArtwork.posterUrl ?: tmdbImageUrl(match?.poster, "w500"),
+          backdropUrl = currentArtwork.backdropUrl ?: tmdbImageUrl(match?.backdrop, "w1280"),
+          releaseYear = match?.releaseYear,
+          mediaType = match?.mediaType,
+        )
       _uiState.value =
         ready.copy(
-          artwork =
-            currentArtwork.copy(
-              title = currentArtwork.title.ifBlank { match?.title.orEmpty() }.ifBlank { catalog.torrentName },
-              description = currentArtwork.description ?: match?.overview.safeText(MAX_DESCRIPTION_LENGTH),
-              posterUrl = currentArtwork.posterUrl ?: tmdbImageUrl(match?.poster, "w500"),
-              backdropUrl = currentArtwork.backdropUrl ?: tmdbImageUrl(match?.backdrop, "w1280"),
-              releaseYear = match?.releaseYear,
-              mediaType = match?.mediaType,
-            ),
+          artwork = updatedArtwork,
           isLookingUpArtwork = false,
         )
+      runCatching {
+        streamEntryRepository.updateTorrentArtwork(
+          infoHash = catalog.infoHash,
+          title = updatedArtwork.title,
+          posterUrl = updatedArtwork.posterUrl,
+          backdropUrl = updatedArtwork.backdropUrl,
+          overview = updatedArtwork.description,
+          releaseYear = updatedArtwork.releaseYear,
+          mediaType = updatedArtwork.mediaType,
+        )
+      }
     }
   }
 

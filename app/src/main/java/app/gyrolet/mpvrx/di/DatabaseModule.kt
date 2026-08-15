@@ -601,7 +601,6 @@ val MIGRATION_11_12 =
       }
     }
   }
-
 val MIGRATION_12_13 =
   object : Migration(12, 13) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -632,6 +631,37 @@ val MIGRATION_12_13 =
     }
   }
 
+val MIGRATION_13_14 =
+  object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      val cursor = db.query("PRAGMA table_info(network_stream_entries)")
+      val columns = mutableSetOf<String>()
+      while (cursor.moveToNext()) {
+        columns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+      }
+      cursor.close()
+
+      if (!columns.contains("posterUrl")) {
+        db.execSQL("ALTER TABLE `network_stream_entries` ADD COLUMN `posterUrl` TEXT DEFAULT NULL")
+      }
+      if (!columns.contains("backdropUrl")) {
+        db.execSQL("ALTER TABLE `network_stream_entries` ADD COLUMN `backdropUrl` TEXT DEFAULT NULL")
+      }
+      if (!columns.contains("groupTitle")) {
+        db.execSQL("ALTER TABLE `network_stream_entries` ADD COLUMN `groupTitle` TEXT DEFAULT NULL")
+      }
+      if (!columns.contains("overview")) {
+        db.execSQL("ALTER TABLE `network_stream_entries` ADD COLUMN `overview` TEXT DEFAULT NULL")
+      }
+      if (!columns.contains("releaseYear")) {
+        db.execSQL("ALTER TABLE `network_stream_entries` ADD COLUMN `releaseYear` TEXT DEFAULT NULL")
+      }
+      if (!columns.contains("mediaType")) {
+        db.execSQL("ALTER TABLE `network_stream_entries` ADD COLUMN `mediaType` TEXT DEFAULT NULL")
+      }
+    }
+  }
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -659,6 +689,7 @@ val DatabaseModule =
           MIGRATION_10_11,
           MIGRATION_11_12,
           MIGRATION_12_13,
+          MIGRATION_13_14,
         ).build()
     }
 

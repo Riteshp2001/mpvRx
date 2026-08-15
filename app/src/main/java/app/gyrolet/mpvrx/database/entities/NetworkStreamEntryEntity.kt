@@ -44,4 +44,11 @@ data class NetworkStreamEntryEntity(
   val fileName: String,
   val fileSize: Long = 0L,
   val updatedAt: Long,
+  val posterUrl: String? = null,
+  val backdropUrl: String? = null,
+  val groupTitle: String? = null,
+  val overview: String? = null,
+  val releaseYear: String? = null,
+  val mediaType: String? = null,
 )
+

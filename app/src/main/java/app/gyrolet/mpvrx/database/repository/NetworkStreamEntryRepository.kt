@@ -99,6 +99,29 @@ class NetworkStreamEntryRepository(
     if (canonicalInfoHash.isNotEmpty()) dao.deleteTorrentFiles(canonicalInfoHash)
   }
 
+  suspend fun updateTorrentArtwork(
+    infoHash: String,
+    title: String? = null,
+    posterUrl: String? = null,
+    backdropUrl: String? = null,
+    overview: String? = null,
+    releaseYear: String? = null,
+    mediaType: String? = null,
+  ) {
+    val canonicalInfoHash = infoHash.trim().lowercase()
+    if (canonicalInfoHash.isEmpty()) return
+    dao.updateTorrentArtwork(
+      infoHash = canonicalInfoHash,
+      title = title?.trim()?.takeIf(String::isNotEmpty),
+      posterUrl = posterUrl?.trim()?.takeIf(String::isNotEmpty),
+      backdropUrl = backdropUrl?.trim()?.takeIf(String::isNotEmpty),
+      overview = overview?.trim()?.takeIf(String::isNotEmpty),
+      releaseYear = releaseYear?.trim()?.takeIf(String::isNotEmpty),
+      mediaType = mediaType?.trim()?.takeIf(String::isNotEmpty),
+    )
+  }
+
+
   private fun normalStableKey(canonicalSourceUri: String): String = "normal:$canonicalSourceUri"
 
   private fun torrentStableKey(

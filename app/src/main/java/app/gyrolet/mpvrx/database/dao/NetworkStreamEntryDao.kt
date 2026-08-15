@@ -72,6 +72,28 @@ interface NetworkStreamEntryDao {
     trimNormalEntries(keepCount)
   }
 
+  @Query(
+    """
+    UPDATE network_stream_entries
+    SET groupTitle = COALESCE(:title, groupTitle),
+        posterUrl = COALESCE(:posterUrl, posterUrl),
+        backdropUrl = COALESCE(:backdropUrl, backdropUrl),
+        overview = COALESCE(:overview, overview),
+        releaseYear = COALESCE(:releaseYear, releaseYear),
+        mediaType = COALESCE(:mediaType, mediaType)
+    WHERE infoHash = :infoHash
+    """,
+  )
+  suspend fun updateTorrentArtwork(
+    infoHash: String,
+    title: String?,
+    posterUrl: String?,
+    backdropUrl: String?,
+    overview: String?,
+    releaseYear: String?,
+    mediaType: String?,
+  )
+
   @Transaction
   suspend fun replaceTorrentFiles(
     infoHash: String,
@@ -81,3 +103,4 @@ interface NetworkStreamEntryDao {
     if (entries.isNotEmpty()) upsertAll(entries)
   }
 }
+

@@ -44,7 +44,7 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
     SecureMediaEntity::class,
     NetworkStreamEntryEntity::class,
   ],
-  version = 13,
+  version = 14,
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class, NetworkStreamEntryTypeConverter::class)
