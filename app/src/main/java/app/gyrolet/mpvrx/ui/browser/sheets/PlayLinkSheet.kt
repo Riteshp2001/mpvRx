@@ -47,6 +47,7 @@ import app.gyrolet.mpvrx.domain.torrent.normalizeTorrentSource
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -83,8 +84,7 @@ fun PlayLinkSheet(
     if (url.isNotBlank() && MediaUtils.isURLValid(url)) {
       val playableSource = normalizeTorrentSource(url) ?: url
       coroutineScope.launch {
-        val uri = playableSource.toUri()
-        val name = uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { playableSource } ?: playableSource
+        val name = MediaInfoParser.parseStreamTitle(playableSource)
         if (!isTorrentSource(playableSource)) {
           try {
             RecentlyPlayedOps.addRecentlyPlayed(

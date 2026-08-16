@@ -56,6 +56,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.torrent.TorrentFileItem
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -167,12 +168,16 @@ private fun TorrentReadyScreen(
 
         val displayedFiles =
           remember(state.catalog.playableFiles, searchQuery, sortDescending) {
+            val baseList =
+              state.catalog.playableFiles.sortedWith { f1, f2 ->
+                MediaInfoParser.compareMediaFiles(f1.name, f1.index, f2.name, f2.index)
+              }
             val filtered =
               if (searchQuery.isBlank()) {
-                state.catalog.playableFiles
+                baseList
               } else {
                 val query = searchQuery.trim()
-                state.catalog.playableFiles.filter { file ->
+                baseList.filter { file ->
                   file.name.contains(query, ignoreCase = true) ||
                     file.path.contains(query, ignoreCase = true) ||
                     (file.index + 1).toString() == query

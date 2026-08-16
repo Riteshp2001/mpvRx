@@ -227,7 +227,7 @@ class NetworkStreamingViewModel(
     viewModelScope.launch {
       streamEntryRepository.saveNormalEntry(
         canonicalSourceUri = source,
-        fileName = displayNameFor(source),
+        fileName = MediaInfoParser.parseStreamTitle(source),
       )
     }
   }
@@ -314,10 +314,9 @@ class NetworkStreamingViewModel(
         .groupBy { entry -> entry.infoHash?.trim()?.lowercase() ?: "source:${entry.canonicalSourceUri}" }
         .map { (groupKey, groupEntries) ->
           val files =
-            groupEntries.sortedWith(
-              compareBy<NetworkStreamEntryEntity> { it.fileIndex ?: Int.MAX_VALUE }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.fileName },
-            )
+            groupEntries.sortedWith { e1, e2 ->
+              MediaInfoParser.compareMediaFiles(e1.fileName, e1.fileIndex, e2.fileName, e2.fileIndex)
+            }
           val newestEntry = groupEntries.maxBy { it.updatedAt }
           val infoHash = newestEntry.infoHash?.trim()?.lowercase()?.takeIf(String::isNotEmpty)
           val groupTitle = groupEntries.firstNotNullOfOrNull { it.groupTitle?.takeIf(String::isNotBlank) }

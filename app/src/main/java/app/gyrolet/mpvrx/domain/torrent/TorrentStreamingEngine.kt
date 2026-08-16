@@ -7,6 +7,7 @@ package app.gyrolet.mpvrx.domain.torrent
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -346,7 +347,12 @@ class TorrentStreamingEngine(
       handle = torrent.handle
 
       val files = validateAndEnumerateFiles(torrent.info, cacheDir)
-      val playableFiles = files.filter { it.mimeType.isNotEmpty() }
+      val playableFiles =
+        files
+          .filter { it.mimeType.isNotEmpty() }
+          .sortedWith { f1, f2 ->
+            MediaInfoParser.compareMediaFiles(f1.name, f1.index, f2.name, f2.index)
+          }
       if (playableFiles.isEmpty()) throw streamError("Torrent contains no playable audio or video files.")
       val torrentName = safeDisplayName(torrent.info.name(), playableFiles.first().name)
 
