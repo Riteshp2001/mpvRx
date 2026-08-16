@@ -42,6 +42,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -109,6 +110,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -795,7 +797,6 @@ fun AudioPlayerControls(
       BoxWithConstraints(
         modifier =
           visualizerModifier
-            .clipToBounds()
             .combinedClickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = null,
@@ -835,50 +836,107 @@ fun AudioPlayerControls(
               }
             },
             label = "visualizer_toggle",
-            modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait) 0.65f else 1.0f),
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait && !showVisualizer) 0.65f else 1.0f),
           ) { isVisualizerActive ->
           if (isVisualizerActive) {
+            val surfaceBg = MaterialTheme.colorScheme.surface
             Box(
-              modifier = Modifier.fillMaxSize(),
+              modifier =
+                Modifier
+                  .fillMaxSize()
+                  .drawWithContent {
+                    drawContent()
+                    // Immersive top & bottom soft gradient vignetting so visualizer seamlessly dissolves into dark background
+                    drawRect(
+                      brush =
+                        Brush.verticalGradient(
+                          colors = listOf(
+                            surfaceBg.copy(alpha = 0.95f),
+                            surfaceBg.copy(alpha = 0.45f),
+                            Color.Transparent,
+                          ),
+                          startY = 0f,
+                          endY = size.height * 0.22f,
+                        ),
+                    )
+                    drawRect(
+                      brush =
+                        Brush.verticalGradient(
+                          colors = listOf(
+                            Color.Transparent,
+                            surfaceBg.copy(alpha = 0.50f),
+                            surfaceBg.copy(alpha = 0.96f),
+                          ),
+                          startY = size.height * 0.72f,
+                          endY = size.height,
+                        ),
+                    )
+                    // Subtle side edge softening
+                    drawRect(
+                      brush =
+                        Brush.horizontalGradient(
+                          colors = listOf(
+                            surfaceBg.copy(alpha = 0.60f),
+                            Color.Transparent,
+                            Color.Transparent,
+                            surfaceBg.copy(alpha = 0.60f),
+                          ),
+                          startX = 0f,
+                          endX = size.width,
+                        ),
+                    )
+                  },
               contentAlignment = Alignment.Center,
             ) {
-               when (audioVisualizerStyle) {
-                 AudioVisualizerStyle.Galaxy ->
-                   GalaxyOverlay(
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
-                     volumeScale = volumeScale,
-                     features = visualizerFeatures,
-                     modifier = Modifier.fillMaxSize(),
-                   )
-                 AudioVisualizerStyle.Blob ->
-                   BlobOverlay(
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
-                     volumeScale = volumeScale,
-                     features = visualizerFeatures,
-                     modifier = Modifier.fillMaxSize(),
-                   )
-                 AudioVisualizerStyle.Cuboid ->
-                   if (!isSheetOpen) {
-                     CuboidOverlay(
-                       isPlaying = isPlaying,
-                       palette = palette,
-                       isSheetOpen = false,
-                       volumeScale = volumeScale,
-                       features = visualizerFeatures,
-                       modifier = Modifier.fillMaxSize(),
-                     )
-                   }
-                 AudioVisualizerStyle.Particle ->
-                   ParticleOverlay(
-                     palette = palette,
-                     isSheetOpen = isSheetOpen,
-                     volumeScale = volumeScale,
-                     features = visualizerFeatures,
-                     modifier = Modifier.fillMaxSize(),
-                   )
-               }
+              val glowColor = palette.primary.copy(alpha = 0.16f)
+              Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                  brush =
+                    Brush.radialGradient(
+                      colors = listOf(glowColor, Color.Transparent),
+                      center = center,
+                      radius = size.minDimension * 0.90f,
+                    ),
+                )
+              }
+
+              when (audioVisualizerStyle) {
+                AudioVisualizerStyle.Galaxy ->
+                  GalaxyOverlay(
+                    palette = palette,
+                    isSheetOpen = isSheetOpen,
+                    volumeScale = volumeScale,
+                    features = visualizerFeatures,
+                    modifier = Modifier.fillMaxSize(),
+                  )
+                AudioVisualizerStyle.Blob ->
+                  BlobOverlay(
+                    palette = palette,
+                    isSheetOpen = isSheetOpen,
+                    volumeScale = volumeScale,
+                    features = visualizerFeatures,
+                    modifier = Modifier.fillMaxSize(),
+                  )
+                AudioVisualizerStyle.Cuboid ->
+                  if (!isSheetOpen) {
+                    CuboidOverlay(
+                      isPlaying = isPlaying,
+                      palette = palette,
+                      isSheetOpen = false,
+                      volumeScale = volumeScale,
+                      features = visualizerFeatures,
+                      modifier = Modifier.fillMaxSize(),
+                    )
+                  }
+                AudioVisualizerStyle.Particle ->
+                  ParticleOverlay(
+                    palette = palette,
+                    isSheetOpen = isSheetOpen,
+                    volumeScale = volumeScale,
+                    features = visualizerFeatures,
+                    modifier = Modifier.fillMaxSize(),
+                  )
+              }
             }
           } else {
             val coverShape = RoundedCornerShape(32.dp)
