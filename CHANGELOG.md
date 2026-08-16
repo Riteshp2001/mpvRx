@@ -2,6 +2,58 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## 2.1.0 — Feature & Experience Release
+
+### 🧲 Native Torrent Streaming & Media Browsing
+- **Built-in Torrent Streaming Engine**: Stream and play `.torrent` files, magnet links, and HTTP torrent URLs directly with background piece caching, sequential download prioritization, and integrated local streaming server.
+- **Dedicated Torrent File & Episode Picker**: Interactive file selection screen showing all playable video and audio items within multi-file torrents, complete with individual file sizes, format tags, launch status, and episode labels.
+- **Anime & Series Torrent Cards**: Redesigned Torrent history cards in Network Streaming that automatically group multi-episode series with expandable episode lists, poster art, synopsis, release year, and media type tags.
+- **Smart TMDB Metadata & Artwork Parsing**: Multi-stage metadata engine that intelligently parses filenames, seasons, and episodes (supporting complex scene tags, colon separators like `S1:E1`, cross-format `1x01`, dashes, and anime numbering) with multi-candidate fallback search against TMDB to fetch high-resolution posters, backdrops, and overviews.
+- **Inline Episode Search & Sorting**: Built-in search bar within expanded torrent cards to quickly filter large episode collections by title, file path, or episode number, alongside ascending/descending (1–N / A–Z) sorting toggles.
+- **Torrent Playback History & Progress Memory**: Automatically tracks opened and watched torrent files with checkmark badges and one-tap resume capabilities.
+- **Real-Time Torrent Buffering Status**: Live buffer duration indicator and demuxer cache percentage chip displayed directly beneath the player loading spinner during network cache buffering.
+
+### 🎵 Music Library Revamp & Audio Player Experience
+- **Dedicated Music Library Screen**: Completely redesigned Music tab with organized sub-tabs for **Songs**, **Albums**, **Artists**, **Playlists**, and **Folders**.
+- **Audio Folder Browser & Sorting**: Integrated folder-based audio browser in the Music Library with folder sorting dialog (`FolderSortDialog`), instant text filtering, and clean audio-only traversal.
+- **Customizable & Reorderable Music Sub-Tabs**: Preference setting to toggle visibility and customize the ordering of Music Library sub-tabs to match your workflow.
+- **Interactive Cover Art Swipe Pager**: Horizontal swipe gestures on album art cards to fluidly navigate between previous and next tracks in active playlists with real-time drag physics.
+- **Synchronized LRC Lyrics & In-Place Lyrics View**: Full support for synchronized LRC lyrics featuring white active-line highlighting, tap-to-restore fullscreen mode, auto-hiding controls, and embedded vs. external source toggling.
+- **Immersive Borderless Audio Visualizers**:
+  - Unboxed, borderless visualizer presentation across all 4 visualizer styles (Galaxy, Blob, Cuboid, Particle) spanning the player canvas.
+  - Soft top and bottom gradient vignetting and edge falloff for smooth dissolving into dark player backgrounds.
+  - Dynamic ambient radial glow matching the track's primary palette color behind active visualizers.
+  - Volume scaling for audio visualizers and spectrum capture lifecycle that pauses rendering and audio analysis when covered by bottom sheets to save battery and GPU cycles.
+- **In-Place Lossless Specs & Audio Enhancements**:
+  - Direct on-card Lossless badge with tap-to-expand details (`HI-RES LOSSLESS`, format, sample rate, bit depth, bitrate).
+  - Quick-access Equalizer button in player controls, dedicated playback speed indicator next to A-B loop, and in-player playlist management.
+  - Dynamic Range Compression (DRC) audio filter and non-overriding filter pipeline.
+
+### 🌐 Network Streaming, Proxies & Protocols
+- **In-App HLS Proxy Engine**: Added dedicated local HLS proxy server with a settings toggle for optimized live stream and HLS media handling.
+- **SMB Tree Ownership & Session Reliability**: Resolved DiskShare closing issues where session-cached SMB connections were prematurely closed during per-request streams.
+- **Preserved HTTP Headers & Cookies**: Custom headers, cookies, and user-agent strings are now properly preserved across network stream resolvers and playback requests.
+- **Recent Stream Cards & Quick Autofill**: Quick paste and autofill stream cards with one-tap playback launch.
+
+### 📱 UI Polish, Themes & Controls
+- **New Aurora Theme**: Added modern Aurora gradient color theme and refreshed navigation library icons.
+- **Auto-Marquee for Long Media Titles**: Implemented continuous auto-marquee scrolling for long track names, torrent titles, and episode filenames across all list rows.
+- **Expanded Video Sharpness Limits**: Expanded video sharpness adjustments to a full $\pm 10$ range (Issue #391).
+- **Translucent Bottom Sheets & Normal Seekbar Polish**: Soft translucent sheet background styling (Issue #391) and fixed normal seekbar track coloring in dark themes (Issue #393).
+- **Smooth Tab Pager & Navigation Inset Clearance**: Added pre-paging cache (`beyondViewportPageCount = 1`) and graphics-layer translation to prevent jank during tab swipes, with bottom padding clearance across all tabs to prevent navigation button overlap.
+- **Video Mini-Player Control**: Option to toggle mini-player for video playback independently of audio, with subtitle suppression in mini-player mode.
+- **Pulsing Search Highlights & Autoscroll**: Settings search now smoothly scrolls to and pulses the target preference with a high-contrast highlight indicator.
+- **Unified Audio & Video Folder Blacklisting**: Manage blacklisted directories for audio and video media libraries independently or together.
+- **Supported Codecs Inspection Screen**: Detailed hardware vs. software decoder capabilities list for all audio and video media codecs supported on device.
+- **Full Multi-Language Localization**: Added complete Hindi language translation support alongside English, Arabic, German, Spanish, French, Japanese, Brazilian Portuguese, Russian, and Simplified Chinese.
+
+### ⚡ Performance, Engine & Stability
+- **Upgraded MPV Engine & FFmpeg 9.0**: Updated bundled `mpvlib` binaries with updated SSL certificates, Fongmi Vulkan / MediaCodec support, and universal non-Vulkan fallbacks for older devices.
+- **Precise Network Seek Previews & Seek Guards**: Enhanced seekbar thumbnail scrubbing precision over network streams, non-blocking thumbnail extraction, and seek-guarding to prevent audio stuttering during rapid scrubbing.
+- **Playback History Disambiguation**: Resolved history collisions for same-named files in different directories by keying history records with unique canonical paths (Issue #382).
+- **Jetpack Compose Low-Power Tuning**: Phase-deferred layout and draw calls, memoized image bitmaps, optimized list recycling with `contentType`, and elimination of recomposition stalls during tab swiping.
+- **Memory & Lifecycle Hardening**: Added LeakCanary detection in debug builds, persistent foreground playback notification services, and leak-free session teardowns.
+
 ## 2.0.0 — Major Release
 
 ### 🎵 Music Player & Audio Experience
