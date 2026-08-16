@@ -605,7 +605,8 @@ fun MusicLibraryContent(
         } else {
           HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1,
           ) { page ->
             val activeTab = visibleTabs.getOrNull(page) ?: MusicTab.SONGS
             when (activeTab) {
@@ -1197,12 +1198,13 @@ private fun SongsTabContent(
     return
   }
 
+  val navBarHeight = LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
   Column(modifier = Modifier.fillMaxSize()) {
     if (viewMode == MusicViewMode.GRID) {
       LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 145.dp),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
       ) {
@@ -1220,7 +1222,7 @@ private fun SongsTabContent(
     } else {
       LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 80.dp)
+        contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navBarHeight + 16.dp)
       ) {
         items(songs, key = { it.id }) { song ->
           val isPlaying = isPlaybackActive && recentlyPlayedFilePath != null && song.path == recentlyPlayedFilePath
@@ -1488,11 +1490,12 @@ private fun AlbumsTabContent(
     return
   }
 
+  val navBarHeight = LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
   if (viewMode == MusicViewMode.GRID) {
     LazyVerticalGrid(
       columns = GridCells.Adaptive(minSize = 145.dp),
       modifier = Modifier.fillMaxSize(),
-      contentPadding = PaddingValues(16.dp),
+      contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
       verticalArrangement = Arrangement.spacedBy(14.dp),
       horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -1508,7 +1511,7 @@ private fun AlbumsTabContent(
   } else {
     LazyColumn(
       modifier = Modifier.fillMaxSize(),
-      contentPadding = PaddingValues(bottom = 80.dp)
+      contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navBarHeight + 16.dp)
     ) {
       items(albums, key = { it.id }) { album ->
         AlbumListCard(
@@ -1706,11 +1709,12 @@ private fun ArtistsTabContent(
     return
   }
 
+  val navBarHeight = LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
   if (viewMode == MusicViewMode.GRID) {
     LazyVerticalGrid(
       columns = GridCells.Adaptive(minSize = 160.dp),
       modifier = Modifier.fillMaxSize(),
-      contentPadding = PaddingValues(16.dp),
+      contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp),
       horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1726,7 +1730,7 @@ private fun ArtistsTabContent(
   } else {
     LazyColumn(
       modifier = Modifier.fillMaxSize(),
-      contentPadding = PaddingValues(bottom = 80.dp)
+      contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navBarHeight + 16.dp)
     ) {
       items(artists, key = { it.id }) { artist ->
         ArtistListCard(
@@ -2224,11 +2228,12 @@ private fun PlaylistsTabContent(
     if (playlists.isEmpty()) {
       EmptyMusicState(text = "No playlists found. Create one!")
     } else {
+      val navBarHeight = LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
       if (viewMode == MusicViewMode.GRID) {
         LazyVerticalGrid(
           columns = GridCells.Adaptive(minSize = 145.dp),
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(16.dp),
+          contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
           verticalArrangement = Arrangement.spacedBy(14.dp),
           horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -2250,7 +2255,7 @@ private fun PlaylistsTabContent(
       } else {
         LazyColumn(
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(bottom = 80.dp)
+          contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navBarHeight + 16.dp)
         ) {
           items(playlists, key = { it.id }) { playlist ->
             val details = playlistDetails[playlist.id]

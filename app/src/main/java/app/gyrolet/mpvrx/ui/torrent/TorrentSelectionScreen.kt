@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,6 +92,9 @@ private fun TorrentReadyScreen(
     remember(state.catalog.infoHash) {
       mutableStateOf(loadViewedFileIndices(viewedPreferences, state.catalog.infoHash))
     }
+  var searchQuery by rememberSaveable { mutableStateOf("") }
+  var isSearchOpen by rememberSaveable { mutableStateOf(false) }
+  var sortDescending by rememberSaveable { mutableStateOf(false) }
 
   Surface(
     modifier = Modifier.fillMaxSize(),
@@ -159,54 +164,171 @@ private fun TorrentReadyScreen(
           TorrentHeroBanner(artwork)
         }
 
+        val displayedFiles =
+          remember(state.catalog.playableFiles, searchQuery, sortDescending) {
+            val filtered =
+              if (searchQuery.isBlank()) {
+                state.catalog.playableFiles
+              } else {
+                val query = searchQuery.trim()
+                state.catalog.playableFiles.filter { file ->
+                  file.name.contains(query, ignoreCase = true) ||
+                    file.path.contains(query, ignoreCase = true) ||
+                    (file.index + 1).toString() == query
+                }
+              }
+            if (sortDescending) filtered.reversed() else filtered
+          }
+
         // File list header
         Column(
           modifier =
             Modifier
               .fillMaxWidth()
-              .padding(horizontal = 20.dp, vertical = 8.dp),
+              .padding(horizontal = 20.dp, vertical = 4.dp),
         ) {
-          Text(
-            text =
-              pluralStringResource(
-                R.plurals.torrent_picker_playable_count,
-                state.catalog.playableFiles.size,
-                state.catalog.playableFiles.size,
-              ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              text =
+                pluralStringResource(
+                  R.plurals.torrent_picker_playable_count,
+                  displayedFiles.size,
+                  displayedFiles.size,
+                ),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.weight(1f),
+            )
+
+            if (state.catalog.playableFiles.size > 1) {
+              IconButton(
+                onClick = { isSearchOpen = !isSearchOpen },
+                modifier = Modifier.size(36.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Search,
+                  contentDescription = stringResource(R.string.ui_search_episodes),
+                  modifier = Modifier.size(20.dp),
+                  tint =
+                    if (isSearchOpen || searchQuery.isNotBlank()) {
+                      MaterialTheme.colorScheme.primary
+                    } else {
+                      MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+              }
+
+              IconButton(
+                onClick = { sortDescending = !sortDescending },
+                modifier = Modifier.size(36.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.SwapVert,
+                  contentDescription =
+                    stringResource(
+                      if (sortDescending) R.string.ui_sort_descending else R.string.ui_sort_ascending,
+                    ),
+                  modifier = Modifier.size(20.dp),
+                  tint =
+                    if (sortDescending) {
+                      MaterialTheme.colorScheme.primary
+                    } else {
+                      MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+              }
+            }
+          }
+
+          if (isSearchOpen && state.catalog.playableFiles.size > 1) {
+            OutlinedTextField(
+              value = searchQuery,
+              onValueChange = { searchQuery = it },
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(top = 4.dp, bottom = 4.dp),
+              placeholder = {
+                Text(
+                  stringResource(R.string.ui_search_episodes),
+                  style = MaterialTheme.typography.bodySmall,
+                )
+              },
+              leadingIcon = {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Search,
+                  contentDescription = null,
+                  modifier = Modifier.size(18.dp),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              },
+              trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                  IconButton(onClick = { searchQuery = "" }) {
+                    Icon(
+                      imageVector = Icons.RoundedFilled.Close,
+                      contentDescription = "Clear",
+                      modifier = Modifier.size(18.dp),
+                    )
+                  }
+                }
+              },
+              singleLine = true,
+              shape = RoundedCornerShape(12.dp),
+              textStyle = MaterialTheme.typography.bodySmall,
+            )
+          }
         }
 
         // File list
-        LazyColumn(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .weight(1f)
-              .padding(horizontal = 16.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          itemsIndexed(
-            items = state.catalog.playableFiles,
-            key = { _, file -> file.index },
-            contentType = { _, _ -> "torrent_file_row" },
-          ) { position, file ->
-            TorrentFileRow(
-              file = file,
-              position = position,
-              enabled = state.launchingFileIndex == null,
-              launching = state.launchingFileIndex == file.index,
-              viewed = file.index in viewedFileIndices,
-              onClick = {
-                val updatedViewedFiles = viewedFileIndices + file.index
-                viewedFileIndices = updatedViewedFiles
-                saveViewedFileIndices(viewedPreferences, state.catalog.infoHash, updatedViewedFiles)
-                onSelect(file.index)
-              },
+        if (displayedFiles.isEmpty()) {
+          Box(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center,
+          ) {
+            Text(
+              text = stringResource(R.string.ui_no_matching_episodes),
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
-          item { Spacer(modifier = Modifier.height(16.dp)) }
+        } else {
+          LazyColumn(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            itemsIndexed(
+              items = displayedFiles,
+              key = { _, file -> file.index },
+              contentType = { _, _ -> "torrent_file_row" },
+            ) { position, file ->
+              TorrentFileRow(
+                file = file,
+                position = position,
+                enabled = state.launchingFileIndex == null,
+                launching = state.launchingFileIndex == file.index,
+                viewed = file.index in viewedFileIndices,
+                onClick = {
+                  val updatedViewedFiles = viewedFileIndices + file.index
+                  viewedFileIndices = updatedViewedFiles
+                  saveViewedFileIndices(viewedPreferences, state.catalog.infoHash, updatedViewedFiles)
+                  onSelect(file.index)
+                },
+              )
+            }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+          }
         }
       }
     }

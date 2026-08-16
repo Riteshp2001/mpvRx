@@ -203,6 +203,8 @@ fun PlayerControls(
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekBarShown by viewModel.seekBarShown.collectAsState()
   val pausedForCache by PlaybackSession.propBoolean["paused-for-cache"].collectAsState()
+  val cacheBufferingState by PlaybackSession.propInt["cache-buffering-state"].collectAsState()
+  val demuxerCacheDuration by PlaybackSession.propDouble["demuxer-cache-duration"].collectAsState()
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
@@ -1188,9 +1190,47 @@ fun PlayerControls(
 
             when {
               pausedForCache == true && showLoadingCircle -> {
-                LoadingIndicator(
-                  modifier = Modifier.size(96.dp),
-                )
+                Column(
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                  verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                  LoadingIndicator(
+                    modifier = Modifier.size(76.dp),
+                  )
+                  val bufferText =
+                    when {
+                      cacheBufferingState != null && cacheBufferingState!! in 1..99 ->
+                        "Buffering ${cacheBufferingState}%"
+                      demuxerCacheDuration != null && demuxerCacheDuration!! > 0.0 ->
+                        "Buffering (${String.format(java.util.Locale.ROOT, "%.1f", demuxerCacheDuration)}s)"
+                      else -> stringResource(R.string.ui_buffering)
+                    }
+                  Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                  ) {
+                    Row(
+                      modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                      Box(
+                        modifier =
+                          Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                      )
+                      Text(
+                        text = bufferText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                      )
+                    }
+                  }
+                }
               }
 
               else -> {

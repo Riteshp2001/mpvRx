@@ -377,6 +377,7 @@ object NetworkStreamingScreen : Screen {
               .fillMaxSize()
               .weight(1f),
           userScrollEnabled = true,
+          beyondViewportPageCount = 1,
         ) { page ->
           when (NetworkTab.entries[page]) {
             NetworkTab.LOCAL_NETWORK -> {
@@ -474,9 +475,10 @@ private fun LocalNetworkContent(
   onBrowse: (NetworkConnection, ConnectionStatus?) -> Unit,
   onAutoConnectChange: (NetworkConnection, Boolean) -> Unit,
 ) {
+  val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
     verticalArrangement = Arrangement.spacedBy(0.dp),
   ) {
     if (connections.isEmpty()) {
@@ -521,9 +523,10 @@ private fun TorrentContent(
   onDeleteTorrentFile: (String) -> Unit,
   onDeleteTorrentGroup: (VisibleTorrentGroup) -> Unit,
 ) {
+  val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
     if (torrentGroups.isNotEmpty()) {
@@ -621,7 +624,10 @@ private fun AnimeTorrentCard(
   var expanded by rememberSaveable(group.id) { mutableStateOf(false) }
   var overviewExpanded by rememberSaveable(group.id) { mutableStateOf(false) }
   var overviewOverflow by remember(group.id) { mutableStateOf(false) }
-  val showFiles = forceExpanded || expanded
+  var isSearchOpen by rememberSaveable(group.id) { mutableStateOf(false) }
+  var episodeSearchQuery by rememberSaveable(group.id) { mutableStateOf("") }
+  var sortDescending by rememberSaveable(group.id) { mutableStateOf(false) }
+  val showFiles = forceExpanded || expanded || (isSearchOpen && episodeSearchQuery.isNotBlank())
 
   val fileCountLabel =
     pluralStringResource(
@@ -701,17 +707,35 @@ private fun AnimeTorrentCard(
           }
 
           Column(modifier = Modifier.weight(1f)) {
-            Surface(
-              shape = RoundedCornerShape(6.dp),
-              color = MaterialTheme.colorScheme.secondaryContainer,
-              contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
             ) {
-              Text(
-                text = mediaTypeLabel.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-              )
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ) {
+                Text(
+                  text = mediaTypeLabel.uppercase(),
+                  style = MaterialTheme.typography.labelSmall,
+                  fontWeight = FontWeight.Bold,
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+              }
+
+              IconButton(
+                onClick = onDeleteGroup,
+                modifier = Modifier.size(28.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Delete,
+                  contentDescription = stringResource(R.string.ui_delete_torrent_group),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                  modifier = Modifier.size(18.dp),
+                )
+              }
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -804,14 +828,44 @@ private fun AnimeTorrentCard(
 
           Spacer(modifier = Modifier.weight(1f))
 
-          IconButton(
-            onClick = onDeleteGroup,
-          ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Delete,
-              contentDescription = stringResource(R.string.ui_delete_torrent_group),
-              tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+          if (visibleFiles.size > 1) {
+            IconButton(
+              onClick = {
+                isSearchOpen = !isSearchOpen
+                if (isSearchOpen && !expanded) {
+                  expanded = true
+                }
+              },
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.Search,
+                contentDescription = stringResource(R.string.ui_search_episodes),
+                tint =
+                  if (isSearchOpen || episodeSearchQuery.isNotBlank()) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                  },
+              )
+            }
+
+            IconButton(
+              onClick = { sortDescending = !sortDescending },
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.SwapVert,
+                contentDescription =
+                  stringResource(
+                    if (sortDescending) R.string.ui_sort_descending else R.string.ui_sort_ascending,
+                  ),
+                tint =
+                  if (sortDescending) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                  },
+              )
+            }
           }
 
           Button(
@@ -842,6 +896,22 @@ private fun AnimeTorrentCard(
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
       ) {
+        val displayedFiles =
+          remember(visibleFiles, episodeSearchQuery, sortDescending) {
+            val filtered =
+              if (episodeSearchQuery.isBlank()) {
+                visibleFiles
+              } else {
+                val query = episodeSearchQuery.trim()
+                visibleFiles.filter { file ->
+                  file.fileName.contains(query, ignoreCase = true) ||
+                    file.filePath?.contains(query, ignoreCase = true) == true ||
+                    (file.fileIndex != null && (file.fileIndex + 1).toString() == query)
+                }
+              }
+            if (sortDescending) filtered.reversed() else filtered
+          }
+
         Column(
           modifier =
             Modifier
@@ -850,29 +920,85 @@ private fun AnimeTorrentCard(
               .padding(vertical = 4.dp),
         ) {
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-          visibleFiles.forEachIndexed { index, entry ->
-            val isViewed = entry.fileIndex in viewedFileIndices
-            EpisodeCardRow(
-              entry = entry,
-              position = index,
-              viewed = isViewed,
-              onPlay = {
-                val fileIdx = entry.fileIndex ?: 0
-                val infoHash = group.infoHash
-                if (infoHash != null) {
-                  val updated = viewedFileIndices + fileIdx
-                  viewedFileIndices = updated
-                  saveViewedFileIndices(viewedPreferences, infoHash, updated)
-                }
-                onPlay(entry)
+
+          if (isSearchOpen && visibleFiles.size > 1) {
+            OutlinedTextField(
+              value = episodeSearchQuery,
+              onValueChange = { episodeSearchQuery = it },
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 16.dp, vertical = 6.dp),
+              placeholder = {
+                Text(
+                  stringResource(R.string.ui_search_episodes),
+                  style = MaterialTheme.typography.bodySmall,
+                )
               },
-              onDelete = { onDeleteFile(entry.stableKey) },
+              leadingIcon = {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Search,
+                  contentDescription = null,
+                  modifier = Modifier.size(18.dp),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              },
+              trailingIcon = {
+                if (episodeSearchQuery.isNotBlank()) {
+                  IconButton(onClick = { episodeSearchQuery = "" }) {
+                    Icon(
+                      imageVector = Icons.RoundedFilled.Close,
+                      contentDescription = "Clear",
+                      modifier = Modifier.size(18.dp),
+                    )
+                  }
+                }
+              },
+              singleLine = true,
+              shape = RoundedCornerShape(12.dp),
+              textStyle = MaterialTheme.typography.bodySmall,
             )
-            if (index < visibleFiles.lastIndex) {
-              HorizontalDivider(
-                modifier = Modifier.padding(start = 64.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+          }
+
+          if (displayedFiles.isEmpty()) {
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(24.dp),
+              contentAlignment = Alignment.Center,
+            ) {
+              Text(
+                text = stringResource(R.string.ui_no_matching_episodes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
+            }
+          } else {
+            displayedFiles.forEachIndexed { index, entry ->
+              val isViewed = entry.fileIndex in viewedFileIndices
+              EpisodeCardRow(
+                entry = entry,
+                position = index,
+                viewed = isViewed,
+                onPlay = {
+                  val fileIdx = entry.fileIndex ?: 0
+                  val infoHash = group.infoHash
+                  if (infoHash != null) {
+                    val updated = viewedFileIndices + fileIdx
+                    viewedFileIndices = updated
+                    saveViewedFileIndices(viewedPreferences, infoHash, updated)
+                  }
+                  onPlay(entry)
+                },
+                onDelete = { onDeleteFile(entry.stableKey) },
+              )
+              if (index < displayedFiles.lastIndex) {
+                HorizontalDivider(
+                  modifier = Modifier.padding(start = 64.dp),
+                  color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                )
+              }
             }
           }
         }

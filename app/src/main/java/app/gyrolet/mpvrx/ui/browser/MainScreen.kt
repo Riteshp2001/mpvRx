@@ -319,6 +319,7 @@ object MainScreen : Screen {
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
             userScrollEnabled = !isPermissionDenied,
+            beyondViewportPageCount = 1,
           ) { page ->
             CompositionLocalProvider(
               LocalNavigationBarHeight provides contentBottomPadding,
@@ -406,33 +407,6 @@ private fun TelegramPillNavigationBar(
   onTabSelected: (MainScreen.MainTab) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val selectedIndex =
-    remember(selectedTab, visibleTabs) {
-      visibleTabs.indexOf(selectedTab).coerceAtLeast(0)
-    }
-
-  val pagerPositionFloat = pagerPositionFloatProvider()
-  val targetIndex =
-    if (visibleTabs.isNotEmpty()) {
-      pagerPositionFloat.coerceIn(0f, (visibleTabs.size - 1).coerceAtLeast(0).toFloat())
-    } else {
-      selectedIndex.toFloat()
-    }
-
-  val smoothSpring =
-    remember {
-      spring<Float>(
-        dampingRatio = 0.85f,
-        stiffness = 500f,
-      )
-    }
-
-  val animatedIndex by animateFloatAsState(
-    targetValue = targetIndex,
-    animationSpec = smoothSpring,
-    label = "pill_slide",
-  )
-
   val density = LocalDensity.current
   val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
@@ -470,7 +444,12 @@ private fun TelegramPillNavigationBar(
                 .width(itemWidth)
                 .height(56.dp)
                 .graphicsLayer {
-                  translationX = if (isRtl) -itemWidthPx * animatedIndex else itemWidthPx * animatedIndex
+                  val currentPos =
+                    pagerPositionFloatProvider().coerceIn(
+                      0f,
+                      (visibleTabs.size - 1).coerceAtLeast(0).toFloat(),
+                    )
+                  translationX = if (isRtl) -itemWidthPx * currentPos else itemWidthPx * currentPos
                 }.clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer),
           )
@@ -483,17 +462,13 @@ private fun TelegramPillNavigationBar(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           visibleTabs.forEachIndexed { index, tab ->
-            val distanceFromPill = abs(animatedIndex - index)
-            val progress = (1f - distanceFromPill).coerceIn(0f, 1f)
-
+            val isSelected = selectedTab == tab
             val contentColor =
-              lerp(
-                MaterialTheme.colorScheme.onSurfaceVariant,
-                MaterialTheme.colorScheme.onPrimaryContainer,
-                progress,
-              )
-
-            val iconScale = lerp(1.0f, 1.10f, progress)
+              if (isSelected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              }
 
             Box(
               modifier =
@@ -515,8 +490,16 @@ private fun TelegramPillNavigationBar(
                 Box(
                   modifier =
                     Modifier.graphicsLayer {
-                      scaleX = iconScale
-                      scaleY = iconScale
+                      val currentPos =
+                        pagerPositionFloatProvider().coerceIn(
+                          0f,
+                          (visibleTabs.size - 1).coerceAtLeast(0).toFloat(),
+                        )
+                      val dist = kotlin.math.abs(currentPos - index)
+                      val prog = (1f - dist).coerceIn(0f, 1f)
+                      val scale = 1.0f + 0.10f * prog
+                      scaleX = scale
+                      scaleY = scale
                     },
                   contentAlignment = Alignment.Center,
                 ) {
@@ -569,7 +552,7 @@ private fun TelegramPillNavigationBar(
                         MainScreen.MainTab.NETWORK -> "Network"
                       },
                   style = MaterialTheme.typography.labelSmall,
-                  fontWeight = if (progress > 0.5f) FontWeight.Bold else FontWeight.Medium,
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                   color = contentColor,
                   maxLines = 1,
                   overflow = TextOverflow.Ellipsis,

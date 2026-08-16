@@ -739,6 +739,11 @@
     <item quantity="one">%1$d playable file</item>
     <item quantity="other">%1$d playable files</item>
   </plurals>
+  <string name="ui_search_episodes">Search episodes…</string>
+  <string name="ui_sort_ascending">Sort Ascending</string>
+  <string name="ui_sort_descending">Sort Descending</string>
+  <string name="ui_no_matching_episodes">No matching episodes</string>
+  <string name="ui_buffering">Buffering…</string>
   <string name="ui_expand_torrent_group">Show torrent files</string>
   <string name="ui_collapse_torrent_group">Hide torrent files</string>
   <string name="ui_delete_torrent_group">Remove torrent</string>
