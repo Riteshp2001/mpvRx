@@ -42,7 +42,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -110,7 +109,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -643,8 +641,8 @@ fun AudioPlayerControls(
     }
   }
 
-  val targetTopColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
-  val targetBottomColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
+  val targetTopColor = if (ambientModeEnabled) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
+  val targetBottomColor = if (ambientModeEnabled) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
 
   val animatedAmbientTop: Color by animateColorAsState(
     targetValue = targetTopColor,
@@ -664,7 +662,7 @@ fun AudioPlayerControls(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
         .drawWithCache {
-          if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics) && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
+          if (ambientModeEnabled && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
             val topColor = animatedAmbientTop
             val bottomColor = animatedAmbientBottom
             val radialGradient = Brush.radialGradient(
@@ -839,67 +837,10 @@ fun AudioPlayerControls(
             modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait && !showVisualizer) 0.65f else 1.0f),
           ) { isVisualizerActive ->
           if (isVisualizerActive) {
-            val surfaceBg = MaterialTheme.colorScheme.surface
             Box(
-              modifier =
-                Modifier
-                  .fillMaxSize()
-                  .drawWithContent {
-                    drawContent()
-                    // Immersive top & bottom soft gradient vignetting so visualizer seamlessly dissolves into dark background
-                    drawRect(
-                      brush =
-                        Brush.verticalGradient(
-                          colors = listOf(
-                            surfaceBg.copy(alpha = 0.95f),
-                            surfaceBg.copy(alpha = 0.45f),
-                            Color.Transparent,
-                          ),
-                          startY = 0f,
-                          endY = size.height * 0.22f,
-                        ),
-                    )
-                    drawRect(
-                      brush =
-                        Brush.verticalGradient(
-                          colors = listOf(
-                            Color.Transparent,
-                            surfaceBg.copy(alpha = 0.50f),
-                            surfaceBg.copy(alpha = 0.96f),
-                          ),
-                          startY = size.height * 0.72f,
-                          endY = size.height,
-                        ),
-                    )
-                    // Subtle side edge softening
-                    drawRect(
-                      brush =
-                        Brush.horizontalGradient(
-                          colors = listOf(
-                            surfaceBg.copy(alpha = 0.60f),
-                            Color.Transparent,
-                            Color.Transparent,
-                            surfaceBg.copy(alpha = 0.60f),
-                          ),
-                          startX = 0f,
-                          endX = size.width,
-                        ),
-                    )
-                  },
+              modifier = Modifier.fillMaxSize(),
               contentAlignment = Alignment.Center,
             ) {
-              val glowColor = Color(palette.primary).copy(alpha = 0.16f)
-              Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                  brush =
-                    Brush.radialGradient(
-                      colors = listOf(glowColor, Color.Transparent),
-                      center = center,
-                      radius = size.minDimension * 0.90f,
-                    ),
-                )
-              }
-
               when (audioVisualizerStyle) {
                 AudioVisualizerStyle.Galaxy ->
                   GalaxyOverlay(
