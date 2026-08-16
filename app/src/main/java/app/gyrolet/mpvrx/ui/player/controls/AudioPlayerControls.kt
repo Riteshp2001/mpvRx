@@ -888,7 +888,7 @@ fun AudioPlayerControls(
                   },
               contentAlignment = Alignment.Center,
             ) {
-              val glowColor = palette.primary.copy(alpha = 0.16f)
+              val glowColor = Color(palette.primary).copy(alpha = 0.16f)
               Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
                   brush =
