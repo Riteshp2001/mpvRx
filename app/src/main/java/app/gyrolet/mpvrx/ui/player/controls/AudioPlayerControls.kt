@@ -641,8 +641,8 @@ fun AudioPlayerControls(
     }
   }
 
-  val targetTopColor = if (ambientModeEnabled) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
-  val targetBottomColor = if (ambientModeEnabled) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
+  val targetTopColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.first ?: Color.Transparent) else Color.Transparent
+  val targetBottomColor = if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics)) (ambientColors?.second ?: Color.Transparent) else Color.Transparent
 
   val animatedAmbientTop: Color by animateColorAsState(
     targetValue = targetTopColor,
@@ -662,7 +662,7 @@ fun AudioPlayerControls(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
         .drawWithCache {
-          if (ambientModeEnabled && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
+          if (ambientModeEnabled && (!showVisualizer || showInPlaceLyrics) && (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
             val topColor = animatedAmbientTop
             val bottomColor = animatedAmbientBottom
             val radialGradient = Brush.radialGradient(
@@ -795,6 +795,7 @@ fun AudioPlayerControls(
       BoxWithConstraints(
         modifier =
           visualizerModifier
+            .clipToBounds()
             .combinedClickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = null,
@@ -834,50 +835,50 @@ fun AudioPlayerControls(
               }
             },
             label = "visualizer_toggle",
-            modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait && !showVisualizer) 0.65f else 1.0f),
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait) 0.65f else 1.0f),
           ) { isVisualizerActive ->
           if (isVisualizerActive) {
             Box(
               modifier = Modifier.fillMaxSize(),
               contentAlignment = Alignment.Center,
             ) {
-              when (audioVisualizerStyle) {
-                AudioVisualizerStyle.Galaxy ->
-                  GalaxyOverlay(
-                    palette = palette,
-                    isSheetOpen = isSheetOpen,
-                    volumeScale = volumeScale,
-                    features = visualizerFeatures,
-                    modifier = Modifier.fillMaxSize(),
-                  )
-                AudioVisualizerStyle.Blob ->
-                  BlobOverlay(
-                    palette = palette,
-                    isSheetOpen = isSheetOpen,
-                    volumeScale = volumeScale,
-                    features = visualizerFeatures,
-                    modifier = Modifier.fillMaxSize(),
-                  )
-                AudioVisualizerStyle.Cuboid ->
-                  if (!isSheetOpen) {
-                    CuboidOverlay(
-                      isPlaying = isPlaying,
-                      palette = palette,
-                      isSheetOpen = false,
-                      volumeScale = volumeScale,
-                      features = visualizerFeatures,
-                      modifier = Modifier.fillMaxSize(),
-                    )
-                  }
-                AudioVisualizerStyle.Particle ->
-                  ParticleOverlay(
-                    palette = palette,
-                    isSheetOpen = isSheetOpen,
-                    volumeScale = volumeScale,
-                    features = visualizerFeatures,
-                    modifier = Modifier.fillMaxSize(),
-                  )
-              }
+               when (audioVisualizerStyle) {
+                 AudioVisualizerStyle.Galaxy ->
+                   GalaxyOverlay(
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
+                     volumeScale = volumeScale,
+                     features = visualizerFeatures,
+                     modifier = Modifier.fillMaxSize(),
+                   )
+                 AudioVisualizerStyle.Blob ->
+                   BlobOverlay(
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
+                     volumeScale = volumeScale,
+                     features = visualizerFeatures,
+                     modifier = Modifier.fillMaxSize(),
+                   )
+                 AudioVisualizerStyle.Cuboid ->
+                   if (!isSheetOpen) {
+                     CuboidOverlay(
+                       isPlaying = isPlaying,
+                       palette = palette,
+                       isSheetOpen = false,
+                       volumeScale = volumeScale,
+                       features = visualizerFeatures,
+                       modifier = Modifier.fillMaxSize(),
+                     )
+                   }
+                 AudioVisualizerStyle.Particle ->
+                   ParticleOverlay(
+                     palette = palette,
+                     isSheetOpen = isSheetOpen,
+                     volumeScale = volumeScale,
+                     features = visualizerFeatures,
+                     modifier = Modifier.fillMaxSize(),
+                   )
+               }
             }
           } else {
             val coverShape = RoundedCornerShape(32.dp)

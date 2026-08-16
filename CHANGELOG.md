@@ -19,15 +19,16 @@ These notes are written in plain English and focus on what changed for real use.
 - **Customizable & Reorderable Music Sub-Tabs**: Preference setting to toggle visibility and customize the ordering of Music Library sub-tabs to match your workflow.
 - **Interactive Cover Art Swipe Pager**: Horizontal swipe gestures on album art cards to fluidly navigate between previous and next tracks in active playlists with real-time drag physics.
 - **Synchronized LRC Lyrics & In-Place Lyrics View**: Full support for synchronized LRC lyrics featuring white active-line highlighting, tap-to-restore fullscreen mode, auto-hiding controls, and embedded vs. external source toggling.
-- **Immersive Borderless Audio Visualizers**:
-  - Unboxed, borderless visualizer presentation across all 4 visualizer styles (Galaxy, Blob, Cuboid, Particle) spanning the player canvas.
-  - Soft top and bottom gradient vignetting and edge falloff for smooth dissolving into dark player backgrounds.
-  - Dynamic ambient radial glow matching the track's primary palette color behind active visualizers.
-  - Volume scaling for audio visualizers and spectrum capture lifecycle that pauses rendering and audio analysis when covered by bottom sheets to save battery and GPU cycles.
+- **Audio Visualizers & Reactivity**: Full visualizer support across 4 distinct styles (Galaxy, Blob, 3D Cuboid Warptunnel, Particle) with spectrum capture lifecycle optimizations that suspend rendering behind sheets to save battery.
 - **In-Place Lossless Specs & Audio Enhancements**:
   - Direct on-card Lossless badge with tap-to-expand details (`HI-RES LOSSLESS`, format, sample rate, bit depth, bitrate).
   - Quick-access Equalizer button in player controls, dedicated playback speed indicator next to A-B loop, and in-player playlist management.
   - Dynamic Range Compression (DRC) audio filter and non-overriding filter pipeline.
+
+### 📦 Release Flavors & Device Compatibility
+- **Standard Default Build**: The primary release featuring full `gpu-next` and Vulkan hardware acceleration, built for standard modern Android devices.
+- **Non-Vulkan Compatibility Build**: A dedicated flavor with Vulkan disabled to eliminate startup and playback crashes on legacy GPU drivers and older devices without Vulkan support.
+- **Fongmi High-Performance Build**: Advanced flavor supporting MediaCodec hardware decoding under Vulkan mode, aggressive rendering optimizations, and Dolby Vision (DV) playback capabilities.
 
 ### 🌐 Network Streaming, Proxies & Protocols
 - **In-App HLS Proxy Engine**: Added dedicated local HLS proxy server with a settings toggle for optimized live stream and HLS media handling.
