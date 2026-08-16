@@ -342,7 +342,6 @@ object PlaybackSession : MPVLib.EventObserver {
     releaseAuxiliaryNetworkStreams()
   }
 
-
   /** Native destruction is reserved for process-level shutdown or an unrecoverable init reset. */
   fun destroy() {
     nativeLock.withLock {
@@ -530,8 +529,6 @@ object PlaybackSession : MPVLib.EventObserver {
       MPVLib.setPropertyString("http-header-fields", headerFields)
       MPVLib.setPropertyString("force-media-title", "")
 
-
-
       // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
       // render Surface is attached, explicitly make vid=auto file-local to this new load. This
       // prevents a preceding vid=no from producing "No video or audio streams selected" on
@@ -554,9 +551,10 @@ object PlaybackSession : MPVLib.EventObserver {
 
   fun command(vararg command: String) {
     withCore(Unit) {
-      if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
-      if (handleAmbientShaderCommandLocked(command)) return@withCore
-      MPVLib.command(*command)
+      val resolvedCommand = normalizeSeekCommand(command)
+      if (shouldGuardSeekAudio(resolvedCommand)) beginSeekAudioGuardLocked()
+      if (handleAmbientShaderCommandLocked(resolvedCommand)) return@withCore
+      MPVLib.command(*resolvedCommand)
     }
   }
 
@@ -567,10 +565,28 @@ object PlaybackSession : MPVLib.EventObserver {
   ): Boolean =
     nativeLock.withLock {
       if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
-      if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
-      if (!handleAmbientShaderCommandLocked(command)) MPVLib.command(*command)
+      val resolvedCommand = normalizeSeekCommand(command)
+      if (shouldGuardSeekAudio(resolvedCommand)) beginSeekAudioGuardLocked()
+      if (!handleAmbientShaderCommandLocked(resolvedCommand)) MPVLib.command(*resolvedCommand)
       true
     }
+
+  /**
+   * Normal relative skips already use keyframes in mpv. Keep those commands on mpv's lightweight
+   * default path (matching mpvKt) and reserve the extra audio guard for explicitly exact seeks.
+   */
+  private fun normalizeSeekCommand(command: Array<out String>): Array<out String> =
+    if (command.size == 3 && command[0] == "seek" && command[2] == "relative+keyframes") {
+      arrayOf("seek", command[1], "relative")
+    } else {
+      command
+    }
+
+  private fun shouldGuardSeekAudio(command: Array<out String>): Boolean =
+    command.firstOrNull() == "seek" &&
+      command.drop(2).any { argument ->
+        argument.split('+').any { flag -> flag == "exact" }
+      }
 
   fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
 
@@ -894,9 +910,9 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   /**
-   * Rapid keyframe/exact seeks can expose tiny decoded audio fragments between decoder flushes,
-   * which sounds like echo/warble while scrubbing. Temporarily mute only the active seek window;
-   * the user's original mute state is restored after mpv reports playback restart.
+   * Exact seeks can expose tiny decoded audio fragments between decoder flushes, which sounds like
+   * echo/warble while scrubbing. Fast keyframe-relative skips avoid this guard entirely so repeated
+   * 5–10 second seeks stay responsive; exact seek modes retain the protection.
    */
   private fun beginSeekAudioGuardLocked() {
     if (_state.value.paused || _state.value.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return

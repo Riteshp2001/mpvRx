@@ -24,13 +24,13 @@ import android.util.Rational
 import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.media.resolveSeekMode
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-
-import androidx.core.content.ContextCompat
 
 private const val PIP_INTENTS_FILTER = "pip_action"
 private const val PIP_INTENT_ACTION = "pip_action_code"
@@ -54,14 +54,50 @@ class MPVPipHelper(
   ) : this(activity, { mpvView }, isAudioPlayer, isVideoLoaded)
 
   private val playerPreferences: PlayerPreferences by inject()
+  private val audioPreferences: AudioPreferences by inject()
   private var pipReceiver: BroadcastReceiver? = null
+  private var ownsPipNotificationService = false
 
   fun onPictureInPictureModeChanged(isInPipMode: Boolean) {
     if (isInPipMode) {
       registerPipReceiver()
+      ensurePipNotificationService()
     } else {
       unregisterPipReceiver()
+      releasePipNotificationServiceIfNotNeeded()
     }
+  }
+
+  private fun ensurePipNotificationService() {
+    if (isAudioPlayer() || !isVideoLoaded() || !PlaybackSession.isInitialized) return
+    if (MediaPlaybackService.isForegroundActive()) {
+      ownsPipNotificationService = false
+      return
+    }
+
+    val backgroundPlaybackEnabled = audioPreferences.backgroundPlayback.get()
+    val serviceIntent = Intent(activity, MediaPlaybackService::class.java)
+    runCatching { ContextCompat.startForegroundService(activity, serviceIntent) }
+      .onSuccess {
+        // PiP needs media controls even when detached background playback is disabled. If regular
+        // background playback is enabled, that feature owns the service and it must survive PiP.
+        ownsPipNotificationService = !backgroundPlaybackEnabled
+      }.onFailure { error ->
+        ownsPipNotificationService = false
+        Log.e("MPVPipHelper", "Failed to start PiP media notification service", error)
+      }
+  }
+
+  private fun releasePipNotificationServiceIfNotNeeded() {
+    if (!ownsPipNotificationService) return
+    if (audioPreferences.backgroundPlayback.get()) {
+      ownsPipNotificationService = false
+      return
+    }
+
+    runCatching { activity.stopService(Intent(activity, MediaPlaybackService::class.java)) }
+      .onFailure { error -> Log.e("MPVPipHelper", "Failed to stop PiP media notification service", error) }
+    ownsPipNotificationService = false
   }
 
   @Suppress("UnspecifiedRegisterReceiverFlag")
@@ -210,5 +246,18 @@ class MPVPipHelper(
 
   fun onStop() {
     unregisterPipReceiver()
+
+    // A real video-player close should silence libmpv at onStop instead of waiting for onDestroy,
+    // which Android may defer while finishing its window transition. Background/Mini Player
+    // handoffs remain untouched because video background playback is enabled for those paths.
+    if (
+      !isAudioPlayer() &&
+      activity.isFinishing &&
+      !activity.isInPictureInPictureMode &&
+      !audioPreferences.backgroundPlayback.get()
+    ) {
+      releasePipNotificationServiceIfNotNeeded()
+      PlaybackSession.stop(clearQueue = false)
+    }
   }
 }
