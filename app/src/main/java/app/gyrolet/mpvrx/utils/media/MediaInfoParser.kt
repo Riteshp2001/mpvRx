@@ -335,23 +335,23 @@ object MediaInfoParser {
 
   // ── Regex patterns ───────────────────────────────────────────────────────────
 
-  // Season-Episode: S01E02, S1E2, s01e02, S01.E02 — also captures multi-episode S01E01E02
-  private val SEASON_EPISODE_REGEX = Regex("""[Ss](\d{1,2})\.?[Ee](\d{1,4})""")
+  // Season-Episode: S01E02, S1E2, S1:E1, s01e02, S01.E02, S01_E01, S01-E01, S01 - E01, [S1E1]
+  private val SEASON_EPISODE_REGEX = Regex("""[Ss](\d{1,2})[\s.:_-]*[Ee](\d{1,4})""")
 
   // Cross-format: 1x02 format
   private val CROSS_FORMAT_REGEX = Regex("""\b(\d{1,2})[xX](\d{1,4})\b""")
 
   // EP marker: EP05, Ep5 — with word boundary to avoid matching inside words
-  private val EP_MARKER_REGEX = Regex("""\b[Ee][Pp](\d{1,4})\b""")
+  private val EP_MARKER_REGEX = Regex("""\b[Ee][Pp][\s.:_-]*(\d{1,4})\b""")
 
   // Standalone E-prefix: E05, E5 — only after a separator (dot/space/dash) to avoid false positives
-  private val E_PREFIX_REGEX = Regex("""(?:^|[.\s_-])[Ee](\d{2,4})(?:[.\s_-]|$)""")
+  private val E_PREFIX_REGEX = Regex("""(?:^|[.\s_:-])[Ee](\d{2,4})(?:[.\s_:-]|$)""")
 
-  // Episode word: Episode 5, EPISODE 05
-  private val EPISODE_WORD_REGEX = Regex("""\b[Ee]pisode\s*(\d{1,4})\b""")
+  // Episode word: Episode 5, EPISODE 05, Ep: 1
+  private val EPISODE_WORD_REGEX = Regex("""\b[Ee]p(?:isode)?[\s.:_-]*(\d{1,4})\b""")
 
-  // Season word: Season 3, SEASON 3
-  private val SEASON_WORD_REGEX = Regex("""\b[Ss]eason\s*(\d{1,2})\b""")
+  // Season word: Season 3, SEASON 3, Season: 1
+  private val SEASON_WORD_REGEX = Regex("""\b[Ss]eason[\s.:_-]*(\d{1,2})\b""")
 
   // Year: 1900-2099
   private val YEAR_REGEX = Regex("""\b(19|20)\d{2}\b""")

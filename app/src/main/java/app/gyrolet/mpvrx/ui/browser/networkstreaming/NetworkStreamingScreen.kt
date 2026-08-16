@@ -19,6 +19,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -991,7 +992,6 @@ private fun AnimeTorrentCard(
                   }
                   onPlay(entry)
                 },
-                onDelete = { onDeleteFile(entry.stableKey) },
               )
               if (index < displayedFiles.lastIndex) {
                 HorizontalDivider(
@@ -1028,7 +1028,6 @@ private fun EpisodeCardRow(
   position: Int,
   viewed: Boolean,
   onPlay: () -> Unit,
-  onDelete: () -> Unit,
 ) {
   val epInfo = remember(entry.fileName, entry.filePath) { parseEpisodeDetails(entry.fileName, entry.filePath) }
 
@@ -1068,7 +1067,7 @@ private fun EpisodeCardRow(
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Medium,
         maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 2000),
       )
 
       Row(
@@ -1106,18 +1105,6 @@ private fun EpisodeCardRow(
         contentDescription = null,
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(20.dp),
-      )
-    }
-
-    IconButton(
-      onClick = onDelete,
-      modifier = Modifier.size(36.dp),
-    ) {
-      Icon(
-        imageVector = Icons.RoundedFilled.Delete,
-        contentDescription = stringResource(R.string.delete),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-        modifier = Modifier.size(18.dp),
       )
     }
 
@@ -1400,9 +1387,10 @@ private data class ParsedEpisodeInfo(
   val format: String? = null,
 )
 
-private val seasonEpisodeRegex = Regex("(?i)(?:^|[^a-z0-9])s(\\d{1,2})[ ._-]*e(\\d{1,3})(?:[^a-z0-9]|$)")
-private val epNumRegex = Regex("(?i)(?:^|[^a-z0-9])(?:episode|ep)[ ._-]*(\\d{1,3})(?:[^a-z0-9]|$)")
-private val animeDashNumRegex = Regex("(?i)-\\s*(\\d{1,3})(?:v\\d+)?(?:\\s|\\[|\\(|\\.)")
+private val seasonEpisodeRegex = Regex("(?i)(?:^|[^a-z0-9])s(\\d{1,2})[ ._:-]*e(\\d{1,4})(?:[^a-z0-9]|$)")
+private val crossFormatEpisodeRegex = Regex("(?i)(?:^|[^a-z0-9])(\\d{1,2})x(\\d{1,4})(?:[^a-z0-9]|$)")
+private val epNumRegex = Regex("(?i)(?:^|[^a-z0-9])(?:episode|ep)[ ._:-]*(\\d{1,4})(?:[^a-z0-9]|$)")
+private val animeDashNumRegex = Regex("(?i)-\\s*(\\d{1,4})(?:v\\d+)?(?:\\s|\\[|\\(|\\.)")
 private val qualityRegex = Regex("(?i)\\b(2160p|4K|1080p|720p|480p|HDR|HDRip|WEBRip|BluRay|BRRip|DVDRip)\\b")
 
 private fun parseEpisodeDetails(
@@ -1413,7 +1401,7 @@ private fun parseEpisodeDetails(
   val extension = sourceText.substringAfterLast('.', "").uppercase().take(5)
   val quality = qualityRegex.find(sourceText)?.value?.uppercase()
 
-  // 1. Check Season + Episode (S01E02)
+  // 1. Check Season + Episode (S01E02, S1:E1)
   seasonEpisodeRegex.find(sourceText)?.let { match ->
     val season = match.groupValues[1].toIntOrNull() ?: 1
     val episode = match.groupValues[2].toIntOrNull() ?: 1
@@ -1427,7 +1415,21 @@ private fun parseEpisodeDetails(
     )
   }
 
-  // 2. Check "Episode 01" / "EP 01"
+  // 2. Check Cross Format (1x02)
+  crossFormatEpisodeRegex.find(sourceText)?.let { match ->
+    val season = match.groupValues[1].toIntOrNull() ?: 1
+    val episode = match.groupValues[2].toIntOrNull() ?: 1
+    return ParsedEpisodeInfo(
+      badge = "S${season.toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}",
+      season = season,
+      episode = episode,
+      cleanTitle = cleanEpisodeTitle(sourceText),
+      quality = quality,
+      format = extension.takeIf { it.isNotBlank() },
+    )
+  }
+
+  // 3. Check "Episode 01" / "EP 01"
   epNumRegex.find(sourceText)?.let { match ->
     val episode = match.groupValues[1].toIntOrNull() ?: 1
     return ParsedEpisodeInfo(
@@ -1440,7 +1442,7 @@ private fun parseEpisodeDetails(
     )
   }
 
-  // 3. Check Anime Dash numbering: " - 01 "
+  // 4. Check Anime Dash numbering: " - 01 "
   animeDashNumRegex.find(sourceText)?.let { match ->
     val episode = match.groupValues[1].toIntOrNull() ?: 1
     return ParsedEpisodeInfo(

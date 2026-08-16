@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -547,8 +548,8 @@ private fun TorrentFileRow(
           text = file.name,
           style = MaterialTheme.typography.bodyMedium,
           fontWeight = FontWeight.SemiBold,
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
+          maxLines = 1,
+          modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 2000),
         )
         Text(
           text =

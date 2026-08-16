@@ -189,11 +189,34 @@ class TorrentSelectionViewModel(
     viewModelScope.launch {
       val rawTitle = currentArtwork.title.ifBlank { catalog.torrentName }
       val parsed = MediaInfoParser.parse(rawTitle)
-      val query = parsed.title.ifBlank { cleanSearchTitle(rawTitle) }
-      val match =
-        query
-          .takeIf { it.length >= MIN_SEARCH_LENGTH }
-          ?.let { wyzieSearchRepository.findBestMediaMatch(it, parsed.year).getOrNull() }
+      val queryCandidates = mutableListOf<String>()
+
+      if (parsed.title.isNotBlank()) queryCandidates.add(parsed.title)
+
+      val cleaned = cleanSearchTitle(rawTitle)
+      if (cleaned.isNotBlank() && !queryCandidates.contains(cleaned)) queryCandidates.add(cleaned)
+
+      val beforeDash = rawTitle.substringBefore('-').trim()
+      val cleanedBeforeDash = cleanSearchTitle(beforeDash)
+      if (cleanedBeforeDash.length >= MIN_SEARCH_LENGTH && !queryCandidates.contains(cleanedBeforeDash)) {
+        queryCandidates.add(cleanedBeforeDash)
+      }
+
+      val beforeColon = rawTitle.substringBefore(':').trim()
+      val cleanedBeforeColon = cleanSearchTitle(beforeColon)
+      if (cleanedBeforeColon.length >= MIN_SEARCH_LENGTH && !queryCandidates.contains(cleanedBeforeColon)) {
+        queryCandidates.add(cleanedBeforeColon)
+      }
+
+      var match: WyzieTmdbResult? = null
+      for (query in queryCandidates) {
+        if (query.length < MIN_SEARCH_LENGTH) continue
+        val result = wyzieSearchRepository.findBestMediaMatch(query, parsed.year).getOrNull()
+        if (result != null) {
+          match = result
+          break
+        }
+      }
 
       val ready = _uiState.value as? TorrentSelectionUiState.Ready ?: return@launch
       if (ready.catalog.preparationId != catalog.preparationId || ready.launchingFileIndex != null) return@launch
@@ -268,8 +291,10 @@ class TorrentSelectionViewModel(
   }
 }
 
-private val seasonEpisodeRegex = Regex("(?i)\\bS\\d{1,2}[ ._-]*E\\d{1,3}\\b")
-private val seasonRegex = Regex("(?i)\\bS(?:eason)?[ ._-]*\\d{1,2}\\b")
+private val seasonEpisodeRegex = Regex("(?i)\\bS\\d{1,2}[\\s.:_-]*E\\d{1,4}\\b")
+private val crossFormatRegex = Regex("(?i)\\b\\d{1,2}x\\d{1,4}\\b")
+private val episodeWordRegex = Regex("(?i)\\bep(?:isode)?[\\s.:_-]*\\d{1,4}\\b")
+private val seasonRegex = Regex("(?i)\\bS(?:eason)?[\\s.:_-]*\\d{1,2}\\b")
 private val knownExtensionRegex = Regex("(?i)\\.(?:torrent|mkv|mp4|m4v|webm|avi|mov|ts|m2ts|mp3|m4a|flac|ogg)$")
 private val releaseNoiseRegex =
   Regex(
@@ -282,11 +307,14 @@ private fun prettyTorrentTitle(value: String): String =
     .substringAfterLast('/')
     .replace(knownExtensionRegex, "")
     .replace(seasonEpisodeRegex, " ")
+    .replace(crossFormatRegex, " ")
+    .replace(episodeWordRegex, " ")
     .replace(seasonRegex, " ")
     .replace(releaseNoiseRegex, " ")
+    .replace(Regex("[\\[\\]【】()（）]"), " ")
     .replace(Regex("[._]+"), " ")
     .replace(Regex("\\s+"), " ")
-    .trim(' ', '-', '_')
+    .trim(' ', '-', '_', ':', '.')
     .ifBlank { "Torrent" }
 
 private fun cleanSearchTitle(value: String): String =
