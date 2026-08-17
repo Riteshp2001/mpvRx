@@ -15,8 +15,6 @@ import kotlin.math.roundToInt
 
 private const val MIN_SUBTITLE_POSITION = 0
 private const val MAX_SUBTITLE_POSITION = 150
-private const val NATIVE_ASS_POSITION = 100
-private const val NATIVE_ASS_SCALE = 1f
 private const val SECONDARY_SUBTITLE_POSITION_OFFSET = 10
 
 private val subtitlesPreferences by lazy {
@@ -125,60 +123,24 @@ fun calculateSecondarySubtitlePosition(
 
 fun isSecondarySubtitleActive(): Boolean = getTrackSelectionId("secondary-sid") > 0
 
-data class SubtitleAssOverrideMode(
-  val primary: String,
-  val secondary: String,
-)
-
-fun subtitleAssOverrideMode(
+fun subtitleAssOverrideValue(
   forceAssOverride: Boolean,
   secondarySubtitleActive: Boolean = isSecondarySubtitleActive(),
-): SubtitleAssOverrideMode =
-  SubtitleAssOverrideMode(
-    primary = if (forceAssOverride) "force" else "no",
-    // mpv strips native styling from secondary subtitles. Force only that renderer when active
-    // so MPVRX can keep dual subtitles separated without modifying the primary ASS track.
-    secondary = if (forceAssOverride || secondarySubtitleActive) "force" else "no",
-  )
-
-fun isAssSubtitleCodec(codec: String?): Boolean =
-  codec?.contains("ass", ignoreCase = true) == true ||
-    codec?.contains("ssa", ignoreCase = true) == true
-
-fun isPrimarySubtitleAss(): Boolean = isSelectedSubtitleAss("sid")
-
-private fun isSelectedSubtitleAss(selectionProperty: String): Boolean {
-  val selectedId = getTrackSelectionId(selectionProperty)
-  if (selectedId <= 0) return false
-
-  val trackCount = PlaybackSession.getPropertyInt("track-list/count") ?: return false
-  for (index in 0 until trackCount) {
-    if (PlaybackSession.getPropertyInt("track-list/$index/id") != selectedId) continue
-    if (PlaybackSession.getPropertyString("track-list/$index/type") != "sub") return false
-    return isAssSubtitleCodec(PlaybackSession.getPropertyString("track-list/$index/codec"))
-  }
-  return false
-}
+): String = if (forceAssOverride || secondarySubtitleActive) "force" else "scale"
 
 fun applySubtitleOverrides(forceAssOverride: Boolean) {
-  val mode = subtitleAssOverrideMode(forceAssOverride)
-  PlaybackSession.setPropertyString("sub-ass-override", mode.primary)
-  PlaybackSession.setPropertyString("secondary-sub-ass-override", mode.secondary)
-  PlaybackSession.setPropertyString("sub-ass-justify", if (forceAssOverride) "yes" else "no")
+  val overrideValue = subtitleAssOverrideValue(forceAssOverride)
+  PlaybackSession.setPropertyString("sub-ass-override", overrideValue)
+  PlaybackSession.setPropertyString("secondary-sub-ass-override", overrideValue)
 }
 
 fun applySubtitlePositions(
   primaryPosition: Int,
   screenWidth: Float? = null,
   screenHeight: Float? = null,
-  forceAssOverride: Boolean = subtitlesPreferences.overrideAssSubs.get(),
 ) {
   val primary = clampSubtitlePosition(primaryPosition)
-  val preservePrimaryAssLayout = isPrimarySubtitleAss() && !forceAssOverride
-  PlaybackSession.setPropertyInt("sub-pos", if (preservePrimaryAssLayout) NATIVE_ASS_POSITION else primary)
-  if (preservePrimaryAssLayout) {
-    PlaybackSession.setPropertyFloat("sub-scale", NATIVE_ASS_SCALE)
-  }
+  PlaybackSession.setPropertyInt("sub-pos", primary)
 
   // Retrieve OSD or display dimensions as fallbacks if null
   val width =
@@ -206,5 +168,5 @@ fun applySubtitleLayout(
   screenHeight: Float? = null,
 ) {
   applySubtitleOverrides(forceAssOverride)
-  applySubtitlePositions(primaryPosition, screenWidth, screenHeight, forceAssOverride)
+  applySubtitlePositions(primaryPosition, screenWidth, screenHeight)
 }
