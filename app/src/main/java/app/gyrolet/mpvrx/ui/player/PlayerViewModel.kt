@@ -2149,14 +2149,34 @@ class PlayerViewModel : ViewModel(),
   fun addAudio(uri: Uri) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
+        if (uri.scheme == "content") {
+          try {
+            appContext.contentResolver.takePersistableUriPermission(
+              uri,
+              Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+          } catch (e: SecurityException) {
+            android.util.Log.i(
+              "PlayerViewModel",
+              "Persistent permission not taken for audio $uri",
+            )
+          }
+        }
+
         val path =
           uri.resolveUri(appContext)
             ?: return@launch withContext(Dispatchers.Main) {
               showToast("Failed to load audio file: Invalid URI")
             }
 
+        val title = getFileNameFromUri(uri)?.substringBeforeLast(".")?.ifBlank { null }
+
         withContext(Dispatchers.Main) {
-          PlaybackSession.command("audio-add", path, "cached")
+          if (title != null) {
+            PlaybackSession.command("audio-add", path, "cached", title)
+          } else {
+            PlaybackSession.command("audio-add", path, "cached")
+          }
           showToast("Audio track added")
         }
       }.onFailure { e ->

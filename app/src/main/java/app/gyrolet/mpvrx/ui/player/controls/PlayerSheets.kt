@@ -245,10 +245,76 @@ fun PlayerSheets(
           if (it == null) return@rememberLauncherForActivityResult
           onAddAudio(it)
         }
+
+      val audioPreferences = koinInject<app.gyrolet.mpvrx.preferences.AudioPreferences>()
+      val savedPickerPath = audioPreferences.pickerPath.get()
+
+      val currentMediaTitle = viewModel.currentMediaTitle
+      val matchToName =
+        if (currentMediaTitle.isNotBlank()) {
+          currentMediaTitle.substringBeforeLast(".")
+        } else {
+          null
+        }
+
+      var showAudioFilePicker by remember { mutableStateOf(false) }
+
+      val audioAllowedExtensions =
+        remember {
+          listOf(
+            // Common compressed audio
+            "mp3", "m4a", "aac", "ogg", "oga", "opus", "wma",
+            // Lossless audio
+            "flac", "alac", "wav", "wave", "ape", "tta", "tak", "aif", "aiff", "aifc",
+            // Multichannel & surround / cinema formats
+            "ac3", "eac3", "dts", "dtshd", "dts-hd", "thd", "truehd", "mlp",
+            // Audio containers & video files with audio
+            "mka", "mkv", "mp4", "webm", "caf", "weba",
+            // Voice / telephony
+            "amr", "awb", "spx", "3ga",
+            // High-resolution DSD
+            "dsf", "dff",
+            // Legacy / Tracker / Misc
+            "au", "snd", "ra", "mp1", "mp2", "mpa", "mpc", "mid", "midi",
+          )
+        }
+
+      if (showAudioFilePicker) {
+        app.gyrolet.mpvrx.ui.browser.dialogs.FilePickerDialog(
+          isOpen = true,
+          currentPath = savedPickerPath,
+          onDismiss = { showAudioFilePicker = false },
+          onPathChanged = { path ->
+            if (path != null) {
+              audioPreferences.pickerPath.set(path)
+            }
+          },
+          onFileSelected = { path ->
+            showAudioFilePicker = false
+            onAddAudio(Uri.parse("file://$path"))
+          },
+          onSystemPickerRequest = {
+            showAudioFilePicker = false
+            audioPicker.launch(
+              arrayOf(
+                "audio/*",
+                "application/ogg",
+                "application/x-flac",
+                "video/x-matroska",
+                "video/*",
+                "*/*",
+              ),
+            )
+          },
+          matchToName = matchToName,
+          allowedExtensions = audioAllowedExtensions,
+        )
+      }
+
       AudioTracksSheet(
         tracks = audioTracks,
         onSelect = onSelectAudio,
-        onAddAudioTrack = { audioPicker.launch(arrayOf("*/*")) },
+        onAddAudioTrack = { showAudioFilePicker = true },
         onOpenDelayPanel = { onOpenPanel(Panels.AudioDelay) },
         onOpenEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
         onDismissRequest = onDismissRequest,
