@@ -823,12 +823,13 @@ class MediaPlaybackService :
   private fun handleDetachedEndOfFile() {
     if (PlaybackSession.state.value.surfaceAttached || !foregroundReady) return
     val queueState = PlaybackSession.queue.value
+    val autoplay = if (notificationIsAudio) playerPreferences.autoplayNextAudio.get() else playerPreferences.autoplayNextVideo.get()
     when {
       queueState.repeatMode == RepeatMode.ONE -> {
         PlaybackSession.command("seek", "0", "absolute")
         PlaybackSession.setPropertyBoolean("pause", false)
       }
-      playerPreferences.autoplayNextVideo.get() || queueState.repeatMode == RepeatMode.ALL -> {
+      autoplay || queueState.repeatMode == RepeatMode.ALL -> {
         if (!playNextFromSession()) stopPlaybackAndService()
       }
       else -> stopPlaybackAndService()

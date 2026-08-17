@@ -119,6 +119,7 @@ class PlayerPreferences(
 
   // New: autoplay next video when current file ends
   val autoplayNextVideo = preferenceStore.getBoolean("autoplay_next_video", true)
+  val autoplayNextAudio = preferenceStore.getBoolean("autoplay_next_audio", true)
 
   val autoPiPOnNavigation = preferenceStore.getBoolean("auto_pip_on_navigation", false)
   private val videoBackgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)

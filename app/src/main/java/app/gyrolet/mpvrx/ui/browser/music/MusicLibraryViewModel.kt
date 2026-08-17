@@ -67,11 +67,8 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   private val _searchQuery = MutableStateFlow("")
   val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-  private val _sortField = MutableStateFlow(MusicSortField.TITLE)
-  val sortField: StateFlow<MusicSortField> = _sortField.asStateFlow()
-
-  private val _sortOrder = MutableStateFlow(MusicSortOrder.ASCENDING)
-  val sortOrder: StateFlow<MusicSortOrder> = _sortOrder.asStateFlow()
+  val sortField: StateFlow<MusicSortField> = browserPreferences.musicSortField.stateIn(viewModelScope)
+  val sortOrder: StateFlow<MusicSortOrder> = browserPreferences.musicSortOrder.stateIn(viewModelScope)
 
   val viewMode: StateFlow<MusicViewMode> = browserPreferences.musicViewMode.stateIn(viewModelScope)
 
@@ -108,7 +105,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   }
 
   val filteredSongs: StateFlow<List<MusicSong>> = combine(
-    _songs, _searchQuery, _sortField, _sortOrder
+    _songs, _searchQuery, sortField, sortOrder
   ) { songList, query, field, order ->
     var result = songList
     if (query.isNotBlank()) {
@@ -131,7 +128,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val filteredAlbums: StateFlow<List<MusicAlbum>> = combine(
-    _albums, _searchQuery, _sortField, _sortOrder
+    _albums, _searchQuery, sortField, sortOrder
   ) { albumList, query, field, order ->
     var result = albumList
     if (query.isNotBlank()) {
@@ -151,7 +148,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val filteredArtists: StateFlow<List<MusicArtist>> = combine(
-    _artists, _searchQuery, _sortField, _sortOrder
+    _artists, _searchQuery, sortField, sortOrder
   ) { artistList, query, field, order ->
     var result = artistList
     if (query.isNotBlank()) {
@@ -250,19 +247,20 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   }
 
   fun setSortField(field: MusicSortField) {
-    _sortField.value = field
+    browserPreferences.musicSortField.set(field)
   }
 
   fun toggleSortOrder() {
-    _sortOrder.value = if (_sortOrder.value == MusicSortOrder.ASCENDING) {
+    val nextOrder = if (sortOrder.value == MusicSortOrder.ASCENDING) {
       MusicSortOrder.DESCENDING
     } else {
       MusicSortOrder.ASCENDING
     }
+    browserPreferences.musicSortOrder.set(nextOrder)
   }
 
   fun setSortOrder(order: MusicSortOrder) {
-    _sortOrder.value = order
+    browserPreferences.musicSortOrder.set(order)
   }
 
   fun toggleViewMode() {

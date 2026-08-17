@@ -116,6 +116,9 @@
   <string name="pref_autoplay_next_video_title">Autoplay next video</string>
   <string name="pref_autoplay_next_video_summary">Automatically play next video when current ends</string>
   <string name="pref_autoplay_next_video_summary_disabled">Stay on current video when it ends</string>
+  <string name="pref_autoplay_next_audio_title">Autoplay next audio</string>
+  <string name="pref_autoplay_next_audio_summary">Automatically play next audio track when current ends</string>
+  <string name="pref_autoplay_next_audio_summary_disabled">Stay on current audio track when it ends</string>
   <string name="pref_auto_pip_title">Auto Picture-in-Picture</string>
   <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
   <string name="pref_enable_video_mini_player_title">Enable Video Mini Player</string>

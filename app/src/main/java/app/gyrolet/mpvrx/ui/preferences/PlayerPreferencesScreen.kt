@@ -239,6 +239,26 @@ object PlayerPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              val autoplayNextAudio by preferences.autoplayNextAudio.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_autoplay_next_audio_title),
+                value = autoplayNextAudio,
+                onValueChange = preferences.autoplayNextAudio::set,
+                title = { Text(stringResource(R.string.pref_autoplay_next_audio_title)) },
+                summary = {
+                  Text(
+                    if (autoplayNextAudio) {
+                      stringResource(R.string.pref_autoplay_next_audio_summary)
+                    } else {
+                      stringResource(R.string.pref_autoplay_next_audio_summary_disabled)
+                    },
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               val playlistMode by preferences.playlistMode.collectAsState()
               SwitchPreference(
                 value = playlistMode,
