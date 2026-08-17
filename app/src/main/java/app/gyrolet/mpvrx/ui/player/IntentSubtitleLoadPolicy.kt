@@ -21,22 +21,37 @@ internal object IntentSubtitleLoadPolicy {
     enabledSubtitles: List<T>,
     hasEnabledSubtitleExtra: Boolean,
   ): List<IntentSubtitleLoadEntry<T>> {
-    if (hasEnabledSubtitleExtra) {
-      return enabledSubtitles.distinct().map { enabledSubtitle ->
-        IntentSubtitleLoadEntry(
-          value = enabledSubtitle,
-          metadataIndex = subtitles.indexOf(enabledSubtitle),
-          select = true,
+    val enabledSet = enabledSubtitles.toSet()
+    val loaded = mutableListOf<IntentSubtitleLoadEntry<T>>()
+    val seen = mutableSetOf<T>()
+
+    for ((index, subtitle) in subtitles.withIndex()) {
+      if (seen.add(subtitle)) {
+        val isSelected = hasEnabledSubtitleExtra && enabledSet.contains(subtitle)
+        loaded.add(
+          IntentSubtitleLoadEntry(
+            value = subtitle,
+            metadataIndex = index,
+            select = isSelected,
+          ),
         )
       }
     }
 
-    return subtitles.mapIndexed { index, subtitle ->
-      IntentSubtitleLoadEntry(
-        value = subtitle,
-        metadataIndex = index,
-        select = false,
-      )
+    if (hasEnabledSubtitleExtra) {
+      for (enabledSubtitle in enabledSubtitles) {
+        if (seen.add(enabledSubtitle)) {
+          loaded.add(
+            IntentSubtitleLoadEntry(
+              value = enabledSubtitle,
+              metadataIndex = subtitles.indexOf(enabledSubtitle).takeIf { it >= 0 } ?: -1,
+              select = true,
+            ),
+          )
+        }
+      }
     }
+
+    return loaded
   }
 }

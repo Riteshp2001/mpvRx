@@ -2679,13 +2679,13 @@ class PlayerActivity :
    * @param extras Bundle containing subtitle URIs
    */
   private fun addSubtitlesFromExtras(extras: Bundle) {
-    if (!extras.containsKey("subs")) return
+    if (!extras.containsKey("subs") && !extras.containsKey("subs.enable")) return
 
-    val subList = Utils.getParcelableArray<Uri>(extras, "subs").toList().orEmpty()
-    val subsToEnable = Utils.getParcelableArray<Uri>(extras, "subs.enable").toList().orEmpty()
+    val subList = extractSubtitleUriList(extras, "subs")
+    val subsToEnable = extractSubtitleUriList(extras, "subs.enable")
     val hasSubsToEnable = extras.containsKey("subs.enable")
-    val subtitleTitles = extras.getStringArray("subs.titles").orEmpty()
-    val subtitleLanguages = extras.getStringArray("subs.langs").orEmpty()
+    val subtitleTitles = extractSubtitleStringArray(extras, "subs.name", "subs.titles", "subs.filename")
+    val subtitleLanguages = extractSubtitleStringArray(extras, "subs.langs", "subs.languages")
     val subtitleEntries =
       IntentSubtitleLoadPolicy.entriesToLoad(
         subtitles = subList,
@@ -2702,17 +2702,25 @@ class PlayerActivity :
           val subfile = suburi.resolveUri(this@PlayerActivity) ?: continue
           val flag = if (entry.select) "select" else "auto"
           val title =
-            subtitleTitles
-              .getOrNull(entry.metadataIndex)
-              ?.trim()
-              .orEmpty()
-              .ifBlank { null }
+            if (entry.metadataIndex >= 0) {
+              subtitleTitles
+                .getOrNull(entry.metadataIndex)
+                ?.trim()
+                .orEmpty()
+                .ifBlank { null }
+            } else {
+              null
+            }
           val language =
-            subtitleLanguages
-              .getOrNull(entry.metadataIndex)
-              ?.trim()
-              .orEmpty()
-              .ifBlank { null }
+            if (entry.metadataIndex >= 0) {
+              subtitleLanguages
+                .getOrNull(entry.metadataIndex)
+                ?.trim()
+                .orEmpty()
+                .ifBlank { null }
+            } else {
+              null
+            }
           val displayTitle = title ?: language
 
           withContext(Dispatchers.Main.immediate) {
@@ -2727,10 +2735,17 @@ class PlayerActivity :
               }
             }.onSuccess {
               val trackCountAfter = PlaybackSession.getPropertyInt("track-list/count") ?: 0
-              if (displayTitle != null && trackCountAfter > trackCountBefore) {
+              if (trackCountAfter > trackCountBefore) {
                 val newTrackIndex = trackCountAfter - 1
-                runCatching {
-                  PlaybackSession.setPropertyString("track-list/$newTrackIndex/title", displayTitle)
+                if (displayTitle != null) {
+                  runCatching {
+                    PlaybackSession.setPropertyString("track-list/$newTrackIndex/title", displayTitle)
+                  }
+                }
+                if (language != null) {
+                  runCatching {
+                    PlaybackSession.setPropertyString("track-list/$newTrackIndex/lang", language)
+                  }
                 }
               }
             }.onFailure { error ->
@@ -2739,6 +2754,37 @@ class PlayerActivity :
           }
         }
       }
+  }
+
+  private fun extractSubtitleUriList(extras: Bundle, key: String): List<Uri> {
+    val fromParcelableArray = runCatching { Utils.getParcelableArray<Uri>(extras, key)?.toList() }.getOrNull()
+    if (!fromParcelableArray.isNullOrEmpty()) return fromParcelableArray
+
+    val fromParcelableList = runCatching {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        extras.getParcelableArrayList(key, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        extras.getParcelableArrayList<Uri>(key)
+      }
+    }.getOrNull()
+    if (!fromParcelableList.isNullOrEmpty()) return fromParcelableList
+
+    val fromStringArray = extras.getStringArray(key)?.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
+    if (!fromStringArray.isNullOrEmpty()) return fromStringArray
+
+    val fromStringList = extras.getStringArrayList(key)?.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
+    if (!fromStringList.isNullOrEmpty()) return fromStringList
+
+    return emptyList()
+  }
+
+  private fun extractSubtitleStringArray(extras: Bundle, vararg keys: String): Array<String> {
+    for (key in keys) {
+      extras.getStringArray(key)?.let { return it }
+      extras.getStringArrayList(key)?.let { return it.toTypedArray() }
+    }
+    return emptyArray()
   }
 
   /**

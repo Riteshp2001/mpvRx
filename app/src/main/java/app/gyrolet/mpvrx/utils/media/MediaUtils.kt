@@ -320,6 +320,10 @@ object MediaUtils {
     if (effectiveSubtitleTracks.isNotEmpty()) {
       intent.putExtra("subs", effectiveSubtitleTracks.map { it.first }.toTypedArray())
       intent.putExtra(
+        "subs.name",
+        effectiveSubtitleTracks.map { (_, track) -> track.label.ifBlank { "" } }.toTypedArray(),
+      )
+      intent.putExtra(
         "subs.titles",
         effectiveSubtitleTracks.map { (_, track) -> track.label.ifBlank { "" } }.toTypedArray(),
       )
