@@ -1215,13 +1215,8 @@ fun AudioPlayerControls(
         position = currentPosSec,
         committedPosition = currentPosSec,
         duration = currentDurSec.coerceAtLeast(1f),
-        onValueChangeStarted = viewModel::beginLegacySeekPreview,
-        onValueChange = { value ->
-          viewModel.updateLegacySeekPreview(value.toDouble(), currentDurSec.toDouble())
-        },
-        onValueChangeFinished = { targetPosition ->
-          viewModel.commitLegacySeekPreview(targetPosition.toDouble(), currentDurSec.toDouble())
-        },
+        onValueChange = { value -> viewModel.previewSeekTo(value.toInt()) },
+        onValueChangeFinished = { targetPosition -> viewModel.seekTo(targetPosition.toInt(), fast = false) },
         timersInverted = Pair(false, invertDuration),
         durationTimerOnCLick = { playerPreferences.invertDuration.set(!invertDuration) },
         positionTimerOnClick = {},

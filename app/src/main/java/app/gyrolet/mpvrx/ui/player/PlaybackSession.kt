@@ -629,24 +629,7 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setPropertyBoolean(
     property: String,
     value: Boolean,
-  ) = withCore(Unit) { setPropertyBooleanLocked(property, value) }
-
-  /** Updates a boolean property only while the media that requested it is still active. */
-  fun setPropertyBooleanForGeneration(
-    expectedGeneration: Long,
-    property: String,
-    value: Boolean,
-  ): Boolean =
-    nativeLock.withLock {
-      if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
-      setPropertyBooleanLocked(property, value)
-      true
-    }
-
-  private fun setPropertyBooleanLocked(
-    property: String,
-    value: Boolean,
-  ) {
+  ) = withCore(Unit) {
     if (property == "pause") {
       desiredPaused = value
       // During a replacement load the native core deliberately stays paused until FILE_LOADED.
