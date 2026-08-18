@@ -15,6 +15,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Build
 import android.util.LruCache
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
@@ -118,7 +119,7 @@ class ThumbnailRepository(
     withContext(Dispatchers.IO) {
       val key = thumbnailKey(video, widthPx, heightPx)
 
-      if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+      if (isNetworkUrl(video.path) && !isNetworkThumbnailAllowed(video.path)) {
         return@withContext null
       }
 
@@ -179,7 +180,7 @@ class ThumbnailRepository(
     heightPx: Int,
   ): Bitmap? =
     withContext(Dispatchers.IO) {
-      if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+      if (isNetworkUrl(video.path) && !isNetworkThumbnailAllowed(video.path)) {
         return@withContext null
       }
 
@@ -203,7 +204,7 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? {
-    if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+    if (isNetworkUrl(video.path) && !isNetworkThumbnailAllowed(video.path)) {
       return null
     }
 
@@ -624,6 +625,18 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? {
+    val jellyfinImageUrls = extractJellyfinImageUrls(video.path, maxOf(widthPx, heightPx, 400))
+    for (url in jellyfinImageUrls) {
+      val jellyfinBitmap = fetchHttpImage(url)
+      if (jellyfinBitmap != null) {
+        return scaleBitmap(jellyfinBitmap, widthPx, heightPx)
+      }
+    }
+
+    if (!appearancePreferences.showNetworkThumbnails.get()) {
+      return null
+    }
+
     val strategy =
       browserPreferences.thumbnailMode.get().toThumbnailStrategy(
         browserPreferences.thumbnailFramePosition.get(),
@@ -639,6 +652,64 @@ class ThumbnailRepository(
 
     return scaleBitmap(rotated, widthPx, heightPx)
   }
+
+  private fun isNetworkThumbnailAllowed(path: String): Boolean =
+    extractJellyfinImageUrls(path).isNotEmpty() || appearancePreferences.showNetworkThumbnails.get()
+
+  private fun extractJellyfinImageUrls(url: String, maxWidth: Int = 400): List<String> =
+    runCatching {
+      val uri = Uri.parse(url)
+      val pathSegments = uri.pathSegments
+      val videosIndex = pathSegments.indexOf("Videos")
+      val itemsIndex = pathSegments.indexOf("Items")
+      val audioIndex = pathSegments.indexOf("Audio")
+      val targetIndex =
+        when {
+          videosIndex != -1 -> videosIndex
+          itemsIndex != -1 -> itemsIndex
+          audioIndex != -1 -> audioIndex
+          else -> -1
+        }
+      if (targetIndex == -1 || targetIndex + 1 >= pathSegments.size) return emptyList()
+      val itemId = pathSegments[targetIndex + 1]
+      val apiKey = uri.getQueryParameter("api_key") ?: uri.getQueryParameter("ApiKey")
+      val scheme = uri.scheme ?: "http"
+      val authority = uri.encodedAuthority ?: return emptyList()
+      val subPathSegments = pathSegments.subList(0, targetIndex)
+      val base =
+        if (subPathSegments.isEmpty()) {
+          "$scheme://$authority"
+        } else {
+          "$scheme://$authority/" + subPathSegments.joinToString("/")
+        }
+      val tokenParam = if (!apiKey.isNullOrBlank()) "&api_key=$apiKey" else ""
+      listOf(
+        "$base/Items/$itemId/Images/Primary?maxWidth=$maxWidth&quality=80$tokenParam",
+        "$base/Items/$itemId/Images/Primary?fallback=true&maxWidth=$maxWidth&quality=80$tokenParam",
+        "$base/Items/$itemId/Images/Thumb?maxWidth=$maxWidth&quality=80$tokenParam",
+        "$base/Items/$itemId/Images/Backdrop/0?maxWidth=$maxWidth&quality=80$tokenParam",
+      )
+    }.getOrDefault(emptyList())
+
+  private suspend fun fetchHttpImage(url: String): Bitmap? =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val connection =
+          (java.net.URL(url).openConnection() as java.net.HttpURLConnection).apply {
+            connectTimeout = 4000
+            readTimeout = 6000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "mpvRx/1.0")
+          }
+        if (connection.responseCode in 200..299) {
+          connection.inputStream.use { stream ->
+            BitmapFactory.decodeStream(stream)
+          }
+        } else {
+          null
+        }
+      }.getOrNull()
+    }
 
   private fun extractNetworkVideoFrame(
     url: String,

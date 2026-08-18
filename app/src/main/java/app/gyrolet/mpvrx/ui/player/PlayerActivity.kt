@@ -3103,7 +3103,9 @@ class PlayerActivity :
   }
 
   private fun getPreferredCurrentTitle(): String =
-    getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() } ?: fileName
+    getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
+      ?: networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
+      ?: fileName
 
   private fun shouldForceCurrentMediaTitle(): Boolean =
     getPlaylistItemByIndex(playlistIndex)?.fileName?.isNotBlank() == true ||
@@ -4293,8 +4295,19 @@ class PlayerActivity :
           else -> "normal"
         }
 
-      // Prioritize intent title first if provided and valid
-      val intentTitle = intent.getStringExtra("title")
+      // Prioritize explicit title from playlist or intent
+      val resolvedExplicitTitle =
+        getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
+          ?: networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
+          ?: intent.getStringExtra("title")
+          ?: intent.getStringExtra("torrent_media_title")
+
+      val resolvedFileName =
+        if (fileName.isBlank() || fileName.equals("stream.mkv", ignoreCase = true) || fileName.equals("stream", ignoreCase = true)) {
+          resolvedExplicitTitle ?: fileName
+        } else {
+          fileName
+        }
 
       // Get parsed video title from MPV
       val mpvTitle =
@@ -4304,8 +4317,8 @@ class PlayerActivity :
 
       val videoTitle =
         when {
-          !HttpUtils.isLikelyJunkTitle(intentTitle) -> intentTitle
-          !HttpUtils.isLikelyJunkTitle(mpvTitle) && mpvTitle != fileName -> mpvTitle
+          !HttpUtils.isLikelyJunkTitle(resolvedExplicitTitle) -> resolvedExplicitTitle
+          !HttpUtils.isLikelyJunkTitle(mpvTitle) && mpvTitle != resolvedFileName -> mpvTitle
           else -> null
         }
 
@@ -4343,7 +4356,7 @@ class PlayerActivity :
 
       RecentlyPlayedOps.addRecentlyPlayed(
         filePath = filePath,
-        fileName = fileName,
+        fileName = resolvedFileName,
         videoTitle = videoTitle,
         duration = duration,
         fileSize = fileSize,
@@ -4353,7 +4366,7 @@ class PlayerActivity :
       )
 
       Log.d(TAG, "Saved recently played: $filePath")
-      Log.d(TAG, "  - fileName: $fileName")
+      Log.d(TAG, "  - fileName: $resolvedFileName")
       Log.d(TAG, "  - videoTitle: $videoTitle")
       Log.d(TAG, "  - duration: ${duration}ms")
       Log.d(TAG, "  - size: ${fileSize}B")
@@ -5861,17 +5874,20 @@ class PlayerActivity :
       viewModel.setMediaTitle(fileName)
     }
 
-    // Update media session metadata
-    lifecycleScope.launch {
+    // Update media session metadata and save recently played
+    lifecycleScope.launch(Dispatchers.IO) {
       kotlinx.coroutines.delay(100) // Wait for MPV to load the file
       val durationMs = (PlaybackSession.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L
-      updateMediaSessionMetadata(
-        title = fileName,
-        durationMs = durationMs,
-      )
-      syncBackgroundPlaybackService(updateThumbnail = true)
-      // Refresh playlist items to update the currently playing indicator
-      viewModel.refreshPlaylistItems()
+      withContext(Dispatchers.Main) {
+        updateMediaSessionMetadata(
+          title = fileName,
+          durationMs = durationMs,
+        )
+        syncBackgroundPlaybackService(updateThumbnail = true)
+        // Refresh playlist items to update the currently playing indicator
+        viewModel.refreshPlaylistItems()
+      }
+      saveRecentlyPlayedForUri(uri, fileName)
     }
   }
 
@@ -6056,11 +6072,28 @@ class PlayerActivity :
           }
         }
 
+      val isGenericStream =
+        name.isBlank() ||
+          name.equals("stream.mkv", ignoreCase = true) ||
+          name.equals("stream", ignoreCase = true) ||
+          name.equals("stream.mp4", ignoreCase = true) ||
+          name.equals("stream.ts", ignoreCase = true)
+
+      val resolvedName =
+        if (isGenericStream) {
+          getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
+            ?: networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
+            ?: intent.getStringExtra("title")
+            ?: name
+        } else {
+          name
+        }
+
       // Get parsed video title from MPV
       val videoTitle =
         runCatching {
           PlaybackSession.getPropertyString("media-title")
-        }.getOrNull()?.takeIf { it.isNotBlank() && it != name }
+        }.getOrNull()?.takeIf { it.isNotBlank() && it != resolvedName && !HttpUtils.isLikelyJunkTitle(it) }
 
       // Get duration and file size from MPV
       val duration =
@@ -6096,7 +6129,7 @@ class PlayerActivity :
 
       RecentlyPlayedOps.addRecentlyPlayed(
         filePath = filePath,
-        fileName = name,
+        fileName = resolvedName,
         videoTitle = videoTitle,
         duration = duration,
         fileSize = fileSize,
@@ -6170,7 +6203,11 @@ class PlayerActivity :
 
   private fun loadNetworkPlaylistMetadata(intent: Intent) {
     networkPlaylistPaths = intent.getStringArrayListExtra("network_playlist_paths") ?: emptyList()
-    networkPlaylistTitles = intent.getStringArrayListExtra("network_playlist_titles") ?: emptyList()
+    networkPlaylistTitles =
+      intent.getStringArrayListExtra("network_playlist_titles")
+        ?: intent.getStringArrayListExtra("playlist_titles")
+        ?: intent.getStringArrayListExtra("titles")
+        ?: emptyList()
     networkPlaylistHeaders = emptyList()
     networkPlaylistConnectionId = intent.getLongExtra("network_playlist_connection_id", -1L)
   }
