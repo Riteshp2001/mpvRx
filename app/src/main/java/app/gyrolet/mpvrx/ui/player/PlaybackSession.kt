@@ -351,6 +351,23 @@ object PlaybackSession : MPVLib.EventObserver {
     }
   }
 
+  /**
+   * Silence the audio output immediately without pausing/stopping playback or altering the
+   * playback position.
+   *
+   * The deferred [onDestroy]/[cleanupMPV] teardown ([stop]) already mutes via the playback
+   * transition audio guard, but it only runs after the Android Activity is actually destroyed —
+   * leaving a window where the native audio buffer keeps playing after the user closes the player.
+   * Calling this the instant the user initiates a close mutes the output synchronously so no
+   * buffered tail escapes. It does not change `time-pos`, so the resume position captured in
+   * `onDestroy` stays accurate. The guard armed here is never restored on this teardown path
+   * ([stop] does not schedule a restore, and SHUTDOWN clears it with `restoreMute = false`),
+   * so the output remains muted through destruction.
+   */
+  fun muteForTeardown() {
+    withCore(Unit) { beginPlaybackTransitionAudioGuardLocked() }
+  }
+
   private fun destroyLocked() {
     updateState { it.copy(phase = PlaybackPhase.STOPPING) }
     desiredPaused = true

@@ -1395,6 +1395,27 @@ class PlayerActivity :
     abandonAudioFocus()
   }
 
+  /**
+   * Mute the audio output the moment the user closes the player, so any buffered audio cannot
+   * keep playing during the gap before the deferred [cleanupMPV] teardown ([PlaybackSession.stop])
+   * actually mutes it in [onDestroy].
+   *
+   * Skipped when audio is intentionally meant to outlive the close: an active background audio
+   * session, or when the Mini Player is enabled and will take over playback. In those cases the
+   * existing teardown paths handle (or deliberately preserve) the audio.
+   */
+  private fun silenceAudioOnClose() {
+    if (!mpvInitialized) return
+    val keepBackgroundAlive =
+      PlayerLifecyclePolicy.shouldKeepBackgroundPlaybackAliveOnDestroy(
+        backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
+        backgroundPlaybackSessionActive = isBackgroundPlaybackSessionActive,
+      )
+    if (!keepBackgroundAlive && !isMiniPlayerEnabled()) {
+      PlaybackSession.muteForTeardown()
+    }
+  }
+
   private fun cleanupReceivers() {
     if (noisyReceiverRegistered) {
       runCatching {
@@ -1459,6 +1480,11 @@ class PlayerActivity :
       // System will handle UI restoration automatically
       isReady = false
 
+      // Mute audio immediately so buffered audio cannot keep playing until the deferred
+      // onDestroy/cleanupMPV teardown runs. Skipped when audio is meant to survive the close
+      // (background audio session active, or the Mini Player will take over).
+      silenceAudioOnClose()
+
       // Clean up service when finishing
       if (!isBackgroundPlaybackSessionActive) {
         endBackgroundPlayback()
@@ -1491,6 +1517,11 @@ class PlayerActivity :
       // System will handle UI restoration automatically
       isReady = false
       isUserFinishing = true
+
+      // Mute audio immediately so buffered audio cannot keep playing until the deferred
+      // onDestroy/cleanupMPV teardown runs. Skipped when audio is meant to survive the close
+      // (background audio session active, or the Mini Player will take over).
+      silenceAudioOnClose()
 
       // Clean up service when finishing
       if (!isBackgroundPlaybackSessionActive) {
