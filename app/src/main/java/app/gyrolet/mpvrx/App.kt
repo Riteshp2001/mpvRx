@@ -51,13 +51,11 @@ class App :
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
   private val networkAutoConnectStarted = AtomicBoolean(false)
   private val metadataMaintenanceStarted = AtomicBoolean(false)
-  private val fastThumbnailsStarted = AtomicBoolean(false)
   private var startedActivityCount = 0
 
   companion object {
     private const val TAG = "App"
     private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
-    private const val THUMBNAIL_WARMUP_DELAY_MS = 1_500L
     private const val IDLE_MPV_CORE_GRACE_MS = 3L * 60L * 1000L
   }
 
@@ -84,6 +82,12 @@ class App :
     }
     registerActivityLifecycleCallbacks(this)
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
+
+    // Keep the native thumbnail engine ready before any player/browser UI can request a frame.
+    // This restores the original ThumbFast initialization behavior and removes the foreground
+    // warm-up race where an early scrub could arrive before FastThumbnails was initialized.
+    FastThumbnails.initialize(this)
+
     startIdleMpvCoreReaper()
 
     applicationScope.launch {
@@ -108,8 +112,7 @@ class App :
     }
 
     // TextMate grammar/theme assets for the script editor are initialized lazily on first use.
-    // Metadata cache maintenance and native thumbnail startup are intentionally kept out of the
-    // Application cold-start path so they cannot compete with first composition / first frame.
+    // Metadata cache maintenance remains off the Application cold-start path.
 
     // MediaStore is Android's source of truth for the normal library. Do not trigger a recursive
     // scan of the entire external-storage root from process startup: on large libraries that can
@@ -120,7 +123,6 @@ class App :
   override fun onActivityStarted(activity: Activity) {
     if (startedActivityCount++ == 0) {
       getKoin().get<app.gyrolet.mpvrx.domain.syncplay.SyncplayManager>().onAppForegrounded()
-      scheduleFastThumbnailWarmupOnce()
       scheduleMetadataMaintenanceOnce()
     }
   }
@@ -193,22 +195,6 @@ class App :
           Log.d(TAG, "Destroying libmpv after idle grace period")
           PlaybackSession.destroy()
         }
-      }
-    }
-  }
-
-  private fun scheduleFastThumbnailWarmupOnce() {
-    if (!fastThumbnailsStarted.compareAndSet(false, true)) return
-    applicationScope.launch(Dispatchers.Default) {
-      try {
-        delay(THUMBNAIL_WARMUP_DELAY_MS)
-        FastThumbnails.initialize(this@App)
-      } catch (cancellation: CancellationException) {
-        fastThumbnailsStarted.set(false)
-        throw cancellation
-      } catch (error: Exception) {
-        fastThumbnailsStarted.set(false)
-        Log.w(TAG, "Deferred FastThumbnails initialization failed", error)
       }
     }
   }
