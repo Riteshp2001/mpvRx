@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.ui.browser.jellyfin
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -507,16 +508,54 @@ class JellyfinViewModel(
       dbJob.await()
       val externalSubs = subsDeferred.await()
 
+      val currentList = _uiState.value.currentItems
+      val isEpisodePlayback = item.type == "Episode" || item.seriesName != null
+      val (playlistUris, playlistTitles, playlistIndex) =
+        if (isEpisodePlayback && currentList.isNotEmpty()) {
+          val episodeList = currentList.filter { it.type == "Episode" || it.isVideo }
+          if (episodeList.size > 1) {
+            val uris = ArrayList<Uri>(episodeList.size)
+            val titles = ArrayList<String>(episodeList.size)
+            var targetIdx = 0
+            episodeList.forEachIndexed { index, ep ->
+              if (ep.id == item.id) targetIdx = index
+              uris.add(Uri.parse(jellyfinRepository.getStreamUrl(server, ep)))
+              titles.add(
+                when {
+                  ep.seriesName != null && ep.indexNumber != null ->
+                    "${ep.seriesName} S${ep.parentIndexNumber ?: 1}E${ep.indexNumber} - ${ep.name}"
+                  else -> ep.name
+                },
+              )
+            }
+            Triple(uris, titles, targetIdx)
+          } else {
+            Triple(emptyList<Uri>(), emptyList<String>(), 0)
+          }
+        } else {
+          Triple(emptyList<Uri>(), emptyList<String>(), 0)
+        }
+
+      val headers =
+        mapOf(
+          "X-Emby-Token" to server.accessToken,
+          "X-Emby-Authorization" to JellyfinClient.authHeader(server.accessToken),
+        )
+
       withContext(Dispatchers.Main) {
         MediaUtils.playFile(
           source = streamUrl,
           context = context,
           launchSource = "jellyfin_stream",
           title = itemTitle,
+          headers = headers,
           mediaDescription = item.overview,
           posterUrl = posterUrl,
           backdropUrl = backdropUrl,
           subtitleTracks = externalSubs,
+          playlist = playlistUris,
+          playlistIndex = playlistIndex,
+          playlistTitles = playlistTitles,
         )
       }
     }
