@@ -133,12 +133,17 @@ class JellyfinClient(
           val userId = userObj["Id"]?.jsonPrimitive?.content ?: throw IOException("Missing User.Id in response")
           val uname = userObj["Name"]?.jsonPrimitive?.content ?: username
           val serverId = root["ServerId"]?.jsonPrimitive?.content
+          val configObj = userObj["Configuration"]?.jsonObject
+          val audioLang = configObj?.get("AudioLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+          val subLang = configObj?.get("SubtitleLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
 
           JellyfinAuthResult(
             accessToken = accessToken,
             userId = userId,
             username = uname,
             serverId = serverId,
+            audioLanguage = audioLang,
+            subtitleLanguage = subLang,
           )
         }
       }
@@ -171,10 +176,16 @@ class JellyfinClient(
           val uname = userObj["Name"]?.jsonPrimitive?.content ?: "User"
           val serverId = userObj["ServerId"]?.jsonPrimitive?.content
 
+          val configObj = userObj["Configuration"]?.jsonObject
+          val audioLang = configObj?.get("AudioLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+          val subLang = configObj?.get("SubtitleLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+
           JellyfinUser(
             id = userId,
             name = uname,
             serverId = serverId,
+            audioLanguage = audioLang,
+            subtitleLanguage = subLang,
           )
         }
       }

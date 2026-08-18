@@ -25,6 +25,8 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
+import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
@@ -73,6 +75,8 @@ class JellyfinViewModel(
   KoinComponent {
   private val jellyfinRepository: JellyfinRepository by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val audioPreferences: AudioPreferences by inject()
 
   private val _uiState = MutableStateFlow(JellyfinUiState())
   val uiState: StateFlow<JellyfinUiState> = _uiState.asStateFlow()
@@ -385,6 +389,14 @@ class JellyfinViewModel(
           if (authMode == JellyfinAuthMode.CREDENTIALS) {
             val authResult =
               jellyfinRepository.authenticate(cleanUrl, username, password).getOrThrow()
+
+            if (subtitlesPreferences.preferredLanguages.get().isBlank() && !authResult.subtitleLanguage.isNullOrBlank()) {
+              subtitlesPreferences.preferredLanguages.set(authResult.subtitleLanguage)
+            }
+            if (audioPreferences.preferredLanguages.get().isBlank() && !authResult.audioLanguage.isNullOrBlank()) {
+              audioPreferences.preferredLanguages.set(authResult.audioLanguage)
+            }
+
             JellyfinServer(
               name = serverName.ifBlank { "Jellyfin (${authResult.username})" },
               serverUrl = cleanUrl,
@@ -395,6 +407,14 @@ class JellyfinViewModel(
             )
           } else {
             val user = jellyfinRepository.validateToken(cleanUrl, token).getOrThrow()
+
+            if (subtitlesPreferences.preferredLanguages.get().isBlank() && !user.subtitleLanguage.isNullOrBlank()) {
+              subtitlesPreferences.preferredLanguages.set(user.subtitleLanguage)
+            }
+            if (audioPreferences.preferredLanguages.get().isBlank() && !user.audioLanguage.isNullOrBlank()) {
+              audioPreferences.preferredLanguages.set(user.audioLanguage)
+            }
+
             JellyfinServer(
               name = serverName.ifBlank { "Jellyfin (${user.name})" },
               serverUrl = cleanUrl,

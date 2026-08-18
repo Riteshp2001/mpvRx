@@ -2715,12 +2715,27 @@ class PlayerViewModel : ViewModel(),
   }
 
   private fun maybeAutoSkipIntro(positionSeconds: Double) {
+    val totalDur = currentDurationSeconds()
+    val hasNextItem = PlaybackSession.hasNext()
     val activeSegment =
       skipSegmentsSnapshot.firstOrNull { segment ->
         positionSeconds in segment.startSeconds..segment.endSeconds && (segment.endSeconds - positionSeconds) >= 1.0
+      } ?: if (hasNextItem && totalDur > 45.0 && (totalDur - positionSeconds) in 1.0..30.0) {
+        SkipSegment(
+          type = SkipSegmentType.NEXT_EPISODE,
+          startSeconds = totalDur - 30.0,
+          endSeconds = totalDur,
+          source = "auto_outro",
+        )
+      } else {
+        null
       }
+
     val showChip =
-      activeSegment != null && (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
+      activeSegment != null && (
+        activeSegment.type == SkipSegmentType.NEXT_EPISODE ||
+          (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
+      )
     if (_currentSkippableSegment.value != activeSegment) {
       _currentSkippableSegment.value = activeSegment
     }
@@ -2737,29 +2752,38 @@ class PlayerViewModel : ViewModel(),
         SkipSegmentType.OUTRO -> playerPreferences.autoSkipOutro.get()
         SkipSegmentType.CREDITS -> playerPreferences.autoSkipOutro.get()
         SkipSegmentType.PREVIEW -> playerPreferences.autoSkipOutro.get()
+        SkipSegmentType.NEXT_EPISODE -> false
       }
     if (!autoSkipEnabled) return
 
     skippedSegmentTypes += activeSegment.type
-    PlaybackSession.setPropertyDouble("time-pos", activeSegment.endSeconds)
-    syncplayManager.updatePlayerState(
-      activeSegment.endSeconds,
-      PlaybackSession.getPropertyBoolean("pause") ?: false,
-      doSeek = true,
-    )
-    showToast("${activeSegment.label} (auto)")
+    if ((activeSegment.type == SkipSegmentType.OUTRO || activeSegment.type == SkipSegmentType.CREDITS) && hasNext()) {
+      playNext()
+    } else {
+      PlaybackSession.setPropertyDouble("time-pos", activeSegment.endSeconds)
+      syncplayManager.updatePlayerState(
+        activeSegment.endSeconds,
+        PlaybackSession.getPropertyBoolean("pause") ?: false,
+        doSeek = true,
+      )
+      showToast("${activeSegment.label} (auto)")
+    }
   }
 
   fun skipActiveSegment() {
     val segment = _currentSkippableSegment.value ?: return
     skippedSegmentTypes += segment.type
-    PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
-    syncplayManager.updatePlayerState(
-      segment.endSeconds,
-      PlaybackSession.getPropertyBoolean("pause") ?: false,
-      doSeek = true,
-    )
-    showToast("${segment.label}")
+    if ((segment.type == SkipSegmentType.OUTRO || segment.type == SkipSegmentType.CREDITS || segment.type == SkipSegmentType.NEXT_EPISODE) && hasNext()) {
+      playNext()
+    } else {
+      PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
+      syncplayManager.updatePlayerState(
+        segment.endSeconds,
+        PlaybackSession.getPropertyBoolean("pause") ?: false,
+        doSeek = true,
+      )
+      showToast("${segment.label}")
+    }
   }
 
   private fun mergeSkipSegments() {

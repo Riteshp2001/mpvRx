@@ -17,6 +17,7 @@ enum class SkipSegmentType {
   OUTRO,
   CREDITS,
   PREVIEW,
+  NEXT_EPISODE,
   ;
 
   val label: String
@@ -27,6 +28,7 @@ enum class SkipSegmentType {
         OUTRO -> "Skip outro"
         CREDITS -> "Skip credits"
         PREVIEW -> "Skip preview"
+        NEXT_EPISODE -> "Next episode"
       }
 
   val accentColor: Color
@@ -37,6 +39,7 @@ enum class SkipSegmentType {
         OUTRO -> Color(0xFFE05666)
         CREDITS -> Color(0xFFA64DFF)
         PREVIEW -> Color(0xFF00D4C7)
+        NEXT_EPISODE -> Color(0xFF4CAF50)
       }
 }
 
