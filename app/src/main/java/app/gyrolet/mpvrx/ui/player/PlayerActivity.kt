@@ -3593,10 +3593,6 @@ class PlayerActivity :
       }
     val loadedFileName = fileName
     val loadedMediaIdentifier = mediaIdentifier
-    // The incoming video is now the one whose state should be persisted going forward.
-    // Until this point (mid-transition) activeSaveMediaIdentifier still pointed at the
-    // outgoing video, so any save fired during the switch was attributed correctly.
-    if (loadedMediaIdentifier.isNotBlank()) activeSaveMediaIdentifier = loadedMediaIdentifier
     val loadedLegacyIdentifier = legacyMediaIdentifier
     val loadedIntent = Intent(intent)
     val loadedPlaylistIndex = playlistIndex
@@ -3627,6 +3623,14 @@ class PlayerActivity :
           loadGeneration = loadGeneration,
         )
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
+
+      // Only now re-point the persisted-state identifier at the incoming video. Its resume
+      // position has just been restored above, so any save that fires from here on lands on
+      // the correct (incoming) record with the resumed position. Until this point
+      // activeSaveMediaIdentifier still pointed at the outgoing video, so a save fired during
+      // the buffering transition could not stamp the incoming video's record with an un-resumed
+      // position (e.g. 0) and erase its saved progress.
+      if (loadedMediaIdentifier.isNotBlank()) activeSaveMediaIdentifier = loadedMediaIdentifier
 
       // Apply track selection logic (defaults only apply when no saved state)
       trackSelector.onFileLoaded(hasState)
