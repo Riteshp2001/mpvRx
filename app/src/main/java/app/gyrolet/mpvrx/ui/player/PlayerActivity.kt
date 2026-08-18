@@ -297,6 +297,21 @@ class PlayerActivity :
    */
   private var mediaIdentifier = ""
   private var legacyMediaIdentifier: String? = null
+
+  /**
+   * Identifier of the video whose playback state is currently being persisted.
+   *
+   * This is intentionally decoupled from [mediaIdentifier]: when switching playlist
+   * items, [mediaIdentifier] is updated to the *next* video before MPV has finished
+   * transitioning, but the still-loaded (previous) video is the one whose position
+   * must be saved. If a save fires in that window (e.g. onPause/onStop/onDestroy or a
+   * scheduled save), writing under the live [mediaIdentifier] would stamp the next
+   * video's record with the previous video's position — making "next" resume from
+   * where the prior item left off. [activeSaveMediaIdentifier] is only re-pointed to
+   * the incoming video inside [handleFileLoaded], so any save during the transition
+   * lands on the correct (outgoing) record.
+   */
+  private var activeSaveMediaIdentifier: String = ""
   private var pendingBackgroundPlaybackStart = false
 
   /**
@@ -3512,6 +3527,10 @@ class PlayerActivity :
       }
     val loadedFileName = fileName
     val loadedMediaIdentifier = mediaIdentifier
+    // The incoming video is now the one whose state should be persisted going forward.
+    // Until this point (mid-transition) activeSaveMediaIdentifier still pointed at the
+    // outgoing video, so any save fired during the switch was attributed correctly.
+    if (loadedMediaIdentifier.isNotBlank()) activeSaveMediaIdentifier = loadedMediaIdentifier
     val loadedLegacyIdentifier = legacyMediaIdentifier
     val loadedIntent = Intent(intent)
     val loadedPlaylistIndex = playlistIndex
@@ -3983,10 +4002,14 @@ class PlayerActivity :
   }
 
   private fun capturePlaybackStateSnapshot(mediaTitle: String): PlaybackStateSnapshot? {
-    if (mediaIdentifier.isBlank()) return null
+    // Use the save-specific identifier so a save fired mid-transition (when mediaIdentifier
+    // already points at the incoming item but MPV still reports the outgoing item's position)
+    // is written under the correct video's record.
+    val saveIdentifier = activeSaveMediaIdentifier.ifBlank { mediaIdentifier }
+    if (saveIdentifier.isBlank()) return null
 
     return PlaybackStateSnapshot(
-      mediaIdentifier = mediaIdentifier,
+      mediaIdentifier = saveIdentifier,
       mediaTitle = mediaTitle,
       currentPosition = readMpvIntSeconds("time-pos", viewModel.pos ?: 0),
       duration = readMpvIntSeconds("duration", viewModel.duration ?: 0),
