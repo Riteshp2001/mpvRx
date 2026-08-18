@@ -699,14 +699,6 @@ class PlayerActivity :
       loadPlaylistItemInternal(playlistIndex, saveCurrentPlaybackState = false)
     } else if (!attachedToCurrentSession && !awaitingRoomPlaylistRestore) {
       getPlayableUri(intent)?.let { playableUri ->
-        // Remind user if they forgot to set up yt-dlp
-        if (playableUri.startsWith("http") && !playableUri.substringAfterLast('/').contains('.')) {
-          val ytdlDir = YtdlpManager.getYtdlDir(this)
-          if (!File(ytdlDir, "yt-dlp").exists()) {
-            viewModel.showToast(getString(R.string.toast_need_ytdl))
-          }
-        }
-
         currentPlayableUri = playableUri
         isReady = false
         viewModel.onVideoLoadStarted()
@@ -4588,14 +4580,6 @@ class PlayerActivity :
           syncBackgroundPlaybackService(updateThumbnail = false)
         }
         return@let
-      }
-
-      // Remind user if they forgot to set up yt-dlp
-      if (uri.startsWith("http") && !uri.substringAfterLast('/').contains('.')) {
-        val ytdlDir = YtdlpManager.getYtdlDir(this)
-        if (!File(ytdlDir, "yt-dlp").exists()) {
-          viewModel.showToast(getString(R.string.toast_need_ytdl))
-        }
       }
 
       currentPlayableUri = uri
