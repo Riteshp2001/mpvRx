@@ -97,6 +97,18 @@ data class JellyfinItem(
       if (dur <= 0L) return 0f
       return (pos.toFloat() / dur.toFloat()).coerceIn(0f, 1f)
     }
+
+  val searchPriority: Int
+    get() =
+      when (type) {
+        "Series" -> 0
+        "Movie" -> 1
+        "CollectionFolder", "Folder" -> 2
+        "Season" -> 3
+        "Episode" -> 4
+        "Audio" -> 5
+        else -> 6
+      }
 }
 
 @Serializable

@@ -302,8 +302,14 @@ class JellyfinClient(
           val totalRecordCount = root["TotalRecordCount"]?.jsonPrimitive?.intOrNull ?: 0
           val itemsArray = root["Items"]?.jsonArray ?: JsonArray(emptyList())
           val items = itemsArray.map { parseItem(it.jsonObject) }
+          val sortedItems =
+            if (!searchTerm.isNullOrBlank()) {
+              items.sortedBy { it.searchPriority }
+            } else {
+              items
+            }
           app.gyrolet.mpvrx.domain.jellyfin.JellyfinQueryResult(
-            items = items,
+            items = sortedItems,
             totalRecordCount = if (totalRecordCount > 0) totalRecordCount else items.size,
             startIndex = startIndex,
           )
