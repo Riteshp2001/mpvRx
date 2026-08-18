@@ -85,6 +85,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -287,11 +288,8 @@ fun JellyfinContent(
           modifier =
             Modifier
               .clip(RoundedCornerShape(4.dp))
-              .clickable {
-                while (uiState.breadcrumbs.isNotEmpty()) {
-                  viewModel.navigateBack()
-                }
-              }.padding(horizontal = 4.dp, vertical = 2.dp),
+              .clickable { viewModel.navigateToRoot() }
+              .padding(horizontal = 4.dp, vertical = 2.dp),
         )
         uiState.breadcrumbs.forEachIndexed { index, crumb ->
           Icon(
@@ -310,8 +308,7 @@ fun JellyfinContent(
               Modifier
                 .clip(RoundedCornerShape(4.dp))
                 .clickable(enabled = !isLast) {
-                  val steps = uiState.breadcrumbs.size - 1 - index
-                  repeat(steps) { viewModel.navigateBack() }
+                  viewModel.navigateToBreadcrumb(index)
                 }.padding(horizontal = 4.dp, vertical = 2.dp),
           )
         }
@@ -957,8 +954,8 @@ private fun EmptyServersView(onAddClick: () -> Unit) {
       modifier = Modifier.size(80.dp),
     ) {
       Box(contentAlignment = Alignment.Center) {
-        Icon(
-          imageVector = Icons.RoundedFilled.BringYourOwnIp,
+        androidx.compose.material3.Icon(
+          painter = painterResource(R.drawable.ic_jellyfin),
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onPrimaryContainer,
           modifier = Modifier.size(40.dp),

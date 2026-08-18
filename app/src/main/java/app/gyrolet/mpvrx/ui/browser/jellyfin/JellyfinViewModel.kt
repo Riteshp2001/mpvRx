@@ -203,6 +203,34 @@ class JellyfinViewModel(
     return true
   }
 
+  /** Navigate directly to a breadcrumb by index — avoids a loop of sequential navigateBack calls. */
+  fun navigateToBreadcrumb(index: Int) {
+    val currentCrumbs = _uiState.value.breadcrumbs
+    if (index < 0 || index >= currentCrumbs.size) return
+
+    val updatedCrumbs = currentCrumbs.take(index + 1)
+    _uiState.update {
+      it.copy(
+        breadcrumbs = updatedCrumbs,
+        searchQuery = "",
+      )
+    }
+    val active = _uiState.value.activeServer ?: return
+    val target = updatedCrumbs.last()
+    loadItems(active, target.id, target.type, resetPagination = true)
+  }
+
+  fun navigateToRoot() {
+    _uiState.update {
+      it.copy(
+        breadcrumbs = emptyList(),
+        searchQuery = "",
+      )
+    }
+    val active = _uiState.value.activeServer ?: return
+    loadLibraries(active)
+  }
+
   private fun loadItems(
     server: JellyfinServer,
     parentId: String,

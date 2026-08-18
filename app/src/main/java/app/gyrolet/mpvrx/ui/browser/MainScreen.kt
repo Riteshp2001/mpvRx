@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -554,8 +555,8 @@ private fun TelegramPillNavigationBar(
                         modifier = Modifier.size(22.dp),
                       )
                     MainScreen.MainTab.JELLYFIN ->
-                      Icon(
-                        Icons.RoundedFilled.VideoLibrary,
+                      androidx.compose.material3.Icon(
+                        painter = painterResource(R.drawable.ic_jellyfin),
                         contentDescription = "Jellyfin",
                         tint = contentColor,
                         modifier = Modifier.size(22.dp),
