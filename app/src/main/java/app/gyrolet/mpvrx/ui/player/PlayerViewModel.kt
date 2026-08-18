@@ -4558,6 +4558,7 @@ class PlayerViewModel : ViewModel(),
 
   fun resetVideoZoom() {
     setVideoZoom(0f)
+    resetVideoPan()
   }
 
   // ==================== Frame Navigation ====================

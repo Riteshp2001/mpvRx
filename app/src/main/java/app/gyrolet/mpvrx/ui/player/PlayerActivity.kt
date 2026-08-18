@@ -137,7 +137,9 @@ import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import okhttp3.OkHttpClient
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 private enum class BackgroundPlaybackStartResult {
   Started,
@@ -990,6 +992,39 @@ class PlayerActivity :
           binding.player.scaleY = scale
           binding.player.translationX = panX
           binding.player.translationY = panY
+
+          if (canIssueMpvCommands()) {
+            val scaleByWindow = subtitlesPreferences.scaleByWindow.get()
+            val baseSubScale = subtitlesPreferences.subScale.get()
+            val baseSubPos = subtitlesPreferences.subPos.get()
+            val w = player.width.takeIf { it > 0 }?.toFloat()
+              ?: resources.displayMetrics.widthPixels.toFloat()
+            val h = player.height.takeIf { it > 0 }?.toFloat()
+              ?: resources.displayMetrics.heightPixels.toFloat()
+
+            if (scaleByWindow && (scale != 1f || panX != 0f || panY != 0f)) {
+              val compensatedSubScale = (baseSubScale / scale).coerceIn(0.05f, 10f)
+              PlaybackSession.setPropertyFloat("sub-scale", compensatedSubScale)
+              PlaybackSession.setPropertyFloat("secondary-sub-scale", compensatedSubScale)
+
+              val compensatedSubPos =
+                (50f + ((baseSubPos - 50f) - (panY / h) * 100f) / scale).roundToInt().coerceIn(0, 150)
+
+              val baseMarginX = 25f
+              val extraMarginX = if (scale > 1f) (w * (1f - 1f / scale) / 2f + abs(panX) / scale) else 0f
+              val compensatedMarginX = (baseMarginX + extraMarginX).roundToInt().coerceIn(0, (w / 2f).toInt())
+              PlaybackSession.setPropertyInt("sub-margin-x", compensatedMarginX)
+              PlaybackSession.setPropertyInt("secondary-sub-margin-x", compensatedMarginX)
+
+              applySubtitlePositions(compensatedSubPos, w, h)
+            } else {
+              PlaybackSession.setPropertyFloat("sub-scale", baseSubScale)
+              PlaybackSession.setPropertyFloat("secondary-sub-scale", baseSubScale)
+              PlaybackSession.setPropertyInt("sub-margin-x", 25)
+              PlaybackSession.setPropertyInt("secondary-sub-margin-x", 25)
+              applySubtitlePositions(baseSubPos, w, h)
+            }
+          }
         }
       }
     }
