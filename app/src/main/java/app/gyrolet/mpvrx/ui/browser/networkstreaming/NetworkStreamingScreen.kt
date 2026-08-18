@@ -105,6 +105,8 @@ import app.gyrolet.mpvrx.ui.browser.cards.NetworkConnectionCard
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddConnectionSheet
 import app.gyrolet.mpvrx.ui.browser.dialogs.EditConnectionSheet
+import app.gyrolet.mpvrx.ui.browser.jellyfin.JellyfinContent
+import app.gyrolet.mpvrx.ui.browser.jellyfin.JellyfinViewModel
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -121,6 +123,7 @@ private const val VIEWED_TORRENT_FILES_PREFS = "torrent_viewed_files"
 
 private enum class NetworkTab(val titleResId: Int) {
   LOCAL_NETWORK(R.string.ui_local_network),
+  JELLYFIN(R.string.ui_jellyfin),
   SYNC_PLAY(R.string.syncplay_title),
   TORRENT(R.string.ui_torrent_files),
 }
@@ -134,6 +137,8 @@ object NetworkStreamingScreen : Screen {
     val context = LocalContext.current
     val viewModel: NetworkStreamingViewModel =
       viewModel(factory = NetworkStreamingViewModel.factory(context.applicationContext as android.app.Application))
+    val jellyfinViewModel: JellyfinViewModel =
+      viewModel(factory = JellyfinViewModel.factory(context.applicationContext as android.app.Application))
     val torrentStreamingEngine = koinInject<TorrentStreamingEngine>()
     val streamEntryRepository = koinInject<NetworkStreamEntryRepository>()
     val wyzieSearchRepository = koinInject<WyzieSearchRepository>()
@@ -405,6 +410,9 @@ object NetworkStreamingScreen : Screen {
                   viewModel.updateConnection(conn.copy(autoConnect = autoConnect))
                 },
               )
+            }
+            NetworkTab.JELLYFIN -> {
+              JellyfinContent(viewModel = jellyfinViewModel)
             }
             NetworkTab.SYNC_PLAY -> {
               SyncPlayContent()

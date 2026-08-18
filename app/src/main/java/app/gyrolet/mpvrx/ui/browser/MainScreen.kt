@@ -105,6 +105,7 @@ object MainScreen : Screen {
     RECENTS,
     PLAYLISTS,
     NETWORK,
+    JELLYFIN,
   }
 
   // Use a companion object to store state more persistently
@@ -144,8 +145,8 @@ object MainScreen : Screen {
     NavigationBarState.updateBottomBarVisibility(shouldShow)
   }
 
+  @SuppressLint("ComposableNaming")
   @Composable
-  @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
   override fun Content() {
     var selectedTab by remember {
       mutableStateOf(persistentSelectedTab)
@@ -161,6 +162,7 @@ object MainScreen : Screen {
     val showRecentsTab by appearancePreferences.showRecentsTab.collectAsState()
     val showPlaylistsTab by appearancePreferences.showPlaylistsTab.collectAsState()
     val showNetworkTab by appearancePreferences.showNetworkTab.collectAsState()
+    val showJellyfinTab by appearancePreferences.showJellyfinTab.collectAsState()
     val hideNavigationBar = NavigationBarState.shouldHideNavigationBar
     val isPermissionDenied = NavigationBarState.isPermissionDenied
     val isDualPaneFolderSelected = NavigationBarState.isDualPaneFolderSelected
@@ -169,17 +171,20 @@ object MainScreen : Screen {
     val visibleTabs =
       remember(
         showHomeTab,
+        showMusicTab,
         showRecentsTab,
         showPlaylistsTab,
         showNetworkTab,
+        showJellyfinTab,
       ) {
-      buildList {
-        if (showHomeTab) add(MainTab.HOME)
-        if (showMusicTab) add(MainTab.MUSIC)
-        if (showRecentsTab) add(MainTab.RECENTS)
-        if (showPlaylistsTab) add(MainTab.PLAYLISTS)
-        if (showNetworkTab) add(MainTab.NETWORK)
-      }
+        buildList {
+          if (showHomeTab) add(MainTab.HOME)
+          if (showMusicTab) add(MainTab.MUSIC)
+          if (showRecentsTab) add(MainTab.RECENTS)
+          if (showPlaylistsTab) add(MainTab.PLAYLISTS)
+          if (showNetworkTab) add(MainTab.NETWORK)
+          if (showJellyfinTab) add(MainTab.JELLYFIN)
+        }
       }
 
     // Track whether the floating pill nav bar is on screen so the mini player can
@@ -306,6 +311,14 @@ object MainScreen : Screen {
       Box(modifier = Modifier.fillMaxSize()) {
         val fabBottomPadding = 88.dp
         val contentBottomPadding = fabBottomPadding + miniPlayerNavClearance
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val jellyfinViewModel: app.gyrolet.mpvrx.ui.browser.jellyfin.JellyfinViewModel =
+          androidx.lifecycle.viewmodel.compose.viewModel(
+            factory =
+              app.gyrolet.mpvrx.ui.browser.jellyfin.JellyfinViewModel.factory(
+                context.applicationContext as android.app.Application,
+              ),
+          )
 
         if (visibleTabs.isEmpty()) {
           CompositionLocalProvider(
@@ -332,6 +345,7 @@ object MainScreen : Screen {
                 MainTab.RECENTS -> RecentlyPlayedScreen.Content()
                 MainTab.PLAYLISTS -> PlaylistScreen.Content()
                 MainTab.NETWORK -> NetworkStreamingScreen.Content()
+                MainTab.JELLYFIN -> app.gyrolet.mpvrx.ui.browser.jellyfin.JellyfinContent(viewModel = jellyfinViewModel)
               }
             }
           }
@@ -539,18 +553,26 @@ private fun TelegramPillNavigationBar(
                         tint = contentColor,
                         modifier = Modifier.size(22.dp),
                       )
+                    MainScreen.MainTab.JELLYFIN ->
+                      Icon(
+                        Icons.RoundedFilled.VideoLibrary,
+                        contentDescription = "Jellyfin",
+                        tint = contentColor,
+                        modifier = Modifier.size(22.dp),
+                      )
                   }
                 }
                 Spacer(modifier = Modifier.height(3.dp))
-                  Text(
-                    text =
-                      when (tab) {
-                        MainScreen.MainTab.HOME -> "Home"
-                        MainScreen.MainTab.MUSIC -> "Music"
-                        MainScreen.MainTab.RECENTS -> "Recents"
-                        MainScreen.MainTab.PLAYLISTS -> "Playlists"
-                        MainScreen.MainTab.NETWORK -> "Network"
-                      },
+                Text(
+                  text =
+                    when (tab) {
+                      MainScreen.MainTab.HOME -> stringResource(R.string.ui_home)
+                      MainScreen.MainTab.MUSIC -> stringResource(R.string.ui_music)
+                      MainScreen.MainTab.RECENTS -> stringResource(R.string.ui_recents)
+                      MainScreen.MainTab.PLAYLISTS -> stringResource(R.string.ui_playlists)
+                      MainScreen.MainTab.NETWORK -> stringResource(R.string.ui_network)
+                      MainScreen.MainTab.JELLYFIN -> stringResource(R.string.ui_jellyfin)
+                    },
                   style = MaterialTheme.typography.labelSmall,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                   color = contentColor,

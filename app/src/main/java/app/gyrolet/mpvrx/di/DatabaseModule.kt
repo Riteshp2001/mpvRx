@@ -662,6 +662,25 @@ val MIGRATION_13_14 =
     }
   }
 
+val MIGRATION_14_15 =
+  object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `jellyfin_servers` (
+          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          `name` TEXT NOT NULL,
+          `serverUrl` TEXT NOT NULL,
+          `userId` TEXT NOT NULL,
+          `username` TEXT NOT NULL,
+          `accessToken` TEXT NOT NULL,
+          `lastConnected` INTEGER NOT NULL DEFAULT 0
+        )
+        """.trimIndent(),
+      )
+    }
+  }
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -690,6 +709,7 @@ val DatabaseModule =
           MIGRATION_11_12,
           MIGRATION_12_13,
           MIGRATION_13_14,
+          MIGRATION_14_15,
         ).build()
     }
 
@@ -747,6 +767,24 @@ val DatabaseModule =
     single {
       app.gyrolet.mpvrx.database.repository.SecureFolderRepository(
         dao = get<MpvRxDatabase>().secureMediaDao(),
+      )
+    }
+
+    single {
+      get<MpvRxDatabase>().jellyfinServerDao()
+    }
+
+    single {
+      app.gyrolet.mpvrx.data.jellyfin.JellyfinClient(
+        httpClient = get(),
+        json = get(),
+      )
+    }
+
+    single {
+      app.gyrolet.mpvrx.repository.JellyfinRepository(
+        dao = get(),
+        client = get(),
       )
     }
   }

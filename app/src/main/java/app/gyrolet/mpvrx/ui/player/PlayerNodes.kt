@@ -75,4 +75,15 @@ data class TrackNode(
   val isAlbumArtwork = albumArt == true || image == true
   val isSubtitle = type == "sub"
   val isSelected = selected == true
+
+  val effectiveTitle: String?
+    get() =
+      title?.takeIf { it.isNotBlank() }
+        ?: metadata?.entries?.firstOrNull { it.key.equals("title", ignoreCase = true) }?.value?.takeIf { it.isNotBlank() }
+        ?: metadata?.entries?.firstOrNull { it.key.equals("handler_name", ignoreCase = true) }?.value?.takeIf { it.isNotBlank() && !it.contains("handler", ignoreCase = true) }
+
+  val effectiveLang: String?
+    get() =
+      lang?.takeIf { it.isNotBlank() }
+        ?: metadata?.entries?.firstOrNull { it.key.equals("language", ignoreCase = true) || it.key.equals("lang", ignoreCase = true) }?.value?.takeIf { it.isNotBlank() }
 }

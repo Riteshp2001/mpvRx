@@ -739,6 +739,7 @@ object AppearancePreferencesScreen : Screen {
               val showRecentsTab by preferences.showRecentsTab.collectAsState()
               val showPlaylistsTab by preferences.showPlaylistsTab.collectAsState()
               val showNetworkTab by preferences.showNetworkTab.collectAsState()
+              val showJellyfinTab by preferences.showJellyfinTab.collectAsState()
 
               SwitchPreference(
                 value = showHomeTab,
@@ -803,6 +804,20 @@ object AppearancePreferencesScreen : Screen {
                 summary = {
                   Text(
                     text = stringResource(id = R.string.pref_nav_network_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              SwitchPreference(
+                value = showJellyfinTab,
+                onValueChange = preferences.showJellyfinTab::set,
+                title = { Text(text = stringResource(id = R.string.pref_nav_jellyfin_title)) },
+                summary = {
+                  Text(
+                    text = stringResource(id = R.string.pref_nav_jellyfin_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
