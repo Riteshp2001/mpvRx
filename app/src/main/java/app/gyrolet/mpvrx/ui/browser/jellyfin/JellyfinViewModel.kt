@@ -28,6 +28,7 @@ import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -460,54 +461,64 @@ class JellyfinViewModel(
         else -> item.name
       }
 
-    viewModelScope.launch {
-      // If Jellyfin has saved playback position, seed it into PlaybackState
-      if (item.playbackPositionTicks != null && item.playbackPositionTicks > 0) {
-        val positionSeconds = (item.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
-        withContext(Dispatchers.IO) {
-          runCatching {
-            playbackStateRepository.upsert(
-              PlaybackStateEntity(
-                mediaTitle = streamUrl,
-                lastPosition = positionSeconds,
-                playbackSpeed = 1.0,
-                videoZoom = 0f,
-                sid = -1,
-                secondarySid = -1,
-                subDelay = 0,
-                subSpeed = 1.0,
-                aid = -1,
-                audioDelay = 0,
-                timeRemaining = (item.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
-              ),
-            )
+    viewModelScope.launch(Dispatchers.IO) {
+      // Concurrently run DB seed and external subtitle fetching
+      val dbJob =
+        async {
+          if (item.playbackPositionTicks != null && item.playbackPositionTicks > 0) {
+            val positionSeconds = (item.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
+            runCatching {
+              playbackStateRepository.upsert(
+                PlaybackStateEntity(
+                  mediaTitle = streamUrl,
+                  lastPosition = positionSeconds,
+                  playbackSpeed = 1.0,
+                  videoZoom = 0f,
+                  sid = -1,
+                  secondarySid = -1,
+                  subDelay = 0,
+                  subSpeed = 1.0,
+                  aid = -1,
+                  audioDelay = 0,
+                  timeRemaining = (item.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
+                ),
+              )
+            }
           }
         }
+
+      val subsDeferred =
+        async {
+          jellyfinRepository
+            .getSubtitleTracks(server = server, itemId = item.id)
+            .getOrDefault(emptyList())
+        }
+
+      // Fire scrobble start non-blocking in background
+      launch {
+        jellyfinRepository.reportPlaybackStart(
+          serverUrl = server.serverUrl,
+          token = server.accessToken,
+          itemId = item.id,
+          positionTicks = item.playbackPositionTicks ?: 0L,
+        )
       }
 
-      // Fire scrobble start asynchronously
-      jellyfinRepository.reportPlaybackStart(
-        serverUrl = server.serverUrl,
-        token = server.accessToken,
-        itemId = item.id,
-        positionTicks = item.playbackPositionTicks ?: 0L,
-      )
+      dbJob.await()
+      val externalSubs = subsDeferred.await()
 
-      val externalSubs: List<PlaybackSubtitleTrack> =
-        jellyfinRepository
-          .getSubtitleTracks(server = server, itemId = item.id)
-          .getOrDefault(emptyList())
-
-      MediaUtils.playFile(
-        source = streamUrl,
-        context = context,
-        launchSource = "jellyfin_stream",
-        title = itemTitle,
-        mediaDescription = item.overview,
-        posterUrl = posterUrl,
-        backdropUrl = backdropUrl,
-        subtitleTracks = externalSubs,
-      )
+      withContext(Dispatchers.Main) {
+        MediaUtils.playFile(
+          source = streamUrl,
+          context = context,
+          launchSource = "jellyfin_stream",
+          title = itemTitle,
+          mediaDescription = item.overview,
+          posterUrl = posterUrl,
+          backdropUrl = backdropUrl,
+          subtitleTracks = externalSubs,
+        )
+      }
     }
   }
 

@@ -552,25 +552,28 @@ class PlayerViewModel : ViewModel(),
   }
 
   // These MPV-backed state flows must be initialized before any init block collects them.
-  val subtitleTracks: StateFlow<List<TrackNode>> =
+  private val allTracks: StateFlow<List<TrackNode>> =
     PlaybackSession.propNode["track-list"]
-      .map { node ->
-        parseTracks(node).filter { it.isSubtitle }.toImmutableList()
-      }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
+      .map { node -> parseTracks(node).toImmutableList() }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
+
+  val subtitleTracks: StateFlow<List<TrackNode>> =
+    allTracks
+      .map { tracks -> tracks.filter { it.isSubtitle }.toImmutableList() }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val audioTracks: StateFlow<List<TrackNode>> =
-    PlaybackSession.propNode["track-list"]
-      .map { node ->
-        parseTracks(node).filter { it.isAudio }.toImmutableList()
-      }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
+    allTracks
+      .map { tracks -> tracks.filter { it.isAudio }.toImmutableList() }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val isAudioOnly: StateFlow<Boolean> =
     combine(
-      PlaybackSession.propNode["track-list"],
+      allTracks,
       PlaybackSession.propString["path"],
       PlaybackSession.propString["stream-open-filename"],
       PlaybackSession.state,
-    ) { node, path, streamPath, session ->
+    ) { tracks, path, streamPath, session ->
       val currentPath = path?.takeIf { it.isNotBlank() } ?: streamPath
       val queuedItem = session.currentItem
       val itemDeclaresAudio =
@@ -589,7 +592,6 @@ class PlayerViewModel : ViewModel(),
             .filterNotNull()
             .any { candidate -> candidate.fileExtension() in FileTypeUtils.VIDEO_EXTENSIONS }
 
-      val tracks = parseTracks(node)
       val hasRealVideo = tracks.any { it.isVideo && !it.isAlbumArtwork }
       val detectedAudio =
         when {
@@ -606,11 +608,9 @@ class PlayerViewModel : ViewModel(),
       .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val hasAlbumArt: StateFlow<Boolean> =
-    PlaybackSession.propNode["track-list"]
-      .map { node ->
-        val tracks = parseTracks(node)
-        tracks.any { it.isAlbumArtwork }
-      }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    allTracks
+      .map { tracks -> tracks.any { it.isAlbumArtwork } }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val chapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
     PlaybackSession.propNode["chapter-list"]
