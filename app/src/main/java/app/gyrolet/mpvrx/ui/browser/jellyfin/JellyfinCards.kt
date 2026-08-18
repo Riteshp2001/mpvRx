@@ -9,8 +9,10 @@
 
 package app.gyrolet.mpvrx.ui.browser.jellyfin
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -129,12 +131,15 @@ fun JellyfinLibraryCard(
   }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun JellyfinPosterCard(
   item: JellyfinItem,
   server: JellyfinServer,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  onLongClick: (() -> Unit)? = null,
+  isSelected: Boolean = false,
 ) {
   val imageUrl =
     JellyfinClient.getImageUrl(
@@ -145,16 +150,26 @@ fun JellyfinPosterCard(
       token = server.accessToken,
     )
 
+  val containerColor =
+    if (isSelected) {
+      MaterialTheme.colorScheme.primaryContainer
+    } else {
+      MaterialTheme.colorScheme.surfaceContainer
+    }
+
   Card(
     modifier =
       modifier
         .fillMaxWidth()
         .clip(RoundedCornerShape(12.dp))
-        .clickable(onClick = onClick),
+        .combinedClickable(
+          onClick = onClick,
+          onLongClick = onLongClick,
+        ),
     shape = RoundedCornerShape(12.dp),
     colors =
       CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = containerColor,
       ),
   ) {
     Column {
@@ -206,8 +221,25 @@ fun JellyfinPosterCard(
           )
         }
 
-        // Unplayed badge / checkmark
-        if (item.isPlayed) {
+        // Selection or Played checkmark badge
+        if (isSelected) {
+          Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            modifier =
+              Modifier
+                .padding(6.dp)
+                .size(22.dp)
+                .align(Alignment.TopEnd),
+          ) {
+            Icon(
+              imageVector = Icons.RoundedFilled.Check,
+              contentDescription = "Selected",
+              tint = MaterialTheme.colorScheme.onPrimary,
+              modifier = Modifier.padding(3.dp),
+            )
+          }
+        } else if (item.isPlayed) {
           Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
@@ -249,12 +281,15 @@ fun JellyfinPosterCard(
   }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun JellyfinEpisodeCard(
   item: JellyfinItem,
   server: JellyfinServer,
   onPlay: () -> Unit,
   modifier: Modifier = Modifier,
+  onLongClick: (() -> Unit)? = null,
+  isSelected: Boolean = false,
 ) {
   val imageUrl =
     JellyfinClient.getImageUrl(
@@ -265,15 +300,26 @@ fun JellyfinEpisodeCard(
       token = server.accessToken,
     )
 
+  val containerColor =
+    if (isSelected) {
+      MaterialTheme.colorScheme.primaryContainer
+    } else {
+      MaterialTheme.colorScheme.surfaceContainer
+    }
+
   Card(
     modifier =
       modifier
         .fillMaxWidth()
-        .clickable(onClick = onPlay),
+        .clip(RoundedCornerShape(12.dp))
+        .combinedClickable(
+          onClick = onPlay,
+          onLongClick = onLongClick,
+        ),
     shape = RoundedCornerShape(12.dp),
     colors =
       CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = containerColor,
       ),
   ) {
     Row(
@@ -320,6 +366,42 @@ fun JellyfinEpisodeCard(
             color = MaterialTheme.colorScheme.primary,
           )
         }
+
+        if (isSelected) {
+          Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            modifier =
+              Modifier
+                .padding(4.dp)
+                .size(20.dp)
+                .align(Alignment.TopEnd),
+          ) {
+            Icon(
+              imageVector = Icons.RoundedFilled.Check,
+              contentDescription = "Selected",
+              tint = MaterialTheme.colorScheme.onPrimary,
+              modifier = Modifier.padding(2.dp),
+            )
+          }
+        } else if (item.isPlayed) {
+          Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+            modifier =
+              Modifier
+                .padding(4.dp)
+                .size(18.dp)
+                .align(Alignment.TopEnd),
+          ) {
+            Icon(
+              imageVector = Icons.RoundedFilled.Check,
+              contentDescription = "Played",
+              tint = MaterialTheme.colorScheme.onPrimary,
+              modifier = Modifier.padding(2.dp),
+            )
+          }
+        }
       }
 
       Column(modifier = Modifier.weight(1f)) {
@@ -361,12 +443,15 @@ fun JellyfinEpisodeCard(
   }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun JellyfinListItemCard(
   item: JellyfinItem,
   server: JellyfinServer,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  onLongClick: (() -> Unit)? = null,
+  isSelected: Boolean = false,
 ) {
   val imageUrl =
     JellyfinClient.getImageUrl(
@@ -377,16 +462,26 @@ fun JellyfinListItemCard(
       token = server.accessToken,
     )
 
+  val containerColor =
+    if (isSelected) {
+      MaterialTheme.colorScheme.primaryContainer
+    } else {
+      MaterialTheme.colorScheme.surfaceContainer
+    }
+
   Card(
     modifier =
       modifier
         .fillMaxWidth()
         .clip(RoundedCornerShape(12.dp))
-        .clickable(onClick = onClick),
+        .combinedClickable(
+          onClick = onClick,
+          onLongClick = onLongClick,
+        ),
     shape = RoundedCornerShape(12.dp),
     colors =
       CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = containerColor,
       ),
   ) {
     Row(
@@ -441,7 +536,24 @@ fun JellyfinListItemCard(
           )
         }
 
-        if (item.isPlayed) {
+        if (isSelected) {
+          Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            modifier =
+              Modifier
+                .padding(4.dp)
+                .size(20.dp)
+                .align(Alignment.TopEnd),
+          ) {
+            Icon(
+              imageVector = Icons.RoundedFilled.Check,
+              contentDescription = "Selected",
+              tint = MaterialTheme.colorScheme.onPrimary,
+              modifier = Modifier.padding(2.dp),
+            )
+          }
+        } else if (item.isPlayed) {
           Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
@@ -512,12 +624,16 @@ fun JellyfinListItemCard(
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun JellyfinResumeCard(
   item: JellyfinItem,
   server: JellyfinServer,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  onLongClick: (() -> Unit)? = null,
+  isSelected: Boolean = false,
+  isInSelectionMode: Boolean = false,
 ) {
   val imageUrl =
     if (!item.backdropImageTag.isNullOrBlank()) {
@@ -538,16 +654,26 @@ fun JellyfinResumeCard(
       )
     }
 
+  val containerColor =
+    if (isSelected) {
+      MaterialTheme.colorScheme.primaryContainer
+    } else {
+      MaterialTheme.colorScheme.surfaceContainer
+    }
+
   Card(
     modifier =
       modifier
         .width(220.dp)
         .clip(RoundedCornerShape(12.dp))
-        .clickable(onClick = onClick),
+        .combinedClickable(
+          onClick = onClick,
+          onLongClick = onLongClick,
+        ),
     shape = RoundedCornerShape(12.dp),
     colors =
       CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = containerColor,
       ),
   ) {
     Column {
@@ -565,22 +691,48 @@ fun JellyfinResumeCard(
           modifier = Modifier.fillMaxSize(),
         )
 
-        // Play icon overlay
-        Surface(
-          shape = CircleShape,
-          color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-          modifier =
-            Modifier
-              .size(36.dp)
-              .align(Alignment.Center),
-        ) {
-          Box(contentAlignment = Alignment.Center) {
-            Icon(
-              imageVector = Icons.RoundedFilled.PlayArrow,
-              contentDescription = "Play",
-              tint = MaterialTheme.colorScheme.onPrimaryContainer,
-              modifier = Modifier.size(20.dp),
-            )
+        // Selection overlay
+        if (isSelected) {
+          Box(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center,
+          ) {
+            Surface(
+              shape = CircleShape,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(32.dp),
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Check,
+                  contentDescription = null,
+                  tint = MaterialTheme.colorScheme.onPrimary,
+                  modifier = Modifier.size(18.dp),
+                )
+              }
+            }
+          }
+        } else if (!isInSelectionMode) {
+          // Play icon overlay (only when not in selection mode)
+          Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+            modifier =
+              Modifier
+                .size(36.dp)
+                .align(Alignment.Center),
+          ) {
+            Box(contentAlignment = Alignment.Center) {
+              Icon(
+                imageVector = Icons.RoundedFilled.PlayArrow,
+                contentDescription = "Play",
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(20.dp),
+              )
+            }
           }
         }
 

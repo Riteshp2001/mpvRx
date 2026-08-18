@@ -10,7 +10,14 @@
 package app.gyrolet.mpvrx.ui.browser.jellyfin
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -23,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,14 +54,22 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
+import androidx.compose.material3.animateFloatingActionButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -80,12 +96,14 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
+import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
+import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.dialogs.JellyfinSortDialog
+import app.gyrolet.mpvrx.ui.browser.selection.rememberSelectionManager
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -107,16 +125,40 @@ fun JellyfinContent(
   var isManageServersOpen by rememberSaveable { mutableStateOf(false) }
   var isSearching by rememberSaveable { mutableStateOf(false) }
   var isSortDialogOpen by rememberSaveable { mutableStateOf(false) }
+  var infoItem by remember { mutableStateOf<JellyfinItem?>(null) }
   val searchFocusRequester = remember { FocusRequester() }
 
-  // Intercept back button if searching or browsing inside a Jellyfin folder
-  BackHandler(enabled = isSearching || uiState.breadcrumbs.isNotEmpty()) {
-    if (isSearching) {
-      isSearching = false
-      viewModel.onSearchQueryChanged("")
-      viewModel.refresh()
-    } else {
-      viewModel.navigateBack()
+  val selectionManager =
+    rememberSelectionManager(
+      items = uiState.currentItems,
+      getId = { it.id },
+      onDeleteItems = { _, _ -> Pair(0, 0) },
+    )
+
+  DisposableEffect(selectionManager.isInSelectionMode) {
+    NavigationBarState.updateSelectionState(
+      inSelectionMode = selectionManager.isInSelectionMode,
+      onlyVideos = true,
+    )
+    onDispose {
+      NavigationBarState.updateSelectionState(inSelectionMode = false)
+    }
+  }
+
+  // Intercept back button if searching, selecting, or browsing inside a Jellyfin folder
+  BackHandler(enabled = isSearching || selectionManager.isInSelectionMode || uiState.breadcrumbs.isNotEmpty()) {
+    when {
+      isSearching -> {
+        isSearching = false
+        viewModel.onSearchQueryChanged("")
+        viewModel.refresh()
+      }
+      selectionManager.isInSelectionMode -> {
+        selectionManager.clear()
+      }
+      else -> {
+        viewModel.navigateBack()
+      }
     }
   }
 
@@ -195,10 +237,15 @@ fun JellyfinContent(
     } else {
       BrowserTopBar(
         title = pageTitle,
-        isInSelectionMode = false,
-        selectedCount = 0,
+        isInSelectionMode = selectionManager.isInSelectionMode,
+        selectedCount = selectionManager.selectedCount,
         totalCount = uiState.currentItems.size,
-        onCancelSelection = { },
+        onCancelSelection = { selectionManager.clear() },
+        onSelectAll = { selectionManager.selectAll() },
+        onInvertSelection = { selectionManager.invertSelection() },
+        onDeselectAll = { selectionManager.clear() },
+        onPlayClick = { viewModel.playSelected(context, selectionManager.getSelectedItems()) },
+        isSingleSelection = selectionManager.isSingleSelection,
         onBackClick = if (uiState.breadcrumbs.isNotEmpty()) { { viewModel.navigateBack() } } else null,
         onSortClick = { isSortDialogOpen = true },
         onSearchClick = { isSearching = true },
@@ -206,11 +253,18 @@ fun JellyfinContent(
           backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
         },
         additionalActions = {
-          IconButton(onClick = { isManageServersOpen = true }) {
-            Icon(
-              imageVector = Icons.RoundedFilled.BringYourOwnIp,
-              contentDescription = "Manage Servers",
-            )
+          if (!selectionManager.isInSelectionMode) {
+            IconButton(
+              onClick = { isManageServersOpen = true },
+              modifier = Modifier.padding(horizontal = 2.dp),
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.BringYourOwnIp,
+                contentDescription = "Manage Servers",
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
           }
         },
       )
@@ -264,298 +318,505 @@ fun JellyfinContent(
       }
     }
 
-    // Main Body Content with Pull-To-Refresh
+    // Main Body Content with Pull-To-Refresh and FAB / Multi-select overlays
     val isRefreshing = remember { mutableStateOf(false) }
-    PullRefreshBox(
-      isRefreshing = isRefreshing,
-      onRefresh = { viewModel.refresh() },
+    val navigationBarHeight = LocalNavigationBarHeight.current
+
+    Box(
       modifier =
         Modifier
           .fillMaxSize()
           .weight(1f),
     ) {
-      Box(
+      PullRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
       ) {
-        when {
-          // No servers configured
-          uiState.servers.isEmpty() -> {
-          EmptyServersView(onAddClick = { isAddDialogOpen = true })
-        }
+        Box(
+          modifier = Modifier.fillMaxSize(),
+          contentAlignment = Alignment.Center,
+        ) {
+          when {
+            // No servers configured
+            uiState.servers.isEmpty() -> {
+              EmptyServersView(onAddClick = { isAddDialogOpen = true })
+            }
 
-        // Loading state (initial)
-        uiState.isLoading && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() -> {
-          CircularProgressIndicator()
-        }
+            // Loading state (initial)
+            uiState.isLoading && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() -> {
+              CircularProgressIndicator()
+            }
 
-        // Error state
-        uiState.error != null && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() -> {
-          ErrorView(
-            message = uiState.error ?: "An error occurred",
-            onRetry = { viewModel.refresh() },
-          )
-        }
+            // Error state
+            uiState.error != null && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() -> {
+              ErrorView(
+                message = uiState.error ?: "An error occurred",
+                onRetry = { viewModel.refresh() },
+              )
+            }
 
-        // Root View: Continue Watching carousel + Libraries
-        uiState.breadcrumbs.isEmpty() && uiState.searchQuery.isBlank() -> {
-          val listState = rememberLazyListState()
-          val navigationBarHeight = LocalNavigationBarHeight.current
-          val hasEnoughLibraries = uiState.libraries.size > 6
-          val scrollbarAlpha by animateFloatAsState(
-            targetValue = if (hasEnoughLibraries) 1f else 0f,
-            label = "scrollbarAlpha",
-          )
+            // Root View: Continue Watching carousel + Libraries
+            uiState.breadcrumbs.isEmpty() && uiState.searchQuery.isBlank() -> {
+              val listState = rememberLazyListState()
+              val hasEnoughLibraries = uiState.libraries.size > 6
+              val scrollbarAlpha by animateFloatAsState(
+                targetValue = if (hasEnoughLibraries) 1f else 0f,
+                label = "scrollbarAlpha",
+              )
 
-          Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-              state = listState,
-              modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = navigationBarHeight + 16.dp),
-              verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-              // Continue Watching carousel
-              if (uiState.resumeItems.isNotEmpty()) {
-                item {
-                  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                      text = "Continue Watching",
-                      style = MaterialTheme.typography.titleMedium,
-                      fontWeight = FontWeight.Bold,
-                    )
-                    LazyRow(
-                      horizontalArrangement = Arrangement.spacedBy(12.dp),
-                      contentPadding = PaddingValues(vertical = 4.dp),
-                    ) {
-                      items(uiState.resumeItems, key = { it.id }) { resumeItem ->
-                        uiState.activeServer?.let { server ->
-                          JellyfinResumeCard(
-                            item = resumeItem,
-                            server = server,
-                            onClick = { viewModel.playItem(context, resumeItem) },
-                          )
+              Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                  state = listState,
+                  modifier = Modifier.fillMaxSize(),
+                  contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = navigationBarHeight + 80.dp),
+                  verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                  // Continue Watching carousel
+                  if (uiState.resumeItems.isNotEmpty()) {
+                    item {
+                      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                          text = "Continue Watching",
+                          style = MaterialTheme.typography.titleMedium,
+                          fontWeight = FontWeight.Bold,
+                        )
+                        LazyRow(
+                          horizontalArrangement = Arrangement.spacedBy(12.dp),
+                          contentPadding = PaddingValues(vertical = 4.dp),
+                        ) {
+                          items(uiState.resumeItems, key = { it.id }) { resumeItem ->
+                            uiState.activeServer?.let { server ->
+                              JellyfinResumeCard(
+                                item = resumeItem,
+                                server = server,
+                                isSelected = selectionManager.isSelected(resumeItem),
+                                isInSelectionMode = selectionManager.isInSelectionMode,
+                                onClick = {
+                                  if (selectionManager.isInSelectionMode) {
+                                    selectionManager.toggle(resumeItem)
+                                  } else {
+                                    viewModel.playItem(context, resumeItem)
+                                  }
+                                },
+                                onLongClick = { selectionManager.handleLongClick(resumeItem) },
+                              )
+                            }
+                          }
                         }
                       }
                     }
                   }
-                }
-              }
 
-              // Libraries Section
-              item {
-                Text(
-                  text = "Libraries",
-                  style = MaterialTheme.typography.titleMedium,
-                  fontWeight = FontWeight.Bold,
-                )
-              }
-
-              items(uiState.libraries, key = { it.id }) { library ->
-                JellyfinLibraryCard(
-                  item = library,
-                  onClick = { viewModel.navigateToItem(library) },
-                )
-              }
-            }
-
-            if (hasEnoughLibraries && scrollbarAlpha > 0.01f) {
-              ExpressiveScrollBar(
-                listState = listState,
-                dragLabelProvider = { index ->
-                  fastScrollGlyph(uiState.libraries.getOrNull(index)?.name)
-                },
-                modifier =
-                  Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
-                    .graphicsLayer { alpha = scrollbarAlpha },
-              )
-            }
-          }
-        }
-
-        // Level View: Inside a Library / Folder / Show / Season / Search results
-        else -> {
-          val items = uiState.currentItems
-          val allEpisodes = items.isNotEmpty() && items.all { it.type == "Episode" }
-          val isListMode = layoutMode == MediaLayoutMode.LIST || allEpisodes
-
-          if (items.isEmpty() && !uiState.isLoading) {
-            Text(
-              text = "No media found in this folder",
-              style = MaterialTheme.typography.bodyLarge,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          } else if (isListMode) {
-            val listState =
-              remember(uiState.breadcrumbs, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
-                LazyListState()
-              }
-            val navigationBarHeight = LocalNavigationBarHeight.current
-            val hasEnoughItems = items.size > 6
-            val scrollbarAlpha by animateFloatAsState(
-              targetValue = if (hasEnoughItems) 1f else 0f,
-              label = "scrollbarAlpha",
-            )
-
-            val shouldLoadMore =
-              remember {
-                derivedStateOf {
-                  val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                  items.isNotEmpty() && lastVisibleIndex >= items.size - 5
-                }
-              }
-
-            LaunchedEffect(shouldLoadMore.value) {
-              if (shouldLoadMore.value && uiState.hasMore && !uiState.isLoading && !uiState.isLoadingMore) {
-                viewModel.loadMoreItems()
-              }
-            }
-
-            Box(modifier = Modifier.fillMaxSize()) {
-              LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = navigationBarHeight + 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-              ) {
-                items(items, key = { it.id }) { item ->
-                  uiState.activeServer?.let { server ->
-                    if (allEpisodes || item.type == "Episode") {
-                      JellyfinEpisodeCard(
-                        item = item,
-                        server = server,
-                        onPlay = { viewModel.playItem(context, item) },
-                      )
-                    } else {
-                      JellyfinListItemCard(
-                        item = item,
-                        server = server,
-                        onClick = {
-                          if (item.isFolder || item.isSeries || item.isSeason) {
-                            viewModel.navigateToItem(item)
-                          } else {
-                            viewModel.playItem(context, item)
-                          }
-                        },
-                      )
-                    }
-                  }
-                }
-                if (uiState.isLoadingMore) {
+                  // Libraries Section
                   item {
-                    Box(
-                      modifier =
-                        Modifier
-                          .fillMaxWidth()
-                          .padding(16.dp),
-                      contentAlignment = Alignment.Center,
-                    ) {
-                      CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                    }
+                    Text(
+                      text = "Libraries",
+                      style = MaterialTheme.typography.titleMedium,
+                      fontWeight = FontWeight.Bold,
+                    )
                   }
-                }
-              }
 
-              if (hasEnoughItems && scrollbarAlpha > 0.01f) {
-                ExpressiveScrollBar(
-                  listState = listState,
-                  dragLabelProvider = { index ->
-                    fastScrollGlyph(items.getOrNull(index)?.name)
-                  },
-                  modifier =
-                    Modifier
-                      .align(Alignment.CenterEnd)
-                      .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
-                      .graphicsLayer { alpha = scrollbarAlpha },
-                )
-              }
-            }
-          } else {
-            val gridState =
-              remember(uiState.breadcrumbs, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
-                LazyGridState()
-              }
-            val navigationBarHeight = LocalNavigationBarHeight.current
-            val hasEnoughItems = items.size > 6
-            val scrollbarAlpha by animateFloatAsState(
-              targetValue = if (hasEnoughItems) 1f else 0f,
-              label = "scrollbarAlpha",
-            )
-
-            val shouldLoadMore =
-              remember {
-                derivedStateOf {
-                  val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                  items.isNotEmpty() && lastVisibleIndex >= items.size - 8
-                }
-              }
-
-            LaunchedEffect(shouldLoadMore.value) {
-              if (shouldLoadMore.value && uiState.hasMore && !uiState.isLoading && !uiState.isLoadingMore) {
-                viewModel.loadMoreItems()
-              }
-            }
-
-            Box(modifier = Modifier.fillMaxSize()) {
-              LazyVerticalGrid(
-                state = gridState,
-                columns = GridCells.Adaptive(minSize = 130.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = navigationBarHeight + 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-              ) {
-                items(items, key = { it.id }) { item ->
-                  uiState.activeServer?.let { server ->
-                    JellyfinPosterCard(
-                      item = item,
-                      server = server,
-                      onClick = {
-                        if (item.isFolder || item.isSeries || item.isSeason) {
-                          viewModel.navigateToItem(item)
-                        } else {
-                          viewModel.playItem(context, item)
-                        }
-                      },
+                  items(uiState.libraries, key = { it.id }) { library ->
+                    JellyfinLibraryCard(
+                      item = library,
+                      onClick = { viewModel.navigateToItem(library) },
                     )
                   }
                 }
 
-                if (uiState.isLoadingMore) {
-                  item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(
-                      modifier =
-                        Modifier
-                          .fillMaxWidth()
-                          .padding(16.dp),
-                      contentAlignment = Alignment.Center,
-                    ) {
-                      CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                    }
-                  }
+                if (hasEnoughLibraries && scrollbarAlpha > 0.01f) {
+                  ExpressiveScrollBar(
+                    listState = listState,
+                    dragLabelProvider = { index ->
+                      fastScrollGlyph(uiState.libraries.getOrNull(index)?.name)
+                    },
+                    modifier =
+                      Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 80.dp)
+                        .graphicsLayer { alpha = scrollbarAlpha },
+                  )
                 }
               }
+            }
 
-              if (hasEnoughItems && scrollbarAlpha > 0.01f) {
-                ExpressiveScrollBar(
-                  gridState = gridState,
-                  dragLabelProvider = { index ->
-                    fastScrollGlyph(items.getOrNull(index)?.name)
-                  },
-                  modifier =
-                    Modifier
-                      .align(Alignment.CenterEnd)
-                      .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 6.dp)
-                      .graphicsLayer { alpha = scrollbarAlpha },
+            // Level View: Inside a Library / Folder / Show / Season / Search results
+            else -> {
+              val items = uiState.currentItems
+              val allEpisodes = items.isNotEmpty() && items.all { it.type == "Episode" }
+              val isListMode = layoutMode == MediaLayoutMode.LIST || allEpisodes
+
+              if (items.isEmpty() && !uiState.isLoading) {
+                Text(
+                  text = "No media found in this folder",
+                  style = MaterialTheme.typography.bodyLarge,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+              } else if (isListMode) {
+                val listState =
+                  remember(uiState.breadcrumbs, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
+                    LazyListState()
+                  }
+                val hasEnoughItems = items.size > 6
+                val scrollbarAlpha by animateFloatAsState(
+                  targetValue = if (hasEnoughItems) 1f else 0f,
+                  label = "scrollbarAlpha",
+                )
+
+                val shouldLoadMore =
+                  remember {
+                    derivedStateOf {
+                      val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                      items.isNotEmpty() && lastVisibleIndex >= items.size - 5
+                    }
+                  }
+
+                LaunchedEffect(shouldLoadMore.value) {
+                  if (shouldLoadMore.value && uiState.hasMore && !uiState.isLoading && !uiState.isLoadingMore) {
+                    viewModel.loadMoreItems()
+                  }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                  LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                  ) {
+                    items(items, key = { it.id }) { item ->
+                      uiState.activeServer?.let { server ->
+                        if (allEpisodes || item.type == "Episode") {
+                          JellyfinEpisodeCard(
+                            item = item,
+                            server = server,
+                            onPlay = {
+                              if (selectionManager.isInSelectionMode) {
+                                selectionManager.toggle(item)
+                              } else {
+                                viewModel.playItem(context, item)
+                              }
+                            },
+                            onLongClick = { selectionManager.handleLongClick(item) },
+                            isSelected = selectionManager.isSelected(item),
+                          )
+                        } else {
+                          JellyfinListItemCard(
+                            item = item,
+                            server = server,
+                            onClick = {
+                              if (selectionManager.isInSelectionMode) {
+                                selectionManager.toggle(item)
+                              } else if (item.isFolder || item.isSeries || item.isSeason) {
+                                viewModel.navigateToItem(item)
+                              } else {
+                                viewModel.playItem(context, item)
+                              }
+                            },
+                            onLongClick = { selectionManager.handleLongClick(item) },
+                            isSelected = selectionManager.isSelected(item),
+                          )
+                        }
+                      }
+                    }
+                    if (uiState.isLoadingMore) {
+                      item {
+                        Box(
+                          modifier =
+                            Modifier
+                              .fillMaxWidth()
+                              .padding(16.dp),
+                          contentAlignment = Alignment.Center,
+                        ) {
+                          CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                        }
+                      }
+                    }
+                  }
+
+                  if (hasEnoughItems && scrollbarAlpha > 0.01f) {
+                    ExpressiveScrollBar(
+                      listState = listState,
+                      dragLabelProvider = { index ->
+                        fastScrollGlyph(items.getOrNull(index)?.name)
+                      },
+                      modifier =
+                        Modifier
+                          .align(Alignment.CenterEnd)
+                          .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 80.dp)
+                          .graphicsLayer { alpha = scrollbarAlpha },
+                    )
+                  }
+                }
+              } else {
+                val gridState =
+                  remember(uiState.breadcrumbs, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
+                    LazyGridState()
+                  }
+                val hasEnoughItems = items.size > 6
+                val scrollbarAlpha by animateFloatAsState(
+                  targetValue = if (hasEnoughItems) 1f else 0f,
+                  label = "scrollbarAlpha",
+                )
+
+                val shouldLoadMore =
+                  remember {
+                    derivedStateOf {
+                      val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                      items.isNotEmpty() && lastVisibleIndex >= items.size - 8
+                    }
+                  }
+
+                LaunchedEffect(shouldLoadMore.value) {
+                  if (shouldLoadMore.value && uiState.hasMore && !uiState.isLoading && !uiState.isLoadingMore) {
+                    viewModel.loadMoreItems()
+                  }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                  LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(minSize = 130.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                  ) {
+                    items(items, key = { it.id }) { item ->
+                      uiState.activeServer?.let { server ->
+                        JellyfinPosterCard(
+                          item = item,
+                          server = server,
+                          onClick = {
+                            if (selectionManager.isInSelectionMode) {
+                              selectionManager.toggle(item)
+                            } else if (item.isFolder || item.isSeries || item.isSeason) {
+                              viewModel.navigateToItem(item)
+                            } else {
+                              viewModel.playItem(context, item)
+                            }
+                          },
+                          onLongClick = { selectionManager.handleLongClick(item) },
+                          isSelected = selectionManager.isSelected(item),
+                        )
+                      }
+                    }
+
+                    if (uiState.isLoadingMore) {
+                      item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                          modifier =
+                            Modifier
+                              .fillMaxWidth()
+                              .padding(16.dp),
+                          contentAlignment = Alignment.Center,
+                        ) {
+                          CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                        }
+                      }
+                    }
+                  }
+
+                  if (hasEnoughItems && scrollbarAlpha > 0.01f) {
+                    ExpressiveScrollBar(
+                      gridState = gridState,
+                      dragLabelProvider = { index ->
+                        fastScrollGlyph(items.getOrNull(index)?.name)
+                      },
+                      modifier =
+                        Modifier
+                          .align(Alignment.CenterEnd)
+                          .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 80.dp)
+                          .graphicsLayer { alpha = scrollbarAlpha },
+                    )
+                  }
+                }
               }
             }
           }
         }
       }
+
+      // Multi-Select Floating Action Pill (smoothly replaces bottom nav bar)
+      androidx.compose.animation.AnimatedVisibility(
+        visible = selectionManager.isInSelectionMode,
+        enter =
+          slideInVertically(
+            animationSpec =
+              spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+              ),
+            initialOffsetY = { fullHeight -> fullHeight * 2 },
+          ) + fadeIn(),
+        exit =
+          slideOutVertically(
+            animationSpec =
+              spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium,
+              ),
+            targetOffsetY = { fullHeight -> fullHeight * 2 },
+          ) + fadeOut(),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(bottom = 12.dp),
+      ) {
+        val selectedItems = selectionManager.getSelectedItems()
+        val playableCount = selectedItems.count { it.isVideo }
+
+        Box(
+          modifier = Modifier.fillMaxWidth(),
+          contentAlignment = Alignment.Center,
+        ) {
+          Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp,
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+              if (playableCount > 0) {
+                IconButton(
+                  onClick = {
+                    viewModel.playSelected(context, selectedItems)
+                    selectionManager.clear()
+                  },
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.PlayArrow,
+                    contentDescription = "Play",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                  )
+                }
+              }
+
+              IconButton(
+                onClick = {
+                  viewModel.markSelectedPlayed(selectedItems, true)
+                  selectionManager.clear()
+                },
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.CheckCircle,
+                  contentDescription = "Mark watched",
+                  modifier = Modifier.size(24.dp),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+
+              IconButton(
+                onClick = {
+                  viewModel.markSelectedPlayed(selectedItems, false)
+                  selectionManager.clear()
+                },
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.RemoveCircle,
+                  contentDescription = "Mark unwatched",
+                  modifier = Modifier.size(24.dp),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+
+              if (selectedItems.size == 1) {
+                IconButton(
+                  onClick = { infoItem = selectedItems.first() },
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.Info,
+                    contentDescription = "Info",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (!selectionManager.isInSelectionMode && uiState.activeServer != null && (uiState.currentItems.isNotEmpty() || uiState.resumeItems.isNotEmpty())) {
+        // Expressive Floating Action Button Menu
+        var isFabExpanded by remember { mutableStateOf(false) }
+
+        FloatingActionButtonMenu(
+          modifier =
+            Modifier
+              .align(Alignment.BottomEnd)
+              .padding(end = 16.dp, bottom = navigationBarHeight + 16.dp),
+          expanded = isFabExpanded,
+          button = {
+            ToggleFloatingActionButton(
+              modifier =
+                Modifier.animateFloatingActionButton(
+                  visible = !isSearching,
+                  alignment = Alignment.BottomEnd,
+                ),
+              checked = isFabExpanded,
+              onCheckedChange = { isFabExpanded = !isFabExpanded },
+            ) {
+              val checkedProgress = if (isFabExpanded) 1f else 0f
+              val imageVector by remember {
+                derivedStateOf {
+                  if (isFabExpanded) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
+                }
+              }
+              Icon(
+                imageVector = imageVector,
+                contentDescription = "Quick Menu",
+                modifier = Modifier.animateIcon({ checkedProgress }),
+              )
+            }
+          },
+        ) {
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded = false
+              viewModel.resumeLastPlayed(context)
+            },
+            icon = { Icon(Icons.RoundedFilled.PlayArrow, contentDescription = null) },
+            text = { Text("Resume") },
+          )
+
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded = false
+              viewModel.playRandom(context)
+            },
+            icon = { Icon(Icons.RoundedFilled.Shuffle, contentDescription = null) },
+            text = { Text("Play Random") },
+          )
+
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded = false
+              isManageServersOpen = true
+            },
+            icon = { Icon(Icons.RoundedFilled.BringYourOwnIp, contentDescription = null) },
+            text = { Text("Switch Server") },
+          )
+
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded = false
+              isSearching = true
+            },
+            icon = { Icon(Icons.RoundedFilled.Search, contentDescription = null) },
+            text = { Text("Search") },
+          )
+        }
+      }
     }
-  }
   }
 
   // Standard Material 3 Sort Dialog (matches Home and Network Browser)
@@ -609,6 +870,78 @@ fun JellyfinContent(
       )
     },
   )
+
+  // Item Info Bottom Sheet
+  infoItem?.let { item ->
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+      onDismissRequest = { infoItem = null },
+      sheetState = sheetState,
+    ) {
+      Column(
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Text(
+          text = item.name,
+          style = MaterialTheme.typography.titleLarge,
+          fontWeight = FontWeight.Bold,
+          maxLines = 2,
+          overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+        HorizontalDivider()
+
+        @Composable
+        fun InfoRow(label: String, value: String) {
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              text = label,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.width(100.dp),
+            )
+            Text(
+              text = value,
+              style = MaterialTheme.typography.bodyMedium,
+            )
+          }
+        }
+
+        InfoRow("Type", item.type.replace(Regex("([a-z])([A-Z])"), "$1 $2"))
+        item.seriesName?.let { InfoRow("Series", it) }
+        item.parentIndexNumber?.let { s ->
+          item.indexNumber?.let { e ->
+            InfoRow("Episode", "S$s E$e")
+          }
+        }
+        item.productionYear?.let { InfoRow("Year", it.toString()) }
+        item.communityRating?.let { InfoRow("Rating", "%.1f / 10".format(it)) }
+        if (item.durationSeconds > 0) {
+          val h = item.durationSeconds / 3600
+          val m = (item.durationSeconds % 3600) / 60
+          val s = item.durationSeconds % 60
+          val dur = if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+          InfoRow("Duration", dur)
+        }
+        item.container?.let { InfoRow("Container", it.uppercase()) }
+        if (item.childCount != null && item.childCount > 0) {
+          InfoRow("Items", item.childCount.toString())
+        }
+        item.overview?.let {
+          Spacer(modifier = Modifier.height(4.dp))
+          Text(
+            text = it,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+      }
+    }
+  }
 }
 
 @Composable

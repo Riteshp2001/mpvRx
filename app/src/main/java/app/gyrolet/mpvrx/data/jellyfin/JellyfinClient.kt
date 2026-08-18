@@ -559,6 +559,54 @@ class JellyfinClient(
     }.onFailure { Log.w(TAG, "Failed reporting playback stop: ${it.message}") }
   }
 
+  suspend fun markPlayed(
+    serverUrl: String,
+    userId: String,
+    itemId: String,
+    token: String,
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint = "$base/Users/$userId/PlayedItems/$itemId"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addHeader("X-Emby-Authorization", authHeader(token))
+            .addHeader("X-Emby-Token", token)
+            .post(ByteArray(0).toRequestBody(null))
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) throw IOException("Failed to mark as played: HTTP ${response.code}")
+        }
+      }
+    }
+
+  suspend fun markUnplayed(
+    serverUrl: String,
+    userId: String,
+    itemId: String,
+    token: String,
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint = "$base/Users/$userId/PlayedItems/$itemId"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addHeader("X-Emby-Authorization", authHeader(token))
+            .addHeader("X-Emby-Token", token)
+            .delete()
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) throw IOException("Failed to mark as unplayed: HTTP ${response.code}")
+        }
+      }
+    }
+
   private fun parseItem(obj: JsonObject): JellyfinItem {
     val id = obj["Id"]?.jsonPrimitive?.content ?: ""
     val name = obj["Name"]?.jsonPrimitive?.content ?: ""

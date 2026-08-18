@@ -470,6 +470,7 @@ class JellyfinViewModel(
   fun playItem(
     context: Context,
     item: JellyfinItem,
+    startFromBeginning: Boolean = false,
   ) {
     val server = _uiState.value.activeServer ?: return
     val streamUrl = jellyfinRepository.getStreamUrl(server, item)
@@ -483,10 +484,14 @@ class JellyfinViewModel(
       }
 
     viewModelScope.launch(Dispatchers.IO) {
+      if (startFromBeginning) {
+        runCatching { playbackStateRepository.deleteByTitle(streamUrl) }
+      }
+
       // Concurrently run DB seed and external subtitle fetching
       val dbJob =
         async {
-          if (item.playbackPositionTicks != null && item.playbackPositionTicks > 0) {
+          if (!startFromBeginning && item.playbackPositionTicks != null && item.playbackPositionTicks > 0) {
             val positionSeconds = (item.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
             runCatching {
               playbackStateRepository.upsert(
@@ -521,18 +526,17 @@ class JellyfinViewModel(
           serverUrl = server.serverUrl,
           token = server.accessToken,
           itemId = item.id,
-          positionTicks = item.playbackPositionTicks ?: 0L,
+          positionTicks = if (startFromBeginning) 0L else (item.playbackPositionTicks ?: 0L),
         )
       }
 
       dbJob.await()
       val externalSubs = subsDeferred.await()
 
-      val currentList = _uiState.value.currentItems
-      val isEpisodePlayback = item.type == "Episode" || item.seriesName != null
+      // If playing an episode, extract surrounding episode playlist from current view
       val (playlistUris, playlistTitles, playlistIndex) =
-        if (isEpisodePlayback && currentList.isNotEmpty()) {
-          val episodeList = currentList.filter { it.type == "Episode" || it.isVideo }
+        if (item.type == "Episode") {
+          val episodeList = _uiState.value.currentItems.filter { it.type == "Episode" }
           if (episodeList.size > 1) {
             val uris = ArrayList<Uri>(episodeList.size)
             val titles = ArrayList<String>(episodeList.size)
@@ -579,6 +583,146 @@ class JellyfinViewModel(
         )
       }
     }
+  }
+
+  fun playSelected(
+    context: Context,
+    items: List<JellyfinItem>,
+  ) {
+    val server = _uiState.value.activeServer ?: return
+    val playable = items.filter { it.isVideo }
+    if (playable.isEmpty()) return
+    val firstItem = playable.first()
+    val streamUrl = jellyfinRepository.getStreamUrl(server, firstItem)
+    val posterUrl = jellyfinRepository.getImageUrl(server, firstItem)
+    val backdropUrl = jellyfinRepository.getBackdropUrl(server, firstItem)
+
+    val itemTitle =
+      when {
+        firstItem.seriesName != null && firstItem.indexNumber != null ->
+          "${firstItem.seriesName} S${firstItem.parentIndexNumber ?: 1}E${firstItem.indexNumber} - ${firstItem.name}"
+        else -> firstItem.name
+      }
+
+    val playlistUris = ArrayList<Uri>(playable.size)
+    val playlistTitles = ArrayList<String>(playable.size)
+    playable.forEach { item ->
+      playlistUris.add(Uri.parse(jellyfinRepository.getStreamUrl(server, item)))
+      playlistTitles.add(
+        when {
+          item.seriesName != null && item.indexNumber != null ->
+            "${item.seriesName} S${item.parentIndexNumber ?: 1}E${item.indexNumber} - ${item.name}"
+          else -> item.name
+        },
+      )
+    }
+
+    val headers =
+      mapOf(
+        "X-Emby-Token" to server.accessToken,
+        "X-Emby-Authorization" to JellyfinClient.authHeader(server.accessToken),
+      )
+
+    MediaUtils.playFile(
+      source = streamUrl,
+      context = context,
+      launchSource = "jellyfin_stream",
+      title = itemTitle,
+      headers = headers,
+      mediaDescription = firstItem.overview,
+      posterUrl = posterUrl,
+      backdropUrl = backdropUrl,
+      playlist = playlistUris,
+      playlistIndex = 0,
+      playlistTitles = playlistTitles,
+    )
+  }
+
+  fun togglePlayed(item: JellyfinItem) {
+    val server = _uiState.value.activeServer ?: return
+    viewModelScope.launch {
+      val targetPlayed = !item.isPlayed
+      val result =
+        if (targetPlayed) {
+          jellyfinRepository.markPlayed(server, item)
+        } else {
+          jellyfinRepository.markUnplayed(server, item)
+        }
+      result.onSuccess {
+        _uiState.update { state ->
+          state.copy(
+            currentItems =
+              state.currentItems.map {
+                if (it.id == item.id) {
+                  it.copy(
+                    isPlayed = targetPlayed,
+                    playbackPositionTicks = if (targetPlayed) 0L else it.playbackPositionTicks,
+                  )
+                } else {
+                  it
+                }
+              },
+          )
+        }
+      }
+    }
+  }
+
+  fun markSelectedPlayed(
+    items: List<JellyfinItem>,
+    played: Boolean,
+  ) {
+    val server = _uiState.value.activeServer ?: return
+    viewModelScope.launch {
+      val ids = items.map { it.id }.toSet()
+      items.forEach { item ->
+        launch {
+          if (played) {
+            jellyfinRepository.markPlayed(server, item)
+          } else {
+            jellyfinRepository.markUnplayed(server, item)
+          }
+        }
+      }
+      _uiState.update { state ->
+        state.copy(
+          currentItems =
+            state.currentItems.map {
+              if (it.id in ids) {
+                it.copy(
+                  isPlayed = played,
+                  playbackPositionTicks = if (played) 0L else it.playbackPositionTicks,
+                )
+              } else {
+                it
+              }
+            },
+        )
+      }
+    }
+  }
+
+  fun playRandom(context: Context) {
+    val items = _uiState.value.currentItems.filter { it.isVideo }
+    if (items.isNotEmpty()) {
+      playItem(context, items.random())
+    }
+  }
+
+  fun resumeLastPlayed(context: Context) {
+    viewModelScope.launch {
+      val server = _uiState.value.activeServer ?: return@launch
+      val resumeItems = jellyfinRepository.getResumeItems(server, limit = 1).getOrNull()
+      val itemToPlay = resumeItems?.firstOrNull() ?: _uiState.value.currentItems.firstOrNull { it.isVideo }
+      if (itemToPlay != null) {
+        playItem(context, itemToPlay)
+      }
+    }
+  }
+
+  fun getStreamUrl(item: JellyfinItem): String {
+    val server = _uiState.value.activeServer ?: return ""
+    return jellyfinRepository.getStreamUrl(server, item)
   }
 
   companion object {

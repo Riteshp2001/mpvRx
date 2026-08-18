@@ -177,4 +177,26 @@ class JellyfinRepository(
     itemId: String,
     positionTicks: Long,
   ) = client.reportPlaybackStopped(serverUrl, token, itemId, positionTicks)
+
+  suspend fun markPlayed(
+    server: JellyfinServer,
+    item: JellyfinItem,
+  ): Result<Unit> =
+    client.markPlayed(
+      serverUrl = server.serverUrl,
+      userId = server.userId,
+      itemId = item.id,
+      token = server.accessToken,
+    )
+
+  suspend fun markUnplayed(
+    server: JellyfinServer,
+    item: JellyfinItem,
+  ): Result<Unit> =
+    client.markUnplayed(
+      serverUrl = server.serverUrl,
+      userId = server.userId,
+      itemId = item.id,
+      token = server.accessToken,
+    )
 }
