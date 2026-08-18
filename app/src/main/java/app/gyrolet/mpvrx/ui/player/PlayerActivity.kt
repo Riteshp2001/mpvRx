@@ -803,8 +803,11 @@ class PlayerActivity :
   }
 
   private fun setupBackPressHandler() {
+    // Always own Back inside PlayerActivity. Letting a plain video fall through to the
+    // platform back implementation can defer finish() behind an Activity exit transition,
+    // leaving libmpv audio audible after the player UI has already started disappearing.
     val callback =
-      object : OnBackPressedCallback(shouldInterceptBackPress()) {
+      object : OnBackPressedCallback(true) {
         override fun handleOnBackStarted(backEvent: BackEventCompat) {
           applyPredictiveBackProgress(backEvent)
         }
@@ -830,35 +833,7 @@ class PlayerActivity :
       callback,
     )
 
-    lifecycleScope.launch {
-      combine(
-        viewModel.sheetShown,
-        viewModel.panelShown,
-        combine(
-          playerPreferences.autoPiPOnNavigation.changes(),
-          playerPreferences.enableVideoMiniPlayer.changes(),
-          audioPreferences.backgroundPlayback.changes(),
-          audioPreferences.audioBackgroundPlayback.changes(),
-        ) { autoPip, miniPlayer, videoBg, audioBg ->
-          autoPip || miniPlayer || videoBg || audioBg
-        },
-      ) { sheetShown, panelShown, prefsActive ->
-        sheetShown != Sheets.None ||
-          panelShown != Panels.None ||
-          prefsActive ||
-          viewModel.isAudioOnly.value ||
-          isCurrentMediaKnownAudio()
-      }.distinctUntilChanged()
-        .collect { callback.isEnabled = it }
-    }
   }
-
-  private fun shouldInterceptBackPress(): Boolean =
-    viewModel.sheetShown.value != Sheets.None ||
-      viewModel.panelShown.value != Panels.None ||
-      playerPreferences.autoPiPOnNavigation.get() ||
-      isMiniPlayerEnabled() ||
-      isBackgroundPlaybackEnabled()
 
   private fun applyPredictiveBackProgress(backEvent: BackEventCompat) {
     val root = binding.root
@@ -1388,24 +1363,20 @@ class PlayerActivity :
   }
 
   /**
-   * Mute the audio output the moment the user closes the player, so any buffered audio cannot
-   * keep playing during the gap before the deferred [cleanupMPV] teardown ([PlaybackSession.stop])
-   * actually mutes it in [onDestroy].
+   * Freeze playback and mute native audio at the moment a real player close is committed.
    *
-   * Skipped when audio is intentionally meant to outlive the close: an active background audio
-   * session, or when the Mini Player is enabled and will take over playback. In those cases the
-   * existing teardown paths handle (or deliberately preserve) the audio.
+   * A successful background/Mini Player handoff sets [isBackgroundPlaybackSessionActive]
+   * before calling [finish], so that ownership state — not a preference toggle — is the
+   * authoritative signal that audio is intentionally allowed to survive Activity teardown.
+   * This also covers failed handoffs: if Mini Player/background playback was requested but
+   * could not start, the session is not active and the close is silenced immediately.
    */
   private fun silenceAudioOnClose() {
-    if (!mpvInitialized) return
-    val keepBackgroundAlive =
-      PlayerLifecyclePolicy.shouldKeepBackgroundPlaybackAliveOnDestroy(
-        backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
-        backgroundPlaybackSessionActive = isBackgroundPlaybackSessionActive,
-      )
-    if (!keepBackgroundAlive && !isMiniPlayerEnabled()) {
-      PlaybackSession.muteForTeardown()
-    }
+    if (!mpvInitialized || isBackgroundPlaybackSessionActive) return
+    // Pause synchronously to freeze the resume position at the close boundary. Muting as well
+    // prevents Android AudioTrack/libmpv buffers from draining a short audible tail afterward.
+    PlaybackSession.setPropertyBoolean("pause", true)
+    PlaybackSession.muteForTeardown()
   }
 
   private fun cleanupReceivers() {
@@ -1472,9 +1443,8 @@ class PlayerActivity :
       // System will handle UI restoration automatically
       isReady = false
 
-      // Mute audio immediately so buffered audio cannot keep playing until the deferred
-      // onDestroy/cleanupMPV teardown runs. Skipped when audio is meant to survive the close
-      // (background audio session active, or the Mini Player will take over).
+      // Freeze and mute audio before Activity teardown. A completed background/Mini Player
+      // handoff is preserved because silenceAudioOnClose() checks actual session ownership.
       silenceAudioOnClose()
 
       // Clean up service when finishing
@@ -1510,9 +1480,8 @@ class PlayerActivity :
       isReady = false
       isUserFinishing = true
 
-      // Mute audio immediately so buffered audio cannot keep playing until the deferred
-      // onDestroy/cleanupMPV teardown runs. Skipped when audio is meant to survive the close
-      // (background audio session active, or the Mini Player will take over).
+      // Freeze and mute audio before Activity teardown. A completed background/Mini Player
+      // handoff is preserved because silenceAudioOnClose() checks actual session ownership.
       silenceAudioOnClose()
 
       // Clean up service when finishing
