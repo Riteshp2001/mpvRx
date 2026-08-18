@@ -299,46 +299,6 @@ fun OnlineSubtitleSearchSheet(
             )
           }
         }
-
-        // Autocomplete Results - Horizontal Scrollable
-        if (showWyzieSelection && mediaSearchResults.isNotEmpty()) {
-          Column(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.medium),
-          ) {
-            Text(
-              text = "Found ${mediaSearchResults.size}",
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.outline,
-              modifier =
-                Modifier
-                  .padding(bottom = MaterialTheme.spacing.small)
-                  .padding(start = MaterialTheme.spacing.small),
-            )
-            androidx.compose.foundation.lazy.LazyRow(
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .height(160.dp),
-              contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.small),
-            ) {
-              items(count = mediaSearchResults.size, key = { index -> mediaSearchResults[index].id }) { index ->
-                val result = mediaSearchResults[index]
-                TmdbMediaCard(
-                  result = result,
-                  onClick = {
-                    searchQuery = result.title
-                    onSelectMedia(result)
-                    keyboardController?.hide()
-                  },
-                )
-              }
-            }
-          }
-        }
       }
       if (isSearching) {
         LinearProgressIndicator(
@@ -348,6 +308,47 @@ fun OnlineSubtitleSearchSheet(
       }
 
       LazyColumn {
+        // Autocomplete Results - Horizontal Scrollable
+        if (showWyzieSelection && mediaSearchResults.isNotEmpty()) {
+          item(key = "tmdb_results") {
+            Column(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = MaterialTheme.spacing.medium),
+            ) {
+              Text(
+                text = "Found ${mediaSearchResults.size}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier =
+                  Modifier
+                    .padding(bottom = MaterialTheme.spacing.small)
+                    .padding(start = MaterialTheme.spacing.small),
+              )
+              androidx.compose.foundation.lazy.LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.small),
+              ) {
+                items(count = mediaSearchResults.size, key = { index -> mediaSearchResults[index].id }) { index ->
+                  val result = mediaSearchResults[index]
+                  TmdbMediaCard(
+                    result = result,
+                    onClick = {
+                      searchQuery = result.title
+                      onSelectMedia(result)
+                      keyboardController?.hide()
+                    },
+                  )
+                }
+              }
+            }
+          }
+        }
         items(
           items,
           key = { item ->
