@@ -271,12 +271,14 @@ class RecentlyPlayedViewModel(
     // Extract URI components
     val uri = Uri.parse(url)
 
-    // Prefer the title saved with the recent item so network streams keep their resolved name.
+    // Prefer non-generic title saved with the recent item so network streams keep their resolved name.
     val resolvedTitle =
-      parsedVideoTitle
-        ?.takeIf { it.isNotBlank() }
+      parsedVideoTitle?.takeIf { !isGenericStreamName(it) }
+        ?: entity?.videoTitle?.takeIf { !isGenericStreamName(it) }
+        ?: entity?.fileName?.takeIf { !isGenericStreamName(it) }
+        ?: uri.lastPathSegment?.takeIf { !isGenericStreamName(it) }
+        ?: parsedVideoTitle?.takeIf { it.isNotBlank() }
         ?: entity?.fileName?.takeIf { it.isNotBlank() }
-        ?: uri.lastPathSegment?.takeIf { it.isNotBlank() }
         ?: "Stream"
     val displayName = resolvedTitle
 
@@ -540,6 +542,19 @@ class RecentlyPlayedViewModel(
   }
 
   companion object {
+    private val GENERIC_STREAM_NAMES =
+      setOf(
+        "stream",
+        "stream.mkv",
+        "stream.mp4",
+        "stream.ts",
+        "stream.webm",
+        "stream.avi",
+      )
+
+    fun isGenericStreamName(name: String?): Boolean =
+      name.isNullOrBlank() || name.trim().lowercase() in GENERIC_STREAM_NAMES
+
     fun factory(application: Application): ViewModelProvider.Factory =
       viewModelFactory {
         initializer {

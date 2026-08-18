@@ -22,7 +22,9 @@ import app.gyrolet.mpvrx.database.dao.PlaylistDao
 import app.gyrolet.mpvrx.database.dao.RecentlyPlayedDao
 import app.gyrolet.mpvrx.database.dao.SecureMediaDao
 import app.gyrolet.mpvrx.database.dao.VideoMetadataDao
+import app.gyrolet.mpvrx.database.dao.JellyfinServerDao
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
+import app.gyrolet.mpvrx.database.entities.JellyfinServerEntity
 import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
@@ -43,8 +45,9 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
     DirectoryScanEntity::class,
     SecureMediaEntity::class,
     NetworkStreamEntryEntity::class,
+    JellyfinServerEntity::class,
   ],
-  version = 14,
+  version = 15,
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class, NetworkStreamEntryTypeConverter::class)
@@ -64,4 +67,6 @@ abstract class MpvRxDatabase : RoomDatabase() {
   abstract fun directoryScanDao(): DirectoryScanDao
 
   abstract fun secureMediaDao(): SecureMediaDao
+
+  abstract fun jellyfinServerDao(): JellyfinServerDao
 }

@@ -166,7 +166,7 @@ fun VideoCard(
     } else if (video.isAudio && video.title.isNotBlank()) {
       video.title
     } else {
-      video.displayName.substringBeforeLast('.')
+      app.gyrolet.mpvrx.utils.storage.FileTypeUtils.stripExtension(video.displayName)
     }
 
   val selectionInset = 2.dp

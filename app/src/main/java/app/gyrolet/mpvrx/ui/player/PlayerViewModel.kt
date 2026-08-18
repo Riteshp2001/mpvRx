@@ -19,6 +19,7 @@ import android.media.AudioManager
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.SystemClock
+import `is`.xyz.mpv.MPVNode
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
@@ -501,28 +502,78 @@ class PlayerViewModel : ViewModel(),
   private val _preciseDuration = MutableStateFlow(0f)
   val preciseDuration = _preciseDuration.asStateFlow()
 
+  private fun parseTracks(node: MPVNode?): List<TrackNode> {
+    val fromNode = runCatching { node?.toObject<List<TrackNode>>(json) }.getOrNull()
+    if (!fromNode.isNullOrEmpty()) {
+      return fromNode
+    }
+    val trackCount = PlaybackSession.getPropertyInt("track-list/count") ?: 0
+    if (trackCount <= 0) return emptyList()
+    val fallbackList = mutableListOf<TrackNode>()
+    for (i in 0 until trackCount) {
+      val id = PlaybackSession.getPropertyInt("track-list/$i/id") ?: continue
+      val type = PlaybackSession.getPropertyString("track-list/$i/type") ?: continue
+      val title =
+        PlaybackSession.getPropertyString("track-list/$i/title")
+          ?: PlaybackSession.getPropertyString("track-list/$i/metadata/by-key/title")
+          ?: PlaybackSession.getPropertyString("track-list/$i/metadata/by-key/TITLE")
+      val lang =
+        PlaybackSession.getPropertyString("track-list/$i/lang")
+          ?: PlaybackSession.getPropertyString("track-list/$i/metadata/by-key/language")
+          ?: PlaybackSession.getPropertyString("track-list/$i/metadata/by-key/lang")
+      val selected = PlaybackSession.getPropertyBoolean("track-list/$i/selected")
+      val external = PlaybackSession.getPropertyBoolean("track-list/$i/external")
+      val default = PlaybackSession.getPropertyBoolean("track-list/$i/default")
+      val forced = PlaybackSession.getPropertyBoolean("track-list/$i/forced")
+      val codec = PlaybackSession.getPropertyString("track-list/$i/codec")
+      val codecDesc = PlaybackSession.getPropertyString("track-list/$i/codec-desc")
+      val externalFilename = PlaybackSession.getPropertyString("track-list/$i/external-filename")
+      val image = PlaybackSession.getPropertyBoolean("track-list/$i/image")
+      val albumArt = PlaybackSession.getPropertyBoolean("track-list/$i/albumart")
+      fallbackList.add(
+        TrackNode(
+          id = id,
+          type = type,
+          title = title,
+          lang = lang,
+          selected = selected,
+          external = external,
+          default = default,
+          forced = forced,
+          codec = codec,
+          codecDesc = codecDesc,
+          externalFilename = externalFilename,
+          image = image,
+          albumArt = albumArt,
+        ),
+      )
+    }
+    return fallbackList
+  }
+
   // These MPV-backed state flows must be initialized before any init block collects them.
-  val subtitleTracks: StateFlow<List<TrackNode>> =
+  private val allTracks: StateFlow<List<TrackNode>> =
     PlaybackSession.propNode["track-list"]
-      .map { node ->
-        node?.toObject<List<TrackNode>>(json)?.filter { it.isSubtitle }?.toImmutableList()
-          ?: persistentListOf()
-      }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
+      .map { node -> parseTracks(node).toImmutableList() }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
+
+  val subtitleTracks: StateFlow<List<TrackNode>> =
+    allTracks
+      .map { tracks -> tracks.filter { it.isSubtitle }.toImmutableList() }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val audioTracks: StateFlow<List<TrackNode>> =
-    PlaybackSession.propNode["track-list"]
-      .map { node ->
-        node?.toObject<List<TrackNode>>(json)?.filter { it.isAudio }?.toImmutableList()
-          ?: persistentListOf()
-      }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
+    allTracks
+      .map { tracks -> tracks.filter { it.isAudio }.toImmutableList() }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val isAudioOnly: StateFlow<Boolean> =
     combine(
-      PlaybackSession.propNode["track-list"],
+      allTracks,
       PlaybackSession.propString["path"],
       PlaybackSession.propString["stream-open-filename"],
       PlaybackSession.state,
-    ) { node, path, streamPath, session ->
+    ) { tracks, path, streamPath, session ->
       val currentPath = path?.takeIf { it.isNotBlank() } ?: streamPath
       val queuedItem = session.currentItem
       val itemDeclaresAudio =
@@ -541,7 +592,6 @@ class PlayerViewModel : ViewModel(),
             .filterNotNull()
             .any { candidate -> candidate.fileExtension() in FileTypeUtils.VIDEO_EXTENSIONS }
 
-      val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
       val hasRealVideo = tracks.any { it.isVideo && !it.isAlbumArtwork }
       val detectedAudio =
         when {
@@ -558,18 +608,16 @@ class PlayerViewModel : ViewModel(),
       .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val hasAlbumArt: StateFlow<Boolean> =
-    PlaybackSession.propNode["track-list"]
-      .map { node ->
-        val tracks = node?.toObject<List<TrackNode>>(json).orEmpty()
-        tracks.any { it.isAlbumArtwork }
-      }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    allTracks
+      .map { tracks -> tracks.any { it.isAlbumArtwork } }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val chapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
     PlaybackSession.propNode["chapter-list"]
       .map { node ->
-        node?.toObject<List<ChapterNode>>(json)?.map { it.toSegment() }?.toImmutableList()
+        runCatching { node?.toObject<List<ChapterNode>>(json) }.getOrNull()?.map { it.toSegment() }?.toImmutableList()
           ?: persistentListOf()
-      }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
+      }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   // Audio player UI state
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
@@ -2667,12 +2715,27 @@ class PlayerViewModel : ViewModel(),
   }
 
   private fun maybeAutoSkipIntro(positionSeconds: Double) {
+    val totalDur = currentDurationSeconds()
+    val hasNextItem = PlaybackSession.hasNext()
     val activeSegment =
       skipSegmentsSnapshot.firstOrNull { segment ->
         positionSeconds in segment.startSeconds..segment.endSeconds && (segment.endSeconds - positionSeconds) >= 1.0
+      } ?: if (hasNextItem && totalDur > 45.0 && (totalDur - positionSeconds) in 1.0..30.0) {
+        SkipSegment(
+          type = SkipSegmentType.NEXT_EPISODE,
+          startSeconds = totalDur - 30.0,
+          endSeconds = totalDur,
+          source = "auto_outro",
+        )
+      } else {
+        null
       }
+
     val showChip =
-      activeSegment != null && (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
+      activeSegment != null && (
+        activeSegment.type == SkipSegmentType.NEXT_EPISODE ||
+          (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
+      )
     if (_currentSkippableSegment.value != activeSegment) {
       _currentSkippableSegment.value = activeSegment
     }
@@ -2689,29 +2752,38 @@ class PlayerViewModel : ViewModel(),
         SkipSegmentType.OUTRO -> playerPreferences.autoSkipOutro.get()
         SkipSegmentType.CREDITS -> playerPreferences.autoSkipOutro.get()
         SkipSegmentType.PREVIEW -> playerPreferences.autoSkipOutro.get()
+        SkipSegmentType.NEXT_EPISODE -> false
       }
     if (!autoSkipEnabled) return
 
     skippedSegmentTypes += activeSegment.type
-    PlaybackSession.setPropertyDouble("time-pos", activeSegment.endSeconds)
-    syncplayManager.updatePlayerState(
-      activeSegment.endSeconds,
-      PlaybackSession.getPropertyBoolean("pause") ?: false,
-      doSeek = true,
-    )
-    showToast("${activeSegment.label} (auto)")
+    if ((activeSegment.type == SkipSegmentType.OUTRO || activeSegment.type == SkipSegmentType.CREDITS) && hasNext()) {
+      playNext()
+    } else {
+      PlaybackSession.setPropertyDouble("time-pos", activeSegment.endSeconds)
+      syncplayManager.updatePlayerState(
+        activeSegment.endSeconds,
+        PlaybackSession.getPropertyBoolean("pause") ?: false,
+        doSeek = true,
+      )
+      showToast("${activeSegment.label} (auto)")
+    }
   }
 
   fun skipActiveSegment() {
     val segment = _currentSkippableSegment.value ?: return
     skippedSegmentTypes += segment.type
-    PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
-    syncplayManager.updatePlayerState(
-      segment.endSeconds,
-      PlaybackSession.getPropertyBoolean("pause") ?: false,
-      doSeek = true,
-    )
-    showToast("${segment.label}")
+    if ((segment.type == SkipSegmentType.OUTRO || segment.type == SkipSegmentType.CREDITS || segment.type == SkipSegmentType.NEXT_EPISODE) && hasNext()) {
+      playNext()
+    } else {
+      PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
+      syncplayManager.updatePlayerState(
+        segment.endSeconds,
+        PlaybackSession.getPropertyBoolean("pause") ?: false,
+        doSeek = true,
+      )
+      showToast("${segment.label}")
+    }
   }
 
   private fun mergeSkipSegments() {

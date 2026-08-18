@@ -82,6 +82,9 @@ object MediaUtils {
     mediaDescription: String? = null,
     posterUrl: String? = null,
     backdropUrl: String? = null,
+    playlist: List<Uri> = emptyList(),
+    playlistIndex: Int = 0,
+    playlistTitles: List<String> = emptyList(),
   ) {
     val uri =
       when (source) {
@@ -138,6 +141,9 @@ object MediaUtils {
             mediaDescription = mediaDescription,
             posterUrl = posterUrl,
             backdropUrl = backdropUrl,
+            playlist = playlist,
+            playlistIndex = playlistIndex,
+            playlistTitles = playlistTitles,
           )
           context.startActivity(intent)
           return
@@ -218,6 +224,9 @@ object MediaUtils {
       mediaDescription = mediaDescription,
       posterUrl = posterUrl,
       backdropUrl = backdropUrl,
+      playlist = playlist,
+      playlistIndex = playlistIndex,
+      playlistTitles = playlistTitles,
     )
     context.startActivity(intent)
   }
@@ -273,7 +282,19 @@ object MediaUtils {
     mediaDescription: String?,
     posterUrl: String?,
     backdropUrl: String?,
+    playlist: List<Uri> = emptyList(),
+    playlistIndex: Int = 0,
+    playlistTitles: List<String> = emptyList(),
   ) {
+    if (playlist.isNotEmpty()) {
+      val playlistArrayList = if (playlist is ArrayList) playlist else ArrayList(playlist)
+      intent.putParcelableArrayListExtra("playlist", playlistArrayList)
+      intent.putExtra("playlistIndex", playlistIndex)
+      if (playlistTitles.isNotEmpty()) {
+        val titlesArrayList = if (playlistTitles is ArrayList) playlistTitles else ArrayList(playlistTitles)
+        intent.putStringArrayListExtra("playlist_titles", titlesArrayList)
+      }
+    }
     launchSource?.let { intent.putExtra("launch_source", it) }
     title?.let {
       intent.putExtra("title", it)
