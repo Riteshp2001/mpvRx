@@ -153,18 +153,18 @@ class HlsStreamingProxy private constructor() :
           handleMasterManifest(token, hlsSession, headOnly)
         }
         subPath.startsWith("variant.m3u8", ignoreCase = true) -> {
-          val targetUrl = session.parms["u"]?.let(::decodeUrl)
+          val targetUrl = session.parameters["u"]?.firstOrNull()?.let(::decodeUrl)
           if (targetUrl.isNullOrBlank()) return notFound(headOnly)
           handleVariantManifest(token, hlsSession, targetUrl, headOnly)
         }
         subPath.startsWith("segment", ignoreCase = true) -> {
-          val targetUrl = session.parms["u"]?.let(::decodeUrl)
+          val targetUrl = session.parameters["u"]?.firstOrNull()?.let(::decodeUrl)
           if (targetUrl.isNullOrBlank()) return notFound(headOnly)
           val rangeHeader = session.headers["range"]
           handleSegment(hlsSession, targetUrl, rangeHeader, headOnly)
         }
         subPath.startsWith("key", ignoreCase = true) -> {
-          val targetUrl = session.parms["u"]?.let(::decodeUrl)
+          val targetUrl = session.parameters["u"]?.firstOrNull()?.let(::decodeUrl)
           if (targetUrl.isNullOrBlank()) return notFound(headOnly)
           handleKey(hlsSession, targetUrl, headOnly)
         }

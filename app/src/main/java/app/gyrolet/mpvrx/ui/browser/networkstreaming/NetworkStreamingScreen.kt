@@ -53,8 +53,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
@@ -349,7 +349,7 @@ object NetworkStreamingScreen : Screen {
           onDeleteRecent = viewModel::deleteStreamEntry,
         )
 
-        ScrollableTabRow(
+        PrimaryScrollableTabRow(
           selectedTabIndex = pagerState.currentPage,
           edgePadding = 16.dp,
           containerColor = MaterialTheme.colorScheme.surface,

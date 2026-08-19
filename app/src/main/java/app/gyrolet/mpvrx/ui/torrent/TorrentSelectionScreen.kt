@@ -103,9 +103,10 @@ private fun TorrentReadyScreen(
     color = MaterialTheme.colorScheme.surface,
   ) {
     Box(modifier = Modifier.fillMaxSize()) {
-      if (hasBackdrop) {
+      val backdropUrl = artwork.backdropUrl
+      if (!backdropUrl.isNullOrBlank()) {
         RemoteImage(
-          url = artwork.backdropUrl!!,
+          url = backdropUrl,
           contentDescription = null,
           modifier =
             Modifier
@@ -344,9 +345,9 @@ private fun TorrentReadyScreen(
 @Composable
 private fun TorrentHeroBanner(artwork: TorrentArtwork) {
   var expanded by remember { mutableStateOf(false) }
-  val hasBackdrop = !artwork.backdropUrl.isNullOrBlank()
-  val hasPoster = !artwork.posterUrl.isNullOrBlank()
-  val hasDescription = !artwork.description.isNullOrBlank()
+  val backdropUrl = artwork.backdropUrl
+  val posterUrl = artwork.posterUrl
+  val description = artwork.description
   val metadata =
     listOfNotNull(
       artwork.releaseYear,
@@ -358,9 +359,9 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
       Modifier
         .fillMaxWidth()
         .padding(horizontal = 20.dp)
-        .then(if (hasBackdrop) Modifier else Modifier.padding(top = 8.dp)),
+        .then(if (!backdropUrl.isNullOrBlank()) Modifier else Modifier.padding(top = 8.dp)),
   ) {
-    if (hasBackdrop) {
+    if (!backdropUrl.isNullOrBlank()) {
       Box(
         modifier =
           Modifier
@@ -369,7 +370,7 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
             .clip(RoundedCornerShape(16.dp)),
       ) {
         RemoteImage(
-          url = artwork.backdropUrl!!,
+          url = backdropUrl,
           contentDescription = artwork.title,
           modifier = Modifier.fillMaxSize(),
           contentScale = ContentScale.Crop,
@@ -394,7 +395,7 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
           horizontalArrangement = Arrangement.spacedBy(12.dp),
           verticalAlignment = Alignment.Bottom,
         ) {
-          if (hasPoster) {
+          if (!posterUrl.isNullOrBlank()) {
             Box(
               modifier =
                 Modifier
@@ -403,7 +404,7 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
                   .clip(RoundedCornerShape(10.dp)),
             ) {
               RemoteImage(
-                url = artwork.posterUrl!!,
+                url = posterUrl,
                 contentDescription = artwork.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
@@ -436,7 +437,7 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.Top,
       ) {
-        if (hasPoster) {
+        if (!posterUrl.isNullOrBlank()) {
           Box(
             modifier =
               Modifier
@@ -445,7 +446,7 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
                 .clip(RoundedCornerShape(12.dp)),
           ) {
             RemoteImage(
-              url = artwork.posterUrl!!,
+              url = posterUrl,
               contentDescription = artwork.title,
               modifier = Modifier.fillMaxSize(),
               contentScale = ContentScale.Crop,
@@ -472,9 +473,9 @@ private fun TorrentHeroBanner(artwork: TorrentArtwork) {
       }
     }
 
-    if (hasDescription) {
+    if (!description.isNullOrBlank()) {
       Text(
-        text = artwork.description!!,
+        text = description,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = if (expanded) Int.MAX_VALUE else 3,

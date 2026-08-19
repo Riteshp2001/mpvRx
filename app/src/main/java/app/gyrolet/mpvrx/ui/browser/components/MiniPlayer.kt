@@ -218,7 +218,12 @@ private fun MiniPlayerContent(
       }
       context.startActivity(intent)
       if (context is Activity) {
-        context.overridePendingTransition(R.anim.slide_in_up, 0)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+          context.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, R.anim.slide_in_up, 0)
+        } else {
+          @Suppress("DEPRECATION")
+          context.overridePendingTransition(R.anim.slide_in_up, 0)
+        }
       }
     }
   }
