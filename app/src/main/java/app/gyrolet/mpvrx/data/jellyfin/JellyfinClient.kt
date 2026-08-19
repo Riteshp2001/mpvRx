@@ -44,12 +44,22 @@ class JellyfinClient(
     private const val VERSION = "2.1.0"
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
-    fun normalizeUrl(rawUrl: String): String {
-      var url = rawUrl.trim()
-      if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
-        url = "http://$url"
+    fun normalizeUrlCandidates(rawUrl: String): List<String> {
+      val trimmed = rawUrl.trim().removeSuffix("/")
+      if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+        return listOf(trimmed)
       }
-      return url.removeSuffix("/")
+      val clean = trimmed.removePrefix("//")
+      val port = clean.substringAfterLast(":", "").substringBefore("/").toIntOrNull()
+      return if (port == 80 || port == 8096) {
+        listOf("http://$clean", "https://$clean")
+      } else {
+        listOf("https://$clean", "http://$clean")
+      }
+    }
+
+    fun normalizeUrl(rawUrl: String): String {
+      return normalizeUrlCandidates(rawUrl).first()
     }
 
     fun authHeader(token: String? = null): String {
@@ -102,51 +112,61 @@ class JellyfinClient(
     password: String,
   ): Result<JellyfinAuthResult> =
     withContext(Dispatchers.IO) {
-      runCatching {
-        val base = normalizeUrl(serverUrl)
-        val endpoint = "$base/Users/AuthenticateByName"
-        val payload =
-          JsonObject(
-            mapOf(
-              "Username" to kotlinx.serialization.json.JsonPrimitive(username),
-              "Pw" to kotlinx.serialization.json.JsonPrimitive(password),
-            ),
-          ).toString()
+      val candidates = normalizeUrlCandidates(serverUrl)
+      var lastError: Throwable = IOException("No valid URL candidate for $serverUrl")
 
-        val request =
-          Request
-            .Builder()
-            .url(endpoint)
-            .addHeader("X-Emby-Authorization", authHeader())
-            .addHeader("Content-Type", "application/json")
-            .post(payload.toRequestBody(JSON_MEDIA_TYPE))
-            .build()
+      for (candidate in candidates) {
+        try {
+          val endpoint = "$candidate/Users/AuthenticateByName"
+          val payload =
+            JsonObject(
+              mapOf(
+                "Username" to kotlinx.serialization.json.JsonPrimitive(username),
+                "Pw" to kotlinx.serialization.json.JsonPrimitive(password),
+              ),
+            ).toString()
 
-        httpClient.newCall(request).execute().use { response ->
-          if (!response.isSuccessful) {
-            throw IOException("Authentication failed: HTTP ${response.code} ${response.message}")
-          }
-          val bodyStr = response.body.string()
-          val root = json.parseToJsonElement(bodyStr).jsonObject
-          val accessToken = root["AccessToken"]?.jsonPrimitive?.content ?: throw IOException("Missing AccessToken in response")
-          val userObj = root["User"]?.jsonObject ?: throw IOException("Missing User object in response")
-          val userId = userObj["Id"]?.jsonPrimitive?.content ?: throw IOException("Missing User.Id in response")
-          val uname = userObj["Name"]?.jsonPrimitive?.content ?: username
-          val serverId = root["ServerId"]?.jsonPrimitive?.content
-          val configObj = userObj["Configuration"]?.jsonObject
-          val audioLang = configObj?.get("AudioLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-          val subLang = configObj?.get("SubtitleLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+          val request =
+            Request
+              .Builder()
+              .url(endpoint)
+              .addHeader("X-Emby-Authorization", authHeader())
+              .addHeader("Content-Type", "application/json")
+              .post(payload.toRequestBody(JSON_MEDIA_TYPE))
+              .build()
 
-          JellyfinAuthResult(
-            accessToken = accessToken,
-            userId = userId,
-            username = uname,
-            serverId = serverId,
-            audioLanguage = audioLang,
-            subtitleLanguage = subLang,
-          )
+          val result =
+            httpClient.newCall(request).execute().use { response ->
+              if (!response.isSuccessful) {
+                throw IOException("Authentication failed: HTTP ${response.code} ${response.message}")
+              }
+              val bodyStr = response.body.string()
+              val root = json.parseToJsonElement(bodyStr).jsonObject
+              val accessToken = root["AccessToken"]?.jsonPrimitive?.content ?: throw IOException("Missing AccessToken in response")
+              val userObj = root["User"]?.jsonObject ?: throw IOException("Missing User object in response")
+              val userId = userObj["Id"]?.jsonPrimitive?.content ?: throw IOException("Missing User.Id in response")
+              val uname = userObj["Name"]?.jsonPrimitive?.content ?: username
+              val serverId = root["ServerId"]?.jsonPrimitive?.content
+              val configObj = userObj["Configuration"]?.jsonObject
+              val audioLang = configObj?.get("AudioLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+              val subLang = configObj?.get("SubtitleLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+
+              JellyfinAuthResult(
+                accessToken = accessToken,
+                userId = userId,
+                username = uname,
+                serverId = serverId,
+                audioLanguage = audioLang,
+                subtitleLanguage = subLang,
+                normalizedServerUrl = candidate,
+              )
+            }
+          return@withContext Result.success(result)
+        } catch (e: Throwable) {
+          lastError = e
         }
       }
+      Result.failure(lastError)
     }
 
   suspend fun validateToken(
@@ -154,41 +174,51 @@ class JellyfinClient(
     token: String,
   ): Result<JellyfinUser> =
     withContext(Dispatchers.IO) {
-      runCatching {
-        val base = normalizeUrl(serverUrl)
-        val endpoint = "$base/Users/Me"
-        val request =
-          Request
-            .Builder()
-            .url(endpoint)
-            .addHeader("X-Emby-Authorization", authHeader(token))
-            .addHeader("X-Emby-Token", token)
-            .get()
-            .build()
+      val candidates = normalizeUrlCandidates(serverUrl)
+      var lastError: Throwable = IOException("No valid URL candidate for $serverUrl")
 
-        httpClient.newCall(request).execute().use { response ->
-          if (!response.isSuccessful) {
-            throw IOException("Token validation failed: HTTP ${response.code} ${response.message}")
-          }
-          val bodyStr = response.body.string()
-          val userObj = json.parseToJsonElement(bodyStr).jsonObject
-          val userId = userObj["Id"]?.jsonPrimitive?.content ?: throw IOException("Missing User.Id")
-          val uname = userObj["Name"]?.jsonPrimitive?.content ?: "User"
-          val serverId = userObj["ServerId"]?.jsonPrimitive?.content
+      for (candidate in candidates) {
+        try {
+          val endpoint = "$candidate/Users/Me"
+          val request =
+            Request
+              .Builder()
+              .url(endpoint)
+              .addHeader("X-Emby-Authorization", authHeader(token))
+              .addHeader("X-Emby-Token", token)
+              .get()
+              .build()
 
-          val configObj = userObj["Configuration"]?.jsonObject
-          val audioLang = configObj?.get("AudioLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-          val subLang = configObj?.get("SubtitleLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+          val result =
+            httpClient.newCall(request).execute().use { response ->
+              if (!response.isSuccessful) {
+                throw IOException("Token validation failed: HTTP ${response.code} ${response.message}")
+              }
+              val bodyStr = response.body.string()
+              val userObj = json.parseToJsonElement(bodyStr).jsonObject
+              val userId = userObj["Id"]?.jsonPrimitive?.content ?: throw IOException("Missing User.Id")
+              val uname = userObj["Name"]?.jsonPrimitive?.content ?: "User"
+              val serverId = userObj["ServerId"]?.jsonPrimitive?.content
 
-          JellyfinUser(
-            id = userId,
-            name = uname,
-            serverId = serverId,
-            audioLanguage = audioLang,
-            subtitleLanguage = subLang,
-          )
+              val configObj = userObj["Configuration"]?.jsonObject
+              val audioLang = configObj?.get("AudioLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+              val subLang = configObj?.get("SubtitleLanguagePreference")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+
+              JellyfinUser(
+                id = userId,
+                name = uname,
+                serverId = serverId,
+                audioLanguage = audioLang,
+                subtitleLanguage = subLang,
+                normalizedServerUrl = candidate,
+              )
+            }
+          return@withContext Result.success(result)
+        } catch (e: Throwable) {
+          lastError = e
         }
       }
+      Result.failure(lastError)
     }
 
   suspend fun getUserLibraries(

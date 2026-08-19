@@ -119,6 +119,7 @@ data class JellyfinAuthResult(
   val serverId: String? = null,
   val audioLanguage: String? = null,
   val subtitleLanguage: String? = null,
+  val normalizedServerUrl: String = "",
 )
 
 @Serializable
@@ -128,4 +129,5 @@ data class JellyfinUser(
   val serverId: String? = null,
   val audioLanguage: String? = null,
   val subtitleLanguage: String? = null,
+  val normalizedServerUrl: String = "",
 )

@@ -448,13 +448,12 @@ class JellyfinViewModel(
   ) {
     viewModelScope.launch {
       _uiState.update { it.copy(isAuthenticating = true, authError = null) }
-      val cleanUrl = JellyfinClient.normalizeUrl(serverUrl)
 
       try {
         val serverToSave =
           if (authMode == JellyfinAuthMode.CREDENTIALS) {
             val authResult =
-              jellyfinRepository.authenticate(cleanUrl, username, password).getOrThrow()
+              jellyfinRepository.authenticate(serverUrl, username, password).getOrThrow()
 
             if (subtitlesPreferences.preferredLanguages.get().isBlank() && !authResult.subtitleLanguage.isNullOrBlank()) {
               subtitlesPreferences.preferredLanguages.set(authResult.subtitleLanguage)
@@ -463,16 +462,18 @@ class JellyfinViewModel(
               audioPreferences.preferredLanguages.set(authResult.audioLanguage)
             }
 
+            val effectiveUrl = authResult.normalizedServerUrl.ifBlank { JellyfinClient.normalizeUrl(serverUrl) }
+
             JellyfinServer(
               name = serverName.ifBlank { "Jellyfin (${authResult.username})" },
-              serverUrl = cleanUrl,
+              serverUrl = effectiveUrl,
               userId = authResult.userId,
               username = authResult.username,
               accessToken = authResult.accessToken,
               lastConnected = System.currentTimeMillis(),
             )
           } else {
-            val user = jellyfinRepository.validateToken(cleanUrl, token).getOrThrow()
+            val user = jellyfinRepository.validateToken(serverUrl, token).getOrThrow()
 
             if (subtitlesPreferences.preferredLanguages.get().isBlank() && !user.subtitleLanguage.isNullOrBlank()) {
               subtitlesPreferences.preferredLanguages.set(user.subtitleLanguage)
@@ -481,9 +482,11 @@ class JellyfinViewModel(
               audioPreferences.preferredLanguages.set(user.audioLanguage)
             }
 
+            val effectiveUrl = user.normalizedServerUrl.ifBlank { JellyfinClient.normalizeUrl(serverUrl) }
+
             JellyfinServer(
               name = serverName.ifBlank { "Jellyfin (${user.name})" },
-              serverUrl = cleanUrl,
+              serverUrl = effectiveUrl,
               userId = user.id,
               username = user.name,
               accessToken = token.trim(),

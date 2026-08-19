@@ -96,7 +96,7 @@ fun AddJellyfinServerDialog(
           value = serverUrl,
           onValueChange = { serverUrl = it },
           label = { Text("Server URL") },
-          placeholder = { Text("http://192.168.1.100:8096") },
+          placeholder = { Text("jellyfin.example.com or 192.168.1.100:8096") },
           singleLine = true,
           modifier = Modifier.fillMaxWidth(),
           keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
