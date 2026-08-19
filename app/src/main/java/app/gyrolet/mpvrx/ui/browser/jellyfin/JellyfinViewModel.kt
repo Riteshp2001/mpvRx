@@ -42,6 +42,8 @@ import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
+import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
+
 data class JellyfinBreadcrumb(
   val id: String,
   val title: String,
@@ -502,6 +504,7 @@ class JellyfinViewModel(
   ) {
     val server = _uiState.value.activeServer ?: return
     val streamUrl = jellyfinRepository.getStreamUrl(server, item)
+    val mediaIdentifier = PlaybackIdentity.forUri(streamUrl)
     val posterUrl = jellyfinRepository.getImageUrl(server, item)
     val backdropUrl = jellyfinRepository.getBackdropUrl(server, item)
 
@@ -513,7 +516,10 @@ class JellyfinViewModel(
 
     viewModelScope.launch(Dispatchers.IO) {
       if (startFromBeginning) {
-        runCatching { playbackStateRepository.deleteByTitle(streamUrl) }
+        runCatching {
+          playbackStateRepository.deleteByTitle(mediaIdentifier)
+          playbackStateRepository.deleteByTitle(streamUrl)
+        }
       }
 
       // Concurrently run DB seed and external subtitle fetching
@@ -522,9 +528,13 @@ class JellyfinViewModel(
           if (!startFromBeginning && item.playbackPositionTicks != null && item.playbackPositionTicks > 0) {
             val positionSeconds = (item.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
             runCatching {
-              playbackStateRepository.upsert(
-                PlaybackStateEntity(
-                  mediaTitle = streamUrl,
+              val existing = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
+              val stateToSave =
+                existing?.copy(
+                  lastPosition = positionSeconds,
+                  timeRemaining = (item.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
+                ) ?: PlaybackStateEntity(
+                  mediaTitle = mediaIdentifier,
                   lastPosition = positionSeconds,
                   playbackSpeed = 1.0,
                   videoZoom = 0f,
@@ -535,8 +545,8 @@ class JellyfinViewModel(
                   aid = -1,
                   audioDelay = 0,
                   timeRemaining = (item.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
-                ),
-              )
+                )
+              playbackStateRepository.upsert(stateToSave)
             }
           }
         }
@@ -622,6 +632,7 @@ class JellyfinViewModel(
     if (playable.isEmpty()) return
     val firstItem = playable.first()
     val streamUrl = jellyfinRepository.getStreamUrl(server, firstItem)
+    val mediaIdentifier = PlaybackIdentity.forUri(streamUrl)
     val posterUrl = jellyfinRepository.getImageUrl(server, firstItem)
     val backdropUrl = jellyfinRepository.getBackdropUrl(server, firstItem)
 
@@ -651,19 +662,57 @@ class JellyfinViewModel(
         "X-Emby-Authorization" to JellyfinClient.authHeader(server.accessToken),
       )
 
-    MediaUtils.playFile(
-      source = streamUrl,
-      context = context,
-      launchSource = "jellyfin_stream",
-      title = itemTitle,
-      headers = headers,
-      mediaDescription = firstItem.overview,
-      posterUrl = posterUrl,
-      backdropUrl = backdropUrl,
-      playlist = playlistUris,
-      playlistIndex = 0,
-      playlistTitles = playlistTitles,
-    )
+    viewModelScope.launch(Dispatchers.IO) {
+      if (firstItem.playbackPositionTicks != null && firstItem.playbackPositionTicks > 0) {
+        val positionSeconds = (firstItem.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
+        runCatching {
+          val existing = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
+          val stateToSave =
+            existing?.copy(
+              lastPosition = positionSeconds,
+              timeRemaining = (firstItem.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
+            ) ?: PlaybackStateEntity(
+              mediaTitle = mediaIdentifier,
+              lastPosition = positionSeconds,
+              playbackSpeed = 1.0,
+              videoZoom = 0f,
+              sid = -1,
+              secondarySid = -1,
+              subDelay = 0,
+              subSpeed = 1.0,
+              aid = -1,
+              audioDelay = 0,
+              timeRemaining = (firstItem.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
+            )
+          playbackStateRepository.upsert(stateToSave)
+        }
+      }
+
+      launch {
+        jellyfinRepository.reportPlaybackStart(
+          serverUrl = server.serverUrl,
+          token = server.accessToken,
+          itemId = firstItem.id,
+          positionTicks = firstItem.playbackPositionTicks ?: 0L,
+        )
+      }
+
+      withContext(Dispatchers.Main) {
+        MediaUtils.playFile(
+          source = streamUrl,
+          context = context,
+          launchSource = "jellyfin_stream",
+          title = itemTitle,
+          headers = headers,
+          mediaDescription = firstItem.overview,
+          posterUrl = posterUrl,
+          backdropUrl = backdropUrl,
+          playlist = playlistUris,
+          playlistIndex = 0,
+          playlistTitles = playlistTitles,
+        )
+      }
+    }
   }
 
   fun togglePlayed(item: JellyfinItem) {
