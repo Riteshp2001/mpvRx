@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -142,13 +143,15 @@ fun JellyfinPosterCard(
   isSelected: Boolean = false,
 ) {
   val imageUrl =
-    JellyfinClient.getImageUrl(
-      serverUrl = server.serverUrl,
-      itemId = item.id,
-      imageTag = item.primaryImageTag,
-      maxWidth = 400,
-      token = server.accessToken,
-    )
+    remember(server.serverUrl, item.id, item.primaryImageTag, server.accessToken) {
+      JellyfinClient.getImageUrl(
+        serverUrl = server.serverUrl,
+        itemId = item.id,
+        imageTag = item.primaryImageTag,
+        maxWidth = 400,
+        token = server.accessToken,
+      )
+    }
 
   val containerColor =
     if (isSelected) {
@@ -292,13 +295,15 @@ fun JellyfinEpisodeCard(
   isSelected: Boolean = false,
 ) {
   val imageUrl =
-    JellyfinClient.getImageUrl(
-      serverUrl = server.serverUrl,
-      itemId = item.id,
-      imageTag = item.primaryImageTag,
-      maxWidth = 300,
-      token = server.accessToken,
-    )
+    remember(server.serverUrl, item.id, item.primaryImageTag, server.accessToken) {
+      JellyfinClient.getImageUrl(
+        serverUrl = server.serverUrl,
+        itemId = item.id,
+        imageTag = item.primaryImageTag,
+        maxWidth = 300,
+        token = server.accessToken,
+      )
+    }
 
   val containerColor =
     if (isSelected) {
@@ -454,13 +459,15 @@ fun JellyfinListItemCard(
   isSelected: Boolean = false,
 ) {
   val imageUrl =
-    JellyfinClient.getImageUrl(
-      serverUrl = server.serverUrl,
-      itemId = item.id,
-      imageTag = item.primaryImageTag,
-      maxWidth = 200,
-      token = server.accessToken,
-    )
+    remember(server.serverUrl, item.id, item.primaryImageTag, server.accessToken) {
+      JellyfinClient.getImageUrl(
+        serverUrl = server.serverUrl,
+        itemId = item.id,
+        imageTag = item.primaryImageTag,
+        maxWidth = 200,
+        token = server.accessToken,
+      )
+    }
 
   val containerColor =
     if (isSelected) {
@@ -636,22 +643,24 @@ fun JellyfinResumeCard(
   isInSelectionMode: Boolean = false,
 ) {
   val imageUrl =
-    if (!item.backdropImageTag.isNullOrBlank()) {
-      JellyfinClient.getBackdropUrl(
-        serverUrl = server.serverUrl,
-        itemId = item.id,
-        imageTag = item.backdropImageTag,
-        maxWidth = 500,
-        token = server.accessToken,
-      )
-    } else {
-      JellyfinClient.getImageUrl(
-        serverUrl = server.serverUrl,
-        itemId = item.id,
-        imageTag = item.primaryImageTag,
-        maxWidth = 400,
-        token = server.accessToken,
-      )
+    remember(server.serverUrl, item.id, item.backdropImageTag, item.primaryImageTag, server.accessToken) {
+      if (!item.backdropImageTag.isNullOrBlank()) {
+        JellyfinClient.getBackdropUrl(
+          serverUrl = server.serverUrl,
+          itemId = item.id,
+          imageTag = item.backdropImageTag,
+          maxWidth = 500,
+          token = server.accessToken,
+        )
+      } else {
+        JellyfinClient.getImageUrl(
+          serverUrl = server.serverUrl,
+          itemId = item.id,
+          imageTag = item.primaryImageTag,
+          maxWidth = 400,
+          token = server.accessToken,
+        )
+      }
     }
 
   val containerColor =

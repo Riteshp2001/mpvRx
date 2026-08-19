@@ -31,7 +31,9 @@ import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,6 +81,10 @@ class JellyfinViewModel(
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
+
+  private var loadLibrariesJob: Job? = null
+  private var loadItemsJob: Job? = null
+  private var searchJob: Job? = null
 
   private val _uiState = MutableStateFlow(JellyfinUiState())
   val uiState: StateFlow<JellyfinUiState> = _uiState.asStateFlow()
@@ -129,18 +135,33 @@ class JellyfinViewModel(
     }
   }
 
-  fun loadLibraries(server: JellyfinServer) {
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, error = null) }
-      loadResumeItems(server)
-      val result = jellyfinRepository.getLibraries(server)
-      result
-        .onSuccess { libs ->
-          _uiState.update { it.copy(libraries = libs, isLoading = false, error = null) }
-        }.onFailure { err ->
-          _uiState.update { it.copy(isLoading = false, error = err.message ?: "Failed to load libraries") }
-        }
+  suspend fun refreshSuspend() {
+    val active = _uiState.value.activeServer ?: return
+    val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
+    if (currentCrumb == null) {
+      loadLibraries(active)
+      loadLibrariesJob?.join()
+    } else {
+      loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
+      loadItemsJob?.join()
     }
+  }
+
+  fun loadLibraries(server: JellyfinServer) {
+    loadLibrariesJob?.cancel()
+    loadItemsJob?.cancel()
+    loadLibrariesJob =
+      viewModelScope.launch {
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        loadResumeItems(server)
+        val result = jellyfinRepository.getLibraries(server)
+        result
+          .onSuccess { libs ->
+            _uiState.update { it.copy(libraries = libs, isLoading = false, error = null) }
+          }.onFailure { err ->
+            _uiState.update { it.copy(isLoading = false, error = err.message ?: "Failed to load libraries") }
+          }
+      }
   }
 
   fun loadResumeItems(server: JellyfinServer) {
@@ -242,115 +263,120 @@ class JellyfinViewModel(
     val startIndex = if (resetPagination) 0 else _uiState.value.startIndex
     val currentList = if (resetPagination) emptyList() else _uiState.value.currentItems
 
-    viewModelScope.launch {
-      if (resetPagination) {
-        _uiState.update {
-          it.copy(
-            isLoading = true,
-            currentItems = emptyList(),
-            startIndex = 0,
-            hasMore = false,
-            error = null,
-          )
-        }
-      } else {
-        _uiState.update { it.copy(isLoadingMore = true) }
-      }
-
-      val currentState = _uiState.value
-
-      when (parentType) {
-        "Series" -> {
-          val result = jellyfinRepository.getSeasons(server, parentId)
-          result
-            .onSuccess { items ->
-              _uiState.update {
-                it.copy(
-                  currentItems = items,
-                  totalRecordCount = items.size,
-                  hasMore = false,
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = null,
-                )
-              }
-            }.onFailure { err ->
-              _uiState.update {
-                it.copy(
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = err.message ?: "Failed to load seasons",
-                )
-              }
-            }
-        }
-
-        "Season" -> {
-          val seriesId = _uiState.value.breadcrumbs.dropLast(1).lastOrNull { it.type == "Series" }?.id ?: parentId
-          val result = jellyfinRepository.getEpisodes(server, seriesId, parentId)
-          result
-            .onSuccess { items ->
-              _uiState.update {
-                it.copy(
-                  currentItems = items,
-                  totalRecordCount = items.size,
-                  hasMore = false,
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = null,
-                )
-              }
-            }.onFailure { err ->
-              _uiState.update {
-                it.copy(
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = err.message ?: "Failed to load episodes",
-                )
-              }
-            }
-        }
-
-        else -> {
-          val result =
-            jellyfinRepository.getItems(
-              server = server,
-              parentId = parentId,
-              searchTerm = currentState.searchQuery.takeIf { it.isNotBlank() },
-              sortBy = currentState.sortBy,
-              sortOrder = currentState.sortOrder,
-              isPlayed = if (currentState.isUnplayedOnly) false else null,
-              startIndex = startIndex,
-              limit = 100,
-            )
-
-          result
-            .onSuccess { queryResult ->
-              val combined = currentList + queryResult.items
-              val hasMore = combined.size < queryResult.totalRecordCount
-              _uiState.update {
-                it.copy(
-                  currentItems = combined,
-                  totalRecordCount = queryResult.totalRecordCount,
-                  startIndex = combined.size,
-                  hasMore = hasMore,
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = null,
-                )
-              }
-            }.onFailure { err ->
-              _uiState.update {
-                it.copy(
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = err.message ?: "Failed to load items",
-                )
-              }
-            }
-        }
-      }
+    if (resetPagination) {
+      loadItemsJob?.cancel()
     }
+
+    loadItemsJob =
+      viewModelScope.launch {
+        if (resetPagination) {
+          _uiState.update {
+            it.copy(
+              isLoading = true,
+              currentItems = emptyList(),
+              startIndex = 0,
+              hasMore = false,
+              error = null,
+            )
+          }
+        } else {
+          _uiState.update { it.copy(isLoadingMore = true) }
+        }
+
+        val currentState = _uiState.value
+
+        when (parentType) {
+          "Series" -> {
+            val result = jellyfinRepository.getSeasons(server, parentId)
+            result
+              .onSuccess { items ->
+                _uiState.update {
+                  it.copy(
+                    currentItems = items.distinctBy { it.id },
+                    totalRecordCount = items.size,
+                    hasMore = false,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = null,
+                  )
+                }
+              }.onFailure { err ->
+                _uiState.update {
+                  it.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = err.message ?: "Failed to load seasons",
+                  )
+                }
+              }
+          }
+
+          "Season" -> {
+            val seriesId = _uiState.value.breadcrumbs.dropLast(1).lastOrNull { it.type == "Series" }?.id ?: parentId
+            val result = jellyfinRepository.getEpisodes(server, seriesId, parentId)
+            result
+              .onSuccess { items ->
+                _uiState.update {
+                  it.copy(
+                    currentItems = items.distinctBy { it.id },
+                    totalRecordCount = items.size,
+                    hasMore = false,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = null,
+                  )
+                }
+              }.onFailure { err ->
+                _uiState.update {
+                  it.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = err.message ?: "Failed to load episodes",
+                  )
+                }
+              }
+          }
+
+          else -> {
+            val result =
+              jellyfinRepository.getItems(
+                server = server,
+                parentId = parentId,
+                searchTerm = currentState.searchQuery.takeIf { it.isNotBlank() },
+                sortBy = currentState.sortBy,
+                sortOrder = currentState.sortOrder,
+                isPlayed = if (currentState.isUnplayedOnly) false else null,
+                startIndex = startIndex,
+                limit = 100,
+              )
+
+            result
+              .onSuccess { queryResult ->
+                val combined = (currentList + queryResult.items).distinctBy { it.id }
+                val hasMore = combined.size < queryResult.totalRecordCount
+                _uiState.update {
+                  it.copy(
+                    currentItems = combined,
+                    totalRecordCount = queryResult.totalRecordCount,
+                    startIndex = combined.size,
+                    hasMore = hasMore,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = null,
+                  )
+                }
+              }.onFailure { err ->
+                _uiState.update {
+                  it.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = err.message ?: "Failed to load items",
+                  )
+                }
+              }
+          }
+        }
+      }
   }
 
   fun loadMoreItems() {
@@ -363,42 +389,52 @@ class JellyfinViewModel(
 
   fun onSearchQueryChanged(query: String) {
     _uiState.update { it.copy(searchQuery = query) }
+    performSearch(query, debounceMs = 300L)
   }
 
-  fun performSearch(query: String) {
+  fun performSearch(
+    query: String,
+    debounceMs: Long = 0L,
+  ) {
     val active = _uiState.value.activeServer ?: return
+    searchJob?.cancel()
     if (query.isBlank()) {
       refresh()
       return
     }
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, currentItems = emptyList(), startIndex = 0, error = null) }
-      val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
-      val result =
-        jellyfinRepository.getItems(
-          server = active,
-          parentId = currentCrumb?.id,
-          searchTerm = query,
-          sortBy = _uiState.value.sortBy,
-          sortOrder = _uiState.value.sortOrder,
-          startIndex = 0,
-          limit = 100,
-        )
-      result
-        .onSuccess { queryResult ->
-          _uiState.update {
-            it.copy(
-              currentItems = queryResult.items,
-              totalRecordCount = queryResult.totalRecordCount,
-              startIndex = queryResult.items.size,
-              hasMore = queryResult.items.size < queryResult.totalRecordCount,
-              isLoading = false,
-            )
-          }
-        }.onFailure { err ->
-          _uiState.update { it.copy(isLoading = false, error = err.message) }
+    searchJob =
+      viewModelScope.launch {
+        if (debounceMs > 0) {
+          delay(debounceMs)
         }
-    }
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
+        val result =
+          jellyfinRepository.getItems(
+            server = active,
+            parentId = currentCrumb?.id,
+            searchTerm = query,
+            sortBy = _uiState.value.sortBy,
+            sortOrder = _uiState.value.sortOrder,
+            startIndex = 0,
+            limit = 100,
+          )
+        result
+          .onSuccess { queryResult ->
+            _uiState.update {
+              it.copy(
+                currentItems = queryResult.items.distinctBy { item -> item.id },
+                totalRecordCount = queryResult.totalRecordCount,
+                startIndex = queryResult.items.size,
+                hasMore = queryResult.items.size < queryResult.totalRecordCount,
+                isLoading = false,
+                error = null,
+              )
+            }
+          }.onFailure { err ->
+            _uiState.update { it.copy(isLoading = false, error = err.message) }
+          }
+      }
   }
 
   fun addServer(

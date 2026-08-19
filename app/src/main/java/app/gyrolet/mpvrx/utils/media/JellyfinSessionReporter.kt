@@ -42,18 +42,22 @@ class JellyfinSessionReporter(
       try {
         val uri = Uri.parse(url)
         val pathSegments = uri.pathSegments
-        val videosIndex = pathSegments.indexOf("Videos")
-        if (videosIndex == -1 || videosIndex + 1 >= pathSegments.size) {
+        val mediaIndex = pathSegments.indexOfFirst {
+          it.equals("Videos", ignoreCase = true) ||
+            it.equals("Audio", ignoreCase = true) ||
+            it.equals("Items", ignoreCase = true)
+        }
+        if (mediaIndex == -1 || mediaIndex + 1 >= pathSegments.size) {
           return null
         }
-        val itemId = pathSegments[videosIndex + 1]
+        val itemId = pathSegments[mediaIndex + 1]
         val apiKey = uri.getQueryParameter("api_key") ?: uri.getQueryParameter("ApiKey") ?: return null
         val playSessionId = uri.getQueryParameter("playSessionId") ?: uri.getQueryParameter("PlaySessionId")
         val mediaSourceId = uri.getQueryParameter("mediaSourceId") ?: uri.getQueryParameter("MediaSourceId")
 
         val scheme = uri.scheme ?: "http"
         val authority = uri.encodedAuthority ?: return null
-        val subPathSegments = pathSegments.subList(0, videosIndex)
+        val subPathSegments = pathSegments.subList(0, mediaIndex)
         val baseUrl =
           if (subPathSegments.isEmpty()) {
             "$scheme://$authority"
