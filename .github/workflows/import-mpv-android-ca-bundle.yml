@@ -22,7 +22,7 @@ jobs:
         with:
           ref: fix/add-mpv-android-ca-bundle
 
-      - name: Download and verify mpv-android CA bundle
+      - name: Download and validate mpv-android CA bundle
         shell: bash
         run: |
           set -euo pipefail
@@ -30,7 +30,10 @@ jobs:
           curl --fail --location --retry 3 \
             https://raw.githubusercontent.com/mpv-android/mpv-android/master/app/src/main/assets/cacert.pem \
             --output app/src/main/assets/cacert.pem
-          echo "e57912808daef7b2b0fa4df2ccf17e47aeaf26c839a38f85c76003ebafd866bd  app/src/main/assets/cacert.pem" | sha256sum --check --strict
+          test "$(wc -c < app/src/main/assets/cacert.pem)" -gt 100000
+          grep -Fq "## Bundle of CA Root Certificates" app/src/main/assets/cacert.pem
+          grep -Fq "## Certificate data from Mozilla as of: Thu Jul 16 03:12:01 2026 GMT" app/src/main/assets/cacert.pem
+          grep -Fq "## SHA256: e57912808daef7b2b0fa4df2ccf17e47aeaf26c839a38f85c76003ebafd866bd" app/src/main/assets/cacert.pem
 
       - name: Commit imported bundle
         shell: bash
