@@ -10,7 +10,9 @@
 package app.gyrolet.mpvrx.ui.browser.jellyfin
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -35,6 +37,7 @@ import app.gyrolet.mpvrx.utils.media.MediaUtils
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -55,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -99,7 +103,7 @@ private fun buildStarSubtitle(
     }
     communityRating?.let { rating ->
       if (hasContent) append(" • ")
-      withStyle(SpanStyle(color = StarYellow, fontSize = 11.sp)) {
+      withStyle(SpanStyle(color = StarYellow, fontSize = 13.5.sp)) {
         append("★ ")
       }
       append("%.1f".format(rating))
@@ -132,15 +136,21 @@ fun JellyfinHeroBanner(
 ) {
   if (items.isEmpty()) return
 
-  val pagerState = rememberPagerState(pageCount = { items.size })
+  val pageCount = if (items.size > 1) Int.MAX_VALUE else items.size
+  val initialPage = remember(items) {
+    if (items.size > 1) {
+      val middle = Int.MAX_VALUE / 2
+      middle - (middle % items.size)
+    } else 0
+  }
+  val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { pageCount })
 
-  // Subtle auto-scroll every 6 seconds when not touched
-  LaunchedEffect(pagerState.isScrollInProgress, items.size) {
-    if (!pagerState.isScrollInProgress && items.size > 1) {
-      while (true) {
-        delay(6000L)
-        val nextPage = (pagerState.currentPage + 1) % items.size
-        pagerState.animateScrollToPage(nextPage, animationSpec = tween(700))
+  // Auto-scroll every 5 seconds when not touched
+  LaunchedEffect(pagerState.settledPage, items.size) {
+    if (items.size > 1) {
+      delay(5000L)
+      if (!pagerState.isScrollInProgress) {
+        pagerState.animateScrollToPage(pagerState.currentPage + 1, animationSpec = tween(800))
       }
     }
   }
@@ -155,7 +165,7 @@ fun JellyfinHeroBanner(
       state = pagerState,
       modifier = Modifier.fillMaxSize(),
     ) { page ->
-      val item = items[page]
+      val item = items[page % items.size]
       val backdropUrl =
         remember(server.serverUrl, item.id, item.backdropImageTag, item.primaryImageTag, server.accessToken) {
           if (!item.backdropImageTag.isNullOrBlank()) {
@@ -345,13 +355,18 @@ fun JellyfinHeroBanner(
               contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
             ) {
               Icon(
-                imageVector = Icons.RoundedFilled.PlayArrow,
+                imageVector = if (item.isSeries && item.progressPercent <= 0.05f) Icons.RoundedFilled.Tv else Icons.RoundedFilled.PlayArrow,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
               )
               Spacer(modifier = Modifier.width(6.dp))
               Text(
-                text = if (item.progressPercent > 0.05f) "Resume" else "Watch Now",
+                text =
+                  when {
+                    item.progressPercent > 0.05f -> "Resume"
+                    item.isSeries -> "Explore Series"
+                    else -> "Watch Now"
+                  },
                 fontWeight = FontWeight.Bold,
               )
             }
@@ -374,38 +389,74 @@ fun JellyfinHeroBanner(
       }
     }
 
-    // Pager Dots Indicator
+    // Sliding 5-Dot Worm Indicator (AFinity style)
     if (items.size > 1) {
-      Row(
+      SlidingWormDotsIndicator(
+        pagerState = pagerState,
+        pageCount = items.size,
         modifier =
           Modifier
             .align(Alignment.BottomEnd)
             .padding(end = 20.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        repeat(items.size) { index ->
-          val isSelected = pagerState.currentPage == index
-          val width by animateFloatAsState(
-            targetValue = if (isSelected) 18f else 6f,
-            label = "dotWidth",
-          )
-          Box(
-            modifier =
-              Modifier
-                .height(5.dp)
-                .width(width.dp)
-                .clip(CircleShape)
-                .background(
-                  if (isSelected) {
-                    MaterialTheme.colorScheme.primary
-                  } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                  },
-                ),
-          )
-        }
-      }
+      )
+    }
+  }
+}
+
+@Composable
+private fun SlidingWormDotsIndicator(
+  pagerState: PagerState,
+  pageCount: Int,
+  modifier: Modifier = Modifier,
+  visibleDotCount: Int = 5,
+) {
+  if (pageCount <= 1) return
+
+  val fraction by remember(pagerState, pageCount) {
+    derivedStateOf {
+      val rawPage = pagerState.currentPage
+      val offset = pagerState.currentPageOffsetFraction
+      val page = rawPage % pageCount
+      (page.toFloat() + offset).coerceIn(0f, (pageCount - 1).toFloat())
+    }
+  }
+
+  val maxStart = (pageCount - visibleDotCount).coerceAtLeast(0).toFloat()
+  val windowStart = (fraction - (visibleDotCount - 1) / 2f).coerceIn(0f, maxStart)
+
+  Row(
+    modifier = modifier,
+    horizontalArrangement = Arrangement.spacedBy(5.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    val countToRender = visibleDotCount.coerceAtMost(pageCount)
+    repeat(countToRender) { dotIndex ->
+      val itemIndex = windowStart + dotIndex
+      val dist = kotlin.math.abs(fraction - itemIndex)
+      val activeFactor = (1f - dist).coerceIn(0f, 1f)
+
+      val isLeftEdge = dotIndex == 0 && windowStart > 0.1f
+      val isRightEdge = dotIndex == countToRender - 1 && windowStart < maxStart - 0.1f
+      val edgeScale = if (isLeftEdge || isRightEdge) 0.65f else 1.0f
+
+      val dotWidth = (6f + 12f * activeFactor) * edgeScale
+      val dotHeight = (5f + 1f * activeFactor) * edgeScale
+      val dotAlpha = 0.35f + 0.65f * activeFactor
+
+      Box(
+        modifier =
+          Modifier
+            .height(dotHeight.dp)
+            .width(dotWidth.dp)
+            .clip(CircleShape)
+            .background(
+              if (activeFactor > 0.4f) {
+                MaterialTheme.colorScheme.primary.copy(alpha = dotAlpha)
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = dotAlpha)
+              },
+            ),
+      )
     }
   }
 }

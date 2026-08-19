@@ -404,7 +404,13 @@ fun JellyfinContent(
                         JellyfinHeroBanner(
                           items = uiState.heroItems,
                           server = server,
-                          onPlay = { item -> viewModel.playItem(context, item) },
+                          onPlay = { item ->
+                            if (item.isSeries || item.isFolder || item.isSeason) {
+                              viewModel.openDetail(item)
+                            } else {
+                              viewModel.playItem(context, item)
+                            }
+                          },
                           onDetails = { item -> viewModel.openDetail(item) },
                         )
                       }
