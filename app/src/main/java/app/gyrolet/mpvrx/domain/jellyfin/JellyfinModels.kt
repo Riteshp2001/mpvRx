@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.domain.jellyfin
 
 import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
+import kotlin.math.roundToInt
 
 @Immutable
 @Serializable
@@ -148,6 +149,9 @@ data class JellyfinItem(
 
   val formattedRating: String?
     get() = communityRating?.let { "%.1f".format(it) }
+
+  val formattedCriticRating: String?
+    get() = criticRating?.let { "${it.roundToInt()}%" }
 
   val qualityBadge: String?
     get() =

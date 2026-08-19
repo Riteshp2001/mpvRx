@@ -75,6 +75,7 @@ import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 // ============================================================================
 // Hero Featured Carousel Banner (Material 3 Expressive)
@@ -205,6 +206,30 @@ fun JellyfinHeroBanner(
                   )
                   Text(
                     text = "%.1f".format(rating),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
+                  )
+                }
+              }
+            }
+
+            // Rotten Tomatoes / Critic Rating Pill
+            item.criticRating?.let { critic ->
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color.Black.copy(alpha = 0.6f),
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                  Text(
+                    text = "🍅",
+                    style = MaterialTheme.typography.labelSmall,
+                  )
+                  Text(
+                    text = "${critic.roundToInt()}%",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = Color.White,
                   )
@@ -632,7 +657,13 @@ fun JellyfinResumeCard(
           if (item.seriesName != null && item.indexNumber != null) {
             "S${item.parentIndexNumber ?: 1}:E${item.indexNumber} • ${item.name}"
           } else {
-            item.formattedDuration.ifBlank { item.type }
+            buildList {
+              item.productionYear?.let { add(it.toString()) }
+              val dur = item.formattedDuration
+              if (dur.isNotBlank()) add(dur) else if (item.productionYear == null) add(item.type)
+              item.communityRating?.let { add("★ %.1f".format(it)) }
+              item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
+            }.joinToString(" • ")
           }
 
         Text(
@@ -741,52 +772,22 @@ fun JellyfinPosterCard(
           }
         }
 
-        // Top badges: Rating on right, Quality on left
-        Row(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(6.dp),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.Top,
-        ) {
-          item.qualityBadge?.let { qBadge ->
-            Surface(
-              shape = RoundedCornerShape(4.dp),
-              color = Color.Black.copy(alpha = 0.7f),
-            ) {
-              Text(
-                text = qBadge,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-              )
-            }
-          } ?: Spacer(modifier = Modifier.width(1.dp))
-
-          item.communityRating?.let { rating ->
-            Surface(
-              shape = RoundedCornerShape(4.dp),
-              color = Color.Black.copy(alpha = 0.7f),
-            ) {
-              Row(
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-              ) {
-                Icon(
-                  imageVector = Icons.RoundedFilled.Star,
-                  contentDescription = null,
-                  tint = Color(0xFFFFC107),
-                  modifier = Modifier.size(10.dp),
-                )
-                Text(
-                  text = "%.1f".format(rating),
-                  style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                  color = Color.White,
-                )
-              }
-            }
+        // Top badge: Quality on left
+        item.qualityBadge?.let { qBadge ->
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = Color.Black.copy(alpha = 0.7f),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(6.dp),
+          ) {
+            Text(
+              text = qBadge,
+              style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+            )
           }
         }
 
@@ -857,8 +858,16 @@ fun JellyfinPosterCard(
           overflow = TextOverflow.Ellipsis,
         )
         val subtitle =
-          item.productionYear?.toString()
-            ?: if (item.isSeries && item.childCount != null) "${item.childCount} Seasons" else item.type
+          buildList {
+            item.productionYear?.let { add(it.toString()) }
+              ?: if (item.isSeries && item.childCount != null) {
+                add("${item.childCount} Seasons")
+              } else {
+                add(item.type)
+              }
+            item.communityRating?.let { add("★ %.1f".format(it)) }
+            item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
+          }.joinToString(" • ")
         Text(
           text = subtitle,
           style = MaterialTheme.typography.bodySmall,
@@ -907,11 +916,14 @@ fun JellyfinLibraryChipRow(
 
     libraries.forEach { library ->
       val isSelected = selectedLibraryId == library.id
+      val colType = library.collectionType?.lowercase() ?: library.type.lowercase()
+      val libName = library.name.lowercase()
       val icon =
-        when (library.collectionType?.lowercase() ?: library.type.lowercase()) {
-          "movies" -> Icons.RoundedFilled.Movie
-          "tvshows" -> Icons.RoundedFilled.Tv
-          "music" -> Icons.RoundedFilled.Audiotrack
+        when {
+          libName.contains("anime") || colType.contains("anime") -> Icons.RoundedFilled.Movie
+          colType == "movies" || library.type.lowercase() == "movie" -> Icons.RoundedFilled.Movie
+          colType == "tvshows" || library.type.lowercase() == "series" -> Icons.RoundedFilled.Tv
+          colType == "music" || library.type.lowercase() == "audio" -> Icons.RoundedFilled.Audiotrack
           else -> Icons.RoundedFilled.Folder
         }
 
@@ -961,6 +973,17 @@ fun JellyfinLibraryCard(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+      val colType = item.collectionType?.lowercase() ?: item.type.lowercase()
+      val itemName = item.name.lowercase()
+      val icon =
+        when {
+          itemName.contains("anime") || colType.contains("anime") -> Icons.RoundedFilled.Movie
+          colType == "movies" || item.type.lowercase() == "movie" -> Icons.RoundedFilled.Movie
+          colType == "tvshows" || item.type.lowercase() == "series" -> Icons.RoundedFilled.Tv
+          colType == "music" || item.type.lowercase() == "audio" -> Icons.RoundedFilled.Audiotrack
+          else -> Icons.RoundedFilled.Folder
+        }
+
       Box(
         modifier =
           Modifier
@@ -969,13 +992,6 @@ fun JellyfinLibraryCard(
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
       ) {
-        val icon =
-          when (item.collectionType?.lowercase() ?: item.type.lowercase()) {
-            "movies" -> Icons.RoundedFilled.Movie
-            "tvshows" -> Icons.RoundedFilled.Tv
-            "music" -> Icons.RoundedFilled.Audiotrack
-            else -> Icons.RoundedFilled.Folder
-          }
         Icon(
           imageVector = icon,
           contentDescription = null,
@@ -993,10 +1009,11 @@ fun JellyfinLibraryCard(
           overflow = TextOverflow.Ellipsis,
         )
         val typeLabel =
-          when (item.collectionType?.lowercase()) {
-            "movies" -> "Movies Collection"
-            "tvshows" -> "TV Shows & Series"
-            "music" -> "Music Library"
+          when {
+            itemName.contains("anime") || colType.contains("anime") -> "Anime Collection"
+            colType == "movies" || item.type.lowercase() == "movie" -> "Movies Collection"
+            colType == "tvshows" || item.type.lowercase() == "series" -> "TV Shows & Series"
+            colType == "music" || item.type.lowercase() == "audio" -> "Music Library"
             else -> item.type.replace(Regex("([a-z])([A-Z])"), "$1 $2")
           }
         Text(
@@ -1168,10 +1185,16 @@ fun JellyfinEpisodeCard(
             overflow = TextOverflow.Ellipsis,
           )
         }
-        val durationStr = item.formattedDuration
-        if (durationStr.isNotBlank()) {
+        val epMeta =
+          buildList {
+            item.communityRating?.let { add("★ %.1f".format(it)) }
+            item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
+            val dur = item.formattedDuration
+            if (dur.isNotBlank()) add(dur)
+          }.joinToString(" • ")
+        if (epMeta.isNotBlank()) {
           Text(
-            text = durationStr,
+            text = epMeta,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold,
@@ -1348,10 +1371,11 @@ fun JellyfinListItemCard(
             item.productionYear?.let { add(it.toString()) }
             if (item.isSeries && item.childCount != null) {
               add("${item.childCount} Seasons")
-            } else {
+            } else if (item.productionYear == null) {
               add(item.type)
             }
             item.communityRating?.let { add("★ %.1f".format(it)) }
+            item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
             item.qualityBadge?.let { add(it) }
           }.joinToString(" • ")
 

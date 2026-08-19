@@ -262,7 +262,12 @@ object MainScreen : Screen {
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    val targetNavBarWidth = (screenWidth - 64.dp).coerceAtMost(320.dp)
+    val tabCount = visibleTabs.size.coerceAtLeast(1)
+    val perTabWidth = if (tabCount >= 6) 54.dp else 58.dp
+    val targetNavBarWidth =
+      ((perTabWidth * tabCount) + 16.dp)
+        .coerceAtMost(screenWidth - 32.dp)
+        .coerceAtLeast(64.dp)
 
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val isTablet = configuration.smallestScreenWidthDp >= 600

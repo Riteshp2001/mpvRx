@@ -190,7 +190,7 @@ class JellyfinViewModel(
         val latestResult = latestDeferred.await()
         val suggestionsResult = suggestionsDeferred.await()
 
-        val libs = libsResult.getOrDefault(emptyList())
+        val libs = sortJellyfinLibraries(libsResult.getOrDefault(emptyList()))
         val resume = resumeResult.getOrDefault(emptyList())
         val latest = latestResult.getOrDefault(emptyList())
         val suggestions = suggestionsResult.getOrDefault(emptyList())
@@ -225,6 +225,29 @@ class JellyfinViewModel(
           )
         }
       }
+  }
+
+  private fun sortJellyfinLibraries(libs: List<JellyfinItem>): List<JellyfinItem> {
+    fun libraryRank(item: JellyfinItem): Int {
+      val name = item.name.lowercase().trim()
+      val colType = item.collectionType?.lowercase()?.trim() ?: ""
+      val type = item.type.lowercase().trim()
+
+      val isAnime = name.contains("anime") || colType.contains("anime")
+      val isMovie = !isAnime && (colType == "movies" || type == "movie" || name.contains("movie") || name.contains("film"))
+      val isMusic = colType == "music" || type == "audio" || type == "music" || name.contains("music") || name.contains("song") || name.contains("audio")
+      val isSeries = !isAnime && (colType == "tvshows" || type == "series" || name.contains("show") || name.contains("series") || name.contains("tv"))
+
+      return when {
+        isMovie -> 0
+        isMusic -> 1
+        isSeries -> 2
+        isAnime -> 3
+        else -> 4
+      }
+    }
+
+    return libs.sortedWith(compareBy({ libraryRank(it) }, { it.name.lowercase() }))
   }
 
   fun setSort(
