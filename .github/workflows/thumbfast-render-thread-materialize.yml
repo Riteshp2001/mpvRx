@@ -1,0 +1,111 @@
+name: Materialize render-thread-safe ThumbFast native blob
+
+on:
+  push:
+    branches:
+      - scratch/thumbfast-render-thread
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: scratch/thumbfast-render-thread
+          fetch-depth: 0
+
+      - name: Apply render-thread isolation fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/cpp/thumbfast_preview.cpp')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+          '''struct RenderRequest {
+            uint64_t generation = 0;
+            int source_epoch = 0;
+          };
+          ''',
+          '''struct RenderRequest {
+            uint64_t generation = 0;
+            int source_epoch = 0;
+            int width = PREVIEW_MAX_EDGE;
+            int height = PREVIEW_MAX_EDGE;
+          };
+          ''',
+              'RenderRequest dimensions',
+          )
+
+          replace_once(
+          '''  void scheduleRender(const Request& request) {
+              {
+                std::lock_guard<std::mutex> lock(render_mutex_);
+                pending_render_.generation = request.generation;
+                pending_render_.source_epoch = request.source_epoch;
+                has_pending_render_ = true;
+              }
+              render_cv_.notify_all();
+            }
+          ''',
+          '''  void scheduleRender(const Request& request) {
+              // Normal libmpv property access belongs on the worker thread. The render thread must
+              // stay inside mpv_render_* calls while it owns the render context.
+              const auto [width, height] = previewSize();
+              {
+                std::lock_guard<std::mutex> lock(render_mutex_);
+                pending_render_.generation = request.generation;
+                pending_render_.source_epoch = request.source_epoch;
+                pending_render_.width = width;
+                pending_render_.height = height;
+                has_pending_render_ = true;
+              }
+              render_cv_.notify_all();
+            }
+          ''',
+              'scheduleRender',
+          )
+
+          replace_once(
+          '''      const auto [width, height] = previewSize();
+              std::memset(bytes, 0, stride * static_cast<size_t>(height));
+          ''',
+          '''      const int width = request.width;
+              const int height = request.height;
+              std::memset(bytes, 0, stride * static_cast<size_t>(height));
+          ''',
+              'render dimensions',
+          )
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('app/src/main/cpp/thumbfast_preview.cpp').read_text()
+          render = text[text.index('  void renderLoop() {'):]
+          if 'previewSize();' in render:
+              raise SystemExit('renderLoop still performs normal libmpv property lookup')
+          PY
+
+      - name: Commit materialized native blob
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/cpp/thumbfast_preview.cpp
+          git commit -m "scratch: isolate ThumbFast render thread"
+          git push origin HEAD:scratch/thumbfast-render-thread
