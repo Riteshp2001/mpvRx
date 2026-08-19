@@ -208,6 +208,14 @@ object Icons {
     val Shuffle by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shuffle) }
     val ShuffleOn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shuffle_on) }
     val SortByAlpha by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Sort_by_alpha) }
+    val Star by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Star) }
+    val Favorite by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Favorite) }
+    val FavoriteBorder get() = Favorite
+    val Tv by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Tv) }
+    val Theaters by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Theaters) }
+    val FilterList by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Filter_list) }
+    val Whatshot by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Whatshot) }
+    val Hd by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Hd) }
     val SignalWifiStatusbarConnectedNoInternet4 by lazy(LazyThreadSafetyMode.NONE) {
       AppIcon(MaterialSymbols.RoundedFilled.Signal_wifi_statusbar_not_connected)
     }
@@ -408,6 +416,14 @@ object Icons {
     val Shuffle get() = Shared.Shuffle
     val ShuffleOn get() = Shared.ShuffleOn
     val SortByAlpha get() = Shared.SortByAlpha
+    val Star get() = Shared.Star
+    val Favorite get() = Shared.Favorite
+    val FavoriteBorder get() = Shared.FavoriteBorder
+    val Tv get() = Shared.Tv
+    val Theaters get() = Shared.Theaters
+    val FilterList get() = Shared.FilterList
+    val Whatshot get() = Shared.Whatshot
+    val Hd get() = Shared.Hd
     val SignalWifiStatusbarConnectedNoInternet4 get() = Shared.SignalWifiStatusbarConnectedNoInternet4
     val SkipNext get() = Shared.SkipNext
     val SkipPrevious get() = Shared.SkipPrevious

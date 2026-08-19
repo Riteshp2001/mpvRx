@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -50,16 +49,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
@@ -67,7 +64,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.animateFloatingActionButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -89,10 +85,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSearchCategory
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
@@ -126,7 +122,6 @@ fun JellyfinContent(
   var isManageServersOpen by rememberSaveable { mutableStateOf(false) }
   var isSearching by rememberSaveable { mutableStateOf(false) }
   var isSortDialogOpen by rememberSaveable { mutableStateOf(false) }
-  var infoItem by remember { mutableStateOf<JellyfinItem?>(null) }
   val searchFocusRequester = remember { FocusRequester() }
 
   val selectionManager =
@@ -146,9 +141,16 @@ fun JellyfinContent(
     }
   }
 
-  // Intercept back button if searching, selecting, or browsing inside a Jellyfin folder
-  BackHandler(enabled = isSearching || selectionManager.isInSelectionMode || uiState.breadcrumbs.isNotEmpty()) {
+  // Intercept back button if searching, selecting, details open, or browsing inside a folder
+  BackHandler(
+    enabled =
+      isSearching || selectionManager.isInSelectionMode ||
+        uiState.detailItem != null || uiState.breadcrumbs.isNotEmpty(),
+  ) {
     when {
+      uiState.detailItem != null -> {
+        viewModel.closeDetail()
+      }
       isSearching -> {
         isSearching = false
         viewModel.onSearchQueryChanged("")
@@ -184,11 +186,12 @@ fun JellyfinContent(
   ) {
     // Top Bar (Material 3 Expressive BrowserTopBar / SearchBar)
     if (isSearching) {
-      Box(
+      Column(
         modifier =
           Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         SearchBar(
           inputField = {
@@ -200,7 +203,7 @@ fun JellyfinContent(
               onSearch = { viewModel.performSearch(uiState.searchQuery, debounceMs = 0L) },
               expanded = false,
               onExpandedChange = { },
-              placeholder = { Text(stringResource(R.string.settings_search_title)) },
+              placeholder = { Text("Search movies, shows, episodes...") },
               leadingIcon = {
                 Icon(
                   imageVector = Icons.RoundedFilled.Search,
@@ -233,6 +236,31 @@ fun JellyfinContent(
           shape = RoundedCornerShape(28.dp),
           tonalElevation = 6.dp,
         ) { }
+
+        // Category Filter Chips
+        Row(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          JellyfinSearchCategory.entries.forEach { category ->
+            val isSelected = uiState.searchCategory == category
+            FilterChip(
+              selected = isSelected,
+              onClick = { viewModel.setSearchCategory(category) },
+              label = { Text(category.displayName, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+              shape = RoundedCornerShape(12.dp),
+              colors =
+                FilterChipDefaults.filterChipColors(
+                  selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                  selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            )
+          }
+        }
       }
     } else {
       BrowserTopBar(
@@ -280,16 +308,19 @@ fun JellyfinContent(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        Text(
-          text = "Libraries",
-          style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.primary,
-          modifier =
-            Modifier
-              .clip(RoundedCornerShape(4.dp))
-              .clickable { viewModel.navigateToRoot() }
-              .padding(horizontal = 4.dp, vertical = 2.dp),
-        )
+        Surface(
+          shape = RoundedCornerShape(8.dp),
+          color = MaterialTheme.colorScheme.surfaceContainer,
+          modifier = Modifier.clickable { viewModel.navigateToRoot() },
+        ) {
+          Text(
+            text = "Home",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+          )
+        }
+
         uiState.breadcrumbs.forEachIndexed { index, crumb ->
           Icon(
             imageVector = Icons.RoundedFilled.ChevronRight,
@@ -298,18 +329,19 @@ fun JellyfinContent(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           val isLast = index == uiState.breadcrumbs.lastIndex
-          Text(
-            text = crumb.title,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (isLast) FontWeight.Bold else FontWeight.Normal,
-            color = if (isLast) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
-            modifier =
-              Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .clickable(enabled = !isLast) {
-                  viewModel.navigateToBreadcrumb(index)
-                }.padding(horizontal = 4.dp, vertical = 2.dp),
-          )
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (isLast) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.clickable(enabled = !isLast) { viewModel.navigateToBreadcrumb(index) },
+          ) {
+            Text(
+              text = crumb.title,
+              style = MaterialTheme.typography.labelMedium,
+              fontWeight = if (isLast) FontWeight.Bold else FontWeight.Normal,
+              color = if (isLast) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+          }
         }
       }
     }
@@ -340,7 +372,7 @@ fun JellyfinContent(
             }
 
             // Loading state (initial)
-            uiState.isLoading && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() -> {
+            uiState.isLoading && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() && uiState.heroItems.isEmpty() -> {
               CircularProgressIndicator()
             }
 
@@ -352,103 +384,161 @@ fun JellyfinContent(
               )
             }
 
-            // Root View: Continue Watching carousel + Libraries
+            // Root / Discovery Home View (JellyCine style)
             uiState.breadcrumbs.isEmpty() && uiState.searchQuery.isBlank() -> {
               val listState = rememberLazyListState()
-              val hasEnoughLibraries = uiState.libraries.size > 6
-              val scrollbarAlpha by animateFloatAsState(
-                targetValue = if (hasEnoughLibraries) 1f else 0f,
-                label = "scrollbarAlpha",
-              )
+              val server = uiState.activeServer
 
-              Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                  state = listState,
-                  modifier = Modifier.fillMaxSize(),
-                  contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = navigationBarHeight + 80.dp),
-                  verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                  // Continue Watching carousel
-                  if (uiState.resumeItems.isNotEmpty()) {
-                    item {
-                      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                          text = "Continue Watching",
-                          style = MaterialTheme.typography.titleMedium,
-                          fontWeight = FontWeight.Bold,
+              if (server != null) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                  LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = navigationBarHeight + 84.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                  ) {
+                    // 1. Hero Featured Carousel Banner
+                    if (uiState.heroItems.isNotEmpty()) {
+                      item {
+                        JellyfinHeroBanner(
+                          items = uiState.heroItems,
+                          server = server,
+                          onPlay = { item -> viewModel.playItem(context, item) },
+                          onDetails = { item -> viewModel.openDetail(item) },
                         )
-                        LazyRow(
-                          horizontalArrangement = Arrangement.spacedBy(12.dp),
-                          contentPadding = PaddingValues(vertical = 4.dp),
-                        ) {
-                          items(uiState.resumeItems, key = { it.id }) { resumeItem ->
-                            uiState.activeServer?.let { server ->
-                              JellyfinResumeCard(
-                                item = resumeItem,
-                                server = server,
-                                isSelected = selectionManager.isSelected(resumeItem),
-                                isInSelectionMode = selectionManager.isInSelectionMode,
-                                onClick = {
-                                  if (selectionManager.isInSelectionMode) {
-                                    selectionManager.toggle(resumeItem)
-                                  } else {
-                                    viewModel.playItem(context, resumeItem)
-                                  }
-                                },
-                                onLongClick = { selectionManager.handleLongClick(resumeItem) },
-                              )
+                      }
+                    }
+
+                    // 2. Library Filter Chips
+                    if (uiState.libraries.isNotEmpty()) {
+                      item {
+                        JellyfinLibraryChipRow(
+                          libraries = uiState.libraries,
+                          selectedLibraryId = uiState.selectedLibraryId,
+                          onSelectLibrary = { libId ->
+                            val selectedLib = uiState.libraries.find { it.id == libId }
+                            if (selectedLib != null) {
+                              viewModel.navigateToItem(selectedLib)
                             }
-                          }
+                          },
+                        )
+                      }
+                    }
+
+                    // 3. Continue Watching Section
+                    if (uiState.resumeItems.isNotEmpty()) {
+                      item {
+                        JellyfinHorizontalSection(
+                          title = "Continue Watching",
+                          subtitle = "Jump back in",
+                          items = uiState.resumeItems,
+                          server = server,
+                          isContinueWatching = true,
+                          onItemClick = { item -> viewModel.playItem(context, item) },
+                          onItemLongClick = { item -> viewModel.openDetail(item) },
+                        )
+                      }
+                    }
+
+                    // 4. Latest Movies Section
+                    if (uiState.latestMovies.isNotEmpty()) {
+                      item {
+                        JellyfinHorizontalSection(
+                          title = "Latest Movies",
+                          subtitle = "Newly added to server",
+                          items = uiState.latestMovies,
+                          server = server,
+                          onItemClick = { item -> viewModel.openDetail(item) },
+                          onItemLongClick = { item -> viewModel.playItem(context, item) },
+                          onSeeAll = {
+                            val movieLib = uiState.libraries.find { it.collectionType?.equals("movies", ignoreCase = true) == true }
+                            if (movieLib != null) viewModel.navigateToItem(movieLib)
+                          },
+                        )
+                      }
+                    }
+
+                    // 5. Latest TV Shows Section
+                    if (uiState.latestShows.isNotEmpty()) {
+                      item {
+                        JellyfinHorizontalSection(
+                          title = "Latest TV Shows",
+                          subtitle = "Newly updated series",
+                          items = uiState.latestShows,
+                          server = server,
+                          onItemClick = { item -> viewModel.openDetail(item) },
+                          onItemLongClick = { item -> viewModel.playItem(context, item) },
+                          onSeeAll = {
+                            val tvLib = uiState.libraries.find { it.collectionType?.equals("tvshows", ignoreCase = true) == true }
+                            if (tvLib != null) viewModel.navigateToItem(tvLib)
+                          },
+                        )
+                      }
+                    }
+
+                    // 6. Recommended For You Section
+                    if (uiState.recommendations.isNotEmpty()) {
+                      item {
+                        JellyfinHorizontalSection(
+                          title = "Top Picks For You",
+                          subtitle = "Popular & trending media",
+                          items = uiState.recommendations,
+                          server = server,
+                          onItemClick = { item -> viewModel.openDetail(item) },
+                          onItemLongClick = { item -> viewModel.playItem(context, item) },
+                        )
+                      }
+                    }
+
+                    // 7. Libraries Section
+                    if (uiState.libraries.isNotEmpty()) {
+                      item {
+                        JellyfinSectionHeader(
+                          title = "Browse Libraries",
+                          subtitle = "Explore your full collection",
+                        )
+                      }
+
+                      items(uiState.libraries, key = { it.id }) { library ->
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                          JellyfinLibraryCard(
+                            item = library,
+                            onClick = { viewModel.navigateToItem(library) },
+                          )
                         }
                       }
                     }
                   }
-
-                  // Libraries Section
-                  item {
-                    Text(
-                      text = "Libraries",
-                      style = MaterialTheme.typography.titleMedium,
-                      fontWeight = FontWeight.Bold,
-                    )
-                  }
-
-                  items(uiState.libraries, key = { it.id }) { library ->
-                    JellyfinLibraryCard(
-                      item = library,
-                      onClick = { viewModel.navigateToItem(library) },
-                    )
-                  }
-                }
-
-                if (hasEnoughLibraries && scrollbarAlpha > 0.01f) {
-                  ExpressiveScrollBar(
-                    listState = listState,
-                    dragLabelProvider = { index ->
-                      fastScrollGlyph(uiState.libraries.getOrNull(index)?.name)
-                    },
-                    modifier =
-                      Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 2.dp, top = 6.dp, bottom = navigationBarHeight + 80.dp)
-                        .graphicsLayer { alpha = scrollbarAlpha },
-                  )
                 }
               }
             }
 
-            // Level View: Inside a Library / Folder / Show / Season / Search results
+            // Level / Search View: Inside a Library / Folder / Season / Search results
             else -> {
               val items = uiState.currentItems
               val allEpisodes = items.isNotEmpty() && items.all { it.type == "Episode" }
               val isListMode = layoutMode == MediaLayoutMode.LIST || allEpisodes
 
               if (items.isEmpty() && !uiState.isLoading) {
-                Text(
-                  text = "No media found in this folder",
-                  style = MaterialTheme.typography.bodyLarge,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(
+                  modifier = Modifier.padding(24.dp),
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                  verticalArrangement = Arrangement.Center,
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.Movie,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(48.dp),
+                  )
+                  Spacer(modifier = Modifier.height(12.dp))
+                  Text(
+                    text = if (uiState.searchQuery.isNotBlank()) "No results found for \"${uiState.searchQuery}\"" else "No media found in this folder",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                  )
+                }
               } else if (isListMode) {
                 val listState =
                   remember(uiState.breadcrumbs, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
@@ -504,8 +594,10 @@ fun JellyfinContent(
                             onClick = {
                               if (selectionManager.isInSelectionMode) {
                                 selectionManager.toggle(item)
-                              } else if (item.isFolder || item.isSeries || item.isSeason) {
+                              } else if (item.isFolder || item.isSeries || item.isSeason || item.type == "CollectionFolder") {
                                 viewModel.navigateToItem(item)
+                              } else if (item.isVideo) {
+                                viewModel.openDetail(item)
                               } else {
                                 viewModel.playItem(context, item)
                               }
@@ -587,8 +679,10 @@ fun JellyfinContent(
                           onClick = {
                             if (selectionManager.isInSelectionMode) {
                               selectionManager.toggle(item)
-                            } else if (item.isFolder || item.isSeries || item.isSeason) {
+                            } else if (item.isFolder || item.isSeason || item.type == "CollectionFolder") {
                               viewModel.navigateToItem(item)
+                            } else if (item.isSeries || item.isVideo) {
+                              viewModel.openDetail(item)
                             } else {
                               viewModel.playItem(context, item)
                             }
@@ -726,7 +820,7 @@ fun JellyfinContent(
 
               if (selectedItems.size == 1) {
                 IconButton(
-                  onClick = { infoItem = selectedItems.first() },
+                  onClick = { viewModel.openDetail(selectedItems.first()) },
                 ) {
                   Icon(
                     imageVector = Icons.RoundedFilled.Info,
@@ -741,7 +835,7 @@ fun JellyfinContent(
         }
       }
 
-      if (!selectionManager.isInSelectionMode && uiState.activeServer != null && (uiState.currentItems.isNotEmpty() || uiState.resumeItems.isNotEmpty())) {
+      if (!selectionManager.isInSelectionMode && uiState.activeServer != null && (uiState.currentItems.isNotEmpty() || uiState.resumeItems.isNotEmpty() || uiState.heroItems.isNotEmpty())) {
         // Expressive Floating Action Button Menu
         var isFabExpanded by remember { mutableStateOf(false) }
 
@@ -815,6 +909,26 @@ fun JellyfinContent(
     }
   }
 
+  // Cinematic Media Detail Sheet (JellyCine style)
+  uiState.activeServer?.let { server ->
+    JellyfinDetailSheet(
+      item = uiState.detailItem,
+      server = server,
+      seasons = uiState.detailSeasons,
+      selectedSeasonId = uiState.selectedDetailSeasonId,
+      episodes = uiState.detailEpisodes,
+      similarItems = uiState.detailSimilarItems,
+      isLoading = uiState.isDetailLoading,
+      isEpisodesLoading = uiState.isDetailEpisodesLoading,
+      onDismiss = { viewModel.closeDetail() },
+      onPlay = { item, fromBeginning -> viewModel.playItem(context, item, fromBeginning) },
+      onSelectSeason = { seasonId -> viewModel.selectDetailSeason(seasonId) },
+      onToggleFavorite = { item -> viewModel.toggleItemFavorite(item) },
+      onTogglePlayed = { item -> viewModel.togglePlayed(item) },
+      onItemClick = { item -> viewModel.openDetail(item) },
+    )
+  }
+
   // Standard Material 3 Sort Dialog (matches Home and Network Browser)
   JellyfinSortDialog(
     isOpen = isSortDialogOpen,
@@ -866,78 +980,6 @@ fun JellyfinContent(
       )
     },
   )
-
-  // Item Info Bottom Sheet
-  infoItem?.let { item ->
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-      onDismissRequest = { infoItem = null },
-      sheetState = sheetState,
-    ) {
-      Column(
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-      ) {
-        Text(
-          text = item.name,
-          style = MaterialTheme.typography.titleLarge,
-          fontWeight = FontWeight.Bold,
-          maxLines = 2,
-          overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-        )
-        HorizontalDivider()
-
-        @Composable
-        fun InfoRow(label: String, value: String) {
-          Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-              text = label,
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier = Modifier.width(100.dp),
-            )
-            Text(
-              text = value,
-              style = MaterialTheme.typography.bodyMedium,
-            )
-          }
-        }
-
-        InfoRow("Type", item.type.replace(Regex("([a-z])([A-Z])"), "$1 $2"))
-        item.seriesName?.let { InfoRow("Series", it) }
-        item.parentIndexNumber?.let { s ->
-          item.indexNumber?.let { e ->
-            InfoRow("Episode", "S$s E$e")
-          }
-        }
-        item.productionYear?.let { InfoRow("Year", it.toString()) }
-        item.communityRating?.let { InfoRow("Rating", "%.1f / 10".format(it)) }
-        if (item.durationSeconds > 0) {
-          val h = item.durationSeconds / 3600
-          val m = (item.durationSeconds % 3600) / 60
-          val s = item.durationSeconds % 60
-          val dur = if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
-          InfoRow("Duration", dur)
-        }
-        item.container?.let { InfoRow("Container", it.uppercase()) }
-        if (item.childCount != null && item.childCount > 0) {
-          InfoRow("Items", item.childCount.toString())
-        }
-        item.overview?.let {
-          Spacer(modifier = Modifier.height(4.dp))
-          Text(
-            text = it,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-      }
-    }
-  }
 }
 
 @Composable
@@ -1016,3 +1058,4 @@ private fun ErrorView(
     }
   }
 }
+

@@ -21,6 +21,7 @@ import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinAuthMode
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSearchCategory
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder
@@ -28,8 +29,8 @@ import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.repository.JellyfinRepository
+import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.utils.media.MediaUtils
-import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -44,8 +45,6 @@ import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
-
 data class JellyfinBreadcrumb(
   val id: String,
   val title: String,
@@ -56,9 +55,15 @@ data class JellyfinUiState(
   val servers: List<JellyfinServer> = emptyList(),
   val activeServer: JellyfinServer? = null,
   val libraries: List<JellyfinItem> = emptyList(),
+  val heroItems: List<JellyfinItem> = emptyList(),
   val resumeItems: List<JellyfinItem> = emptyList(),
+  val latestMovies: List<JellyfinItem> = emptyList(),
+  val latestShows: List<JellyfinItem> = emptyList(),
+  val recommendations: List<JellyfinItem> = emptyList(),
   val currentItems: List<JellyfinItem> = emptyList(),
   val breadcrumbs: List<JellyfinBreadcrumb> = emptyList(),
+  val selectedLibraryId: String? = null,
+  val selectedGenreFilter: String? = null,
   val sortBy: JellyfinSortBy = JellyfinSortBy.NAME,
   val sortOrder: JellyfinSortOrder = JellyfinSortOrder.ASCENDING,
   val isUnplayedOnly: Boolean = false,
@@ -71,6 +76,16 @@ data class JellyfinUiState(
   val error: String? = null,
   val authError: String? = null,
   val searchQuery: String = "",
+  val searchCategory: JellyfinSearchCategory = JellyfinSearchCategory.ALL,
+
+  // Detail Sheet State
+  val detailItem: JellyfinItem? = null,
+  val detailSeasons: List<JellyfinItem> = emptyList(),
+  val selectedDetailSeasonId: String? = null,
+  val detailEpisodes: List<JellyfinItem> = emptyList(),
+  val detailSimilarItems: List<JellyfinItem> = emptyList(),
+  val isDetailLoading: Boolean = false,
+  val isDetailEpisodesLoading: Boolean = false,
 )
 
 class JellyfinViewModel(
@@ -82,9 +97,11 @@ class JellyfinViewModel(
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
 
-  private var loadLibrariesJob: Job? = null
+  private var loadDashboardJob: Job? = null
   private var loadItemsJob: Job? = null
   private var searchJob: Job? = null
+  private var detailJob: Job? = null
+  private var seasonEpisodesJob: Job? = null
 
   private val _uiState = MutableStateFlow(JellyfinUiState())
   val uiState: StateFlow<JellyfinUiState> = _uiState.asStateFlow()
@@ -104,8 +121,8 @@ class JellyfinViewModel(
           )
         }
         val currentActive = _uiState.value.activeServer
-        if (currentActive != null && _uiState.value.libraries.isEmpty()) {
-          loadLibraries(currentActive)
+        if (currentActive != null && _uiState.value.libraries.isEmpty() && _uiState.value.heroItems.isEmpty()) {
+          loadHomeDashboard(currentActive)
         }
       }
     }
@@ -118,18 +135,23 @@ class JellyfinViewModel(
         breadcrumbs = emptyList(),
         currentItems = emptyList(),
         resumeItems = emptyList(),
+        heroItems = emptyList(),
+        latestMovies = emptyList(),
+        latestShows = emptyList(),
+        recommendations = emptyList(),
         searchQuery = "",
+        detailItem = null,
         error = null,
       )
     }
-    loadLibraries(server)
+    loadHomeDashboard(server)
   }
 
   fun refresh() {
     val active = _uiState.value.activeServer ?: return
     val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
     if (currentCrumb == null) {
-      loadLibraries(active)
+      loadHomeDashboard(active)
     } else {
       loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
     }
@@ -139,8 +161,8 @@ class JellyfinViewModel(
     val active = _uiState.value.activeServer ?: return
     val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
     if (currentCrumb == null) {
-      loadLibraries(active)
-      loadLibrariesJob?.join()
+      loadHomeDashboard(active)
+      loadDashboardJob?.join()
     } else {
       loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
       loadItemsJob?.join()
@@ -148,29 +170,61 @@ class JellyfinViewModel(
   }
 
   fun loadLibraries(server: JellyfinServer) {
-    loadLibrariesJob?.cancel()
-    loadItemsJob?.cancel()
-    loadLibrariesJob =
-      viewModelScope.launch {
-        _uiState.update { it.copy(isLoading = true, error = null) }
-        loadResumeItems(server)
-        val result = jellyfinRepository.getLibraries(server)
-        result
-          .onSuccess { libs ->
-            _uiState.update { it.copy(libraries = libs, isLoading = false, error = null) }
-          }.onFailure { err ->
-            _uiState.update { it.copy(isLoading = false, error = err.message ?: "Failed to load libraries") }
-          }
-      }
+    loadHomeDashboard(server)
   }
 
-  fun loadResumeItems(server: JellyfinServer) {
-    viewModelScope.launch {
-      val result = jellyfinRepository.getResumeItems(server, limit = 12)
-      result.onSuccess { resumeList ->
-        _uiState.update { it.copy(resumeItems = resumeList) }
+  fun loadHomeDashboard(server: JellyfinServer) {
+    loadDashboardJob?.cancel()
+    loadItemsJob?.cancel()
+    loadDashboardJob =
+      viewModelScope.launch {
+        _uiState.update { it.copy(isLoading = true, error = null) }
+
+        val libsDeferred = async { jellyfinRepository.getLibraries(server) }
+        val resumeDeferred = async { jellyfinRepository.getResumeItems(server, limit = 16) }
+        val latestDeferred = async { jellyfinRepository.getLatestMedia(server, limit = 24) }
+        val suggestionsDeferred = async { jellyfinRepository.getSuggestions(server, limit = 16) }
+
+        val libsResult = libsDeferred.await()
+        val resumeResult = resumeDeferred.await()
+        val latestResult = latestDeferred.await()
+        val suggestionsResult = suggestionsDeferred.await()
+
+        val libs = libsResult.getOrDefault(emptyList())
+        val resume = resumeResult.getOrDefault(emptyList())
+        val latest = latestResult.getOrDefault(emptyList())
+        val suggestions = suggestionsResult.getOrDefault(emptyList())
+
+        val latestMovies = latest.filter { it.type == "Movie" || it.collectionType?.equals("movies", ignoreCase = true) == true }
+        val latestShows = latest.filter { it.type == "Series" || it.type == "Episode" || it.collectionType?.equals("tvshows", ignoreCase = true) == true }
+
+        // Build Hero Items: prioritize items with backdrops and good ratings/recency
+        val heroCandidates =
+          (resume + latest + suggestions)
+            .filter { !it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank() }
+            .distinctBy { it.id }
+            .take(6)
+
+        val finalHero =
+          if (heroCandidates.isNotEmpty()) {
+            heroCandidates
+          } else {
+            latest.take(5)
+          }
+
+        _uiState.update {
+          it.copy(
+            libraries = libs,
+            resumeItems = resume,
+            latestMovies = latestMovies,
+            latestShows = latestShows,
+            recommendations = suggestions.ifEmpty { latest.take(12) },
+            heroItems = finalHero,
+            isLoading = false,
+            error = if (libs.isEmpty() && latest.isEmpty() && resume.isEmpty()) libsResult.exceptionOrNull()?.message else null,
+          )
+        }
       }
-    }
   }
 
   fun setSort(
@@ -193,7 +247,7 @@ class JellyfinViewModel(
 
   fun navigateToItem(item: JellyfinItem) {
     val active = _uiState.value.activeServer ?: return
-    if (item.isFolder || item.isSeries || item.isSeason) {
+    if (item.isFolder || item.isSeries || item.isSeason || item.type == "CollectionFolder") {
       val newCrumb = JellyfinBreadcrumb(id = item.id, title = item.name, type = item.type)
       _uiState.update {
         it.copy(
@@ -219,14 +273,13 @@ class JellyfinViewModel(
     val active = _uiState.value.activeServer ?: return true
     val parent = updatedCrumbs.lastOrNull()
     if (parent == null) {
-      loadLibraries(active)
+      loadHomeDashboard(active)
     } else {
       loadItems(active, parent.id, parent.type, resetPagination = true)
     }
     return true
   }
 
-  /** Navigate directly to a breadcrumb by index — avoids a loop of sequential navigateBack calls. */
   fun navigateToBreadcrumb(index: Int) {
     val currentCrumbs = _uiState.value.breadcrumbs
     if (index < 0 || index >= currentCrumbs.size) return
@@ -251,7 +304,7 @@ class JellyfinViewModel(
       )
     }
     val active = _uiState.value.activeServer ?: return
-    loadLibraries(active)
+    loadHomeDashboard(active)
   }
 
   private fun loadItems(
@@ -392,6 +445,13 @@ class JellyfinViewModel(
     performSearch(query, debounceMs = 300L)
   }
 
+  fun setSearchCategory(category: JellyfinSearchCategory) {
+    _uiState.update { it.copy(searchCategory = category) }
+    if (_uiState.value.searchQuery.isNotBlank()) {
+      performSearch(_uiState.value.searchQuery, debounceMs = 0L)
+    }
+  }
+
   fun performSearch(
     query: String,
     debounceMs: Long = 0L,
@@ -409,11 +469,21 @@ class JellyfinViewModel(
         }
         _uiState.update { it.copy(isLoading = true, error = null) }
         val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
+
+        val includeTypes =
+          when (_uiState.value.searchCategory) {
+            JellyfinSearchCategory.ALL -> null
+            JellyfinSearchCategory.MOVIES -> "Movie"
+            JellyfinSearchCategory.SHOWS -> "Series"
+            JellyfinSearchCategory.EPISODES -> "Episode"
+          }
+
         val result =
           jellyfinRepository.getItems(
             server = active,
             parentId = currentCrumb?.id,
             searchTerm = query,
+            includeItemTypes = includeTypes,
             sortBy = _uiState.value.sortBy,
             sortOrder = _uiState.value.sortOrder,
             startIndex = 0,
@@ -436,6 +506,134 @@ class JellyfinViewModel(
           }
       }
   }
+
+  // ============================================================================
+  // Media Details & Series Season/Episode Browsing (JellyCine style)
+  // ============================================================================
+
+  fun openDetail(item: JellyfinItem) {
+    val active = _uiState.value.activeServer ?: return
+    detailJob?.cancel()
+    seasonEpisodesJob?.cancel()
+
+    _uiState.update {
+      it.copy(
+        detailItem = item,
+        detailSeasons = emptyList(),
+        selectedDetailSeasonId = null,
+        detailEpisodes = emptyList(),
+        detailSimilarItems = emptyList(),
+        isDetailLoading = true,
+      )
+    }
+
+    detailJob =
+      viewModelScope.launch {
+        val freshDeferred = async { jellyfinRepository.getItem(active, item.id) }
+        val similarDeferred = async { jellyfinRepository.getSimilarItems(active, item.id, limit = 12) }
+
+        val freshResult = freshDeferred.await()
+        val similarResult = similarDeferred.await()
+
+        val fullItem = freshResult.getOrNull() ?: item
+        val similar = similarResult.getOrDefault(emptyList())
+
+        _uiState.update {
+          it.copy(
+            detailItem = fullItem,
+            detailSimilarItems = similar,
+            isDetailLoading = false,
+          )
+        }
+
+        if (fullItem.isSeries) {
+          val seasonsResult = jellyfinRepository.getSeasons(active, fullItem.id)
+          val seasons = seasonsResult.getOrDefault(emptyList())
+          val initialSeason = seasons.firstOrNull()
+
+          _uiState.update {
+            it.copy(
+              detailSeasons = seasons,
+              selectedDetailSeasonId = initialSeason?.id,
+            )
+          }
+
+          if (initialSeason != null) {
+            selectDetailSeason(initialSeason.id)
+          }
+        }
+      }
+  }
+
+  fun selectDetailSeason(seasonId: String) {
+    val active = _uiState.value.activeServer ?: return
+    val series = _uiState.value.detailItem ?: return
+    seasonEpisodesJob?.cancel()
+
+    _uiState.update {
+      it.copy(
+        selectedDetailSeasonId = seasonId,
+        isDetailEpisodesLoading = true,
+      )
+    }
+
+    seasonEpisodesJob =
+      viewModelScope.launch {
+        val result = jellyfinRepository.getEpisodes(active, series.id, seasonId)
+        val episodes = result.getOrDefault(emptyList())
+        _uiState.update {
+          it.copy(
+            detailEpisodes = episodes,
+            isDetailEpisodesLoading = false,
+          )
+        }
+      }
+  }
+
+  fun closeDetail() {
+    detailJob?.cancel()
+    seasonEpisodesJob?.cancel()
+    _uiState.update {
+      it.copy(
+        detailItem = null,
+        detailSeasons = emptyList(),
+        selectedDetailSeasonId = null,
+        detailEpisodes = emptyList(),
+        detailSimilarItems = emptyList(),
+        isDetailLoading = false,
+        isDetailEpisodesLoading = false,
+      )
+    }
+  }
+
+  fun toggleItemFavorite(item: JellyfinItem) {
+    val server = _uiState.value.activeServer ?: return
+    val newFavoriteState = !item.isFavorite
+
+    // Optimistic UI update
+    fun updateItemInList(list: List<JellyfinItem>): List<JellyfinItem> =
+      list.map { if (it.id == item.id) it.copy(isFavorite = newFavoriteState) else it }
+
+    _uiState.update { state ->
+      state.copy(
+        heroItems = updateItemInList(state.heroItems),
+        resumeItems = updateItemInList(state.resumeItems),
+        latestMovies = updateItemInList(state.latestMovies),
+        latestShows = updateItemInList(state.latestShows),
+        recommendations = updateItemInList(state.recommendations),
+        currentItems = updateItemInList(state.currentItems),
+        detailItem = if (state.detailItem?.id == item.id) state.detailItem.copy(isFavorite = newFavoriteState) else state.detailItem,
+      )
+    }
+
+    viewModelScope.launch {
+      jellyfinRepository.toggleFavorite(server, item, newFavoriteState)
+    }
+  }
+
+  // ============================================================================
+  // Server Management & Playback
+  // ============================================================================
 
   fun addServer(
     serverUrl: String,
@@ -503,7 +701,7 @@ class JellyfinViewModel(
             activeServer = savedServer,
           )
         }
-        loadLibraries(savedServer)
+        loadHomeDashboard(savedServer)
         onSuccess()
       } catch (e: Exception) {
         _uiState.update {
@@ -528,10 +726,13 @@ class JellyfinViewModel(
           currentItems = emptyList(),
           libraries = emptyList(),
           resumeItems = emptyList(),
+          heroItems = emptyList(),
+          latestMovies = emptyList(),
+          latestShows = emptyList(),
         )
       }
       if (newActive != null) {
-        loadLibraries(newActive)
+        loadHomeDashboard(newActive)
       }
     }
   }
@@ -623,15 +824,19 @@ class JellyfinViewModel(
 
       val externalSubs = subsDeferred.await()
 
-      // If playing an episode, extract surrounding episode playlist from current view
+      // If playing an episode, extract surrounding episode playlist from current detail list or current view
       val (playlistUris, playlistTitles, playlistIndex) =
         if (item.type == "Episode") {
-          val episodeList = _uiState.value.currentItems.filter { it.type == "Episode" }
-          if (episodeList.size > 1) {
-            val uris = ArrayList<Uri>(episodeList.size)
-            val titles = ArrayList<String>(episodeList.size)
+          val episodesSource =
+            _uiState.value.detailEpisodes.ifEmpty {
+              _uiState.value.currentItems.filter { it.type == "Episode" }
+            }
+
+          if (episodesSource.size > 1) {
+            val uris = ArrayList<Uri>(episodesSource.size)
+            val titles = ArrayList<String>(episodesSource.size)
             var targetIdx = 0
-            episodeList.forEachIndexed { index, ep ->
+            episodesSource.forEachIndexed { index, ep ->
               if (ep.id == item.id) targetIdx = index
               uris.add(Uri.parse(jellyfinRepository.getStreamUrl(server, ep)))
               titles.add(
@@ -783,18 +988,24 @@ class JellyfinViewModel(
         }
       result.onSuccess {
         _uiState.update { state ->
+          fun updateList(list: List<JellyfinItem>) =
+            list.map {
+              if (it.id == item.id) {
+                it.copy(
+                  isPlayed = targetPlayed,
+                  playbackPositionTicks = if (targetPlayed) 0L else it.playbackPositionTicks,
+                )
+              } else {
+                it
+              }
+            }
           state.copy(
-            currentItems =
-              state.currentItems.map {
-                if (it.id == item.id) {
-                  it.copy(
-                    isPlayed = targetPlayed,
-                    playbackPositionTicks = if (targetPlayed) 0L else it.playbackPositionTicks,
-                  )
-                } else {
-                  it
-                }
-              },
+            currentItems = updateList(state.currentItems),
+            resumeItems = updateList(state.resumeItems),
+            heroItems = updateList(state.heroItems),
+            latestMovies = updateList(state.latestMovies),
+            latestShows = updateList(state.latestShows),
+            detailItem = if (state.detailItem?.id == item.id) state.detailItem.copy(isPlayed = targetPlayed) else state.detailItem,
           )
         }
       }
@@ -818,25 +1029,30 @@ class JellyfinViewModel(
         }
       }
       _uiState.update { state ->
+        fun updateList(list: List<JellyfinItem>) =
+          list.map {
+            if (it.id in ids) {
+              it.copy(
+                isPlayed = played,
+                playbackPositionTicks = if (played) 0L else it.playbackPositionTicks,
+              )
+            } else {
+              it
+            }
+          }
         state.copy(
-          currentItems =
-            state.currentItems.map {
-              if (it.id in ids) {
-                it.copy(
-                  isPlayed = played,
-                  playbackPositionTicks = if (played) 0L else it.playbackPositionTicks,
-                )
-              } else {
-                it
-              }
-            },
+          currentItems = updateList(state.currentItems),
+          resumeItems = updateList(state.resumeItems),
+          heroItems = updateList(state.heroItems),
+          latestMovies = updateList(state.latestMovies),
+          latestShows = updateList(state.latestShows),
         )
       }
     }
   }
 
   fun playRandom(context: Context) {
-    val items = _uiState.value.currentItems.filter { it.isVideo }
+    val items = (_uiState.value.currentItems.ifEmpty { _uiState.value.latestMovies + _uiState.value.latestShows }).filter { it.isVideo }
     if (items.isNotEmpty()) {
       playItem(context, items.random())
     }
@@ -867,3 +1083,4 @@ class JellyfinViewModel(
       }
   }
 }
+

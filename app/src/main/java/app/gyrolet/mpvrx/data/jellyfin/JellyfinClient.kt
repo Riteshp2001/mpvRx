@@ -255,13 +255,13 @@ class JellyfinClient(
     serverUrl: String,
     userId: String,
     token: String,
-    limit: Int = 12,
+    limit: Int = 16,
   ): Result<List<JellyfinItem>> =
     withContext(Dispatchers.IO) {
       runCatching {
         val base = normalizeUrl(serverUrl)
         val endpoint =
-          "$base/Users/$userId/Items/Resume?Limit=$limit&Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeasonName,IndexNumber,ParentIndexNumber,MediaSources"
+          "$base/Users/$userId/Items/Resume?Limit=$limit&Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeasonName,IndexNumber,ParentIndexNumber,MediaSources,MediaStreams,Genres,OfficialRating,CommunityRating,CriticRating,ProductionYear,Taglines,PremiereDate,Status"
         val request =
           Request
             .Builder()
@@ -283,6 +283,115 @@ class JellyfinClient(
       }
     }
 
+  suspend fun getLatestMedia(
+    serverUrl: String,
+    userId: String,
+    parentId: String? = null,
+    limit: Int = 16,
+    token: String,
+  ): Result<List<JellyfinItem>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val parentParam = if (!parentId.isNullOrBlank()) "&ParentId=$parentId" else ""
+        val endpoint =
+          "$base/Users/$userId/Items/Latest?Limit=$limit$parentParam&Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeasonName,IndexNumber,ParentIndexNumber,MediaSources,MediaStreams,Genres,OfficialRating,CommunityRating,CriticRating,ProductionYear,Taglines,ChildCount,PremiereDate,Status"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addHeader("X-Emby-Authorization", authHeader(token))
+            .addHeader("X-Emby-Token", token)
+            .get()
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to load latest media: HTTP ${response.code}")
+          }
+          val bodyStr = response.body.string()
+          val root = json.parseToJsonElement(bodyStr)
+          val itemsArray =
+            if (root is JsonArray) {
+              root
+            } else {
+              root.jsonObject["Items"]?.jsonArray ?: JsonArray(emptyList())
+            }
+          itemsArray.map { parseItem(it.jsonObject) }
+        }
+      }
+    }
+
+  suspend fun getSuggestions(
+    serverUrl: String,
+    userId: String,
+    limit: Int = 16,
+    token: String,
+  ): Result<List<JellyfinItem>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint =
+          "$base/Users/$userId/Suggestions?Limit=$limit&Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeasonName,IndexNumber,ParentIndexNumber,MediaSources,MediaStreams,Genres,OfficialRating,CommunityRating,CriticRating,ProductionYear,Taglines,ChildCount,PremiereDate,Status"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addHeader("X-Emby-Authorization", authHeader(token))
+            .addHeader("X-Emby-Token", token)
+            .get()
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to load suggestions: HTTP ${response.code}")
+          }
+          val bodyStr = response.body.string()
+          val root = json.parseToJsonElement(bodyStr)
+          val itemsArray =
+            if (root is JsonArray) {
+              root
+            } else {
+              root.jsonObject["Items"]?.jsonArray ?: JsonArray(emptyList())
+            }
+          itemsArray.map { parseItem(it.jsonObject) }
+        }
+      }
+    }
+
+  suspend fun getSimilarItems(
+    serverUrl: String,
+    userId: String,
+    itemId: String,
+    limit: Int = 12,
+    token: String,
+  ): Result<List<JellyfinItem>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint =
+          "$base/Items/$itemId/Similar?UserId=$userId&Limit=$limit&Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeasonName,IndexNumber,ParentIndexNumber,MediaSources,MediaStreams,Genres,OfficialRating,CommunityRating,CriticRating,ProductionYear,Taglines,ChildCount,PremiereDate,Status"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addHeader("X-Emby-Authorization", authHeader(token))
+            .addHeader("X-Emby-Token", token)
+            .get()
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to load similar items: HTTP ${response.code}")
+          }
+          val bodyStr = response.body.string()
+          val root = json.parseToJsonElement(bodyStr).jsonObject
+          val itemsArray = root["Items"]?.jsonArray ?: JsonArray(emptyList())
+          itemsArray.map { parseItem(it.jsonObject) }
+        }
+      }
+    }
+
   suspend fun getItem(
     serverUrl: String,
     userId: String,
@@ -292,7 +401,8 @@ class JellyfinClient(
     withContext(Dispatchers.IO) {
       runCatching {
         val base = normalizeUrl(serverUrl)
-        val endpoint = "$base/Users/$userId/Items/$itemId"
+        val endpoint =
+          "$base/Users/$userId/Items/$itemId?Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeasonName,IndexNumber,ParentIndexNumber,MediaSources,MediaStreams,Genres,OfficialRating,CommunityRating,CriticRating,ProductionYear,Taglines,ChildCount,PremiereDate,Status,People"
         val request =
           Request
             .Builder()
@@ -321,6 +431,9 @@ class JellyfinClient(
     sortBy: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.NAME,
     sortOrder: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.ASCENDING,
     isPlayed: Boolean? = null,
+    isFavorite: Boolean? = null,
+    genres: String? = null,
+    includeItemTypes: String? = null,
     startIndex: Int = 0,
     limit: Int = 100,
     token: String,
@@ -330,7 +443,7 @@ class JellyfinClient(
         val base = normalizeUrl(serverUrl)
         val urlBuilder =
           StringBuilder(
-            "$base/Users/$userId/Items?Fields=Overview,PrimaryImageAspectRatio,UserData,ChildCount,MediaSources,ProductionYear,SeriesName,SeasonName,IndexNumber,ParentIndexNumber&StartIndex=$startIndex&Limit=$limit&SortBy=${sortBy.apiValue}&SortOrder=${sortOrder.apiValue}",
+            "$base/Users/$userId/Items?Fields=Overview,PrimaryImageAspectRatio,UserData,ChildCount,MediaSources,MediaStreams,ProductionYear,CommunityRating,CriticRating,Genres,OfficialRating,Taglines,SeriesName,SeasonName,IndexNumber,ParentIndexNumber,PremiereDate,Status&StartIndex=$startIndex&Limit=$limit&SortBy=${sortBy.apiValue}&SortOrder=${sortOrder.apiValue}",
           )
 
         if (!parentId.isNullOrBlank()) {
@@ -339,9 +452,21 @@ class JellyfinClient(
         if (!searchTerm.isNullOrBlank()) {
           urlBuilder.append("&SearchTerm=${java.net.URLEncoder.encode(searchTerm, "UTF-8")}&Recursive=true")
         }
+        if (!includeItemTypes.isNullOrBlank()) {
+          urlBuilder.append("&IncludeItemTypes=$includeItemTypes&Recursive=true")
+        }
+        if (!genres.isNullOrBlank()) {
+          urlBuilder.append("&Genres=${java.net.URLEncoder.encode(genres, "UTF-8")}")
+        }
+        val filters = mutableListOf<String>()
         if (isPlayed != null) {
-          val filter = if (isPlayed) "IsPlayed" else "IsUnplayed"
-          urlBuilder.append("&Filters=$filter")
+          filters.add(if (isPlayed) "IsPlayed" else "IsUnplayed")
+        }
+        if (isFavorite == true) {
+          filters.add("IsFavorite")
+        }
+        if (filters.isNotEmpty()) {
+          urlBuilder.append("&Filters=${filters.joinToString(",")}")
         }
 
         val request =
@@ -386,7 +511,8 @@ class JellyfinClient(
     withContext(Dispatchers.IO) {
       runCatching {
         val base = normalizeUrl(serverUrl)
-        val endpoint = "$base/Shows/$seriesId/Seasons?UserId=$userId&Fields=Overview,PrimaryImageAspectRatio,UserData"
+        val endpoint =
+          "$base/Shows/$seriesId/Seasons?UserId=$userId&Fields=Overview,PrimaryImageAspectRatio,UserData,ChildCount,ProductionYear,CommunityRating"
         val request =
           Request
             .Builder()
@@ -418,7 +544,8 @@ class JellyfinClient(
     withContext(Dispatchers.IO) {
       runCatching {
         val base = normalizeUrl(serverUrl)
-        val endpoint = "$base/Shows/$seriesId/Episodes?SeasonId=$seasonId&UserId=$userId&Fields=Overview,PrimaryImageAspectRatio,UserData,MediaSources,IndexNumber"
+        val endpoint =
+          "$base/Shows/$seriesId/Episodes?SeasonId=$seasonId&UserId=$userId&Fields=Overview,PrimaryImageAspectRatio,UserData,MediaSources,MediaStreams,IndexNumber,ParentIndexNumber,CommunityRating,CriticRating,OfficialRating,PremiereDate"
         val request =
           Request
             .Builder()
@@ -667,6 +794,41 @@ class JellyfinClient(
       }
     }
 
+  suspend fun toggleFavorite(
+    serverUrl: String,
+    userId: String,
+    itemId: String,
+    isFavorite: Boolean,
+    token: String,
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint = "$base/Users/$userId/FavoriteItems/$itemId"
+        val request =
+          if (isFavorite) {
+            Request
+              .Builder()
+              .url(endpoint)
+              .addHeader("X-Emby-Authorization", authHeader(token))
+              .addHeader("X-Emby-Token", token)
+              .post(ByteArray(0).toRequestBody(null))
+              .build()
+          } else {
+            Request
+              .Builder()
+              .url(endpoint)
+              .addHeader("X-Emby-Authorization", authHeader(token))
+              .addHeader("X-Emby-Token", token)
+              .delete()
+              .build()
+          }
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) throw IOException("Failed to toggle favorite: HTTP ${response.code}")
+        }
+      }
+    }
+
   private fun parseItem(obj: JsonObject): JellyfinItem {
     val id = obj["Id"]?.jsonPrimitive?.content ?: ""
     val name = obj["Name"]?.jsonPrimitive?.content ?: ""
@@ -677,12 +839,24 @@ class JellyfinClient(
     val isFolder = obj["IsFolder"]?.jsonPrimitive?.booleanOrNull ?: (type == "CollectionFolder" || type == "Folder" || type == "Series" || type == "Season")
     val productionYear = obj["ProductionYear"]?.jsonPrimitive?.intOrNull
     val communityRating = obj["CommunityRating"]?.jsonPrimitive?.content?.toDoubleOrNull()
+    val criticRating = obj["CriticRating"]?.jsonPrimitive?.content?.toDoubleOrNull()
+    val officialRating = obj["OfficialRating"]?.jsonPrimitive?.content
     val seriesName = obj["SeriesName"]?.jsonPrimitive?.content
     val seasonName = obj["SeasonName"]?.jsonPrimitive?.content
     val indexNumber = obj["IndexNumber"]?.jsonPrimitive?.intOrNull
     val parentIndexNumber = obj["ParentIndexNumber"]?.jsonPrimitive?.intOrNull
     val childCount = obj["ChildCount"]?.jsonPrimitive?.intOrNull
     val container = obj["Container"]?.jsonPrimitive?.content
+    val premiereDate = obj["PremiereDate"]?.jsonPrimitive?.content
+    val status = obj["Status"]?.jsonPrimitive?.content
+
+    val genresList =
+      obj["Genres"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content }?.takeIf { it.isNotEmpty() }
+        ?: emptyList()
+
+    val taglinesList =
+      obj["Taglines"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content }?.takeIf { it.isNotEmpty() }
+        ?: emptyList()
 
     val imageTagsObj = obj["ImageTags"]?.jsonObject
     val primaryImageTag = imageTagsObj?.get("Primary")?.jsonPrimitive?.content
@@ -691,6 +865,65 @@ class JellyfinClient(
     val userDataObj = obj["UserData"]?.jsonObject
     val playbackPositionTicks = userDataObj?.get("PlaybackPositionTicks")?.jsonPrimitive?.longOrNull
     val isPlayed = userDataObj?.get("Played")?.jsonPrimitive?.booleanOrNull ?: false
+    val isFavorite = userDataObj?.get("IsFavorite")?.jsonPrimitive?.booleanOrNull ?: false
+
+    var videoCodec: String? = null
+    var videoResolution: String? = null
+    var videoHdrType: String? = null
+    var audioCodec: String? = null
+    var audioChannels: String? = null
+
+    val mediaStreams = obj["MediaStreams"]?.jsonArray
+    if (mediaStreams != null) {
+      for (streamElement in mediaStreams) {
+        val stream = streamElement.jsonObject
+        val streamType = stream["Type"]?.jsonPrimitive?.content
+        if (streamType.equals("Video", ignoreCase = true) && videoCodec == null) {
+          videoCodec = stream["Codec"]?.jsonPrimitive?.content?.uppercase()
+          val width = stream["Width"]?.jsonPrimitive?.intOrNull ?: 0
+          val height = stream["Height"]?.jsonPrimitive?.intOrNull ?: 0
+          videoResolution =
+            when {
+              width >= 3800 || height >= 2100 -> "4K"
+              width >= 1900 || height >= 1000 -> "1080p"
+              width >= 1200 || height >= 700 -> "720p"
+              width > 0 -> "${height}p"
+              else -> null
+            }
+          val videoRange = stream["VideoRange"]?.jsonPrimitive?.content
+          val videoRangeType = stream["VideoRangeType"]?.jsonPrimitive?.content
+          videoHdrType =
+            when {
+              videoRangeType?.contains("DOVI", ignoreCase = true) == true || videoRange?.contains("DOVI", ignoreCase = true) == true -> "Dolby Vision"
+              videoRangeType?.contains("HDR10+", ignoreCase = true) == true -> "HDR10+"
+              videoRangeType?.contains("HDR10", ignoreCase = true) == true || videoRange?.contains("HDR", ignoreCase = true) == true -> "HDR"
+              else -> null
+            }
+        } else if (streamType.equals("Audio", ignoreCase = true) && audioCodec == null) {
+          val rawAudioCodec = stream["Codec"]?.jsonPrimitive?.content?.uppercase()
+          audioCodec =
+            when (rawAudioCodec) {
+              "TRUEHD" -> "TrueHD"
+              "DTS-HD", "DTSHD" -> "DTS-HD"
+              "EAC3", "E-AC-3" -> "E-AC-3"
+              "AC3" -> "Dolby Digital"
+              "FLAC" -> "FLAC"
+              "AAC" -> "AAC"
+              "OPUS" -> "Opus"
+              else -> rawAudioCodec
+            }
+          val channels = stream["Channels"]?.jsonPrimitive?.intOrNull
+          audioChannels =
+            when (channels) {
+              8 -> "7.1"
+              6 -> "5.1"
+              2 -> "2.0"
+              1 -> "1.0"
+              else -> channels?.let { "${it}ch" }
+            }
+        }
+      }
+    }
 
     return JellyfinItem(
       id = id,
@@ -701,17 +934,29 @@ class JellyfinClient(
       runTimeTicks = runTimeTicks,
       playbackPositionTicks = playbackPositionTicks,
       isPlayed = isPlayed,
+      isFavorite = isFavorite,
       seriesName = seriesName,
       seasonName = seasonName,
       indexNumber = indexNumber,
       parentIndexNumber = parentIndexNumber,
       productionYear = productionYear,
       communityRating = communityRating,
+      criticRating = criticRating,
+      officialRating = officialRating,
+      taglines = taglinesList,
+      genres = genresList,
       isFolder = isFolder,
       primaryImageTag = primaryImageTag,
       backdropImageTag = backdropImageTags,
       childCount = childCount,
       container = container,
+      videoCodec = videoCodec,
+      videoResolution = videoResolution,
+      videoHdrType = videoHdrType,
+      audioCodec = audioCodec,
+      audioChannels = audioChannels,
+      premiereDate = premiereDate,
+      status = status,
     )
   }
 }

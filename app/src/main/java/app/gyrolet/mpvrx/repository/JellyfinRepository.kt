@@ -57,9 +57,29 @@ class JellyfinRepository(
 
   suspend fun getResumeItems(
     server: JellyfinServer,
-    limit: Int = 12,
+    limit: Int = 16,
   ): Result<List<JellyfinItem>> =
     client.getResumeItems(server.serverUrl, server.userId, server.accessToken, limit)
+
+  suspend fun getLatestMedia(
+    server: JellyfinServer,
+    parentId: String? = null,
+    limit: Int = 16,
+  ): Result<List<JellyfinItem>> =
+    client.getLatestMedia(server.serverUrl, server.userId, parentId, limit, server.accessToken)
+
+  suspend fun getSuggestions(
+    server: JellyfinServer,
+    limit: Int = 16,
+  ): Result<List<JellyfinItem>> =
+    client.getSuggestions(server.serverUrl, server.userId, limit, server.accessToken)
+
+  suspend fun getSimilarItems(
+    server: JellyfinServer,
+    itemId: String,
+    limit: Int = 12,
+  ): Result<List<JellyfinItem>> =
+    client.getSimilarItems(server.serverUrl, server.userId, itemId, limit, server.accessToken)
 
   suspend fun getItem(
     server: JellyfinServer,
@@ -74,6 +94,9 @@ class JellyfinRepository(
     sortBy: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.NAME,
     sortOrder: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.ASCENDING,
     isPlayed: Boolean? = null,
+    isFavorite: Boolean? = null,
+    genres: String? = null,
+    includeItemTypes: String? = null,
     startIndex: Int = 0,
     limit: Int = 100,
   ): Result<app.gyrolet.mpvrx.domain.jellyfin.JellyfinQueryResult> =
@@ -85,6 +108,9 @@ class JellyfinRepository(
       sortBy = sortBy,
       sortOrder = sortOrder,
       isPlayed = isPlayed,
+      isFavorite = isFavorite,
+      genres = genres,
+      includeItemTypes = includeItemTypes,
       startIndex = startIndex,
       limit = limit,
       token = server.accessToken,
@@ -203,6 +229,19 @@ class JellyfinRepository(
       serverUrl = server.serverUrl,
       userId = server.userId,
       itemId = item.id,
+      token = server.accessToken,
+    )
+
+  suspend fun toggleFavorite(
+    server: JellyfinServer,
+    item: JellyfinItem,
+    isFavorite: Boolean,
+  ): Result<Unit> =
+    client.toggleFavorite(
+      serverUrl = server.serverUrl,
+      userId = server.userId,
+      itemId = item.id,
+      isFavorite = isFavorite,
       token = server.accessToken,
     )
 }
