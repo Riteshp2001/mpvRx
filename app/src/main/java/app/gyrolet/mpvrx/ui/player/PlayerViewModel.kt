@@ -3751,45 +3751,45 @@ class PlayerViewModel : ViewModel(),
     }
 
     val sourceContext =
-    seekThumbnailSourceContext ?: resolveSeekThumbnailSourceContext().also { resolved ->
-      if (resolved.source != null) seekThumbnailSourceContext = resolved
-    }
+      seekThumbnailSourceContext ?: resolveSeekThumbnailSourceContext().also { resolved ->
+        if (resolved.source != null) seekThumbnailSourceContext = resolved
+      }
 
-  thumbFastPreviewController.request(
-    source = sourceContext.source,
-    contentUri = sourceContext.contentUri,
-    positionSeconds = positionSeconds,
-    durationSeconds = durationSeconds,
-    userAgent = sourceContext.userAgent,
-    httpHeaders = sourceContext.httpHeaders,
-  )
-}
+    thumbFastPreviewController.request(
+      source = sourceContext.source,
+      contentUri = sourceContext.contentUri,
+      positionSeconds = positionSeconds,
+      durationSeconds = durationSeconds,
+      userAgent = sourceContext.userAgent,
+      httpHeaders = sourceContext.httpHeaders,
+    )
+  }
 
-fun hideSeekThumbnailPreview() {
-  thumbFastPreviewController.clear()
-}
+  fun hideSeekThumbnailPreview() {
+    thumbFastPreviewController.clear()
+  }
 
-private fun resolveSeekThumbnailSourceContext(): SeekThumbnailSourceContext {
-  val source =
-    // Prefer mpv's actual opened source. Network-library playback can replace a logical URI with
-    // an authenticated loopback/range URL, and the secondary preview core must open that same URL.
-    runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull()?.takeIf { it.isNotBlank() }
-      ?: runCatching { PlaybackSession.getPropertyString("path") }.getOrNull()?.takeIf { it.isNotBlank() }
-      ?: host.currentThumbnailSource()?.takeIf { it.isNotBlank() }
-  val contentUri =
-    PlaybackSession.queue.value.currentItem?.let { item ->
-      sequenceOf(item.playableUri, item.originalUri)
-        .firstOrNull { candidate ->
-          runCatching { Uri.parse(candidate).scheme.equals("content", ignoreCase = true) }.getOrDefault(false)
-        }
-    }
-  return SeekThumbnailSourceContext(
-    source = source,
-    contentUri = contentUri,
-    userAgent = runCatching { PlaybackSession.getPropertyString("user-agent") }.getOrNull(),
-    httpHeaders = runCatching { PlaybackSession.getPropertyString("http-header-fields") }.getOrNull(),
-  )
-}
+  private fun resolveSeekThumbnailSourceContext(): SeekThumbnailSourceContext {
+    val source =
+      // Prefer mpv's actual opened source. Network-library playback can replace a logical URI with
+      // an authenticated loopback/range URL, and the secondary preview core must open that same URL.
+      runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull()?.takeIf { it.isNotBlank() }
+        ?: runCatching { PlaybackSession.getPropertyString("path") }.getOrNull()?.takeIf { it.isNotBlank() }
+        ?: host.currentThumbnailSource()?.takeIf { it.isNotBlank() }
+    val contentUri =
+      PlaybackSession.queue.value.currentItem?.let { item ->
+        sequenceOf(item.playableUri, item.originalUri)
+          .firstOrNull { candidate ->
+            runCatching { Uri.parse(candidate).scheme.equals("content", ignoreCase = true) }.getOrDefault(false)
+          }
+      }
+    return SeekThumbnailSourceContext(
+      source = source,
+      contentUri = contentUri,
+      userAgent = runCatching { PlaybackSession.getPropertyString("user-agent") }.getOrNull(),
+      httpHeaders = runCatching { PlaybackSession.getPropertyString("http-header-fields") }.getOrNull(),
+    )
+  }
 
   fun lockControls() {
     _areControlsLocked.value = true
