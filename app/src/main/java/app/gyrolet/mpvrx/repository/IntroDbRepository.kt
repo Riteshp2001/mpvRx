@@ -302,6 +302,8 @@ class IntroDbRepository(
           Request
             .Builder()
             .url(urlBuilder.build())
+            .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
+            .header("Accept", "application/json")
             .get()
             .build()
 
@@ -335,48 +337,63 @@ class IntroDbRepository(
   ): Result<List<IntroDbSegment>> =
     withContext(Dispatchers.IO) {
       runCatching {
-        val urlBuilder =
-          THEINTRODB_MEDIA_URL
-            .toHttpUrl()
-            .newBuilder()
+        fun buildUrl(baseUrl: String): okhttp3.HttpUrl {
+          val urlBuilder = baseUrl.toHttpUrl().newBuilder()
 
-        when {
-          tmdbId != null -> urlBuilder.addQueryParameter("tmdb_id", tmdbId.toString())
-          !imdbId.isNullOrBlank() -> urlBuilder.addQueryParameter("imdb_id", imdbId)
-          else -> error("TheIntroDB lookup requires a TMDB or IMDb id")
-        }
-
-        if (mediaType.equals("tv", ignoreCase = true)) {
-          if (season == null || episode == null) {
-            error("TheIntroDB TV lookup requires season and episode")
+          when {
+            tmdbId != null && tmdbId > 0 -> urlBuilder.addQueryParameter("tmdb_id", tmdbId.toString())
+            !imdbId.isNullOrBlank() -> urlBuilder.addQueryParameter("imdb_id", imdbId)
+            else -> error("TheIntroDB lookup requires a TMDB or IMDb id")
           }
-          urlBuilder.addQueryParameter("season", season.toString())
-          urlBuilder.addQueryParameter("episode", episode.toString())
+
+          if (mediaType.equals("tv", ignoreCase = true) || mediaType.equals("series", ignoreCase = true) || season != null || episode != null) {
+            if (season != null) urlBuilder.addQueryParameter("season", season.toString())
+            if (episode != null) urlBuilder.addQueryParameter("episode", episode.toString())
+          }
+          return urlBuilder.build()
         }
 
-        val request =
+        val requestV2 =
           Request
             .Builder()
-            .url(urlBuilder.build())
+            .url(buildUrl(THEINTRODB_MEDIA_V2_URL))
+            .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
+            .header("Accept", "application/json")
             .get()
             .build()
 
-        client
-          .newCall(request)
-          .execute()
-          .use { response ->
-            if (response.code == 404) {
-              return@use emptyList()
-            }
-            if (!response.isSuccessful) {
-              error("TheIntroDB request failed with HTTP ${response.code}")
-            }
+        var responseBody = ""
+        client.newCall(requestV2).execute().use { response ->
+          if (response.isSuccessful) {
+            responseBody = response.body.string()
+          } else if (response.code == 404) {
+            // Fall back to v1 endpoint
+            val requestV1 =
+              Request
+                .Builder()
+                .url(buildUrl(THEINTRODB_MEDIA_V1_URL))
+                .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
+                .header("Accept", "application/json")
+                .get()
+                .build()
 
-            val body = response.body.string()
-            if (body.isBlank()) return@use emptyList()
+            client.newCall(requestV1).execute().use { v1Response ->
+              if (v1Response.isSuccessful) {
+                responseBody = v1Response.body.string()
+              } else if (v1Response.code == 404) {
+                return@use
+              } else {
+                error("TheIntroDB v1 request failed with HTTP ${v1Response.code}")
+              }
+            }
+          } else {
+            error("TheIntroDB request failed with HTTP ${response.code}")
+          }
+        }
 
-            parseTheIntroDbMediaBody(body)
-          }.filter { it.hasTimingBounds }
+        if (responseBody.isBlank()) return@runCatching emptyList()
+
+        parseTheIntroDbMediaBody(responseBody)
       }.onFailure { error ->
         Log.w(TAG, "Failed to fetch TheIntroDB data for tmdbId=$tmdbId imdbId=$imdbId", error)
       }
@@ -391,8 +408,9 @@ class IntroDbRepository(
         val request =
           Request
             .Builder()
-            .url("$ANISKIP_SKIP_TIMES_URL/$malId/$episode?types=op&types=ed")
+            .url("$ANISKIP_SKIP_TIMES_URL/$malId/$episode?types=op&types=ed&types=mixed-op&types=mixed-ed&types=recap&types=preview&episodeLength=0")
             .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
+            .header("Accept", "application/json")
             .get()
             .build()
 
@@ -420,13 +438,17 @@ class IntroDbRepository(
               val start = interval.startTime
               val end = interval.endTime
               if (start == null && end == null) return@mapNotNull null
+              val rawType = result.skipType?.lowercase().orEmpty()
+              val segmentType =
+                when {
+                  "recap" in rawType -> "recap"
+                  "preview" in rawType -> "preview"
+                  "ed" in rawType || "ending" in rawType -> "ending"
+                  "op" in rawType || "opening" in rawType -> "opening"
+                  else -> result.skipType ?: "intro"
+                }
               IntroDbSegment(
-                segmentType =
-                  when (result.skipType?.lowercase()) {
-                    "ed" -> "ending"
-                    "op" -> "opening"
-                    else -> result.skipType ?: "intro"
-                  },
+                segmentType = segmentType,
                 start = start,
                 end = end,
               )
@@ -458,6 +480,7 @@ class IntroDbRepository(
             .Builder()
             .url(ANIME_SKIP_GRAPHQL_URL)
             .header("Content-Type", "application/json")
+            .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
             .header("X-Client-ID", ANIME_SKIP_CLIENT_ID)
             .post(requestBody)
             .build()
@@ -490,7 +513,7 @@ class IntroDbRepository(
         val matchingEpisode =
           bestShow.episodes.firstOrNull { ep ->
             (seasonStr == null || ep.season == null || ep.season == seasonStr) &&
-              ep.number == episodeStr
+              (ep.number == episodeStr || ep.number?.toDoubleOrNull()?.toInt() == episode)
           } ?: return@runCatching emptyList()
 
         val timestamps =
@@ -511,11 +534,13 @@ class IntroDbRepository(
     val segments = mutableListOf<IntroDbSegment>()
     for (i in timestamps.indices) {
       val current = timestamps[i]
-      val typeName = current.type?.name ?: continue
+      val typeName = current.type?.name?.lowercase().orEmpty()
       val segmentType =
-        when (typeName.lowercase()) {
-          "intro" -> "opening"
-          "credits" -> "ending"
+        when {
+          "recap" in typeName || "summary" in typeName -> "recap"
+          "opening" in typeName || "intro" in typeName || "op" in typeName -> "opening"
+          "ending" in typeName || "outro" in typeName || "credit" in typeName || "ed" in typeName -> "ending"
+          "preview" in typeName || "next" in typeName -> "preview"
           else -> continue
         }
       val start = current.at ?: continue
@@ -552,13 +577,28 @@ class IntroDbRepository(
 
   private fun parseTheIntroDbMediaBody(body: String): List<IntroDbSegment> =
     runCatching {
-      val payload = json.parseToJsonElement(body).jsonObject
+      val element = json.parseToJsonElement(body)
+      if (element is JsonArray) {
+        return parseSegmentsBody(body)
+      }
+      val payload = element.jsonObject
+      val segmentsArray = (payload["segments"] ?: payload["data"] ?: payload["results"]) as? JsonArray
+      if (segmentsArray != null) {
+        return segmentsArray.mapNotNull { it as? JsonObject }.mapNotNull { it.toIntroDbSegment("intro") }
+      }
+
       payload.entries.flatMap { (segmentType, value) ->
-        val segmentList = value as? JsonArray ?: return@flatMap emptyList()
-        segmentList.mapNotNull { element ->
-          val segmentPayload = element as? JsonObject ?: return@mapNotNull null
-          segmentPayload.toIntroDbSegment(segmentType)
+        when (value) {
+          is JsonArray -> {
+            value.mapNotNull { it as? JsonObject }.mapNotNull { it.toIntroDbSegment(segmentType) }
+          }
+          is JsonObject -> {
+            listOfNotNull(value.toIntroDbSegment(segmentType))
+          }
+          else -> emptyList()
         }
+      }.ifEmpty {
+        payload.toLegacyIntroDbSegments()
       }
     }.getOrDefault(emptyList())
 
@@ -573,16 +613,27 @@ class IntroDbRepository(
   }
 
   private fun JsonObject.toIntroDbSegment(segmentType: String): IntroDbSegment? {
+    val type =
+      (this["segment_type"] as? JsonPrimitive)?.content
+        ?: (this["type"] as? JsonPrimitive)?.content
+        ?: (this["category"] as? JsonPrimitive)?.content
+        ?: (this["skip_type"] as? JsonPrimitive)?.content
+        ?: segmentType
+
     val start =
       this["start_sec"]?.jsonPrimitive?.doubleOrNull
         ?: this["start"]?.jsonPrimitive?.doubleOrNull
+        ?: this["start_time"]?.jsonPrimitive?.doubleOrNull
+        ?: this["startTime"]?.jsonPrimitive?.doubleOrNull
         ?: this["start_ms"]?.jsonPrimitive?.doubleOrNull?.div(1000.0)
     val end =
       this["end_sec"]?.jsonPrimitive?.doubleOrNull
         ?: this["end"]?.jsonPrimitive?.doubleOrNull
+        ?: this["end_time"]?.jsonPrimitive?.doubleOrNull
+        ?: this["endTime"]?.jsonPrimitive?.doubleOrNull
         ?: this["end_ms"]?.jsonPrimitive?.doubleOrNull?.div(1000.0)
     return if (start != null || end != null) {
-      IntroDbSegment(segmentType = segmentType, start = start, end = end)
+      IntroDbSegment(segmentType = type, start = start, end = end)
     } else {
       null
     }
@@ -620,18 +671,32 @@ class IntroDbRepository(
       )
     }
 
-    request.tmdbId?.let {
-      return IntroDbLookupOutcome.Unresolved(
-        title = normalizedTitle,
+    request.tmdbId?.let { tmdbId ->
+      return fetchSegmentsForResolvedId(
         provider = request.provider,
+        lookupId = "tmdb:$tmdbId",
+        tmdbId = tmdbId,
+        imdbId = null,
+        mediaType = mediaType,
+        season = season,
+        episode = episode,
+        source = IntroDbResolutionSource.EXPLICIT_TMDB,
       )
     }
 
-    searchTmdb(normalizedTitle, parsedYear, mediaType)
-      ?: return IntroDbLookupOutcome.Unresolved(
-        title = normalizedTitle,
+    val match = searchTmdb(normalizedTitle, parsedYear, mediaType)
+    if (match != null) {
+      return fetchSegmentsForResolvedId(
         provider = request.provider,
+        lookupId = "tmdb:${match.id}",
+        tmdbId = match.id,
+        imdbId = null,
+        mediaType = mediaType,
+        season = season,
+        episode = episode,
+        source = IntroDbResolutionSource.TMDB_SEARCH,
       )
+    }
 
     return IntroDbLookupOutcome.Unresolved(
       title = normalizedTitle,
@@ -815,11 +880,23 @@ class IntroDbRepository(
     val segments =
       when (provider) {
         IntroSegmentProvider.INTRO_DB ->
-          getIntroDbAppSegments(
-            imdbId = imdbId ?: error("IntroDB lookup requires an IMDb id"),
-            season = season.takeIf { useEpisodeHints },
-            episode = episode.takeIf { useEpisodeHints },
-          )
+          if (!imdbId.isNullOrBlank()) {
+            getIntroDbAppSegments(
+              imdbId = imdbId,
+              season = season.takeIf { useEpisodeHints },
+              episode = episode.takeIf { useEpisodeHints },
+            )
+          } else if (tmdbId != null && tmdbId > 0) {
+            getTheIntroDbSegments(
+              tmdbId = tmdbId,
+              imdbId = null,
+              mediaType = mediaType,
+              season = season.takeIf { useEpisodeHints },
+              episode = episode.takeIf { useEpisodeHints },
+            )
+          } else {
+            Result.failure(IllegalArgumentException("IntroDB lookup requires an IMDb or TMDB ID"))
+          }
 
         IntroSegmentProvider.THE_INTRO_DB ->
           getTheIntroDbSegments(
@@ -1177,7 +1254,8 @@ class IntroDbRepository(
 
   companion object {
     private const val TAG = "IntroDbRepository"
-    private const val THEINTRODB_MEDIA_URL = "https://api.theintrodb.org/v2/media"
+    private const val THEINTRODB_MEDIA_V2_URL = "https://api.theintrodb.org/v2/media"
+    private const val THEINTRODB_MEDIA_V1_URL = "https://api.theintrodb.org/v1/media"
     private const val ANISKIP_SKIP_TIMES_URL = "https://api.aniskip.com/v1/skip-times"
     private const val JIKAN_SEARCH_URL = "https://api.jikan.moe/v4/anime"
     private const val MARKER_PROVIDER_USER_AGENT =

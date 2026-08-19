@@ -516,10 +516,13 @@ private fun SeekbarContent(
       when (seekbarStyle) {
         SeekbarStyle.Normal -> {
           NormalSeekbar(
-            position = safeCommittedPosition,
-            thumbPosition = safeThumbPosition,
-            duration = safeDuration,
-            chapters = seekerSegments,
+            positionProvider = positionProvider,
+            duration = duration,
+            chapters = chapters,
+            isPaused = paused,
+            isScrubbing = isVisuallyInteracting,
+            loopStart = loopStart,
+            loopEnd = loopEnd,
             bufferDuration = bufferDuration,
           )
         }
@@ -677,43 +680,142 @@ private fun SeekbarContent(
 
 /**
  * A conventional media timeline with a circular thumb, buffered range, and chapter segments.
- * Touch handling remains in [SeekbarContent] so every style has the same seek behavior.
+ * Renders full width (0..size.width) matching other styles and skip overlay geometry.
  */
 @Composable
 private fun NormalSeekbar(
-  position: Float,
-  thumbPosition: Float,
+  positionProvider: () -> Float,
   duration: Float,
-  chapters: List<Segment>,
-  bufferDuration: Float?,
+  chapters: ImmutableList<Segment>,
+  isPaused: Boolean,
+  isScrubbing: Boolean,
+  loopStart: Float? = null,
+  loopEnd: Float? = null,
+  bufferDuration: Float? = null,
   modifier: Modifier = Modifier,
 ) {
-  val safeDuration = duration.takeIf { it.isFinite() && it > 0f } ?: 0.1f
-  val range = 0f..safeDuration
-  val playedPosition = position.coerceIn(range)
-
-  Seeker(
-    value = playedPosition,
-    thumbValue = thumbPosition.coerceIn(range),
-    range = range,
-    readAheadValue =
-      normalizedReadAheadValue(
-        bufferPosition = bufferDuration,
-        playedPosition = playedPosition,
-        duration = safeDuration,
-      ).coerceIn(range),
-    segments = chapters,
-    colors =
-      SeekerDefaults.seekerColors(
-        progressColor = MaterialTheme.colorScheme.primary,
-        thumbColor = MaterialTheme.colorScheme.primary,
-        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
-        readAheadColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
-      ),
-    onValueChange = {},
-    onValueChangeFinished = {},
-    modifier = modifier.fillMaxWidth(),
+  val primaryColor = MaterialTheme.colorScheme.primary
+  val trackHeight by animateDpAsState(
+    targetValue = if (isScrubbing) 6.dp else 4.dp,
+    animationSpec = spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness),
+    label = "normal_seekbar_height",
   )
+  val thumbRadiusDp by animateDpAsState(
+    targetValue = if (isScrubbing) 9.dp else 6.5.dp,
+    animationSpec = spring(dampingRatio = AppMotion.Spatial.Expressive.dampingRatio, stiffness = AppMotion.Spatial.Expressive.stiffness),
+    label = "normal_seekbar_thumb",
+  )
+
+  val chapterFractions =
+    remember(chapters, duration) {
+      if (duration <= 0f) {
+        FloatArray(0)
+      } else {
+        chapters
+          .mapNotNull {
+            val f = it.start / duration
+            if (f.isFinite() && f in 0.005f..0.995f) f else null
+          }.sorted().toFloatArray()
+      }
+    }
+
+  Canvas(
+    modifier = modifier.fillMaxWidth().height(32.dp),
+  ) {
+    val totalWidth = size.width
+    val centerY = size.height / 2f
+    val currentPosition = positionProvider()
+    val progress = if (duration > 0f) (currentPosition / duration).coerceIn(0f, 1f) else 0f
+    val playedPx = (totalWidth * progress).coerceIn(0f, totalWidth)
+    val height = trackHeight.toPx()
+    val radius = height / 2f
+    val thumbR = thumbRadiusDp.toPx()
+    val gapHalf = 1.dp.toPx()
+
+    fun drawSegmentedTrack(startX: Float, endX: Float, color: Color) {
+      if (endX <= startX) return
+      if (chapterFractions.isEmpty()) {
+        drawRoundRect(
+          color = color,
+          topLeft = Offset(startX, centerY - radius),
+          size = Size(endX - startX, height),
+          cornerRadius = CornerRadius(radius),
+        )
+        return
+      }
+
+      var currentSegmentStart = startX
+      for (i in chapterFractions.indices) {
+        val gapCenter = chapterFractions[i] * totalWidth
+        if (gapCenter <= startX) continue
+        if (gapCenter >= endX) break
+        val segEnd = (gapCenter - gapHalf).coerceAtLeast(currentSegmentStart)
+        if (segEnd > currentSegmentStart) {
+          drawRoundRect(
+            color = color,
+            topLeft = Offset(currentSegmentStart, centerY - radius),
+            size = Size(segEnd - currentSegmentStart, height),
+            cornerRadius = CornerRadius(radius),
+          )
+        }
+        currentSegmentStart = (gapCenter + gapHalf).coerceAtMost(endX)
+      }
+      if (currentSegmentStart < endX) {
+        drawRoundRect(
+          color = color,
+          topLeft = Offset(currentSegmentStart, centerY - radius),
+          size = Size(endX - currentSegmentStart, height),
+          cornerRadius = CornerRadius(radius),
+        )
+      }
+    }
+
+    // 1. Background unplayed track
+    drawSegmentedTrack(0f, totalWidth, primaryColor.copy(alpha = 0.24f))
+
+    // 2. Buffer readahead track
+    if (bufferDuration != null && bufferDuration > 0f && duration > 0f) {
+      val bufferPx = bufferedEndPx(bufferDuration, duration, totalWidth, playedPx)
+      if (bufferPx > playedPx) {
+        drawSegmentedTrack(playedPx, bufferPx, primaryColor.copy(alpha = 0.45f))
+      }
+    }
+
+    // 3. Played track
+    if (playedPx > 0f) {
+      drawSegmentedTrack(0f, playedPx, primaryColor)
+    }
+
+    // 4. Circular thumb
+    drawCircle(
+      color = primaryColor,
+      radius = thumbR,
+      center = Offset(playedPx, centerY),
+    )
+
+    // 5. A-B Loop indicators
+    if (loopStart != null || loopEnd != null) {
+      val loopColor = Color(0xFFFFB300)
+      val markerW = 2.dp.toPx()
+      if (loopStart != null && duration > 0f) {
+        val px = (loopStart / duration).coerceIn(0f, 1f) * totalWidth
+        drawLine(loopColor, Offset(px, centerY - thumbR), Offset(px, centerY + thumbR), markerW)
+      }
+      if (loopEnd != null && duration > 0f) {
+        val px = (loopEnd / duration).coerceIn(0f, 1f) * totalWidth
+        drawLine(loopColor, Offset(px, centerY - thumbR), Offset(px, centerY + thumbR), markerW)
+      }
+      if (loopStart != null && loopEnd != null && duration > 0f) {
+        val minPx = (minOf(loopStart, loopEnd) / duration).coerceIn(0f, 1f) * totalWidth
+        val maxPx = (maxOf(loopStart, loopEnd) / duration).coerceIn(0f, 1f) * totalWidth
+        drawRect(
+          color = loopColor.copy(alpha = 0.2f),
+          topLeft = Offset(minPx, centerY - thumbR),
+          size = Size(maxPx - minPx, thumbR * 2),
+        )
+      }
+    }
+  }
 }
 
 @Composable
