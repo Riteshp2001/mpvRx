@@ -1479,7 +1479,6 @@ fun PlayerControls(
                   end.linkTo(parent.end, spacing.large)
                 },
           ) {
-            val position by PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
             val precisePosition by viewModel.precisePosition.collectAsStateWithLifecycle()
             val invertDuration by playerPreferences.invertDuration.collectAsState()
             val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
@@ -1505,13 +1504,9 @@ fun PlayerControls(
               onValueChange = {
                 isSeeking = true
                 resetControlsTimestamp = System.currentTimeMillis()
-                if (useThumbFastSeekPreview) {
-                  viewModel.updateSeekThumbnailPreview(it, seekbarDuration)
-                } else {
-                  // Legacy mode previews on the actual video surface. The ViewModel conflates
-                  // pointer events so this remains responsive instead of issuing a seek per pixel.
-                  viewModel.previewSeekTo(it.toInt())
-                }
+                // The ViewModel routes the same target to exactly one preview engine:
+                // ThumbFast window OR legacy live surface, never both.
+                viewModel.previewSeek(it, seekbarDuration)
               },
               onValueChangeFinished = { targetPosition ->
                 isSeeking = false
@@ -1519,7 +1514,7 @@ fun PlayerControls(
                 if (useThumbFastSeekPreview) {
                   viewModel.hideSeekThumbnailPreview()
                 }
-                viewModel.seekTo(targetPosition.toInt(), fast = false)
+                viewModel.seekTo(targetPosition, fast = false)
                 viewModel.showControls()
               },
               timersInverted = Pair(false, invertDuration),

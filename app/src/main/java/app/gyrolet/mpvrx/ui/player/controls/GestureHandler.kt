@@ -157,7 +157,9 @@ fun GestureHandler(
   val allowGesturesInPanels by playerPreferences.allowGesturesInPanels.collectAsState()
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
+  val preciseDuration by viewModel.preciseDuration.collectAsState()
   val position by PlaybackSession.propInt["time-pos"].collectAsState()
+  val precisePosition by viewModel.precisePosition.collectAsState()
   val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
   val controlsShown by viewModel.controlsShown.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
@@ -1108,7 +1110,7 @@ fun GestureHandler(
 
                       gestureType = "horizontal_seek"
                       hasStartedSeeking = true
-                      initialVideoPosition = position?.toFloat() ?: 0f
+                      initialVideoPosition = precisePosition.takeIf { it > 0f } ?: position?.toFloat() ?: 0f
                       pendingSeekPosition = initialVideoPosition
 
                       // Show seekbar and start seeking mode (same as seekbar scrubbing)
@@ -1120,14 +1122,10 @@ fun GestureHandler(
                       // Calculate seek amount based on horizontal movement
                       val seekAmount = deltaX * seekSensitivity
                       val targetPosition = (initialVideoPosition + seekAmount).coerceAtLeast(0f)
-                      val maxDuration = duration?.toFloat() ?: 0f
+                      val maxDuration = if (preciseDuration > 0f) preciseDuration else duration?.toFloat() ?: 0f
                       val clampedPosition = targetPosition.coerceAtMost(maxDuration)
                       pendingSeekPosition = clampedPosition
-                      if (useThumbFastSeekPreview) {
-                        viewModel.updateSeekThumbnailPreview(clampedPosition, maxDuration)
-                      } else {
-                        viewModel.previewSeekTo(clampedPosition.toInt())
-                      }
+                      viewModel.previewSeek(clampedPosition, maxDuration)
 
                       // Format and display time position updates
                       val currentPos = clampedPosition.toInt()
@@ -1172,11 +1170,9 @@ fun GestureHandler(
             // Apply the final seek when gesture ends
             if (hasStartedSeeking) {
               if (useThumbFastSeekPreview) {
-                pendingSeekPosition?.let { viewModel.seekTo(it.toInt()) }
                 viewModel.hideSeekThumbnailPreview()
-              } else {
-                pendingSeekPosition?.let { viewModel.seekTo(it.toInt(), fast = false) }
               }
+              pendingSeekPosition?.let { viewModel.seekTo(it, fast = false) }
               if (gestureType == "subtitle_dialog_seek") {
                 coroutineScope.launch {
                   delay(300)

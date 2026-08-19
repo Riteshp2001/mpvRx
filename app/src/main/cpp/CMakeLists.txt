@@ -28,6 +28,12 @@ add_library(android_compat SHARED android_compat.c)
 target_link_libraries(android_compat log dl)
 mpvrx_optimize_native_target(android_compat)
 
+# Isolated persistent libmpv core for interactive seek previews. It resolves libmpv dynamically
+# from the bundled mpv AAR so every distribution flavor uses its matching native core.
+add_library(thumbfast_preview SHARED thumbfast_preview.cpp)
+target_link_libraries(thumbfast_preview log dl)
+mpvrx_optimize_native_target(thumbfast_preview)
+
 # YTDLP execution wrapper for SDK 29+ bypass
 add_executable(ytdl_wrapper ytdl_wrapper.c)
 set_target_properties(ytdl_wrapper PROPERTIES OUTPUT_NAME "ytdl")
