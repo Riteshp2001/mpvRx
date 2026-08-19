@@ -32,6 +32,7 @@ import app.gyrolet.mpvrx.utils.media.MediaUtils
 import android.net.Uri
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -39,9 +40,16 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.net.URI
 
-data class TorrentStreamGroup(
+enum class MediaGroupType {
+  TORRENT,
+  STREAM,
+  YOUTUBE,
+}
+
+data class MediaStreamGroup(
   val id: String,
-  val infoHash: String?,
+  val groupType: MediaGroupType = MediaGroupType.TORRENT,
+  val infoHash: String? = null,
   val title: String,
   val canonicalSourceUri: String,
   val files: List<NetworkStreamEntryEntity>,
@@ -53,6 +61,8 @@ data class TorrentStreamGroup(
   val releaseYear: String? = null,
   val mediaType: String? = null,
 )
+
+typealias TorrentStreamGroup = MediaStreamGroup
 
 /**
  * ViewModel for managing network connections and streaming media references.
@@ -111,6 +121,34 @@ class NetworkStreamingViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList(),
       )
+
+  val allMediaGroups: StateFlow<List<MediaStreamGroup>> =
+    combine(torrentGroups, recentLinks) { torrents, recents ->
+      val savedStreams =
+        recents.map { entry ->
+          val isYt = HttpUtils.isYouTubeUrl(entry.canonicalSourceUri)
+          MediaStreamGroup(
+            id = "stream:${entry.stableKey}",
+            groupType = if (isYt) MediaGroupType.YOUTUBE else MediaGroupType.STREAM,
+            infoHash = null,
+            title = entry.fileName,
+            canonicalSourceUri = entry.canonicalSourceUri,
+            files = listOf(entry),
+            totalSize = entry.fileSize,
+            updatedAt = entry.updatedAt,
+            posterUrl = entry.posterUrl,
+            backdropUrl = entry.backdropUrl ?: entry.posterUrl,
+            overview = entry.overview,
+            releaseYear = entry.releaseYear,
+            mediaType = if (isYt) "YouTube" else "Stream",
+          )
+        }
+      (torrents + savedStreams).sortedByDescending { it.updatedAt }
+    }.stateIn(
+      scope = viewModelScope,
+      started = SharingStarted.WhileSubscribed(5000),
+      initialValue = emptyList(),
+    )
 
   init {
     viewModelScope.launch {
@@ -262,12 +300,48 @@ class NetworkStreamingViewModel(
   }
 
   fun deleteTorrentGroup(group: TorrentStreamGroup) {
+    deleteMediaGroup(group)
+  }
+
+  fun deleteMediaGroup(group: MediaStreamGroup) {
     viewModelScope.launch {
       val infoHash = group.infoHash
       if (infoHash != null) {
         streamEntryRepository.deleteTorrentGroup(infoHash)
       } else {
         group.files.forEach { streamEntryRepository.delete(it.stableKey) }
+      }
+    }
+  }
+
+  fun saveLinkToMedia(url: String, customTitle: String? = null) {
+    val source = url.trim()
+    if (source.isBlank()) return
+    viewModelScope.launch {
+      val uri = runCatching { Uri.parse(source) }.getOrNull()
+      val initialTitle = customTitle?.takeIf(String::isNotBlank) ?: MediaInfoParser.parseStreamTitle(source)
+      streamEntryRepository.saveNormalEntry(
+        canonicalSourceUri = source,
+        fileName = initialTitle,
+      )
+      if (HttpUtils.isYouTubeUrl(uri)) {
+        val ytMeta = HttpUtils.fetchYouTubeMetadata(source)
+        if (ytMeta != null && ytMeta.title.isNotBlank()) {
+          streamEntryRepository.saveNormalEntry(
+            canonicalSourceUri = source,
+            fileName = ytMeta.title,
+            posterUrl = ytMeta.thumbnailUrl,
+            backdropUrl = ytMeta.thumbnailUrl,
+          )
+        }
+      } else {
+        val betterTitle = HttpUtils.extractFilenameFromUrl(source)
+        if (betterTitle != null && !HttpUtils.isLikelyJunkTitle(betterTitle) && betterTitle != initialTitle && betterTitle != uri?.host) {
+          streamEntryRepository.saveNormalEntry(
+            canonicalSourceUri = source,
+            fileName = betterTitle,
+          )
+        }
       }
     }
   }

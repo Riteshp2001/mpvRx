@@ -1710,4 +1710,35 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
     <item quantity="one">%1$d abspielbare Datei</item>
     <item quantity="other">%1$d abspielbare Dateien</item>
   </plurals>
+    <string name="pref_nav_jellyfin_title">Jellyfin-Tab anzeigen</string>
+    <string name="pref_nav_jellyfin_summary">Jellyfin in der unteren Navigationsleiste ein- oder ausblenden</string>
+    <string name="pref_autoplay_next_audio_title">Nächstes Audio automatisch abspielen</string>
+    <string name="pref_autoplay_next_audio_summary">Nächsten Audiotrack automatisch abspielen, wenn der aktuelle endet</string>
+    <string name="pref_autoplay_next_audio_summary_disabled">Beim aktuellen Audiotrack bleiben, wenn er endet</string>
+    <string name="pref_enable_hls_proxy_title">HLS-Streaming-Proxy aktivieren</string>
+    <string name="pref_enable_hls_proxy_summary">Adaptive HLS-Manifeste normalisieren und getrennte Audio-/Videostreams verarbeiten</string>
+    <string name="ui_recent_streams">Aktuelle Stream-Links</string>
+    <string name="ui_autofill_stream_url">Stream-URL automatisch ausfüllen</string>
+    <string name="ui_torrent_media_anime">Anime</string>
+    <string name="ui_torrent_media_series">Serie</string>
+    <string name="ui_torrent_media_movie">Film</string>
+    <string name="ui_torrent_media_torrent">Torrent</string>
+    <string name="ui_resume_playback">Fortsetzen</string>
+    <string name="ui_play_now">Abspielen</string>
+    <string name="ui_show_more">Mehr anzeigen</string>
+    <string name="ui_show_less">Weniger anzeigen</string>
+    <string name="ui_episodes">Episoden</string>
+    <string name="ui_no_torrents_title">Keine Torrents gespeichert</string>
+    <string name="ui_no_torrents_description">Fügen Sie oben einen Magnet-Link oder eine Torrent-URL ein, um Anime und Filme zu streamen.</string>
+    <string name="ui_no_saved_media_title">Keine Medien gespeichert</string>
+    <string name="ui_no_saved_media_description">Fügen Sie eine Stream-URL oder einen Magnet-Link ein oder speichern Sie aus den letzten Links, um Ihre Mediensammlung aufzubauen.</string>
+    <string name="ui_save_to_media">In Medien speichern</string>
+    <string name="ui_search_episodes">Episoden suchen…</string>
+    <string name="ui_sort_ascending">Aufsteigend sortieren</string>
+    <string name="ui_sort_descending">Absteigend sortieren</string>
+    <string name="ui_no_matching_episodes">Keine passenden Episoden</string>
+    <string name="ui_buffering">Puffern…</string>
+    <string name="ui_jellyfin">Jellyfin</string>
+    <string name="ui_media">Medien</string>
+    <string name="ui_saved_media">Gespeicherte Medien</string>
 </resources>

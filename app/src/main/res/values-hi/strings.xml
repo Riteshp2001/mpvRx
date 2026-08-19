@@ -1614,4 +1614,35 @@
     <item quantity="one">%1$d चलाने योग्य फ़ाइल</item>
     <item quantity="other">%1$d चलाने योग्य फ़ाइलें</item>
   </plurals>
+    <string name="pref_nav_jellyfin_title">Jellyfin टैब दिखाएं</string>
+    <string name="pref_nav_jellyfin_summary">निचले नेविगेशन बार में Jellyfin दिखाएं या छुपाएं</string>
+    <string name="pref_autoplay_next_audio_title">अगला ऑडियो स्वतः चलाएं</string>
+    <string name="pref_autoplay_next_audio_summary">वर्तमान ट्रैक समाप्त होने पर स्वचालित रूप से अगला ऑडियो ट्रैक चलाएं</string>
+    <string name="pref_autoplay_next_audio_summary_disabled">वर्तमान ऑडियो ट्रैक समाप्त होने पर उसी पर बने रहें</string>
+    <string name="pref_enable_hls_proxy_title">HLS स्ट्रीमिंग प्रॉक्सी सक्षम करें</string>
+    <string name="pref_enable_hls_proxy_summary">अनुकूली HLS मैनिफ़ेस्ट को सामान्य करें और अलग-अलग ऑडियो/वीडियो स्ट्रीम संभालें</string>
+    <string name="ui_recent_streams">हालिया स्ट्रीम लिंक</string>
+    <string name="ui_autofill_stream_url">स्ट्रीम URL स्वतः भरें</string>
+    <string name="ui_torrent_media_anime">एनीमे</string>
+    <string name="ui_torrent_media_series">सीरीज़</string>
+    <string name="ui_torrent_media_movie">फिल्म</string>
+    <string name="ui_torrent_media_torrent">टोरेंट</string>
+    <string name="ui_resume_playback">फिर से चलाएं</string>
+    <string name="ui_play_now">चलाएं</string>
+    <string name="ui_show_more">और दिखाएं</string>
+    <string name="ui_show_less">कम दिखाएं</string>
+    <string name="ui_episodes">एपिसोड</string>
+    <string name="ui_no_torrents_title">कोई टोरेंट सहेजा नहीं गया</string>
+    <string name="ui_no_torrents_description">एनीमे और फिल्में स्ट्रीम करने के लिए ऊपर मैग्नेट लिंक या टोरेंट URL पेस्ट करें।</string>
+    <string name="ui_no_saved_media_title">कोई मीडिया सहेजा नहीं गया</string>
+    <string name="ui_no_saved_media_description">अपना मीडिया संग्रह बनाने के लिए स्ट्रीम URL, मैग्नेट लिंक पेस्ट करें या हाल के लिंक से सहेजें।</string>
+    <string name="ui_save_to_media">मीडिया में सहेजें</string>
+    <string name="ui_search_episodes">एपिसोड खोजें…</string>
+    <string name="ui_sort_ascending">आरोही क्रम में क्रमबद्ध करें</string>
+    <string name="ui_sort_descending">अवरोही क्रम में क्रमबद्ध करें</string>
+    <string name="ui_no_matching_episodes">कोई मेल खाता एपिसोड नहीं</string>
+    <string name="ui_buffering">बफ़र हो रहा है…</string>
+    <string name="ui_jellyfin">Jellyfin</string>
+    <string name="ui_media">मीडिया</string>
+    <string name="ui_saved_media">सहेजा गया मीडिया</string>
 </resources>

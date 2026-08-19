@@ -1710,4 +1710,35 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
     <item quantity="one">%1$d fichier lisible</item>
     <item quantity="other">%1$d fichiers lisibles</item>
   </plurals>
+    <string name="pref_nav_jellyfin_title">Afficher l\'onglet Jellyfin</string>
+    <string name="pref_nav_jellyfin_summary">Afficher ou masquer Jellyfin dans la barre de navigation inférieure</string>
+    <string name="pref_autoplay_next_audio_title">Lire automatiquement l\'audio suivant</string>
+    <string name="pref_autoplay_next_audio_summary">Lire automatiquement la piste audio suivante à la fin de l\'actuelle</string>
+    <string name="pref_autoplay_next_audio_summary_disabled">Rester sur la piste audio actuelle à la fin de celle-ci</string>
+    <string name="pref_enable_hls_proxy_title">Activer le proxy de streaming HLS</string>
+    <string name="pref_enable_hls_proxy_summary">Normaliser les manifestes HLS adaptatifs et gérer les flux audio/vidéo séparés</string>
+    <string name="ui_recent_streams">Liens de streaming récents</string>
+    <string name="ui_autofill_stream_url">Remplir automatiquement l\'URL de flux</string>
+    <string name="ui_torrent_media_anime">Anime</string>
+    <string name="ui_torrent_media_series">Série</string>
+    <string name="ui_torrent_media_movie">Film</string>
+    <string name="ui_torrent_media_torrent">Torrent</string>
+    <string name="ui_resume_playback">Reprendre</string>
+    <string name="ui_play_now">Lire</string>
+    <string name="ui_show_more">Afficher plus</string>
+    <string name="ui_show_less">Afficher moins</string>
+    <string name="ui_episodes">Épisodes</string>
+    <string name="ui_no_torrents_title">Aucun torrent enregistré</string>
+    <string name="ui_no_torrents_description">Collez un lien magnet ou une URL torrent ci-dessus pour diffuser des animes et des films.</string>
+    <string name="ui_no_saved_media_title">Aucun média enregistré</string>
+    <string name="ui_no_saved_media_description">Collez une URL de flux, un lien magnet ou enregistrez depuis les liens récents pour créer votre collection.</string>
+    <string name="ui_save_to_media">Enregistrer dans Médias</string>
+    <string name="ui_search_episodes">Rechercher des épisodes…</string>
+    <string name="ui_sort_ascending">Ordre croissant</string>
+    <string name="ui_sort_descending">Ordre décroissant</string>
+    <string name="ui_no_matching_episodes">Aucun épisode correspondant</string>
+    <string name="ui_buffering">Mise en mémoire tampon…</string>
+    <string name="ui_jellyfin">Jellyfin</string>
+    <string name="ui_media">Médias</string>
+    <string name="ui_saved_media">Médias enregistrés</string>
 </resources>

@@ -462,4 +462,41 @@ object MediaUtils {
     val digitGroups = (kotlin.math.ln(bytes.toDouble()) / kotlin.math.ln(1024.0)).toInt().coerceIn(0, units.size - 1)
     return "${java.text.DecimalFormat("#,##0.#").format(bytes / 1024.0.pow(digitGroups))} ${units[digitGroups]}"
   }
+
+  fun formatRelativeTime(epochMillis: Long): String {
+    if (epochMillis <= 0L) return ""
+    val now = System.currentTimeMillis()
+    val diff = (now - epochMillis).coerceAtLeast(0L)
+    val seconds = diff / 1000L
+    val minutes = seconds / 60L
+    val hours = minutes / 60L
+    val days = hours / 24L
+
+    return when {
+      seconds < 60 -> "Just now"
+      minutes < 60 -> "${minutes}m ago"
+      hours < 24 -> "${hours}h ago"
+      days == 1L -> "Yesterday"
+      days < 7L -> "${days}d ago"
+      else -> {
+        val sdf = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
+        sdf.format(java.util.Date(epochMillis))
+      }
+    }
+  }
+
+  fun formatIsoRelativeTime(isoString: String?): String {
+    if (isoString.isNullOrBlank()) return ""
+    return runCatching {
+      val cleanIso = isoString.trim()
+      val date =
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+          java.time.Instant.parse(cleanIso).toEpochMilli()
+        } else {
+          val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+          sdf.parse(cleanIso)?.time ?: return ""
+        }
+      formatRelativeTime(date)
+    }.getOrDefault("")
+  }
 }

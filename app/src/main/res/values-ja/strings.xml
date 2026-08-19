@@ -1710,4 +1710,35 @@
     <item quantity="one">%1$d 個の再生可能なファイル</item>
     <item quantity="other">%1$d 個の再生可能なファイル</item>
   </plurals>
+    <string name="pref_nav_jellyfin_title">Jellyfinタブを表示</string>
+    <string name="pref_nav_jellyfin_summary">下部ナビゲーションバーにJellyfinを表示または非表示</string>
+    <string name="pref_autoplay_next_audio_title">次の音声を自動再生</string>
+    <string name="pref_autoplay_next_audio_summary">現在のトラック終了時に次の音声トラックを自動的に再生します</string>
+    <string name="pref_autoplay_next_audio_summary_disabled">終了時に現在の音声トラックにとどまります</string>
+    <string name="pref_enable_hls_proxy_title">HLSストリーミングプロキシを有効化</string>
+    <string name="pref_enable_hls_proxy_summary">適応型HLSマニフェストを正規化し、分離された音声/動画ストリームを処理します</string>
+    <string name="ui_recent_streams">最近のストリームリンク</string>
+    <string name="ui_autofill_stream_url">ストリームURLを自動入力</string>
+    <string name="ui_torrent_media_anime">アニメ</string>
+    <string name="ui_torrent_media_series">シリーズ</string>
+    <string name="ui_torrent_media_movie">映画</string>
+    <string name="ui_torrent_media_torrent">トレント</string>
+    <string name="ui_resume_playback">再開</string>
+    <string name="ui_play_now">再生</string>
+    <string name="ui_show_more">さらに表示</string>
+    <string name="ui_show_less">一部のみ表示</string>
+    <string name="ui_episodes">エピソード</string>
+    <string name="ui_no_torrents_title">保存されたトレントはありません</string>
+    <string name="ui_no_torrents_description">アニメや映画をストリーミングするには、マグネットリンクまたはトレントURLを貼り付けてください。</string>
+    <string name="ui_no_saved_media_title">保存されたメディアはありません</string>
+    <string name="ui_no_saved_media_description">ストリームURLやマグネットリンクを貼り付けるか、最近のリンクから保存してコレクションを作成します。</string>
+    <string name="ui_save_to_media">メディアに保存</string>
+    <string name="ui_search_episodes">エピソードを検索…</string>
+    <string name="ui_sort_ascending">昇順で並べ替え</string>
+    <string name="ui_sort_descending">降顺で並べ替え</string>
+    <string name="ui_no_matching_episodes">一致するエピソードはありません</string>
+    <string name="ui_buffering">バッファリング中…</string>
+    <string name="ui_jellyfin">Jellyfin</string>
+    <string name="ui_media">メディア</string>
+    <string name="ui_saved_media">保存されたメディア</string>
 </resources>

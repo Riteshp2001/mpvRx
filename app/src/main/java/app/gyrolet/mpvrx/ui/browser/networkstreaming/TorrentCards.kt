@@ -63,12 +63,13 @@ import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.delay
 
 /**
- * Featured Hero Carousel Banner for Torrent Tab (JellyCine style).
+ * Featured Hero Carousel Banner for Media Tab (Material 3 Expressive).
  * Displays full-width 16:9 backdrop with smooth gradient overlay,
  * metadata pills, title, year, size, file count, and prominent action buttons.
  */
@@ -189,7 +190,7 @@ fun TorrentHeroBanner(
                 color = MaterialTheme.colorScheme.primary,
               ) {
                 Text(
-                  text = "TORRENT",
+                  text = group.groupType.name,
                   style = MaterialTheme.typography.labelSmall,
                   fontWeight = FontWeight.Black,
                   color = MaterialTheme.colorScheme.onPrimary,
@@ -216,14 +217,14 @@ fun TorrentHeroBanner(
               }
 
               // File Count Pill
-              if (group.files.isNotEmpty()) {
+              if (group.files.size > 1) {
                 Surface(
                   shape = RoundedCornerShape(6.dp),
                   color = Color.Black.copy(alpha = 0.6f),
                   border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
                 ) {
                   Text(
-                    text = "${group.files.size} ${if (group.files.size == 1) "File" else "Files"}",
+                    text = "${group.files.size} Files",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -241,6 +242,24 @@ fun TorrentHeroBanner(
                 ) {
                   Text(
                     text = formatTorrentBytes(group.totalSize),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                  )
+                }
+              }
+
+              // Relative Timestamp Pill
+              val relativeTime = MediaUtils.formatRelativeTime(group.updatedAt)
+              if (relativeTime.isNotBlank()) {
+                Surface(
+                  shape = RoundedCornerShape(6.dp),
+                  color = Color.Black.copy(alpha = 0.6f),
+                  border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                ) {
+                  Text(
+                    text = relativeTime,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -502,6 +521,46 @@ fun TorrentResumeCard(
         }
       }
 
+      // Top-right timestamp badge
+      val resumeTimestamp = MediaUtils.formatRelativeTime(entry.updatedAt)
+      if (resumeTimestamp.isNotBlank()) {
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color.Black.copy(alpha = 0.72f),
+          modifier =
+            Modifier
+              .align(Alignment.TopEnd)
+              .padding(8.dp),
+        ) {
+          Text(
+            text = resumeTimestamp,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            fontWeight = FontWeight.Medium,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+          )
+        }
+      }
+
+      // Bottom-end file size badge (mpvRx style)
+      if (entry.fileSize > 0L) {
+        Box(
+          modifier =
+            Modifier
+              .align(Alignment.BottomEnd)
+              .padding(8.dp)
+              .clip(RoundedCornerShape(4.dp))
+              .background(Color.Black.copy(alpha = 0.65f))
+              .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+          Text(
+            text = formatTorrentBytes(entry.fileSize),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+          )
+        }
+      }
+
       // Title & File info at bottom
       Column(
         modifier =
@@ -533,7 +592,7 @@ fun TorrentResumeCard(
 }
 
 /**
- * 2:3 Vertical Poster Card for Torrent Groups (JellyCine style).
+ * 2:3 Vertical Poster Card for Media Groups (Material 3 Expressive).
  * Features poster artwork, year badge, file count badge, total size, and glowing progress/status.
  */
 @Composable
@@ -592,22 +651,48 @@ fun TorrentPosterCard(
           }
         }
 
-        // Top-left file count badge
-        if (group.files.isNotEmpty()) {
+        // Top-left file count or media type badge
+        val badgeText =
+          when {
+            group.files.size > 1 -> "${group.files.size} eps"
+            group.groupType == MediaGroupType.YOUTUBE -> "YouTube"
+            group.groupType == MediaGroupType.STREAM -> "Stream"
+            else -> "Torrent"
+          }
+        Surface(
+          shape = RoundedCornerShape(8.dp),
+          color = Color.Black.copy(alpha = 0.72f),
+          modifier =
+            Modifier
+              .align(Alignment.TopStart)
+              .padding(6.dp),
+        ) {
+          Text(
+            text = badgeText,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+          )
+        }
+
+        // Top-right timestamp badge
+        val groupTimestamp = MediaUtils.formatRelativeTime(group.updatedAt)
+        if (groupTimestamp.isNotBlank()) {
           Surface(
             shape = RoundedCornerShape(8.dp),
             color = Color.Black.copy(alpha = 0.72f),
             modifier =
               Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.TopEnd)
                 .padding(6.dp),
           ) {
             Text(
-              text = "${group.files.size} eps",
-              style = MaterialTheme.typography.labelSmall,
-              fontWeight = FontWeight.Bold,
+              text = groupTimestamp,
+              style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+              fontWeight = FontWeight.Medium,
               color = Color.White,
-              modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+              modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
             )
           }
         }

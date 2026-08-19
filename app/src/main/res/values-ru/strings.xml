@@ -1710,4 +1710,35 @@
     <item quantity="one">%1$d воспроизводимый файл</item>
     <item quantity="other">%1$d воспроизводимых файлов</item>
   </plurals>
+    <string name="pref_nav_jellyfin_title">Показывать вкладку Jellyfin</string>
+    <string name="pref_nav_jellyfin_summary">Показывать или скрывать Jellyfin на нижней панели навигации</string>
+    <string name="pref_autoplay_next_audio_title">Автовоспроизведение следующего аудио</string>
+    <string name="pref_autoplay_next_audio_summary">Автоматически воспроизводить следующий аудиотрек по окончании текущего</string>
+    <string name="pref_autoplay_next_audio_summary_disabled">Оставаться на текущем аудиотреке по его окончании</string>
+    <string name="pref_enable_hls_proxy_title">Включить прокси потоковой передачи HLS</string>
+    <string name="pref_enable_hls_proxy_summary">Нормализовать адаптивные манифесты HLS и обрабатывать раздельные аудио/видеопотоки</string>
+    <string name="ui_recent_streams">Недавние ссылки на трансляции</string>
+    <string name="ui_autofill_stream_url">Автозаполнение URL трансляции</string>
+    <string name="ui_torrent_media_anime">Аниме</string>
+    <string name="ui_torrent_media_series">Сериал</string>
+    <string name="ui_torrent_media_movie">Фильм</string>
+    <string name="ui_torrent_media_torrent">Торрент</string>
+    <string name="ui_resume_playback">Продолжить</string>
+    <string name="ui_play_now">Воспроизвести</string>
+    <string name="ui_show_more">Показать больше</string>
+    <string name="ui_show_less">Показать меньше</string>
+    <string name="ui_episodes">Эпизоды</string>
+    <string name="ui_no_torrents_title">Нет сохранённых торрентов</string>
+    <string name="ui_no_torrents_description">Вставьте magnet-ссылку или URL торрента выше для просмотра аниме и фильмов.</string>
+    <string name="ui_no_saved_media_title">Нет сохранённых медиа</string>
+    <string name="ui_no_saved_media_description">Вставьте URL потока, magnet-ссылку или сохраните из недавних ссылок для создания коллекции.</string>
+    <string name="ui_save_to_media">Сохранить в медиа</string>
+    <string name="ui_search_episodes">Поиск эпизодов…</string>
+    <string name="ui_sort_ascending">По возрастанию</string>
+    <string name="ui_sort_descending">По убыванию</string>
+    <string name="ui_no_matching_episodes">Нет подходящих эпизодов</string>
+    <string name="ui_buffering">Буферизация…</string>
+    <string name="ui_jellyfin">Jellyfin</string>
+    <string name="ui_media">Медиа</string>
+    <string name="ui_saved_media">Сохранённые медиа</string>
 </resources>

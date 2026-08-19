@@ -1710,4 +1710,35 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
     <item quantity="one">%1$d arquivo reproduzível</item>
     <item quantity="other">%1$d arquivos reproduzíveis</item>
   </plurals>
+    <string name="pref_nav_jellyfin_title">Mostrar aba do Jellyfin</string>
+    <string name="pref_nav_jellyfin_summary">Mostrar ou ocultar o Jellyfin na barra de navegação inferior</string>
+    <string name="pref_autoplay_next_audio_title">Reproduzir próximo áudio automaticamente</string>
+    <string name="pref_autoplay_next_audio_summary">Reproduzir automaticamente a próxima faixa de áudio quando a atual terminar</string>
+    <string name="pref_autoplay_next_audio_summary_disabled">Permanecer na faixa de áudio atual quando terminar</string>
+    <string name="pref_enable_hls_proxy_title">Ativar proxy de streaming HLS</string>
+    <string name="pref_enable_hls_proxy_summary">Normalizar manifestos adaptativos HLS e processar fluxos de áudio/vídeo separados</string>
+    <string name="ui_recent_streams">Links de transmissão recentes</string>
+    <string name="ui_autofill_stream_url">Preenchimento automático do URL de transmissão</string>
+    <string name="ui_torrent_media_anime">Anime</string>
+    <string name="ui_torrent_media_series">Série</string>
+    <string name="ui_torrent_media_movie">Filme</string>
+    <string name="ui_torrent_media_torrent">Torrent</string>
+    <string name="ui_resume_playback">Continuar</string>
+    <string name="ui_play_now">Reproduzir</string>
+    <string name="ui_show_more">Mostrar mais</string>
+    <string name="ui_show_less">Mostrar menos</string>
+    <string name="ui_episodes">Episódios</string>
+    <string name="ui_no_torrents_title">Nenhum torrent salvo</string>
+    <string name="ui_no_torrents_description">Cole um link magnet ou URL de torrent acima para transmitir animes e filmes.</string>
+    <string name="ui_no_saved_media_title">Nenhuma mídia salva</string>
+    <string name="ui_no_saved_media_description">Cole uma URL de transmissão, link magnet ou salve dos links recentes para criar sua coleção.</string>
+    <string name="ui_save_to_media">Salvar em Mídia</string>
+    <string name="ui_search_episodes">Pesquisar episódios…</string>
+    <string name="ui_sort_ascending">Ordem crescente</string>
+    <string name="ui_sort_descending">Ordem decrescente</string>
+    <string name="ui_no_matching_episodes">Nenhum episódio correspondente</string>
+    <string name="ui_buffering">Armazenando em buffer…</string>
+    <string name="ui_jellyfin">Jellyfin</string>
+    <string name="ui_media">Mídia</string>
+    <string name="ui_saved_media">Mídia Salva</string>
 </resources>

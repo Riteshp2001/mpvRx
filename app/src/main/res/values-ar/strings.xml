@@ -1712,4 +1712,35 @@
     <item quantity="one">%1$d ملف قابل للتشغيل</item>
     <item quantity="other">%1$d ملفات قابلة للتشغيل</item>
   </plurals>
+    <string name="pref_nav_jellyfin_title">إظهار علامة تبويب Jellyfin</string>
+    <string name="pref_nav_jellyfin_summary">إظهار أو إخفاء Jellyfin في شريط التنقل السفلي</string>
+    <string name="pref_autoplay_next_audio_title">تشغيل الصوت التالي تلقائياً</string>
+    <string name="pref_autoplay_next_audio_summary">تشغيل المقطع الصوتي التالي تلقائياً عند انتهاء المقطع الحالي</string>
+    <string name="pref_autoplay_next_audio_summary_disabled">البقاء في المقطع الصوتي الحالي عند انتهائه</string>
+    <string name="pref_enable_hls_proxy_title">تفعيل وكيل بث HLS</string>
+    <string name="pref_enable_hls_proxy_summary">معالجة تدفقات HLS التكيفية وتقسيم مسارات الصوت والفيديو</string>
+    <string name="ui_recent_streams">روابط البث الأخيرة</string>
+    <string name="ui_autofill_stream_url">ملء عنوان رابط البث تلقائياً</string>
+    <string name="ui_torrent_media_anime">أنمي</string>
+    <string name="ui_torrent_media_series">مسلسل</string>
+    <string name="ui_torrent_media_movie">فيلم</string>
+    <string name="ui_torrent_media_torrent">تورنت</string>
+    <string name="ui_resume_playback">استئناف</string>
+    <string name="ui_play_now">تشغيل</string>
+    <string name="ui_show_more">عرض المزيد</string>
+    <string name="ui_show_less">عرض أقل</string>
+    <string name="ui_episodes">الحلقات</string>
+    <string name="ui_no_torrents_title">لا توجد ملفات تورنت محفوظة</string>
+    <string name="ui_no_torrents_description">الصق رابط مغناطيسي أو عنوان URL للتورنت أعلاه لبث الأنمي والأفلام.</string>
+    <string name="ui_no_saved_media_title">لا توجد وسائط محفوظة</string>
+    <string name="ui_no_saved_media_description">الصق رابط بث أو رابط مغناطيسي أو احفظ من الروابط الأخيرة لبناء مجموعتك.</string>
+    <string name="ui_save_to_media">حفظ في الوسائط</string>
+    <string name="ui_search_episodes">بحث في الحلقات…</string>
+    <string name="ui_sort_ascending">ترتيب تصاعدي</string>
+    <string name="ui_sort_descending">ترتيب تنازلي</string>
+    <string name="ui_no_matching_episodes">لا توجد حلقات مطابقة</string>
+    <string name="ui_buffering">جارٍ التخزين المؤقت…</string>
+    <string name="ui_jellyfin">Jellyfin</string>
+    <string name="ui_media">الوسائط</string>
+    <string name="ui_saved_media">الوسائط المحفوظة</string>
 </resources>

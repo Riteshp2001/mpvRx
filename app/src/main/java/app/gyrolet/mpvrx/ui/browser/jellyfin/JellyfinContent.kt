@@ -384,7 +384,7 @@ fun JellyfinContent(
               )
             }
 
-            // Root / Discovery Home View (JellyCine style)
+            // Root / Discovery Home View (Expressive UI)
             uiState.breadcrumbs.isEmpty() && uiState.searchQuery.isBlank() -> {
               val listState = rememberLazyListState()
               val server = uiState.activeServer
@@ -909,7 +909,7 @@ fun JellyfinContent(
     }
   }
 
-  // Cinematic Media Detail Sheet (JellyCine style)
+  // Cinematic Media Detail Sheet (Material 3 Expressive)
   uiState.activeServer?.let { server ->
     JellyfinDetailSheet(
       item = uiState.detailItem,

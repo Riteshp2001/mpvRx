@@ -508,7 +508,7 @@ class JellyfinViewModel(
   }
 
   // ============================================================================
-  // Media Details & Series Season/Episode Browsing (JellyCine style)
+  // Media Details & Series Season/Episode Browsing (Material 3 Expressive)
   // ============================================================================
 
   fun openDetail(item: JellyfinItem) {

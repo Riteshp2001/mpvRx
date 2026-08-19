@@ -24,12 +24,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import app.gyrolet.mpvrx.utils.media.MediaUtils
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -75,7 +77,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.delay
 
 // ============================================================================
-// Hero Featured Carousel Banner (JellyCine style)
+// Hero Featured Carousel Banner (Material 3 Expressive)
 // ============================================================================
 
 @Composable
@@ -605,16 +607,22 @@ fun JellyfinResumeCard(
 
         // Progress bar at bottom
         if (item.progressPercent > 0.01f) {
-          LinearProgressIndicator(
-            progress = { item.progressPercent },
+          Box(
             modifier =
               Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .height(3.5.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = Color.White.copy(alpha = 0.2f),
-          )
+                .height(4.dp),
+          ) {
+            Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxHeight()
+                  .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
+                  .background(MaterialTheme.colorScheme.primary),
+            )
+          }
         }
       }
 
@@ -784,16 +792,22 @@ fun JellyfinPosterCard(
 
         // Progress bar if partially watched
         if (item.progressPercent > 0.02f && !item.isPlayed) {
-          LinearProgressIndicator(
-            progress = { item.progressPercent },
+          Box(
             modifier =
               Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .height(3.5.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = Color.Black.copy(alpha = 0.4f),
-          )
+                .height(4.dp),
+          ) {
+            Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxHeight()
+                  .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
+                  .background(MaterialTheme.colorScheme.primary),
+            )
+          }
         }
 
         // Selection / Played Check badge
@@ -1081,15 +1095,22 @@ fun JellyfinEpisodeCard(
 
         // Progress bar
         if (item.progressPercent > 0.02f && !item.isPlayed) {
-          LinearProgressIndicator(
-            progress = { item.progressPercent },
+          Box(
             modifier =
               Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .height(3.5.dp),
-            color = MaterialTheme.colorScheme.primary,
-          )
+                .height(4.dp),
+          ) {
+            Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxHeight()
+                  .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
+                  .background(MaterialTheme.colorScheme.primary),
+            )
+          }
         }
 
         if (isSelected) {
@@ -1256,15 +1277,22 @@ fun JellyfinListItemCard(
         }
 
         if (item.progressPercent > 0.02f && !item.isPlayed) {
-          LinearProgressIndicator(
-            progress = { item.progressPercent },
+          Box(
             modifier =
               Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .height(3.dp),
-            color = MaterialTheme.colorScheme.primary,
-          )
+                .height(4.dp),
+          ) {
+            Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxHeight()
+                  .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
+                  .background(MaterialTheme.colorScheme.primary),
+            )
+          }
         }
 
         if (isSelected) {

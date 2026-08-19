@@ -120,7 +120,7 @@ import org.koin.compose.koinInject
 private const val VIEWED_TORRENT_FILES_PREFS = "torrent_viewed_files"
 
 private enum class NetworkTab(val titleResId: Int) {
-  TORRENT(R.string.ui_torrent_files),
+  MEDIA(R.string.ui_media),
   LOCAL_NETWORK(R.string.ui_local_network),
   SYNC_PLAY(R.string.syncplay_title),
 }
@@ -151,8 +151,9 @@ object NetworkStreamingScreen : Screen {
     val connections by viewModel.connections.collectAsState()
     val connectionStatuses by viewModel.connectionStatuses.collectAsState()
     val recentLinks by viewModel.recentLinks.collectAsState()
-    val torrentGroups by viewModel.torrentGroups.collectAsState()
+    val allMediaGroups by viewModel.allMediaGroups.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var showAddMediaDialog by remember { mutableStateOf(false) }
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
     var showTorrentPicker by remember { mutableStateOf(false) }
     val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
@@ -198,11 +199,11 @@ object NetworkStreamingScreen : Screen {
         }
       }
 
-    val filteredTorrentGroups =
-      remember(torrentGroups, searchQuery) {
+    val filteredMediaGroups =
+      remember(allMediaGroups, searchQuery) {
         val query = searchQuery.trim()
-        torrentGroups.mapNotNull { group ->
-          if (query.isEmpty()) return@mapNotNull VisibleTorrentGroup(group, group.files)
+        allMediaGroups.mapNotNull { group ->
+          if (query.isEmpty()) return@mapNotNull VisibleMediaGroup(group, group.files)
 
           val groupMatches =
             group.title.contains(query, ignoreCase = true) ||
@@ -218,8 +219,8 @@ object NetworkStreamingScreen : Screen {
                 entry.fileIndex?.toString() == query
             }
           when {
-            groupMatches -> VisibleTorrentGroup(group, group.files)
-            matchingFiles.isNotEmpty() -> VisibleTorrentGroup(group, matchingFiles)
+            groupMatches -> VisibleMediaGroup(group, group.files)
+            matchingFiles.isNotEmpty() -> VisibleMediaGroup(group, matchingFiles)
             else -> null
           }
         }
@@ -284,7 +285,7 @@ object NetworkStreamingScreen : Screen {
             title = stringResource(R.string.ui_network),
             isInSelectionMode = false,
             selectedCount = 0,
-            totalCount = connections.size + recentLinks.size + torrentGroups.size,
+            totalCount = connections.size + recentLinks.size + allMediaGroups.size,
             onBackClick = null,
             onCancelSelection = { },
             onSortClick = null,
@@ -305,17 +306,27 @@ object NetworkStreamingScreen : Screen {
         }
       },
       floatingActionButton = {
-        if (pagerState.currentPage == NetworkTab.LOCAL_NETWORK.ordinal) {
-          ExtendedFloatingActionButton(
-            onClick = { showAddSheet = true },
-            icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
-            text = {
-              Text(
-                stringResource(R.string.ui_add_connection),
-              )
-            },
-            modifier = Modifier.padding(bottom = navigationBarHeight),
-          )
+        when (pagerState.currentPage) {
+          NetworkTab.MEDIA.ordinal -> {
+            ExtendedFloatingActionButton(
+              onClick = { showAddMediaDialog = true },
+              icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
+              text = { Text("Add Media") },
+              modifier = Modifier.padding(bottom = navigationBarHeight),
+            )
+          }
+          NetworkTab.LOCAL_NETWORK.ordinal -> {
+            ExtendedFloatingActionButton(
+              onClick = { showAddSheet = true },
+              icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
+              text = {
+                Text(
+                  stringResource(R.string.ui_add_connection),
+                )
+              },
+              modifier = Modifier.padding(bottom = navigationBarHeight),
+            )
+          }
         }
       },
     ) { padding ->
@@ -325,35 +336,6 @@ object NetworkStreamingScreen : Screen {
             .fillMaxSize()
             .padding(padding),
       ) {
-        StreamLinkSection(
-          recentLinks = filteredRecentLinks,
-          onPlayLink = { url ->
-            val playableSource = normalizeTorrentSource(url) ?: url.trim()
-            if (isTorrentSource(playableSource)) {
-              showTorrentPicker = true
-              torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource))
-            } else {
-              viewModel.recordSubmittedLink(playableSource)
-              MediaUtils.playFile(playableSource, context, "network_stream")
-            }
-          },
-          onPlayRecent = { entry ->
-            viewModel.recordSubmittedLink(entry.canonicalSourceUri)
-            MediaUtils.playFile(
-              source = entry.canonicalSourceUri,
-              context = context,
-              launchSource = "network_recent",
-              title = entry.fileName,
-            )
-          },
-          onSaveToTorrent = { entry ->
-            val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
-            showTorrentPicker = true
-            torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource, title = entry.fileName))
-          },
-          onDeleteRecent = viewModel::deleteStreamEntry,
-        )
-
         PrimaryScrollableTabRow(
           selectedTabIndex = pagerState.currentPage,
           edgePadding = 16.dp,
@@ -387,27 +369,68 @@ object NetworkStreamingScreen : Screen {
           beyondViewportPageCount = 1,
         ) { page ->
           when (NetworkTab.entries[page]) {
-            NetworkTab.TORRENT -> {
-              TorrentContent(
-                torrentGroups = filteredTorrentGroups,
+            NetworkTab.MEDIA -> {
+              MediaContent(
+                mediaGroups = filteredMediaGroups,
                 searchQuery = searchQuery,
-                onPlayTorrent = { entry ->
-                  MediaUtils.playFile(
-                    source = entry.canonicalSourceUri,
-                    context = context,
-                    launchSource = "network_torrent",
-                    title = entry.fileName,
-                    torrentFileIndex = entry.fileIndex,
-                  )
+                onPlayMedia = { entry ->
+                  val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
+                  if (isTorrentSource(playableSource)) {
+                    MediaUtils.playFile(
+                      source = entry.canonicalSourceUri,
+                      context = context,
+                      launchSource = "network_torrent",
+                      title = entry.fileName,
+                      torrentFileIndex = entry.fileIndex,
+                    )
+                  } else {
+                    viewModel.recordSubmittedLink(entry.canonicalSourceUri)
+                    MediaUtils.playFile(
+                      source = entry.canonicalSourceUri,
+                      context = context,
+                      launchSource = "network_media",
+                      title = entry.fileName,
+                    )
+                  }
                 },
-                onDeleteTorrentFile = viewModel::deleteStreamEntry,
-                onDeleteTorrentGroup = { viewModel.deleteTorrentGroup(it.group) },
+                onDeleteMediaFile = viewModel::deleteStreamEntry,
+                onDeleteMediaGroup = { viewModel.deleteMediaGroup(it.group) },
               )
             }
             NetworkTab.LOCAL_NETWORK -> {
               LocalNetworkContent(
                 connections = filteredConnections,
                 connectionStatuses = connectionStatuses,
+                recentLinks = filteredRecentLinks,
+                onPlayLink = { url ->
+                  val playableSource = normalizeTorrentSource(url) ?: url.trim()
+                  if (isTorrentSource(playableSource)) {
+                    showTorrentPicker = true
+                    torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource))
+                  } else {
+                    viewModel.recordSubmittedLink(playableSource)
+                    MediaUtils.playFile(playableSource, context, "network_stream")
+                  }
+                },
+                onPlayRecent = { entry ->
+                  viewModel.recordSubmittedLink(entry.canonicalSourceUri)
+                  MediaUtils.playFile(
+                    source = entry.canonicalSourceUri,
+                    context = context,
+                    launchSource = "network_recent",
+                    title = entry.fileName,
+                  )
+                },
+                onSaveToMedia = { entry ->
+                  val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
+                  if (isTorrentSource(playableSource)) {
+                    showTorrentPicker = true
+                    torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource, title = entry.fileName))
+                  } else {
+                    viewModel.saveLinkToMedia(entry.canonicalSourceUri, entry.fileName)
+                  }
+                },
+                onDeleteRecent = viewModel::deleteStreamEntry,
                 onConnect = { viewModel.connect(it) },
                 onDisconnect = { viewModel.disconnect(it) },
                 onEdit = { editingConnection = it },
@@ -444,6 +467,21 @@ object NetworkStreamingScreen : Screen {
         },
       )
 
+      AddMediaDialog(
+        isOpen = showAddMediaDialog,
+        onDismiss = { showAddMediaDialog = false },
+        onSubmit = { url ->
+          val playableSource = normalizeTorrentSource(url) ?: url.trim()
+          if (isTorrentSource(playableSource)) {
+            showTorrentPicker = true
+            torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource))
+          } else {
+            viewModel.saveLinkToMedia(playableSource)
+            MediaUtils.playFile(playableSource, context, "network_stream")
+          }
+        },
+      )
+
       editingConnection?.let { connection ->
         EditConnectionSheet(
           connection = connection,
@@ -472,9 +510,79 @@ object NetworkStreamingScreen : Screen {
 }
 
 @Composable
+private fun AddMediaDialog(
+  isOpen: Boolean,
+  onDismiss: () -> Unit,
+  onSubmit: (String) -> Unit,
+) {
+  if (!isOpen) return
+  var inputUrl by remember { mutableStateOf("") }
+  val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+
+  androidx.compose.material3.AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.ui_saved_media)) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+          text = "Paste a torrent magnet link, direct video stream (HLS, MP4, MKV), or YouTube URL to save and play.",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+          value = inputUrl,
+          onValueChange = { inputUrl = it },
+          label = { Text("Stream or Magnet URL") },
+          placeholder = { Text("magnet:?xt=... or https://...") },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true,
+          trailingIcon = {
+            if (inputUrl.isBlank()) {
+              IconButton(onClick = {
+                val clip = clipboard.getText()?.text
+                if (!clip.isNullOrBlank()) inputUrl = clip
+              }) {
+                Icon(Icons.RoundedFilled.ContentPaste, contentDescription = "Paste")
+              }
+            } else {
+              IconButton(onClick = { inputUrl = "" }) {
+                Icon(Icons.RoundedFilled.Close, contentDescription = "Clear")
+              }
+            }
+          },
+        )
+      }
+    },
+    confirmButton = {
+      Button(
+        onClick = {
+          if (inputUrl.isNotBlank()) {
+            onSubmit(inputUrl.trim())
+            onDismiss()
+          }
+        },
+        enabled = inputUrl.isNotBlank(),
+      ) {
+        Text(stringResource(R.string.ui_play_now))
+      }
+    },
+    dismissButton = {
+      androidx.compose.material3.TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.generic_cancel))
+      }
+    },
+  )
+}
+
+@Composable
 private fun LocalNetworkContent(
   connections: List<NetworkConnection>,
   connectionStatuses: Map<Long, ConnectionStatus>,
+  recentLinks: List<NetworkStreamEntryEntity>,
+  onPlayLink: (String) -> Unit,
+  onPlayRecent: (NetworkStreamEntryEntity) -> Unit,
+  onSaveToMedia: (NetworkStreamEntryEntity) -> Unit,
+  onDeleteRecent: (String) -> Unit,
   onConnect: (NetworkConnection) -> Unit,
   onDisconnect: (NetworkConnection) -> Unit,
   onEdit: (NetworkConnection) -> Unit,
@@ -486,8 +594,20 @@ private fun LocalNetworkContent(
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
-    verticalArrangement = Arrangement.spacedBy(0.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
+    // 1. Stream Link Section (URL input & recent streams with Save to Media action)
+    item {
+      StreamLinkSection(
+        recentLinks = recentLinks,
+        onPlayLink = onPlayLink,
+        onPlayRecent = onPlayRecent,
+        onSaveToTorrent = onSaveToMedia,
+        onDeleteRecent = onDeleteRecent,
+      )
+    }
+
+    // 2. Saved Network Connections Section
     if (connections.isEmpty()) {
       item {
         EmptyStateCard(
@@ -510,7 +630,7 @@ private fun LocalNetworkContent(
           isConnected = status?.isConnected ?: false,
           isConnecting = status?.isConnecting ?: false,
           error = status?.error,
-          modifier = Modifier.padding(bottom = 16.dp),
+          modifier = Modifier.padding(bottom = 0.dp),
         )
       }
     }
@@ -523,12 +643,12 @@ private fun SyncPlayContent() {
 }
 
 @Composable
-private fun TorrentContent(
-  torrentGroups: List<VisibleTorrentGroup>,
+private fun MediaContent(
+  mediaGroups: List<VisibleMediaGroup>,
   searchQuery: String,
-  onPlayTorrent: (NetworkStreamEntryEntity) -> Unit,
-  onDeleteTorrentFile: (String) -> Unit,
-  onDeleteTorrentGroup: (VisibleTorrentGroup) -> Unit,
+  onPlayMedia: (NetworkStreamEntryEntity) -> Unit,
+  onDeleteMediaFile: (String) -> Unit,
+  onDeleteMediaGroup: (VisibleMediaGroup) -> Unit,
 ) {
   val context = LocalContext.current
   val viewedPreferences =
@@ -536,10 +656,10 @@ private fun TorrentContent(
       context.getSharedPreferences(VIEWED_TORRENT_FILES_PREFS, Context.MODE_PRIVATE)
     }
 
-  var selectedDetailGroup by remember { mutableStateOf<TorrentStreamGroup?>(null) }
+  var selectedDetailGroup by remember { mutableStateOf<MediaStreamGroup?>(null) }
   val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
 
-  val allGroups = remember(torrentGroups) { torrentGroups.map { it.group } }
+  val allGroups = remember(mediaGroups) { mediaGroups.map { it.group } }
   val heroGroups =
     remember(allGroups) {
       allGroups.filter { !it.backdropUrl.isNullOrBlank() || !it.posterUrl.isNullOrBlank() }
@@ -551,7 +671,7 @@ private fun TorrentContent(
       allGroups.flatMap { group ->
         val infoHash = group.infoHash
         val viewed = if (infoHash != null) loadViewedFileIndices(viewedPreferences, infoHash) else emptySet()
-        group.files.filter { it.fileIndex in viewed }
+        group.files.filter { it.fileIndex in viewed || group.groupType != MediaGroupType.TORRENT }
       }.sortedByDescending { it.updatedAt }
     }
 
@@ -561,20 +681,20 @@ private fun TorrentContent(
       val viewed = loadViewedFileIndices(viewedPreferences, infoHash)
       saveViewedFileIndices(viewedPreferences, infoHash, viewed + fileIdx)
     }
-    onPlayTorrent(file)
+    onPlayMedia(file)
   }
 
   Box(modifier = Modifier.fillMaxSize()) {
-    if (torrentGroups.isEmpty()) {
+    if (mediaGroups.isEmpty()) {
       LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
       ) {
         item {
           EmptyStateCard(
-            icon = Icons.RoundedFilled.CloudDownload,
-            title = stringResource(R.string.ui_no_torrents_title),
-            subtitle = stringResource(R.string.ui_no_torrents_description),
+            icon = Icons.RoundedFilled.Movie,
+            title = stringResource(R.string.ui_no_saved_media_title),
+            subtitle = stringResource(R.string.ui_no_saved_media_description),
           )
         }
       }
@@ -584,7 +704,7 @@ private fun TorrentContent(
         contentPadding = PaddingValues(bottom = navBarHeight + 24.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
       ) {
-        // 1. Featured Hero Carousel Banner (JellyCine style)
+        // 1. Featured Hero Carousel Banner
         if (heroGroups.isNotEmpty() && searchQuery.isBlank()) {
           item {
             TorrentHeroBanner(
@@ -602,7 +722,7 @@ private fun TorrentContent(
           }
         }
 
-        // 2. Continue Watching (Recently Played Torrents)
+        // 2. Continue Watching (Recently Played Saved Media)
         if (recentViewedFiles.isNotEmpty() && searchQuery.isBlank()) {
           item {
             Column(
@@ -611,7 +731,7 @@ private fun TorrentContent(
             ) {
               TorrentSectionHeader(
                 title = "Continue Watching",
-                subtitle = "Resume your recent torrent streams",
+                subtitle = "Resume your recent streams and torrents",
               )
               androidx.compose.foundation.lazy.LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -622,7 +742,7 @@ private fun TorrentContent(
                     entry = entry,
                     onClick = { onPlayWithHistory(entry, entry.infoHash) },
                     onLongClick = {
-                      val group = allGroups.find { it.infoHash == entry.infoHash }
+                      val group = allGroups.find { it.infoHash == entry.infoHash || it.canonicalSourceUri == entry.canonicalSourceUri }
                       if (group != null) selectedDetailGroup = group
                     },
                   )
@@ -632,15 +752,15 @@ private fun TorrentContent(
           }
         }
 
-        // 3. Saved Torrents / Collections Section Header
+        // 3. Saved Media Section Header
         item {
           TorrentSectionHeader(
-            title = if (searchQuery.isNotBlank()) "Search Results (${torrentGroups.size})" else "Saved Torrents (${allGroups.size})",
+            title = if (searchQuery.isNotBlank()) "Search Results (${mediaGroups.size})" else "Saved Media (${allGroups.size})",
             subtitle = if (searchQuery.isNotBlank()) null else "Stream instantly with high-speed hardware acceleration",
           )
         }
 
-        // 4. Saved Torrents Poster Carousel
+        // 4. Saved Media Poster Carousel
         if (searchQuery.isBlank() && allGroups.isNotEmpty()) {
           item {
             androidx.compose.foundation.lazy.LazyRow(
@@ -658,23 +778,23 @@ private fun TorrentContent(
           }
         }
 
-        // 5. Expandable Torrent List Cards
-        items(torrentGroups, key = { "torrent-group:${it.group.id}" }) { result ->
+        // 5. Expandable Media List Cards
+        items(mediaGroups, key = { "media-group:${it.group.id}" }) { result ->
           Box(modifier = Modifier.padding(horizontal = 16.dp)) {
             AnimeTorrentCard(
               group = result.group,
               visibleFiles = result.visibleFiles,
               forceExpanded = searchQuery.isNotBlank(),
               onPlay = { file -> onPlayWithHistory(file, result.group.infoHash) },
-              onDeleteFile = onDeleteTorrentFile,
-              onDeleteGroup = { onDeleteTorrentGroup(result) },
+              onDeleteFile = onDeleteMediaFile,
+              onDeleteGroup = { onDeleteMediaGroup(result) },
             )
           }
         }
       }
     }
 
-    // 6. Cinematic Torrent Detail Sheet (JellyCine style)
+    // 6. Cinematic Media Detail Sheet
     selectedDetailGroup?.let { group ->
       val infoHash = group.infoHash
       val viewed =
@@ -690,13 +810,13 @@ private fun TorrentContent(
           onPlayWithHistory(file, group.infoHash)
         },
         onDeleteGroup = { grp ->
-          val visibleGroup = torrentGroups.find { it.group.id == grp.id }
+          val visibleGroup = mediaGroups.find { it.group.id == grp.id }
           if (visibleGroup != null) {
-            onDeleteTorrentGroup(visibleGroup)
+            onDeleteMediaGroup(visibleGroup)
           }
           selectedDetailGroup = null
         },
-        onDeleteFile = onDeleteTorrentFile,
+        onDeleteFile = onDeleteMediaFile,
       )
     }
   }
@@ -747,14 +867,16 @@ private fun EmptyStateCard(
   }
 }
 
-private data class VisibleTorrentGroup(
-  val group: TorrentStreamGroup,
+private data class VisibleMediaGroup(
+  val group: MediaStreamGroup,
   val visibleFiles: List<NetworkStreamEntryEntity>,
 )
 
+private typealias VisibleTorrentGroup = VisibleMediaGroup
+
 @Composable
 private fun AnimeTorrentCard(
-  group: TorrentStreamGroup,
+  group: MediaStreamGroup,
   visibleFiles: List<NetworkStreamEntryEntity>,
   forceExpanded: Boolean,
   onPlay: (NetworkStreamEntryEntity) -> Unit,
@@ -788,6 +910,8 @@ private fun AnimeTorrentCard(
 
   val mediaTypeLabel =
     when {
+      group.groupType == MediaGroupType.YOUTUBE -> "YouTube"
+      group.groupType == MediaGroupType.STREAM -> "Stream"
       group.mediaType?.contains("anime", ignoreCase = true) == true -> stringResource(R.string.ui_torrent_media_anime)
       group.mediaType?.contains("tv", ignoreCase = true) == true -> stringResource(R.string.ui_torrent_media_series)
       group.mediaType?.contains("movie", ignoreCase = true) == true -> stringResource(R.string.ui_torrent_media_movie)
@@ -906,7 +1030,13 @@ private fun AnimeTorrentCard(
               if (group.totalSize > 0L) {
                 MetaChip(text = formatTorrentBytes(group.totalSize))
               }
-              MetaChip(text = fileCountLabel)
+              if (group.files.size > 1) {
+                MetaChip(text = fileCountLabel)
+              }
+              val relativeTime = MediaUtils.formatRelativeTime(group.updatedAt)
+              if (relativeTime.isNotBlank()) {
+                MetaChip(text = relativeTime)
+              }
             }
           }
         }

@@ -866,6 +866,7 @@ class JellyfinClient(
     val playbackPositionTicks = userDataObj?.get("PlaybackPositionTicks")?.jsonPrimitive?.longOrNull
     val isPlayed = userDataObj?.get("Played")?.jsonPrimitive?.booleanOrNull ?: false
     val isFavorite = userDataObj?.get("IsFavorite")?.jsonPrimitive?.booleanOrNull ?: false
+    val lastPlayedDate = userDataObj?.get("LastPlayedDate")?.jsonPrimitive?.content
 
     var videoCodec: String? = null
     var videoResolution: String? = null
@@ -957,6 +958,7 @@ class JellyfinClient(
       audioChannels = audioChannels,
       premiereDate = premiereDate,
       status = status,
+      lastPlayedDate = lastPlayedDate,
     )
   }
 }
