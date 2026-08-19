@@ -346,6 +346,11 @@ object NetworkStreamingScreen : Screen {
               title = entry.fileName,
             )
           },
+          onSaveToTorrent = { entry ->
+            val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
+            showTorrentPicker = true
+            torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource, title = entry.fileName))
+          },
           onDeleteRecent = viewModel::deleteStreamEntry,
         )
 
@@ -1275,6 +1280,7 @@ private fun StreamLinkSection(
   recentLinks: List<NetworkStreamEntryEntity>,
   onPlayLink: (String) -> Unit,
   onPlayRecent: (NetworkStreamEntryEntity) -> Unit,
+  onSaveToTorrent: (NetworkStreamEntryEntity) -> Unit,
   onDeleteRecent: (String) -> Unit,
 ) {
   val context = LocalContext.current
@@ -1411,7 +1417,7 @@ private fun StreamLinkSection(
       }
     }
 
-    // 2. Top 3 Recent Stream Links with Quick Autofill
+    // 2. Top 3 Recent Stream Links with Quick Autofill & Torrent Save
     val topRecent = remember(recentLinks) { recentLinks.take(3) }
     if (topRecent.isNotEmpty()) {
       Column(
@@ -1451,7 +1457,7 @@ private fun StreamLinkSection(
             Row(
               modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
               verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(10.dp),
+              horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
               Icon(
                 imageVector = Icons.RoundedFilled.Link,
@@ -1477,6 +1483,17 @@ private fun StreamLinkSection(
                   color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                   maxLines = 1,
                   overflow = TextOverflow.Ellipsis,
+                )
+              }
+              IconButton(
+                onClick = { onSaveToTorrent(entry) },
+                modifier = Modifier.size(32.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.CloudDownload,
+                  contentDescription = "Save to Torrent Sheet",
+                  tint = MaterialTheme.colorScheme.secondary,
+                  modifier = Modifier.size(18.dp),
                 )
               }
               IconButton(
