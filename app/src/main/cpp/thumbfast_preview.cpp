@@ -592,28 +592,37 @@ class ThumbFastEngine {
         continue;
       }
 
-      {
-        std::lock_guard<std::mutex> lock(frame_mutex_);
-        frame_pixels_.resize(static_cast<size_t>(width * height));
-        for (int y = 0; y < height; ++y) {
-          const uint8_t* row = bytes + static_cast<size_t>(y) * stride;
-          for (int x = 0; x < width; ++x) {
-            const uint8_t b = row[x * 4 + 0];
-            const uint8_t g = row[x * 4 + 1];
-            const uint8_t r = row[x * 4 + 2];
-            frame_pixels_[static_cast<size_t>(y * width + x)] =
-                static_cast<jint>(0xFF000000u | (static_cast<uint32_t>(r) << 16) |
-                                  (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(b));
-          }
-        }
-        frame_width_ = width;
-        frame_height_ = height;
-        frame_source_epoch_ = request.source_epoch;
-        ++frame_serial_;
-      }
-      rendered_generation_.store(request.generation);
-      frame_cv_.notify_all();
-      request_cv_.notify_all();
+      std::vector<jint> pixels(static_cast<size_t>(width * height));
+for (int y = 0; y < height; ++y) {
+  const uint8_t* row = bytes + static_cast<size_t>(y) * stride;
+  for (int x = 0; x < width; ++x) {
+    const uint8_t b = row[x * 4 + 0];
+    const uint8_t g = row[x * 4 + 1];
+    const uint8_t r = row[x * 4 + 2];
+    pixels[static_cast<size_t>(y * width + x)] =
+        static_cast<jint>(0xFF000000u | (static_cast<uint32_t>(r) << 16) |
+                          (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(b));
+  }
+}
+
+// Serialize final publication with request generation changes. A newer pointer target can
+// arrive while BGR0 is being converted; an older frame must never become visible after it.
+{
+  std::lock_guard<std::mutex> request_lock(request_mutex_);
+  if (stop_.load() || !active_ || generation_ != request.generation ||
+      current_source_epoch_.load() != request.source_epoch) {
+    continue;
+  }
+  std::lock_guard<std::mutex> frame_lock(frame_mutex_);
+  frame_pixels_ = std::move(pixels);
+  frame_width_ = width;
+  frame_height_ = height;
+  frame_source_epoch_ = request.source_epoch;
+  ++frame_serial_;
+  rendered_generation_.store(request.generation);
+}
+frame_cv_.notify_all();
+request_cv_.notify_all();
     }
 
     free(aligned_memory);
