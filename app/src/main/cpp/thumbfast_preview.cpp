@@ -128,6 +128,8 @@ struct Request {
 struct RenderRequest {
   uint64_t generation = 0;
   int source_epoch = 0;
+  int width = PREVIEW_MAX_EDGE;
+  int height = PREVIEW_MAX_EDGE;
 };
 
 class ThumbFastEngine {
@@ -403,10 +405,15 @@ class ThumbFastEngine {
   }
 
   void scheduleRender(const Request& request) {
+    // Normal libmpv property access belongs on the worker thread. The render thread must
+    // stay inside mpv_render_* calls while it owns the render context.
+    const auto [width, height] = previewSize();
     {
       std::lock_guard<std::mutex> lock(render_mutex_);
       pending_render_.generation = request.generation;
       pending_render_.source_epoch = request.source_epoch;
+      pending_render_.width = width;
+      pending_render_.height = height;
       has_pending_render_ = true;
     }
     render_cv_.notify_all();
@@ -563,7 +570,8 @@ class ThumbFastEngine {
         continue;
       }
 
-      const auto [width, height] = previewSize();
+      const int width = request.width;
+      const int height = request.height;
       std::memset(bytes, 0, stride * static_cast<size_t>(height));
       int size[2] = {width, height};
       char format[] = "bgr0";
