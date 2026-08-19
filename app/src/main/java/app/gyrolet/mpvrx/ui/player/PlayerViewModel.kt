@@ -2737,35 +2737,14 @@ class PlayerViewModel : ViewModel(),
   }
 
   private fun maybeAutoSkipIntro(positionSeconds: Double) {
-    val totalDur = currentDurationSeconds()
-    val hasNextItem = hasNext()
     val activeSegment =
       skipSegmentsSnapshot.firstOrNull { segment ->
         positionSeconds >= segment.startSeconds && positionSeconds < segment.endSeconds && (segment.endSeconds - positionSeconds) >= 0.8
-      } ?: if (hasNextItem && totalDur > 45.0 && (totalDur - positionSeconds) in 0.8..30.0) {
-        val hasEndingSegment = skipSegmentsSnapshot.any {
-          (it.type == SkipSegmentType.OUTRO || it.type == SkipSegmentType.CREDITS || it.type == SkipSegmentType.NEXT_EPISODE || it.type == SkipSegmentType.PREVIEW) &&
-            it.endSeconds >= totalDur - 40.0
-        }
-        if (!hasEndingSegment) {
-          SkipSegment(
-            type = SkipSegmentType.NEXT_EPISODE,
-            startSeconds = (totalDur - 30.0).coerceAtLeast(0.0),
-            endSeconds = totalDur,
-            source = "auto_outro",
-          )
-        } else {
-          null
-        }
-      } else {
-        null
       }
 
     val showChip =
-      activeSegment != null && !skippedSegmentTypes.contains(activeSegment.type) && (
-        activeSegment.type == SkipSegmentType.NEXT_EPISODE ||
-          (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
-      )
+      activeSegment != null && !skippedSegmentTypes.contains(activeSegment.type) &&
+        (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
     if (_currentSkippableSegment.value != activeSegment) {
       _currentSkippableSegment.value = activeSegment
     }
@@ -2782,7 +2761,6 @@ class PlayerViewModel : ViewModel(),
         SkipSegmentType.OUTRO -> playerPreferences.autoSkipOutro.get()
         SkipSegmentType.CREDITS -> playerPreferences.autoSkipOutro.get()
         SkipSegmentType.PREVIEW -> playerPreferences.autoSkipOutro.get()
-        SkipSegmentType.NEXT_EPISODE -> false
       }
     if (!autoSkipEnabled) return
 
@@ -2805,7 +2783,7 @@ class PlayerViewModel : ViewModel(),
     val segment = _currentSkippableSegment.value ?: return
     skippedSegmentTypes += segment.type
     _showSkipChipAuto.value = false
-    if ((segment.type == SkipSegmentType.OUTRO || segment.type == SkipSegmentType.CREDITS || segment.type == SkipSegmentType.NEXT_EPISODE) && hasNext()) {
+    if ((segment.type == SkipSegmentType.OUTRO || segment.type == SkipSegmentType.CREDITS) && hasNext()) {
       playNext()
     } else {
       PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
@@ -3224,7 +3202,7 @@ class PlayerViewModel : ViewModel(),
         val durationFraction = start / durationSec
         when (type) {
           SkipSegmentType.INTRO, SkipSegmentType.RECAP -> if (durationFraction > 0.5) return@mapIndexedNotNull null
-          SkipSegmentType.OUTRO, SkipSegmentType.CREDITS, SkipSegmentType.PREVIEW, SkipSegmentType.NEXT_EPISODE -> if (durationFraction < 0.4) return@mapIndexedNotNull null
+          SkipSegmentType.OUTRO, SkipSegmentType.CREDITS, SkipSegmentType.PREVIEW -> if (durationFraction < 0.4) return@mapIndexedNotNull null
         }
         SkipSegment(type = type, startSeconds = start, endSeconds = normalizedEnd, source = "chapter")
       }
@@ -3295,14 +3273,13 @@ class PlayerViewModel : ViewModel(),
       when {
         "recap" in loweredType || "summary" in loweredType -> SkipSegmentType.RECAP
         "credit" in loweredType -> SkipSegmentType.CREDITS
-        "preview" in loweredType -> SkipSegmentType.PREVIEW
+        "preview" in loweredType || "next" in loweredType -> SkipSegmentType.PREVIEW
         "out" in loweredType || "ending" in loweredType || "ed" == loweredType || "mixed-ed" in loweredType -> SkipSegmentType.OUTRO
-        "next" in loweredType -> SkipSegmentType.NEXT_EPISODE
         else -> SkipSegmentType.INTRO
       }
     val endSeconds =
       endSecondsOrNull ?: durationSec.takeIf {
-        (type == SkipSegmentType.CREDITS || type == SkipSegmentType.PREVIEW || type == SkipSegmentType.OUTRO || type == SkipSegmentType.NEXT_EPISODE) && it > normalizedStart
+        (type == SkipSegmentType.CREDITS || type == SkipSegmentType.PREVIEW || type == SkipSegmentType.OUTRO) && it > normalizedStart
       }
         ?: return null
     if (endSeconds <= normalizedStart) return null
