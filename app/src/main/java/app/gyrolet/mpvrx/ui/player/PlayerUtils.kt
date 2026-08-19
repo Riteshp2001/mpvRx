@@ -56,7 +56,7 @@ internal fun Uri.extractLocalPath(): String? {
     if (index != -1) {
       val rawPath = decoded.substring(index)
       val path = rawPath.substringBefore('?').substringBefore('#')
-      if (File(path).exists()) {
+      if (File(path).canRead()) {
         return path
       }
     }
@@ -74,13 +74,21 @@ internal fun Uri.openContentFd(context: Context): String? =
 /**
  * Method 1: Extract real filesystem path from file descriptor.
  * Works best for most content URIs on modern Android.
+ * If the resolved path is not readable directly (e.g. 0 permissions granted),
+ * returns the detached file descriptor so MPV can play via fd:// directly.
  */
 private fun Uri.tryFileDescriptorPath(context: Context): String? =
   runCatching {
-    context.contentResolver.openFileDescriptor(this, "r")?.use { pfd ->
-      Utils.findRealPath(pfd.fd)?.also {
-        Log.d(TAG, "Resolved via file descriptor: $it")
-      }
+    val pfd = context.contentResolver.openFileDescriptor(this, "r") ?: return null
+    val path = Utils.findRealPath(pfd.fd)
+    if (path != null && File(path).canRead()) {
+      pfd.close()
+      Log.d(TAG, "Resolved via file descriptor: $path")
+      path
+    } else {
+      val fd = pfd.detachFd()
+      Log.d(TAG, "Using file descriptor fallback (fd://$fd) for $this")
+      "fd://$fd"
     }
   }.getOrNull()
 
@@ -99,7 +107,7 @@ private fun Uri.tryMediaStoreQuery(context: Context): String? =
             cursor
               .getString(columnIndex)
               ?.takeIf { path ->
-                path.isNotBlank() && File(path).exists()
+                path.isNotBlank() && File(path).canRead()
               }?.also {
                 Log.d(TAG, "Resolved via MediaStore: $it")
               }
@@ -152,14 +160,14 @@ private fun Uri.tryDocumentUriParsing(context: Context): String? {
 private fun tryPrimaryStoragePath(docId: String): String? {
   val path = docId.substringAfter(StoragePaths.PRIMARY_PREFIX)
   val fullPath = "${StoragePaths.PRIMARY_STORAGE}/$path"
-  return fullPath.takeIf { File(it).exists() }?.also {
+  return fullPath.takeIf { File(it).canRead() }?.also {
     Log.d(TAG, "Resolved document URI to primary storage: $it")
   }
 }
 
 private fun tryRawPath(docId: String): String? {
   val rawPath = docId.substringAfter(StoragePaths.RAW_PREFIX)
-  return rawPath.takeIf { File(it).exists() }?.also {
+  return rawPath.takeIf { File(it).canRead() }?.also {
     Log.d(TAG, "Resolved document URI from raw path: $it")
   }
 }
@@ -180,7 +188,7 @@ private fun tryExternalStoragePaths(docId: String): String? {
       "${StoragePaths.MEDIA_RW}/$path",
     )
 
-  return possiblePaths.firstOrNull { File(it).exists() }?.also {
+  return possiblePaths.firstOrNull { File(it).canRead() }?.also {
     Log.d(TAG, "Resolved document URI to: $it")
   }
 }

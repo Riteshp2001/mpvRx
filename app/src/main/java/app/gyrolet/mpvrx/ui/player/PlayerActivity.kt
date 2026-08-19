@@ -2901,7 +2901,7 @@ class PlayerActivity :
   private fun parsePathFromIntent(intent: Intent): String? =
     intent
       .getStringExtra("local_media_path")
-      ?.takeIf { path -> File(path).isFile }
+      ?.takeIf { path -> File(path).canRead() }
       ?: when (intent.action) {
         Intent.ACTION_VIEW -> intent.data?.resolveUri(this)
         Intent.ACTION_SEND -> parsePathFromSendIntent(intent)
