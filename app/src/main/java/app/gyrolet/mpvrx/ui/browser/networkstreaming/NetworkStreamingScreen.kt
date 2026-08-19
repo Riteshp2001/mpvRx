@@ -120,9 +120,9 @@ import org.koin.compose.koinInject
 private const val VIEWED_TORRENT_FILES_PREFS = "torrent_viewed_files"
 
 private enum class NetworkTab(val titleResId: Int) {
+  TORRENT(R.string.ui_torrent_files),
   LOCAL_NETWORK(R.string.ui_local_network),
   SYNC_PLAY(R.string.syncplay_title),
-  TORRENT(R.string.ui_torrent_files),
 }
 
 @Serializable
@@ -382,6 +382,23 @@ object NetworkStreamingScreen : Screen {
           beyondViewportPageCount = 1,
         ) { page ->
           when (NetworkTab.entries[page]) {
+            NetworkTab.TORRENT -> {
+              TorrentContent(
+                torrentGroups = filteredTorrentGroups,
+                searchQuery = searchQuery,
+                onPlayTorrent = { entry ->
+                  MediaUtils.playFile(
+                    source = entry.canonicalSourceUri,
+                    context = context,
+                    launchSource = "network_torrent",
+                    title = entry.fileName,
+                    torrentFileIndex = entry.fileIndex,
+                  )
+                },
+                onDeleteTorrentFile = viewModel::deleteStreamEntry,
+                onDeleteTorrentGroup = { viewModel.deleteTorrentGroup(it.group) },
+              )
+            }
             NetworkTab.LOCAL_NETWORK -> {
               LocalNetworkContent(
                 connections = filteredConnections,
@@ -408,23 +425,6 @@ object NetworkStreamingScreen : Screen {
             }
             NetworkTab.SYNC_PLAY -> {
               SyncPlayContent()
-            }
-            NetworkTab.TORRENT -> {
-              TorrentContent(
-                torrentGroups = filteredTorrentGroups,
-                searchQuery = searchQuery,
-                onPlayTorrent = { entry ->
-                  MediaUtils.playFile(
-                    source = entry.canonicalSourceUri,
-                    context = context,
-                    launchSource = "network_torrent",
-                    title = entry.fileName,
-                    torrentFileIndex = entry.fileIndex,
-                  )
-                },
-                onDeleteTorrentFile = viewModel::deleteStreamEntry,
-                onDeleteTorrentGroup = { viewModel.deleteTorrentGroup(it.group) },
-              )
             }
           }
         }
@@ -525,31 +525,174 @@ private fun TorrentContent(
   onDeleteTorrentFile: (String) -> Unit,
   onDeleteTorrentGroup: (VisibleTorrentGroup) -> Unit,
 ) {
+  val context = LocalContext.current
+  val viewedPreferences =
+    remember(context) {
+      context.getSharedPreferences(VIEWED_TORRENT_FILES_PREFS, Context.MODE_PRIVATE)
+    }
+
+  var selectedDetailGroup by remember { mutableStateOf<TorrentStreamGroup?>(null) }
   val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
-  LazyColumn(
-    modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
-    verticalArrangement = Arrangement.spacedBy(14.dp),
-  ) {
-    if (torrentGroups.isNotEmpty()) {
-      items(torrentGroups, key = { "torrent-group:${it.group.id}" }) { result ->
-        AnimeTorrentCard(
-          group = result.group,
-          visibleFiles = result.visibleFiles,
-          forceExpanded = searchQuery.isNotBlank(),
-          onPlay = { onPlayTorrent(it) },
-          onDeleteFile = onDeleteTorrentFile,
-          onDeleteGroup = { onDeleteTorrentGroup(result) },
-        )
+
+  val allGroups = remember(torrentGroups) { torrentGroups.map { it.group } }
+  val heroGroups =
+    remember(allGroups) {
+      allGroups.filter { !it.backdropUrl.isNullOrBlank() || !it.posterUrl.isNullOrBlank() }
+        .ifEmpty { allGroups }
+    }
+
+  val recentViewedFiles =
+    remember(allGroups) {
+      allGroups.flatMap { group ->
+        val infoHash = group.infoHash
+        val viewed = if (infoHash != null) loadViewedFileIndices(viewedPreferences, infoHash) else emptySet()
+        group.files.filter { it.fileIndex in viewed }
+      }.sortedByDescending { it.updatedAt }
+    }
+
+  val onPlayWithHistory: (NetworkStreamEntryEntity, String?) -> Unit = { file, infoHash ->
+    val fileIdx = file.fileIndex ?: 0
+    if (infoHash != null) {
+      val viewed = loadViewedFileIndices(viewedPreferences, infoHash)
+      saveViewedFileIndices(viewedPreferences, infoHash, viewed + fileIdx)
+    }
+    onPlayTorrent(file)
+  }
+
+  Box(modifier = Modifier.fillMaxSize()) {
+    if (torrentGroups.isEmpty()) {
+      LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
+      ) {
+        item {
+          EmptyStateCard(
+            icon = Icons.RoundedFilled.CloudDownload,
+            title = stringResource(R.string.ui_no_torrents_title),
+            subtitle = stringResource(R.string.ui_no_torrents_description),
+          )
+        }
       }
     } else {
-      item {
-        EmptyStateCard(
-          icon = Icons.RoundedFilled.CloudDownload,
-          title = stringResource(R.string.ui_no_torrents_title),
-          subtitle = stringResource(R.string.ui_no_torrents_description),
-        )
+      LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = navBarHeight + 24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+      ) {
+        // 1. Featured Hero Carousel Banner (JellyCine style)
+        if (heroGroups.isNotEmpty() && searchQuery.isBlank()) {
+          item {
+            TorrentHeroBanner(
+              groups = heroGroups,
+              onPlay = { group ->
+                val infoHash = group.infoHash
+                val viewed = if (infoHash != null) loadViewedFileIndices(viewedPreferences, infoHash) else emptySet()
+                val targetFile = group.files.firstOrNull { it.fileIndex !in viewed } ?: group.files.firstOrNull()
+                if (targetFile != null) {
+                  onPlayWithHistory(targetFile, infoHash)
+                }
+              },
+              onDetails = { group -> selectedDetailGroup = group },
+            )
+          }
+        }
+
+        // 2. Continue Watching (Recently Played Torrents)
+        if (recentViewedFiles.isNotEmpty() && searchQuery.isBlank()) {
+          item {
+            Column(
+              modifier = Modifier.fillMaxWidth(),
+              verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+              TorrentSectionHeader(
+                title = "Continue Watching",
+                subtitle = "Resume your recent torrent streams",
+              )
+              androidx.compose.foundation.lazy.LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+              ) {
+                items(recentViewedFiles, key = { it.stableKey }) { entry ->
+                  TorrentResumeCard(
+                    entry = entry,
+                    onClick = { onPlayWithHistory(entry, entry.infoHash) },
+                    onLongClick = {
+                      val group = allGroups.find { it.infoHash == entry.infoHash }
+                      if (group != null) selectedDetailGroup = group
+                    },
+                  )
+                }
+              }
+            }
+          }
+        }
+
+        // 3. Saved Torrents / Collections Section Header
+        item {
+          TorrentSectionHeader(
+            title = if (searchQuery.isNotBlank()) "Search Results (${torrentGroups.size})" else "Saved Torrents (${allGroups.size})",
+            subtitle = if (searchQuery.isNotBlank()) null else "Stream instantly with high-speed hardware acceleration",
+          )
+        }
+
+        // 4. Saved Torrents Poster Carousel
+        if (searchQuery.isBlank() && allGroups.isNotEmpty()) {
+          item {
+            androidx.compose.foundation.lazy.LazyRow(
+              horizontalArrangement = Arrangement.spacedBy(12.dp),
+              contentPadding = PaddingValues(horizontal = 16.dp),
+            ) {
+              items(allGroups, key = { it.id }) { group ->
+                TorrentPosterCard(
+                  group = group,
+                  onClick = { selectedDetailGroup = group },
+                  onLongClick = { selectedDetailGroup = group },
+                )
+              }
+            }
+          }
+        }
+
+        // 5. Expandable Torrent List Cards
+        items(torrentGroups, key = { "torrent-group:${it.group.id}" }) { result ->
+          Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            AnimeTorrentCard(
+              group = result.group,
+              visibleFiles = result.visibleFiles,
+              forceExpanded = searchQuery.isNotBlank(),
+              onPlay = { file -> onPlayWithHistory(file, result.group.infoHash) },
+              onDeleteFile = onDeleteTorrentFile,
+              onDeleteGroup = { onDeleteTorrentGroup(result) },
+            )
+          }
+        }
       }
+    }
+
+    // 6. Cinematic Torrent Detail Sheet (JellyCine style)
+    selectedDetailGroup?.let { group ->
+      val infoHash = group.infoHash
+      val viewed =
+        remember(infoHash) {
+          if (infoHash != null) loadViewedFileIndices(viewedPreferences, infoHash) else emptySet()
+        }
+
+      TorrentDetailSheet(
+        group = group,
+        viewedFileIndices = viewed,
+        onDismiss = { selectedDetailGroup = null },
+        onPlayFile = { file ->
+          onPlayWithHistory(file, group.infoHash)
+        },
+        onDeleteGroup = { grp ->
+          val visibleGroup = torrentGroups.find { it.group.id == grp.id }
+          if (visibleGroup != null) {
+            onDeleteTorrentGroup(visibleGroup)
+          }
+          selectedDetailGroup = null
+        },
+        onDeleteFile = onDeleteTorrentFile,
+      )
     }
   }
 }
