@@ -1730,7 +1730,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
     <string name="ui_episodes">Episodios</string>
     <string name="ui_no_torrents_title">No hay torrents guardados</string>
     <string name="ui_no_torrents_description">Pega un enlace magnet o URL de torrent arriba para ver anime y películas.</string>
-    <string name="ui_no_saved_media_title">No hay medios guardados</string>
+    <string name="ui_no_saved_media_title">No hay enlaces guardados</string>
     <string name="ui_no_saved_media_description">Pega una URL de transmisión, enlace magnet o guarda desde enlaces recientes para crear tu colección.</string>
     <string name="ui_save_to_media">Guardar en Medios</string>
     <string name="ui_search_episodes">Buscar episodios…</string>
@@ -1740,5 +1740,5 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
     <string name="ui_buffering">Almacenando en búfer…</string>
     <string name="ui_jellyfin">Jellyfin</string>
     <string name="ui_media">Medios</string>
-    <string name="ui_saved_media">Medios guardados</string>
+    <string name="ui_saved_media">Enlaces guardados</string>
 </resources>

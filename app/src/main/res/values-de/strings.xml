@@ -1730,7 +1730,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
     <string name="ui_episodes">Episoden</string>
     <string name="ui_no_torrents_title">Keine Torrents gespeichert</string>
     <string name="ui_no_torrents_description">Fügen Sie oben einen Magnet-Link oder eine Torrent-URL ein, um Anime und Filme zu streamen.</string>
-    <string name="ui_no_saved_media_title">Keine Medien gespeichert</string>
+    <string name="ui_no_saved_media_title">Keine Links gespeichert</string>
     <string name="ui_no_saved_media_description">Fügen Sie eine Stream-URL oder einen Magnet-Link ein oder speichern Sie aus den letzten Links, um Ihre Mediensammlung aufzubauen.</string>
     <string name="ui_save_to_media">In Medien speichern</string>
     <string name="ui_search_episodes">Episoden suchen…</string>
@@ -1740,5 +1740,5 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
     <string name="ui_buffering">Puffern…</string>
     <string name="ui_jellyfin">Jellyfin</string>
     <string name="ui_media">Medien</string>
-    <string name="ui_saved_media">Gespeicherte Medien</string>
+    <string name="ui_saved_media">Gespeicherte Links</string>
 </resources>

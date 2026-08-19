@@ -1730,7 +1730,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
     <string name="ui_episodes">Épisodes</string>
     <string name="ui_no_torrents_title">Aucun torrent enregistré</string>
     <string name="ui_no_torrents_description">Collez un lien magnet ou une URL torrent ci-dessus pour diffuser des animes et des films.</string>
-    <string name="ui_no_saved_media_title">Aucun média enregistré</string>
+    <string name="ui_no_saved_media_title">Aucun lien enregistré</string>
     <string name="ui_no_saved_media_description">Collez une URL de flux, un lien magnet ou enregistrez depuis les liens récents pour créer votre collection.</string>
     <string name="ui_save_to_media">Enregistrer dans Médias</string>
     <string name="ui_search_episodes">Rechercher des épisodes…</string>
@@ -1740,5 +1740,5 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
     <string name="ui_buffering">Mise en mémoire tampon…</string>
     <string name="ui_jellyfin">Jellyfin</string>
     <string name="ui_media">Médias</string>
-    <string name="ui_saved_media">Médias enregistrés</string>
+    <string name="ui_saved_media">Liens enregistrés</string>
 </resources>

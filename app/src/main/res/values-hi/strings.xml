@@ -1634,7 +1634,7 @@
     <string name="ui_episodes">एपिसोड</string>
     <string name="ui_no_torrents_title">कोई टोरेंट सहेजा नहीं गया</string>
     <string name="ui_no_torrents_description">एनीमे और फिल्में स्ट्रीम करने के लिए ऊपर मैग्नेट लिंक या टोरेंट URL पेस्ट करें।</string>
-    <string name="ui_no_saved_media_title">कोई मीडिया सहेजा नहीं गया</string>
+    <string name="ui_no_saved_media_title">कोई लिंक सहेजा नहीं गया</string>
     <string name="ui_no_saved_media_description">अपना मीडिया संग्रह बनाने के लिए स्ट्रीम URL, मैग्नेट लिंक पेस्ट करें या हाल के लिंक से सहेजें।</string>
     <string name="ui_save_to_media">मीडिया में सहेजें</string>
     <string name="ui_search_episodes">एपिसोड खोजें…</string>
@@ -1644,5 +1644,5 @@
     <string name="ui_buffering">बफ़र हो रहा है…</string>
     <string name="ui_jellyfin">Jellyfin</string>
     <string name="ui_media">मीडिया</string>
-    <string name="ui_saved_media">सहेजा गया मीडिया</string>
+    <string name="ui_saved_media">सहेजे गए लिंक</string>
 </resources>

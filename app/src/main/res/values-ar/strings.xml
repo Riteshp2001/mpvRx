@@ -1732,7 +1732,7 @@
     <string name="ui_episodes">الحلقات</string>
     <string name="ui_no_torrents_title">لا توجد ملفات تورنت محفوظة</string>
     <string name="ui_no_torrents_description">الصق رابط مغناطيسي أو عنوان URL للتورنت أعلاه لبث الأنمي والأفلام.</string>
-    <string name="ui_no_saved_media_title">لا توجد وسائط محفوظة</string>
+    <string name="ui_no_saved_media_title">لا توجد روابط محفوظة</string>
     <string name="ui_no_saved_media_description">الصق رابط بث أو رابط مغناطيسي أو احفظ من الروابط الأخيرة لبناء مجموعتك.</string>
     <string name="ui_save_to_media">حفظ في الوسائط</string>
     <string name="ui_search_episodes">بحث في الحلقات…</string>
@@ -1742,5 +1742,5 @@
     <string name="ui_buffering">جارٍ التخزين المؤقت…</string>
     <string name="ui_jellyfin">Jellyfin</string>
     <string name="ui_media">الوسائط</string>
-    <string name="ui_saved_media">الوسائط المحفوظة</string>
+    <string name="ui_saved_media">الروابط المحفوظة</string>
 </resources>

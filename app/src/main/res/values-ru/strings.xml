@@ -1730,7 +1730,7 @@
     <string name="ui_episodes">Эпизоды</string>
     <string name="ui_no_torrents_title">Нет сохранённых торрентов</string>
     <string name="ui_no_torrents_description">Вставьте magnet-ссылку или URL торрента выше для просмотра аниме и фильмов.</string>
-    <string name="ui_no_saved_media_title">Нет сохранённых медиа</string>
+    <string name="ui_no_saved_media_title">Нет сохранённых ссылок</string>
     <string name="ui_no_saved_media_description">Вставьте URL потока, magnet-ссылку или сохраните из недавних ссылок для создания коллекции.</string>
     <string name="ui_save_to_media">Сохранить в медиа</string>
     <string name="ui_search_episodes">Поиск эпизодов…</string>
@@ -1740,5 +1740,5 @@
     <string name="ui_buffering">Буферизация…</string>
     <string name="ui_jellyfin">Jellyfin</string>
     <string name="ui_media">Медиа</string>
-    <string name="ui_saved_media">Сохранённые медиа</string>
+    <string name="ui_saved_media">Сохранённые ссылки</string>
 </resources>

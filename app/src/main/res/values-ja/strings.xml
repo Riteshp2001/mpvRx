@@ -1730,7 +1730,7 @@
     <string name="ui_episodes">エピソード</string>
     <string name="ui_no_torrents_title">保存されたトレントはありません</string>
     <string name="ui_no_torrents_description">アニメや映画をストリーミングするには、マグネットリンクまたはトレントURLを貼り付けてください。</string>
-    <string name="ui_no_saved_media_title">保存されたメディアはありません</string>
+    <string name="ui_no_saved_media_title">保存されたリンクはありません</string>
     <string name="ui_no_saved_media_description">ストリームURLやマグネットリンクを貼り付けるか、最近のリンクから保存してコレクションを作成します。</string>
     <string name="ui_save_to_media">メディアに保存</string>
     <string name="ui_search_episodes">エピソードを検索…</string>
@@ -1740,5 +1740,5 @@
     <string name="ui_buffering">バッファリング中…</string>
     <string name="ui_jellyfin">Jellyfin</string>
     <string name="ui_media">メディア</string>
-    <string name="ui_saved_media">保存されたメディア</string>
+    <string name="ui_saved_media">保存されたリンク</string>
 </resources>

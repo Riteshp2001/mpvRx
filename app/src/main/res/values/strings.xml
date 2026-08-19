@@ -726,7 +726,7 @@
   <string name="ui_episodes">Episodes</string>
   <string name="ui_no_torrents_title">No Torrents Saved</string>
   <string name="ui_no_torrents_description">Paste a magnet link or torrent URL above to stream anime and movies.</string>
-  <string name="ui_no_saved_media_title">No Media Saved</string>
+  <string name="ui_no_saved_media_title">No Saved Links</string>
   <string name="ui_no_saved_media_description">Paste a stream URL, magnet link, or save from recent links to build your media collection.</string>
   <string name="ui_save_to_media">Save to Media</string>
   <string name="pref_export_complete_title">Export Complete</string>
@@ -1326,7 +1326,7 @@
   <string name="ui_script_runtime">Script runtime</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Newly enabled scripts can load during playback. Scripts you turn off may need the video to be reopened before they fully stop running.</string>
   <string name="ui_media">Media</string>
-  <string name="ui_saved_media">Saved Media</string>
+  <string name="ui_saved_media">Saved Links</string>
   <string name="ui_media_info">Media Info</string>
   <string name="ui_analyzing_media_file">Analyzing media file...</string>
   <string name="ui_media_tracks_summary">Media Tracks Summary</string>
