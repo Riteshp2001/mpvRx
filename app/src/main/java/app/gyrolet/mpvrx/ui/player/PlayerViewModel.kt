@@ -456,7 +456,15 @@ class PlayerViewModel : ViewModel(),
   private val metadataCache = object : android.util.LruCache<String, Pair<String, String>>(100) {}
   private val playbackStateDispatcher = Dispatchers.Default.limitedParallelism(1)
   private val renderPrepDispatcher = Dispatchers.Default.limitedParallelism(1)
+  private data class SeekThumbnailSourceContext(
+    val source: String?,
+    val contentUri: String?,
+    val userAgent: String?,
+    val httpHeaders: String?,
+  )
+
   private val thumbFastPreviewController = ThumbFastPreviewController(viewModelScope, appContext)
+  @Volatile private var seekThumbnailSourceContext: SeekThumbnailSourceContext? = null
   private val ambientCropRegex = Regex("""^(\d+)x(\d+)""")
 
   private fun updateMetadataCache(
@@ -1627,6 +1635,7 @@ class PlayerViewModel : ViewModel(),
   fun onVideoLoadStarted() {
     // A new playback generation may reuse the same URL with different content or auth. Force the
     // isolated preview core to reopen the source instead of reusing a stale decoder session.
+    seekThumbnailSourceContext = null
     thumbFastPreviewController.clear(resetSource = true)
     _videoOpenAnimationState.update {
       it.copy(
@@ -1644,6 +1653,9 @@ class PlayerViewModel : ViewModel(),
         current
       }
     }
+    // Resolve source/auth once after mpv opens the file. Interactive ThumbFast requests then
+    // update only the isolated preview core instead of querying main libmpv per pointer event.
+    seekThumbnailSourceContext = resolveSeekThumbnailSourceContext().takeIf { it.source != null }
     syncplayManager.updateFileInfo(currentSyncplayFileInfo())
     applyEqualizerMpvFilters()
   }
@@ -3738,39 +3750,46 @@ class PlayerViewModel : ViewModel(),
       return
     }
 
-    val source = resolveSeekThumbnailSource()
-    val contentUri = resolveSeekThumbnailContentUri()
-    val userAgent = runCatching { PlaybackSession.getPropertyString("user-agent") }.getOrNull()
-    val httpHeaders = runCatching { PlaybackSession.getPropertyString("http-header-fields") }.getOrNull()
+    val sourceContext =
+    seekThumbnailSourceContext ?: resolveSeekThumbnailSourceContext().also { resolved ->
+      if (resolved.source != null) seekThumbnailSourceContext = resolved
+    }
 
-    thumbFastPreviewController.request(
-      source = source,
-      contentUri = contentUri,
-      positionSeconds = positionSeconds,
-      durationSeconds = durationSeconds,
-      userAgent = userAgent,
-      httpHeaders = httpHeaders,
-    )
-  }
+  thumbFastPreviewController.request(
+    source = sourceContext.source,
+    contentUri = sourceContext.contentUri,
+    positionSeconds = positionSeconds,
+    durationSeconds = durationSeconds,
+    userAgent = sourceContext.userAgent,
+    httpHeaders = sourceContext.httpHeaders,
+  )
+}
 
-  fun hideSeekThumbnailPreview() {
-    thumbFastPreviewController.clear()
-  }
+fun hideSeekThumbnailPreview() {
+  thumbFastPreviewController.clear()
+}
 
-  private fun resolveSeekThumbnailSource(): String? =
+private fun resolveSeekThumbnailSourceContext(): SeekThumbnailSourceContext {
+  val source =
     // Prefer mpv's actual opened source. Network-library playback can replace a logical URI with
     // an authenticated loopback/range URL, and the secondary preview core must open that same URL.
     runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull()?.takeIf { it.isNotBlank() }
       ?: runCatching { PlaybackSession.getPropertyString("path") }.getOrNull()?.takeIf { it.isNotBlank() }
       ?: host.currentThumbnailSource()?.takeIf { it.isNotBlank() }
-
-  private fun resolveSeekThumbnailContentUri(): String? =
+  val contentUri =
     PlaybackSession.queue.value.currentItem?.let { item ->
       sequenceOf(item.playableUri, item.originalUri)
         .firstOrNull { candidate ->
           runCatching { Uri.parse(candidate).scheme.equals("content", ignoreCase = true) }.getOrDefault(false)
         }
     }
+  return SeekThumbnailSourceContext(
+    source = source,
+    contentUri = contentUri,
+    userAgent = runCatching { PlaybackSession.getPropertyString("user-agent") }.getOrNull(),
+    httpHeaders = runCatching { PlaybackSession.getPropertyString("http-header-fields") }.getOrNull(),
+  )
+}
 
   fun lockControls() {
     _areControlsLocked.value = true
