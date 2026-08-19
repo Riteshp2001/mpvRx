@@ -3564,7 +3564,7 @@ class PlayerActivity :
 
     reportJellyfinStop()
     currentUri?.toString()?.let { url ->
-      jellyfinSessionReporter = JellyfinSessionReporter.create(url, lifecycleScope)
+      jellyfinSessionReporter = JellyfinSessionReporter.create(url, lifecycleScope, networkHttpClient)
       jellyfinSessionReporter?.reportPlaybackStart((viewModel.pos ?: 0).toLong() * 1000L)
       startJellyfinProgressLoop()
     }
