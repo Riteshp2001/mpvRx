@@ -1,0 +1,86 @@
+name: Materialize final ThumbFast publication guard
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: scratch/thumbfast-publish-guard-final
+          fetch-depth: 0
+
+      - name: Enforce newest-target publication
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/cpp/thumbfast_preview.cpp')
+          text = path.read_text()
+          if 'frame_pixels_ = std::move(pixels);' in text:
+              print('already materialized')
+              raise SystemExit(0)
+
+          render_start = text.index('  void renderLoop() {')
+          start = text.index('      {\n        std::lock_guard<std::mutex> lock(frame_mutex_);', render_start)
+          end_marker = '      request_cv_.notify_all();\n'
+          end = text.index(end_marker, start) + len(end_marker)
+          replacement = '''      std::vector<jint> pixels(static_cast<size_t>(width * height));
+          for (int y = 0; y < height; ++y) {
+            const uint8_t* row = bytes + static_cast<size_t>(y) * stride;
+            for (int x = 0; x < width; ++x) {
+              const uint8_t b = row[x * 4 + 0];
+              const uint8_t g = row[x * 4 + 1];
+              const uint8_t r = row[x * 4 + 2];
+              pixels[static_cast<size_t>(y * width + x)] =
+                  static_cast<jint>(0xFF000000u | (static_cast<uint32_t>(r) << 16) |
+                                    (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(b));
+            }
+          }
+
+          // Serialize final publication with request generation changes. A newer pointer target can
+          // arrive while BGR0 is being converted; an older frame must never become visible after it.
+          {
+            std::lock_guard<std::mutex> request_lock(request_mutex_);
+            if (stop_.load() || !active_ || generation_ != request.generation ||
+                current_source_epoch_.load() != request.source_epoch) {
+              continue;
+            }
+            std::lock_guard<std::mutex> frame_lock(frame_mutex_);
+            frame_pixels_ = std::move(pixels);
+            frame_width_ = width;
+            frame_height_ = height;
+            frame_source_epoch_ = request.source_epoch;
+            ++frame_serial_;
+            rendered_generation_.store(request.generation);
+          }
+          frame_cv_.notify_all();
+          request_cv_.notify_all();
+          '''
+          path.write_text(text[:start] + replacement + text[end:])
+          PY
+
+          git diff --check
+          grep -F 'frame_pixels_ = std::move(pixels)' app/src/main/cpp/thumbfast_preview.cpp
+          grep -F 'std::lock_guard<std::mutex> request_lock(request_mutex_)' app/src/main/cpp/thumbfast_preview.cpp
+
+      - name: Commit materialized native blob
+        shell: bash
+        run: |
+          if git diff --quiet -- app/src/main/cpp/thumbfast_preview.cpp; then
+            echo "already materialized"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/cpp/thumbfast_preview.cpp
+          git commit -m "scratch: guard ThumbFast frame publication"
+          git push origin HEAD:scratch/thumbfast-publish-guard-final
