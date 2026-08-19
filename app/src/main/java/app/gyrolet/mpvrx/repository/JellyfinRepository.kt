@@ -61,6 +61,12 @@ class JellyfinRepository(
   ): Result<List<JellyfinItem>> =
     client.getResumeItems(server.serverUrl, server.userId, server.accessToken, limit)
 
+  suspend fun getItem(
+    server: JellyfinServer,
+    itemId: String,
+  ): Result<JellyfinItem> =
+    client.getItem(server.serverUrl, server.userId, itemId, server.accessToken)
+
   suspend fun getItems(
     server: JellyfinServer,
     parentId: String? = null,

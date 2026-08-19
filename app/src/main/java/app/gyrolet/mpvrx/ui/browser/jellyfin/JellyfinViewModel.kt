@@ -561,32 +561,12 @@ class JellyfinViewModel(
         }
       }
 
-      // Concurrently run DB seed and external subtitle fetching
-      val dbJob =
+      val freshItemDeferred =
         async {
-          if (!startFromBeginning && item.playbackPositionTicks != null && item.playbackPositionTicks > 0) {
-            val positionSeconds = (item.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
-            runCatching {
-              val existing = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
-              val stateToSave =
-                existing?.copy(
-                  lastPosition = positionSeconds,
-                  timeRemaining = (item.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
-                ) ?: PlaybackStateEntity(
-                  mediaTitle = mediaIdentifier,
-                  lastPosition = positionSeconds,
-                  playbackSpeed = 1.0,
-                  videoZoom = 0f,
-                  sid = -1,
-                  secondarySid = -1,
-                  subDelay = 0,
-                  subSpeed = 1.0,
-                  aid = -1,
-                  audioDelay = 0,
-                  timeRemaining = (item.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
-                )
-              playbackStateRepository.upsert(stateToSave)
-            }
+          if (!startFromBeginning) {
+            jellyfinRepository.getItem(server, item.id).getOrNull()
+          } else {
+            null
           }
         }
 
@@ -597,17 +577,50 @@ class JellyfinViewModel(
             .getOrDefault(emptyList())
         }
 
+      val freshItem = freshItemDeferred.await() ?: item
+      val effectivePositionTicks =
+        if (!startFromBeginning) {
+          freshItem.playbackPositionTicks ?: item.playbackPositionTicks ?: 0L
+        } else {
+          0L
+        }
+      val positionSeconds = (effectivePositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
+
+      if (positionSeconds > 0) {
+        val durationSec = (freshItem.runTimeTicks ?: item.runTimeTicks ?: 0L) / JellyfinClient.TICKS_PER_SECOND
+        runCatching {
+          val existing = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
+          val stateToSave =
+            existing?.copy(
+              lastPosition = positionSeconds,
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
+            ) ?: PlaybackStateEntity(
+              mediaTitle = mediaIdentifier,
+              lastPosition = positionSeconds,
+              playbackSpeed = 1.0,
+              videoZoom = 0f,
+              sid = -1,
+              secondarySid = -1,
+              subDelay = 0,
+              subSpeed = 1.0,
+              aid = -1,
+              audioDelay = 0,
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
+            )
+          playbackStateRepository.upsert(stateToSave)
+        }
+      }
+
       // Fire scrobble start non-blocking in background
       launch {
         jellyfinRepository.reportPlaybackStart(
           serverUrl = server.serverUrl,
           token = server.accessToken,
           itemId = item.id,
-          positionTicks = if (startFromBeginning) 0L else (item.playbackPositionTicks ?: 0L),
+          positionTicks = effectivePositionTicks,
         )
       }
 
-      dbJob.await()
       val externalSubs = subsDeferred.await()
 
       // If playing an episode, extract surrounding episode playlist from current view
@@ -702,14 +715,18 @@ class JellyfinViewModel(
       )
 
     viewModelScope.launch(Dispatchers.IO) {
-      if (firstItem.playbackPositionTicks != null && firstItem.playbackPositionTicks > 0) {
-        val positionSeconds = (firstItem.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
+      val freshItem = jellyfinRepository.getItem(server, firstItem.id).getOrNull() ?: firstItem
+      val effectivePositionTicks = freshItem.playbackPositionTicks ?: firstItem.playbackPositionTicks ?: 0L
+      val positionSeconds = (effectivePositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
+
+      if (positionSeconds > 0) {
+        val durationSec = (freshItem.runTimeTicks ?: firstItem.runTimeTicks ?: 0L) / JellyfinClient.TICKS_PER_SECOND
         runCatching {
           val existing = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
           val stateToSave =
             existing?.copy(
               lastPosition = positionSeconds,
-              timeRemaining = (firstItem.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
             ) ?: PlaybackStateEntity(
               mediaTitle = mediaIdentifier,
               lastPosition = positionSeconds,
@@ -721,7 +738,7 @@ class JellyfinViewModel(
               subSpeed = 1.0,
               aid = -1,
               audioDelay = 0,
-              timeRemaining = (firstItem.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
             )
           playbackStateRepository.upsert(stateToSave)
         }
@@ -732,7 +749,7 @@ class JellyfinViewModel(
           serverUrl = server.serverUrl,
           token = server.accessToken,
           itemId = firstItem.id,
-          positionTicks = firstItem.playbackPositionTicks ?: 0L,
+          positionTicks = effectivePositionTicks,
         )
       }
 

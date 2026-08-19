@@ -283,6 +283,36 @@ class JellyfinClient(
       }
     }
 
+  suspend fun getItem(
+    serverUrl: String,
+    userId: String,
+    itemId: String,
+    token: String,
+  ): Result<JellyfinItem> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint = "$base/Users/$userId/Items/$itemId"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addHeader("X-Emby-Authorization", authHeader(token))
+            .addHeader("X-Emby-Token", token)
+            .get()
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to load item: HTTP ${response.code}")
+          }
+          val bodyStr = response.body.string()
+          val root = json.parseToJsonElement(bodyStr).jsonObject
+          parseItem(root)
+        }
+      }
+    }
+
   suspend fun getItems(
     serverUrl: String,
     userId: String,
