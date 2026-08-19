@@ -883,7 +883,7 @@ fun PlayerControls(
           val showLandscapeLeftCustomButtons = areButtonsVisible && !isPortrait && leftCustomButtons.isNotEmpty()
           val showLandscapeRightCustomButtons = areButtonsVisible && !isPortrait && rightCustomButtons.isNotEmpty()
           val showPortraitCustomButtons = areButtonsVisible && isPortrait && customButtons.isNotEmpty()
-          val customButtonsRowVerticalPadding = 4.dp
+          val customButtonsRowVerticalPadding = 2.dp
           val skipChipToButtonsSpacing = 4.dp
           val bottomRightControlsBottomOffset =
             if (bottomRightControlsTopPx != null && controlsLayoutHeightPx > 0) {
@@ -1191,7 +1191,7 @@ fun PlayerControls(
                 start.linkTo(parent.absoluteLeft)
                 end.linkTo(parent.absoluteRight)
                 if (isPortrait && portraitPlaybackControlsPosition == PortraitPlaybackControlsPosition.BelowSeekbar) {
-                  bottom.linkTo(bottomRightControls.top, spacing.medium)
+                  bottom.linkTo(bottomRightControls.top, spacing.small)
                 } else {
                   top.linkTo(parent.top)
                   bottom.linkTo(parent.bottom)
@@ -1227,8 +1227,8 @@ fun PlayerControls(
                 }
               Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
               ) {
                 Row(
                   modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -1245,7 +1245,7 @@ fun PlayerControls(
                   Text(
                     text = bufferText,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.SemiBold,
                   )
                 }
@@ -1262,7 +1262,7 @@ fun PlayerControls(
                 start.linkTo(parent.absoluteLeft)
                 end.linkTo(parent.absoluteRight)
                 if (isPortrait && portraitPlaybackControlsPosition == PortraitPlaybackControlsPosition.BelowSeekbar) {
-                  bottom.linkTo(bottomRightControls.top, spacing.medium)
+                  bottom.linkTo(bottomRightControls.top, spacing.small)
                 } else {
                   top.linkTo(parent.top)
                   bottom.linkTo(parent.bottom)
@@ -1486,7 +1486,7 @@ fun PlayerControls(
           }
 
           AnimatedVisibility(
-            visible = (controlsShown || (!isPortrait && seekBarShown)) && !areControlsLocked,
+            visible = ((controlsShown || showBufferingIndicator) || (!isPortrait && seekBarShown)) && !areControlsLocked,
             enter = buildControlsEnterV(controlsAnimStyle, reduceMotion, enterMs) { it },
             exit = buildControlsExitV(controlsAnimStyle, reduceMotion, exitMs) { it },
             modifier =
@@ -1504,7 +1504,7 @@ fun PlayerControls(
                 ).constrainAs(seekbar) {
                   if (isPortrait) {
                     if (portraitPlaybackControlsPosition == PortraitPlaybackControlsPosition.BelowSeekbar) {
-                      bottom.linkTo(playerPauseButton.top, spacing.medium)
+                      bottom.linkTo(playerPauseButton.top, spacing.small)
                     } else {
                       bottom.linkTo(bottomRightControls.top, spacing.medium)
                     }
@@ -1714,7 +1714,7 @@ fun PlayerControls(
           }
 
           AnimatedVisibility(
-            visible = controlsShown && !areControlsLocked && !areSlidersShown,
+            visible = (controlsShown || showBufferingIndicator) && !areControlsLocked && !areSlidersShown,
             enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
             exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
             modifier =
