@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - scratch/thumbfast-render-thread
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: write
