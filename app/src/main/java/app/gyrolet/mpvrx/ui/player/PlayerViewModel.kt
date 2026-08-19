@@ -3772,6 +3772,14 @@ class PlayerViewModel : ViewModel(),
         }
     }
 
+  private fun resolveSeekThumbnailContentUri(): String? =
+    PlaybackSession.queue.value.currentItem?.let { item ->
+      sequenceOf(item.playableUri, item.originalUri)
+        .firstOrNull { candidate ->
+          runCatching { Uri.parse(candidate).scheme.equals("content", ignoreCase = true) }.getOrDefault(false)
+        }
+    }
+
   fun lockControls() {
     _areControlsLocked.value = true
   }
