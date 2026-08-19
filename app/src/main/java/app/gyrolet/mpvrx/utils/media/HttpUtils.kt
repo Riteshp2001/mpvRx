@@ -62,10 +62,90 @@ object HttpUtils {
       "player",
     )
 
+  data class YouTubeMetadata(
+    val title: String,
+    val author: String? = null,
+    val thumbnailUrl: String? = null,
+  )
+
+  fun isYouTubeUrl(url: String?): Boolean {
+    if (url.isNullOrBlank()) return false
+    val lower = url.lowercase()
+    return lower.contains("youtube.com") || lower.contains("youtu.be")
+  }
+
+  fun isYouTubeUrl(uri: Uri?): Boolean {
+    if (uri == null) return false
+    val host = uri.host?.lowercase().orEmpty()
+    return host.contains("youtube.com") || host == "youtu.be"
+  }
+
+  fun extractYouTubeVideoId(uri: Uri?): String? {
+    if (uri == null) return null
+    val host = uri.host?.lowercase().orEmpty()
+    val path = uri.path.orEmpty()
+    return when {
+      host == "youtu.be" -> uri.pathSegments.firstOrNull()?.trim()
+      host.contains("youtube.com") -> {
+        when {
+          path.contains("/watch") -> uri.getQueryParameter("v")?.trim()
+          path.contains("/shorts/") -> uri.pathSegments.getOrNull(1)?.trim()
+          path.contains("/live/") -> uri.pathSegments.getOrNull(1)?.trim()
+          path.contains("/embed/") -> uri.pathSegments.getOrNull(1)?.trim()
+          else -> uri.getQueryParameter("v")?.trim()
+        }
+      }
+      else -> null
+    }?.takeIf { it.isNotBlank() && it.length in 5..30 }
+  }
+
+  suspend fun fetchYouTubeMetadata(url: String): YouTubeMetadata? =
+    withContext(Dispatchers.IO) {
+      var connection: HttpURLConnection? = null
+      try {
+        val oEmbedUrl = "https://www.youtube.com/oembed?url=" + java.net.URLEncoder.encode(url, "UTF-8") + "&format=json"
+        connection = URL(oEmbedUrl).openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.connectTimeout = CONNECTION_TIMEOUT
+        connection.readTimeout = READ_TIMEOUT
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+        connection.connect()
+
+        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+          val response = connection.inputStream.bufferedReader().use { it.readText() }
+          val json = org.json.JSONObject(response)
+          val title = json.optString("title").takeIf { it.isNotBlank() }
+          val author = json.optString("author_name").takeIf { it.isNotBlank() }
+          val thumbnail = json.optString("thumbnail_url").takeIf { it.isNotBlank() }
+          if (title != null) {
+            return@withContext YouTubeMetadata(title = title, author = author, thumbnailUrl = thumbnail)
+          }
+        }
+        null
+      } catch (e: Exception) {
+        Log.w(TAG, "Failed to fetch YouTube oEmbed metadata for $url: ${e.message}")
+        null
+      } finally {
+        connection?.disconnect()
+      }
+    }
+
   suspend fun extractFilenameFromUrl(url: String): String? =
     withContext(Dispatchers.IO) {
       try {
         val uri = Uri.parse(url)
+        if (isYouTubeUrl(uri)) {
+          val yt = fetchYouTubeMetadata(url)
+          if (yt != null && yt.title.isNotBlank()) {
+            Log.d(TAG, "Extracted YouTube title: ${yt.title}")
+            return@withContext yt.title
+          }
+          val videoId = extractYouTubeVideoId(uri)
+          if (!videoId.isNullOrBlank()) {
+            return@withContext "YouTube Video ($videoId)"
+          }
+        }
+
         val filenameFromHeaders = getFilenameFromHttpHeaders(url)
         if (filenameFromHeaders != null) {
           Log.d(TAG, "Extracted filename from headers: $filenameFromHeaders")

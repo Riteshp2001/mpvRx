@@ -32,6 +32,8 @@ class NetworkStreamEntryRepository(
   suspend fun saveNormalEntry(
     canonicalSourceUri: String,
     fileName: String,
+    posterUrl: String? = null,
+    backdropUrl: String? = null,
     updatedAt: Long = System.currentTimeMillis(),
   ) {
     val source =
@@ -46,6 +48,8 @@ class NetworkStreamEntryRepository(
           entryType = NetworkStreamEntryType.NORMAL,
           canonicalSourceUri = source,
           fileName = displayName,
+          posterUrl = posterUrl,
+          backdropUrl = backdropUrl,
           updatedAt = updatedAt,
         ),
       keepCount = NORMAL_ENTRY_LIMIT,

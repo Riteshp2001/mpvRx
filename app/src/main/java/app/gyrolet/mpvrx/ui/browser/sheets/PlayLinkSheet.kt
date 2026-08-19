@@ -96,6 +96,28 @@ fun PlayLinkSheet(
               canonicalSourceUri = playableSource,
               fileName = name,
             )
+
+            // Asynchronously resolve YouTube title & thumbnail
+            val uri = runCatching { android.net.Uri.parse(playableSource) }.getOrNull()
+            if (app.gyrolet.mpvrx.utils.media.HttpUtils.isYouTubeUrl(uri)) {
+              val ytMeta = app.gyrolet.mpvrx.utils.media.HttpUtils.fetchYouTubeMetadata(playableSource)
+              if (ytMeta != null && ytMeta.title.isNotBlank()) {
+                RecentlyPlayedOps.updateVideoMetadata(
+                  filePath = playableSource,
+                  videoTitle = ytMeta.title,
+                  duration = 0L,
+                  fileSize = 0L,
+                  width = 0,
+                  height = 0,
+                )
+                streamEntryRepository.saveNormalEntry(
+                  canonicalSourceUri = playableSource,
+                  fileName = ytMeta.title,
+                  posterUrl = ytMeta.thumbnailUrl,
+                  backdropUrl = ytMeta.thumbnailUrl,
+                )
+              }
+            }
           } catch (cancellation: CancellationException) {
             throw cancellation
           } catch (_: Exception) {

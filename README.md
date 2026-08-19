@@ -205,8 +205,38 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | **Syncplay Rooms** | Join a Syncplay server room to synchronize pause, resume, seeking, and playback position with other viewers |
 | **Responsive & Dual-Pane Layouts** | Automatic grid sizing plus optional folder/settings dual-pane views on tablets |
 | **Audio Library Mode** | MediaStore and filesystem audio browsing with square artwork, metadata titles, and mixed sibling playlists |
-| **Safer Folder Deletion** | Media-only folder deletion by default, with an explicit option to delete every contained file |
-| **Settings Search Memory** | Search suggestions and recently used settings queries |
+</details>
+
+<details close>
+<summary><b>🍿 Jellyfin Client (JellyCine Expressive UI)</b></summary>
+
+| Feature | Description |
+|---|---|
+| **Native Server Integration** | Direct connection with Jellyfin accounts, fast token authentication, and multi-server management |
+| **Material 3 Expressive UI** | Cinematic redesign inspired by JellyCine with spring-based transitions and fluid layout hierarchy |
+| **Featured Hero Banner** | Auto-advancing 16:9 backdrop banner with smooth gradient scrims, ratings, badges, and quick play |
+| **Continue Watching & Next Up** | Horizontal resume carousels tracking user playback progress with one-tap instant resume |
+| **Library Filter Chips** | Instant switching between Movies, TV Shows, Anime, Music, and BoxSets with dynamic item counts |
+| **Poster & Backdrop Cards** | 2:3 vertical posters and 16:9 backdrop cards with community ratings, release years, and unplayed badges |
+| **Cinematic Detail Sheet** | Full-bleed modal sheet with backdrops, floating posters, storyline synopsis, and season/episode picker |
+| **Server-Synced Favorites** | Heart action synced bidirectionally with your Jellyfin server account (`UserData.IsFavorite`) |
+| **Direct & Transcoded Streaming** | High-performance direct stream playback with audio track and subtitle stream switching |
+
+</details>
+
+<details close>
+<summary><b>⚡ Torrent Streaming & Engine</b></summary>
+
+| Feature | Description |
+|---|---|
+| **Sequential Torrent Engine** | Powered by high-speed native Go bridge (`anacrolix/torrent`) with sequential piece prioritization |
+| **Instant Streaming** | Stream magnet links and `.torrent` files on the fly without waiting for full downloads |
+| **JellyCine-Style Discovery** | Hero banner carousel, Continue Watching row, and 2:3 vertical poster cards for saved torrents |
+| **Automated TMDB Enrichment** | Fetches posters, backdrops, storyline synopsis, release years, and media types via Wyzie/TMDB |
+| **Cinematic Torrent Details** | Modal bottom sheet with floating poster, metadata badges, "Watch Now / Resume", and "Copy Magnet" |
+| **Intelligent Episode Parser** | Robust parser supporting anime numbering, season/episode formats (S01E02, 1x02), and quality tags |
+| **Episode Search & Sorting** | Filter and sort episodes within multi-file torrents with watched status checkmarks |
+| **Save from Recent Streams** | One-tap save icon on recent links to ingest, catalog, and store torrent metadata into your library |
 
 </details>
 
@@ -396,6 +426,8 @@ git push origin v1.3.1-preview.1
 - [Gramophone](https://github.com/FoedusProgramme/Gramophone)
 - [hdr-toys](https://github.com/natural-harmonia-gropius/hdr-toys)
 - [AFinity](https://github.com/MakD/AFinity)
+- [JellyCine](https://github.com/sureshfizzy/JellyCine)
+- [anacrolix/torrent](https://github.com/anacrolix/torrent)
 - [**SunnyVishnu3**](https://github.com/SunnyVishnu3) for the `yt-dlp` native integration and SDK 29+ bypass logic.
 
 ---

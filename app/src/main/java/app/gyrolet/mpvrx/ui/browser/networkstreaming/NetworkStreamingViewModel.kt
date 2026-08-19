@@ -26,8 +26,10 @@ import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult
 import app.gyrolet.mpvrx.repository.wyzie.bestTmdbResult
+import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
+import android.net.Uri
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -225,10 +227,33 @@ class NetworkStreamingViewModel(
     val source = url.trim()
     if (source.isBlank() || isTorrentSource(source) || !MediaUtils.isURLValid(source)) return
     viewModelScope.launch {
+      val uri = runCatching { Uri.parse(source) }.getOrNull()
+      val initialTitle = MediaInfoParser.parseStreamTitle(source)
       streamEntryRepository.saveNormalEntry(
         canonicalSourceUri = source,
-        fileName = MediaInfoParser.parseStreamTitle(source),
+        fileName = initialTitle,
       )
+
+      // Asynchronously enrich title and thumbnail for YouTube and network streams
+      if (HttpUtils.isYouTubeUrl(uri)) {
+        val ytMeta = HttpUtils.fetchYouTubeMetadata(source)
+        if (ytMeta != null && ytMeta.title.isNotBlank()) {
+          streamEntryRepository.saveNormalEntry(
+            canonicalSourceUri = source,
+            fileName = ytMeta.title,
+            posterUrl = ytMeta.thumbnailUrl,
+            backdropUrl = ytMeta.thumbnailUrl,
+          )
+        }
+      } else {
+        val betterTitle = HttpUtils.extractFilenameFromUrl(source)
+        if (betterTitle != null && !HttpUtils.isLikelyJunkTitle(betterTitle) && betterTitle != initialTitle && betterTitle != uri?.host) {
+          streamEntryRepository.saveNormalEntry(
+            canonicalSourceUri = source,
+            fileName = betterTitle,
+          )
+        }
+      }
     }
   }
 

@@ -3882,6 +3882,14 @@ class PlayerActivity :
           }.onFailure { e ->
             Log.e(TAG, "Error updating video metadata in recently played", e)
           }
+
+          // Persist the resolved title to the Network tab recent links
+          runCatching {
+            networkStreamEntryRepository.saveNormalEntry(
+              canonicalSourceUri = url,
+              fileName = betterFilename,
+            )
+          }
         }
       } catch (e: Exception) {
         Log.e(TAG, "Error fetching network stream title", e)
@@ -6120,6 +6128,18 @@ class PlayerActivity :
         launchSource = "playlist",
         playlistId = historyPlaylistId,
       )
+
+      if (HttpUtils.isNetworkStream(uri)) {
+        val streamTitle = videoTitle?.takeIf { !HttpUtils.isLikelyJunkTitle(it) } ?: resolvedName
+        if (!HttpUtils.isLikelyJunkTitle(streamTitle)) {
+          runCatching {
+            networkStreamEntryRepository.saveNormalEntry(
+              canonicalSourceUri = uri.toString(),
+              fileName = streamTitle,
+            )
+          }
+        }
+      }
 
       Log.d(TAG, "Saved recently played (playlist): $filePath")
       Log.d(TAG, "  - fileName: $name")
