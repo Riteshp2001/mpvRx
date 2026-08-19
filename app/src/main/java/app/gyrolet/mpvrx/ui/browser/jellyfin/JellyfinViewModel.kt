@@ -184,11 +184,22 @@ class JellyfinViewModel(
         val resumeDeferred = async { jellyfinRepository.getResumeItems(server, limit = 16) }
         val latestDeferred = async { jellyfinRepository.getLatestMedia(server, limit = 24) }
         val suggestionsDeferred = async { jellyfinRepository.getSuggestions(server, limit = 16) }
+        val heroDeferred =
+          async {
+            jellyfinRepository.getItems(
+              server = server,
+              includeItemTypes = "Movie,Series",
+              isPlayed = false,
+              sortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.RANDOM,
+              limit = 15,
+            )
+          }
 
         val libsResult = libsDeferred.await()
         val resumeResult = resumeDeferred.await()
         val latestResult = latestDeferred.await()
         val suggestionsResult = suggestionsDeferred.await()
+        val heroResult = heroDeferred.await()
 
         val libs = sortJellyfinLibraries(libsResult.getOrDefault(emptyList()))
         val resume = resumeResult.getOrDefault(emptyList())
@@ -198,18 +209,20 @@ class JellyfinViewModel(
         val latestMovies = latest.filter { it.type == "Movie" || it.collectionType?.equals("movies", ignoreCase = true) == true }
         val latestShows = latest.filter { it.type == "Series" || it.type == "Episode" || it.collectionType?.equals("tvshows", ignoreCase = true) == true }
 
-        // Build Hero Items: prioritize items with backdrops and good ratings/recency
-        val heroCandidates =
-          (resume + latest + suggestions)
-            .filter { !it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank() }
-            .distinctBy { it.id }
-            .take(6)
+        // Hero Items: 15 unplayed random Movies & TV Series (AFinity logic, excluding continue watching)
+        val fetchedHero =
+          heroResult.getOrNull()?.items?.filter {
+            !it.isPlayed && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank())
+          } ?: emptyList()
 
         val finalHero =
-          if (heroCandidates.isNotEmpty()) {
-            heroCandidates
+          if (fetchedHero.isNotEmpty()) {
+            fetchedHero.take(15)
           } else {
-            latest.take(5)
+            (latest + suggestions)
+              .filter { !it.isPlayed && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank()) }
+              .distinctBy { it.id }
+              .take(15)
           }
 
         _uiState.update {

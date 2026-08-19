@@ -36,6 +36,7 @@ enum class JellyfinSortBy(val apiValue: String, val displayName: String) {
   PREMIERE_DATE("PremiereDate", "Release Date"),
   RATING("CommunityRating", "Rating"),
   RUNTIME("Runtime", "Duration"),
+  RANDOM("Random", "Random"),
 }
 
 enum class JellyfinSortOrder(val apiValue: String, val displayName: String) {
