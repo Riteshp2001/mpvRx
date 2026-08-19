@@ -1,0 +1,150 @@
+name: Materialize final ThumbFast source cache
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: scratch/thumbfast-source-cache-final
+          fetch-depth: 0
+
+      - name: Cache main-player source context once per media
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/app/gyrolet/mpvrx/ui/player/PlayerViewModel.kt')
+          text = path.read_text()
+          if 'private data class SeekThumbnailSourceContext(' in text:
+              print('already materialized')
+              raise SystemExit(0)
+
+          def replace_once(old: str, new: str, label: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+          '''  private val thumbFastPreviewController = ThumbFastPreviewController(viewModelScope, appContext)
+            private val ambientCropRegex = Regex("""^(\\d+)x(\\d+)""")
+          ''',
+          '''  private data class SeekThumbnailSourceContext(
+              val source: String?,
+              val contentUri: String?,
+              val userAgent: String?,
+              val httpHeaders: String?,
+            )
+
+            private val thumbFastPreviewController = ThumbFastPreviewController(viewModelScope, appContext)
+            @Volatile private var seekThumbnailSourceContext: SeekThumbnailSourceContext? = null
+            private val ambientCropRegex = Regex("""^(\\d+)x(\\d+)""")
+          ''',
+              'source context field',
+          )
+
+          replace_once(
+          '''  fun onVideoLoadStarted() {
+              // A new playback generation may reuse the same URL with different content or auth. Force the
+              // isolated preview core to reopen the source instead of reusing a stale decoder session.
+              thumbFastPreviewController.clear(resetSource = true)
+          ''',
+          '''  fun onVideoLoadStarted() {
+              // A new playback generation may reuse the same URL with different content or auth. Force the
+              // isolated preview core to reopen the source instead of reusing a stale decoder session.
+              seekThumbnailSourceContext = null
+              thumbFastPreviewController.clear(resetSource = true)
+          ''',
+              'load start cache reset',
+          )
+
+          replace_once(
+          '''    syncplayManager.updateFileInfo(currentSyncplayFileInfo())
+              applyEqualizerMpvFilters()
+            }
+          ''',
+          '''    // Resolve source/auth once after mpv opens the file. Interactive ThumbFast requests then
+              // update only the isolated preview core instead of querying main libmpv per pointer event.
+              seekThumbnailSourceContext = resolveSeekThumbnailSourceContext().takeIf { it.source != null }
+              syncplayManager.updateFileInfo(currentSyncplayFileInfo())
+              applyEqualizerMpvFilters()
+            }
+          ''',
+              'load complete source cache',
+          )
+
+          start = text.index('    val source = resolveSeekThumbnailSource()\n', text.index('  fun updateSeekThumbnailPreview('))
+          end = text.index('  fun lockControls() {\n', start)
+          replacement = '''    val sourceContext =
+              seekThumbnailSourceContext ?: resolveSeekThumbnailSourceContext().also { resolved ->
+                if (resolved.source != null) seekThumbnailSourceContext = resolved
+              }
+
+            thumbFastPreviewController.request(
+              source = sourceContext.source,
+              contentUri = sourceContext.contentUri,
+              positionSeconds = positionSeconds,
+              durationSeconds = durationSeconds,
+              userAgent = sourceContext.userAgent,
+              httpHeaders = sourceContext.httpHeaders,
+            )
+          }
+
+          fun hideSeekThumbnailPreview() {
+            thumbFastPreviewController.clear()
+          }
+
+          private fun resolveSeekThumbnailSourceContext(): SeekThumbnailSourceContext {
+            val source =
+              // Prefer mpv's actual opened source. Network-library playback can replace a logical URI with
+              // an authenticated loopback/range URL, and the secondary preview core must open that same URL.
+              runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull()?.takeIf { it.isNotBlank() }
+                ?: runCatching { PlaybackSession.getPropertyString("path") }.getOrNull()?.takeIf { it.isNotBlank() }
+                ?: host.currentThumbnailSource()?.takeIf { it.isNotBlank() }
+            val contentUri =
+              PlaybackSession.queue.value.currentItem?.let { item ->
+                sequenceOf(item.playableUri, item.originalUri)
+                  .firstOrNull { candidate ->
+                    runCatching { Uri.parse(candidate).scheme.equals("content", ignoreCase = true) }.getOrDefault(false)
+                  }
+              }
+            return SeekThumbnailSourceContext(
+              source = source,
+              contentUri = contentUri,
+              userAgent = runCatching { PlaybackSession.getPropertyString("user-agent") }.getOrNull(),
+              httpHeaders = runCatching { PlaybackSession.getPropertyString("http-header-fields") }.getOrNull(),
+            )
+          }
+
+          '''
+          text = text[:start] + replacement + text[end:]
+          path.write_text(text)
+          PY
+
+          git diff --check
+          grep -F 'private data class SeekThumbnailSourceContext' app/src/main/java/app/gyrolet/mpvrx/ui/player/PlayerViewModel.kt
+          test "$(grep -c 'private fun resolveSeekThumbnailSourceContext' app/src/main/java/app/gyrolet/mpvrx/ui/player/PlayerViewModel.kt)" = 1
+
+      - name: Commit materialized ViewModel blob
+        shell: bash
+        run: |
+          if git diff --quiet -- app/src/main/java/app/gyrolet/mpvrx/ui/player/PlayerViewModel.kt; then
+            echo "already materialized"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/app/gyrolet/mpvrx/ui/player/PlayerViewModel.kt
+          git commit -m "scratch: cache ThumbFast source context"
+          git push origin HEAD:scratch/thumbfast-source-cache-final
