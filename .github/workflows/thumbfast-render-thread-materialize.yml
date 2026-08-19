@@ -82,13 +82,8 @@ jobs:
           )
 
           replace_once(
-          '''      const auto [width, height] = previewSize();
-              std::memset(bytes, 0, stride * static_cast<size_t>(height));
-          ''',
-          '''      const int width = request.width;
-              const int height = request.height;
-              std::memset(bytes, 0, stride * static_cast<size_t>(height));
-          ''',
+              '      const auto [width, height] = previewSize();\n',
+              '      const int width = request.width;\n      const int height = request.height;\n',
               'render dimensions',
           )
 
