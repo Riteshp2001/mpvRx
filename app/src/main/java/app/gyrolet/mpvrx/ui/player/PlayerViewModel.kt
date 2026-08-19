@@ -456,7 +456,7 @@ class PlayerViewModel : ViewModel(),
   private val metadataCache = object : android.util.LruCache<String, Pair<String, String>>(100) {}
   private val playbackStateDispatcher = Dispatchers.Default.limitedParallelism(1)
   private val renderPrepDispatcher = Dispatchers.Default.limitedParallelism(1)
-  private val thumbFastPreviewController = ThumbFastPreviewController(viewModelScope)
+  private val thumbFastPreviewController = ThumbFastPreviewController(viewModelScope, appContext)
   private val ambientCropRegex = Regex("""^(\d+)x(\d+)""")
 
   private fun updateMetadataCache(
@@ -3739,11 +3739,13 @@ class PlayerViewModel : ViewModel(),
     }
 
     val source = resolveSeekThumbnailSource()
+    val contentUri = resolveSeekThumbnailContentUri()
     val userAgent = runCatching { PlaybackSession.getPropertyString("user-agent") }.getOrNull()
     val httpHeaders = runCatching { PlaybackSession.getPropertyString("http-header-fields") }.getOrNull()
 
     thumbFastPreviewController.request(
       source = source,
+      contentUri = contentUri,
       positionSeconds = positionSeconds,
       durationSeconds = durationSeconds,
       userAgent = userAgent,
@@ -3761,6 +3763,14 @@ class PlayerViewModel : ViewModel(),
     runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull()?.takeIf { it.isNotBlank() }
       ?: runCatching { PlaybackSession.getPropertyString("path") }.getOrNull()?.takeIf { it.isNotBlank() }
       ?: host.currentThumbnailSource()?.takeIf { it.isNotBlank() }
+
+  private fun resolveSeekThumbnailContentUri(): String? =
+    PlaybackSession.queue.value.currentItem?.let { item ->
+      sequenceOf(item.playableUri, item.originalUri)
+        .firstOrNull { candidate ->
+          runCatching { Uri.parse(candidate).scheme.equals("content", ignoreCase = true) }.getOrDefault(false)
+        }
+    }
 
   fun lockControls() {
     _areControlsLocked.value = true
