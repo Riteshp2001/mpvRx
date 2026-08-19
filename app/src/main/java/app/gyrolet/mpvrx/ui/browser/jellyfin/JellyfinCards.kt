@@ -64,8 +64,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
@@ -76,6 +81,42 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+
+private val StarYellow = Color(0xFFFFC107)
+
+private fun buildStarSubtitle(
+  partsBeforeRating: List<String>,
+  communityRating: Double?,
+  criticRating: Double?,
+  partsAfterRating: List<String> = emptyList(),
+): AnnotatedString {
+  return buildAnnotatedString {
+    var hasContent = false
+    partsBeforeRating.filter { it.isNotBlank() }.forEach { part ->
+      if (hasContent) append(" • ")
+      append(part)
+      hasContent = true
+    }
+    communityRating?.let { rating ->
+      if (hasContent) append(" • ")
+      withStyle(SpanStyle(color = StarYellow, fontSize = 11.sp)) {
+        append("★ ")
+      }
+      append("%.1f".format(rating))
+      hasContent = true
+    }
+    criticRating?.let { critic ->
+      if (hasContent) append(" • ")
+      append("🍅 ${critic.roundToInt()}%")
+      hasContent = true
+    }
+    partsAfterRating.filter { it.isNotBlank() }.forEach { part ->
+      if (hasContent) append(" • ")
+      append(part)
+      hasContent = true
+    }
+  }
+}
 
 // ============================================================================
 // Hero Featured Carousel Banner (Material 3 Expressive)
@@ -655,15 +696,14 @@ fun JellyfinResumeCard(
         val title = item.seriesName ?: item.name
         val subtitle =
           if (item.seriesName != null && item.indexNumber != null) {
-            "S${item.parentIndexNumber ?: 1}:E${item.indexNumber} • ${item.name}"
+            AnnotatedString("S${item.parentIndexNumber ?: 1}:E${item.indexNumber} • ${item.name}")
           } else {
-            buildList {
+            val before = buildList {
               item.productionYear?.let { add(it.toString()) }
               val dur = item.formattedDuration
               if (dur.isNotBlank()) add(dur) else if (item.productionYear == null) add(item.type)
-              item.communityRating?.let { add("★ %.1f".format(it)) }
-              item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
-            }.joinToString(" • ")
+            }
+            buildStarSubtitle(before, item.communityRating, item.criticRating)
           }
 
         Text(
@@ -858,16 +898,17 @@ fun JellyfinPosterCard(
           overflow = TextOverflow.Ellipsis,
         )
         val subtitle =
-          buildList {
-            item.productionYear?.let { add(it.toString()) }
-              ?: if (item.isSeries && item.childCount != null) {
-                add("${item.childCount} Seasons")
-              } else {
-                add(item.type)
-              }
-            item.communityRating?.let { add("★ %.1f".format(it)) }
-            item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
-          }.joinToString(" • ")
+          run {
+            val before = buildList {
+              item.productionYear?.let { add(it.toString()) }
+                ?: if (item.isSeries && item.childCount != null) {
+                  add("${item.childCount} Seasons")
+                } else {
+                  add(item.type)
+                }
+            }
+            buildStarSubtitle(before, item.communityRating, item.criticRating)
+          }
         Text(
           text = subtitle,
           style = MaterialTheme.typography.bodySmall,
@@ -956,80 +997,120 @@ fun JellyfinLibraryChipRow(
 @Composable
 fun JellyfinLibraryCard(
   item: JellyfinItem,
+  server: JellyfinServer,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  cardWidth: androidx.compose.ui.unit.Dp = 220.dp,
 ) {
-  Card(
+  val imageUrl =
+    remember(server.serverUrl, item.id, item.primaryImageTag, item.backdropImageTag, server.accessToken) {
+      if (!item.primaryImageTag.isNullOrBlank()) {
+        JellyfinClient.getImageUrl(
+          serverUrl = server.serverUrl,
+          itemId = item.id,
+          imageTag = item.primaryImageTag,
+          maxWidth = 800,
+          token = server.accessToken,
+        )
+      } else if (!item.backdropImageTag.isNullOrBlank()) {
+        JellyfinClient.getBackdropUrl(
+          serverUrl = server.serverUrl,
+          itemId = item.id,
+          imageTag = item.backdropImageTag,
+          maxWidth = 1000,
+          token = server.accessToken,
+        )
+      } else {
+        JellyfinClient.getImageUrl(
+          serverUrl = server.serverUrl,
+          itemId = item.id,
+          imageTag = null,
+          maxWidth = 800,
+          token = server.accessToken,
+        )
+      }
+    }
+
+  val colType = item.collectionType?.lowercase() ?: item.type.lowercase()
+  val itemName = item.name.lowercase()
+  val icon =
+    when {
+      itemName.contains("anime") || colType.contains("anime") -> Icons.RoundedFilled.Movie
+      colType == "movies" || item.type.lowercase() == "movie" -> Icons.RoundedFilled.Movie
+      colType == "tvshows" || item.type.lowercase() == "series" -> Icons.RoundedFilled.Tv
+      colType == "music" || item.type.lowercase() == "audio" -> Icons.RoundedFilled.Audiotrack
+      else -> Icons.RoundedFilled.Folder
+    }
+
+  Column(
     modifier =
       modifier
-        .fillMaxWidth()
-        .clip(RoundedCornerShape(16.dp))
+        .width(cardWidth)
         .clickable(onClick = onClick),
-    shape = RoundedCornerShape(16.dp),
-    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
   ) {
-    Row(
-      modifier = Modifier.padding(16.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(16.dp),
+    Card(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .aspectRatio(16f / 9f)
+          .clip(RoundedCornerShape(16.dp)),
+      shape = RoundedCornerShape(16.dp),
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
-      val colType = item.collectionType?.lowercase() ?: item.type.lowercase()
-      val itemName = item.name.lowercase()
-      val icon =
-        when {
-          itemName.contains("anime") || colType.contains("anime") -> Icons.RoundedFilled.Movie
-          colType == "movies" || item.type.lowercase() == "movie" -> Icons.RoundedFilled.Movie
-          colType == "tvshows" || item.type.lowercase() == "series" -> Icons.RoundedFilled.Tv
-          colType == "music" || item.type.lowercase() == "audio" -> Icons.RoundedFilled.Audiotrack
-          else -> Icons.RoundedFilled.Folder
+      Box(modifier = Modifier.fillMaxSize()) {
+        if (!item.primaryImageTag.isNullOrBlank() || !item.backdropImageTag.isNullOrBlank()) {
+          RemoteImage(
+            url = imageUrl,
+            contentDescription = item.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+          )
+        } else {
+          Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+          ) {
+            Icon(
+              imageVector = icon,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.size(40.dp),
+            )
+          }
         }
 
-      Box(
-        modifier =
-          Modifier
-            .size(52.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-      ) {
-        Icon(
-          imageVector = icon,
-          contentDescription = null,
-          tint = MaterialTheme.colorScheme.onPrimaryContainer,
-          modifier = Modifier.size(26.dp),
-        )
-      }
-
-      Column(modifier = Modifier.weight(1f)) {
-        Text(
-          text = item.name,
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.Bold,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-        val typeLabel =
-          when {
-            itemName.contains("anime") || colType.contains("anime") -> "Anime Collection"
-            colType == "movies" || item.type.lowercase() == "movie" -> "Movies Collection"
-            colType == "tvshows" || item.type.lowercase() == "series" -> "TV Shows & Series"
-            colType == "music" || item.type.lowercase() == "audio" -> "Music Library"
-            else -> item.type.replace(Regex("([a-z])([A-Z])"), "$1 $2")
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color.Black.copy(alpha = 0.65f),
+          modifier =
+            Modifier
+              .padding(8.dp)
+              .align(Alignment.BottomEnd),
+        ) {
+          Box(
+            modifier = Modifier.padding(5.dp),
+            contentAlignment = Alignment.Center,
+          ) {
+            Icon(
+              imageVector = icon,
+              contentDescription = null,
+              tint = Color.White,
+              modifier = Modifier.size(15.dp),
+            )
           }
-        Text(
-          text = typeLabel,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        }
       }
-
-      Icon(
-        imageVector = Icons.RoundedFilled.ChevronRight,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(20.dp),
-      )
     }
+
+    Spacer(modifier = Modifier.height(6.dp))
+
+    Text(
+      text = item.name,
+      style = MaterialTheme.typography.labelMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 
@@ -1186,12 +1267,13 @@ fun JellyfinEpisodeCard(
           )
         }
         val epMeta =
-          buildList {
-            item.communityRating?.let { add("★ %.1f".format(it)) }
-            item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
-            val dur = item.formattedDuration
-            if (dur.isNotBlank()) add(dur)
-          }.joinToString(" • ")
+          run {
+            val after = buildList {
+              val dur = item.formattedDuration
+              if (dur.isNotBlank()) add(dur)
+            }
+            buildStarSubtitle(emptyList(), item.communityRating, item.criticRating, after)
+          }
         if (epMeta.isNotBlank()) {
           Text(
             text = epMeta,
@@ -1367,17 +1449,20 @@ fun JellyfinListItemCard(
           overflow = TextOverflow.Ellipsis,
         )
         val details =
-          buildList {
-            item.productionYear?.let { add(it.toString()) }
-            if (item.isSeries && item.childCount != null) {
-              add("${item.childCount} Seasons")
-            } else if (item.productionYear == null) {
-              add(item.type)
+          run {
+            val before = buildList {
+              item.productionYear?.let { add(it.toString()) }
+              if (item.isSeries && item.childCount != null) {
+                add("${item.childCount} Seasons")
+              } else if (item.productionYear == null) {
+                add(item.type)
+              }
             }
-            item.communityRating?.let { add("★ %.1f".format(it)) }
-            item.criticRating?.let { add("🍅 ${it.roundToInt()}%") }
-            item.qualityBadge?.let { add(it) }
-          }.joinToString(" • ")
+            val after = buildList {
+              item.qualityBadge?.let { add(it) }
+            }
+            buildStarSubtitle(before, item.communityRating, item.criticRating, after)
+          }
 
         Text(
           text = details,

@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -493,18 +494,26 @@ fun JellyfinContent(
                     // 7. Libraries Section
                     if (uiState.libraries.isNotEmpty()) {
                       item {
-                        JellyfinSectionHeader(
-                          title = "Browse Libraries",
-                          subtitle = "Explore your full collection",
-                        )
-                      }
-
-                      items(uiState.libraries, key = { it.id }) { library ->
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                          JellyfinLibraryCard(
-                            item = library,
-                            onClick = { viewModel.navigateToItem(library) },
+                        Column(
+                          modifier = Modifier.fillMaxWidth(),
+                          verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                          JellyfinSectionHeader(
+                            title = "Libraries",
                           )
+
+                          LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                          ) {
+                            items(uiState.libraries, key = { it.id }) { library ->
+                              JellyfinLibraryCard(
+                                item = library,
+                                server = server,
+                                onClick = { viewModel.navigateToItem(library) },
+                              )
+                            }
+                          }
                         }
                       }
                     }
