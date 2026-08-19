@@ -196,9 +196,8 @@ fun JellyfinContent(
               query = uiState.searchQuery,
               onQueryChange = {
                 viewModel.onSearchQueryChanged(it)
-                viewModel.performSearch(it)
               },
-              onSearch = { viewModel.performSearch(uiState.searchQuery) },
+              onSearch = { viewModel.performSearch(uiState.searchQuery, debounceMs = 0L) },
               expanded = false,
               onExpandedChange = { },
               placeholder = { Text(stringResource(R.string.settings_search_title)) },
@@ -327,7 +326,7 @@ fun JellyfinContent(
     ) {
       PullRefreshBox(
         isRefreshing = isRefreshing,
-        onRefresh = { viewModel.refresh() },
+        onRefresh = { viewModel.refreshSuspend() },
         modifier = Modifier.fillMaxSize(),
       ) {
         Box(

@@ -3575,7 +3575,7 @@ class PlayerActivity :
 
     reportJellyfinStop()
     currentUri?.toString()?.let { url ->
-      jellyfinSessionReporter = JellyfinSessionReporter.create(url, lifecycleScope)
+      jellyfinSessionReporter = JellyfinSessionReporter.create(url, lifecycleScope, networkHttpClient)
       jellyfinSessionReporter?.reportPlaybackStart((viewModel.pos ?: 0).toLong() * 1000L)
       startJellyfinProgressLoop()
     }
@@ -4025,6 +4025,15 @@ class PlayerActivity :
     jellyfinProgressJob?.cancel()
     jellyfinProgressJob =
       lifecycleScope.launch {
+        // Immediately report pause/resume state changes to Jellyfin dashboard
+        launch {
+          PlaybackSession.propBoolean["pause"]
+            .collect { pausedValue ->
+              val reporter = jellyfinSessionReporter ?: return@collect
+              val currentPosMs = (viewModel.pos ?: 0).toLong() * 1000L
+              reporter.reportPlaybackProgress(currentPosMs, pausedValue ?: false)
+            }
+        }
         while (isActive) {
           delay(10000) // Report progress every 10 seconds
           val reporter = jellyfinSessionReporter ?: continue

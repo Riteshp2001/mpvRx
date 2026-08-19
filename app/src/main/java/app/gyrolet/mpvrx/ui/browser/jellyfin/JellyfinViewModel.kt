@@ -31,7 +31,9 @@ import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +43,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+
+import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 
 data class JellyfinBreadcrumb(
   val id: String,
@@ -77,6 +81,10 @@ class JellyfinViewModel(
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
+
+  private var loadLibrariesJob: Job? = null
+  private var loadItemsJob: Job? = null
+  private var searchJob: Job? = null
 
   private val _uiState = MutableStateFlow(JellyfinUiState())
   val uiState: StateFlow<JellyfinUiState> = _uiState.asStateFlow()
@@ -127,18 +135,33 @@ class JellyfinViewModel(
     }
   }
 
-  fun loadLibraries(server: JellyfinServer) {
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, error = null) }
-      loadResumeItems(server)
-      val result = jellyfinRepository.getLibraries(server)
-      result
-        .onSuccess { libs ->
-          _uiState.update { it.copy(libraries = libs, isLoading = false, error = null) }
-        }.onFailure { err ->
-          _uiState.update { it.copy(isLoading = false, error = err.message ?: "Failed to load libraries") }
-        }
+  suspend fun refreshSuspend() {
+    val active = _uiState.value.activeServer ?: return
+    val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
+    if (currentCrumb == null) {
+      loadLibraries(active)
+      loadLibrariesJob?.join()
+    } else {
+      loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
+      loadItemsJob?.join()
     }
+  }
+
+  fun loadLibraries(server: JellyfinServer) {
+    loadLibrariesJob?.cancel()
+    loadItemsJob?.cancel()
+    loadLibrariesJob =
+      viewModelScope.launch {
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        loadResumeItems(server)
+        val result = jellyfinRepository.getLibraries(server)
+        result
+          .onSuccess { libs ->
+            _uiState.update { it.copy(libraries = libs, isLoading = false, error = null) }
+          }.onFailure { err ->
+            _uiState.update { it.copy(isLoading = false, error = err.message ?: "Failed to load libraries") }
+          }
+      }
   }
 
   fun loadResumeItems(server: JellyfinServer) {
@@ -240,115 +263,120 @@ class JellyfinViewModel(
     val startIndex = if (resetPagination) 0 else _uiState.value.startIndex
     val currentList = if (resetPagination) emptyList() else _uiState.value.currentItems
 
-    viewModelScope.launch {
-      if (resetPagination) {
-        _uiState.update {
-          it.copy(
-            isLoading = true,
-            currentItems = emptyList(),
-            startIndex = 0,
-            hasMore = false,
-            error = null,
-          )
-        }
-      } else {
-        _uiState.update { it.copy(isLoadingMore = true) }
-      }
-
-      val currentState = _uiState.value
-
-      when (parentType) {
-        "Series" -> {
-          val result = jellyfinRepository.getSeasons(server, parentId)
-          result
-            .onSuccess { items ->
-              _uiState.update {
-                it.copy(
-                  currentItems = items,
-                  totalRecordCount = items.size,
-                  hasMore = false,
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = null,
-                )
-              }
-            }.onFailure { err ->
-              _uiState.update {
-                it.copy(
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = err.message ?: "Failed to load seasons",
-                )
-              }
-            }
-        }
-
-        "Season" -> {
-          val seriesId = _uiState.value.breadcrumbs.dropLast(1).lastOrNull { it.type == "Series" }?.id ?: parentId
-          val result = jellyfinRepository.getEpisodes(server, seriesId, parentId)
-          result
-            .onSuccess { items ->
-              _uiState.update {
-                it.copy(
-                  currentItems = items,
-                  totalRecordCount = items.size,
-                  hasMore = false,
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = null,
-                )
-              }
-            }.onFailure { err ->
-              _uiState.update {
-                it.copy(
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = err.message ?: "Failed to load episodes",
-                )
-              }
-            }
-        }
-
-        else -> {
-          val result =
-            jellyfinRepository.getItems(
-              server = server,
-              parentId = parentId,
-              searchTerm = currentState.searchQuery.takeIf { it.isNotBlank() },
-              sortBy = currentState.sortBy,
-              sortOrder = currentState.sortOrder,
-              isPlayed = if (currentState.isUnplayedOnly) false else null,
-              startIndex = startIndex,
-              limit = 100,
-            )
-
-          result
-            .onSuccess { queryResult ->
-              val combined = currentList + queryResult.items
-              val hasMore = combined.size < queryResult.totalRecordCount
-              _uiState.update {
-                it.copy(
-                  currentItems = combined,
-                  totalRecordCount = queryResult.totalRecordCount,
-                  startIndex = combined.size,
-                  hasMore = hasMore,
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = null,
-                )
-              }
-            }.onFailure { err ->
-              _uiState.update {
-                it.copy(
-                  isLoading = false,
-                  isLoadingMore = false,
-                  error = err.message ?: "Failed to load items",
-                )
-              }
-            }
-        }
-      }
+    if (resetPagination) {
+      loadItemsJob?.cancel()
     }
+
+    loadItemsJob =
+      viewModelScope.launch {
+        if (resetPagination) {
+          _uiState.update {
+            it.copy(
+              isLoading = true,
+              currentItems = emptyList(),
+              startIndex = 0,
+              hasMore = false,
+              error = null,
+            )
+          }
+        } else {
+          _uiState.update { it.copy(isLoadingMore = true) }
+        }
+
+        val currentState = _uiState.value
+
+        when (parentType) {
+          "Series" -> {
+            val result = jellyfinRepository.getSeasons(server, parentId)
+            result
+              .onSuccess { items ->
+                _uiState.update {
+                  it.copy(
+                    currentItems = items.distinctBy { it.id },
+                    totalRecordCount = items.size,
+                    hasMore = false,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = null,
+                  )
+                }
+              }.onFailure { err ->
+                _uiState.update {
+                  it.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = err.message ?: "Failed to load seasons",
+                  )
+                }
+              }
+          }
+
+          "Season" -> {
+            val seriesId = _uiState.value.breadcrumbs.dropLast(1).lastOrNull { it.type == "Series" }?.id ?: parentId
+            val result = jellyfinRepository.getEpisodes(server, seriesId, parentId)
+            result
+              .onSuccess { items ->
+                _uiState.update {
+                  it.copy(
+                    currentItems = items.distinctBy { it.id },
+                    totalRecordCount = items.size,
+                    hasMore = false,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = null,
+                  )
+                }
+              }.onFailure { err ->
+                _uiState.update {
+                  it.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = err.message ?: "Failed to load episodes",
+                  )
+                }
+              }
+          }
+
+          else -> {
+            val result =
+              jellyfinRepository.getItems(
+                server = server,
+                parentId = parentId,
+                searchTerm = currentState.searchQuery.takeIf { it.isNotBlank() },
+                sortBy = currentState.sortBy,
+                sortOrder = currentState.sortOrder,
+                isPlayed = if (currentState.isUnplayedOnly) false else null,
+                startIndex = startIndex,
+                limit = 100,
+              )
+
+            result
+              .onSuccess { queryResult ->
+                val combined = (currentList + queryResult.items).distinctBy { it.id }
+                val hasMore = combined.size < queryResult.totalRecordCount
+                _uiState.update {
+                  it.copy(
+                    currentItems = combined,
+                    totalRecordCount = queryResult.totalRecordCount,
+                    startIndex = combined.size,
+                    hasMore = hasMore,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = null,
+                  )
+                }
+              }.onFailure { err ->
+                _uiState.update {
+                  it.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = err.message ?: "Failed to load items",
+                  )
+                }
+              }
+          }
+        }
+      }
   }
 
   fun loadMoreItems() {
@@ -361,42 +389,52 @@ class JellyfinViewModel(
 
   fun onSearchQueryChanged(query: String) {
     _uiState.update { it.copy(searchQuery = query) }
+    performSearch(query, debounceMs = 300L)
   }
 
-  fun performSearch(query: String) {
+  fun performSearch(
+    query: String,
+    debounceMs: Long = 0L,
+  ) {
     val active = _uiState.value.activeServer ?: return
+    searchJob?.cancel()
     if (query.isBlank()) {
       refresh()
       return
     }
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, currentItems = emptyList(), startIndex = 0, error = null) }
-      val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
-      val result =
-        jellyfinRepository.getItems(
-          server = active,
-          parentId = currentCrumb?.id,
-          searchTerm = query,
-          sortBy = _uiState.value.sortBy,
-          sortOrder = _uiState.value.sortOrder,
-          startIndex = 0,
-          limit = 100,
-        )
-      result
-        .onSuccess { queryResult ->
-          _uiState.update {
-            it.copy(
-              currentItems = queryResult.items,
-              totalRecordCount = queryResult.totalRecordCount,
-              startIndex = queryResult.items.size,
-              hasMore = queryResult.items.size < queryResult.totalRecordCount,
-              isLoading = false,
-            )
-          }
-        }.onFailure { err ->
-          _uiState.update { it.copy(isLoading = false, error = err.message) }
+    searchJob =
+      viewModelScope.launch {
+        if (debounceMs > 0) {
+          delay(debounceMs)
         }
-    }
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
+        val result =
+          jellyfinRepository.getItems(
+            server = active,
+            parentId = currentCrumb?.id,
+            searchTerm = query,
+            sortBy = _uiState.value.sortBy,
+            sortOrder = _uiState.value.sortOrder,
+            startIndex = 0,
+            limit = 100,
+          )
+        result
+          .onSuccess { queryResult ->
+            _uiState.update {
+              it.copy(
+                currentItems = queryResult.items.distinctBy { item -> item.id },
+                totalRecordCount = queryResult.totalRecordCount,
+                startIndex = queryResult.items.size,
+                hasMore = queryResult.items.size < queryResult.totalRecordCount,
+                isLoading = false,
+                error = null,
+              )
+            }
+          }.onFailure { err ->
+            _uiState.update { it.copy(isLoading = false, error = err.message) }
+          }
+      }
   }
 
   fun addServer(
@@ -410,13 +448,12 @@ class JellyfinViewModel(
   ) {
     viewModelScope.launch {
       _uiState.update { it.copy(isAuthenticating = true, authError = null) }
-      val cleanUrl = JellyfinClient.normalizeUrl(serverUrl)
 
       try {
         val serverToSave =
           if (authMode == JellyfinAuthMode.CREDENTIALS) {
             val authResult =
-              jellyfinRepository.authenticate(cleanUrl, username, password).getOrThrow()
+              jellyfinRepository.authenticate(serverUrl, username, password).getOrThrow()
 
             if (subtitlesPreferences.preferredLanguages.get().isBlank() && !authResult.subtitleLanguage.isNullOrBlank()) {
               subtitlesPreferences.preferredLanguages.set(authResult.subtitleLanguage)
@@ -425,16 +462,18 @@ class JellyfinViewModel(
               audioPreferences.preferredLanguages.set(authResult.audioLanguage)
             }
 
+            val effectiveUrl = authResult.normalizedServerUrl.ifBlank { JellyfinClient.normalizeUrl(serverUrl) }
+
             JellyfinServer(
               name = serverName.ifBlank { "Jellyfin (${authResult.username})" },
-              serverUrl = cleanUrl,
+              serverUrl = effectiveUrl,
               userId = authResult.userId,
               username = authResult.username,
               accessToken = authResult.accessToken,
               lastConnected = System.currentTimeMillis(),
             )
           } else {
-            val user = jellyfinRepository.validateToken(cleanUrl, token).getOrThrow()
+            val user = jellyfinRepository.validateToken(serverUrl, token).getOrThrow()
 
             if (subtitlesPreferences.preferredLanguages.get().isBlank() && !user.subtitleLanguage.isNullOrBlank()) {
               subtitlesPreferences.preferredLanguages.set(user.subtitleLanguage)
@@ -443,9 +482,11 @@ class JellyfinViewModel(
               audioPreferences.preferredLanguages.set(user.audioLanguage)
             }
 
+            val effectiveUrl = user.normalizedServerUrl.ifBlank { JellyfinClient.normalizeUrl(serverUrl) }
+
             JellyfinServer(
               name = serverName.ifBlank { "Jellyfin (${user.name})" },
-              serverUrl = cleanUrl,
+              serverUrl = effectiveUrl,
               userId = user.id,
               username = user.name,
               accessToken = token.trim(),
@@ -502,6 +543,7 @@ class JellyfinViewModel(
   ) {
     val server = _uiState.value.activeServer ?: return
     val streamUrl = jellyfinRepository.getStreamUrl(server, item)
+    val mediaIdentifier = PlaybackIdentity.forUri(streamUrl)
     val posterUrl = jellyfinRepository.getImageUrl(server, item)
     val backdropUrl = jellyfinRepository.getBackdropUrl(server, item)
 
@@ -513,31 +555,18 @@ class JellyfinViewModel(
 
     viewModelScope.launch(Dispatchers.IO) {
       if (startFromBeginning) {
-        runCatching { playbackStateRepository.deleteByTitle(streamUrl) }
+        runCatching {
+          playbackStateRepository.deleteByTitle(mediaIdentifier)
+          playbackStateRepository.deleteByTitle(streamUrl)
+        }
       }
 
-      // Concurrently run DB seed and external subtitle fetching
-      val dbJob =
+      val freshItemDeferred =
         async {
-          if (!startFromBeginning && item.playbackPositionTicks != null && item.playbackPositionTicks > 0) {
-            val positionSeconds = (item.playbackPositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
-            runCatching {
-              playbackStateRepository.upsert(
-                PlaybackStateEntity(
-                  mediaTitle = streamUrl,
-                  lastPosition = positionSeconds,
-                  playbackSpeed = 1.0,
-                  videoZoom = 0f,
-                  sid = -1,
-                  secondarySid = -1,
-                  subDelay = 0,
-                  subSpeed = 1.0,
-                  aid = -1,
-                  audioDelay = 0,
-                  timeRemaining = (item.durationSeconds - positionSeconds).toInt().coerceAtLeast(0),
-                ),
-              )
-            }
+          if (!startFromBeginning) {
+            jellyfinRepository.getItem(server, item.id).getOrNull()
+          } else {
+            null
           }
         }
 
@@ -548,17 +577,50 @@ class JellyfinViewModel(
             .getOrDefault(emptyList())
         }
 
+      val freshItem = freshItemDeferred.await() ?: item
+      val effectivePositionTicks =
+        if (!startFromBeginning) {
+          freshItem.playbackPositionTicks ?: item.playbackPositionTicks ?: 0L
+        } else {
+          0L
+        }
+      val positionSeconds = (effectivePositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
+
+      if (positionSeconds > 0) {
+        val durationSec = (freshItem.runTimeTicks ?: item.runTimeTicks ?: 0L) / JellyfinClient.TICKS_PER_SECOND
+        runCatching {
+          val existing = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
+          val stateToSave =
+            existing?.copy(
+              lastPosition = positionSeconds,
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
+            ) ?: PlaybackStateEntity(
+              mediaTitle = mediaIdentifier,
+              lastPosition = positionSeconds,
+              playbackSpeed = 1.0,
+              videoZoom = 0f,
+              sid = -1,
+              secondarySid = -1,
+              subDelay = 0,
+              subSpeed = 1.0,
+              aid = -1,
+              audioDelay = 0,
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
+            )
+          playbackStateRepository.upsert(stateToSave)
+        }
+      }
+
       // Fire scrobble start non-blocking in background
       launch {
         jellyfinRepository.reportPlaybackStart(
           serverUrl = server.serverUrl,
           token = server.accessToken,
           itemId = item.id,
-          positionTicks = if (startFromBeginning) 0L else (item.playbackPositionTicks ?: 0L),
+          positionTicks = effectivePositionTicks,
         )
       }
 
-      dbJob.await()
       val externalSubs = subsDeferred.await()
 
       // If playing an episode, extract surrounding episode playlist from current view
@@ -622,6 +684,7 @@ class JellyfinViewModel(
     if (playable.isEmpty()) return
     val firstItem = playable.first()
     val streamUrl = jellyfinRepository.getStreamUrl(server, firstItem)
+    val mediaIdentifier = PlaybackIdentity.forUri(streamUrl)
     val posterUrl = jellyfinRepository.getImageUrl(server, firstItem)
     val backdropUrl = jellyfinRepository.getBackdropUrl(server, firstItem)
 
@@ -651,19 +714,61 @@ class JellyfinViewModel(
         "X-Emby-Authorization" to JellyfinClient.authHeader(server.accessToken),
       )
 
-    MediaUtils.playFile(
-      source = streamUrl,
-      context = context,
-      launchSource = "jellyfin_stream",
-      title = itemTitle,
-      headers = headers,
-      mediaDescription = firstItem.overview,
-      posterUrl = posterUrl,
-      backdropUrl = backdropUrl,
-      playlist = playlistUris,
-      playlistIndex = 0,
-      playlistTitles = playlistTitles,
-    )
+    viewModelScope.launch(Dispatchers.IO) {
+      val freshItem = jellyfinRepository.getItem(server, firstItem.id).getOrNull() ?: firstItem
+      val effectivePositionTicks = freshItem.playbackPositionTicks ?: firstItem.playbackPositionTicks ?: 0L
+      val positionSeconds = (effectivePositionTicks / JellyfinClient.TICKS_PER_SECOND).toInt()
+
+      if (positionSeconds > 0) {
+        val durationSec = (freshItem.runTimeTicks ?: firstItem.runTimeTicks ?: 0L) / JellyfinClient.TICKS_PER_SECOND
+        runCatching {
+          val existing = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
+          val stateToSave =
+            existing?.copy(
+              lastPosition = positionSeconds,
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
+            ) ?: PlaybackStateEntity(
+              mediaTitle = mediaIdentifier,
+              lastPosition = positionSeconds,
+              playbackSpeed = 1.0,
+              videoZoom = 0f,
+              sid = -1,
+              secondarySid = -1,
+              subDelay = 0,
+              subSpeed = 1.0,
+              aid = -1,
+              audioDelay = 0,
+              timeRemaining = (durationSec - positionSeconds).toInt().coerceAtLeast(0),
+            )
+          playbackStateRepository.upsert(stateToSave)
+        }
+      }
+
+      launch {
+        jellyfinRepository.reportPlaybackStart(
+          serverUrl = server.serverUrl,
+          token = server.accessToken,
+          itemId = firstItem.id,
+          positionTicks = effectivePositionTicks,
+        )
+      }
+
+      withContext(Dispatchers.Main) {
+        MediaUtils.playFile(
+          source = streamUrl,
+          context = context,
+          launchSource = "jellyfin_stream",
+          title = itemTitle,
+          headers = headers,
+          mediaDescription = firstItem.overview,
+          posterUrl = posterUrl,
+          backdropUrl = backdropUrl,
+          playlist = playlistUris,
+          playlistIndex = 0,
+          playlistTitles = playlistTitles,
+        )
+      }
+    }
   }
 
   fun togglePlayed(item: JellyfinItem) {

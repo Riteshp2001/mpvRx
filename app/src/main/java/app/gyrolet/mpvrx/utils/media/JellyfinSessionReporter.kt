@@ -17,9 +17,11 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 class JellyfinSessionReporter(
   private val baseUrl: String,
@@ -28,32 +30,46 @@ class JellyfinSessionReporter(
   private val playSessionId: String?,
   private val mediaSourceId: String?,
   private val coroutineScope: CoroutineScope,
+  private val httpClient: OkHttpClient = defaultHttpClient,
 ) {
   companion object {
     private const val TAG = "JellyfinSessionReporter"
 
     // Ticks per millisecond in Jellyfin (1 tick = 100 nanoseconds = 10,000 ticks per millisecond)
     private const val TICKS_PER_MILLISECOND = 10000L
+    private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+
+    private val defaultHttpClient by lazy {
+      OkHttpClient.Builder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.SECONDS)
+        .build()
+    }
 
     fun create(
       url: String,
       coroutineScope: CoroutineScope,
+      httpClient: OkHttpClient? = null,
     ): JellyfinSessionReporter? {
       try {
         val uri = Uri.parse(url)
         val pathSegments = uri.pathSegments
-        val videosIndex = pathSegments.indexOf("Videos")
-        if (videosIndex == -1 || videosIndex + 1 >= pathSegments.size) {
+        val mediaIndex = pathSegments.indexOfFirst {
+          it.equals("Videos", ignoreCase = true) ||
+            it.equals("Audio", ignoreCase = true) ||
+            it.equals("Items", ignoreCase = true)
+        }
+        if (mediaIndex == -1 || mediaIndex + 1 >= pathSegments.size) {
           return null
         }
-        val itemId = pathSegments[videosIndex + 1]
+        val itemId = pathSegments[mediaIndex + 1]
         val apiKey = uri.getQueryParameter("api_key") ?: uri.getQueryParameter("ApiKey") ?: return null
         val playSessionId = uri.getQueryParameter("playSessionId") ?: uri.getQueryParameter("PlaySessionId")
         val mediaSourceId = uri.getQueryParameter("mediaSourceId") ?: uri.getQueryParameter("MediaSourceId")
 
         val scheme = uri.scheme ?: "http"
         val authority = uri.encodedAuthority ?: return null
-        val subPathSegments = pathSegments.subList(0, videosIndex)
+        val subPathSegments = pathSegments.subList(0, mediaIndex)
         val baseUrl =
           if (subPathSegments.isEmpty()) {
             "$scheme://$authority"
@@ -65,7 +81,15 @@ class JellyfinSessionReporter(
           TAG,
           "Created JellyfinSessionReporter: baseUrl=$baseUrl, itemId=$itemId, playSessionId=$playSessionId, mediaSourceId=$mediaSourceId",
         )
-        return JellyfinSessionReporter(baseUrl, itemId, apiKey, playSessionId, mediaSourceId, coroutineScope)
+        return JellyfinSessionReporter(
+          baseUrl = baseUrl,
+          itemId = itemId,
+          apiKey = apiKey,
+          playSessionId = playSessionId,
+          mediaSourceId = mediaSourceId,
+          coroutineScope = coroutineScope,
+          httpClient = httpClient ?: defaultHttpClient,
+        )
       } catch (e: Exception) {
         Log.e(TAG, "Failed to parse Jellyfin URL: ${e.message}")
         return null
@@ -156,33 +180,25 @@ class JellyfinSessionReporter(
     urlString: String,
     jsonBody: String,
   ) {
-    var connection: HttpURLConnection? = null
     try {
-      val url = URL(urlString)
-      connection = url.openConnection() as HttpURLConnection
-      connection.requestMethod = "POST"
-      connection.connectTimeout = 5000
-      connection.readTimeout = 5000
-      connection.doOutput = true
-      connection.setRequestProperty("Content-Type", "application/json")
-      connection.setRequestProperty("X-Emby-Token", apiKey)
-      connection.setRequestProperty("User-Agent", "mpvRx/1.0")
+      val request =
+        Request.Builder()
+          .url(urlString)
+          .header("Content-Type", "application/json")
+          .header("X-Emby-Token", apiKey)
+          .header("User-Agent", "mpvRx/1.0")
+          .post(jsonBody.toRequestBody(JSON_MEDIA_TYPE))
+          .build()
 
-      OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
-        writer.write(jsonBody)
-        writer.flush()
-      }
-
-      val responseCode = connection.responseCode
-      if (responseCode in 200..299) {
-        Log.d(TAG, "Successfully reported status to Jellyfin: $urlString")
-      } else {
-        Log.e(TAG, "Failed to report status to Jellyfin: $urlString, response code: $responseCode")
+      httpClient.newCall(request).execute().use { response ->
+        if (response.isSuccessful) {
+          Log.d(TAG, "Successfully reported status to Jellyfin: $urlString")
+        } else {
+          Log.e(TAG, "Failed to report status to Jellyfin: $urlString, response code: ${response.code}")
+        }
       }
     } catch (e: Exception) {
       Log.e(TAG, "Error sending playback report to Jellyfin: ${e.message}", e)
-    } finally {
-      connection?.disconnect()
     }
   }
 }
