@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/add-mpv-android-ca-bundle
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
@@ -11,6 +14,7 @@ permissions:
 
 jobs:
   import-ca-bundle:
+    if: github.event_name != 'pull_request' || github.head_ref == 'fix/add-mpv-android-ca-bundle'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
