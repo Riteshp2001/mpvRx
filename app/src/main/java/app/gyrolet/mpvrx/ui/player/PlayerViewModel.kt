@@ -37,6 +37,8 @@ import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingState
+import app.gyrolet.mpvrx.domain.torrent.formatTorrentSpeed
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayFile
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayPlaybackState
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
@@ -279,6 +281,9 @@ class PlayerViewModel : ViewModel(),
 
   private val _realtimeSubsProgress = MutableStateFlow(0f)
   val realtimeSubsProgress: StateFlow<Float> = _realtimeSubsProgress.asStateFlow()
+
+  private val _torrentState = MutableStateFlow<TorrentStreamingState>(TorrentStreamingState.Idle)
+  val torrentState: StateFlow<TorrentStreamingState> = _torrentState.asStateFlow()
 
   private var realtimeSubsJob: Job? = null
   private var realtimeSrtFile: java.io.File? = null
@@ -1682,6 +1687,23 @@ class PlayerViewModel : ViewModel(),
     syncplayManager.updateFileInfo(currentSyncplayFileInfo())
     applyEqualizerMpvFilters()
   }
+
+  fun updateTorrentState(state: TorrentStreamingState) {
+    _torrentState.value = state
+  }
+
+  fun torrentBufferingText(state: TorrentStreamingState): String =
+    when (state) {
+      is TorrentStreamingState.Idle -> ""
+      is TorrentStreamingState.Connecting -> state.phase
+      is TorrentStreamingState.Streaming -> {
+        val speed = formatTorrentSpeed(state.downloadSpeed)
+        val peers = "${state.peers} peers"
+        val progress = "${(state.bufferProgress * 100).toInt()}%"
+        "$speed | $peers | $progress"
+      }
+      is TorrentStreamingState.Error -> state.message.ifBlank { "Torrent error" }
+    }
 
   private fun currentSyncplayPlaybackState(): SyncplayPlaybackState =
     SyncplayPlaybackState(

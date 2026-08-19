@@ -604,6 +604,7 @@ class PlayerActivity :
     setupAudioPlayerViewObserver()
     setupMediaSession()
     observePlaybackSessionQueue()
+    observeTorrentStreamingState()
     // Note: screenStateReceiver is now registered in onStart() and
     // unregistered in onStop(), matching the noisyReceiver pattern.
     // Previously it was registered here in onCreate and stayed registered
@@ -1338,6 +1339,16 @@ class PlayerActivity :
             viewModel.calculateVideoHash(Uri.parse(item.originalUri))
             viewModel.refreshPlaylistItems()
           }
+      }
+    }
+  }
+
+  private fun observeTorrentStreamingState() {
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        torrentStreamingEngine.state.collect { state ->
+          viewModel.updateTorrentState(state)
+        }
       }
     }
   }
