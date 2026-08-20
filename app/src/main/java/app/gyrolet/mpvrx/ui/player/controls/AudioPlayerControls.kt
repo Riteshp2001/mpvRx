@@ -1816,10 +1816,11 @@ private fun UpNextPlaylistContent(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        items(displayPlaylist.size, key = { index -> displayPlaylist[index].uri.toString() }) { index ->
+        // A queue can contain the same URI more than once.
+        items(displayPlaylist.size, key = { index -> displayPlaylist[index].index }) { index ->
           val item = displayPlaylist[index]
           if (showDragHandle) {
-            ReorderableItem(reorderableLazyListState, key = item.uri.toString()) { isDragging ->
+            ReorderableItem(reorderableLazyListState, key = item.index) { isDragging ->
               val isDraggingPrev = remember { mutableStateOf(false) }
               LaunchedEffect(isDragging) {
                 if (isDraggingPrev.value && !isDragging) {
