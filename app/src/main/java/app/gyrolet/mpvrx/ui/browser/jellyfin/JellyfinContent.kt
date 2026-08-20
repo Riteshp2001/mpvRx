@@ -19,7 +19,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -146,7 +145,7 @@ fun JellyfinContent(
   BackHandler(
     enabled =
       isSearching || selectionManager.isInSelectionMode ||
-        uiState.detailItem != null || uiState.breadcrumbs.isNotEmpty(),
+        uiState.detailItem != null || uiState.openLibrary != null,
   ) {
     when {
       uiState.detailItem != null -> {
@@ -174,7 +173,7 @@ fun JellyfinContent(
 
   val pageTitle =
     when {
-      uiState.breadcrumbs.isNotEmpty() -> uiState.breadcrumbs.last().title
+      uiState.openLibrary != null -> uiState.openLibrary!!.title
       uiState.activeServer != null -> uiState.activeServer!!.name
       else -> stringResource(R.string.ui_jellyfin)
     }
@@ -275,7 +274,7 @@ fun JellyfinContent(
         onDeselectAll = { selectionManager.clear() },
         onPlayClick = { viewModel.playSelected(context, selectionManager.getSelectedItems()) },
         isSingleSelection = selectionManager.isSingleSelection,
-        onBackClick = if (uiState.breadcrumbs.isNotEmpty()) { { viewModel.navigateBack() } } else null,
+        onBackClick = if (uiState.openLibrary != null) { { viewModel.navigateBack() } } else null,
         onSortClick = { isSortDialogOpen = true },
         onSearchClick = { isSearching = true },
         onSettingsClick = {
@@ -297,54 +296,6 @@ fun JellyfinContent(
           }
         },
       )
-    }
-
-    // Breadcrumbs Trail (When inside subfolders)
-    if (uiState.breadcrumbs.isNotEmpty() && !isSearching) {
-      Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Surface(
-          shape = RoundedCornerShape(8.dp),
-          color = MaterialTheme.colorScheme.surfaceContainer,
-          modifier = Modifier.clickable { viewModel.navigateToRoot() },
-        ) {
-          Text(
-            text = "Home",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-          )
-        }
-
-        uiState.breadcrumbs.forEachIndexed { index, crumb ->
-          Icon(
-            imageVector = Icons.RoundedFilled.ChevronRight,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-          val isLast = index == uiState.breadcrumbs.lastIndex
-          Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = if (isLast) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-            modifier = Modifier.clickable(enabled = !isLast) { viewModel.navigateToBreadcrumb(index) },
-          ) {
-            Text(
-              text = crumb.title,
-              style = MaterialTheme.typography.labelMedium,
-              fontWeight = if (isLast) FontWeight.Bold else FontWeight.Normal,
-              color = if (isLast) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
-              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-          }
-        }
-      }
     }
 
     // Main Body Content with Pull-To-Refresh and FAB / Multi-select overlays
@@ -386,7 +337,7 @@ fun JellyfinContent(
             }
 
             // Root / Discovery Home View (Expressive UI)
-            uiState.breadcrumbs.isEmpty() && uiState.searchQuery.isBlank() -> {
+            uiState.openLibrary == null && uiState.searchQuery.isBlank() -> {
               val listState = rememberLazyListState()
               val server = uiState.activeServer
 
@@ -556,7 +507,7 @@ fun JellyfinContent(
                 }
               } else if (isListMode) {
                 val listState =
-                  remember(uiState.breadcrumbs, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
+                  remember(uiState.openLibrary, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
                     LazyListState()
                   }
                 val hasEnoughItems = items.size > 6
@@ -654,7 +605,7 @@ fun JellyfinContent(
                 }
               } else {
                 val gridState =
-                  remember(uiState.breadcrumbs, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
+                  remember(uiState.openLibrary, uiState.sortBy, uiState.sortOrder, uiState.isUnplayedOnly) {
                     LazyGridState()
                   }
                 val hasEnoughItems = items.size > 6

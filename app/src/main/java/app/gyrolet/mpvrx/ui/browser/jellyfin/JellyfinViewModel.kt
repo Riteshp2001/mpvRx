@@ -45,10 +45,11 @@ import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-data class JellyfinBreadcrumb(
+data class JellyfinLibraryView(
   val id: String,
   val title: String,
-  val type: String = "Folder",
+  /** Jellyfin IncludeItemTypes requested recursively for this view. */
+  val itemTypes: String,
 )
 
 data class JellyfinUiState(
@@ -61,7 +62,7 @@ data class JellyfinUiState(
   val latestShows: List<JellyfinItem> = emptyList(),
   val recommendations: List<JellyfinItem> = emptyList(),
   val currentItems: List<JellyfinItem> = emptyList(),
-  val breadcrumbs: List<JellyfinBreadcrumb> = emptyList(),
+  val openLibrary: JellyfinLibraryView? = null,
   val selectedLibraryId: String? = null,
   val selectedGenreFilter: String? = null,
   val sortBy: JellyfinSortBy = JellyfinSortBy.NAME,
@@ -132,7 +133,7 @@ class JellyfinViewModel(
     _uiState.update {
       it.copy(
         activeServer = server,
-        breadcrumbs = emptyList(),
+        openLibrary = null,
         currentItems = emptyList(),
         resumeItems = emptyList(),
         heroItems = emptyList(),
@@ -149,22 +150,22 @@ class JellyfinViewModel(
 
   fun refresh() {
     val active = _uiState.value.activeServer ?: return
-    val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
-    if (currentCrumb == null) {
+    val library = _uiState.value.openLibrary
+    if (library == null) {
       loadHomeDashboard(active)
     } else {
-      loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
+      loadLibraryItems(active, library, resetPagination = true)
     }
   }
 
   suspend fun refreshSuspend() {
     val active = _uiState.value.activeServer ?: return
-    val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
-    if (currentCrumb == null) {
+    val library = _uiState.value.openLibrary
+    if (library == null) {
       loadHomeDashboard(active)
       loadDashboardJob?.join()
     } else {
-      loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
+      loadLibraryItems(active, library, resetPagination = true)
       loadItemsJob?.join()
     }
   }
@@ -269,84 +270,85 @@ class JellyfinViewModel(
   ) {
     _uiState.update { it.copy(sortBy = sortBy, sortOrder = sortOrder) }
     val active = _uiState.value.activeServer ?: return
-    val currentCrumb = _uiState.value.breadcrumbs.lastOrNull() ?: return
-    loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
+    val library = _uiState.value.openLibrary ?: return
+    loadLibraryItems(active, library, resetPagination = true)
   }
 
   fun toggleUnplayedOnly() {
     val newFilter = !_uiState.value.isUnplayedOnly
     _uiState.update { it.copy(isUnplayedOnly = newFilter) }
     val active = _uiState.value.activeServer ?: return
-    val currentCrumb = _uiState.value.breadcrumbs.lastOrNull() ?: return
-    loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = true)
+    val library = _uiState.value.openLibrary ?: return
+    loadLibraryItems(active, library, resetPagination = true)
   }
 
   fun navigateToItem(item: JellyfinItem) {
     val active = _uiState.value.activeServer ?: return
-    if (item.isFolder || item.isSeries || item.isSeason || item.type == "CollectionFolder") {
-      val newCrumb = JellyfinBreadcrumb(id = item.id, title = item.name, type = item.type)
-      _uiState.update {
-        it.copy(
-          breadcrumbs = it.breadcrumbs + newCrumb,
-          searchQuery = "",
-        )
+    // Only real containers open a grid; a series or season opens its own detail page with
+    // seasons and episodes instead of being browsed as a folder.
+    val types =
+      when {
+        item.type == "MusicAlbum" || item.type == "MusicArtist" -> "Audio"
+        item.type == "CollectionFolder" -> libraryItemTypes(item.collectionType)
+        item.isFolder && !item.isSeries && !item.isSeason -> libraryItemTypes(item.collectionType)
+        else -> null
       }
-      loadItems(active, item.id, item.type, resetPagination = true)
+    if (types == null) {
+      openDetail(item)
+    } else {
+      openLibrary(active, JellyfinLibraryView(item.id, item.name, types))
     }
   }
 
-  fun navigateBack(): Boolean {
-    val currentCrumbs = _uiState.value.breadcrumbs
-    if (currentCrumbs.isEmpty()) return false
-
-    val updatedCrumbs = currentCrumbs.dropLast(1)
+  private fun openLibrary(
+    server: JellyfinServer,
+    library: JellyfinLibraryView,
+  ) {
     _uiState.update {
       it.copy(
-        breadcrumbs = updatedCrumbs,
+        openLibrary = library,
+        selectedLibraryId = library.id,
+        searchQuery = "",
+      )
+    }
+    loadLibraryItems(server, library, resetPagination = true)
+  }
+
+  fun navigateBack(): Boolean {
+    if (_uiState.value.openLibrary == null) return false
+    _uiState.update {
+      it.copy(
+        openLibrary = null,
+        currentItems = emptyList(),
+        selectedLibraryId = null,
         searchQuery = "",
       )
     }
     val active = _uiState.value.activeServer ?: return true
-    val parent = updatedCrumbs.lastOrNull()
-    if (parent == null) {
-      loadHomeDashboard(active)
-    } else {
-      loadItems(active, parent.id, parent.type, resetPagination = true)
-    }
+    loadHomeDashboard(active)
     return true
   }
 
-  fun navigateToBreadcrumb(index: Int) {
-    val currentCrumbs = _uiState.value.breadcrumbs
-    if (index < 0 || index >= currentCrumbs.size) return
-
-    val updatedCrumbs = currentCrumbs.take(index + 1)
-    _uiState.update {
-      it.copy(
-        breadcrumbs = updatedCrumbs,
-        searchQuery = "",
-      )
-    }
-    val active = _uiState.value.activeServer ?: return
-    val target = updatedCrumbs.last()
-    loadItems(active, target.id, target.type, resetPagination = true)
-  }
-
   fun navigateToRoot() {
-    _uiState.update {
-      it.copy(
-        breadcrumbs = emptyList(),
-        searchQuery = "",
-      )
-    }
-    val active = _uiState.value.activeServer ?: return
-    loadHomeDashboard(active)
+    navigateBack()
   }
 
-  private fun loadItems(
+  /** Concrete item types to request recursively so a library lists media, not folders. */
+  private fun libraryItemTypes(collectionType: String?): String =
+    when (collectionType?.lowercase()) {
+      "movies" -> "Movie"
+      "tvshows" -> "Series"
+      "music" -> "MusicAlbum"
+      "musicvideos" -> "MusicVideo"
+      "boxsets" -> "BoxSet"
+      "books" -> "Book"
+      "homevideos", "photos" -> "Video"
+      else -> "Movie,Series"
+    }
+
+  private fun loadLibraryItems(
     server: JellyfinServer,
-    parentId: String,
-    parentType: String,
+    library: JellyfinLibraryView,
     resetPagination: Boolean = true,
   ) {
     val startIndex = if (resetPagination) 0 else _uiState.value.startIndex
@@ -374,97 +376,39 @@ class JellyfinViewModel(
 
         val currentState = _uiState.value
 
-        when (parentType) {
-          "Series" -> {
-            val result = jellyfinRepository.getSeasons(server, parentId)
-            result
-              .onSuccess { items ->
-                _uiState.update {
-                  it.copy(
-                    currentItems = items.distinctBy { it.id },
-                    totalRecordCount = items.size,
-                    hasMore = false,
-                    isLoading = false,
-                    isLoadingMore = false,
-                    error = null,
-                  )
-                }
-              }.onFailure { err ->
-                _uiState.update {
-                  it.copy(
-                    isLoading = false,
-                    isLoadingMore = false,
-                    error = err.message ?: "Failed to load seasons",
-                  )
-                }
-              }
-          }
-
-          "Season" -> {
-            val seriesId = _uiState.value.breadcrumbs.dropLast(1).lastOrNull { it.type == "Series" }?.id ?: parentId
-            val result = jellyfinRepository.getEpisodes(server, seriesId, parentId)
-            result
-              .onSuccess { items ->
-                _uiState.update {
-                  it.copy(
-                    currentItems = items.distinctBy { it.id },
-                    totalRecordCount = items.size,
-                    hasMore = false,
-                    isLoading = false,
-                    isLoadingMore = false,
-                    error = null,
-                  )
-                }
-              }.onFailure { err ->
-                _uiState.update {
-                  it.copy(
-                    isLoading = false,
-                    isLoadingMore = false,
-                    error = err.message ?: "Failed to load episodes",
-                  )
-                }
-              }
-          }
-
-          else -> {
-            val result =
-              jellyfinRepository.getItems(
-                server = server,
-                parentId = parentId,
-                searchTerm = currentState.searchQuery.takeIf { it.isNotBlank() },
-                sortBy = currentState.sortBy,
-                sortOrder = currentState.sortOrder,
-                isPlayed = if (currentState.isUnplayedOnly) false else null,
-                startIndex = startIndex,
-                limit = 100,
+        jellyfinRepository
+          .getItems(
+            server = server,
+            parentId = library.id,
+            includeItemTypes = library.itemTypes,
+            sortBy = currentState.sortBy,
+            sortOrder = currentState.sortOrder,
+            isPlayed = if (currentState.isUnplayedOnly) false else null,
+            genres = currentState.selectedGenreFilter,
+            startIndex = startIndex,
+            limit = 100,
+          ).onSuccess { queryResult ->
+            val combined = (currentList + queryResult.items).distinctBy { it.id }
+            _uiState.update {
+              it.copy(
+                currentItems = combined,
+                totalRecordCount = queryResult.totalRecordCount,
+                startIndex = combined.size,
+                hasMore = combined.size < queryResult.totalRecordCount,
+                isLoading = false,
+                isLoadingMore = false,
+                error = null,
               )
-
-            result
-              .onSuccess { queryResult ->
-                val combined = (currentList + queryResult.items).distinctBy { it.id }
-                val hasMore = combined.size < queryResult.totalRecordCount
-                _uiState.update {
-                  it.copy(
-                    currentItems = combined,
-                    totalRecordCount = queryResult.totalRecordCount,
-                    startIndex = combined.size,
-                    hasMore = hasMore,
-                    isLoading = false,
-                    isLoadingMore = false,
-                    error = null,
-                  )
-                }
-              }.onFailure { err ->
-                _uiState.update {
-                  it.copy(
-                    isLoading = false,
-                    isLoadingMore = false,
-                    error = err.message ?: "Failed to load items",
-                  )
-                }
-              }
+            }
+          }.onFailure { err ->
+            _uiState.update {
+              it.copy(
+                isLoading = false,
+                isLoadingMore = false,
+                error = err.message ?: "Failed to load items",
+              )
+            }
           }
-        }
       }
   }
 
@@ -472,8 +416,8 @@ class JellyfinViewModel(
     val state = _uiState.value
     if (state.isLoading || state.isLoadingMore || !state.hasMore) return
     val active = state.activeServer ?: return
-    val currentCrumb = state.breadcrumbs.lastOrNull() ?: return
-    loadItems(active, currentCrumb.id, currentCrumb.type, resetPagination = false)
+    val library = state.openLibrary ?: return
+    loadLibraryItems(active, library, resetPagination = false)
   }
 
   fun onSearchQueryChanged(query: String) {
@@ -504,7 +448,7 @@ class JellyfinViewModel(
           delay(debounceMs)
         }
         _uiState.update { it.copy(isLoading = true, error = null) }
-        val currentCrumb = _uiState.value.breadcrumbs.lastOrNull()
+        val library = _uiState.value.openLibrary
 
         val includeTypes =
           when (_uiState.value.searchCategory) {
@@ -517,7 +461,7 @@ class JellyfinViewModel(
         val result =
           jellyfinRepository.getItems(
             server = active,
-            parentId = currentCrumb?.id,
+            parentId = library?.id,
             searchTerm = query,
             includeItemTypes = includeTypes,
             sortBy = _uiState.value.sortBy,
@@ -758,7 +702,7 @@ class JellyfinViewModel(
       _uiState.update {
         it.copy(
           activeServer = newActive,
-          breadcrumbs = emptyList(),
+          openLibrary = null,
           currentItems = emptyList(),
           libraries = emptyList(),
           resumeItems = emptyList(),
