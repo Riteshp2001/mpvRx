@@ -264,11 +264,20 @@ object MainScreen : Screen {
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    val targetNavBarWidth = (screenWidth * 0.9f).coerceAtLeast(64.dp)
 
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val isTablet = configuration.smallestScreenWidthDp >= 600
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val targetNavBarWidth =
+      when {
+        isDualPaneFolderSelected && selectedTab == MainTab.HOME ->
+          (screenWidth * 0.4f - 24.dp).coerceAtLeast(64.dp)
+        isMiniPlayerVisible && (isLandscape || isTablet) ->
+          (screenWidth * 0.45f).coerceIn(200.dp, 420.dp)
+        else ->
+          (screenWidth * 0.9f).coerceAtLeast(64.dp)
+      }
 
     // In landscape/tablet single-pane the nav bar slides to the left edge (with a
     // small margin) so the mini player can sit on its right side.
