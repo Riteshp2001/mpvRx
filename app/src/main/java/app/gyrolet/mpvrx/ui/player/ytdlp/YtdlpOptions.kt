@@ -100,7 +100,13 @@ data class YtdlpOptionSettings(
       subtitlesPreferences: SubtitlesPreferences,
     ): YtdlpOptionSettings {
       val explicitSubtitleLanguages = ytdlPreferences.subtitleLanguages.get()
-      val preferredSubtitleLanguages = subtitlesPreferences.preferredLanguages.get()
+      val preferredSubtitleLanguages =
+        subtitlesPreferences.preferredLanguages
+          .get()
+          .split(",")
+          .map(String::trim)
+          .filter { it.isLanguageCode() }
+          .joinToString(",")
       return YtdlpOptionSettings(
         codecPreference = ytdlPreferences.codecPreference.get(),
         legacyPreferH264 = ytdlPreferences.preferH264.get(),
@@ -128,6 +134,9 @@ data class YtdlpOptionSettings(
         rawOptions = ytdlPreferences.customRawOptions.get(),
       )
     }
+
+    private fun String.isLanguageCode(): Boolean =
+      length in 2..3 && all { character -> character in 'a'..'z' || character in 'A'..'Z' }
   }
 }
 
