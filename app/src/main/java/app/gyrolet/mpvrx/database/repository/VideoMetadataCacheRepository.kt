@@ -59,6 +59,7 @@ class VideoMetadataCacheRepository(
     file: File,
     uri: Uri,
     displayName: String,
+    includeVideoCodec: Boolean = false,
   ): MediaInfoOps.VideoMetadata? =
     withContext(Dispatchers.IO) {
       val path = file.absolutePath
@@ -69,7 +70,7 @@ class VideoMetadataCacheRepository(
       val cached = dao.getMetadata(path, dateModified, size)
       if (cached != null && !shouldRefreshCachedMetadata(file, cached)) {
         Log.d(TAG, "Cache hit for $displayName")
-        return@withContext MediaInfoOps.VideoMetadata(
+        val metadata = MediaInfoOps.VideoMetadata(
           sizeBytes = cached.size,
           durationMs = cached.duration,
           width = cached.width,
@@ -77,6 +78,13 @@ class VideoMetadataCacheRepository(
           fps = cached.fps,
           hasEmbeddedSubtitles = cached.hasEmbeddedSubtitles,
           subtitleCodec = cached.subtitleCodec,
+        )
+        if (!includeVideoCodec) return@withContext metadata
+
+        val codec = MediaInfoOps.extractVideoCodec(context, uri, displayName)
+        return@withContext metadata.copy(
+          videoCodec = codec.label,
+          videoCodecMimeType = codec.mimeType,
         )
       }
 
@@ -115,6 +123,7 @@ class VideoMetadataCacheRepository(
    */
   suspend fun getOrExtractMetadataBatch(
     files: List<Triple<File, Uri, String>>,
+    videoCodecPaths: Set<String> = emptySet(),
   ): Map<String, MediaInfoOps.VideoMetadata> =
     withContext(Dispatchers.IO) {
       if (files.isEmpty()) return@withContext emptyMap()
@@ -215,6 +224,31 @@ class VideoMetadataCacheRepository(
         if (extractedMetadata.isNotEmpty()) {
           dao.insertMetadataBatch(extractedMetadata)
           Log.d(TAG, "Batch inserted ${extractedMetadata.size} metadata entries to cache")
+        }
+      }
+
+      if (videoCodecPaths.isNotEmpty()) {
+        val sourceByPath = files.associateBy { it.first.absolutePath }
+        val missingCodec =
+          results
+            .filter { (path, metadata) -> path in videoCodecPaths && metadata.videoCodec.isBlank() }
+            .keys
+            .toList()
+        missingCodec.chunked(PARALLEL_PROCESSING_LIMIT).forEach { batch ->
+          coroutineScope {
+            val codecResults =
+              batch.mapNotNull { path ->
+                val source = sourceByPath[path] ?: return@mapNotNull null
+                async {
+                  val codec = MediaInfoOps.extractVideoCodec(context, source.second, source.third)
+                  path to results.getValue(path).copy(
+                    videoCodec = codec.label,
+                    videoCodecMimeType = codec.mimeType,
+                  )
+                }
+              }.awaitAll()
+            results.putAll(codecResults)
+          }
         }
       }
 

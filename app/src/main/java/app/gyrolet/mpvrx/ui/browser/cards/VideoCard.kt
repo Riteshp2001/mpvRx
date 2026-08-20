@@ -71,6 +71,7 @@ data class VideoCardUiConfig(
   val showSizeChip: Boolean,
   val showResolutionChip: Boolean,
   val showFramerateInResolution: Boolean,
+  val showCodecSupportIndicator: Boolean,
   val showProgressBar: Boolean,
   val showDateChip: Boolean,
   val showUnplayedOldVideoLabel: Boolean,
@@ -91,6 +92,7 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
   val showSizeChipPref by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChipPref by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolutionConfig by browserPreferences.showFramerateInResolution.collectAsState()
+  val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showProgressBarConfig by browserPreferences.showProgressBar.collectAsState()
   val showDateChipConfig by browserPreferences.showDateChip.collectAsState()
   val showUnplayedOldVideoLabelConfig by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
@@ -105,6 +107,7 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
     showSizeChipPref,
     showResolutionChipPref,
     showFramerateInResolutionConfig,
+    showCodecSupportIndicator,
     showProgressBarConfig,
     showDateChipConfig,
     showUnplayedOldVideoLabelConfig,
@@ -119,6 +122,7 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
       showSizeChip = showSizeChipPref,
       showResolutionChip = showResolutionChipPref,
       showFramerateInResolution = showFramerateInResolutionConfig,
+      showCodecSupportIndicator = showCodecSupportIndicator,
       showProgressBar = showProgressBarConfig,
       showDateChip = showDateChipConfig,
       showUnplayedOldVideoLabel = showUnplayedOldVideoLabelConfig,
@@ -164,6 +168,7 @@ fun VideoCard(
   val showThumbnails = resolvedUiConfig.showThumbnails
   val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val showFramerateInResolution = resolvedUiConfig.showFramerateInResolution
+  val showCodecSupportIndicator = resolvedUiConfig.showCodecSupportIndicator
   val showProgressBar = resolvedUiConfig.showProgressBar
   val showDateChip = resolvedUiConfig.showDateChip
   val showUnplayedOldVideoLabel = resolvedUiConfig.showUnplayedOldVideoLabel
@@ -365,6 +370,14 @@ fun VideoCard(
               }
             }
 
+            if (showCodecSupportIndicator && !video.isAudio && video.videoCodec.isNotBlank()) {
+              CodecSupportIndicator(
+                video = video,
+                compact = true,
+                modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+              )
+            }
+
             // Duration overlay
             if (showDurationField) {
               Box(
@@ -449,6 +462,9 @@ fun VideoCard(
                 androidx.compose.foundation.layout.Arrangement
                   .spacedBy(4.dp),
             ) {
+              if (showCodecSupportIndicator && !video.isAudio && video.videoCodec.isNotBlank()) {
+                CodecSupportIndicator(video = video)
+              }
               if (showSubtitleIndicator && !video.isAudio) {
                 if (video.hasEmbeddedSubtitles && video.subtitleCodec.isNotBlank()) {
                   video.subtitleCodec.split(" ").forEach { codec ->
@@ -747,6 +763,9 @@ fun VideoCard(
                 androidx.compose.foundation.layout.Arrangement
                   .spacedBy(4.dp),
             ) {
+              if (showCodecSupportIndicator && !video.isAudio && video.videoCodec.isNotBlank()) {
+                CodecSupportIndicator(video = video)
+              }
               if (showSubtitleIndicator && !video.isAudio) {
                 if (video.hasEmbeddedSubtitles && video.subtitleCodec.isNotBlank()) {
                   video.subtitleCodec.split(" ").forEach { codec ->
@@ -835,6 +854,70 @@ fun VideoCard(
         }
       }
     }
+  }
+}
+
+@Composable
+private fun CodecSupportIndicator(
+  video: Video,
+  modifier: Modifier = Modifier,
+  compact: Boolean = false,
+) {
+  val support =
+    remember(video.videoCodec, video.videoCodecMimeType, video.width, video.height, video.fps) {
+      app.gyrolet.mpvrx.utils.media.VideoCodecSupportInspector.inspect(
+        codecLabel = video.videoCodec,
+        mimeType = video.videoCodecMimeType,
+        width = video.width,
+        height = video.height,
+        frameRate = video.fps,
+      )
+    }
+  val statusLabel =
+    when (support.decodeSupport) {
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.HARDWARE -> "HW"
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.SOFTWARE -> "SW"
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNSUPPORTED -> if (compact) "NO" else "Unsupported"
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNKNOWN -> "Unknown"
+    }
+  val statusColor =
+    when (support.decodeSupport) {
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.HARDWARE -> Color(0xFF2E7D32)
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.SOFTWARE -> Color(0xFFF9A825)
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNSUPPORTED -> MaterialTheme.colorScheme.error
+      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNKNOWN -> MaterialTheme.colorScheme.outline
+    }
+  val containerColor =
+    if (compact) {
+      Color.Black.copy(alpha = 0.72f)
+    } else {
+      statusColor.copy(alpha = 0.14f)
+    }
+
+  Row(
+    modifier =
+      modifier
+        .clip(AppShapeScale.small)
+        .background(containerColor)
+        .padding(horizontal = if (compact) 6.dp else 8.dp, vertical = if (compact) 3.dp else 4.dp),
+    horizontalArrangement = Arrangement.spacedBy(5.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .size(6.dp)
+          .clip(androidx.compose.foundation.shape.CircleShape)
+          .background(statusColor),
+    )
+    Text(
+      text = "${support.codecLabel} · $statusLabel",
+      style = MaterialTheme.typography.labelSmall,
+      fontWeight = FontWeight.Bold,
+      color = if (compact) Color.White else MaterialTheme.colorScheme.onSurface,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 

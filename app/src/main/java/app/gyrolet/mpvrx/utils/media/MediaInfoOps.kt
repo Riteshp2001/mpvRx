@@ -26,6 +26,7 @@ object MediaInfoOps {
   // cross-process cache; this layer catches direct callers that previously bypassed it.
   private const val BASIC_METADATA_CACHE_ENTRIES = 512
   private val basicMetadataCache = LruCache<String, VideoMetadata>(BASIC_METADATA_CACHE_ENTRIES)
+  private val videoCodecCache = LruCache<String, VideoCodecDescriptor>(BASIC_METADATA_CACHE_ENTRIES)
 
   private fun basicMetadataCacheKey(
     uri: Uri,
@@ -375,6 +376,12 @@ object MediaInfoOps {
             val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
             val fps = fpsStr.toFloatOrNull() ?: 0f
 
+            val videoCodec =
+              VideoCodecSupportInspector.descriptor(
+                format = mi.getInfo(MediaInfo.Stream.Video, 0, "Format"),
+                codecId = mi.getInfo(MediaInfo.Stream.Video, 0, "CodecID"),
+              )
+
             val textCount = mi.Count_Get(MediaInfo.Stream.Text)
             val hasEmbeddedSubtitles = textCount > 0
 
@@ -431,6 +438,8 @@ object MediaInfoOps {
               fps = fps.takeIf { it > 0f } ?: retrieverFallback?.fps ?: 0f,
               hasEmbeddedSubtitles = hasEmbeddedSubtitles,
               subtitleCodec = subtitleCodec,
+              videoCodec = videoCodec.label,
+              videoCodecMimeType = videoCodec.mimeType,
             )
           } finally {
             mi.Close()
@@ -448,9 +457,52 @@ object MediaInfoOps {
           synchronized(basicMetadataCache) {
             basicMetadataCache.put(cacheKey, metadata)
           }
+          if (metadata.videoCodec.isNotBlank()) {
+            synchronized(videoCodecCache) {
+              videoCodecCache.put(
+                cacheKey,
+                VideoCodecDescriptor(metadata.videoCodec, metadata.videoCodecMimeType),
+              )
+            }
+          }
         }
       }
       result
+    }
+
+  suspend fun extractVideoCodec(
+    context: Context,
+    uri: Uri,
+    fileName: String,
+  ): VideoCodecDescriptor =
+    withContext(Dispatchers.IO) {
+      val cacheKey = basicMetadataCacheKey(uri, fileName)
+      synchronized(videoCodecCache) {
+        videoCodecCache.get(cacheKey)
+      }?.let { return@withContext it }
+
+      val descriptor =
+        runCatching {
+          val pfd = context.contentResolver.openFileDescriptor(uri, "r")
+            ?: return@runCatching VideoCodecDescriptor("UNKNOWN", "")
+          val fd = pfd.detachFd()
+          val mediaInfo = MediaInfo()
+          try {
+            mediaInfo.Open(fd, fileName)
+            VideoCodecSupportInspector.descriptor(
+              format = mediaInfo.getInfo(MediaInfo.Stream.Video, 0, "Format"),
+              codecId = mediaInfo.getInfo(MediaInfo.Stream.Video, 0, "CodecID"),
+            )
+          } finally {
+            mediaInfo.Close()
+            pfd.close()
+          }
+        }.getOrDefault(VideoCodecDescriptor("UNKNOWN", ""))
+
+      synchronized(videoCodecCache) {
+        videoCodecCache.put(cacheKey, descriptor)
+      }
+      descriptor
     }
 
   private fun extractRetrieverMetadata(
@@ -497,6 +549,8 @@ object MediaInfoOps {
     val fps: Float,
     val hasEmbeddedSubtitles: Boolean,
     val subtitleCodec: String = "",
+    val videoCodec: String = "",
+    val videoCodecMimeType: String = "",
   )
 
   /**

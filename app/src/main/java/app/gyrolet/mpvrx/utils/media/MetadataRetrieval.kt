@@ -41,7 +41,8 @@ object MetadataRetrieval {
     val needsVideoMetadata =
       browserPreferences.showResolutionChip.get() ||
         browserPreferences.showFramerateInResolution.get() ||
-        browserPreferences.showSubtitleIndicator.get()
+        browserPreferences.showSubtitleIndicator.get() ||
+        browserPreferences.showCodecSupportIndicator.get()
 
     // Folder card chips
     val needsFolderMetadata = browserPreferences.showTotalDurationChip.get()
@@ -55,7 +56,8 @@ object MetadataRetrieval {
   fun isVideoMetadataNeeded(browserPreferences: BrowserPreferences): Boolean =
     browserPreferences.showResolutionChip.get() ||
       browserPreferences.showFramerateInResolution.get() ||
-      browserPreferences.showSubtitleIndicator.get()
+      browserPreferences.showSubtitleIndicator.get() ||
+      browserPreferences.showCodecSupportIndicator.get()
 
   /**
    * Checks if folder-specific metadata is needed
@@ -79,12 +81,15 @@ object MetadataRetrieval {
         return@withContext video
       }
 
+      val needsVideoCodec = browserPreferences.showCodecSupportIndicator.get() && !video.isAudio
+
       // If video already has metadata (including FPS and subtitle info), return as-is
       if (video.width > 0 &&
         video.height > 0 &&
         video.duration > 0 &&
         video.fps > 0f &&
-        video.subtitleCodec.isNotEmpty()
+        video.subtitleCodec.isNotEmpty() &&
+        (!needsVideoCodec || video.videoCodec.isNotBlank())
       ) {
         return@withContext video
       }
@@ -96,7 +101,13 @@ object MetadataRetrieval {
           return@withContext video
         }
 
-        val metadata = metadataCache.getOrExtractMetadata(file, video.uri, video.displayName)
+        val metadata =
+          metadataCache.getOrExtractMetadata(
+            file = file,
+            uri = video.uri,
+            displayName = video.displayName,
+            includeVideoCodec = needsVideoCodec,
+          )
         if (metadata != null) {
           video.copy(
             duration = metadata.durationMs,
@@ -107,6 +118,8 @@ object MetadataRetrieval {
             resolution = formatResolutionWithFps(metadata.width, metadata.height, metadata.fps),
             hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles,
             subtitleCodec = metadata.subtitleCodec,
+            videoCodec = metadata.videoCodec,
+            videoCodecMimeType = metadata.videoCodecMimeType,
           )
         } else {
           video
@@ -138,11 +151,13 @@ object MetadataRetrieval {
       // So we need to extract metadata if FPS or subtitle info is missing
       val videosNeedingMetadata =
         videos.filter { video ->
+          val needsVideoCodec = browserPreferences.showCodecSupportIndicator.get() && !video.isAudio
           video.width == 0 ||
             video.height == 0 ||
             video.duration == 0L ||
             video.fps == 0f ||
-            video.subtitleCodec.isEmpty()
+            video.subtitleCodec.isEmpty() ||
+            (needsVideoCodec && video.videoCodec.isBlank())
         }
 
       if (videosNeedingMetadata.isEmpty()) {
@@ -163,7 +178,17 @@ object MetadataRetrieval {
         }
 
       // Batch extract metadata
-      val metadataMap = metadataCache.getOrExtractMetadataBatch(fileTriples)
+      val videoCodecPaths =
+        if (browserPreferences.showCodecSupportIndicator.get()) {
+          videosNeedingMetadata.filterNot { it.isAudio }.mapTo(mutableSetOf()) { it.path }
+        } else {
+          emptySet()
+        }
+      val metadataMap =
+        metadataCache.getOrExtractMetadataBatch(
+          files = fileTriples,
+          videoCodecPaths = videoCodecPaths,
+        )
 
       // Update videos with metadata
       videos.map { video ->
@@ -178,6 +203,8 @@ object MetadataRetrieval {
             resolution = formatResolutionWithFps(metadata.width, metadata.height, metadata.fps),
             hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles,
             subtitleCodec = metadata.subtitleCodec,
+            videoCodec = metadata.videoCodec,
+            videoCodecMimeType = metadata.videoCodecMimeType,
           )
         } else {
           video
@@ -204,12 +231,14 @@ object MetadataRetrieval {
 
       // Process each video
       for (video in videos) {
+        val needsVideoCodec = browserPreferences.showCodecSupportIndicator.get() && !video.isAudio
         // If video already has metadata (including FPS and subtitle info), emit as-is
         if (video.width > 0 &&
           video.height > 0 &&
           video.duration > 0 &&
           video.fps > 0f &&
-          video.subtitleCodec.isNotEmpty()
+          video.subtitleCodec.isNotEmpty() &&
+          (!needsVideoCodec || video.videoCodec.isNotBlank())
         ) {
           emit(video)
           continue
@@ -223,7 +252,13 @@ object MetadataRetrieval {
             continue
           }
 
-          val metadata = metadataCache.getOrExtractMetadata(file, video.uri, video.displayName)
+          val metadata =
+            metadataCache.getOrExtractMetadata(
+              file = file,
+              uri = video.uri,
+              displayName = video.displayName,
+              includeVideoCodec = needsVideoCodec,
+            )
           if (metadata != null) {
             emit(
               video.copy(
@@ -235,6 +270,8 @@ object MetadataRetrieval {
                 resolution = formatResolutionWithFps(metadata.width, metadata.height, metadata.fps),
                 hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles,
                 subtitleCodec = metadata.subtitleCodec,
+                videoCodec = metadata.videoCodec,
+                videoCodecMimeType = metadata.videoCodecMimeType,
               ),
             )
           } else {
