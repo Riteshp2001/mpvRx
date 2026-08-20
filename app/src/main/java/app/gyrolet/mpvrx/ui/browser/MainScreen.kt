@@ -52,6 +52,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.shape.CircleShape
@@ -401,29 +402,62 @@ object MainScreen : Screen {
         ) {
           BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val containerWidth = maxWidth
-            val leftPadding =
+            val density = LocalDensity.current
+            var measuredWidthDp by remember { mutableStateOf(220.dp) }
+
+            val animatedWidthDp by animateDpAsState(
+              targetValue = measuredWidthDp,
+              animationSpec =
+                spring(
+                  dampingRatio = Spring.DampingRatioNoBouncy,
+                  stiffness = Spring.StiffnessMedium,
+                ),
+              label = "measured_width_anim",
+            )
+
+            val targetLeftPadding =
               when {
-                isMiniPlayerVisible && (isLandscape || isTablet) && !(isDualPaneFolderSelected && selectedTab == MainTab.HOME) ->
+                isDualPaneFolderSelected && selectedTab == MainTab.HOME ->
+                  ((containerWidth * 0.20f) - (animatedWidthDp / 2)).coerceAtLeast(16.dp)
+                isMiniPlayerVisible && (isLandscape || isTablet) ->
                   16.dp
                 else ->
-                  (containerWidth * animatedOffsetFraction - (navBarWidth / 2)).coerceAtLeast(16.dp)
+                  ((containerWidth - animatedWidthDp) / 2).coerceAtLeast(16.dp)
               }
 
-            // Publish the animated nav bar geometry so the mini player overlay can sit
-            // on its right side in landscape/tablet single-pane.
+            val animatedLeftPadding by animateDpAsState(
+              targetValue = targetLeftPadding,
+              animationSpec =
+                spring(
+                  dampingRatio = Spring.DampingRatioNoBouncy,
+                  stiffness = Spring.StiffnessMedium,
+                ),
+              label = "pill_left_padding",
+            )
+
             SideEffect {
-              NavigationBarState.navbarLeftOffset = leftPadding
-              NavigationBarState.navbarWidth = navBarWidth
+              NavigationBarState.navbarLeftOffset = animatedLeftPadding
+              NavigationBarState.navbarWidth = animatedWidthDp
             }
 
             Box(
-              modifier = Modifier.padding(start = leftPadding),
-              contentAlignment = Alignment.Center,
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .wrapContentSize(Alignment.TopStart)
+                  .padding(start = animatedLeftPadding),
             ) {
               ExpressivePillNavigationBar(
                 visibleTabs = visibleTabs,
                 selectedTab = selectedTab,
                 onTabSelected = onTabSelected,
+                modifier =
+                  Modifier.onGloballyPositioned { coords ->
+                    val w = with(density) { coords.size.width.toDp() }
+                    if (w > 0.dp && w != measuredWidthDp) {
+                      measuredWidthDp = w
+                    }
+                  },
               )
             }
           }
