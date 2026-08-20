@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.data.network.proxy
 
 import android.net.Uri
 import android.util.Log
+import app.gyrolet.mpvrx.network.SharedHttpClient
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

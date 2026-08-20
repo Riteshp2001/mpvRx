@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.utils.media
 
 import android.net.Uri
 import android.util.Log
+import app.gyrolet.mpvrx.network.SharedHttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
