@@ -65,9 +65,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -336,7 +338,7 @@ object MainScreen : Screen {
         } else {
           HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().nestedScroll(NavigationBarState.navScrollConnection),
             userScrollEnabled = !isPermissionDenied,
             beyondViewportPageCount = 1,
           ) { page ->
@@ -438,6 +440,18 @@ private fun TelegramPillNavigationBar(
     val itemWidth = availableWidth / count
     val itemWidthPx = with(density) { itemWidth.toPx() }
 
+    // Below this a label like "Playlists" ellipsizes into a fragment, which reads as clutter
+    // rather than information, so drop to icons only and reclaim the vertical space.
+    val fitsLabels = itemWidth >= 60.dp
+    val labelFraction by animateFloatAsState(
+      targetValue = if (fitsLabels) NavigationBarState.navLabelVisibility else 0f,
+      animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+      label = "nav_label_fraction",
+    )
+    val showLabels = labelFraction > 0.01f
+    val iconSize = 26.dp - (4.dp * labelFraction)
+    val rowHeight = 48.dp + (8.dp * labelFraction)
+
     Surface(
       modifier = Modifier.fillMaxWidth(),
       shape = CircleShape,
@@ -462,7 +476,7 @@ private fun TelegramPillNavigationBar(
             modifier =
               Modifier
                 .width(itemWidth)
-                .height(56.dp)
+                .height(rowHeight)
                 .graphicsLayer {
                   val currentPos =
                     pagerPositionFloatProvider().coerceIn(
@@ -494,7 +508,7 @@ private fun TelegramPillNavigationBar(
               modifier =
                 Modifier
                   .weight(1f)
-                  .height(56.dp)
+                  .height(rowHeight)
                   .clip(CircleShape)
                   .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -568,24 +582,27 @@ private fun TelegramPillNavigationBar(
                       )
                   }
                 }
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                  text =
-                    when (tab) {
-                      MainScreen.MainTab.HOME -> stringResource(R.string.ui_home)
-                      MainScreen.MainTab.MUSIC -> stringResource(R.string.ui_music)
-                      MainScreen.MainTab.RECENTS -> stringResource(R.string.ui_recents)
-                      MainScreen.MainTab.PLAYLISTS -> stringResource(R.string.ui_playlists)
-                      MainScreen.MainTab.NETWORK -> stringResource(R.string.ui_network)
-                      MainScreen.MainTab.JELLYFIN -> stringResource(R.string.ui_jellyfin)
-                    },
-                  style = MaterialTheme.typography.labelSmall,
-                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                  color = contentColor,
-                  maxLines = 1,
-                  overflow = TextOverflow.Ellipsis,
-                  textAlign = TextAlign.Center,
-                )
+                Spacer(modifier = Modifier.height(3.dp * labelFraction))
+                if (showLabels) {
+                  Text(
+                    text =
+                      when (tab) {
+                        MainScreen.MainTab.HOME -> stringResource(R.string.ui_home)
+                        MainScreen.MainTab.MUSIC -> stringResource(R.string.ui_music)
+                        MainScreen.MainTab.RECENTS -> stringResource(R.string.ui_recents)
+                        MainScreen.MainTab.PLAYLISTS -> stringResource(R.string.ui_playlists)
+                        MainScreen.MainTab.NETWORK -> stringResource(R.string.ui_network)
+                        MainScreen.MainTab.JELLYFIN -> stringResource(R.string.ui_jellyfin)
+                      },
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = contentColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.alpha(labelFraction),
+                  )
+                }
               }
             }
           }
