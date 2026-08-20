@@ -516,6 +516,8 @@
   <string name="not_set_video_default">Not set (will use video default)</string>
   <string name="enter_language_codes">Enter language codes separated by commas (e.g., eng,jpn,spa)</string>
   <string name="language_codes_placeholder">eng,jpn,spa</string>
+  <string name="enter_subtitle_title_preferences">Enter subtitle-title keywords or language codes in priority order, separated by commas. Earlier matches take precedence.</string>
+  <string name="subtitle_title_preferences_placeholder">Full,Dialogue,eng,en</string>
   <string name="pref_audio_channels_auto_safe_desc">Default, safe auto selection</string>
   <string name="pref_audio_channels_auto_desc">Auto selection</string>
   <string name="pref_audio_channels_mono_desc">Downmix to mono</string>
