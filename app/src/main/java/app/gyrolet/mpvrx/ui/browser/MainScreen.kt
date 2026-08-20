@@ -19,6 +19,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -404,6 +405,9 @@ object MainScreen : Screen {
             val containerWidth = maxWidth
             val density = LocalDensity.current
             var measuredWidthDp by remember { mutableStateOf(220.dp) }
+            val isDualPaneActive = isDualPaneFolderSelected && selectedTab == MainTab.HOME
+            val isMiniPlayerActive = isMiniPlayerVisible && (isLandscape || isTablet)
+            val isCustomAligned = isDualPaneActive || isMiniPlayerActive
 
             val animatedWidthDp by animateDpAsState(
               targetValue = measuredWidthDp,
@@ -417,9 +421,9 @@ object MainScreen : Screen {
 
             val targetLeftPadding =
               when {
-                isDualPaneFolderSelected && selectedTab == MainTab.HOME ->
+                isDualPaneActive ->
                   ((containerWidth * 0.20f) - (animatedWidthDp / 2)).coerceAtLeast(16.dp)
-                isMiniPlayerVisible && (isLandscape || isTablet) ->
+                isMiniPlayerActive ->
                   16.dp
                 else ->
                   ((containerWidth - animatedWidthDp) / 2).coerceAtLeast(16.dp)
@@ -436,7 +440,8 @@ object MainScreen : Screen {
             )
 
             SideEffect {
-              NavigationBarState.navbarLeftOffset = animatedLeftPadding
+              NavigationBarState.navbarLeftOffset =
+                if (isCustomAligned) animatedLeftPadding else ((containerWidth - animatedWidthDp) / 2).coerceAtLeast(16.dp)
               NavigationBarState.navbarWidth = animatedWidthDp
             }
 
@@ -444,8 +449,15 @@ object MainScreen : Screen {
               modifier =
                 Modifier
                   .fillMaxWidth()
-                  .wrapContentSize(Alignment.TopStart)
-                  .padding(start = animatedLeftPadding),
+                  .then(
+                    if (isCustomAligned) {
+                      Modifier
+                        .wrapContentSize(Alignment.TopStart)
+                        .padding(start = animatedLeftPadding)
+                    } else {
+                      Modifier.wrapContentSize(Alignment.TopCenter)
+                    }
+                  ),
             ) {
               ExpressivePillNavigationBar(
                 visibleTabs = visibleTabs,
