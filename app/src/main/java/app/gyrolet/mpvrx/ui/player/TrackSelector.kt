@@ -40,6 +40,7 @@ import kotlinx.coroutines.withContext
  * **Subtitle Selection Strategy (Highest to Lowest Priority):**
  * Subtitle selection is highly dependent on the auto-detected media context (Anime vs. Live-Action).
  * - **Pass 00 (External Override):** Automatically prioritizes manually loaded external subtitle files.
+ * - **Pass 0 (Preferred Title):** Applies the user's ordered keywords to subtitle track titles.
  * - **Pass A0 (Anime Only - Native Default):** If exactly *one* subtitle track is flagged
  * as default and it is Japanese, it is selected. This protects against muxing errors
  * where multiple tracks are incorrectly flagged as default by the encoder.
@@ -293,7 +294,20 @@ class TrackSelector(
       // PASS 00: EXTERNAL TRACK OVERRIDE (Protects manually loaded subtitle files & respects language preference)
       val externalTracks = subTracks.filter { it.external }
       if (externalTracks.isNotEmpty()) {
-        // 1. Try to find an external track matching preferred languages in order
+        // 1. Apply ordered title keywords to external tracks.
+        val titleMatchIndex =
+          SubtitleTitleMatcher.findBestMatchIndex(
+            titles = externalTracks.map(Track::title),
+            orderedKeywords = preferredLangs,
+          )
+        if (titleMatchIndex != null) {
+          val track = externalTracks[titleMatchIndex]
+          if (currentSid != track.id) setTrackSelectionId("sid", track.id)
+          Log.d(TAG, "Smart Sub: Preferred external title matched (id=${track.id})")
+          return
+        }
+
+        // 2. Try to find an external track matching preferred languages in order
         for (prefLang in preferredLangs) {
           for (track in externalTracks) {
             if (track.lang == prefLang || track.lang.startsWith(prefLang)) {
@@ -314,7 +328,7 @@ class TrackSelector(
           }
         }
 
-        // 2. Try to find manually loaded subtitle files (usually have empty or "und" lang)
+        // 3. Try to find manually loaded subtitle files (usually have empty or "und" lang)
         val unknownLangCodes = setOf("", "und", "zxx")
         for (track in externalTracks) {
           if (track.lang in unknownLangCodes) {
@@ -331,7 +345,7 @@ class TrackSelector(
           }
         }
 
-        // 3. Fallback: select the first available external track
+        // 4. Fallback: select the first available external track
         val fallbackTrack = externalTracks.first()
         if (currentSid == fallbackTrack.id) {
           Log.d(
@@ -342,6 +356,21 @@ class TrackSelector(
           Log.d(TAG, "Smart Sub: Fallback External Subtitle Detected (id=${fallbackTrack.id}) [Applied]")
           setTrackSelectionId("sid", fallbackTrack.id)
         }
+        return
+      }
+
+      // PASS 0: ORDERED SUBTITLE TITLE PREFERENCES
+      // A matching keyword narrows the current candidates. Later keywords act as tie-breakers
+      // without overriding an earlier, higher-priority match.
+      val titleMatchIndex =
+        SubtitleTitleMatcher.findBestMatchIndex(
+          titles = subTracks.map(Track::title),
+          orderedKeywords = preferredLangs,
+        )
+      if (titleMatchIndex != null) {
+        val track = subTracks[titleMatchIndex]
+        if (currentSid != track.id) setTrackSelectionId("sid", track.id)
+        Log.d(TAG, "Smart Sub: Preferred title matched (id=${track.id})")
         return
       }
 
