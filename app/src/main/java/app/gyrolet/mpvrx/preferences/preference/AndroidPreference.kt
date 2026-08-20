@@ -70,7 +70,8 @@ sealed class AndroidPreference<T>(
       .map { get() }
       .conflate()
 
-  override fun stateIn(scope: CoroutineScope): StateFlow<T> = changes().stateIn(scope, SharingStarted.Eagerly, get())
+  override fun stateIn(scope: CoroutineScope): StateFlow<T> =
+    changes().stateIn(scope, SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000), get())
 
   class StringPrimitive(
     preferences: SharedPreferences,

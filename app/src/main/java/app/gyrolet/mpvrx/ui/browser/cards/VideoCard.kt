@@ -80,6 +80,56 @@ data class VideoCardUiConfig(
   val centerGridTitles: Boolean = false,
 )
 
+/** Hoist this once per screen and pass the result to every card rather than collecting per item. */
+@Composable
+fun rememberVideoCardUiConfig(): VideoCardUiConfig {
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val browserPreferences = koinInject<BrowserPreferences>()
+
+  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
+  val showSizeChipPref by browserPreferences.showSizeChip.collectAsState()
+  val showResolutionChipPref by browserPreferences.showResolutionChip.collectAsState()
+  val showFramerateInResolutionConfig by browserPreferences.showFramerateInResolution.collectAsState()
+  val showProgressBarConfig by browserPreferences.showProgressBar.collectAsState()
+  val showDateChipConfig by browserPreferences.showDateChip.collectAsState()
+  val showUnplayedOldVideoLabelConfig by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
+  val unplayedOldVideoDaysConfig by appearancePreferences.unplayedOldVideoDays.collectAsState()
+  val showExtensionField by browserPreferences.showExtensionField.collectAsState()
+  val showDurationFieldConfig by browserPreferences.showDurationField.collectAsState()
+  val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
+
+  return remember(
+    unlimitedNameLines,
+    showVideoThumbnails,
+    showSizeChipPref,
+    showResolutionChipPref,
+    showFramerateInResolutionConfig,
+    showProgressBarConfig,
+    showDateChipConfig,
+    showUnplayedOldVideoLabelConfig,
+    unplayedOldVideoDaysConfig,
+    showExtensionField,
+    showDurationFieldConfig,
+    centerGridTitles,
+  ) {
+    VideoCardUiConfig(
+      unlimitedNameLines = unlimitedNameLines,
+      showThumbnails = showVideoThumbnails,
+      showSizeChip = showSizeChipPref,
+      showResolutionChip = showResolutionChipPref,
+      showFramerateInResolution = showFramerateInResolutionConfig,
+      showProgressBar = showProgressBarConfig,
+      showDateChip = showDateChipConfig,
+      showUnplayedOldVideoLabel = showUnplayedOldVideoLabelConfig,
+      unplayedOldVideoDays = unplayedOldVideoDaysConfig,
+      showExtensionField = showExtensionField,
+      showDurationField = showDurationFieldConfig,
+      centerGridTitles = centerGridTitles,
+    )
+  }
+}
+
 @Composable
 fun VideoCard(
   video: Video,
@@ -104,52 +154,11 @@ fun VideoCard(
   allowThumbnailLoading: Boolean = true,
   uiConfig: VideoCardUiConfig? = null,
 ) {
-  val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
 
-  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
-  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
-  val showSizeChipPref by browserPreferences.showSizeChip.collectAsState()
-  val showResolutionChipPref by browserPreferences.showResolutionChip.collectAsState()
-  val showFramerateInResolutionConfig by browserPreferences.showFramerateInResolution.collectAsState()
-  val showProgressBarConfig by browserPreferences.showProgressBar.collectAsState()
-  val showDateChipConfig by browserPreferences.showDateChip.collectAsState()
-  val showUnplayedOldVideoLabelConfig by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
-  val unplayedOldVideoDaysConfig by appearancePreferences.unplayedOldVideoDays.collectAsState()
-  val showExtensionField by browserPreferences.showExtensionField.collectAsState()
-  val showDurationFieldConfig by browserPreferences.showDurationField.collectAsState()
-  val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
-
-  val resolvedUiConfig =
-    uiConfig ?: remember(
-      unlimitedNameLines,
-      showVideoThumbnails,
-      showSizeChipPref,
-      showResolutionChipPref,
-      showFramerateInResolutionConfig,
-      showProgressBarConfig,
-      showDateChipConfig,
-      showUnplayedOldVideoLabelConfig,
-      unplayedOldVideoDaysConfig,
-      showExtensionField,
-      showDurationFieldConfig,
-      centerGridTitles,
-    ) {
-      VideoCardUiConfig(
-        unlimitedNameLines = unlimitedNameLines,
-        showThumbnails = showVideoThumbnails,
-        showSizeChip = showSizeChipPref,
-        showResolutionChip = showResolutionChipPref,
-        showFramerateInResolution = showFramerateInResolutionConfig,
-        showProgressBar = showProgressBarConfig,
-        showDateChip = showDateChipConfig,
-        showUnplayedOldVideoLabel = showUnplayedOldVideoLabelConfig,
-        unplayedOldVideoDays = unplayedOldVideoDaysConfig,
-        showExtensionField = showExtensionField,
-        showDurationField = showDurationFieldConfig,
-        centerGridTitles = centerGridTitles,
-      )
-    }
+  // Screens hoist this once and pass it down; collecting per card would register a dozen
+  // preference observers for every visible item in a grid.
+  val resolvedUiConfig = uiConfig ?: rememberVideoCardUiConfig()
   val maxLines = if (resolvedUiConfig.unlimitedNameLines) Int.MAX_VALUE else 2
 
   val showThumbnails = resolvedUiConfig.showThumbnails

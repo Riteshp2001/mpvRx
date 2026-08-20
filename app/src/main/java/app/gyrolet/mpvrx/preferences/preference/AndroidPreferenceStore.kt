@@ -19,14 +19,29 @@ import app.gyrolet.mpvrx.preferences.preference.AndroidPreference.LongPrimitive
 import app.gyrolet.mpvrx.preferences.preference.AndroidPreference.Object
 import app.gyrolet.mpvrx.preferences.preference.AndroidPreference.StringPrimitive
 import app.gyrolet.mpvrx.preferences.preference.AndroidPreference.StringSetPrimitive
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.shareIn
 
 class AndroidPreferenceStore(
   context: Context,
   private val sharedPreferences: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context),
 ) : PreferenceStore {
-  private val keyFlow = sharedPreferences.keyFlow
+  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+  // Collectors are numerous — a single browser grid observes a dozen preferences per card — and the
+  // upstream callbackFlow is cold, so without sharing each collection would register its own
+  // OnSharedPreferenceChangeListener and every write would fan out across all of them.
+  private val keyFlow =
+    sharedPreferences.keyFlow.shareIn(
+      scope,
+      SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
+      replay = 0,
+    )
 
   override fun getString(
     key: String,
