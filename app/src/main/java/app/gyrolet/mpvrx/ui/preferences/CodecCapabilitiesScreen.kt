@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -118,6 +119,7 @@ data class KeyCodecStatus(
   val formatName: String,
   val mimeType: String,
   val hasHardware: Boolean,
+  val hasSoftware: Boolean,
   val decoderName: String? = null,
   val systemDefaultDecoder: String? = null,
   val maxResolution: String? = null,
@@ -311,6 +313,7 @@ object CodecInspector {
         formatName = label,
         mimeType = mime,
         hasHardware = hwMatch != null,
+        hasSoftware = matching.any { !it.isHardware },
         decoderName = hwMatch?.name ?: anyMatch?.name,
         systemDefaultDecoder = sysDefault,
         maxResolution = hwMatch?.maxResolution ?: anyMatch?.maxResolution,
@@ -580,11 +583,17 @@ object CodecCapabilitiesScreen : Screen {
       sb.appendLine()
       sb.appendLine("--- Core Video Formats ---")
       for (k in keyVideoCodecs) {
-        val hwText = if (k.hasHardware) "⚡ Hardware (${k.decoderName})" else "💻 Software Fallback"
+        val decoderType =
+          when {
+            k.hasHardware -> "Hardware"
+            k.hasSoftware -> "Software"
+            else -> "Unsupported"
+          }
+        val decoderText = k.decoderName?.let { "$decoderType ($it)" } ?: decoderType
         val sysDefText = if (k.systemDefaultDecoder != null) " [Sys Default: ${k.systemDefaultDecoder}]" else ""
         val resText = if (k.maxResolution != null) " [Max: ${k.maxResolution}]" else ""
         val hdrText = if (k.isHdrSupported) " [10-Bit HDR Supported]" else ""
-        sb.appendLine("${k.formatName}: $hwText$sysDefText$resText$hdrText")
+        sb.appendLine("${k.formatName}: $decoderText$sysDefText$resText$hdrText")
       }
       sb.appendLine()
       sb.appendLine("--- Full Decoder Registry ---")
@@ -721,21 +730,24 @@ object CodecCapabilitiesScreen : Screen {
                 StatCounterChip(
                   modifier = Modifier.weight(1f),
                   count = hwCount,
-                  label = "Hardware ⚡",
+                  label = "Hardware",
+                  icon = Icons.RoundedFilled.DeveloperBoard,
                   containerColor = MaterialTheme.colorScheme.primaryContainer,
                   contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 StatCounterChip(
                   modifier = Modifier.weight(1f),
                   count = swCount,
-                  label = "Software 💻",
+                  label = "Software",
+                  icon = Icons.RoundedFilled.Code,
                   containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                   contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
                 StatCounterChip(
                   modifier = Modifier.weight(1f),
                   count = videoCount,
-                  label = "Video 🎥",
+                  label = "Video",
+                  icon = Icons.RoundedFilled.Videocam,
                   containerColor = MaterialTheme.colorScheme.secondaryContainer,
                   contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
@@ -926,6 +938,7 @@ private fun StatCounterChip(
   modifier: Modifier = Modifier,
   count: Int,
   label: String,
+  icon: AppIcon,
   containerColor: Color,
   contentColor: Color,
 ) {
@@ -938,12 +951,23 @@ private fun StatCounterChip(
       modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Text(
-        text = "$count",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Black,
-        color = contentColor,
-      )
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Icon(
+          imageVector = icon,
+          contentDescription = null,
+          tint = contentColor,
+          modifier = Modifier.size(15.dp),
+        )
+        Text(
+          text = "$count",
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.Black,
+          color = contentColor,
+        )
+      }
       Text(
         text = label,
         style = MaterialTheme.typography.labelSmall,
@@ -960,13 +984,25 @@ private fun StatCounterChip(
 @Composable
 private fun KeyCodecStatusCard(status: KeyCodecStatus) {
   val isHw = status.hasHardware
-  val badgeBg = if (isHw) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-  val badgeText = if (isHw) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
-  val cardBg = if (isHw) {
-    MaterialTheme.colorScheme.surfaceContainerHigh
-  } else {
-    MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
-  }
+  val isSw = !isHw && status.hasSoftware
+  val badgeBg =
+    when {
+      isHw -> MaterialTheme.colorScheme.primary
+      isSw -> MaterialTheme.colorScheme.tertiary
+      else -> MaterialTheme.colorScheme.error
+    }
+  val badgeText =
+    when {
+      isHw -> MaterialTheme.colorScheme.onPrimary
+      isSw -> MaterialTheme.colorScheme.onTertiary
+      else -> MaterialTheme.colorScheme.onError
+    }
+  val cardBg =
+    when {
+      isHw -> MaterialTheme.colorScheme.surfaceContainerHigh
+      isSw -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
+      else -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+    }
 
   val noDecoderText = stringResource(R.string.pref_codecs_no_decoder)
 
@@ -1011,17 +1047,34 @@ private fun KeyCodecStatusCard(status: KeyCodecStatus) {
           color = badgeBg,
           shape = RoundedCornerShape(20.dp),
         ) {
-          Text(
-            text = if (isHw) {
-              stringResource(R.string.pref_codecs_badge_hardware)
-            } else {
-              stringResource(R.string.pref_codecs_badge_software)
-            },
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Black,
-            color = badgeText,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-          )
+          Row(
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(
+              imageVector =
+                when {
+                  isHw -> Icons.RoundedFilled.DeveloperBoard
+                  isSw -> Icons.RoundedFilled.Code
+                  else -> Icons.RoundedFilled.Block
+                },
+              contentDescription = null,
+              tint = badgeText,
+              modifier = Modifier.size(14.dp),
+            )
+            Text(
+              text =
+                when {
+                  isHw -> stringResource(R.string.pref_codecs_badge_hardware)
+                  isSw -> stringResource(R.string.pref_codecs_badge_software)
+                  else -> "Unsupported"
+                },
+              style = MaterialTheme.typography.labelMedium,
+              fontWeight = FontWeight.Black,
+              color = badgeText,
+            )
+          }
         }
       }
 

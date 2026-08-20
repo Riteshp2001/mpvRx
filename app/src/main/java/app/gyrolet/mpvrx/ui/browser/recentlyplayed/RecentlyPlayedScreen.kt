@@ -537,6 +537,7 @@ private fun RecentItemsContent(
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
+  val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
@@ -582,6 +583,7 @@ private fun RecentItemsContent(
       showSizeChip,
       showResolutionChip,
       showFramerateInResolution,
+      showCodecSupportIndicator,
       showProgressBar,
       showDateChip,
       showUnplayedOldVideoLabel,
@@ -596,6 +598,7 @@ private fun RecentItemsContent(
         showSizeChip = showSizeChip,
         showResolutionChip = showResolutionChip,
         showFramerateInResolution = showFramerateInResolution,
+        showCodecSupportIndicator = showCodecSupportIndicator,
         showProgressBar = showProgressBar,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,

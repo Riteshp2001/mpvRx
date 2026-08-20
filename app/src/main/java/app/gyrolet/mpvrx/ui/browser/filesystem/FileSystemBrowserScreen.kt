@@ -1324,6 +1324,7 @@ private fun FileSystemBrowserContent(
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
+  val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
@@ -1343,6 +1344,7 @@ private fun FileSystemBrowserContent(
       showExtensionField,
       showDurationField,
       centerGridTitles,
+      showCodecSupportIndicator,
     ) {
       VideoCardUiConfig(
         unlimitedNameLines = unlimitedNameLines,
@@ -1350,6 +1352,7 @@ private fun FileSystemBrowserContent(
         showSizeChip = showSizeChip,
         showResolutionChip = showResolutionChip,
         showFramerateInResolution = showFramerateInResolution,
+        showCodecSupportIndicator = showCodecSupportIndicator,
         showProgressBar = showProgressBar,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
@@ -1750,6 +1753,7 @@ private fun FileSystemSearchContent(
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
+  val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
@@ -1770,6 +1774,7 @@ private fun FileSystemSearchContent(
       showExtensionField,
       showDurationField,
       centerGridTitles,
+      showCodecSupportIndicator,
     ) {
       VideoCardUiConfig(
         unlimitedNameLines = unlimitedNameLines,
@@ -1777,6 +1782,7 @@ private fun FileSystemSearchContent(
         showSizeChip = showSizeChip,
         showResolutionChip = showResolutionChip,
         showFramerateInResolution = showFramerateInResolution,
+        showCodecSupportIndicator = showCodecSupportIndicator,
         showProgressBar = showProgressBar,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,

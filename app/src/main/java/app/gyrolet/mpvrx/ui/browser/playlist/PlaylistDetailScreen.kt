@@ -664,6 +664,7 @@ private fun PlaylistVideoListContent(
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
+  val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
@@ -676,6 +677,7 @@ private fun PlaylistVideoListContent(
       showSizeChip,
       showResolutionChip,
       showFramerateInResolution,
+      showCodecSupportIndicator,
       showProgressBar,
       showDateChip,
       showUnplayedOldVideoLabel,
@@ -690,6 +692,7 @@ private fun PlaylistVideoListContent(
         showSizeChip = showSizeChip,
         showResolutionChip = showResolutionChip,
         showFramerateInResolution = showFramerateInResolution,
+        showCodecSupportIndicator = showCodecSupportIndicator,
         showProgressBar = showProgressBar,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
