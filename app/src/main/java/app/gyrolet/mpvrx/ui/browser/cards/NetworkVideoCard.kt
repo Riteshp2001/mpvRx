@@ -55,9 +55,6 @@ import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.text.style.TextAlign
@@ -332,8 +329,12 @@ private fun formatFileSize(bytes: Long): String =
     else -> String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0))
   }
 
-private fun formatDate(timestamp: Long): String {
-  val date = Date(timestamp)
-  val format = SimpleDateFormat("MMM dd", Locale.getDefault())
-  return format.format(date)
-}
+// Hoisted because a card formats a date on every recomposition and SimpleDateFormat construction
+// parses the pattern and clones a Calendar each time.
+private val NETWORK_CARD_DATE_FORMATTER: java.time.format.DateTimeFormatter =
+  java.time.format.DateTimeFormatter
+    .ofPattern("MMM dd")
+    .withZone(java.time.ZoneId.systemDefault())
+
+private fun formatDate(timestamp: Long): String =
+  NETWORK_CARD_DATE_FORMATTER.format(java.time.Instant.ofEpochMilli(timestamp))

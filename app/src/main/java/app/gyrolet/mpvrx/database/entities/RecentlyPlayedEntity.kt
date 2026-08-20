@@ -10,9 +10,17 @@
 package app.gyrolet.mpvrx.database.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity
+// Six DAO queries filter or update by filePath and the history views order by timestamp; without
+// these the table is scanned end to end every time.
+@Entity(
+  indices = [
+    Index(value = ["filePath"]),
+    Index(value = ["timestamp"]),
+  ],
+)
 data class RecentlyPlayedEntity(
   @PrimaryKey(autoGenerate = true) val id: Int = 0,
   val filePath: String,
