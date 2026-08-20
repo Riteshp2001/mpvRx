@@ -49,7 +49,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
@@ -61,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
 import app.gyrolet.mpvrx.domain.lyrics.SyncedLine
+import app.gyrolet.mpvrx.domain.lyrics.SyncedWord
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -312,35 +319,22 @@ fun LyricsView(
                     .padding(vertical = 4.dp, horizontal = 6.dp),
                 ) {
                   if (isActiveLine && !isBlankLine && !line.words.isNullOrEmpty()) {
-                    // Apple Music Style Word-by-Word Sliding Highlight
                     FlowRow(
                       modifier = Modifier.fillMaxWidth(),
                       horizontalArrangement = Arrangement.Start,
                       verticalArrangement = Arrangement.Center,
                     ) {
-                      line.words.forEach { word ->
-                        val isWordPassed = currentPosMs >= word.time
-                        val wordColor by animateColorAsState(
-                          targetValue = if (isWordPassed) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-                          animationSpec = tween(durationMillis = 200),
-                          label = "WordColor",
-                        )
-
-                        val wordSlideY by animateFloatAsState(
-                          targetValue = if (isWordPassed) -2f else 0f,
-                          animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium),
-                          label = "WordSlideY",
-                        )
-
-                        Text(
-                          text = word.word + " ",
-                          color = wordColor,
-                          fontSize = 22.sp,
-                          fontWeight = FontWeight.Black,
-                          fontFamily = FontFamily.SansSerif,
-                          modifier = Modifier.graphicsLayer {
-                            translationY = wordSlideY
-                          },
+                      line.words.forEachIndexed { wordIndex, word ->
+                        val wordEndMs =
+                          line.words.getOrNull(wordIndex + 1)?.time?.toLong()
+                            ?: activeLyrics.synced.getOrNull(index + 1)?.time?.toLong()
+                            ?: (word.time + 600).toLong()
+                        AnimatedLyricWord(
+                          word = word,
+                          endTimeMs = wordEndMs,
+                          currentPositionMs = currentPosMs,
+                          activeColor = activeColor,
+                          inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                       }
                     }
@@ -448,6 +442,93 @@ fun LyricsView(
           }
         }
       }
+    }
+  }
+}
+
+@Composable
+private fun AnimatedLyricWord(
+  word: SyncedWord,
+  endTimeMs: Long,
+  currentPositionMs: Long,
+  activeColor: Color,
+  inactiveColor: Color,
+) {
+  val startTimeMs = word.time.toLong()
+  val durationMs = (endTimeMs - startTimeMs).coerceAtLeast(1L)
+  val progress =
+    when {
+      currentPositionMs <= startTimeMs -> 0f
+      currentPositionMs >= endTimeMs -> 1f
+      else -> (currentPositionMs - startTimeMs).toFloat() / durationMs
+    }
+  val isActive = progress in 0.001f..0.999f
+  val pulse = kotlin.math.sin(progress * kotlin.math.PI).toFloat()
+  val lift by animateFloatAsState(
+    targetValue = if (isActive) -3f * pulse else 0f,
+    animationSpec = tween(durationMillis = if (isActive) 50 else 250, easing = FastOutSlowInEasing),
+    label = "LyricWordLift",
+  )
+  val textStyle =
+    MaterialTheme.typography.headlineSmall.copy(
+      fontSize = 22.sp,
+      fontWeight = FontWeight.Black,
+      fontFamily = FontFamily.SansSerif,
+    )
+
+  Box(
+    modifier =
+      Modifier.graphicsLayer {
+        translationY = lift
+        val scale = 1f + (0.015f * pulse)
+        scaleX = scale
+        scaleY = scale
+      },
+  ) {
+    Text(
+      text = word.word + " ",
+      color = inactiveColor,
+      style = textStyle,
+    )
+    if (progress > 0f) {
+      Text(
+        text = word.word + " ",
+        color = activeColor,
+        style =
+          textStyle.copy(
+            shadow =
+              if (isActive) {
+                Shadow(
+                  color = activeColor.copy(alpha = 0.32f * pulse),
+                  offset = Offset.Zero,
+                  blurRadius = 8f * pulse,
+                )
+              } else {
+                null
+              },
+          ),
+        modifier =
+          if (isActive) {
+            Modifier
+              .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+              .drawWithContent {
+                drawContent()
+                val edgeWidth = 6.dp.toPx()
+                val edgeCenter = (size.width + edgeWidth * 2) * progress - edgeWidth
+                drawRect(
+                  brush =
+                    Brush.horizontalGradient(
+                      colors = listOf(Color.Black, Color.Transparent),
+                      startX = edgeCenter - edgeWidth,
+                      endX = edgeCenter + edgeWidth,
+                    ),
+                  blendMode = BlendMode.DstIn,
+                )
+              }
+          } else {
+            Modifier
+          },
+      )
     }
   }
 }
