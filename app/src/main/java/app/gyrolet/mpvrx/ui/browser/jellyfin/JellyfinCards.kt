@@ -985,6 +985,126 @@ fun JellyfinPosterCard(
 }
 
 // ============================================================================
+// Music Card (1:1 Aspect Ratio Square Artwork)
+// ============================================================================
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun JellyfinMusicCard(
+  item: JellyfinItem,
+  server: JellyfinServer,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  cardWidth: androidx.compose.ui.unit.Dp = 140.dp,
+  onLongClick: (() -> Unit)? = null,
+  isSelected: Boolean = false,
+) {
+  val imageUrl =
+    remember(server.serverUrl, item.id, item.primaryImageTag, server.accessToken) {
+      JellyfinClient.getImageUrl(
+        serverUrl = server.serverUrl,
+        itemId = item.id,
+        imageTag = item.primaryImageTag,
+        maxWidth = 400,
+        token = server.accessToken,
+      )
+    }
+
+  val posterBorderModifier =
+    if (isSelected) {
+      Modifier.clip(RoundedCornerShape(12.dp)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+    } else {
+      Modifier.clip(RoundedCornerShape(12.dp))
+    }
+
+  Column(
+    modifier = modifier.width(cardWidth),
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .aspectRatio(1f)
+          .then(posterBorderModifier)
+          .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+          .combinedClickable(
+            onClick = onClick,
+            onLongClick = onLongClick,
+          ),
+    ) {
+      if (!item.primaryImageTag.isNullOrBlank()) {
+        RemoteImage(
+          url = imageUrl,
+          contentDescription = item.name,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize(),
+        )
+      } else {
+        Box(
+          modifier = Modifier.fillMaxSize(),
+          contentAlignment = Alignment.Center,
+        ) {
+          Icon(
+            imageVector = Icons.RoundedFilled.Audiotrack,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(40.dp),
+          )
+        }
+      }
+
+      if (isSelected) {
+        Surface(
+          shape = CircleShape,
+          color = MaterialTheme.colorScheme.primary,
+          modifier =
+            Modifier
+              .padding(6.dp)
+              .size(24.dp)
+              .align(Alignment.BottomEnd),
+        ) {
+          Icon(
+            imageVector = Icons.RoundedFilled.Check,
+            contentDescription = "Selected",
+            tint = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.padding(3.dp),
+          )
+        }
+      }
+    }
+
+    Column(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(top = 6.dp),
+      horizontalAlignment = Alignment.Start,
+    ) {
+      Text(
+        text = item.name,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Start,
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      val subtitle = item.seriesName ?: item.productionYear?.toString() ?: "Music"
+      Text(
+        text = subtitle,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Start,
+        modifier = Modifier.fillMaxWidth(),
+      )
+    }
+  }
+}
+
+// ============================================================================
 // Library Filter Chips Row
 // ============================================================================
 

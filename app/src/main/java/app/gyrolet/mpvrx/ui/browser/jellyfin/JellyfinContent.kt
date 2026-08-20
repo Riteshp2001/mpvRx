@@ -275,7 +275,7 @@ fun JellyfinContent(
         onPlayClick = { viewModel.playSelected(context, selectionManager.getSelectedItems()) },
         isSingleSelection = selectionManager.isSingleSelection,
         onBackClick = if (uiState.openLibrary != null) { { viewModel.navigateBack() } } else null,
-        onSortClick = { isSortDialogOpen = true },
+        onSortClick = if (uiState.openLibrary != null) { { isSortDialogOpen = true } } else null,
         onSearchClick = { isSearching = true },
         onSettingsClick = {
           backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
@@ -456,7 +456,40 @@ fun JellyfinContent(
                       }
                     }
 
-                    // 7. Libraries Section
+                    // 7. Music Section (above Libraries)
+                    if (uiState.latestMusic.isNotEmpty()) {
+                      item {
+                        Column(
+                          modifier = Modifier.fillMaxWidth(),
+                          verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                          JellyfinSectionHeader(
+                            title = "Music",
+                            subtitle = "Albums & Tracks",
+                            onSeeAll = {
+                              val musicLib = uiState.libraries.find { it.collectionType?.equals("music", ignoreCase = true) == true }
+                              if (musicLib != null) viewModel.navigateToItem(musicLib)
+                            },
+                          )
+
+                          LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                          ) {
+                            items(uiState.latestMusic, key = { it.id }) { item ->
+                              JellyfinMusicCard(
+                                item = item,
+                                server = server,
+                                onClick = { viewModel.playItem(context, item) },
+                                onLongClick = { viewModel.openDetail(item) },
+                              )
+                            }
+                          }
+                        }
+                      }
+                    }
+
+                    // 8. Libraries Section
                     if (uiState.libraries.isNotEmpty()) {
                       item {
                         Column(
@@ -542,7 +575,7 @@ fun JellyfinContent(
                   LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 24.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                   ) {
                     items(items, key = { it.id }) { item ->
@@ -641,7 +674,7 @@ fun JellyfinContent(
                     state = gridState,
                     columns = GridCells.Adaptive(minSize = 130.dp),
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
+                    contentPadding = PaddingValues(start = 12.dp, end = 24.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                   ) {

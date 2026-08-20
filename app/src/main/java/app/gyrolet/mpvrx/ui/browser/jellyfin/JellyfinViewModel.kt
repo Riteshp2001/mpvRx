@@ -60,6 +60,7 @@ data class JellyfinUiState(
   val resumeItems: List<JellyfinItem> = emptyList(),
   val latestMovies: List<JellyfinItem> = emptyList(),
   val latestShows: List<JellyfinItem> = emptyList(),
+  val latestMusic: List<JellyfinItem> = emptyList(),
   val recommendations: List<JellyfinItem> = emptyList(),
   val currentItems: List<JellyfinItem> = emptyList(),
   val openLibrary: JellyfinLibraryView? = null,
@@ -184,8 +185,28 @@ class JellyfinViewModel(
 
         val libsDeferred = async { jellyfinRepository.getLibraries(server) }
         val resumeDeferred = async { jellyfinRepository.getResumeItems(server, limit = 16) }
-        val latestDeferred = async { jellyfinRepository.getLatestMedia(server, limit = 24) }
-        val suggestionsDeferred = async { jellyfinRepository.getSuggestions(server, limit = 16) }
+        val latestDeferred = async { jellyfinRepository.getLatestMedia(server, limit = 32) }
+        val suggestionsDeferred = async { jellyfinRepository.getSuggestions(server, limit = 36) }
+        val topRatedDeferred =
+          async {
+            jellyfinRepository.getItems(
+              server = server,
+              includeItemTypes = "Movie,Series",
+              sortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.RATING,
+              sortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.DESCENDING,
+              limit = 36,
+            )
+          }
+        val musicDeferred =
+          async {
+            jellyfinRepository.getItems(
+              server = server,
+              includeItemTypes = "Audio,MusicAlbum",
+              sortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.DATE_ADDED,
+              sortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.DESCENDING,
+              limit = 20,
+            )
+          }
         val heroDeferred =
           async {
             jellyfinRepository.getItems(
@@ -201,28 +222,49 @@ class JellyfinViewModel(
         val resumeResult = resumeDeferred.await()
         val latestResult = latestDeferred.await()
         val suggestionsResult = suggestionsDeferred.await()
+        val topRatedResult = topRatedDeferred.await()
+        val musicResult = musicDeferred.await()
         val heroResult = heroDeferred.await()
 
         val libs = sortJellyfinLibraries(libsResult.getOrDefault(emptyList()))
-        val resume = resumeResult.getOrDefault(emptyList())
-        val latest = latestResult.getOrDefault(emptyList())
-        val suggestions = suggestionsResult.getOrDefault(emptyList())
+        val resumeRaw = resumeResult.getOrDefault(emptyList())
+        val latestRaw = latestResult.getOrDefault(emptyList())
+        val suggestionsRaw = suggestionsResult.getOrDefault(emptyList())
+        val topRatedRaw = topRatedResult.getOrNull()?.items ?: emptyList()
+        val musicRaw = musicResult.getOrNull()?.items ?: emptyList()
 
-        val latestMovies = latest.filter { it.type == "Movie" || it.collectionType?.equals("movies", ignoreCase = true) == true }
-        val latestShows = latest.filter { it.type == "Series" || it.type == "Episode" || it.collectionType?.equals("tvshows", ignoreCase = true) == true }
+        // Helper filter to exclude music and folders from general video home sections
+        fun isVideoMedia(item: JellyfinItem): Boolean {
+          if (item.isAudio || item.isFolder || item.type == "Folder" || item.type == "MusicAlbum" || item.type == "Audio" || item.type == "MusicArtist" || item.type == "CollectionFolder") return false
+          return true
+        }
 
-        // Hero Items: 15 unplayed random Movies & TV Series (AFinity logic, excluding continue watching)
+        val resume = resumeRaw.filter { isVideoMedia(it) }
+        val latestMovies = latestRaw.filter { isVideoMedia(it) && (it.type == "Movie" || it.collectionType?.equals("movies", ignoreCase = true) == true) }
+        val latestShows = latestRaw.filter { isVideoMedia(it) && (it.type == "Series" || it.type == "Episode" || it.collectionType?.equals("tvshows", ignoreCase = true) == true) }
+
+        // Top Picks For You: Combined API suggestions + top community-rated items (up to 36 items)
+        val recommendations = (suggestionsRaw + topRatedRaw + latestRaw)
+          .filter { isVideoMedia(it) && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank()) }
+          .distinctBy { it.id }
+          .take(36)
+
+        val latestMusic = (musicRaw + latestRaw.filter { it.isAudio || it.type == "MusicAlbum" || it.type == "Audio" })
+          .distinctBy { it.id }
+          .take(16)
+
+        // Hero Items: 15 unplayed random Movies & TV Series
         val fetchedHero =
           heroResult.getOrNull()?.items?.filter {
-            !it.isPlayed && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank())
+            !it.isPlayed && isVideoMedia(it) && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank())
           } ?: emptyList()
 
         val finalHero =
           if (fetchedHero.isNotEmpty()) {
             fetchedHero.take(15)
           } else {
-            (latest + suggestions)
-              .filter { !it.isPlayed && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank()) }
+            (latestRaw + suggestionsRaw)
+              .filter { !it.isPlayed && isVideoMedia(it) && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank()) }
               .distinctBy { it.id }
               .take(15)
           }
@@ -233,10 +275,11 @@ class JellyfinViewModel(
             resumeItems = resume,
             latestMovies = latestMovies,
             latestShows = latestShows,
-            recommendations = suggestions.ifEmpty { latest.take(12) },
+            latestMusic = latestMusic,
+            recommendations = recommendations,
             heroItems = finalHero,
             isLoading = false,
-            error = if (libs.isEmpty() && latest.isEmpty() && resume.isEmpty()) libsResult.exceptionOrNull()?.message else null,
+            error = if (libs.isEmpty() && latestRaw.isEmpty() && resumeRaw.isEmpty()) libsResult.exceptionOrNull()?.message else null,
           )
         }
       }
