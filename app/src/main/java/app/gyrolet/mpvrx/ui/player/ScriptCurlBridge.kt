@@ -312,14 +312,14 @@ class ScriptCurlBridge(
 
     return try {
       client.newCall(httpRequest).execute().use { response ->
-        val bytes = response.body.source().let { source ->
-          source.request(MAX_BODY_BYTES + 1)
-          source.buffer.snapshot(minOf(source.buffer.size, MAX_BODY_BYTES).toInt())
-        }
+        // Buffer at most the cap so a hostile endpoint cannot stream an unbounded body into memory.
+        val source = response.body.source()
+        source.request(MAX_BODY_BYTES + 1)
+        val bodyText = source.buffer.readUtf8(minOf(source.buffer.size, MAX_BODY_BYTES))
         CurlResponse(
           id = id,
           status = response.code,
-          body = bytes.utf8(),
+          body = bodyText,
           headers = response.headers.names().associateWith { response.headers.values(it).joinToString(", ") },
           error = null,
         )
