@@ -140,6 +140,13 @@ private fun normalizedReadAheadValue(
 
 private val segmentDrawPath = ThreadLocal.withInitial { Path() }
 
+/**
+ * Draws the linear seekbar as stacked layers instead of assigning one color to
+ * each sub-range. Keeping the unplayed track underneath is important: it lets
+ * the cache/read-ahead layer terminate with a real rounded cap without leaving
+ * transparent wedges at the cap corners. Slim, Standard, Thick and the flattened
+ * Wavy style all share this renderer, so their end-cap geometry stays identical.
+ */
 private fun DrawScope.drawSeekbarTrackSegments(
   segments: List<SeekbarTrackSegment>,
   playedPx: Float,
@@ -150,12 +157,15 @@ private fun DrawScope.drawSeekbarTrackSegments(
   bufferedColor: Color,
   unplayedColor: Color,
 ) {
+  if (trackHeight <= 0f || size.width <= 0f || segments.isEmpty()) return
+
   val outerRadius = trackHeight / 2f
-  val innerRadius = 2.dp.toPx()
+  val innerRadius = minOf(2.dp.toPx(), outerRadius)
   val cornerOuter = CornerRadius(outerRadius)
   val cornerInner = CornerRadius(innerRadius)
   val cornerZero = CornerRadius.Zero
   val reusablePath = segmentDrawPath.get() ?: Path().also { segmentDrawPath.set(it) }
+  val edgeEpsilon = 0.5f
 
   fun cornerFor(radius: Float): CornerRadius =
     when {
@@ -172,7 +182,7 @@ private fun DrawScope.drawSeekbarTrackSegments(
     leftRadius: Float,
     rightRadius: Float,
   ) {
-    if (endX - startX < 0.5f) return
+    if (endX - startX < edgeEpsilon) return
     val cLeft = cornerFor(leftRadius)
     val cRight = cornerFor(rightRadius)
     reusablePath.reset()
@@ -191,34 +201,52 @@ private fun DrawScope.drawSeekbarTrackSegments(
     drawPath(reusablePath, color)
   }
 
-  segments.forEach { segment ->
-    val leftRadius = if (segment.start <= 0.5f) outerRadius else innerRadius
-    val rightRadius = if (segment.end >= size.width - 0.5f) outerRadius else innerRadius
+  fun segmentLeftRadius(segment: SeekbarTrackSegment): Float =
+    if (segment.start <= edgeEpsilon) outerRadius else innerRadius
 
-    when {
-      segment.end <= playedPx ->
-        drawPiece(segment.start, segment.end, playedColor, leftRadius, rightRadius)
-      segment.start >= bufferedPx ->
-        drawPiece(segment.start, segment.end, unplayedColor, leftRadius, rightRadius)
-      segment.end <= bufferedPx -> {
-        if (segment.start >= playedPx) {
-          drawPiece(segment.start, segment.end, bufferedColor, leftRadius, rightRadius)
-        } else {
-          drawPiece(segment.start, playedPx, playedColor, leftRadius, 0f)
-          drawPiece(playedPx, segment.end, bufferedColor, 0f, rightRadius)
+  fun segmentRightRadius(segment: SeekbarTrackSegment): Float =
+    if (segment.end >= size.width - edgeEpsilon) outerRadius else innerRadius
+
+  fun drawRange(
+    rangeStart: Float,
+    rangeEnd: Float,
+    color: Color,
+    roundRangeEnd: Boolean = false,
+  ) {
+    val safeStart = rangeStart.takeIf { it.isFinite() }?.coerceIn(0f, size.width) ?: 0f
+    val safeEnd = rangeEnd.takeIf { it.isFinite() }?.coerceIn(safeStart, size.width) ?: safeStart
+    if (safeEnd - safeStart < edgeEpsilon) return
+
+    segments.forEach { segment ->
+      val pieceStart = maxOf(segment.start, safeStart)
+      val pieceEnd = minOf(segment.end, safeEnd)
+      if (pieceEnd - pieceStart < edgeEpsilon) return@forEach
+
+      val startsAtSegmentBoundary = pieceStart <= segment.start + edgeEpsilon
+      val endsAtSegmentBoundary = pieceEnd >= segment.end - edgeEpsilon
+      val leftRadius = if (startsAtSegmentBoundary) segmentLeftRadius(segment) else 0f
+      val rightRadius =
+        when {
+          endsAtSegmentBoundary -> segmentRightRadius(segment)
+          roundRangeEnd && pieceEnd >= safeEnd - edgeEpsilon -> outerRadius
+          else -> 0f
         }
-      }
-      segment.start < playedPx && segment.end > bufferedPx -> {
-        drawPiece(segment.start, playedPx, playedColor, leftRadius, 0f)
-        drawPiece(playedPx, bufferedPx, bufferedColor, 0f, 0f)
-        drawPiece(bufferedPx, segment.end, unplayedColor, 0f, rightRadius)
-      }
-      segment.start < bufferedPx && segment.end > bufferedPx -> {
-        drawPiece(segment.start, bufferedPx, bufferedColor, leftRadius, 0f)
-        drawPiece(bufferedPx, segment.end, unplayedColor, 0f, rightRadius)
-      }
-      else -> drawPiece(segment.start, segment.end, unplayedColor, leftRadius, rightRadius)
+
+      drawPiece(pieceStart, pieceEnd, color, leftRadius, rightRadius)
     }
+  }
+
+  // Base pill always owns the true outer shape. Progress and cache are overlays.
+  drawRange(0f, size.width, unplayedColor)
+
+  // Cache/read-ahead gets a rounded terminal cap while the base remains visible
+  // underneath its curved corners. This is the piece that was flat previously.
+  if (bufferedPx > playedPx) {
+    drawRange(playedPx, bufferedPx, bufferedColor, roundRangeEnd = true)
+  }
+
+  if (playedPx > 0f) {
+    drawRange(0f, playedPx, playedColor)
   }
 }
 
@@ -725,7 +753,7 @@ private fun NormalSeekbar(
     val totalWidth = size.width
     val centerY = size.height / 2f
     val currentPosition = positionProvider()
-    val progress = if (duration > 0f) (currentPosition / duration).coerceIn(0f, 1f) else 0f
+    val progress = if (duration > 0f && currentPosition.isFinite()) (currentPosition / duration).coerceIn(0f, 1f) else 0f
     val playedPx = (totalWidth * progress).coerceIn(0f, totalWidth)
     val height = trackHeight.toPx()
     val radius = height / 2f
@@ -773,7 +801,8 @@ private fun NormalSeekbar(
     // 1. Background unplayed track
     drawSegmentedTrack(0f, totalWidth, primaryColor.copy(alpha = 0.24f))
 
-    // 2. Buffer readahead track
+    // 2. Buffer readahead track. Normal already uses a real round-rect overlay,
+    // so its cache endpoint naturally follows the same pill geometry.
     if (bufferDuration != null && bufferDuration > 0f && duration > 0f) {
       val bufferPx = bufferedEndPx(bufferDuration, duration, totalWidth, playedPx)
       if (bufferPx > playedPx) {
@@ -786,11 +815,18 @@ private fun NormalSeekbar(
       drawSegmentedTrack(0f, playedPx, primaryColor)
     }
 
-    // 4. Circular thumb
+    // 4. Circular thumb. Keep the whole circle inside the canvas at 0%/100%; a
+    // thumb centred directly on the canvas edge is clipped into a flat semicircle.
+    val thumbCenterX =
+      if (totalWidth > thumbR * 2f) {
+        playedPx.coerceIn(thumbR, totalWidth - thumbR)
+      } else {
+        totalWidth / 2f
+      }
     drawCircle(
       color = primaryColor,
       radius = thumbR,
-      center = Offset(playedPx, centerY),
+      center = Offset(thumbCenterX, centerY),
     )
 
     // 5. A-B Loop indicators
@@ -972,8 +1008,6 @@ private fun SquigglySeekbar(
   var phaseOffset by remember { mutableFloatStateOf(0f) }
   var heightFraction by remember { mutableFloatStateOf(1f) }
 
-  val scope = rememberCoroutineScope()
-
   // Wave parameters
   val waveLength = 80f
   val lineAmplitude = if (useWavySeekbar) 6f else 0f
@@ -996,6 +1030,7 @@ private fun SquigglySeekbar(
           }.toFloatArray()
       }
     }
+  val chapterStarts = remember(chapters) { chapters.map(Segment::start) }
 
   // Animate height fraction based on paused state and scrubbing state
   LaunchedEffect(isPaused, isScrubbing, useWavySeekbar) {
@@ -1048,7 +1083,7 @@ private fun SquigglySeekbar(
   ) {
     val currentPosition = positionProvider()
     val strokeWidth = 5.dp.toPx()
-    val progress = if (duration > 0f) (currentPosition / duration).coerceIn(0f, 1f) else 0f
+    val progress = if (duration > 0f && currentPosition.isFinite()) (currentPosition / duration).coerceIn(0f, 1f) else 0f
     val totalWidth = size.width
     val totalProgressPx = totalWidth * progress
     val centerY = size.height / 2f
@@ -1109,6 +1144,15 @@ private fun SquigglySeekbar(
     // Draw path up to progress position using clipping
     val clipTop = lineAmplitude + strokeWidth
     val gapHalf = 1.dp.toPx()
+    val disabledAlpha = 77f / 255f
+    val bufferColor = primaryColor.copy(alpha = 0.55f)
+    val unplayedColor = primaryColor.copy(alpha = disabledAlpha)
+    val bufferPx =
+      if (bufferDuration != null && bufferDuration > 0f && duration > 0f) {
+        bufferedEndPx(bufferDuration, duration, totalWidth, totalProgressPx)
+      } else {
+        totalProgressPx
+      }
 
     fun drawPathWithGaps(
       startX: Float,
@@ -1171,36 +1215,109 @@ private fun SquigglySeekbar(
       }
     }
 
-    // Played segment
-    drawPathWithGaps(0f, totalProgressPx, primaryColor)
-
-    if (transitionEnabled) {
-      val disabledAlpha = 77f / 255f
-      drawPathWithGaps(totalProgressPx, totalWidth, primaryColor.copy(alpha = disabledAlpha))
-    } else {
-      drawLine(
-        color = surfaceVariant.copy(alpha = 0.4f),
-        start = Offset(totalProgressPx, centerY),
-        end = Offset(totalWidth, centerY),
-        strokeWidth = strokeWidth,
-        cap = StrokeCap.Round,
-      )
+    fun waveYAt(x: Float): Float {
+      val envelope =
+        if (transitionEnabled) {
+          val length = transitionPeriods * waveLength
+          ((waveProgressPx + length / 2f - x) / length).coerceIn(0f, 1f)
+        } else {
+          1f
+        }
+      val phase = (x - waveStart) / waveLength * (2f * kotlin.math.PI.toFloat())
+      return centerY + kotlin.math.cos(phase) * heightFraction * lineAmplitude * envelope
     }
 
-    if (bufferDuration != null && bufferDuration > 0f && duration > 0f) {
-      val bufferPx = bufferedEndPx(bufferDuration, duration, totalWidth, totalProgressPx)
+    if (heightFraction <= 0.05f) {
+      // Flattened Wavy shares the same layered renderer as Slim/Standard/Thick,
+      // so the cache endpoint and the physical track ends keep the same radius.
+      val segments =
+        seekbarTrackSegments(
+          chapterStarts = chapterStarts,
+          duration = duration,
+          trackWidth = totalWidth,
+          chapterGapHalf = gapHalf,
+        )
+      drawSeekbarTrackSegments(
+        segments = segments,
+        playedPx = totalProgressPx,
+        bufferedPx = bufferPx,
+        centerY = centerY,
+        trackHeight = strokeWidth,
+        playedColor = primaryColor,
+        bufferedColor = bufferColor,
+        unplayedColor = unplayedColor,
+      )
+    } else {
+      // The unplayed path is the base layer, then cache and played are painted on
+      // top. Keeping this order allows the rounded cache terminal to reveal the
+      // correct unplayed color beneath its curved corners.
+      if (transitionEnabled) {
+        drawPathWithGaps(0f, totalWidth, unplayedColor)
+      } else {
+        drawLine(
+          color = surfaceVariant.copy(alpha = 0.4f),
+          start = Offset(0f, centerY),
+          end = Offset(totalWidth, centerY),
+          strokeWidth = strokeWidth,
+          cap = StrokeCap.Round,
+        )
+      }
+
       if (bufferPx > totalProgressPx) {
-        drawPathWithGaps(totalProgressPx, bufferPx, primaryColor.copy(alpha = 0.55f))
+        drawPathWithGaps(totalProgressPx, bufferPx, bufferColor)
+
+        // clipRect intentionally cuts the path at bufferPx, which makes the cache
+        // endpoint flat. Restore a pill cap entirely *inside* the cached range so
+        // it remains accurate and does not over-report the buffered position.
+        val availableBufferWidth = bufferPx - totalProgressPx
+        val capRadius = minOf(strokeWidth / 2f, availableBufferWidth / 2f)
+        val nearChapterGap =
+          chapterFractions.any { fraction ->
+            kotlin.math.abs(fraction * totalWidth - bufferPx) <= gapHalf + capRadius
+          }
+        if (capRadius > 0.5f && bufferPx < totalWidth - 0.5f && !nearChapterGap) {
+          val capCenterX = bufferPx - capRadius
+          drawCircle(
+            color = bufferColor,
+            radius = capRadius,
+            center = Offset(capCenterX, waveYAt(capCenterX)),
+          )
+        }
+      }
+
+      drawPathWithGaps(0f, totalProgressPx, primaryColor)
+
+      // A stroked path whose cap is centred on x=0/width loses half of the cap to
+      // canvas clipping. Draw the terminal caps *inside* the canvas instead.
+      val outerCapRadius = strokeWidth / 2f
+      if (totalWidth > outerCapRadius * 2f) {
+        val leftCapColor =
+          when {
+            totalProgressPx > 0.5f -> primaryColor
+            bufferPx > 0.5f -> bufferColor
+            else -> unplayedColor
+          }
+        val leftCapX = outerCapRadius
+        drawCircle(
+          color = leftCapColor,
+          radius = outerCapRadius,
+          center = Offset(leftCapX, waveYAt(leftCapX)),
+        )
+
+        val rightCapColor =
+          when {
+            totalProgressPx >= totalWidth - 0.5f -> primaryColor
+            bufferPx >= totalWidth - 0.5f -> bufferColor
+            else -> unplayedColor
+          }
+        val rightCapX = totalWidth - outerCapRadius
+        drawCircle(
+          color = rightCapColor,
+          radius = outerCapRadius,
+          center = Offset(rightCapX, waveYAt(rightCapX)),
+        )
       }
     }
-
-    // Draw round cap
-    val startAmp = kotlin.math.cos(kotlin.math.abs(waveStart) / waveLength * (2f * kotlin.math.PI.toFloat()))
-    drawCircle(
-      color = primaryColor,
-      radius = strokeWidth / 2f,
-      center = Offset(0f, centerY + startAmp * lineAmplitude * heightFraction),
-    )
 
     // Vertical Bar Thumb
     val thumbVisibility = thumbVisibilityState.value
@@ -1208,10 +1325,17 @@ private fun SquigglySeekbar(
     val barWidth = 5.dp.toPx()
 
     if (barHalfHeight > 0.5f && thumbVisibility > 0.05f) {
+      val halfBarWidth = barWidth * thumbVisibility / 2f
+      val thumbX =
+        if (totalWidth > halfBarWidth * 2f) {
+          totalProgressPx.coerceIn(halfBarWidth, totalWidth - halfBarWidth)
+        } else {
+          totalWidth / 2f
+        }
       drawLine(
         color = primaryColor.copy(alpha = thumbVisibility),
-        start = Offset(totalProgressPx, centerY - barHalfHeight),
-        end = Offset(totalProgressPx, centerY + barHalfHeight),
+        start = Offset(thumbX, centerY - barHalfHeight),
+        end = Offset(thumbX, centerY + barHalfHeight),
         strokeWidth = barWidth * thumbVisibility,
         cap = StrokeCap.Round,
       )
@@ -1311,7 +1435,7 @@ private fun SlimSeekbar(
 
   Canvas(modifier = modifier.fillMaxWidth().height(48.dp)) {
     val currentPosition = positionProvider()
-    val progress = if (duration > 0f) (currentPosition / duration).coerceIn(0f, 1f) else 0f
+    val progress = if (duration > 0f && currentPosition.isFinite()) (currentPosition / duration).coerceIn(0f, 1f) else 0f
     val totalWidth = size.width
     val playedPx = totalWidth * progress
     val centerY = size.height / 2f
@@ -1412,7 +1536,13 @@ fun SeekbarStylePreview(
             size = Size(playedPx, trackHeight),
             cornerRadius = CornerRadius(trackHeight / 2f),
           )
-          drawCircle(primaryColor, radius = thumbRadius, center = Offset(playedPx, centerY))
+          val thumbCenterX =
+            if (size.width > thumbRadius * 2f) {
+              playedPx.coerceIn(thumbRadius, size.width - thumbRadius)
+            } else {
+              size.width / 2f
+            }
+          drawCircle(primaryColor, radius = thumbRadius, center = Offset(thumbCenterX, centerY))
         }
         SeekbarStyle.Slim -> {
           val height = 10.dp.toPx()
@@ -1480,9 +1610,12 @@ fun SeekbarStylePreview(
             )
           }
           val thumbHalfH = 12.dp.toPx()
+          val thumbLeft =
+            (playedPx - thumbW / 2f)
+              .coerceIn(0f, (size.width - thumbW).coerceAtLeast(0f))
           drawRoundRect(
             color = primaryColor,
-            topLeft = Offset(playedPx - thumbW / 2f, centerY - thumbHalfH),
+            topLeft = Offset(thumbLeft, centerY - thumbHalfH),
             size = Size(thumbW, thumbHalfH * 2),
             cornerRadius = CornerRadius(thumbW / 2f),
           )
@@ -1508,9 +1641,12 @@ fun SeekbarStylePreview(
               cornerRadius = CornerRadius(radius),
             )
           }
+          val thumbLeft =
+            (playedPx - thumbW / 2f)
+              .coerceIn(0f, (size.width - thumbW).coerceAtLeast(0f))
           drawRoundRect(
             color = primaryColor,
-            topLeft = Offset(playedPx - thumbW / 2f, centerY - radius),
+            topLeft = Offset(thumbLeft, centerY - radius),
             size = Size(thumbW, height),
             cornerRadius = CornerRadius(thumbW / 2f),
           )
@@ -1624,7 +1760,6 @@ fun StandardSeekbar(
 
   // Animation state (same as SquigglySeekbar)
   var heightFraction by remember { mutableFloatStateOf(1f) }
-  val scope = rememberCoroutineScope()
 
   // Animate height fraction based on paused state and scrubbing state (same as SquigglySeekbar)
   LaunchedEffect(isPaused, isScrubbing) {
