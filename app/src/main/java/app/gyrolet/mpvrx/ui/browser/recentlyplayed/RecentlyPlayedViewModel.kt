@@ -161,8 +161,15 @@ class RecentlyPlayedViewModel(
     val sourceUri = runCatching { Uri.parse(source) }.getOrNull()
     val scheme = sourceUri?.scheme?.lowercase()
 
+    if (RecentlyPlayedMediaClassifier.isContentUri(source)) {
+      if (sourceUri == null || !canReadContentUri(sourceUri)) {
+        recentlyPlayedRepository.deleteByFilePath(source)
+        return null
+      }
+      return createUriVideo(entity, sourceUri)
+    }
+
     if (RecentlyPlayedMediaClassifier.isRemote(source) ||
-      RecentlyPlayedMediaClassifier.isContentUri(source) ||
       (scheme != null && scheme != "file")
     ) {
       return createUriVideo(entity, sourceUri ?: Uri.parse(source))
@@ -283,6 +290,12 @@ class RecentlyPlayedViewModel(
         val isUriSource = uri?.scheme?.let { scheme -> !scheme.equals("file", ignoreCase = true) } == true
         val localPath = if (RecentlyPlayedMediaClassifier.isFileUri(path)) uri?.path.orEmpty() else path
         val localFile = File(localPath)
+        if (RecentlyPlayedMediaClassifier.isContentUri(path) &&
+          (uri == null || !canReadContentUri(uri))
+        ) {
+          runCatching { recentlyPlayedRepository.deleteByFilePath(path) }
+          return@firstNotNullOfOrNull null
+        }
         if (!isUriSource && (!localFile.exists() || !localFile.canRead())) {
           runCatching { recentlyPlayedRepository.deleteByFilePath(path) }
           return@firstNotNullOfOrNull null
@@ -307,7 +320,8 @@ class RecentlyPlayedViewModel(
 
       videos.forEach { video ->
         try {
-          val shouldDeleteSource = deleteFiles && !RecentlyPlayedMediaClassifier.isRemote(video.path)
+          val shouldDeleteSource =
+            deleteFiles && RecentlyPlayedMediaClassifier.supportsSourceDeletion(video.path)
           if (shouldDeleteSource) {
             val sourceVideo =
               if (RecentlyPlayedMediaClassifier.isFileUri(video.path)) {
@@ -367,6 +381,11 @@ class RecentlyPlayedViewModel(
 
       val uri = runCatching { Uri.parse(path) }.getOrNull()
       val scheme = uri?.scheme?.lowercase()
+      if (RecentlyPlayedMediaClassifier.isContentUri(path)) {
+        if (uri != null && canReadContentUri(uri)) return@withContext video
+        runCatching { recentlyPlayedRepository.deleteByFilePath(video.path) }
+        return@withContext null
+      }
       if (scheme != null && scheme != "file") return@withContext video
 
       val filePath = if (RecentlyPlayedMediaClassifier.isFileUri(path)) uri?.path.orEmpty() else path
@@ -378,6 +397,19 @@ class RecentlyPlayedViewModel(
         null
       }
     }
+
+  private fun canReadContentUri(uri: Uri): Boolean {
+    val contentResolver = getApplication<Application>().contentResolver
+    val hasFileDescriptor =
+      runCatching {
+        contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+      }.getOrDefault(false)
+    if (hasFileDescriptor) return true
+
+    return runCatching {
+      contentResolver.openInputStream(uri)?.use { true } ?: false
+    }.getOrDefault(false)
+  }
 
   private fun mimeTypeForExtension(
     extension: String,

@@ -39,6 +39,13 @@ object RecentlyPlayedMediaClassifier {
 
   fun isFileUri(path: String): Boolean = sourceScheme(path) == "file"
 
+  /** Only these source types can be deleted through filesystem or ContentResolver APIs. */
+  fun supportsSourceDeletion(path: String): Boolean =
+    when (sourceScheme(path)) {
+      null, "file", "content" -> true
+      else -> false
+    }
+
   fun isGenericStreamName(name: String?): Boolean =
     name.isNullOrBlank() || name.trim().lowercase() in genericStreamNames
 

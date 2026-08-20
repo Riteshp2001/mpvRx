@@ -25,6 +25,16 @@ class RecentlyPlayedMediaClassifierTest {
   }
 
   @Test
+  fun `limits source deletion to file and content backed media`() {
+    assertTrue(RecentlyPlayedMediaClassifier.supportsSourceDeletion("/storage/emulated/0/video.mp4"))
+    assertTrue(RecentlyPlayedMediaClassifier.supportsSourceDeletion("file:///storage/emulated/0/video.mp4"))
+    assertTrue(RecentlyPlayedMediaClassifier.supportsSourceDeletion("content://media/external/video/12"))
+    assertTrue(RecentlyPlayedMediaClassifier.supportsSourceDeletion("C:\\Videos\\video.mp4"))
+    assertFalse(RecentlyPlayedMediaClassifier.supportsSourceDeletion("https://example.com/video.mp4"))
+    assertFalse(RecentlyPlayedMediaClassifier.supportsSourceDeletion("udp://239.0.0.1:1234"))
+  }
+
+  @Test
   fun `detects streaming playlist containers`() {
     assertTrue(RecentlyPlayedMediaClassifier.isStreamingPlaylist("https://example.com/master.m3u8"))
     assertTrue(RecentlyPlayedMediaClassifier.isStreamingPlaylist("https://example.com/dash/manifest"))
