@@ -385,6 +385,7 @@ class PlayerActivity :
   private var isReady = false // Single flag: true when video loaded and ready
   private var isUserFinishing = false
   private var isBackgroundPlaybackSessionActive = false
+  private var startedBackgroundForPip = false
   private var wasInPipMode = false
   private var handledPipDismissal = false
   private var pendingBackgroundTransition = false
@@ -4818,6 +4819,24 @@ class PlayerActivity :
     if (isInPictureInPictureMode) {
       wasInPipMode = true
       handledPipDismissal = false
+      // PiP leaves the Activity started, so onStop never runs and the media notification it
+      // would have posted never appears. Start the service here, but leave video enabled
+      // because the PiP window is still rendering it.
+      if (
+        !isBackgroundPlaybackSessionActive &&
+        !isUserFinishing &&
+        !isFinishing &&
+        shouldShowPlaybackNotification()
+      ) {
+        if (startBackgroundPlayback(allowUserPrompt = false) == BackgroundPlaybackStartResult.Started) {
+          isBackgroundPlaybackSessionActive = true
+          startedBackgroundForPip = true
+        }
+      }
+    } else if (startedBackgroundForPip) {
+      // Expanded back to full screen, so hand playback ownership back to the Activity.
+      startedBackgroundForPip = false
+      endBackgroundPlayback()
     }
 
     binding.controls.animate().cancel()
