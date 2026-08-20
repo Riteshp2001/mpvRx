@@ -313,7 +313,11 @@ class PlayerActivity :
    * the incoming video inside [handleFileLoaded], so any save during the transition
    * lands on the correct (outgoing) record.
    */
+  @Volatile
   private var activeSaveMediaIdentifier: String = ""
+
+  @Volatile
+  private var pendingPositionRestoreGeneration: Long? = null
   private var pendingBackgroundPlaybackStart = false
 
   /**
@@ -3577,6 +3581,12 @@ class PlayerActivity :
     val loadedIntent = Intent(intent)
     val loadedPlaylistIndex = playlistIndex
     val loadedPlaylist = playlist.toList()
+    if (loadedMediaIdentifier.isNotBlank()) {
+      // MPV has confirmed that the incoming file is active, so subsequent lifecycle saves must
+      // target it even while its database-backed resume position is still being restored.
+      activeSaveMediaIdentifier = loadedMediaIdentifier
+      pendingPositionRestoreGeneration = loadGeneration
+    }
     currentUri?.let { viewModel.calculateVideoHash(it) }
 
     reportJellyfinStop()
@@ -3604,13 +3614,9 @@ class PlayerActivity :
         )
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
 
-      // Only now re-point the persisted-state identifier at the incoming video. Its resume
-      // position has just been restored above, so any save that fires from here on lands on
-      // the correct (incoming) record with the resumed position. Until this point
-      // activeSaveMediaIdentifier still pointed at the outgoing video, so a save fired during
-      // the buffering transition could not stamp the incoming video's record with an un-resumed
-      // position (e.g. 0) and erase its saved progress.
-      if (loadedMediaIdentifier.isNotBlank()) activeSaveMediaIdentifier = loadedMediaIdentifier
+      if (pendingPositionRestoreGeneration == loadGeneration) {
+        pendingPositionRestoreGeneration = null
+      }
 
       // Apply track selection logic (defaults only apply when no saved state)
       trackSelector.onFileLoaded(hasState)
@@ -4080,6 +4086,8 @@ class PlayerActivity :
       mediaTitle = mediaTitle,
       currentPosition = readMpvIntSeconds("time-pos", viewModel.pos ?: 0),
       duration = readMpvIntSeconds("duration", viewModel.duration ?: 0),
+      isPositionRestorePending =
+        pendingPositionRestoreGeneration == PlaybackSession.state.value.activeGeneration,
       playbackSpeed = PlaybackSession.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
       videoZoom = PlaybackSession.getPropertyDouble("video-zoom")?.toFloat() ?: viewModel.videoZoom.value,
       sid = player.sid,
@@ -5785,7 +5793,8 @@ class PlayerActivity :
 
     // Save current video's playback state before switching
     if (saveCurrentPlaybackState && fileName.isNotBlank()) {
-      saveVideoPlaybackState(fileName)
+      // A later lifecycle save for the incoming item must not cancel this outgoing-item write.
+      saveVideoPlaybackState(fileName, immediate = true)
       reportJellyfinStop()
     }
 
