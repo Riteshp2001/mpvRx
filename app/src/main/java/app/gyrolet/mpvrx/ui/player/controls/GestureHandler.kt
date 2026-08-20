@@ -1126,7 +1126,7 @@ fun GestureHandler(
                       if (useThumbFastSeekPreview) {
                         viewModel.updateSeekThumbnailPreview(clampedPosition, maxDuration)
                       } else {
-                        viewModel.previewSeekTo(clampedPosition.toInt())
+                        viewModel.previewSeekTo(clampedPosition)
                       }
 
                       // Format and display time position updates

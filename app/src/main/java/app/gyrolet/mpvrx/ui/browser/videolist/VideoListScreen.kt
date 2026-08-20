@@ -1113,7 +1113,7 @@ internal fun VideoListContent(
               ) {
                 items(
                   count = videosWithInfo.size,
-                  key = { index -> videosWithInfo[index].video.id },
+                  key = { index -> videosWithInfo[index].video.stableListKey },
                   contentType = { "video_item" },
                 ) { index ->
                   val videoWithInfo = videosWithInfo[index]
@@ -1188,7 +1188,7 @@ internal fun VideoListContent(
               ) {
                 items(
                   count = videosWithInfo.size,
-                  key = { index -> videosWithInfo[index].video.id },
+                  key = { index -> videosWithInfo[index].video.stableListKey },
                   contentType = { "video_item" },
                 ) { index ->
                   val videoWithInfo = videosWithInfo[index]
@@ -1273,5 +1273,8 @@ private fun visibleVideoWindow(
     if (beforeStart < visibleStart) addAll(beforeStart until visibleStart)
   }
 }
+
+private val Video.stableListKey: String
+  get() = "$id:$path"
 
 private const val THUMBNAIL_SCROLL_SETTLE_MILLIS = 100L

@@ -1546,7 +1546,7 @@ fun PlayerControls(
                 } else {
                   // Legacy mode previews on the actual video surface. The ViewModel conflates
                   // pointer events so this remains responsive instead of issuing a seek per pixel.
-                  viewModel.previewSeekTo(it.toInt())
+                  viewModel.previewSeekTo(it)
                 }
               },
               onValueChangeFinished = { targetPosition ->

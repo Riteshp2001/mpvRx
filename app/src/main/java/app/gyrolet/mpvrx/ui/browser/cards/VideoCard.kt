@@ -881,41 +881,19 @@ private fun CodecSupportIndicator(
       app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNSUPPORTED -> if (compact) "NO" else "Unsupported"
       app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNKNOWN -> "Unknown"
     }
-  val statusColor =
-    when (support.decodeSupport) {
-      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.HARDWARE -> Color(0xFF2E7D32)
-      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.SOFTWARE -> Color(0xFFF9A825)
-      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNSUPPORTED -> MaterialTheme.colorScheme.error
-      app.gyrolet.mpvrx.utils.media.VideoDecodeSupport.UNKNOWN -> MaterialTheme.colorScheme.outline
-    }
-  val containerColor =
-    if (compact) {
-      Color.Black.copy(alpha = 0.72f)
-    } else {
-      statusColor.copy(alpha = 0.14f)
-    }
-
   Row(
     modifier =
       modifier
         .clip(AppShapeScale.small)
-        .background(containerColor)
+        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
         .padding(horizontal = if (compact) 6.dp else 8.dp, vertical = if (compact) 3.dp else 4.dp),
-    horizontalArrangement = Arrangement.spacedBy(5.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Box(
-      modifier =
-        Modifier
-          .size(6.dp)
-          .clip(androidx.compose.foundation.shape.CircleShape)
-          .background(statusColor),
-    )
     Text(
       text = "${support.codecLabel} · $statusLabel",
       style = MaterialTheme.typography.labelSmall,
       fontWeight = FontWeight.Bold,
-      color = if (compact) Color.White else MaterialTheme.colorScheme.onSurface,
+      color = MaterialTheme.colorScheme.onSurface,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )

@@ -2101,21 +2101,23 @@ class PlayerViewModel : ViewModel(),
   private var pendingSeekOffset: Int = 0
   private var seekCoalesceJob: Job? = null
   private val previewSeekLock = Any()
-  private var pendingPreviewSeekPosition: Int? = null
+  private var pendingPreviewSeekPosition: Float? = null
   private var previewSeekJob: Job? = null
 
   private companion object {
     const val TAG = "PlayerViewModel"
     const val AUTO_SHOW_SKIP_CHIP_DURATION = 10.0
     const val SEEK_COALESCE_DELAY_MS = 60L
-    const val PREVIEW_SEEK_INTERVAL_MS = 80L
-    const val SEEK_THUMBNAIL_TIMEOUT_MS = 5_000L
+    const val PREVIEW_SEEK_INTERVAL_MS = 25L
+    const val SEEK_THUMBNAIL_TIMEOUT_MS = 2_500L
     const val SEEK_THUMBNAIL_FAILURE_COOLDOWN_MS = 10_000L
     const val SEEK_THUMBNAIL_FAILURE_CACHE_MAX = 128
-    const val SEEK_THUMBNAIL_MAX_SIZE = 240
+    const val SEEK_THUMBNAIL_MAX_SIZE = 320
     const val SEEK_THUMBNAIL_CACHE_KB = 16 * 1024
     const val SEEK_THUMBNAIL_CACHE_BUCKETS_PER_SECOND = 1f
     const val SEEK_THUMBNAIL_PREFETCH_RADIUS = 2
+    val MPV_ONLY_PSEUDO_PROTOCOLS =
+      setOf("fd", "fdclose", "edl", "memory", "null", "av", "lavf", "archive", "slice", "mf", "hex", "bd", "dvd", "dvb")
     const val PLAYLIST_METADATA_PREFETCH_RADIUS = 40
     const val PLAYLIST_METADATA_PREFETCH_LIMIT = 120
     const val MIN_INTRO_MARKER_DURATION_SEC = 480.0
@@ -3891,13 +3893,14 @@ class PlayerViewModel : ViewModel(),
     val bitmap =
       withTimeoutOrNull(SEEK_THUMBNAIL_TIMEOUT_MS) {
         try {
-          // This is the independent ThumbFast engine, not the active playback core. Software
-          // decode avoids fighting the video player for a hardware decoder on lower-end devices.
+          // This is the independent ThumbFast engine, not the active playback core. It decodes
+          // with its own MediaCodec instance and falls back to software automatically, so a
+          // hardware-first decode is both fast and safe alongside the playing video.
           FastThumbnails.generateAsync(
             source,
             thumbnailTime.toDouble(),
             SEEK_THUMBNAIL_MAX_SIZE,
-            useHwDec = false,
+            useHwDec = true,
           )
         } catch (cancellation: kotlinx.coroutines.CancellationException) {
           throw cancellation
@@ -3963,9 +3966,19 @@ class PlayerViewModel : ViewModel(),
   private fun resolveSeekThumbnailSource(): String? =
     // mpv's resolved filename comes first: network-library items are converted to an authenticated
     // loopback range URL by PlaybackSession, while the host may still hold the unplayable logical URI.
-    runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull()?.takeIf { it.isNotBlank() }
-      ?: runCatching { PlaybackSession.getPropertyString("path") }.getOrNull()?.takeIf { it.isNotBlank() }
-      ?: host.currentThumbnailSource()?.takeIf { it.isNotBlank() }
+    // Candidates that only mpv itself can open (fd://, edl://, ...) are skipped because the
+    // ThumbFast engine reopens the source with FFmpeg directly.
+    sequenceOf(
+      runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull(),
+      runCatching { PlaybackSession.getPropertyString("path") }.getOrNull(),
+      host.currentThumbnailSource(),
+    ).mapNotNull { candidate -> candidate?.takeIf { it.isNotBlank() } }
+      .firstOrNull(::isSeekThumbnailSourceDecodable)
+
+  private fun isSeekThumbnailSourceDecodable(source: String): Boolean {
+    val scheme = source.substringBefore("://", missingDelimiterValue = "").lowercase()
+    return scheme !in MPV_ONLY_PSEUDO_PROTOCOLS
+  }
 
   private fun isNetworkSeekThumbnailSource(source: String): Boolean =
     source.startsWith("http://", ignoreCase = true) || source.startsWith("https://", ignoreCase = true)
@@ -4023,9 +4036,9 @@ class PlayerViewModel : ViewModel(),
    * Pointer events can arrive much faster than a decoder can seek, so only the newest target is
    * applied at a bounded rate. Preview seeks are keyframe-only and never spam Syncplay peers.
    */
-  fun previewSeekTo(position: Int) {
+  fun previewSeekTo(position: Float) {
     synchronized(previewSeekLock) {
-      pendingPreviewSeekPosition = position.coerceAtLeast(0)
+      pendingPreviewSeekPosition = position.coerceAtLeast(0f)
       if (previewSeekJob?.isActive == true) return
       previewSeekJob = viewModelScope.launch(Dispatchers.IO) { runPreviewSeekLoop() }
     }

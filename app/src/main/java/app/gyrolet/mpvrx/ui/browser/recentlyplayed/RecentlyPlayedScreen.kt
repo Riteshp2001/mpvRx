@@ -126,12 +126,7 @@ object RecentlyPlayedScreen : Screen {
     val selectionManager =
       rememberSelectionManager(
         items = recentItems,
-        getId = { item ->
-          when (item) {
-            is RecentlyPlayedItem.VideoItem -> "video_${item.video.id}"
-            is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}"
-          }
-        },
+        getId = ::recentlyPlayedItemKey,
         onDeleteItems = { items, deleteFiles ->
           val videos = items.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video }
           val playlistIds = items.filterIsInstance<RecentlyPlayedItem.PlaylistItem>().map { it.playlist.id }
@@ -678,12 +673,7 @@ private fun RecentItemsContent(
         ) {
           items(
             count = recentItems.size,
-            key = { index ->
-              when (val item = recentItems[index]) {
-                is RecentlyPlayedItem.VideoItem -> "video_${item.video.id}_${item.timestamp}"
-                is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}_${item.timestamp}"
-              }
-            },
+            key = { index -> recentlyPlayedItemKey(recentItems[index]) },
             contentType = { index ->
               when (recentItems[index]) {
                 is RecentlyPlayedItem.VideoItem -> "video_item"
@@ -818,12 +808,7 @@ private fun RecentItemsContent(
         ) {
           items(
             count = recentItems.size,
-            key = { index ->
-              when (val item = recentItems[index]) {
-                is RecentlyPlayedItem.VideoItem -> "video_${item.video.id}_${item.timestamp}"
-                is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}_${item.timestamp}"
-              }
-            },
+            key = { index -> recentlyPlayedItemKey(recentItems[index]) },
             contentType = { index ->
               when (recentItems[index]) {
                 is RecentlyPlayedItem.VideoItem -> "video_item"
@@ -932,3 +917,9 @@ private fun RecentItemsContent(
     }
   }
 }
+
+private fun recentlyPlayedItemKey(item: RecentlyPlayedItem): String =
+  when (item) {
+    is RecentlyPlayedItem.VideoItem -> "video_${item.video.id}_${item.timestamp}_${item.video.path}"
+    is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}_${item.timestamp}_${item.mostRecentVideoPath}"
+  }
