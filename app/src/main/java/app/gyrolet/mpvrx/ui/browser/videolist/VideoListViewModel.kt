@@ -247,6 +247,7 @@ class VideoListViewModel(
   private suspend fun findPlaybackState(video: Video): PlaybackStateEntity? {
     val identifiers =
       linkedSetOf(
+        PlaybackIdentity.forLocalPath(video.path),
         PlaybackIdentity.forUri(video.uri.toString()),
         PlaybackIdentity.forUri(video.path),
         PlaybackIdentity.forUri("file://${video.path}"),
@@ -258,7 +259,7 @@ class VideoListViewModel(
     return null
   }
 
-  private fun canonicalPlaybackIdentifier(video: Video): String = PlaybackIdentity.forUri(video.uri.toString())
+  private fun canonicalPlaybackIdentifier(video: Video): String = PlaybackIdentity.forLocalPath(video.path)
 
   private suspend fun loadPlaybackInfo(videos: List<Video>) {
     val watchedThreshold = browserPreferences.watchedThreshold.get()

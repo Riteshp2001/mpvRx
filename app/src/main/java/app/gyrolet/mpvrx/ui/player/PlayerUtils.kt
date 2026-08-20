@@ -71,6 +71,14 @@ internal fun Uri.openContentFd(context: Context): String? =
     ?: tryDocumentUriParsing(context)
     ?: tryFileDescriptorFallback(context)
 
+/** Resolves identity only; unlike [openContentFd], this never detaches a file descriptor. */
+internal fun Uri.resolveLocalPath(context: Context): String? =
+  when (scheme?.lowercase()) {
+    "file" -> path
+    "content" -> extractLocalPath() ?: tryMediaStoreQuery(context) ?: tryDocumentUriParsing(context)
+    else -> null
+  }
+
 /**
  * Method 1: Extract real filesystem path from file descriptor.
  * Works best for most content URIs on modern Android.

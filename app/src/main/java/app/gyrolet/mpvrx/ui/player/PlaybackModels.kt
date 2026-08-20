@@ -54,6 +54,7 @@ data class PlaybackItem(
   companion object {
     fun fromUri(
       uri: String,
+      stableId: String? = null,
       playableUri: String = uri,
       title: String? = null,
       mimeType: String? = null,
@@ -64,7 +65,8 @@ data class PlaybackItem(
     ): PlaybackItem =
       PlaybackItem(
         stableId =
-          networkSource?.let { PlaybackIdentity.forNetwork(it.connectionId, it.relativePath) }
+          stableId
+            ?: networkSource?.let { PlaybackIdentity.forNetwork(it.connectionId, it.relativePath) }
             ?: PlaybackIdentity.forUri(uri),
         originalUri = uri,
         playableUri = playableUri,
@@ -276,6 +278,9 @@ object PlaybackIdentity {
 
   fun forUri(uri: String): String = digest("uri\u0000${canonicalizeUri(uri)}")
 
+  /** Gives every URI representation of the same local file one playback-state key. */
+  fun forLocalPath(path: String): String = digest("local\u0000${normalizeLocalPath(path)}")
+
   fun forTorrent(
     infoHash: String,
     fileIndex: Int,
@@ -300,6 +305,11 @@ object PlaybackIdentity {
     }
     return normalized.joinToString("/")
   }
+
+  private fun normalizeLocalPath(path: String): String =
+    runCatching { URI(null, null, path.replace('\\', '/'), null).normalize().path }
+      .getOrDefault(path.replace('\\', '/'))
+      .trim()
 
   private fun canonicalizeUri(raw: String): String {
     val parsed = runCatching { URI(raw) }.getOrNull() ?: return raw.trim()

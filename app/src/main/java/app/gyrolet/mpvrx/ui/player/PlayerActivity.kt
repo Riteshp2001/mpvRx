@@ -1336,7 +1336,7 @@ class PlayerActivity :
             networkPlaylistHeaders = queueItems.map(PlaybackItem::headers)
             networkPlaylistConnectionId = item.networkSource?.connectionId ?: -1L
             fileName = item.title?.takeIf { it.isNotBlank() } ?: getFileNameFromUri(Uri.parse(item.originalUri))
-            legacyMediaIdentifier = null
+            legacyMediaIdentifier = PlaybackIdentity.forUri(item.originalUri)
             mediaIdentifier = item.stableId
             currentPlayableUri = item.playableUri
             isReady = false
@@ -4131,7 +4131,8 @@ class PlayerActivity :
         // URI hash like "name_123456" for remote files). Bare filenames used by older
         // versions for local files are ambiguous — two files in different directories
         // share the same display name, so migrating would steal one file's state.
-        val isCollisionResistant = legacyKey != null && legacyKey.contains('_')
+        val isCollisionResistant =
+          legacyKey != null && (legacyKey.startsWith("media:v2:") || legacyKey.contains('_'))
         val legacyState = legacyKey
           ?.takeIf { isCollisionResistant }
           ?.let { playbackStateRepository.getVideoDataByTitle(it) }
@@ -5826,7 +5827,7 @@ class PlayerActivity :
       } else if (isRemotePlaybackUri(uri)) {
         "${fileName}_${uri.toString().hashCode()}"
       } else {
-        null
+        PlaybackIdentity.forUri(uri.toString())
       }
     mediaIdentifier =
       if (networkFilePath != null && resolvedNetworkConnectionId != null) {
@@ -6186,8 +6187,6 @@ class PlayerActivity :
     intent: Intent,
     fileName: String,
   ): String {
-    intent.getStringExtra("media_identifier")?.takeIf { it.isNotBlank() }?.let { return it }
-
     // Check if this is a network file played via proxy (SMB/WebDAV/FTP)
     // Use the stable network file path instead of the temporary proxy URL
     val networkFilePath = intent.getStringExtra("network_file_path")
@@ -6197,6 +6196,16 @@ class PlayerActivity :
       val identifier = buildNetworkMediaIdentifier(networkConnectionId, networkFilePath)
       return identifier
     }
+
+    val sourceUri = extractUriFromIntent(intent)
+    val localPath =
+      intent.getStringExtra("local_media_path")?.takeIf { it.isNotBlank() }
+        ?: sourceUri?.resolveLocalPath(this)
+    localPath?.let {
+      return PlaybackIdentity.forLocalPath(it)
+    }
+
+    intent.getStringExtra("media_identifier")?.takeIf { it.isNotBlank() }?.let { return it }
 
     val source = extractUriFromIntent(intent)?.toString() ?: parsePathFromIntent(intent) ?: fileName
     if (isTorrentSource(source, intent.type)) {
@@ -6218,13 +6227,17 @@ class PlayerActivity :
     intent: Intent,
     fileName: String,
   ): String? {
-    if (intent.getStringExtra("media_identifier")?.startsWith("media:v2:") == true) return null
+    val explicitIdentifier = intent.getStringExtra("media_identifier")?.takeIf { it.isNotBlank() }
+    val uri = extractUriFromIntent(intent)
+    val hasLocalPath =
+      intent.getStringExtra("local_media_path")?.isNotBlank() == true || uri?.resolveLocalPath(this) != null
+    if (hasLocalPath) return uri?.toString()?.let(PlaybackIdentity::forUri) ?: explicitIdentifier
+    if (explicitIdentifier?.startsWith("media:v2:") == true) return null
     val networkFilePath = intent.getStringExtra("network_file_path")
     val connectionId = intent.getLongExtra("network_connection_id", -1L)
     if (!networkFilePath.isNullOrBlank() && connectionId != -1L) {
       return "network_${connectionId}_${networkFilePath.hashCode()}"
     }
-    val uri = extractUriFromIntent(intent)
     if (uri != null && NetworkPlaybackUri.parse(uri.toString()) != null) return null
     // Local files must not use the bare filename as a legacy key — it is ambiguous when
     // multiple directories contain files with the same display name (issue #382).
@@ -6272,7 +6285,7 @@ class PlayerActivity :
 
   private fun Uri.matches(saved: SavedPlaylistSelection): Boolean {
     val uri = toString()
-    return saved.originalUri == uri || saved.stableId == PlaybackIdentity.forUri(uri)
+    return saved.originalUri == uri || saved.stableId == getMediaIdentifierFromUri(this, "")
   }
 
   private fun publishPlaylistToSession() {
@@ -6306,6 +6319,8 @@ class PlayerActivity :
 
         PlaybackItem.fromUri(
           uri = uri.toString(),
+          stableId =
+            if (networkSource == null) uri.resolveLocalPath(this)?.let(PlaybackIdentity::forLocalPath) else null,
           title = title,
           headers = headers,
           networkSource = networkSource,
@@ -6339,7 +6354,8 @@ class PlayerActivity :
     uri: Uri,
     @Suppress("UNUSED_PARAMETER") fileName: String,
   ): String =
-    NetworkPlaybackUri.parse(uri.toString())
+    uri.resolveLocalPath(this)?.let(PlaybackIdentity::forLocalPath)
+      ?: NetworkPlaybackUri.parse(uri.toString())
       ?.let { reference -> PlaybackIdentity.forNetwork(reference.connectionId, reference.path.value) }
       ?: PlaybackIdentity.forUri(uri.toString())
 
