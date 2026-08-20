@@ -276,7 +276,8 @@ class FolderListViewModel(
 
                     // A video counts as "unplayed" until it has been watched to the
                     // configured threshold. Threshold 0 ("Infinitely") keeps it unplayed.
-                    val playbackState = playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri(video.uri.toString()))
+                    val playbackState = playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forLocalPath(video.path))
+                      ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri(video.uri.toString()))
                       ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri(video.path))
                       ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri("file://${video.path}"))
                     val isUnplayed =

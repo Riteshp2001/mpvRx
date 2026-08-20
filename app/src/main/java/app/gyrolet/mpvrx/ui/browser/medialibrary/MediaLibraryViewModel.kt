@@ -106,6 +106,7 @@ class MediaLibraryViewModel(
 
     fun findPlaybackState(video: Video) =
       linkedSetOf(
+        PlaybackIdentity.forLocalPath(video.path),
         PlaybackIdentity.forUri(video.uri.toString()),
         PlaybackIdentity.forUri(video.path),
         PlaybackIdentity.forUri("file://${video.path}"),
@@ -160,6 +161,7 @@ class MediaLibraryViewModel(
       val durationSeconds = (video.duration / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
       val identifiers =
         linkedSetOf(
+          PlaybackIdentity.forLocalPath(video.path),
           PlaybackIdentity.forUri(video.uri.toString()),
           PlaybackIdentity.forUri(video.path),
           PlaybackIdentity.forUri("file://${video.path}"),
@@ -169,7 +171,7 @@ class MediaLibraryViewModel(
       }
       playbackStateRepository.upsert(
         (existing ?: PlaybackStateEntity(
-          mediaTitle = PlaybackIdentity.forUri(video.uri.toString()),
+          mediaTitle = PlaybackIdentity.forLocalPath(video.path),
           lastPosition = 0,
           playbackSpeed = 1.0,
           sid = -1,
@@ -181,13 +183,13 @@ class MediaLibraryViewModel(
           timeRemaining = durationSeconds,
           hasBeenWatched = false,
         )).copy(
-          mediaTitle = PlaybackIdentity.forUri(video.uri.toString()),
+          mediaTitle = PlaybackIdentity.forLocalPath(video.path),
           lastPosition = 0,
           timeRemaining = if (watched) 0 else durationSeconds,
           hasBeenWatched = watched,
         ),
       )
-      PlaybackStateEvents.notifyChanged(PlaybackIdentity.forUri(video.uri.toString()))
+      PlaybackStateEvents.notifyChanged(PlaybackIdentity.forLocalPath(video.path))
     }
   }
 

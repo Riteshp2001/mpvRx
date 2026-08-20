@@ -29,6 +29,7 @@ internal data class PlaybackStateSnapshot(
   val aid: Int,
   val audioDelayMs: Int,
   val externalSubtitles: String,
+  val isPositionRestorePending: Boolean = false,
 )
 
 internal object PlaybackStatePersistence {
@@ -44,9 +45,10 @@ internal object PlaybackStatePersistence {
         currentPosition = snapshot.currentPosition,
         duration = snapshot.duration,
         savePositionOnQuit = savePositionOnQuit,
+        isPositionRestorePending = snapshot.isPositionRestorePending,
       )
     val duration = snapshot.duration
-    val timeRemaining = if (duration > snapshot.currentPosition) duration - snapshot.currentPosition else 0
+    val timeRemaining = if (duration > lastPosition) duration - lastPosition else 0
 
     return PlaybackStateEntity(
       mediaTitle = snapshot.mediaIdentifier,
@@ -77,8 +79,15 @@ internal object PlaybackStatePersistence {
     currentPosition: Int,
     duration: Int,
     savePositionOnQuit: Boolean,
+    isPositionRestorePending: Boolean = false,
   ): Int {
     if (!savePositionOnQuit) {
+      return oldState?.lastPosition ?: 0
+    }
+    // FILE_LOADED makes the incoming item the active save target before its database lookup
+    // completes. Keep an existing resume point if a lifecycle save observes the initial 0 in
+    // that narrow window; a real seek/playback position remains authoritative.
+    if (isPositionRestorePending && currentPosition == 0) {
       return oldState?.lastPosition ?: 0
     }
 
