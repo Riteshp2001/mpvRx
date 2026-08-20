@@ -257,11 +257,27 @@ object PermissionUtils {
       videos: List<Video>,
     ): Pair<Int, Int> =
       withContext(Dispatchers.IO) {
-        if (!BuildConfig.SCOPED_STORAGE_ONLY || hasManageStoragePermission()) {
-          deleteVideosDirectly(videos)
-        } else {
-          deleteVideosScoped(context, videos)
-        }
+        // A content URI is never a filesystem path, even when broad storage access is available.
+        // Always route it through ContentResolver/MediaStore and use direct deletion only for
+        // actual file-backed sources.
+        val (contentVideos, fileVideos) =
+          videos.partition { it.uri.scheme.equals("content", ignoreCase = true) }
+        val contentResult =
+          if (contentVideos.isEmpty()) {
+            0 to 0
+          } else {
+            deleteVideosScoped(context, contentVideos)
+          }
+        val fileResult =
+          if (fileVideos.isEmpty()) {
+            0 to 0
+          } else if (!BuildConfig.SCOPED_STORAGE_ONLY || hasManageStoragePermission()) {
+            deleteVideosDirectly(fileVideos)
+          } else {
+            deleteVideosScoped(context, fileVideos)
+          }
+
+        (contentResult.first + fileResult.first) to (contentResult.second + fileResult.second)
       }
 
     /**
@@ -309,8 +325,8 @@ object PermissionUtils {
         var deleted = 0
         var failed = 0
 
-        val contentVideos = videos.filter { it.uri.scheme == "content" }
-        val fileVideos = videos.filter { it.uri.scheme != "content" }
+        val contentVideos = videos.filter { it.uri.scheme.equals("content", ignoreCase = true) }
+        val fileVideos = videos.filterNot { it.uri.scheme.equals("content", ignoreCase = true) }
 
         if (contentVideos.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
           val granted = requestDeleteAccess(context, contentVideos.map { it.uri })
