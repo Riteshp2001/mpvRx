@@ -13,6 +13,7 @@ import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.network.AndroidCookieJar
+import app.gyrolet.mpvrx.network.SharedHttpClient
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.repository.IntroDbRepository
 import app.gyrolet.mpvrx.repository.ai.AiClient
@@ -41,14 +42,11 @@ import java.util.concurrent.TimeUnit
 val domainModule =
   module {
     single { AndroidCookieJar() }
-    single {
-      OkHttpClient
-        .Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .cookieJar(get<AndroidCookieJar>())
-        .build()
+    single<OkHttpClient> {
+      SharedHttpClient.derive {
+        connectTimeout(30, TimeUnit.SECONDS)
+        cookieJar(get<AndroidCookieJar>())
+      }
     }
     single { Anime4KManager(androidContext()) }
     single { HdrToysManager(androidContext()) }

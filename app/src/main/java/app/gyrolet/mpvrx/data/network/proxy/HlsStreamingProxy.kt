@@ -83,12 +83,12 @@ class HlsStreamingProxy private constructor() :
   private val sessionsByToken = ConcurrentHashMap<String, HlsSession>()
 
   private val httpClient: OkHttpClient by lazy {
-    OkHttpClient.Builder()
-      .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-      .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-      .followRedirects(true)
-      .followSslRedirects(true)
-      .build()
+    SharedHttpClient.derive {
+      connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      followRedirects(true)
+      followSslRedirects(true)
+    }
   }
 
   /**

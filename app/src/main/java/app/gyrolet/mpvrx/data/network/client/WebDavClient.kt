@@ -13,6 +13,7 @@ import android.net.Uri
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkPath
+import app.gyrolet.mpvrx.network.SharedHttpClient
 import com.thegrizzlylabs.sardineandroid.DavResource
 import com.thegrizzlylabs.sardineandroid.Sardine
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
@@ -21,16 +22,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import okhttp3.HttpUrl
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 
 class WebDavClient(
   private val connection: NetworkConnection,
 ) : NetworkClient {
   companion object {
-    private val rangeHttpClient by lazy { OkHttpClient() }
+    private val rangeHttpClient by lazy {
+      SharedHttpClient.derive {
+        // Range reads feed the player; a stalled socket must fail fast rather than hang the stream.
+        callTimeout(60, TimeUnit.SECONDS)
+      }
+    }
     private val contentRangePattern = Regex("bytes\\s+(\\d+)-(\\d+)/(\\d+|\\*)", RegexOption.IGNORE_CASE)
   }
 

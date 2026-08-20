@@ -33,15 +33,3 @@ add_executable(ytdl_wrapper ytdl_wrapper.c)
 set_target_properties(ytdl_wrapper PROPERTIES OUTPUT_NAME "ytdl")
 set_target_properties(ytdl_wrapper PROPERTIES PREFIX "lib" SUFFIX ".so")
 mpvrx_optimize_native_target(ytdl_wrapper)
-
-# libcurl JNI bridge for Lua/JS scripting HTTP support
-# BoringSSL is C++; use C++ linker so libc++ is linked at the correct position
-add_library(curl_bridge SHARED curl_bridge.c cJSON.c)
-set_target_properties(curl_bridge PROPERTIES LINKER_LANGUAGE CXX)
-find_package(curl REQUIRED CONFIG)
-target_link_libraries(curl_bridge curl::curl_static log z)
-target_include_directories(curl_bridge PRIVATE ${CURL_INCLUDE_DIRS})
-# Prevent symbols from statically linked curl/BoringSSL dependencies from being
-# re-exported by the JNI bridge. JNIEXPORT entry points retain default visibility.
-target_link_options(curl_bridge PRIVATE "$<$<CONFIG:Release>:-Wl,--exclude-libs,ALL>")
-mpvrx_optimize_native_target(curl_bridge)
