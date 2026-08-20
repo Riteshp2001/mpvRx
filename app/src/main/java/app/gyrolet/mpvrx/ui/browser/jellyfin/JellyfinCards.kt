@@ -1041,6 +1041,53 @@ fun JellyfinLibraryChipRow(
   }
 }
 
+@Composable
+fun JellyfinGenreChipRow(
+  genres: List<String>,
+  selectedGenre: String?,
+  onSelectGenre: (String?) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  if (genres.isEmpty()) return
+
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 16.dp, vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    FilterChip(
+      selected = selectedGenre == null,
+      onClick = { onSelectGenre(null) },
+      label = { Text("All", fontWeight = if (selectedGenre == null) FontWeight.Bold else FontWeight.Normal) },
+      shape = RoundedCornerShape(12.dp),
+      colors =
+        FilterChipDefaults.filterChipColors(
+          selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+          selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    )
+
+    genres.forEach { genre ->
+      val isSelected = selectedGenre == genre
+      FilterChip(
+        selected = isSelected,
+        onClick = { onSelectGenre(if (isSelected) null else genre) },
+        label = { Text(genre, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+        shape = RoundedCornerShape(12.dp),
+        colors =
+          FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          ),
+      )
+    }
+  }
+}
+
 // ============================================================================
 // Library Card (Directory Card)
 // ============================================================================

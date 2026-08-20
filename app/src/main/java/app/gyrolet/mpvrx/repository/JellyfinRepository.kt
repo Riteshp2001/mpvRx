@@ -116,6 +116,17 @@ class JellyfinRepository(
       token = server.accessToken,
     )
 
+  suspend fun getGenres(
+    server: JellyfinServer,
+    parentId: String,
+  ): Result<List<String>> =
+    client.getGenres(
+      serverUrl = server.serverUrl,
+      userId = server.userId,
+      parentId = parentId,
+      token = server.accessToken,
+    )
+
   suspend fun getSeasons(
     server: JellyfinServer,
     seriesId: String,

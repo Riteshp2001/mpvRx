@@ -64,6 +64,7 @@ data class JellyfinUiState(
   val currentItems: List<JellyfinItem> = emptyList(),
   val openLibrary: JellyfinLibraryView? = null,
   val selectedLibraryId: String? = null,
+  val availableGenres: List<String> = emptyList(),
   val selectedGenreFilter: String? = null,
   val sortBy: JellyfinSortBy = JellyfinSortBy.NAME,
   val sortOrder: JellyfinSortOrder = JellyfinSortOrder.ASCENDING,
@@ -308,10 +309,27 @@ class JellyfinViewModel(
       it.copy(
         openLibrary = library,
         selectedLibraryId = library.id,
+        selectedGenreFilter = null,
+        availableGenres = emptyList(),
         searchQuery = "",
       )
     }
     loadLibraryItems(server, library, resetPagination = true)
+    viewModelScope.launch {
+      jellyfinRepository.getGenres(server, library.id).onSuccess { genres ->
+        if (_uiState.value.openLibrary?.id == library.id) {
+          _uiState.update { it.copy(availableGenres = genres) }
+        }
+      }
+    }
+  }
+
+  fun setGenreFilter(genre: String?) {
+    if (_uiState.value.selectedGenreFilter == genre) return
+    _uiState.update { it.copy(selectedGenreFilter = genre) }
+    val active = _uiState.value.activeServer ?: return
+    val library = _uiState.value.openLibrary ?: return
+    loadLibraryItems(active, library, resetPagination = true)
   }
 
   fun navigateBack(): Boolean {
@@ -321,6 +339,8 @@ class JellyfinViewModel(
         openLibrary = null,
         currentItems = emptyList(),
         selectedLibraryId = null,
+        selectedGenreFilter = null,
+        availableGenres = emptyList(),
         searchQuery = "",
       )
     }

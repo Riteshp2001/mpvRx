@@ -298,6 +298,14 @@ fun JellyfinContent(
       )
     }
 
+    if (uiState.openLibrary != null && !isSearching) {
+      JellyfinGenreChipRow(
+        genres = uiState.availableGenres,
+        selectedGenre = uiState.selectedGenreFilter,
+        onSelectGenre = viewModel::setGenreFilter,
+      )
+    }
+
     // Main Body Content with Pull-To-Refresh and FAB / Multi-select overlays
     val isRefreshing = remember { mutableStateOf(false) }
     val navigationBarHeight = LocalNavigationBarHeight.current

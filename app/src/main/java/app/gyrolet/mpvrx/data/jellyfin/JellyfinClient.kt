@@ -251,6 +251,37 @@ class JellyfinClient(
       }
     }
 
+  /** Genres present in a library, so the grid can be filtered without scanning every page. */
+  suspend fun getGenres(
+    serverUrl: String,
+    userId: String,
+    parentId: String,
+    token: String,
+  ): Result<List<String>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint = "$base/Genres?UserId=$userId&ParentId=$parentId&SortBy=SortName&SortOrder=Ascending"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addHeader("X-Emby-Authorization", authHeader(token))
+            .addHeader("X-Emby-Token", token)
+            .get()
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to load genres: HTTP ${response.code}")
+          }
+          val root = json.parseToJsonElement(response.body.string()).jsonObject
+          val itemsArray = root["Items"]?.jsonArray ?: JsonArray(emptyList())
+          itemsArray.mapNotNull { it.jsonObject["Name"]?.jsonPrimitive?.content?.takeIf(String::isNotBlank) }
+        }
+      }
+    }
+
   suspend fun getResumeItems(
     serverUrl: String,
     userId: String,
