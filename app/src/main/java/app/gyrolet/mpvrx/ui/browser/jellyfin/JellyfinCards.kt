@@ -16,6 +16,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -608,170 +609,175 @@ fun JellyfinResumeCard(
       }
     }
 
-  val containerColor =
+  val posterBorderModifier =
     if (isSelected) {
-      MaterialTheme.colorScheme.primaryContainer
+      Modifier.clip(RoundedCornerShape(16.dp)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
     } else {
-      MaterialTheme.colorScheme.surfaceContainer
+      Modifier.clip(RoundedCornerShape(16.dp))
     }
 
-  Card(
-    modifier =
-      modifier
-        .width(230.dp)
-        .clip(RoundedCornerShape(16.dp))
-        .combinedClickable(
-          onClick = onClick,
-          onLongClick = onLongClick,
-        ),
-    shape = RoundedCornerShape(16.dp),
-    colors = CardDefaults.cardColors(containerColor = containerColor),
+  Column(
+    modifier = modifier.width(230.dp),
   ) {
-    Column {
+    Box(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .aspectRatio(16f / 9f)
+          .then(posterBorderModifier)
+          .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+          .combinedClickable(
+            onClick = onClick,
+            onLongClick = onLongClick,
+          ),
+    ) {
+      RemoteImage(
+        url = imageUrl,
+        contentDescription = item.name,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize(),
+      )
+
+      // Gradient at bottom of thumbnail for progress legibility
       Box(
         modifier =
           Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-      ) {
-        RemoteImage(
-          url = imageUrl,
-          contentDescription = item.name,
-          contentScale = ContentScale.Crop,
-          modifier = Modifier.fillMaxSize(),
-        )
+            .fillMaxSize()
+            .background(
+              Brush.verticalGradient(
+                0.5f to Color.Transparent,
+                1.0f to Color.Black.copy(alpha = 0.7f),
+              ),
+            ),
+      )
 
-        // Gradient at bottom of thumbnail for progress legibility
+      // Play Button Overlay
+      if (!isInSelectionMode && !isSelected) {
+        Surface(
+          shape = CircleShape,
+          color = Color.Black.copy(alpha = 0.55f),
+          modifier =
+            Modifier
+              .size(40.dp)
+              .align(Alignment.Center),
+        ) {
+          Box(contentAlignment = Alignment.Center) {
+            Icon(
+              imageVector = Icons.RoundedFilled.PlayArrow,
+              contentDescription = "Play",
+              tint = Color.White,
+              modifier = Modifier.size(24.dp),
+            )
+          }
+        }
+      }
+
+      // Selection Checkmark
+      if (isSelected) {
         Box(
           modifier =
             Modifier
               .fillMaxSize()
-              .background(
-                Brush.verticalGradient(
-                  0.5f to Color.Transparent,
-                  1.0f to Color.Black.copy(alpha = 0.7f),
-                ),
-              ),
-        )
-
-        // Play Button Overlay
-        if (!isInSelectionMode && !isSelected) {
+              .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+          contentAlignment = Alignment.Center,
+        ) {
           Surface(
             shape = CircleShape,
-            color = Color.Black.copy(alpha = 0.55f),
-            modifier =
-              Modifier
-                .size(40.dp)
-                .align(Alignment.Center),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(34.dp),
           ) {
             Box(contentAlignment = Alignment.Center) {
               Icon(
-                imageVector = Icons.RoundedFilled.PlayArrow,
-                contentDescription = "Play",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp),
+                imageVector = Icons.RoundedFilled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(20.dp),
               )
             }
           }
         }
+      }
 
-        // Selection Checkmark
-        if (isSelected) {
-          Box(
-            modifier =
-              Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
-            contentAlignment = Alignment.Center,
-          ) {
-            Surface(
-              shape = CircleShape,
-              color = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(34.dp),
-            ) {
-              Box(contentAlignment = Alignment.Center) {
-                Icon(
-                  imageVector = Icons.RoundedFilled.Check,
-                  contentDescription = null,
-                  tint = MaterialTheme.colorScheme.onPrimary,
-                  modifier = Modifier.size(20.dp),
-                )
-              }
-            }
-          }
-        }
-
-        // Remaining runtime chip
-        val remaining = item.formattedRemainingDuration
-        if (remaining.isNotBlank()) {
-          Surface(
-            shape = RoundedCornerShape(4.dp),
-            color = Color.Black.copy(alpha = 0.75f),
-            modifier =
-              Modifier
-                .padding(6.dp)
-                .align(Alignment.BottomEnd),
-          ) {
-            Text(
-              text = remaining,
-              style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-              color = Color.White,
-              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-            )
-          }
-        }
-
-        // Progress bar at bottom
-        if (item.progressPercent > 0.01f) {
-          Box(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .height(4.dp),
-          ) {
-            Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
-            Box(
-              modifier =
-                Modifier
-                  .fillMaxHeight()
-                  .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
-                  .background(MaterialTheme.colorScheme.primary),
-            )
-          }
+      // Remaining runtime chip
+      val remaining = item.formattedRemainingDuration
+      if (remaining.isNotBlank()) {
+        Surface(
+          shape = RoundedCornerShape(4.dp),
+          color = Color.Black.copy(alpha = 0.75f),
+          modifier =
+            Modifier
+              .padding(6.dp)
+              .align(Alignment.BottomEnd),
+        ) {
+          Text(
+            text = remaining,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+          )
         }
       }
 
-      Column(modifier = Modifier.padding(10.dp)) {
-        val title = item.seriesName ?: item.name
-        val subtitle =
-          if (item.seriesName != null && item.indexNumber != null) {
-            AnnotatedString("S${item.parentIndexNumber ?: 1}:E${item.indexNumber} • ${item.name}")
-          } else {
-            val before = buildList {
-              item.productionYear?.let { add(it.toString()) }
-              val dur = item.formattedDuration
-              if (dur.isNotBlank()) add(dur) else if (item.productionYear == null) add(item.type)
-            }
-            buildStarSubtitle(before, item.communityRating, item.criticRating)
-          }
-
-        Text(
-          text = title,
-          style = MaterialTheme.typography.bodyMedium,
-          fontWeight = FontWeight.SemiBold,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-          text = subtitle,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
+      // Progress bar at bottom
+      if (item.progressPercent > 0.01f) {
+        Box(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .align(Alignment.BottomCenter)
+              .height(4.dp),
+        ) {
+          Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
+          Box(
+            modifier =
+              Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
+                .background(MaterialTheme.colorScheme.primary),
+          )
+        }
       }
+    }
+
+    Column(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(top = 6.dp),
+      horizontalAlignment = Alignment.Start,
+    ) {
+      val title = item.seriesName ?: item.name
+      val subtitle =
+        if (item.seriesName != null && item.indexNumber != null) {
+          AnnotatedString("S${item.parentIndexNumber ?: 1}:E${item.indexNumber} • ${item.name}")
+        } else {
+          val before = buildList {
+            item.productionYear?.let { add(it.toString()) }
+            val dur = item.formattedDuration
+            if (dur.isNotBlank()) add(dur) else if (item.productionYear == null) add(item.type)
+          }
+          buildStarSubtitle(before, item.communityRating, item.criticRating)
+        }
+
+      Text(
+        text = title,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Start,
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      Text(
+        text = subtitle,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Start,
+        modifier = Modifier.fillMaxWidth(),
+      )
     }
   }
 }
@@ -802,13 +808,6 @@ fun JellyfinPosterCard(
       )
     }
 
-  val containerColor =
-    if (isSelected) {
-      MaterialTheme.colorScheme.primaryContainer
-    } else {
-      MaterialTheme.colorScheme.surfaceContainer
-    }
-
   val cardModifier =
     if (cardWidth != null) {
       modifier.width(cardWidth)
@@ -816,158 +815,171 @@ fun JellyfinPosterCard(
       modifier.fillMaxWidth()
     }
 
-  Card(
-    modifier =
-      cardModifier
-        .clip(RoundedCornerShape(14.dp))
-        .combinedClickable(
-          onClick = onClick,
-          onLongClick = onLongClick,
-        ),
-    shape = RoundedCornerShape(14.dp),
-    colors = CardDefaults.cardColors(containerColor = containerColor),
+  val posterBorderModifier =
+    if (isSelected) {
+      Modifier.clip(RoundedCornerShape(14.dp)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
+    } else {
+      Modifier.clip(RoundedCornerShape(14.dp))
+    }
+
+  Column(
+    modifier = cardModifier,
   ) {
-    Column {
-      Box(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .aspectRatio(2f / 3f)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-      ) {
-        if (!item.primaryImageTag.isNullOrBlank()) {
-          RemoteImage(
-            url = imageUrl,
-            contentDescription = item.name,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-          )
-        } else {
-          Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-          ) {
-            val placeholderIcon =
-              when {
-                item.isAudio -> Icons.RoundedFilled.Audiotrack
-                item.isFolder -> Icons.RoundedFilled.Folder
-                item.isSeries -> Icons.RoundedFilled.Tv
-                else -> Icons.RoundedFilled.Movie
-              }
-            Icon(
-              imageVector = placeholderIcon,
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier = Modifier.size(36.dp),
-            )
-          }
-        }
-
-        // Top badge: Quality on left
-        item.qualityBadge?.let { qBadge ->
-          Surface(
-            shape = RoundedCornerShape(4.dp),
-            color = Color.Black.copy(alpha = 0.7f),
-            modifier =
-              Modifier
-                .align(Alignment.TopStart)
-                .padding(6.dp),
-          ) {
-            Text(
-              text = qBadge,
-              style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
-              color = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-            )
-          }
-        }
-
-        // Progress bar if partially watched
-        if (item.progressPercent > 0.02f && !item.isPlayed) {
-          Box(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .height(4.dp),
-          ) {
-            Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
-            Box(
-              modifier =
-                Modifier
-                  .fillMaxHeight()
-                  .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
-                  .background(MaterialTheme.colorScheme.primary),
-            )
-          }
-        }
-
-        // Selection / Played Check badge
-        if (isSelected) {
-          Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary,
-            modifier =
-              Modifier
-                .padding(6.dp)
-                .size(24.dp)
-                .align(Alignment.BottomEnd),
-          ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Check,
-              contentDescription = "Selected",
-              tint = MaterialTheme.colorScheme.onPrimary,
-              modifier = Modifier.padding(3.dp),
-            )
-          }
-        } else if (item.isPlayed) {
-          Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-            modifier =
-              Modifier
-                .padding(6.dp)
-                .size(20.dp)
-                .align(Alignment.BottomEnd),
-          ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Check,
-              contentDescription = "Played",
-              tint = MaterialTheme.colorScheme.onPrimary,
-              modifier = Modifier.padding(3.dp),
-            )
-          }
-        }
-      }
-
-      Column(modifier = Modifier.padding(8.dp)) {
-        Text(
-          text = item.name,
-          style = MaterialTheme.typography.bodyMedium,
-          fontWeight = FontWeight.SemiBold,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
+    Box(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .aspectRatio(2f / 3f)
+          .then(posterBorderModifier)
+          .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+          .combinedClickable(
+            onClick = onClick,
+            onLongClick = onLongClick,
+          ),
+    ) {
+      if (!item.primaryImageTag.isNullOrBlank()) {
+        RemoteImage(
+          url = imageUrl,
+          contentDescription = item.name,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize(),
         )
-        val subtitle =
-          run {
-            val before = buildList {
-              item.productionYear?.let { add(it.toString()) }
-                ?: if (item.isSeries && item.childCount != null) {
-                  add("${item.childCount} Seasons")
-                } else {
-                  add(item.type)
-                }
+      } else {
+        Box(
+          modifier = Modifier.fillMaxSize(),
+          contentAlignment = Alignment.Center,
+        ) {
+          val placeholderIcon =
+            when {
+              item.isAudio -> Icons.RoundedFilled.Audiotrack
+              item.isFolder -> Icons.RoundedFilled.Folder
+              item.isSeries -> Icons.RoundedFilled.Tv
+              else -> Icons.RoundedFilled.Movie
             }
-            buildStarSubtitle(before, item.communityRating, item.criticRating)
-          }
-        Text(
-          text = subtitle,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
+          Icon(
+            imageVector = placeholderIcon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(36.dp),
+          )
+        }
       }
+
+      // Top badge: Quality on left
+      item.qualityBadge?.let { qBadge ->
+        Surface(
+          shape = RoundedCornerShape(4.dp),
+          color = Color.Black.copy(alpha = 0.7f),
+          modifier =
+            Modifier
+              .align(Alignment.TopStart)
+              .padding(6.dp),
+        ) {
+          Text(
+            text = qBadge,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+          )
+        }
+      }
+
+      // Progress bar if partially watched
+      if (item.progressPercent > 0.02f && !item.isPlayed) {
+        Box(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .align(Alignment.BottomCenter)
+              .height(4.dp),
+        ) {
+          Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.6f)))
+          Box(
+            modifier =
+              Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(item.progressPercent.coerceIn(0f, 1f))
+                .background(MaterialTheme.colorScheme.primary),
+          )
+        }
+      }
+
+      // Selection / Played Check badge
+      if (isSelected) {
+        Surface(
+          shape = CircleShape,
+          color = MaterialTheme.colorScheme.primary,
+          modifier =
+            Modifier
+              .padding(6.dp)
+              .size(24.dp)
+              .align(Alignment.BottomEnd),
+        ) {
+          Icon(
+            imageVector = Icons.RoundedFilled.Check,
+            contentDescription = "Selected",
+            tint = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.padding(3.dp),
+          )
+        }
+      } else if (item.isPlayed) {
+        Surface(
+          shape = CircleShape,
+          color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+          modifier =
+            Modifier
+              .padding(6.dp)
+              .size(20.dp)
+              .align(Alignment.BottomEnd),
+        ) {
+          Icon(
+            imageVector = Icons.RoundedFilled.Check,
+            contentDescription = "Played",
+            tint = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.padding(3.dp),
+          )
+        }
+      }
+    }
+
+    Column(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(top = 6.dp),
+      horizontalAlignment = Alignment.Start,
+    ) {
+      Text(
+        text = item.name,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Start,
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      val subtitle =
+        run {
+          val before = buildList {
+            item.productionYear?.let { add(it.toString()) }
+              ?: if (item.isSeries && item.childCount != null) {
+                add("${item.childCount} Seasons")
+              } else {
+                add(item.type)
+              }
+          }
+          buildStarSubtitle(before, item.communityRating, item.criticRating)
+        }
+      Text(
+        text = subtitle,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Start,
+        modifier = Modifier.fillMaxWidth(),
+      )
     }
   }
 }
