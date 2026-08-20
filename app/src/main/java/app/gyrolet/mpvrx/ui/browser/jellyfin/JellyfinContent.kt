@@ -275,7 +275,7 @@ fun JellyfinContent(
         onPlayClick = { viewModel.playSelected(context, selectionManager.getSelectedItems()) },
         isSingleSelection = selectionManager.isSingleSelection,
         onBackClick = if (uiState.openLibrary != null) { { viewModel.navigateBack() } } else null,
-        onSortClick = { isSortDialogOpen = true },
+        onSortClick = if (uiState.openLibrary != null) { { isSortDialogOpen = true } } else null,
         onSearchClick = { isSearching = true },
         onSettingsClick = {
           backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
@@ -542,7 +542,7 @@ fun JellyfinContent(
                   LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 24.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                   ) {
                     items(items, key = { it.id }) { item ->
@@ -641,7 +641,7 @@ fun JellyfinContent(
                     state = gridState,
                     columns = GridCells.Adaptive(minSize = 130.dp),
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
+                    contentPadding = PaddingValues(start = 12.dp, end = 24.dp, top = 8.dp, bottom = navigationBarHeight + 80.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                   ) {
