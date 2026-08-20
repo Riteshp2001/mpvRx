@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
+import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
@@ -283,17 +284,30 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   fun playSong(context: Context, song: MusicSong, songList: List<MusicSong> = _songs.value) {
     if (songList.isEmpty()) return
     val index = songList.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
-    val playlistUris = ArrayList(songList.map { it.uri })
+
+    val queueItems = songList.map { item ->
+      PlaybackItem.fromUri(
+        uri = item.uri.toString(),
+        title = "${item.artist} - ${item.title}",
+        mimeType = "audio/*",
+        artworkUri = item.albumArtUri?.toString(),
+      )
+    }
+    PlaybackSession.replaceQueue(
+      items = queueItems,
+      currentIndex = index,
+      isExplicitQueue = true,
+    )
 
     val intent = Intent(Intent.ACTION_VIEW, song.uri).apply {
       setClass(context, PlayerActivity::class.java)
       addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       putExtra("internal_launch", true)
+      putExtra(PlayerActivity.EXTRA_PREPARED_PLAYBACK_QUEUE, true)
       putExtra("playlist_index", index)
       putExtra("launch_source", "music_library")
       putExtra("media_library_audio", true)
       putExtra("is_audio", true)
-      putParcelableArrayListExtra("playlist", playlistUris)
       putExtra("title", "${song.artist} - ${song.title}")
     }
     context.startActivity(intent)
@@ -303,17 +317,30 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     if (songsToPlay.isEmpty()) return
     val list = if (shuffle) songsToPlay.shuffled() else songsToPlay
     val firstSong = list.first()
-    val playlistUris = ArrayList(list.map { it.uri })
+
+    val queueItems = list.map { item ->
+      PlaybackItem.fromUri(
+        uri = item.uri.toString(),
+        title = "${item.artist} - ${item.title}",
+        mimeType = "audio/*",
+        artworkUri = item.albumArtUri?.toString(),
+      )
+    }
+    PlaybackSession.replaceQueue(
+      items = queueItems,
+      currentIndex = 0,
+      isExplicitQueue = true,
+    )
 
     val intent = Intent(Intent.ACTION_VIEW, firstSong.uri).apply {
       setClass(context, PlayerActivity::class.java)
       addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       putExtra("internal_launch", true)
+      putExtra(PlayerActivity.EXTRA_PREPARED_PLAYBACK_QUEUE, true)
       putExtra("playlist_index", 0)
       putExtra("launch_source", if (shuffle) "music_shuffle" else "music_play_all")
       putExtra("media_library_audio", true)
       putExtra("is_audio", true)
-      putParcelableArrayListExtra("playlist", playlistUris)
       putExtra("title", "${firstSong.artist} - ${firstSong.title}")
     }
     context.startActivity(intent)
