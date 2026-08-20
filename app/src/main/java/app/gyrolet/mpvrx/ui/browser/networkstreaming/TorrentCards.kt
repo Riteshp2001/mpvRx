@@ -579,7 +579,7 @@ fun TorrentResumeCard(
         )
         if (entry.groupTitle != null && entry.groupTitle != entry.fileName) {
           Text(
-            text = entry.fileName,
+            text = remember(entry.fileName) { MediaInfoParser.episodeLabel(entry.fileName) },
             style = MaterialTheme.typography.labelSmall,
             color = Color.White.copy(alpha = 0.75f),
             maxLines = 1,
