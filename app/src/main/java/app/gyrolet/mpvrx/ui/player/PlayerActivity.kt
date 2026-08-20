@@ -312,7 +312,11 @@ class PlayerActivity :
    * the incoming video inside [handleFileLoaded], so any save during the transition
    * lands on the correct (outgoing) record.
    */
+  @Volatile
   private var activeSaveMediaIdentifier: String = ""
+
+  @Volatile
+  private var pendingPositionRestoreGeneration: Long? = null
   private var pendingBackgroundPlaybackStart = false
 
   /**
@@ -1331,7 +1335,7 @@ class PlayerActivity :
             networkPlaylistHeaders = queueItems.map(PlaybackItem::headers)
             networkPlaylistConnectionId = item.networkSource?.connectionId ?: -1L
             fileName = item.title?.takeIf { it.isNotBlank() } ?: getFileNameFromUri(Uri.parse(item.originalUri))
-            legacyMediaIdentifier = null
+            legacyMediaIdentifier = PlaybackIdentity.forUri(item.originalUri)
             mediaIdentifier = item.stableId
             currentPlayableUri = item.playableUri
             isReady = false
@@ -3168,7 +3172,10 @@ class PlayerActivity :
       return null
     }
     return if (uri.startsWith("content://")) {
-      uri.toUri().openContentFd(this)
+      // Resolve to a real path when possible, but never to a single-use fd:// here: this value is
+      // stored on the queue item, and a replay would reuse a descriptor mpv has already consumed.
+      // Unresolvable URIs stay content:// and get a fresh descriptor per load in PlaybackSession.
+      uri.toUri().openContentFd(this, allowFdFallback = false) ?: uri
     } else {
       uri
     }
@@ -3559,6 +3566,12 @@ class PlayerActivity :
     val loadedIntent = Intent(intent)
     val loadedPlaylistIndex = playlistIndex
     val loadedPlaylist = playlist.toList()
+    if (loadedMediaIdentifier.isNotBlank()) {
+      // MPV has confirmed that the incoming file is active, so subsequent lifecycle saves must
+      // target it even while its database-backed resume position is still being restored.
+      activeSaveMediaIdentifier = loadedMediaIdentifier
+      pendingPositionRestoreGeneration = loadGeneration
+    }
     currentUri?.let { viewModel.calculateVideoHash(it) }
 
     reportJellyfinStop()
@@ -3586,13 +3599,9 @@ class PlayerActivity :
         )
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
 
-      // Only now re-point the persisted-state identifier at the incoming video. Its resume
-      // position has just been restored above, so any save that fires from here on lands on
-      // the correct (incoming) record with the resumed position. Until this point
-      // activeSaveMediaIdentifier still pointed at the outgoing video, so a save fired during
-      // the buffering transition could not stamp the incoming video's record with an un-resumed
-      // position (e.g. 0) and erase its saved progress.
-      if (loadedMediaIdentifier.isNotBlank()) activeSaveMediaIdentifier = loadedMediaIdentifier
+      if (pendingPositionRestoreGeneration == loadGeneration) {
+        pendingPositionRestoreGeneration = null
+      }
 
       // Apply track selection logic (defaults only apply when no saved state)
       trackSelector.onFileLoaded(hasState)
@@ -4062,6 +4071,8 @@ class PlayerActivity :
       mediaTitle = mediaTitle,
       currentPosition = readMpvIntSeconds("time-pos", viewModel.pos ?: 0),
       duration = readMpvIntSeconds("duration", viewModel.duration ?: 0),
+      isPositionRestorePending =
+        pendingPositionRestoreGeneration == PlaybackSession.state.value.activeGeneration,
       playbackSpeed = PlaybackSession.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
       videoZoom = PlaybackSession.getPropertyDouble("video-zoom")?.toFloat() ?: viewModel.videoZoom.value,
       sid = player.sid,
@@ -4105,7 +4116,8 @@ class PlayerActivity :
         // URI hash like "name_123456" for remote files). Bare filenames used by older
         // versions for local files are ambiguous — two files in different directories
         // share the same display name, so migrating would steal one file's state.
-        val isCollisionResistant = legacyKey != null && legacyKey.contains('_')
+        val isCollisionResistant =
+          legacyKey != null && (legacyKey.startsWith("media:v2:") || legacyKey.contains('_'))
         val legacyState = legacyKey
           ?.takeIf { isCollisionResistant }
           ?.let { playbackStateRepository.getVideoDataByTitle(it) }
@@ -4607,6 +4619,11 @@ class PlayerActivity :
     val requestedPlaylistIndex = playlistIndex
     val requestedQueueItem = PlaybackSession.queue.value.items.getOrNull(requestedPlaylistIndex)
     val requestGeneration = mediaRequestGeneration
+    // On cold start the render Surface attaches only after the load reaches mpv, so the
+    // surface-attached gate inside PlaybackSession.load() would leave the file at vid=no and a
+    // video-only (soundless) file would abort with "No video or audio streams selected".
+    // Foreground loads therefore request video explicitly; background/fallback loads keep the gate.
+    val selectVideoOnLoad = if (disableVideoOnFallback || isInBackgroundPlayback) null else true
     val requestedSource = originalUri ?: extractUriFromIntent(sourceIntent)?.toString() ?: playableUri
     val requestedHeaders =
       buildPlaybackHeaders(
@@ -4736,7 +4753,7 @@ class PlayerActivity :
               .onFailure { error -> Log.w(TAG, "Failed to prepare playback cookies", error) }
           }
           if (requestedQueueItem == null || isTorrentRequest) PlaybackSession.replaceQueue(listOf(item), 0)
-          PlaybackSession.load(item)
+          PlaybackSession.load(item, selectVideo = selectVideoOnLoad)
         } catch (error: CancellationException) {
           throw error
         } catch (error: Exception) {
@@ -5767,12 +5784,13 @@ class PlayerActivity :
 
     // Save current video's playback state before switching
     if (saveCurrentPlaybackState && fileName.isNotBlank()) {
-      saveVideoPlaybackState(fileName)
+      // A later lifecycle save for the incoming item must not cancel this outgoing-item write.
+      saveVideoPlaybackState(fileName, immediate = true)
       reportJellyfinStop()
     }
 
     val uri = playlist[index]
-    val playableUri = uri.openContentFd(this) ?: uri.toString()
+    val playableUri = uri.openContentFd(this, allowFdFallback = false) ?: uri.toString()
     currentPlayableUri = uri.toString()
     val persistedNetworkReference = NetworkPlaybackUri.parse(uri.toString())
     val networkFilePath =
@@ -5799,7 +5817,7 @@ class PlayerActivity :
       } else if (isRemotePlaybackUri(uri)) {
         "${fileName}_${uri.toString().hashCode()}"
       } else {
-        null
+        PlaybackIdentity.forUri(uri.toString())
       }
     mediaIdentifier =
       if (networkFilePath != null && resolvedNetworkConnectionId != null) {
@@ -6159,8 +6177,6 @@ class PlayerActivity :
     intent: Intent,
     fileName: String,
   ): String {
-    intent.getStringExtra("media_identifier")?.takeIf { it.isNotBlank() }?.let { return it }
-
     // Check if this is a network file played via proxy (SMB/WebDAV/FTP)
     // Use the stable network file path instead of the temporary proxy URL
     val networkFilePath = intent.getStringExtra("network_file_path")
@@ -6170,6 +6186,16 @@ class PlayerActivity :
       val identifier = buildNetworkMediaIdentifier(networkConnectionId, networkFilePath)
       return identifier
     }
+
+    val sourceUri = extractUriFromIntent(intent)
+    val localPath =
+      intent.getStringExtra("local_media_path")?.takeIf { it.isNotBlank() }
+        ?: sourceUri?.resolveLocalPath(this)
+    localPath?.let {
+      return PlaybackIdentity.forLocalPath(it)
+    }
+
+    intent.getStringExtra("media_identifier")?.takeIf { it.isNotBlank() }?.let { return it }
 
     val source = extractUriFromIntent(intent)?.toString() ?: parsePathFromIntent(intent) ?: fileName
     if (isTorrentSource(source, intent.type)) {
@@ -6191,13 +6217,17 @@ class PlayerActivity :
     intent: Intent,
     fileName: String,
   ): String? {
-    if (intent.getStringExtra("media_identifier")?.startsWith("media:v2:") == true) return null
+    val explicitIdentifier = intent.getStringExtra("media_identifier")?.takeIf { it.isNotBlank() }
+    val uri = extractUriFromIntent(intent)
+    val hasLocalPath =
+      intent.getStringExtra("local_media_path")?.isNotBlank() == true || uri?.resolveLocalPath(this) != null
+    if (hasLocalPath) return uri?.toString()?.let(PlaybackIdentity::forUri) ?: explicitIdentifier
+    if (explicitIdentifier?.startsWith("media:v2:") == true) return null
     val networkFilePath = intent.getStringExtra("network_file_path")
     val connectionId = intent.getLongExtra("network_connection_id", -1L)
     if (!networkFilePath.isNullOrBlank() && connectionId != -1L) {
       return "network_${connectionId}_${networkFilePath.hashCode()}"
     }
-    val uri = extractUriFromIntent(intent)
     if (uri != null && NetworkPlaybackUri.parse(uri.toString()) != null) return null
     // Local files must not use the bare filename as a legacy key — it is ambiguous when
     // multiple directories contain files with the same display name (issue #382).
@@ -6245,7 +6275,7 @@ class PlayerActivity :
 
   private fun Uri.matches(saved: SavedPlaylistSelection): Boolean {
     val uri = toString()
-    return saved.originalUri == uri || saved.stableId == PlaybackIdentity.forUri(uri)
+    return saved.originalUri == uri || saved.stableId == getMediaIdentifierFromUri(this, "")
   }
 
   private fun publishPlaylistToSession() {
@@ -6279,6 +6309,8 @@ class PlayerActivity :
 
         PlaybackItem.fromUri(
           uri = uri.toString(),
+          stableId =
+            if (networkSource == null) uri.resolveLocalPath(this)?.let(PlaybackIdentity::forLocalPath) else null,
           title = title,
           headers = headers,
           networkSource = networkSource,
@@ -6312,7 +6344,8 @@ class PlayerActivity :
     uri: Uri,
     @Suppress("UNUSED_PARAMETER") fileName: String,
   ): String =
-    NetworkPlaybackUri.parse(uri.toString())
+    uri.resolveLocalPath(this)?.let(PlaybackIdentity::forLocalPath)
+      ?: NetworkPlaybackUri.parse(uri.toString())
       ?.let { reference -> PlaybackIdentity.forNetwork(reference.connectionId, reference.path.value) }
       ?: PlaybackIdentity.forUri(uri.toString())
 

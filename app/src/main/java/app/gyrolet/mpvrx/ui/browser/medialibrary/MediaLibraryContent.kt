@@ -100,6 +100,7 @@ import app.gyrolet.mpvrx.ui.browser.videolist.VideoListContent
 import app.gyrolet.mpvrx.ui.browser.videolist.VideoWithPlaybackInfo
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
@@ -325,6 +326,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
     val queueItems = playlistVideos.map { item ->
       PlaybackItem.fromUri(
         uri = item.uri.toString(),
+        stableId = PlaybackIdentity.forLocalPath(item.path),
         title = item.displayName,
         mimeType = item.mimeType,
       )
@@ -347,6 +349,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
         putExtra("media_library_audio", mediaType == MediaLibraryType.Audio)
         putExtra("is_audio", video.isAudio)
         putExtra("title", video.displayName)
+        putExtra("local_media_path", video.path)
       }
     context.startActivity(intent)
   }
