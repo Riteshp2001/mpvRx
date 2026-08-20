@@ -11,8 +11,10 @@ package app.gyrolet.mpvrx.database.repository
 
 import app.gyrolet.mpvrx.database.dao.RecentlyPlayedDao
 import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
+import app.gyrolet.mpvrx.domain.recentlyplayed.RecentlyPlayedPlaylistSummary
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class RecentlyPlayedRepositoryImpl(
   private val recentlyPlayedDao: RecentlyPlayedDao,
@@ -85,6 +87,16 @@ class RecentlyPlayedRepositoryImpl(
 
   override fun observeRecentlyPlayed(limit: Int): Flow<List<RecentlyPlayedEntity>> =
     recentlyPlayedDao.observeRecentlyPlayed(limit)
+
+  override fun observeRecentlyPlayedPlaylists(limit: Int): Flow<List<RecentlyPlayedPlaylistSummary>> =
+    recentlyPlayedDao.observeRecentlyPlayedPlaylists(limit).map { playlists ->
+      playlists.map { playlist ->
+        RecentlyPlayedPlaylistSummary(
+          playlistId = playlist.playlistId,
+          timestamp = playlist.timestamp,
+        )
+      }
+    }
 
   override suspend fun getRecentlyPlayedBySource(
     launchSource: String,

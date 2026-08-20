@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.domain.recentlyplayed.repository
 
 import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
+import app.gyrolet.mpvrx.domain.recentlyplayed.RecentlyPlayedPlaylistSummary
 import kotlinx.coroutines.flow.Flow
 
 interface RecentlyPlayedRepository {
@@ -38,6 +39,8 @@ interface RecentlyPlayedRepository {
   suspend fun getRecentlyPlayedCount(): Int
 
   fun observeRecentlyPlayed(limit: Int = 50): Flow<List<RecentlyPlayedEntity>>
+
+  fun observeRecentlyPlayedPlaylists(limit: Int = 50): Flow<List<RecentlyPlayedPlaylistSummary>>
 
   suspend fun getRecentlyPlayedBySource(
     launchSource: String,

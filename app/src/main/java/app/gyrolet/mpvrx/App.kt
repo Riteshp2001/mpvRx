@@ -22,6 +22,7 @@ import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
 import app.gyrolet.mpvrx.di.PreferencesModule
+import app.gyrolet.mpvrx.di.ViewModelModule
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity
@@ -76,6 +77,7 @@ class App :
         PreferencesModule,
         DatabaseModule,
         FileManagerModule,
+        ViewModelModule,
         app.gyrolet.mpvrx.di.domainModule,
       )
     }

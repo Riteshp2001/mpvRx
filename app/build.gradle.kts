@@ -305,6 +305,8 @@ dependencies {
     implementation(libs.libtorrent4j.android.x86)
     implementation(libs.libtorrent4j.android.x8664)
   }
+
+  testImplementation(libs.kotlin.test)
 }
 
 // ---------------- Git helpers ----------------

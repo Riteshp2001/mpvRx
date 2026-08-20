@@ -13,404 +13,351 @@ import android.app.Application
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.domain.recentlyplayed.RecentlyPlayedMediaClassifier
+import app.gyrolet.mpvrx.domain.recentlyplayed.RecentlyPlayedPlaylistSummary
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.koin.java.KoinJavaComponent.inject
 import java.io.File
 import kotlin.math.pow
 
+data class RecentlyPlayedUiState(
+  val items: List<RecentlyPlayedItem> = emptyList(),
+  val isLoading: Boolean = true,
+)
+
+data class RecentPlaybackRequest(
+  val source: String,
+  val title: String?,
+)
+
+private data class RecentlyPlayedSnapshot(
+  val entities: List<RecentlyPlayedEntity>,
+  val playlists: List<RecentlyPlayedPlaylistSummary>,
+)
+
 class RecentlyPlayedViewModel(
   application: Application,
+  private val recentlyPlayedRepository: RecentlyPlayedRepository,
+  private val playlistRepository: PlaylistRepository,
+  private val metadataCache: VideoMetadataCacheRepository,
 ) : AndroidViewModel(application) {
-  private val recentlyPlayedRepository by inject<RecentlyPlayedRepository>(RecentlyPlayedRepository::class.java)
-  private val playlistRepository by inject<PlaylistRepository>(PlaylistRepository::class.java)
-  private val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
+  private val _uiState = MutableStateFlow(RecentlyPlayedUiState())
+  val uiState: StateFlow<RecentlyPlayedUiState> = _uiState.asStateFlow()
 
-  private val _recentItems = MutableStateFlow<List<RecentlyPlayedItem>>(emptyList())
-  val recentItems: StateFlow<List<RecentlyPlayedItem>> = _recentItems.asStateFlow()
+  private val loadMutex = Mutex()
 
-  private val _isLoading = MutableStateFlow(true)
-  val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+  @Volatile
+  private var latestSnapshot: RecentlyPlayedSnapshot? = null
 
   init {
-    // Observe recently played changes and update automatically
     viewModelScope.launch {
-      val db =
-        org.koin.java.KoinJavaComponent
-          .get<MpvRxDatabase>(MpvRxDatabase::class.java)
-
-      // Combine both flows - entities and playlists
-      kotlinx.coroutines.flow
-        .combine(
-          recentlyPlayedRepository.observeRecentlyPlayed(limit = 50),
-          db.recentlyPlayedDao().observeRecentlyPlayedPlaylists(limit = 50),
-        ) { entities, playlists ->
-          Pair(entities, playlists)
-        }.collect { (entities, playlists) ->
-          loadRecentVideosFromEntities(entities, playlists)
-        }
+      combine(
+        recentlyPlayedRepository.observeRecentlyPlayed(limit = RECENT_ITEM_LIMIT),
+        recentlyPlayedRepository.observeRecentlyPlayedPlaylists(limit = RECENT_ITEM_LIMIT),
+        ::RecentlyPlayedSnapshot,
+      ).collectLatest { snapshot ->
+        latestSnapshot = snapshot
+        loadSnapshot(snapshot)
+      }
     }
   }
 
-  private suspend fun loadRecentVideosFromEntities(
-    allRecentEntities: List<RecentlyPlayedEntity>,
-    recentPlaylists: List<app.gyrolet.mpvrx.database.dao.RecentlyPlayedDao.RecentlyPlayedPlaylistInfo>,
-  ) {
-    try {
-      val items = mutableListOf<RecentlyPlayedItem>()
+  /** Re-resolves the latest database snapshot so stale files and metadata are refreshed on demand. */
+  suspend fun refresh() {
+    latestSnapshot?.let { snapshot -> loadSnapshot(snapshot) }
+  }
 
-      // Group videos by playlist and standalone videos
-      val playlistMap = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
-      val standaloneVideos = mutableListOf<Pair<String, Long>>()
-
-      // Get a set of all network playlist IDs to filter them out
-      val networkPlaylistIds = mutableSetOf<Int>()
-      for (playlistId in allRecentEntities.mapNotNull { it.playlistId }.distinct()) {
-        val playlist = playlistRepository.getPlaylistById(playlistId)
-        if (playlist?.isM3uPlaylist == true) {
-          networkPlaylistIds.add(playlistId)
+  private suspend fun loadSnapshot(snapshot: RecentlyPlayedSnapshot) {
+    loadMutex.withLock {
+      _uiState.value = _uiState.value.copy(isLoading = true)
+      try {
+        val items = withContext(Dispatchers.IO) { buildRecentItems(snapshot) }
+        if (latestSnapshot == snapshot) {
+          _uiState.value = RecentlyPlayedUiState(items = items, isLoading = false)
+        }
+      } catch (cancellation: CancellationException) {
+        if (latestSnapshot == snapshot) {
+          _uiState.value = _uiState.value.copy(isLoading = false)
+        }
+        throw cancellation
+      } catch (error: Exception) {
+        Log.e(TAG, "Error loading recent media", error)
+        if (latestSnapshot == snapshot) {
+          // Retain the last usable content instead of replacing it with a misleading empty state.
+          _uiState.value = _uiState.value.copy(isLoading = false)
         }
       }
-
-      for (entity in allRecentEntities) {
-        // Skip videos from network playlists
-        if (entity.playlistId != null) {
-          if (entity.playlistId in networkPlaylistIds) {
-            // Skip videos from network playlists
-            continue
-          }
-          playlistMap
-            .getOrPut(entity.playlistId) { mutableListOf() }
-            .add(Pair(entity.filePath, entity.timestamp))
-        } else {
-          standaloneVideos.add(Pair(entity.filePath, entity.timestamp))
-        }
-      }
-
-      // Create playlist items (excluding network/M3U playlists)
-      for (playlistInfo in recentPlaylists) {
-        val playlist = playlistRepository.getPlaylistById(playlistInfo.playlistId)
-
-        // Skip M3U/network playlists - only include local playlists
-        if (playlist != null && !playlist.isM3uPlaylist) {
-          val playlistVideos = playlistMap[playlistInfo.playlistId] ?: emptyList()
-          val mostRecent = playlistVideos.maxByOrNull { it.second }
-          if (mostRecent != null) {
-            val itemCount = playlistRepository.getPlaylistItemCount(playlist.id)
-            items.add(
-              RecentlyPlayedItem.PlaylistItem(
-                playlist = playlist,
-                videoCount = itemCount,
-                mostRecentVideoPath = mostRecent.first,
-                timestamp = playlistInfo.timestamp,
-              ),
-            )
-          }
-        }
-      }
-
-      // Create standalone video items
-      for ((filePath, timestamp) in standaloneVideos) {
-        val entity = allRecentEntities.find { it.filePath == filePath }
-
-        // Check if this is a network URL
-        val isNetworkUri =
-          filePath.startsWith("http://", ignoreCase = true) ||
-            filePath.startsWith("https://", ignoreCase = true) ||
-            filePath.startsWith("rtmp://", ignoreCase = true) ||
-            filePath.startsWith("rtsp://", ignoreCase = true)
-
-        // Skip any kind of streaming playlist entries
-        if (isStreamingPlaylist(filePath)) {
-          // Skip streaming playlist entries
-          continue
-        }
-
-        val video =
-          if (isNetworkUri) {
-            // For network URLs, create video object directly using parsed title from entity
-            createNetworkVideoFromUrl(filePath, entity?.videoTitle, entity)
-          } else {
-            // For local files, check if they exist
-            val file = File(filePath)
-            if (file.exists()) {
-              createVideoFromFilePath(filePath, file, entity?.videoTitle)
-            } else {
-              recentlyPlayedRepository.deleteByFilePath(filePath)
-              null
-            }
-          }
-
-        if (video != null) {
-          items.add(RecentlyPlayedItem.VideoItem(video, timestamp))
-        }
-      }
-
-      // Sort by timestamp
-      val sortedItems = items.sortedByDescending { it.timestamp }
-      _recentItems.value = sortedItems
-    } catch (e: Exception) {
-      Log.e("RecentlyPlayedViewModel", "Error loading recent videos", e)
-      _recentItems.value = emptyList()
-    } finally {
-      _isLoading.value = false
     }
   }
 
-  private suspend fun createVideoFromFilePath(
-    filePath: String,
+  private suspend fun buildRecentItems(snapshot: RecentlyPlayedSnapshot): List<RecentlyPlayedItem> {
+    val playlistIds =
+      buildSet {
+        snapshot.entities.mapNotNullTo(this) { it.playlistId }
+        snapshot.playlists.mapTo(this) { it.playlistId }
+      }
+    val playlistsById =
+      playlistIds.mapNotNull { playlistId ->
+        playlistRepository.getPlaylistById(playlistId)?.let { playlistId to it }
+      }.toMap()
+    val localPlaylistIds =
+      playlistsById
+        .filterValues { playlist -> !playlist.isM3uPlaylist }
+        .keys
+    val entriesByPlaylist =
+      snapshot.entities
+        .filter { entity -> entity.playlistId in localPlaylistIds }
+        .groupBy { entity -> checkNotNull(entity.playlistId) }
+
+    val items = mutableListOf<RecentlyPlayedItem>()
+    snapshot.playlists.forEach { summary ->
+      val playlist = playlistsById[summary.playlistId] ?: return@forEach
+      if (playlist.isM3uPlaylist) return@forEach
+
+      val mostRecentEntry =
+        entriesByPlaylist[summary.playlistId]
+          ?.maxByOrNull { entity -> entity.timestamp }
+          ?: return@forEach
+      items +=
+        RecentlyPlayedItem.PlaylistItem(
+          playlist = playlist,
+          videoCount = playlistRepository.getPlaylistItemCount(playlist.id),
+          mostRecentVideoPath = mostRecentEntry.filePath,
+          timestamp = summary.timestamp,
+        )
+    }
+
+    for (entity in snapshot.entities) {
+      if (entity.playlistId != null || RecentlyPlayedMediaClassifier.isStreamingPlaylist(entity.filePath)) {
+        continue
+      }
+      resolveRecentVideo(entity)?.let { video ->
+        items += RecentlyPlayedItem.VideoItem(video = video, timestamp = entity.timestamp)
+      }
+    }
+
+    return items.sortedByDescending { item -> item.timestamp }
+  }
+
+  private suspend fun resolveRecentVideo(entity: RecentlyPlayedEntity): Video? {
+    val source = entity.filePath
+    val sourceUri = runCatching { Uri.parse(source) }.getOrNull()
+    val scheme = sourceUri?.scheme?.lowercase()
+
+    if (RecentlyPlayedMediaClassifier.isRemote(source) ||
+      RecentlyPlayedMediaClassifier.isContentUri(source) ||
+      (scheme != null && scheme != "file")
+    ) {
+      return createUriVideo(entity, sourceUri ?: Uri.parse(source))
+    }
+
+    val filePath =
+      if (RecentlyPlayedMediaClassifier.isFileUri(source)) {
+        sourceUri?.path.orEmpty()
+      } else {
+        source
+      }
+    val file = File(filePath)
+    if (!file.exists() || !file.canRead()) {
+      recentlyPlayedRepository.deleteByFilePath(source)
+      return null
+    }
+
+    return createFileVideo(entity, file)
+  }
+
+  private suspend fun createFileVideo(
+    entity: RecentlyPlayedEntity,
     file: File,
-    parsedVideoTitle: String? = null,
   ): Video? =
     try {
-      val context = getApplication<Application>()
-
-      // Extract metadata directly from file using metadata cache
       val uri = Uri.fromFile(file)
       val displayName = file.name
-      val title = file.nameWithoutExtension
-
-      // Get metadata from cache or extract it
-      val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
       val metadata = metadataCache.getOrExtractMetadata(file, uri, displayName)
-
-      val duration = metadata?.durationMs ?: 0L
-      val width = metadata?.width ?: 0
-      val height = metadata?.height ?: 0
+      val duration = metadata?.durationMs ?: entity.duration
+      val width = metadata?.width ?: entity.width
+      val height = metadata?.height ?: entity.height
       val fps = metadata?.fps ?: 0f
-      val size =
-        if (metadata?.sizeBytes != null && metadata.sizeBytes > 0) {
-          metadata.sizeBytes
-        } else {
-          file.length()
-        }
-
-      val dateModified = file.lastModified() / 1000
-      val dateAdded = dateModified
-      val parent = file.parent ?: ""
-      val bucketId = parent.hashCode().toString()
-      val bucketDisplayName = File(parent).name
-
+      val size = metadata?.sizeBytes?.takeIf { it > 0 } ?: file.length()
+      val parent = file.parent.orEmpty()
       val extension = file.extension.lowercase()
       val isAudio = extension in FileTypeUtils.AUDIO_EXTENSIONS
 
-      // Determine mime type from extension
-      val mimeType =
-        when (extension) {
-          "mp3" -> "audio/mpeg"
-          "m4a" -> "audio/mp4"
-          "aac" -> "audio/aac"
-          "flac" -> "audio/flac"
-          "wav" -> "audio/wav"
-          "ogg" -> "audio/ogg"
-          "opus" -> "audio/opus"
-          "wma" -> "audio/x-ms-wma"
-          "mp4" -> "video/mp4"
-          "mkv" -> "video/x-matroska"
-          "webm" -> "video/webm"
-          "avi" -> "video/x-msvideo"
-          "mov" -> "video/quicktime"
-          "flv" -> "video/x-flv"
-          "wmv" -> "video/x-ms-wmv"
-          "m4v" -> "video/x-m4v"
-          "3gp" -> "video/3gpp"
-          "ts" -> "video/mp2t"
-          else -> "video/*"
-        }
-
       Video(
         id = file.absolutePath.hashCode().toLong(),
-        title = title,
+        title = entity.videoTitle?.takeIf { it.isNotBlank() } ?: file.nameWithoutExtension,
         displayName = displayName,
-        path = filePath,
+        path = entity.filePath,
         uri = uri,
         duration = duration,
         durationFormatted = formatDuration(duration),
         size = size,
         sizeFormatted = formatFileSize(size),
-        dateModified = dateModified,
-        dateAdded = dateAdded,
-        mimeType = mimeType,
-        bucketId = bucketId,
-        bucketDisplayName = bucketDisplayName,
+        dateModified = file.lastModified() / 1000,
+        dateAdded = file.lastModified() / 1000,
+        mimeType = mimeTypeForExtension(extension, isAudio),
+        bucketId = parent.hashCode().toString(),
+        bucketDisplayName = File(parent).name,
         width = width,
         height = height,
         fps = fps,
         resolution = if (isAudio) "--" else formatResolution(width, height),
         isAudio = isAudio,
       )
-    } catch (e: Exception) {
-      Log.e("RecentlyPlayedViewModel", "Error creating video from path: $filePath", e)
+    } catch (cancellation: CancellationException) {
+      throw cancellation
+    } catch (error: Exception) {
+      Log.e(TAG, "Error creating recent media for ${entity.filePath}", error)
       null
     }
 
-  /**
-   * Creates a Video object from a network URL
-   */
-  private fun createNetworkVideoFromUrl(
-    url: String,
-    parsedVideoTitle: String?,
-    entity: RecentlyPlayedEntity?,
+  private fun createUriVideo(
+    entity: RecentlyPlayedEntity,
+    uri: Uri,
   ): Video {
-    // Extract URI components
-    val uri = Uri.parse(url)
-
-    // Prefer non-generic title saved with the recent item so network streams keep their resolved name.
     val resolvedTitle =
-      parsedVideoTitle?.takeIf { !isGenericStreamName(it) }
-        ?: entity?.videoTitle?.takeIf { !isGenericStreamName(it) }
-        ?: entity?.fileName?.takeIf { !isGenericStreamName(it) }
-        ?: uri.lastPathSegment?.takeIf { !isGenericStreamName(it) }
-        ?: parsedVideoTitle?.takeIf { it.isNotBlank() }
-        ?: entity?.fileName?.takeIf { it.isNotBlank() }
+      entity.videoTitle?.takeIf { !RecentlyPlayedMediaClassifier.isGenericStreamName(it) }
+        ?: entity.fileName.takeIf { !RecentlyPlayedMediaClassifier.isGenericStreamName(it) }
+        ?: uri.lastPathSegment?.takeIf { !RecentlyPlayedMediaClassifier.isGenericStreamName(it) }
+        ?: entity.videoTitle?.takeIf { it.isNotBlank() }
+        ?: entity.fileName.takeIf { it.isNotBlank() }
         ?: "Stream"
-    val displayName = resolvedTitle
-
-    // Use metadata from entity if available
-    val duration = entity?.duration ?: 0L
-    val size = entity?.fileSize ?: 0L
-    val width = entity?.width ?: 0
-    val height = entity?.height ?: 0
-
-    // Current timestamp for dates (network streams don't have file dates)
-    val dateModified = System.currentTimeMillis() / 1000
-    val dateAdded = dateModified
-
-    // Use host as bucket ID (grouping by domain)
-    val bucketId = (uri.host ?: "network").hashCode().toString()
-    val bucketDisplayName = uri.host ?: "Network Streams"
-
-    // Determine mime type based on URL extension, default to generic video
-    val extension = uri.lastPathSegment?.substringAfterLast('.', "")?.lowercase() ?: ""
-    val mimeType =
-      when (extension) {
-        "mp4" -> "video/mp4"
-        "mkv" -> "video/x-matroska"
-        "webm" -> "video/webm"
-        "m3u8" -> "application/x-mpegURL"
-        "m3u" -> "application/x-mpegURL"
-        "mpd" -> "application/dash+xml"
-        else -> "video/*"
+    val extension = uri.lastPathSegment?.substringAfterLast('.', "")?.lowercase().orEmpty()
+    val contentMimeType =
+      if (RecentlyPlayedMediaClassifier.isContentUri(entity.filePath)) {
+        runCatching { getApplication<Application>().contentResolver.getType(uri) }.getOrNull()
+      } else {
+        null
       }
+    val isAudio = contentMimeType?.startsWith("audio/") == true || extension in FileTypeUtils.AUDIO_EXTENSIONS
+    val mimeType = contentMimeType ?: mimeTypeForExtension(extension, isAudio)
+    val bucketName =
+      uri.host?.takeIf { it.isNotBlank() }
+        ?: if (uri.scheme.equals("content", ignoreCase = true)) "Device" else "Network Streams"
 
     return Video(
-      id = url.hashCode().toLong(),
+      id = entity.filePath.hashCode().toLong(),
       title = resolvedTitle,
-      displayName = displayName,
-      path = url,
+      displayName = entity.fileName.takeIf { it.isNotBlank() } ?: resolvedTitle,
+      path = entity.filePath,
       uri = uri,
-      duration = duration,
-      durationFormatted = formatDuration(duration),
-      size = size,
-      sizeFormatted = formatFileSize(size),
-      dateModified = dateModified,
-      dateAdded = dateAdded,
+      duration = entity.duration,
+      durationFormatted = formatDuration(entity.duration),
+      size = entity.fileSize,
+      sizeFormatted = formatFileSize(entity.fileSize),
+      dateModified = entity.timestamp / 1000,
+      dateAdded = entity.timestamp / 1000,
       mimeType = mimeType,
-      bucketId = bucketId,
-      bucketDisplayName = bucketDisplayName,
-      width = width,
-      height = height,
-      fps = 0f, // Network videos typically don't have fps metadata stored
-      resolution = formatResolution(width, height),
+      bucketId = bucketName.hashCode().toString(),
+      bucketDisplayName = bucketName,
+      width = entity.width,
+      height = entity.height,
+      fps = 0f,
+      resolution = if (isAudio) "--" else formatResolution(entity.width, entity.height),
+      isAudio = isAudio,
     )
   }
 
-  // Basic video creation function removed as it's no longer used
+  suspend fun lastPlayedRequest(): RecentPlaybackRequest? =
+    withContext(Dispatchers.IO) {
+      recentlyPlayedRepository.getRecentlyPlayed(limit = RECENT_ITEM_LIMIT).firstNotNullOfOrNull { entity ->
+        val path = entity.filePath
+        val uri = runCatching { Uri.parse(path) }.getOrNull()
+        val isUriSource = uri?.scheme?.let { scheme -> !scheme.equals("file", ignoreCase = true) } == true
+        val localPath = if (RecentlyPlayedMediaClassifier.isFileUri(path)) uri?.path.orEmpty() else path
+        val localFile = File(localPath)
+        if (!isUriSource && (!localFile.exists() || !localFile.canRead())) {
+          runCatching { recentlyPlayedRepository.deleteByFilePath(path) }
+          return@firstNotNullOfOrNull null
+        }
 
-  suspend fun clearAllRecentlyPlayed() {
-    try {
-      recentlyPlayedRepository.clearAll()
-      // The observe flow will automatically update the UI
-    } catch (e: Exception) {
-      Log.e("RecentlyPlayedViewModel", "Error clearing recent videos", e)
+        RecentPlaybackRequest(
+          source = path,
+          title =
+            entity.videoTitle?.takeIf { it.isNotBlank() }
+              ?: entity.fileName.takeIf { it.isNotBlank() },
+        )
+      }
     }
-  }
 
   suspend fun deleteVideosFromHistory(
     videos: List<Video>,
     deleteFiles: Boolean = false,
   ): Pair<Int, Int> =
-    try {
+    withContext(Dispatchers.IO) {
       var successCount = 0
-      var failCount = 0
+      var failureCount = 0
 
       videos.forEach { video ->
         try {
-          // Delete from history database
-          recentlyPlayedRepository.deleteByFilePath(video.path)
-
-          // If deleteFiles is true and it's a local file, delete the actual file
-          if (deleteFiles) {
-            // Check if it's a local file (not a network URL)
-            val isNetworkUri =
-              video.path.startsWith("http://", ignoreCase = true) ||
-                video.path.startsWith("https://", ignoreCase = true) ||
-                video.path.startsWith("rtmp://", ignoreCase = true) ||
-                video.path.startsWith("rtsp://", ignoreCase = true)
-
-            if (!isNetworkUri) {
-              val (deleted, failed) =
-                PermissionUtils.StorageOps.deleteVideos(
-                  getApplication(),
-                  listOf(video),
-                )
-              if (deleted <= 0 || failed > 0) {
-                Log.w("RecentlyPlayedViewModel", "Failed to delete file: ${video.path}")
-                failCount++
+          val shouldDeleteSource = deleteFiles && !RecentlyPlayedMediaClassifier.isRemote(video.path)
+          if (shouldDeleteSource) {
+            val sourceVideo =
+              if (RecentlyPlayedMediaClassifier.isFileUri(video.path)) {
+                video.copy(path = Uri.parse(video.path).path.orEmpty())
               } else {
-                Log.d("RecentlyPlayedViewModel", "Deleted file: ${video.path}")
+                video
               }
+            val (deleted, failed) =
+              PermissionUtils.StorageOps.deleteVideos(
+                getApplication(),
+                listOf(sourceVideo),
+              )
+            if (deleted <= 0 || failed > 0) {
+              Log.w(TAG, "Failed to delete recent media source: ${video.path}")
+              failureCount++
+              return@forEach
             }
           }
 
+          recentlyPlayedRepository.deleteByFilePath(video.path)
           successCount++
-        } catch (e: Exception) {
-          Log.e("RecentlyPlayedViewModel", "Error deleting video from history: ${video.path}", e)
-          failCount++
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (error: Exception) {
+          Log.e(TAG, "Error deleting recent media: ${video.path}", error)
+          failureCount++
         }
       }
 
-      Pair(successCount, failCount)
-    } catch (e: Exception) {
-      Log.e("RecentlyPlayedViewModel", "Error deleting videos from history", e)
-      Pair(0, videos.size)
+      successCount to failureCount
     }
 
   suspend fun deletePlaylistsFromHistory(playlistIds: List<Int>): Pair<Int, Int> =
-    try {
+    withContext(Dispatchers.IO) {
       var successCount = 0
-      var failCount = 0
+      var failureCount = 0
 
       playlistIds.forEach { playlistId ->
         try {
           recentlyPlayedRepository.deleteByPlaylistId(playlistId)
           successCount++
-        } catch (e: Exception) {
-          Log.e("RecentlyPlayedViewModel", "Error deleting playlist from history: $playlistId", e)
-          failCount++
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (error: Exception) {
+          Log.e(TAG, "Error deleting playlist history: $playlistId", error)
+          failureCount++
         }
       }
 
-      Pair(successCount, failCount)
-    } catch (e: Exception) {
-      Log.e("RecentlyPlayedViewModel", "Error deleting playlists from history", e)
-      Pair(0, playlistIds.size)
+      successCount to failureCount
     }
 
   suspend fun resolvePlayableRecentVideo(video: Video): Video? =
@@ -418,21 +365,11 @@ class RecentlyPlayedViewModel(
       val path = video.path.takeIf { it.isNotBlank() } ?: video.uri.toString()
       if (path.isBlank()) return@withContext null
 
-      if (isNetworkUri(path)) {
-        return@withContext video
-      }
-      val scheme = runCatching { Uri.parse(path).scheme?.lowercase() }.getOrNull()
-      if (scheme != null && scheme != "file") {
-        return@withContext video
-      }
+      val uri = runCatching { Uri.parse(path) }.getOrNull()
+      val scheme = uri?.scheme?.lowercase()
+      if (scheme != null && scheme != "file") return@withContext video
 
-      val filePath =
-        when {
-          path.startsWith("file://", ignoreCase = true) -> path.removePrefix("file://")
-          video.uri.scheme.equals("file", ignoreCase = true) -> video.uri.path.orEmpty()
-          else -> path
-        }
-
+      val filePath = if (RecentlyPlayedMediaClassifier.isFileUri(path)) uri?.path.orEmpty() else path
       val file = File(filePath)
       if (file.exists() && file.canRead()) {
         video
@@ -442,29 +379,58 @@ class RecentlyPlayedViewModel(
       }
     }
 
+  private fun mimeTypeForExtension(
+    extension: String,
+    isAudio: Boolean,
+  ): String =
+    when (extension) {
+      "mp3" -> "audio/mpeg"
+      "m4a" -> "audio/mp4"
+      "aac" -> "audio/aac"
+      "flac" -> "audio/flac"
+      "wav" -> "audio/wav"
+      "ogg" -> "audio/ogg"
+      "opus" -> "audio/opus"
+      "wma" -> "audio/x-ms-wma"
+      "mp4" -> "video/mp4"
+      "mkv" -> "video/x-matroska"
+      "webm" -> "video/webm"
+      "avi" -> "video/x-msvideo"
+      "mov" -> "video/quicktime"
+      "flv" -> "video/x-flv"
+      "wmv" -> "video/x-ms-wmv"
+      "m4v" -> "video/x-m4v"
+      "3gp" -> "video/3gpp"
+      "ts" -> "video/mp2t"
+      else -> if (isAudio) "audio/*" else "video/*"
+    }
+
   private fun formatDuration(durationMs: Long): String {
     if (durationMs <= 0) return "--"
     val seconds = durationMs / 1000
     val hours = seconds / 3600
     val minutes = (seconds % 3600) / 60
-    val secs = seconds % 60
+    val remainingSeconds = seconds % 60
 
     return when {
-      hours > 0 -> "${hours}h ${minutes}m ${secs}s"
-      minutes > 0 -> "${minutes}m ${secs}s"
-      else -> "${secs}s"
+      hours > 0 -> "${hours}h ${minutes}m ${remainingSeconds}s"
+      minutes > 0 -> "${minutes}m ${remainingSeconds}s"
+      else -> "${remainingSeconds}s"
     }
   }
 
   private fun formatFileSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt()
+    val digitGroup =
+      (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0))
+        .toInt()
+        .coerceIn(units.indices)
     return String.format(
       java.util.Locale.getDefault(),
       "%.1f %s",
-      bytes / 1024.0.pow(digitGroups.toDouble()),
-      units[digitGroups],
+      bytes / 1024.0.pow(digitGroup.toDouble()),
+      units[digitGroup],
     )
   }
 
@@ -488,78 +454,8 @@ class RecentlyPlayedViewModel(
     }
   }
 
-  private fun isNetworkUri(path: String): Boolean =
-    path.startsWith("http://", ignoreCase = true) ||
-      path.startsWith("https://", ignoreCase = true) ||
-      path.startsWith("rtmp://", ignoreCase = true) ||
-      path.startsWith("rtsp://", ignoreCase = true)
-
-  /**
-   * Checks if a URL is likely a streaming playlist (M3U, HLS, DASH, etc.)
-   *
-   * @param url The URL to check
-   * @return True if the URL appears to be a streaming playlist
-   */
-  private fun isStreamingPlaylist(url: String): Boolean {
-    val lowerCaseUrl = url.lowercase()
-
-    // Direct extensions
-    if (lowerCaseUrl.endsWith(".m3u") ||
-      lowerCaseUrl.endsWith(".m3u8") ||
-      lowerCaseUrl.endsWith(".mpd")
-    ) {
-      return true
-    }
-
-    // Common playlist keywords
-    if (lowerCaseUrl.contains("playlist") ||
-      lowerCaseUrl.contains("manifest")
-    ) {
-      return true
-    }
-
-    // Index files with streaming format indicators
-    if (lowerCaseUrl.contains("index") &&
-      (
-        lowerCaseUrl.contains(".m3u") ||
-          lowerCaseUrl.contains("hls") ||
-          lowerCaseUrl.contains("dash") ||
-          lowerCaseUrl.contains("mpd")
-      )
-    ) {
-      return true
-    }
-
-    // IPTV and streaming service patterns
-    if (lowerCaseUrl.contains("iptv") ||
-      lowerCaseUrl.contains("channel") &&
-      lowerCaseUrl.contains("stream")
-    ) {
-      return true
-    }
-
-    return false
-  }
-
-  companion object {
-    private val GENERIC_STREAM_NAMES =
-      setOf(
-        "stream",
-        "stream.mkv",
-        "stream.mp4",
-        "stream.ts",
-        "stream.webm",
-        "stream.avi",
-      )
-
-    fun isGenericStreamName(name: String?): Boolean =
-      name.isNullOrBlank() || name.trim().lowercase() in GENERIC_STREAM_NAMES
-
-    fun factory(application: Application): ViewModelProvider.Factory =
-      viewModelFactory {
-        initializer {
-          RecentlyPlayedViewModel(application)
-        }
-      }
+  private companion object {
+    const val TAG = "RecentlyPlayedViewModel"
+    const val RECENT_ITEM_LIMIT = 50
   }
 }

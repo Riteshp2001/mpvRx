@@ -61,7 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
@@ -93,6 +93,7 @@ import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 
 @Serializable
 object RecentlyPlayedScreen : Screen {
@@ -101,11 +102,10 @@ object RecentlyPlayedScreen : Screen {
   override fun Content() {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
-    val viewModel: RecentlyPlayedViewModel =
-      viewModel(factory = RecentlyPlayedViewModel.factory(context.applicationContext as android.app.Application))
-
-    val recentItems by viewModel.recentItems.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val viewModel = koinViewModel<RecentlyPlayedViewModel>()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val recentItems = uiState.items
+    val isLoading = uiState.isLoading
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     val deleteFilesCheckbox = rememberSaveable { mutableStateOf(false) }
     val advancedPreferences = koinInject<AdvancedPreferences>()
@@ -121,6 +121,18 @@ object RecentlyPlayedScreen : Screen {
     val showLinkDialog = remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
+    val playLastRecent: (String) -> Unit = { launchSource ->
+      coroutineScope.launch {
+        viewModel.lastPlayedRequest()?.let { request ->
+          MediaUtils.playFile(
+            source = request.source,
+            context = context,
+            launchSource = launchSource,
+            title = request.title,
+          )
+        }
+      }
+    }
 
     // Selection manager for all items (videos and playlists)
     val selectionManager =
@@ -151,7 +163,6 @@ object RecentlyPlayedScreen : Screen {
           Pair(successCount, failCount)
         },
         onRenameItem = null, // Cannot rename from history screen
-        onOperationComplete = { },
       )
 
     // Handle back button during selection mode or FAB menu expanded
@@ -258,21 +269,7 @@ object RecentlyPlayedScreen : Screen {
                 checked = isFabExpanded.value && !quickPlayFabDirect,
                 onCheckedChange = {
                   if (quickPlayFabDirect) {
-                    coroutineScope.launch {
-                      val lastPlayed =
-                        app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
-                          .getLastPlayedEntity()
-                      if (lastPlayed != null) {
-                        MediaUtils.playFile(
-                          source = lastPlayed.filePath,
-                          context = context,
-                          launchSource = "quick_play_fab",
-                          title =
-                            lastPlayed.videoTitle?.takeIf { it.isNotBlank() }
-                              ?: lastPlayed.fileName.takeIf { it.isNotBlank() },
-                        )
-                      }
-                    }
+                    playLastRecent("quick_play_fab")
                   } else {
                     isFabExpanded.value = !isFabExpanded.value
                   }
@@ -311,21 +308,7 @@ object RecentlyPlayedScreen : Screen {
             FloatingActionButtonMenuItem(
               onClick = {
                 isFabExpanded.value = false
-                coroutineScope.launch {
-                  val lastPlayed =
-                    app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
-                      .getLastPlayedEntity()
-                  if (lastPlayed != null) {
-                    MediaUtils.playFile(
-                      source = lastPlayed.filePath,
-                      context = context,
-                      launchSource = "recently_played_button",
-                      title =
-                        lastPlayed.videoTitle?.takeIf { it.isNotBlank() }
-                          ?: lastPlayed.fileName.takeIf { it.isNotBlank() },
-                    )
-                  }
-                }
+                playLastRecent("recently_played_button")
               },
               icon = { Icon(Icons.RoundedFilled.History, contentDescription = null) },
               text = {
@@ -432,6 +415,7 @@ object RecentlyPlayedScreen : Screen {
             isInSelectionMode = selectionManager.isInSelectionMode,
             listState = listState,
             gridState = gridState,
+            onRefresh = viewModel::refresh,
           )
         }
       }
@@ -517,6 +501,7 @@ private fun RecentItemsContent(
   isInSelectionMode: Boolean = false,
   listState: LazyListState,
   gridState: LazyGridState,
+  onRefresh: suspend () -> Unit,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>()
@@ -642,8 +627,7 @@ private fun RecentItemsContent(
 
   PullRefreshBox(
     isRefreshing = isRefreshing,
-    onRefresh = { },
-    listState = listState,
+    onRefresh = onRefresh,
     modifier = modifier.fillMaxSize(),
   ) {
     if (isGridMode) {

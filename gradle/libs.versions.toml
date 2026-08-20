@@ -70,7 +70,7 @@ androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", vers
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidxDocumentfile" }
 androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "androidxPalette" }
 seeker = { module = "com.github.abdallahmehiz:seeker", version.ref = "seeker" }
-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlinTest" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlinTest" }
 mediainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"
 
 google-material = { module = "com.google.android.material:material", version.ref = "googleMaterial" }
