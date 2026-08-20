@@ -262,12 +262,12 @@ object SubtitlesPreferencesScreen : Screen {
                 },
                 textField = { value, onValueChange, _ ->
                   Column {
-                    Text(stringResource(R.string.enter_language_codes))
+                    Text(stringResource(R.string.enter_subtitle_title_preferences))
                     TextField(
                       value,
                       onValueChange,
                       modifier = Modifier.fillMaxWidth(),
-                      placeholder = { Text(stringResource(R.string.language_codes_placeholder)) },
+                      placeholder = { Text(stringResource(R.string.subtitle_title_preferences_placeholder)) },
                     )
                   }
                 },

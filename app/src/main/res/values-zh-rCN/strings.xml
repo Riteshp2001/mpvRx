@@ -497,6 +497,8 @@
   <string name="not_set_video_default">未设置（将使用视频默认值）</string>
   <string name="enter_language_codes">输入以逗号分隔的语言代码（例如 eng,jpn,spa）</string>
   <string name="language_codes_placeholder">eng,jpn,spa</string>
+  <string name="enter_subtitle_title_preferences">按优先级输入字幕轨标题关键词或语言代码，用逗号分隔；越靠前优先级越高，并列时继续匹配后续关键词。</string>
+  <string name="subtitle_title_preferences_placeholder">特效,简体,chs,zh</string>
   <string name="pref_audio_channels_auto_safe_desc">默认、安全的自动选择</string>
   <string name="pref_audio_channels_auto_desc">自动选择</string>
   <string name="pref_audio_channels_mono_desc">混音为单声道</string>
