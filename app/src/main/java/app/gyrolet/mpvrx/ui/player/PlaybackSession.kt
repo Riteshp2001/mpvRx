@@ -477,10 +477,13 @@ object PlaybackSession : MPVLib.EventObserver {
       item
     }
 
-  fun load(item: PlaybackItem): Long {
+  fun load(
+    item: PlaybackItem,
+    selectVideo: Boolean? = null,
+  ): Long {
     val resolved = resolvePlayableUri(item)
     return try {
-      val generation = load(playableUri = resolved.uri, item = item)
+      val generation = load(playableUri = resolved.uri, item = item, selectVideo = selectVideo)
       if (generation < 0L) {
         resolved.registration?.let(::releaseNetworkStream)
         generation
@@ -506,12 +509,16 @@ object PlaybackSession : MPVLib.EventObserver {
   private fun load(
     playableUri: String,
     item: PlaybackItem? = null,
+    selectVideo: Boolean? = null,
   ): Long =
     withCore(default = -1L) {
       // A preceding surface detach may have left the outgoing file at vid=no. Select video for the
-      // incoming file only when a valid render Surface is attached, and make that choice file-local
-      // in the load command instead of mutating the process-wide vid property during replacement.
-      val selectVideoForNewFile = _state.value.surfaceAttached
+      // incoming file when the caller expects to render it, or when a valid render Surface is
+      // attached. Callers must pass an explicit choice for foreground loads: on cold start the
+      // Surface attaches only after this load reaches mpv, and a global vid=no would make a
+      // video-only (soundless) file abort with "No video or audio streams selected". The choice is
+      // file-local in the load command instead of mutating the process-wide vid property.
+      val selectVideoForNewFile = selectVideo ?: _state.value.surfaceAttached
 
       // An OUTPUT Ambient shader bakes the previous video's aspect ratio into its GLSL. Because the
       // libmpv core outlives PlayerActivity, a late/cancelled Ambient job can otherwise poison the
@@ -1129,6 +1136,14 @@ object PlaybackSession : MPVLib.EventObserver {
         )
       Log.d(TAG, "Routing HLS stream through HlsStreamingProxy: $uri")
       return ResolvedPlayable(uri, NetworkStreamRegistration(hlsProxy = hlsProxy, streamId = streamId))
+    }
+
+    // fd:// descriptors are single-use: mpv consumes and closes them on their first load. Replays
+    // of queue items or persisted sessions must re-open a fresh descriptor from the content URI.
+    if (item.playableUri.startsWith("fd://") && item.originalUri.startsWith("content://")) {
+      applicationContext?.let { context ->
+        Uri.parse(item.originalUri).openContentFd(context)?.let { return ResolvedPlayable(it) }
+      }
     }
 
     if (!item.playableUri.startsWith("content://")) return ResolvedPlayable(item.playableUri)

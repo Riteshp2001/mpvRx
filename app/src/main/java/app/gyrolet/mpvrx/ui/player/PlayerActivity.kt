@@ -3169,7 +3169,10 @@ class PlayerActivity :
       return null
     }
     return if (uri.startsWith("content://")) {
-      uri.toUri().openContentFd(this)
+      // Resolve to a real path when possible, but never to a single-use fd:// here: this value is
+      // stored on the queue item, and a replay would reuse a descriptor mpv has already consumed.
+      // Unresolvable URIs stay content:// and get a fresh descriptor per load in PlaybackSession.
+      uri.toUri().openContentFd(this, allowFdFallback = false) ?: uri
     } else {
       uri
     }
@@ -4625,6 +4628,11 @@ class PlayerActivity :
     val requestedPlaylistIndex = playlistIndex
     val requestedQueueItem = PlaybackSession.queue.value.items.getOrNull(requestedPlaylistIndex)
     val requestGeneration = mediaRequestGeneration
+    // On cold start the render Surface attaches only after the load reaches mpv, so the
+    // surface-attached gate inside PlaybackSession.load() would leave the file at vid=no and a
+    // video-only (soundless) file would abort with "No video or audio streams selected".
+    // Foreground loads therefore request video explicitly; background/fallback loads keep the gate.
+    val selectVideoOnLoad = if (disableVideoOnFallback || isInBackgroundPlayback) null else true
     val requestedSource = originalUri ?: extractUriFromIntent(sourceIntent)?.toString() ?: playableUri
     val requestedHeaders =
       buildPlaybackHeaders(
@@ -4754,7 +4762,7 @@ class PlayerActivity :
               .onFailure { error -> Log.w(TAG, "Failed to prepare playback cookies", error) }
           }
           if (requestedQueueItem == null || isTorrentRequest) PlaybackSession.replaceQueue(listOf(item), 0)
-          PlaybackSession.load(item)
+          PlaybackSession.load(item, selectVideo = selectVideoOnLoad)
         } catch (error: CancellationException) {
           throw error
         } catch (error: Exception) {
@@ -5790,7 +5798,7 @@ class PlayerActivity :
     }
 
     val uri = playlist[index]
-    val playableUri = uri.openContentFd(this) ?: uri.toString()
+    val playableUri = uri.openContentFd(this, allowFdFallback = false) ?: uri.toString()
     currentPlayableUri = uri.toString()
     val persistedNetworkReference = NetworkPlaybackUri.parse(uri.toString())
     val networkFilePath =
