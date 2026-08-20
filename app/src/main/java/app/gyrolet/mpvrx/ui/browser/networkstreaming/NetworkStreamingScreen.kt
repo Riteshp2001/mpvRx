@@ -511,7 +511,9 @@ private fun AddMediaDialog(
 ) {
   if (!isOpen) return
   var inputUrl by remember { mutableStateOf("") }
-  val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+  val context = LocalContext.current
+  val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+  val coroutineScope = rememberCoroutineScope()
 
   androidx.compose.material3.AlertDialog(
     onDismissRequest = onDismiss,
@@ -532,10 +534,17 @@ private fun AddMediaDialog(
           singleLine = true,
           trailingIcon = {
             if (inputUrl.isBlank()) {
-              IconButton(onClick = {
-                val clip = clipboard.getText()?.text
-                if (!clip.isNullOrBlank()) inputUrl = clip
-              }) {
+              IconButton(
+                onClick = {
+                  coroutineScope.launch {
+                    val clipData = clipboard.getClipEntry()?.clipData
+                    if (clipData != null && clipData.itemCount > 0) {
+                      val clip = clipData.getItemAt(0).coerceToText(context)?.toString()?.trim()
+                      if (!clip.isNullOrBlank()) inputUrl = clip
+                    }
+                  }
+                },
+              ) {
                 Icon(Icons.RoundedFilled.ContentPaste, contentDescription = "Paste")
               }
             } else {

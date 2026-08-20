@@ -233,7 +233,6 @@ fun PlayerControls(
       forceVisible = isTorrentConnecting,
     )
   val isMpvBuffering = bufferingState.isCacheStall
-  val showBufferingIndicator = bufferingState.visible
   val safeAreaWindow by playerPreferences.safeAreaWindow.collectAsState()
   val safeAreaInsetModifier =
     if (safeAreaWindow) {
@@ -250,6 +249,7 @@ fun PlayerControls(
   var isSeeking by remember { mutableStateOf(false) }
   val mpvSeeking by PlaybackSession.propBoolean["seeking"].collectAsState()
   val isPlayerSeeking = isSeeking || (mpvSeeking ?: false)
+  val showBufferingIndicator = bufferingState.visible && controlsShown && !isPlayerSeeking
   var stableDemuxerCacheTime by remember { mutableFloatStateOf(0f) }
   val currentDemuxerCacheTime =
     demuxerCacheTime
