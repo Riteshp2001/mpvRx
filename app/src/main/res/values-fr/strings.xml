@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='UTF-8'?>
 <resources>
   <string name="generic_reset">Réinitialiser</string>
   <string name="generic_share">Partager</string>
@@ -1638,20 +1638,20 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="secure_folder_progress_format">%1$d sur %2$d · %3$d%%</string>
   <string name="pref_codecs_decoders_summary">%1$d matériels • %2$d décodeurs logiciels</string>
   <string name="pref_codecs_banner_title">Décodage matériel ou logiciel</string>
-  <string name="pref_codecs_banner_desc">"Les décodeurs matériels (⚡) décodent le flux directement sur les puces VPU/GPU dédiées. Les décodeurs logiciels (💻) s'exécutent sur le processeur (CPU), augmentant la consommation de batterie et la chauffe lors de la lecture 4K."</string>
+  <string name="pref_codecs_banner_desc">"Les décodeurs matériels décodent le flux directement sur les puces VPU/GPU dédiées. Les décodeurs logiciels s'exécutent sur le processeur (CPU), augmentant la consommation de batterie et la chauffe lors de la lecture 4K."</string>
   <string name="pref_codecs_core_title">Statut des codecs vidéo principaux</string>
   <string name="pref_codecs_search_placeholder">Rechercher nom de codec, format ou MIME...</string>
   <string name="pref_codecs_filter_all">Tous (%d)</string>
-  <string name="pref_codecs_filter_hardware">Matériel ⚡ (%d)</string>
-  <string name="pref_codecs_filter_software">Logiciel 💻 (%d)</string>
+  <string name="pref_codecs_filter_hardware">Matériel (%d)</string>
+  <string name="pref_codecs_filter_software">Logiciel (%d)</string>
   <string name="pref_codecs_filter_video">Vidéo (%d)</string>
   <string name="pref_codecs_filter_audio">Audio (%d)</string>
   <string name="pref_codecs_list_header">Liste détaillée des décodeurs (%d)</string>
   <string name="pref_codecs_empty">Aucun codec correspondant trouvé.</string>
-  <string name="pref_codecs_badge_hardware">⚡ Matériel</string>
-  <string name="pref_codecs_badge_software">💻 Logiciel</string>
-  <string name="pref_codecs_badge_hw_short">⚡ HW</string>
-  <string name="pref_codecs_badge_sw_short">💻 SW</string>
+  <string name="pref_codecs_badge_hardware">Matériel</string>
+  <string name="pref_codecs_badge_software">Logiciel</string>
+  <string name="pref_codecs_badge_hw_short">HW</string>
+  <string name="pref_codecs_badge_sw_short">SW</string>
   <string name="pref_codecs_no_decoder">Aucun décodeur signalé</string>
   <string name="pref_codecs_max_limit">Limite max : %s</string>
   <string name="pref_codecs_max_resolution">Résolution max : %s</string>
