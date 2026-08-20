@@ -8,6 +8,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -45,8 +46,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -233,10 +237,42 @@ fun LyricsView(
                 val displayText = if (isBlankLine) ". . ." else ogText
                 val hasTranslation = !transText.isNullOrBlank()
 
+                val distanceFromActive =
+                  if (state.activeLineIndex >= 0) kotlin.math.abs(index - state.activeLineIndex) else 0
+
+                // Falloff by distance rather than a flat inactive value, so the eye is pulled to
+                // the sung line instead of a wall of evenly dim text.
                 val lineAlpha by animateFloatAsState(
-                  targetValue = if (isActiveLine) 1.0f else 0.45f,
-                  animationSpec = tween(durationMillis = 250),
+                  targetValue =
+                    when {
+                      isActiveLine -> 1.0f
+                      distanceFromActive == 1 -> 0.52f
+                      distanceFromActive == 2 -> 0.30f
+                      distanceFromActive == 3 -> 0.18f
+                      else -> 0.10f
+                    },
+                  animationSpec = tween(durationMillis = if (isActiveLine) 330 else 500, easing = FastOutSlowInEasing),
                   label = "LineAlpha",
+                )
+
+                // Depth of field: distant lines defocus. No-op below API 31, which degrades to
+                // the alpha falloff alone.
+                val lineBlur by animateFloatAsState(
+                  targetValue =
+                    when {
+                      isActiveLine -> 0f
+                      distanceFromActive == 1 -> 2f
+                      distanceFromActive == 2 -> 5f
+                      else -> 12f
+                    },
+                  animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                  label = "LineBlur",
+                )
+
+                val lineScale by animateFloatAsState(
+                  targetValue = if (isActiveLine) 1f else 0.95f,
+                  animationSpec = tween(durationMillis = 166, easing = FastOutSlowInEasing),
+                  label = "LineScale",
                 )
 
                 val lineTranslationY by animateFloatAsState(
@@ -257,9 +293,13 @@ fun LyricsView(
                 Column(
                   modifier = Modifier
                     .fillMaxWidth()
+                    .blur(radiusX = lineBlur.dp, radiusY = lineBlur.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                     .graphicsLayer {
                       alpha = lineAlpha
                       translationY = lineTranslationY
+                      scaleX = lineScale
+                      scaleY = lineScale
+                      transformOrigin = TransformOrigin(0f, 0.5f)
                     }
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
