@@ -114,15 +114,13 @@ object PlayerPreferencesScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
-        val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(PlayerPreferencesScreen, MaterialTheme.colorScheme.primary)
+        val settingsListState = rememberSettingsSearchList(PlayerPreferencesScreen)
         LazyColumn(
           state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding)
-              .then(settingsHighlight),
+              .padding(padding),
         ) {
           // ── General ───────────────────────────────────────────────────────
           item {

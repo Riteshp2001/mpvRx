@@ -243,8 +243,7 @@ object CustomButtonScreen : Screen {
 
     // Reorderable list state
     val lazyListState = rememberLazyListState()
-    val settingsHighlight =
-      rememberSettingsSearchHighlight(CustomButtonScreen, lazyListState, MaterialTheme.colorScheme.primary)
+    SettingsSearchListNavigationEffect(CustomButtonScreen, lazyListState)
     val NON_SLOT_ITEMS_BEFORE = 1 // the Spacer item()
     val reorderState =
       rememberReorderableLazyListState(lazyListState) { from, to ->
@@ -304,8 +303,7 @@ object CustomButtonScreen : Screen {
         modifier =
           Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .then(settingsHighlight),
+            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
       ) {
         // Section divider items

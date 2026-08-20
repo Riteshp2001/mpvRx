@@ -117,7 +117,6 @@ import app.gyrolet.mpvrx.utils.media.openPersistedTreeDocument
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
-import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -3379,23 +3378,6 @@ class PlayerActivity :
         }
       }
     }
-  }
-
-  /**
-   * Observer callback for MPV property changes (MPVNode values).
-   *
-   * This method is called when an MPV property (with MPVNode value) changes.
-   * Extend this method to handle properties as needed.
-   *
-   * @param property The property name that changed
-   * @param value The new MPVNode value
-   */
-  @Suppress("UnusedParameter")
-  internal fun onObserverEvent(
-    property: String,
-    value: MPVNode,
-  ) {
-    // Currently no MPVNode properties are handled
   }
 
   /**

@@ -459,7 +459,6 @@ object PlaylistScreen : Screen {
     PullRefreshBox(
       isRefreshing = isRefreshing,
       onRefresh = onRefresh,
-      listState = listState,
       modifier = modifier.fillMaxSize(),
     ) {
       if (isGridMode) {

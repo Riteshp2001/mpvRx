@@ -139,15 +139,13 @@ object PlayerControlsPreferencesScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
-        val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(PlayerControlsPreferencesScreen, MaterialTheme.colorScheme.primary)
+        val settingsListState = rememberSettingsSearchList(PlayerControlsPreferencesScreen)
         LazyColumn(
           state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding)
-              .then(settingsHighlight),
+              .padding(padding),
         ) {
           // Landscape Controls Section
           item {

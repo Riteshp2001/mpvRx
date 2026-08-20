@@ -282,33 +282,18 @@ fun Modifier.highlightBackground(highlighted: Boolean): Modifier {
 @Composable
 fun rememberSettingsSearchList(
   screen: Screen,
-  @Suppress("UnusedParameter") highlightColor: Color = Color.Unspecified,
-): Pair<LazyListState, Modifier> {
+): LazyListState {
   val listState = rememberLazyListState()
-  val requestedTarget by SettingsSearchNavigation.target.collectAsState()
-
-  LaunchedEffect(requestedTarget, screen) {
-    val target = requestedTarget?.takeIf { it.screen == screen } ?: return@LaunchedEffect
-    val targetIndex =
-      settingsSearchListAnchors[screen]
-        ?.firstOrNull {
-          target.key == "res:${it.titleRes}" || (it.title != null && target.key == "text:${it.title}")
-        }?.itemIndex
-        ?: 0
-
-    delay(200)
-    listState.animateScrollToItem(targetIndex)
-  }
-
-  return listState to Modifier
+  SettingsSearchListNavigationEffect(screen, listState)
+  return listState
 }
 
+/** Pre-composes the lazy-list card containing a search target before its row requests focus. */
 @Composable
-fun rememberSettingsSearchHighlight(
+fun SettingsSearchListNavigationEffect(
   screen: Screen,
   listState: LazyListState,
-  @Suppress("UnusedParameter") highlightColor: Color = Color.Unspecified,
-): Modifier {
+) {
   val requestedTarget by SettingsSearchNavigation.target.collectAsState()
 
   LaunchedEffect(requestedTarget, screen) {
@@ -323,9 +308,9 @@ fun rememberSettingsSearchHighlight(
     delay(200)
     listState.animateScrollToItem(targetIndex)
   }
-  return Modifier
 }
 
+/** Compatibility bridge for non-lazy settings content, whose rows handle exact navigation. */
 @Composable
 fun rememberSettingsSearchHighlight(
   screen: Screen,
@@ -334,22 +319,7 @@ fun rememberSettingsSearchHighlight(
 ): Modifier {
   val requestedTarget by SettingsSearchNavigation.target.collectAsState()
 
-  LaunchedEffect(requestedTarget, screen) {
-    if (requestedTarget?.screen == screen) {
-      delay(200)
-    }
-  }
-  return Modifier
-}
-
-@Composable
-fun rememberSettingsSearchHighlight(
-  screen: Screen,
-  @Suppress("UnusedParameter") highlightColor: Color = Color.Unspecified,
-): Modifier {
-  val requestedTarget by SettingsSearchNavigation.target.collectAsState()
-
-  LaunchedEffect(requestedTarget, screen) {
+  LaunchedEffect(requestedTarget, screen, scrollState) {
     if (requestedTarget?.screen == screen) {
       delay(200)
     }

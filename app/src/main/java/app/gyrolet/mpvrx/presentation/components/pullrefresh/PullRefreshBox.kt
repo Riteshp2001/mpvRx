@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -52,8 +51,6 @@ import kotlinx.coroutines.launch
  * @param onRefresh Invoked when refresh is triggered.
  * @param modifier Box modifier.
  * @param enabled Toggles pull-to-refresh.
- * @param listState Unused. Reserved for top-scroll checks.
- * @param refreshingOffset Unused. Reserved for offset customization.
  * @param refreshThreshold Pull distance required to trigger refresh.
  * @param delayAfterRefresh Delay (ms) to keep indicator visible after completion.
  * @param content Content displayed inside the Box.
@@ -65,8 +62,6 @@ fun PullRefreshBox(
   onRefresh: suspend () -> Unit,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
-  @Suppress("UNUSED_PARAMETER") listState: LazyListState? = null,
-  @Suppress("UNUSED_PARAMETER") refreshingOffset: Dp = 80.dp,
   refreshThreshold: Dp = 80.dp,
   delayAfterRefresh: Long = 800L,
   content: @Composable BoxScope.() -> Unit,

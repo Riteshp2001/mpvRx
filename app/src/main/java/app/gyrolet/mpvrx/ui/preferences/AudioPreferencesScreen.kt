@@ -120,15 +120,13 @@ object AudioPreferencesScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
-        val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(AudioPreferencesScreen, MaterialTheme.colorScheme.primary)
+        val settingsListState = rememberSettingsSearchList(AudioPreferencesScreen)
         LazyColumn(
           state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding)
-              .then(settingsHighlight),
+              .padding(padding),
         ) {
           item {
             PreferenceSectionHeader(

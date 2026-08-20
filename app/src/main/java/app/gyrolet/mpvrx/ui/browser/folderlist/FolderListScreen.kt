@@ -1223,7 +1223,6 @@ private fun FolderListContent(
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
-    listState = listState,
     modifier = Modifier.fillMaxSize(),
   ) {
     if (showLoading || showEmpty) {

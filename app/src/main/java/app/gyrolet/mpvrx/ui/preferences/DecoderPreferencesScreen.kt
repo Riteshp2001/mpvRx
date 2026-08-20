@@ -104,15 +104,13 @@ object DecoderPreferencesScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
-        val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(DecoderPreferencesScreen, MaterialTheme.colorScheme.primary)
+        val settingsListState = rememberSettingsSearchList(DecoderPreferencesScreen)
         LazyColumn(
           state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding)
-              .then(settingsHighlight),
+              .padding(padding),
         ) {
           item {
             PreferenceSectionHeader(

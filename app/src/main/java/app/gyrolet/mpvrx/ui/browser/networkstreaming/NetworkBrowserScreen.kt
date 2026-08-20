@@ -402,7 +402,6 @@ private fun NetworkBrowserContent(
       PullRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
-        listState = listState,
         modifier = modifier.fillMaxSize(),
       ) {
         val scrollbarLabels =

@@ -59,8 +59,6 @@ object YtdlpSettingsScreen : Screen {
     val backStack = LocalBackStack.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    val settingsHighlight =
-      rememberSettingsSearchHighlight(YtdlpSettingsScreen, scrollState, MaterialTheme.colorScheme.primary)
     var isRunning by remember { mutableStateOf(false) }
 
     val ytdlPreferences = koinInject<YtdlPreferences>()
@@ -153,7 +151,6 @@ object YtdlpSettingsScreen : Screen {
             Modifier
               .fillMaxSize()
               .padding(padding)
-              .then(settingsHighlight)
               .verticalScroll(scrollState)
               .padding(bottom = 32.dp),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),

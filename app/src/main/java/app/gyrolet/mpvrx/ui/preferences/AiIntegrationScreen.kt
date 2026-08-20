@@ -248,15 +248,13 @@ object AiIntegrationScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
-        val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(AiIntegrationScreen, MaterialTheme.colorScheme.primary)
+        val settingsListState = rememberSettingsSearchList(AiIntegrationScreen)
         LazyColumn(
           state = settingsListState,
           modifier =
             Modifier
               .fillMaxSize()
-              .padding(padding)
-              .then(settingsHighlight),
+              .padding(padding),
         ) {
           item {
             PreferenceSectionHeader(

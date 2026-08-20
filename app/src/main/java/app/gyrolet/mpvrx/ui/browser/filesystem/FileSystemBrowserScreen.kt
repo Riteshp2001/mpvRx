@@ -1466,7 +1466,6 @@ private fun FileSystemBrowserContent(
       PullRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
-        listState = listState,
         modifier = modifier.fillMaxSize(),
       ) {
         Box(

@@ -113,14 +113,11 @@ class PlayerObserver(
     }
   }
 
-  @Suppress("EmptyFunctionBlock")
+  @Suppress("UNUSED_PARAMETER")
   override fun eventProperty(
     property: String,
     value: MPVNode,
-  ) {
-    if (activity.player.isExiting) return
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
-  }
+  ) = Unit
 
   override fun event(
     eventId: Int,
