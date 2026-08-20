@@ -1410,7 +1410,9 @@ class PlayerViewModel : ViewModel(),
         val intervalMs =
           when {
             paused == true -> 1000L // Reduce polling frequency when paused to conserve CPU/battery
-            seekBarVisibleForPolling || controlsVisibleForPolling -> 50L
+            // 100 ms is below the threshold where seek-bar motion reads as stepped, while halving
+            // the JNI reads and state emissions a 50 ms loop caused while controls are visible.
+            seekBarVisibleForPolling || controlsVisibleForPolling -> 100L
             else -> 500L
           }
         delay(intervalMs)

@@ -65,7 +65,6 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.lang.ref.WeakReference
@@ -83,6 +82,9 @@ class MediaPlaybackService :
   KoinComponent {
   companion object {
     private const val TAG = "MediaPlaybackService"
+
+    // Final state saves must outlive serviceScope, which is cancelled during teardown.
+    private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private const val NOTIFICATION_ID = 1
     private const val NOTIFICATION_CHANNEL_ID = "mpvrx_playback_channel"
     private const val PLAYBACK_STATE_SAVE_INTERVAL_MS = 5000L
@@ -233,13 +235,21 @@ class MediaPlaybackService :
   private var mpvAccessReleased = false
   private var usesAudioBackgroundPlayback = false
   private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
-  private var audioFocusRequest: AudioFocusRequest? = null
-  private var ownsAudioFocus = false
-  private var hasAudioFocus = false
+
+  // Mutated from the framework's audio-focus callback thread as well as serviceScope and the
+  // Activity's main thread; stale reads here strand focus and permanently duck other apps.
+  @Volatile private var audioFocusRequest: AudioFocusRequest? = null
+
+  @Volatile private var ownsAudioFocus = false
+
+  @Volatile private var hasAudioFocus = false
+
   @Volatile
   private var handingBackToActivity = false
-  private var resumeAfterFocusGain = false
-  private var volumeBeforeDuck: Double? = null
+
+  @Volatile private var resumeAfterFocusGain = false
+
+  @Volatile private var volumeBeforeDuck: Double? = null
   private var noisyReceiverRegistered = false
   @Volatile
   private var foregroundReady = false
@@ -594,7 +604,13 @@ class MediaPlaybackService :
       resumeAfterFocusGain = false
       return
     }
-    audioFocusRequest?.let { request -> audioManager.abandonAudioFocusRequest(request) }
+    val request = audioFocusRequest
+    if (request != null) {
+      audioManager.abandonAudioFocusRequest(request)
+    } else {
+      Log.w(TAG, "Owned audio focus without a request; focus may remain held")
+    }
+    audioFocusRequest = null
     ownsAudioFocus = false
     hasAudioFocus = false
     resumeAfterFocusGain = false
@@ -1453,7 +1469,7 @@ class MediaPlaybackService :
   ) {
     if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) {
       Log.d(TAG, "MPV shutdown event received, stopping service")
-      savePlaybackStateBlocking()
+      savePlaybackStateNow()
       stopSelf()
       return
     }
@@ -1487,13 +1503,14 @@ class MediaPlaybackService :
       }
   }
 
-  private fun savePlaybackStateBlocking() {
+  private fun savePlaybackStateNow() {
     val identifier = mediaIdentifier
     if (identifier.isBlank()) return
+    // Every libmpv read happens here, so the database write can safely outlive the service.
     val snapshot = capturePlaybackStateSnapshot(identifier, oldState = null) ?: return
 
     playbackStateSaveJob?.cancel()
-    runBlocking(Dispatchers.IO) {
+    persistenceScope.launch {
       runCatching {
         persistPlaybackState(identifier, snapshot)
       }.onFailure { error ->
@@ -1608,7 +1625,7 @@ class MediaPlaybackService :
     if (mpvAccessReleased) return
     mpvAccessReleased = true
 
-    runCatching { savePlaybackStateBlocking() }
+    runCatching { savePlaybackStateNow() }
       .onFailure { error -> Log.e(TAG, "Error saving playback state before MPV shutdown", error) }
     runCatching { PlaybackSession.removeObserver(this) }
       .onFailure { error -> Log.e(TAG, "Error removing MPV observer", error) }

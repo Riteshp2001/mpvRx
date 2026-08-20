@@ -6,6 +6,7 @@ package app.gyrolet.mpvrx.repository.lyrics
 
 import android.content.Context
 import android.util.Log
+import android.util.LruCache
 import app.gyrolet.mpvrx.data.lyrics.LrcLibApiService
 import app.gyrolet.mpvrx.data.lyrics.LrcLibResponse
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
@@ -14,7 +15,6 @@ import app.gyrolet.mpvrx.utils.media.EmbeddedLyricsExtractor
 import app.gyrolet.mpvrx.utils.media.LyricsUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 
 data class LyricsResult(
   val embeddedLyrics: Lyrics? = null,
@@ -37,7 +37,7 @@ class LyricsRepository(
   }
 
   // Cache by media path -> LyricsResult
-  private val cache = ConcurrentHashMap<String, LyricsResult>()
+  private val cache = LruCache<String, LyricsResult>(64)
 
   private fun cleanTitle(title: String): String {
     return title
@@ -66,8 +66,8 @@ class LyricsRepository(
     durationSeconds: Int = 0,
     forceRefresh: Boolean = false,
   ): LyricsResult = withContext(Dispatchers.IO) {
-    if (!forceRefresh && cache.containsKey(mediaPath)) {
-      cache[mediaPath]?.let { return@withContext it }
+    if (!forceRefresh) {
+      cache.get(mediaPath)?.let { return@withContext it }
     }
 
     Log.d(TAG, "Loading lyrics for: $title by $artist ($mediaPath)")
@@ -106,7 +106,7 @@ class LyricsRepository(
       availableSources = sources.distinct(),
     )
 
-    cache[mediaPath] = result
+    cache.put(mediaPath, result)
     result
   }
 
@@ -193,7 +193,7 @@ class LyricsRepository(
   }
 
   fun switchSource(mediaPath: String, sourceType: LyricsSourceType): LyricsResult? {
-    val existing = cache[mediaPath] ?: return null
+    val existing = cache.get(mediaPath) ?: return null
     val newActive = when (sourceType) {
       LyricsSourceType.EMBEDDED, LyricsSourceType.LOCAL -> existing.embeddedLyrics ?: existing.onlineLyrics
       LyricsSourceType.ONLINE -> existing.onlineLyrics ?: existing.embeddedLyrics
@@ -202,7 +202,7 @@ class LyricsRepository(
       selectedSource = sourceType,
       activeLyrics = newActive,
     )
-    cache[mediaPath] = updated
+    cache.put(mediaPath, updated)
     return updated
   }
 }

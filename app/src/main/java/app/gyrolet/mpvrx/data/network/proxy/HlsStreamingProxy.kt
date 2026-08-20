@@ -232,7 +232,7 @@ class HlsStreamingProxy private constructor() :
     headOnly: Boolean,
   ): Response {
     val requestBuilder = Request.Builder().url(variantUrl)
-    applyHeaders(requestBuilder, session.headers, session.userAgent, session.sourceUrl)
+    applyHeaders(requestBuilder, credentialsFor(variantUrl, session), session.userAgent, session.sourceUrl)
 
     val okResponse: OkResponse
     try {
@@ -274,7 +274,7 @@ class HlsStreamingProxy private constructor() :
     headOnly: Boolean,
   ): Response {
     val requestBuilder = Request.Builder().url(segmentUrl)
-    applyHeaders(requestBuilder, session.headers, session.userAgent, session.sourceUrl)
+    applyHeaders(requestBuilder, credentialsFor(segmentUrl, session), session.userAgent, session.sourceUrl)
     if (!rangeHeader.isNullOrBlank()) {
       requestBuilder.header("Range", rangeHeader)
     }
@@ -329,7 +329,7 @@ class HlsStreamingProxy private constructor() :
     headOnly: Boolean,
   ): Response {
     val requestBuilder = Request.Builder().url(keyUrl)
-    applyHeaders(requestBuilder, session.headers, session.userAgent, session.sourceUrl)
+    applyHeaders(requestBuilder, credentialsFor(keyUrl, session), session.userAgent, session.sourceUrl)
 
     val okResponse: OkResponse
     try {
@@ -482,6 +482,26 @@ class HlsStreamingProxy private constructor() :
     val base = baseUrl.toHttpUrlOrNull() ?: return cleanRelative
     val resolved = base.resolve(cleanRelative)
     return resolved?.toString() ?: cleanRelative
+  }
+
+  /**
+   * Manifest-supplied targets are attacker-influenced and may point at any host, so the session's
+   * Authorization/Cookie headers are only forwarded back to the origin that issued them.
+   */
+  private fun credentialsFor(
+    targetUrl: String,
+    session: HlsSession,
+  ): Map<String, String> {
+    val target = targetUrl.toHttpUrlOrNull() ?: return emptyMap()
+    val source = session.sourceUrl.toHttpUrlOrNull() ?: return emptyMap()
+    val sameOrigin =
+      target.host.equals(source.host, ignoreCase = true) &&
+        target.port == source.port &&
+        target.scheme.equals(source.scheme, ignoreCase = true)
+    if (!sameOrigin) {
+      Log.w(TAG, "Withholding session headers for cross-origin target ${target.host}")
+    }
+    return if (sameOrigin) session.headers else emptyMap()
   }
 
   private fun applyHeaders(
