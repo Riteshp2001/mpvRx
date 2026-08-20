@@ -904,6 +904,26 @@ object MediaInfoParser {
       .ifBlank { source }
   }
 
+  /**
+   * Human-friendly per-file label for episode/file lists (e.g. torrent season packs), showing
+   * "S01E02 - Felina" instead of the raw scene-release filename with codec/resolution noise.
+   */
+  fun episodeLabel(fileName: String): String {
+    val info = parse(fileName)
+    return when {
+      info.season != null && info.episode != null -> {
+        val base = "S${info.season.toString().padStart(2, '0')}E${info.episode.toString().padStart(2, '0')}"
+        if (!info.episodeTitle.isNullOrBlank()) "$base - ${info.episodeTitle}" else base
+      }
+      info.episode != null -> {
+        val base = "E${info.episode.toString().padStart(2, '0')}"
+        if (!info.episodeTitle.isNullOrBlank()) "$base - ${info.episodeTitle}" else base
+      }
+      info.title.isNotBlank() -> info.title
+      else -> fileName
+    }
+  }
+
   private fun formatDisplayTitle(info: ParsedMediaInfo): String {
     val builder = StringBuilder(info.title)
     if (info.season != null && info.episode != null) {

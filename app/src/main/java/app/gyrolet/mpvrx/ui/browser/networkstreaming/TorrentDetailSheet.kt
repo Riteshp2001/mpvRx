@@ -661,8 +661,9 @@ fun TorrentDetailSheet(
 
               // Episode Title & File Size
               Column(modifier = Modifier.weight(1f)) {
+                val displayLabel = remember(file.fileName) { MediaInfoParser.episodeLabel(file.fileName) }
                 Text(
-                  text = file.fileName,
+                  text = displayLabel,
                   style = MaterialTheme.typography.bodyMedium,
                   fontWeight = if (isViewed) FontWeight.Normal else FontWeight.SemiBold,
                   color = if (isViewed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
@@ -689,6 +690,19 @@ fun TorrentDetailSheet(
                   contentDescription = "Play",
                   modifier = Modifier.size(20.dp),
                   tint = MaterialTheme.colorScheme.primary,
+                )
+              }
+
+              // Remove File Icon Button
+              IconButton(
+                onClick = { onDeleteFile(file.stableKey) },
+                modifier = Modifier.size(36.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Delete,
+                  contentDescription = "Remove from Media",
+                  modifier = Modifier.size(18.dp),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
               }
             }

@@ -320,7 +320,7 @@ fun PlayerControls(
     val activity = LocalActivity.current as? PlayerActivity
     val mediaTitle =
       remember(rawMediaTitle, activity) {
-        rawMediaTitle?.takeIf { it.isNotBlank() } ?: activity?.getTitleForControls()
+        activity?.getTitleForControls() ?: rawMediaTitle?.takeIf { it.isNotBlank() }
       }
 
     val sheetShown by viewModel.sheetShown.collectAsState()
@@ -549,7 +549,7 @@ fun PlayerControls(
 
           val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
           val mediaTitle = remember(rawMediaTitle, activity) {
-            rawMediaTitle?.takeIf { it.isNotBlank() } ?: activity.getTitleForControls()
+            activity.getTitleForControls().takeIf { it.isNotBlank() } ?: rawMediaTitle
           }
 
           // Slider display duration: 1000ms shown + 300ms exit animation = 1300ms total
