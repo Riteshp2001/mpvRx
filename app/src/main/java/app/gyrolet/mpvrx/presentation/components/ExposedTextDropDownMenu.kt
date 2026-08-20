@@ -37,16 +37,18 @@ fun ExposedTextDropDownMenu(
   onValueChangedEvent: (String) -> Unit,
   modifier: Modifier = Modifier,
   leadingIcon: (@Composable () -> Unit)? = null,
+  enabled: Boolean = true,
 ) {
   var expanded by remember { mutableStateOf(false) }
 
   ExposedDropdownMenuBox(
     expanded = expanded,
-    onExpandedChange = { expanded = !expanded },
+    onExpandedChange = { if (enabled) expanded = !expanded },
     modifier = modifier,
   ) {
     OutlinedTextField(
       readOnly = true,
+      enabled = enabled,
       value = selectedValue,
       onValueChange = {},
       label = { Text(text = label) },

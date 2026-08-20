@@ -49,7 +49,10 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigOverride
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -72,6 +75,18 @@ object DecoderPreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val preferences = koinInject<DecoderPreferences>()
+    val advancedPreferences = koinInject<AdvancedPreferences>()
+    val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
+    val configOwnedOptions =
+      remember(storedConfigOverrides) { MpvConfigOverride.resolveOptionNames(storedConfigOverrides) }
+    val profileConfigOwned = "profile" in configOwnedOptions
+    val rendererBackendConfigOwned = setOf("gpu-api", "gpu-context").any(configOwnedOptions::contains)
+    val decoderConfigOwned = MpvConfigControlledFeatures.HARDWARE_DECODER.any(configOwnedOptions::contains)
+    val shadersConfigOwned = MpvConfigControlledFeatures.ANIME4K.any(configOwnedOptions::contains)
+    val debandingConfigOwned =
+      setOf("vf", "deband", "deband-iterations", "deband-threshold", "deband-range", "deband-grain")
+        .any(configOwnedOptions::contains)
+    val yuv420ConfigOwned = "vf" in configOwnedOptions
     val backstack = LocalBackStack.current
     val context = LocalContext.current
     val isDeviceVulkanSupported = remember { VulkanCapabilities.isDeviceSupported(context) }
@@ -129,6 +144,7 @@ object DecoderPreferencesScreen : Screen {
                 value = currentProfile,
                 onValueChange = { preferences.profile.set(it.value) },
                 values = MPVProfile.entries,
+                enabled = !profileConfigOwned,
                 title = { Text(stringResource(R.string.pref_decoder_profile_title)) },
                 summary = {
                   Text(
@@ -144,6 +160,7 @@ object DecoderPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_try_hw_dec_title),
                 value = tryHWDecoding,
+                enabled = !decoderConfigOwned,
                 onValueChange = {
                   preferences.tryHWDecoding.set(it)
                 },
@@ -240,7 +257,7 @@ object DecoderPreferencesScreen : Screen {
                     }
                   }
                 },
-                enabled = isVulkanSupported,
+                enabled = isVulkanSupported && !rendererBackendConfigOwned,
                 title = { Text(stringResource(R.string.pref_decoder_vulkan_experimental_title)) },
                 summary = {
                   Text(
@@ -272,6 +289,7 @@ object DecoderPreferencesScreen : Screen {
                 value = debanding,
                 onValueChange = { preferences.debanding.set(it) },
                 values = Debanding.entries,
+                enabled = !debandingConfigOwned,
                 title = { Text(stringResource(R.string.pref_decoder_debanding_title)) },
                 summary = {
                   Text(
@@ -287,6 +305,7 @@ object DecoderPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_yuv420p_title),
                 value = useYUV420p,
+                enabled = !yuv420ConfigOwned,
                 onValueChange = {
                   preferences.useYUV420P.set(it)
                 },
@@ -305,6 +324,7 @@ object DecoderPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_anime4k_title),
                 value = enableAnime4K,
+                enabled = !shadersConfigOwned,
                 onValueChange = { enabled ->
                   preferences.enableAnime4K.set(enabled)
                   if (enabled && !useVulkan) {
@@ -338,7 +358,7 @@ object DecoderPreferencesScreen : Screen {
                 },
               )
 
-              if (enableAnime4K) {
+              if (enableAnime4K && !shadersConfigOwned) {
                 val rotationState by animateFloatAsState(
                   targetValue = if (anime4kExpanded) 180f else 0f,
                   label = "anime4k_chevron_rotation",

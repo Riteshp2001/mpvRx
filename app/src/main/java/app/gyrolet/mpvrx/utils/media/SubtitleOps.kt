@@ -11,6 +11,8 @@ package app.gyrolet.mpvrx.utils.media
 
 import android.util.Log
 import app.gyrolet.mpvrx.domain.network.NetworkPath
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import kotlinx.coroutines.CancellationException
@@ -36,6 +38,7 @@ object SubtitleOps : KoinComponent {
     expectedGeneration: Long? = null,
   ) = withContext(Dispatchers.IO) {
     try {
+      if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_DISCOVERY)) return@withContext
       if (!isGenerationCurrent(expectedGeneration)) return@withContext
       // Skip file descriptor URIs (these don't have a parent directory concept)
       if (videoFilePath.startsWith("fd://")) return@withContext

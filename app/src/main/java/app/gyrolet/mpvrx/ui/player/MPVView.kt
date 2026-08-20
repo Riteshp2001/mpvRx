@@ -23,6 +23,8 @@ import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
@@ -72,13 +74,16 @@ class MPVView(
     // The libmpv core is process-wide, so returning to the player can reuse a core created with
     // older renderer preferences. Keep fallbacks stable for the lifetime of that preference
     // selection, but recreate the core when gpu-next/Vulkan selection actually changes.
+    MpvConfigOverridePolicy.configure(advancedPreferences.mpvConfOverrides.get())
     val requestedBackend = selectRenderBackend(ignoreForcedOpenGlFallback = true)
+    val coreConfigurationKey =
+      "${requestedBackend.configurationKey}|conf=${MpvConfigOverridePolicy.configurationKey()}"
     val result =
       PlaybackSession.initialize(
         context = context.applicationContext,
         configDir = configDir,
         cacheDir = cacheDir,
-        coreConfigurationKey = requestedBackend.configurationKey,
+        coreConfigurationKey = coreConfigurationKey,
         initOptions = ::initOptions,
         postInitOptions = ::postInitOptions,
         observeProperties = ::observeProperties,
@@ -199,18 +204,22 @@ class MPVView(
         }
       }
     val hdrPipelineReady = hdrScreenMode != HdrScreenMode.LINEAR || isLinearAvailable
-    applyHdrScreenOutputOptions(
-      mode = hdrScreenMode,
-      pipelineReady = hdrPipelineReady,
-      boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
-    )
+    if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) {
+      applyHdrScreenOutputOptions(
+        mode = hdrScreenMode,
+        pipelineReady = hdrPipelineReady,
+        boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
+      )
+    }
 
     // Fongmi can map direct MediaCodec frames into Vulkan; other Vulkan builds start with copy mode.
-    PlaybackSession.setOptionString(
-      "hwdec",
-      hwdecMode,
-    )
-    PlaybackSession.setOptionString("hwdec-codecs", "all")
+    if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HARDWARE_DECODER)) {
+      PlaybackSession.setOptionString(
+        "hwdec",
+        hwdecMode,
+      )
+      PlaybackSession.setOptionString("hwdec-codecs", "all")
+    }
 
     // These were forced on between the last known-good build (e3b1de8) and the first build
     // reproducing the HEVC/Main10 frame-drop regression (84f21fc). Keep mpv's normal direct-
@@ -275,9 +284,13 @@ class MPVView(
     PlaybackSession.setOptionString("video-sync", "audio")
 
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
-    applyAnime4KShaders(backend.vo, backend.gpuApi)
+    if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) {
+      applyAnime4KShaders(backend.vo, backend.gpuApi)
+    }
     // HDR Toys shaders (loaded after Anime4K so they append in the correct order)
-    applyHdrToysMode(hdrScreenMode, hdrPipelineReady)
+    if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) {
+      applyHdrToysMode(hdrScreenMode, hdrPipelineReady)
+    }
 
     setupSubtitlesOptions()
     setupAudioOptions()
@@ -534,6 +547,7 @@ class MPVView(
   }
 
   fun applyAnime4KShaders() {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) return
     applyAnime4KShaders(
       activeVo = PlaybackSession.getPropertyString("vo") ?: "",
       activeGpuApi = PlaybackSession.getPropertyString("gpu-api") ?: "",
@@ -549,6 +563,7 @@ class MPVView(
     mode: HdrScreenMode,
     pipelineReady: Boolean,
   ) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) return
     val profile = mode.hdrToysProfile
     if (!pipelineReady || profile == null) {
       hdrToysManager.clear()

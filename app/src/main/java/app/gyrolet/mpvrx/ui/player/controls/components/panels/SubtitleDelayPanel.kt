@@ -44,6 +44,7 @@ import app.gyrolet.mpvrx.presentation.components.OutlinedNumericChooser
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
@@ -54,6 +55,9 @@ fun SubtitleDelayPanel(
   modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<SubtitlesPreferences>()
+  val configOwnedOptions = currentMpvConfigOverrideOptions()
+  val delayEnabled = "sub-delay" !in configOwnedOptions
+  val speedEnabled = "sub-speed" !in configOwnedOptions
 
   DraggablePanel(
     modifier = modifier,
@@ -75,14 +79,16 @@ fun SubtitleDelayPanel(
       speed = speedFloat,
       onSpeedChange = { PlaybackSession.setPropertyDouble("sub-speed", it.toDouble()) },
       onApply = {
-        preferences.defaultSubDelay.set((delayFloat * 1000).roundToInt())
+        if (delayEnabled) preferences.defaultSubDelay.set((delayFloat * 1000).roundToInt())
         val currentSpeed = speed ?: 1.0
-        if (currentSpeed in 0.1..10.0) preferences.defaultSubSpeed.set(currentSpeed.toFloat())
+        if (speedEnabled && currentSpeed in 0.1..10.0) preferences.defaultSubSpeed.set(currentSpeed.toFloat())
       },
       onReset = {
-        PlaybackSession.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
-        PlaybackSession.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
+        if (delayEnabled) PlaybackSession.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
+        if (speedEnabled) PlaybackSession.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
       },
+      delayEnabled = delayEnabled,
+      speedEnabled = speedEnabled,
     )
   }
 }
@@ -96,6 +102,8 @@ private fun SubtitleDelayCardContent(
   onSpeedChange: (Float) -> Unit,
   onApply: () -> Unit,
   onReset: () -> Unit,
+  delayEnabled: Boolean,
+  speedEnabled: Boolean,
 ) {
   DelayCardContent(
     delay = delay,
@@ -103,6 +111,8 @@ private fun SubtitleDelayCardContent(
     onApply = onApply,
     onReset = onReset,
     delayType = DelayType.Subtitle,
+    delayControlEnabled = delayEnabled,
+    actionsEnabled = delayEnabled || speedEnabled,
     extraSettings = {
       OutlinedNumericChooser(
         label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
@@ -114,6 +124,7 @@ private fun SubtitleDelayCardContent(
         increaseIcon = Icons.RoundedFilled.Add,
         decreaseIcon = Icons.RoundedFilled.Remove,
         valueFormatter = { "%.2f".format(it) },
+        enabled = speedEnabled,
       )
     },
   )
@@ -127,6 +138,8 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
   onApply: () -> Unit,
   onReset: () -> Unit,
   delayType: DelayType,
+  delayControlEnabled: Boolean = true,
+  actionsEnabled: Boolean = true,
   extraSettings: @Composable ColumnScope.() -> Unit = {},
 ) {
   // Note: verticalScroll is now handled by DraggablePanel
@@ -150,6 +163,7 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
       increaseIcon = Icons.RoundedFilled.Add,
       decreaseIcon = Icons.RoundedFilled.Remove,
       valueFormatter = { "%.1f".format(it) },
+      enabled = delayControlEnabled,
     )
     Column(
       modifier = Modifier.animateContentSize(),
@@ -183,7 +197,7 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
           isDirectionPositive = if (isDirectionPositive == null) delayType == DelayType.Audio else null
         },
         modifier = Modifier.weight(1f),
-        enabled = isDirectionPositive != (delayType == DelayType.Audio),
+        enabled = delayControlEnabled && isDirectionPositive != (delayType == DelayType.Audio),
       ) {
         Text(
           stringResource(
@@ -200,7 +214,7 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
           isDirectionPositive = if (isDirectionPositive == null) delayType != DelayType.Audio else null
         },
         modifier = Modifier.weight(1f),
-        enabled = isDirectionPositive != (delayType == DelayType.Subtitle),
+        enabled = delayControlEnabled && isDirectionPositive != (delayType == DelayType.Subtitle),
       ) {
         Text(
           stringResource(
@@ -219,13 +233,13 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
       Button(
         onClick = onApply,
         modifier = Modifier.weight(1f),
-        enabled = isDirectionPositive == null,
+        enabled = actionsEnabled && isDirectionPositive == null,
       ) {
         Text(stringResource(R.string.player_sheets_delay_set_as_default))
       }
       FilledIconButton(
         onClick = onReset,
-        enabled = isDirectionPositive == null,
+        enabled = actionsEnabled && isDirectionPositive == null,
       ) {
         Icon(Icons.RoundedFilled.Refresh, null)
       }

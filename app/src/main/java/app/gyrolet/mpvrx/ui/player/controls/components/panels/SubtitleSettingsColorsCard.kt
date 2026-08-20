@@ -59,6 +59,7 @@ import app.gyrolet.mpvrx.ui.player.applySubtitleLayout
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import org.koin.compose.koinInject
 
 @Composable
@@ -67,6 +68,7 @@ fun SubtitleSettingsColorsCard(
   modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<SubtitlesPreferences>()
+  val configOwnedOptions = currentMpvConfigOverrideOptions()
   var isExpanded by remember { mutableStateOf(true) }
   ExpandableCard(
     isExpanded = isExpanded,
@@ -90,6 +92,12 @@ fun SubtitleSettingsColorsCard(
       LaunchedEffect(currentColorType) {
         currentColor = getCurrentMPVColor(currentColorType)
       }
+      val currentColorOptions =
+        setOf(
+          currentColorType.property,
+          currentColorType.property.replace("sub-", "secondary-sub-"),
+        )
+      val colorEditingEnabled = currentColorOptions.none(configOwnedOptions::contains)
       Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -118,6 +126,7 @@ fun SubtitleSettingsColorsCard(
         Text(stringResource(currentColorType.titleRes))
         Spacer(Modifier.weight(1f))
         TextButton(
+          enabled = colorEditingEnabled,
           onClick = {
             resetColors(preferences, currentColorType)
             currentColor = getCurrentMPVColor(currentColorType)
@@ -134,6 +143,7 @@ fun SubtitleSettingsColorsCard(
       }
       SubtitlesColorPicker(
         currentColor,
+        enabled = colorEditingEnabled,
         onColorChange = {
           currentColor = it
           currentColorType.preference(preferences).set(it)
@@ -213,6 +223,7 @@ fun SubtitlesColorPicker(
   color: Int,
   onColorChange: (Int) -> Unit,
   modifier: Modifier = Modifier,
+  enabled: Boolean = true,
 ) {
   Column(modifier) {
     TintedSliderItem(
@@ -222,6 +233,7 @@ fun SubtitlesColorPicker(
       onChange = { onColorChange(color.copyAsArgb(red = it)) },
       max = 255,
       tint = Color.Red,
+      enabled = enabled,
     )
 
     TintedSliderItem(
@@ -231,6 +243,7 @@ fun SubtitlesColorPicker(
       onChange = { onColorChange(color.copyAsArgb(green = it)) },
       max = 255,
       tint = Color.Green,
+      enabled = enabled,
     )
 
     TintedSliderItem(
@@ -240,6 +253,7 @@ fun SubtitlesColorPicker(
       onChange = { onColorChange(color.copyAsArgb(blue = it)) },
       max = 255,
       tint = Color.Blue,
+      enabled = enabled,
     )
 
     TintedSliderItem(
@@ -249,6 +263,7 @@ fun SubtitlesColorPicker(
       onChange = { onColorChange(color.copyAsArgb(alpha = it)) },
       max = 255,
       tint = Color.White,
+      enabled = enabled,
     )
   }
 }
@@ -259,6 +274,9 @@ fun AssOverrideWarningBanner(
   preferences: SubtitlesPreferences,
   modifier: Modifier = Modifier,
 ) {
+  val configOwnedOptions = currentMpvConfigOverrideOptions()
+  val layoutOptions = setOf("sub-ass-override", "secondary-sub-ass-override", "sub-pos", "secondary-sub-pos")
+  val overrideEnabled = layoutOptions.none(configOwnedOptions::contains)
   val subtitleTracks by viewModel.subtitleTracks.collectAsState()
   val activeSubTrack = subtitleTracks.find { it.isSelected }
   val isActiveSubAss =
@@ -309,6 +327,7 @@ fun AssOverrideWarningBanner(
           )
           Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
           TextButton(
+            enabled = overrideEnabled,
             onClick = {
               preferences.overrideAssSubs.set(true)
               overrideAssSubs = true

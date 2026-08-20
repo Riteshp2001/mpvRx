@@ -19,6 +19,7 @@ import android.view.Surface
 import app.gyrolet.mpvrx.data.network.proxy.HlsStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -577,6 +578,7 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   fun command(vararg command: String) {
+    if (MpvConfigOverridePolicy.shouldSuppress(command)) return
     withCore(Unit) {
       if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
       if (handleAmbientShaderCommandLocked(command)) return@withCore
@@ -591,6 +593,7 @@ object PlaybackSession : MPVLib.EventObserver {
   ): Boolean =
     nativeLock.withLock {
       if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
+      if (MpvConfigOverridePolicy.shouldSuppress(command)) return@withLock true
       if (command.firstOrNull() == "seek") beginSeekAudioGuardLocked()
       if (!handleAmbientShaderCommandLocked(command)) MPVLib.command(*command)
       true
@@ -610,16 +613,22 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setOptionString(
     name: String,
     value: String,
-  ): Int = withCore(-1, allowInitializing = true) { MPVLib.setOptionString(name, value) }
+  ): Int {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf(name)) return 0
+    return withCore(-1, allowInitializing = true) { MPVLib.setOptionString(name, value) }
+  }
 
   fun getPropertyInt(property: String): Int? = withReadyCore(null) { MPVLib.getPropertyInt(property) }
 
   fun setPropertyInt(
     property: String,
     value: Int,
-  ) = withCore(Unit) {
-    MPVLib.setPropertyInt(property, value)
-    if (property == "vid" && value > 0) suspendedVideoTrack = null
+  ) {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
+    withCore(Unit) {
+      MPVLib.setPropertyInt(property, value)
+      if (property == "vid" && value > 0) suspendedVideoTrack = null
+    }
   }
 
   fun getPropertyDouble(property: String): Double? = withReadyCore(null) { MPVLib.getPropertyDouble(property) }
@@ -627,17 +636,20 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setPropertyDouble(
     property: String,
     value: Double,
-  ) = withCore(Unit) {
-    when (property) {
-      "video-scale-x" -> {
-        desiredAmbientScaleX = value
-        MPVLib.setPropertyDouble(property, value)
+  ) {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
+    withCore(Unit) {
+      when (property) {
+        "video-scale-x" -> {
+          desiredAmbientScaleX = value
+          MPVLib.setPropertyDouble(property, value)
+        }
+        "video-scale-y" -> {
+          desiredAmbientScaleY = value
+          MPVLib.setPropertyDouble(property, value)
+        }
+        else -> MPVLib.setPropertyDouble(property, value)
       }
-      "video-scale-y" -> {
-        desiredAmbientScaleY = value
-        MPVLib.setPropertyDouble(property, value)
-      }
-      else -> MPVLib.setPropertyDouble(property, value)
     }
   }
 
@@ -646,30 +658,36 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setPropertyFloat(
     property: String,
     value: Float,
-  ) = withCore(Unit) { MPVLib.setPropertyFloat(property, value) }
+  ) {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
+    withCore(Unit) { MPVLib.setPropertyFloat(property, value) }
+  }
 
   fun getPropertyBoolean(property: String): Boolean? = withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
 
   fun setPropertyBoolean(
     property: String,
     value: Boolean,
-  ) = withCore(Unit) {
-    if (property == "pause") {
-      desiredPaused = value
-      // During a replacement load the native core deliberately stays paused until FILE_LOADED.
-      // Record user/service intent now, then apply it once decoder/track setup is complete.
-      if (_state.value.phase != PlaybackPhase.LOADING) {
+  ) {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
+    withCore(Unit) {
+      if (property == "pause") {
+        desiredPaused = value
+        // During a replacement load the native core deliberately stays paused until FILE_LOADED.
+        // Record user/service intent now, then apply it once decoder/track setup is complete.
+        if (_state.value.phase != PlaybackPhase.LOADING) {
+          MPVLib.setPropertyBoolean(property, value)
+        }
+        updateState { it.copy(paused = value) }
+        propBoolean.emit(property, value)
+      } else if (property == "mute" && playbackTransitionAudioGuardPreviousMute != null) {
+        // A user mute/unmute action during startup/teardown should update the value that will be
+        // restored, but must not open the guard and leak transition audio immediately.
+        playbackTransitionAudioGuardPreviousMute = value
+        MPVLib.setPropertyBoolean("mute", true)
+      } else {
         MPVLib.setPropertyBoolean(property, value)
       }
-      updateState { it.copy(paused = value) }
-      propBoolean.emit(property, value)
-    } else if (property == "mute" && playbackTransitionAudioGuardPreviousMute != null) {
-      // A user mute/unmute action during startup/teardown should update the value that will be
-      // restored, but must not open the guard and leak transition audio immediately.
-      playbackTransitionAudioGuardPreviousMute = value
-      MPVLib.setPropertyBoolean("mute", true)
-    } else {
-      MPVLib.setPropertyBoolean(property, value)
     }
   }
 
@@ -699,25 +717,28 @@ object PlaybackSession : MPVLib.EventObserver {
   fun setPropertyString(
     property: String,
     value: String,
-  ) = withCore(Unit) {
-    if (property == "vid") {
-      if (value == "no" && _state.value.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) {
-        val activeVid = MPVLib.getPropertyInt("vid") ?: -1
-        if (activeVid > 0) {
-          suspendedVideoTrack = SuspendedVideoTrack(activeVid, _state.value.generation)
+  ) {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
+    withCore(Unit) {
+      if (property == "vid") {
+        if (value == "no" && _state.value.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) {
+          val activeVid = MPVLib.getPropertyInt("vid") ?: -1
+          if (activeVid > 0) {
+            suspendedVideoTrack = SuspendedVideoTrack(activeVid, _state.value.generation)
+          }
+        } else if (value != "no") {
+          suspendedVideoTrack = null
         }
-      } else if (value != "no") {
-        suspendedVideoTrack = null
       }
-    }
 
-    // Some shader-stack managers replace the whole list instead of using change-list/remove.
-    // If that replacement drops Ambient, restore the base video scale before the next frame.
-    if (property == "glsl-shaders" && activeAmbientShaderPaths.isNotEmpty() && !value.contains(AMBIENT_SHADER_PREFIX)) {
-      resetActiveAmbientScaleLocked()
-      activeAmbientShaderPaths.clear()
+      // Some shader-stack managers replace the whole list instead of using change-list/remove.
+      // If that replacement drops Ambient, restore the base video scale before the next frame.
+      if (property == "glsl-shaders" && activeAmbientShaderPaths.isNotEmpty() && !value.contains(AMBIENT_SHADER_PREFIX)) {
+        resetActiveAmbientScaleLocked()
+        activeAmbientShaderPaths.clear()
+      }
+      MPVLib.setPropertyString(property, value)
     }
-    MPVLib.setPropertyString(property, value)
   }
 
   fun grabThumbnail(dimension: Int): Bitmap? = withCore(null) { MPVLib.grabThumbnail(dimension) }
@@ -1046,9 +1067,11 @@ object PlaybackSession : MPVLib.EventObserver {
 
     val stalePaths = activeAmbientShaderPaths.toList()
     activeAmbientShaderPaths.clear()
-    stalePaths.forEach { path ->
-      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", path) }
-        .onFailure { error -> Log.w(TAG, "Failed to remove stale Ambient shader $path", error) }
+    if (!MpvConfigOverridePolicy.isOwnedByMpvConf("glsl-shaders")) {
+      stalePaths.forEach { path ->
+        runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", path) }
+          .onFailure { error -> Log.w(TAG, "Failed to remove stale Ambient shader $path", error) }
+      }
     }
 
     if (resetDesired) {
@@ -1060,13 +1083,21 @@ object PlaybackSession : MPVLib.EventObserver {
   private fun applyDesiredAmbientScaleLocked() {
     // Bypass the interceptor — we already hold the staged values and need them applied
     // to the renderer immediately after the ambient shader has been installed.
-    MPVLib.setPropertyDouble("video-scale-x", desiredAmbientScaleX)
-    MPVLib.setPropertyDouble("video-scale-y", desiredAmbientScaleY)
+    if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-x")) {
+      MPVLib.setPropertyDouble("video-scale-x", desiredAmbientScaleX)
+    }
+    if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-y")) {
+      MPVLib.setPropertyDouble("video-scale-y", desiredAmbientScaleY)
+    }
   }
 
   private fun resetActiveAmbientScaleLocked() {
-    runCatching { MPVLib.setPropertyDouble("video-scale-x", 1.0) }
-    runCatching { MPVLib.setPropertyDouble("video-scale-y", 1.0) }
+    if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-x")) {
+      runCatching { MPVLib.setPropertyDouble("video-scale-x", 1.0) }
+    }
+    if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-y")) {
+      runCatching { MPVLib.setPropertyDouble("video-scale-y", 1.0) }
+    }
   }
 
   private fun resetAmbientShaderTrackingLocked() {

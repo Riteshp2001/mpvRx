@@ -95,6 +95,7 @@ fun SubtitlesSheet(
   realtimeSubsEnabled: Boolean = true,
   subtitlesOff: Boolean = false,
   onDisableSubtitles: () -> Unit = {},
+  delayControlEnabled: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val items =
@@ -330,7 +331,7 @@ fun SubtitlesSheet(
           IconButton(onClick = onOpenSubtitleSettings) {
             Icon(Icons.RoundedFilled.Palette, null)
           }
-          IconButton(onClick = onOpenSubtitleDelay) {
+          IconButton(onClick = onOpenSubtitleDelay, enabled = delayControlEnabled) {
             Icon(Icons.RoundedFilled.AvTimer, null)
           }
         },

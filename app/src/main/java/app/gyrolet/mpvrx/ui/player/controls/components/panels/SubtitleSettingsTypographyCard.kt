@@ -57,6 +57,7 @@ import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import com.github.k1rakishou.fsaf.FileManager
 import com.yubyf.truetypeparser.TTFFile
 import kotlinx.collections.immutable.toImmutableList
@@ -77,6 +78,20 @@ fun SubtitleSettingsTypographyCard(
   val context = LocalContext.current
   val resources = LocalResources.current
   val preferences = koinInject<SubtitlesPreferences>()
+  val configOwnedOptions = currentMpvConfigOverrideOptions()
+  val ownsAny: (Set<String>) -> Boolean = { options -> options.any(configOwnedOptions::contains) }
+  val boldOptions = setOf("sub-bold", "secondary-sub-bold")
+  val italicOptions = setOf("sub-italic", "secondary-sub-italic")
+  val justifyOptions = setOf("sub-ass-justify", "sub-justify", "secondary-sub-justify")
+  val fontOptions = setOf("sub-font", "secondary-sub-font")
+  val fontSizeOptions = setOf("sub-font-size", "secondary-sub-font-size")
+  val borderStyleOptions = setOf("sub-border-style", "secondary-sub-border-style")
+  val borderSizeOptions =
+    setOf("sub-border-size", "sub-outline-size", "secondary-sub-border-size", "secondary-sub-outline-size")
+  val shadowOffsetOptions = setOf("sub-shadow-offset", "secondary-sub-shadow-offset")
+  val typographyOptions =
+    boldOptions + italicOptions + justifyOptions + fontOptions + fontSizeOptions +
+      borderStyleOptions + borderSizeOptions + shadowOffsetOptions
   val fileManager = koinInject<FileManager>()
   var isExpanded by remember { mutableStateOf(true) }
   val fonts by remember { mutableStateOf(mutableListOf<String>("Default")) }
@@ -154,6 +169,7 @@ fun SubtitleSettingsTypographyCard(
       ) {
         IconToggleButton(
           checked = isBold == true,
+          enabled = !ownsAny(boldOptions),
           onCheckedChange = {
             preferences.bold.set(it)
             PlaybackSession.setPropertyBoolean("sub-bold", it)
@@ -168,6 +184,7 @@ fun SubtitleSettingsTypographyCard(
         }
         IconToggleButton(
           checked = isItalic == true,
+          enabled = !ownsAny(italicOptions),
           onCheckedChange = {
             preferences.italic.set(it)
             PlaybackSession.setPropertyBoolean("sub-italic", it)
@@ -183,6 +200,7 @@ fun SubtitleSettingsTypographyCard(
         SubtitleJustification.entries.minus(SubtitleJustification.Auto).forEach { justification ->
           IconToggleButton(
             checked = justify == justification,
+            enabled = !ownsAny(justifyOptions),
             onCheckedChange = {
               PlaybackSession.setPropertyBoolean("sub-ass-justify", it)
               if (it) {
@@ -201,6 +219,7 @@ fun SubtitleSettingsTypographyCard(
         }
         Spacer(Modifier.weight(1f))
         TextButton(
+          enabled = !ownsAny(typographyOptions),
           onClick = { resetTypography(preferences) },
         ) {
           Row(
@@ -233,6 +252,7 @@ fun SubtitleSettingsTypographyCard(
             PlaybackSession.setPropertyString("secondary-sub-font", actualFont)
           },
           leadingIcon = fontsLoadingIndicator,
+          enabled = !ownsAny(fontOptions),
         )
       }
       SliderItem(
@@ -246,6 +266,7 @@ fun SubtitleSettingsTypographyCard(
           PlaybackSession.setPropertyInt("sub-font-size", it)
           PlaybackSession.setPropertyInt("secondary-sub-font-size", it)
         },
+        enabled = !ownsAny(fontSizeOptions),
       ) {
         Icon(Icons.RoundedFilled.FormatSize, null)
       }
@@ -262,6 +283,7 @@ fun SubtitleSettingsTypographyCard(
           title = { Text(stringResource(R.string.player_sheets_subtitles_border_style)) },
           valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
           values = SubtitlesBorderStyle.entries,
+          enabled = !ownsAny(borderStyleOptions),
           type = ListPreferenceType.DROPDOWN_MENU,
           summary = { Text(stringResource(borderStyle.titleRes)) },
           icon = { Icon(Icons.RoundedFilled.BorderStyle, null) },
@@ -279,6 +301,7 @@ fun SubtitleSettingsTypographyCard(
           PlaybackSession.setPropertyInt("secondary-sub-outline-size", it)
         },
         max = 20,
+        enabled = !ownsAny(borderSizeOptions),
         icon = { Icon(Icons.RoundedFilled.BorderColor, null) },
       )
       SliderItem(
@@ -296,6 +319,7 @@ fun SubtitleSettingsTypographyCard(
         },
         min = -20,
         max = 20,
+        enabled = !ownsAny(shadowOffsetOptions),
         icon = { Icon(Icons.RoundedFilled.Shadow, null) },
       )
     }

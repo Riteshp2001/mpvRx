@@ -553,6 +553,13 @@ object AdvancedPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              MpvConfigOverridePreference(
+                preferences = preferences,
+                modifier = Modifier.settingsSearchTarget(R.string.pref_mpv_conf_overrides_title),
+              )
+
+              PreferenceDivider()
+
               Preference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_input_conf),
                 title = { Text(stringResource(R.string.pref_advanced_input_conf)) },

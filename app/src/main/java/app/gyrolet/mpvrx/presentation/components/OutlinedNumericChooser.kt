@@ -46,6 +46,7 @@ fun OutlinedNumericChooser(
   decreaseIcon: AppIcon = Icons.RoundedFilled.Remove,
   increaseIcon: AppIcon = Icons.RoundedFilled.Add,
   valueFormatter: ((Int) -> String)? = null,
+  enabled: Boolean = true,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
   Row(
@@ -55,6 +56,7 @@ fun OutlinedNumericChooser(
   ) {
     RepeatingIconButton(
       onClick = { onChange(value - step) },
+      enabled = enabled,
       modifier = Modifier.size(48.dp),
     ) {
       Icon(decreaseIcon, null)
@@ -66,6 +68,7 @@ fun OutlinedNumericChooser(
     }
     OutlinedTextField(
       label = label,
+      enabled = enabled,
       value = valueString,
       onValueChange = { newValue ->
         if (newValue.isBlank()) {
@@ -89,6 +92,7 @@ fun OutlinedNumericChooser(
     )
     RepeatingIconButton(
       onClick = { onChange(value + step) },
+      enabled = enabled,
       modifier = Modifier.size(48.dp),
     ) {
       Icon(increaseIcon, null)
@@ -109,6 +113,7 @@ fun OutlinedNumericChooser(
   decreaseIcon: AppIcon = Icons.RoundedFilled.Remove,
   increaseIcon: AppIcon = Icons.RoundedFilled.Add,
   valueFormatter: ((Float) -> String)? = null,
+  enabled: Boolean = true,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
   Row(
@@ -118,6 +123,7 @@ fun OutlinedNumericChooser(
   ) {
     RepeatingIconButton(
       onClick = { onChange(value - step) },
+      enabled = enabled,
       modifier = Modifier.size(48.dp),
     ) {
       Icon(decreaseIcon, null)
@@ -130,6 +136,7 @@ fun OutlinedNumericChooser(
     }
     OutlinedTextField(
       value = valueString,
+      enabled = enabled,
       label = label,
       onValueChange = { newValue ->
         if (newValue.isBlank()) {
@@ -155,6 +162,7 @@ fun OutlinedNumericChooser(
     )
     RepeatingIconButton(
       onClick = { onChange(value + step) },
+      enabled = enabled,
       modifier = Modifier.size(48.dp),
     ) {
       Icon(increaseIcon, null)

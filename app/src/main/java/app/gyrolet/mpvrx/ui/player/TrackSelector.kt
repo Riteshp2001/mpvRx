@@ -11,6 +11,8 @@ package app.gyrolet.mpvrx.ui.player
 
 import android.util.Log
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -101,8 +103,12 @@ class TrackSelector(
         return@withContext
       }
 
-      ensureAudioTrackSelected(tracks, hasState)
-      ensureSubtitleTrackSelected(tracks, hasState)
+      if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) {
+        ensureAudioTrackSelected(tracks, hasState)
+      }
+      if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_TRACK_SELECTION)) {
+        ensureSubtitleTrackSelected(tracks, hasState)
+      }
     }
 
   private fun readTracks(count: Int): List<Track> {

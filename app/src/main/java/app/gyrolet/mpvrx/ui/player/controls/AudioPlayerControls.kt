@@ -158,6 +158,7 @@ import app.gyrolet.mpvrx.ui.player.visualizer.GalaxyOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.ParticleOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.VisualizerPalette
 import app.gyrolet.mpvrx.ui.player.visualizer.rememberAudioVisualizerFeatures
+import app.gyrolet.mpvrx.ui.utils.isMpvOptionOwnedByConfig
 
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import kotlinx.collections.immutable.persistentListOf
@@ -362,6 +363,8 @@ fun AudioPlayerControls(
   onOpenPanel: (Panels) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val speedConfigOwned = isMpvOptionOwnedByConfig("speed")
+  val audioFiltersConfigOwned = isMpvOptionOwnedByConfig("af")
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
@@ -1060,7 +1063,7 @@ fun AudioPlayerControls(
                 Modifier
                   .height(30.dp)
                   .clip(CircleShape)
-                  .clickable(onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
+                  .clickable(enabled = !speedConfigOwned, onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
             ) {
               Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1070,13 +1073,13 @@ fun AudioPlayerControls(
                 Icon(
                   imageVector = Icons.RoundedFilled.Speed,
                   contentDescription = stringResource(R.string.ui_playback_speed),
-                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (speedConfigOwned) 0.38f else 1f),
                   modifier = Modifier.size(16.dp),
                 )
                 Text(
                   text = String.format("%.2fx", playbackSpeed ?: 1f),
                   style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (speedConfigOwned) 0.38f else 1f),
                 )
               }
             }
@@ -1312,6 +1315,7 @@ fun AudioPlayerControls(
       ) {
         ReactiveIconButton(
           onClick = { onOpenSheet(Sheets.Equalizer) },
+          enabled = !audioFiltersConfigOwned,
           modifier =
             Modifier
               .clip(
@@ -1323,7 +1327,7 @@ fun AudioPlayerControls(
             Icon(
               imageVector = Icons.RoundedFilled.Equalizer,
               contentDescription = "Equalizer",
-              tint = MaterialTheme.colorScheme.onSurface,
+              tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (audioFiltersConfigOwned) 0.38f else 1f),
               modifier = Modifier.size(24.dp),
             )
           }

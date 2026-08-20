@@ -43,6 +43,7 @@ import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpOptionsBuilder
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -64,6 +65,9 @@ object YtdlpSettingsScreen : Screen {
     var isRunning by remember { mutableStateOf(false) }
 
     val ytdlPreferences = koinInject<YtdlPreferences>()
+    val configOwnedOptions = currentMpvConfigOverrideOptions()
+    val formatControlsEnabled = "ytdl-format" !in configOwnedOptions
+    val rawOptionsEnabled = "ytdl-raw-options" !in configOwnedOptions
     val ytdlQuality by ytdlPreferences.ytdlQuality.collectAsState()
     val preferH264 by ytdlPreferences.preferH264.collectAsState()
     val codecPreference by ytdlPreferences.codecPreference.collectAsState()
@@ -383,6 +387,7 @@ object YtdlpSettingsScreen : Screen {
                 qualityLevels.forEachIndexed { index, level ->
                   FilterChip(
                     selected = ytdlQuality == level,
+                    enabled = formatControlsEnabled,
                     onClick = {
                       ytdlPreferences.ytdlQuality.set(level)
                       updateFormatString(ytdlPreferences)
@@ -411,6 +416,7 @@ object YtdlpSettingsScreen : Screen {
                   ytdlPreferences.preferH264.set(selected == YtdlCodecPreference.H264)
                   updateFormatString(ytdlPreferences)
                 },
+                enabled = formatControlsEnabled,
               )
 
               FlowRow(
@@ -421,6 +427,7 @@ object YtdlpSettingsScreen : Screen {
                 listOf(0 to "Any FPS", 30 to "30 FPS", 60 to "60 FPS", 120 to "120 FPS").forEach { (fps, label) ->
                   FilterChip(
                     selected = maxFps == fps,
+                    enabled = formatControlsEnabled,
                     onClick = {
                       ytdlPreferences.maxFps.set(fps)
                       updateFormatString(ytdlPreferences)
@@ -446,6 +453,7 @@ object YtdlpSettingsScreen : Screen {
                   ytdlPreferences.hdrPreference.set(it)
                   updateFormatString(ytdlPreferences)
                 },
+                enabled = formatControlsEnabled,
               )
 
               OptionDropdown(
@@ -457,6 +465,7 @@ object YtdlpSettingsScreen : Screen {
                   ytdlPreferences.containerPreference.set(it)
                   updateFormatString(ytdlPreferences)
                 },
+                enabled = formatControlsEnabled,
               )
 
               OptionDropdown(
@@ -468,6 +477,7 @@ object YtdlpSettingsScreen : Screen {
                   ytdlPreferences.audioPreference.set(selected)
                   updateFormatString(ytdlPreferences)
                 },
+                enabled = formatControlsEnabled,
               )
 
               OptionDropdown(
@@ -479,6 +489,7 @@ object YtdlpSettingsScreen : Screen {
                   ytdlPreferences.audioQuality.set(selected)
                   updateFormatString(ytdlPreferences)
                 },
+                enabled = formatControlsEnabled,
               )
 
               Text(
@@ -550,6 +561,7 @@ object YtdlpSettingsScreen : Screen {
             ) {
               SwitchPreference(
                 value = writeSubs,
+                enabled = rawOptionsEnabled,
                 onValueChange = { ytdlPreferences.writeSubs.set(it) },
                 title = {
                   Text(
@@ -572,6 +584,7 @@ object YtdlpSettingsScreen : Screen {
 
               SwitchPreference(
                 value = writeAutoSubs,
+                enabled = rawOptionsEnabled,
                 onValueChange = { ytdlPreferences.writeAutoSubs.set(it) },
                 title = {
                   Text(
@@ -594,6 +607,7 @@ object YtdlpSettingsScreen : Screen {
 
               OutlinedTextField(
                 value = subtitleLanguagesText,
+                enabled = rawOptionsEnabled,
                 onValueChange = {
                   subtitleLanguagesText = it
                   ytdlPreferences.subtitleLanguages.set(it)
@@ -680,6 +694,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = formatSortText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       formatSortText = it
                       ytdlPreferences.formatSort.set(it)
@@ -713,6 +728,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = mergeOutputFormatText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       mergeOutputFormatText = it
                       ytdlPreferences.mergeOutputFormat.set(it)
@@ -739,6 +755,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = userAgentText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       userAgentText = it
                       ytdlPreferences.customUserAgent.set(it)
@@ -778,6 +795,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = refererText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       refererText = it
                       ytdlPreferences.referer.set(it)
@@ -796,6 +814,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = cookiesFileText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       cookiesFileText = it
                       ytdlPreferences.cookiesFile.set(it)
@@ -820,6 +839,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = proxyText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       proxyText = it
                       ytdlPreferences.proxy.set(it)
@@ -844,6 +864,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = extractorArgsText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       extractorArgsText = it
                       ytdlPreferences.extractorArgs.set(it)
@@ -874,10 +895,12 @@ object YtdlpSettingsScreen : Screen {
                     values = YtdlPlaylistMode.entries,
                     valueLabel = { it.title },
                     onValueChange = { ytdlPreferences.playlistMode.set(it) },
+                    enabled = rawOptionsEnabled,
                   )
 
                   SwitchPreference(
                     value = geoBypass,
+                    enabled = rawOptionsEnabled,
                     onValueChange = { ytdlPreferences.geoBypass.set(it) },
                     title = {
                       Text(
@@ -898,6 +921,7 @@ object YtdlpSettingsScreen : Screen {
 
                   SwitchPreference(
                     value = liveFromStart,
+                    enabled = rawOptionsEnabled,
                     onValueChange = { ytdlPreferences.liveFromStart.set(it) },
                     title = {
                       Text(
@@ -918,6 +942,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = sponsorBlockMarkText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       sponsorBlockMarkText = it
                       ytdlPreferences.sponsorBlockMark.set(it)
@@ -943,6 +968,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = sponsorBlockRemoveText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       sponsorBlockRemoveText = it
                       ytdlPreferences.sponsorBlockRemove.set(it)
@@ -969,6 +995,7 @@ object YtdlpSettingsScreen : Screen {
 
                   OutlinedTextField(
                     value = rawOptionsText,
+                    enabled = rawOptionsEnabled,
                     onValueChange = {
                       rawOptionsText = it
                       ytdlPreferences.customRawOptions.set(it)
@@ -1040,15 +1067,17 @@ private fun <T> OptionDropdown(
   values: List<T>,
   valueLabel: (T) -> String,
   onValueChange: (T) -> Unit,
+  enabled: Boolean = true,
 ) {
   var expanded by remember { mutableStateOf(false) }
   ExposedDropdownMenuBox(
     expanded = expanded,
-    onExpandedChange = { expanded = it },
+    onExpandedChange = { if (enabled) expanded = it },
     modifier = Modifier.fillMaxWidth(),
   ) {
     OutlinedTextField(
       value = valueLabel(value),
+      enabled = enabled,
       onValueChange = {},
       readOnly = true,
       label = { Text(title) },

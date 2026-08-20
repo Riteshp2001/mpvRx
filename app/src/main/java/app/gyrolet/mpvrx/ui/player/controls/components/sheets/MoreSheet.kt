@@ -76,6 +76,9 @@ fun MoreSheet(
   onEnterEqualizerSheet: (() -> Unit)? = null,
   anime4KUiState: Anime4KUiState,
   onAnime4KModeSelected: (Anime4KManager.Mode) -> Unit,
+  filtersEnabled: Boolean = true,
+  equalizerEnabled: Boolean = true,
+  anime4KEnabled: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
@@ -142,7 +145,7 @@ fun MoreSheet(
             }
           }
           if (onEnterEqualizerSheet != null) {
-            TextButton(onClick = onEnterEqualizerSheet) {
+            TextButton(onClick = onEnterEqualizerSheet, enabled = equalizerEnabled) {
               Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
@@ -157,7 +160,7 @@ fun MoreSheet(
               }
             }
           }
-          TextButton(onClick = onEnterFiltersPanel) {
+          TextButton(onClick = onEnterFiltersPanel, enabled = filtersEnabled) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
@@ -299,7 +302,7 @@ fun MoreSheet(
             FilterChip(
               label = { Text(stringResource(mode.titleRes)) },
               selected = anime4KUiState.selectedMode == mode.name,
-              enabled = anime4KUiState.allowHighRes || mode == Anime4KManager.Mode.OFF,
+              enabled = anime4KEnabled && (anime4KUiState.allowHighRes || mode == Anime4KManager.Mode.OFF),
               leadingIcon = null,
               onClick = { onAnime4KModeSelected(mode) },
             )

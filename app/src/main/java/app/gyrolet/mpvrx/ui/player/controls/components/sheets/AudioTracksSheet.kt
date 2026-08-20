@@ -55,6 +55,11 @@ fun AudioTracksSheet(
   onOpenDelayPanel: () -> Unit,
   onOpenEqualizerSheet: (() -> Unit)? = null,
   onDismissRequest: () -> Unit,
+  delayControlEnabled: Boolean = true,
+  equalizerControlEnabled: Boolean = true,
+  audioChannelsEnabled: Boolean = true,
+  reverseStereoEnabled: Boolean = true,
+  audioEffectsEnabled: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val audioPreferences = koinInject<AudioPreferences>()
@@ -67,11 +72,11 @@ fun AudioTracksSheet(
         onAddAudioTrack,
         actions = {
           if (onOpenEqualizerSheet != null) {
-            IconButton(onClick = onOpenEqualizerSheet) {
+            IconButton(onClick = onOpenEqualizerSheet, enabled = equalizerControlEnabled) {
               Icon(Icons.RoundedFilled.Equalizer, stringResource(R.string.btn_label_equalizer))
             }
           }
-          IconButton(onClick = onOpenDelayPanel) {
+          IconButton(onClick = onOpenDelayPanel, enabled = delayControlEnabled) {
             Icon(Icons.RoundedFilled.AvTimer, null)
           }
         },
@@ -105,6 +110,7 @@ fun AudioTracksSheet(
               items(AudioChannels.entries, key = { it.name }) {
                 FilterChip(
                   selected = audioChannels == it,
+                  enabled = if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
                   onClick = {
                     audioPreferences.audioChannels.set(it)
                     if (it == AudioChannels.ReverseStereo) {
@@ -135,6 +141,7 @@ fun AudioTracksSheet(
               item {
                 FilterChip(
                   selected = volumeNormalization,
+                  enabled = audioEffectsEnabled,
                   onClick = { audioPreferences.volumeNormalization.set(!volumeNormalization) },
                   label = { Text(text = stringResource(id = R.string.pref_audio_volume_normalization_title)) },
                   leadingIcon = null,
@@ -143,6 +150,7 @@ fun AudioTracksSheet(
               item {
                 FilterChip(
                   selected = drcEnabled,
+                  enabled = audioEffectsEnabled,
                   onClick = { audioPreferences.drcEnabled.set(!drcEnabled) },
                   label = { Text(text = stringResource(id = R.string.pref_audio_drc_title)) },
                   leadingIcon = null,

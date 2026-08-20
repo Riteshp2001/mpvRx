@@ -57,6 +57,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import kotlinx.serialization.Serializable
@@ -85,6 +86,7 @@ object AudioPreferencesScreen : Screen {
     val resources = LocalResources.current
     val backstack = LocalBackStack.current
     val preferences = koinInject<AudioPreferences>()
+    val configOwnedOptions = currentMpvConfigOverrideOptions()
     val browserPreferences = koinInject<BrowserPreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
     val notificationPermissionLauncher =
@@ -356,6 +358,7 @@ object AudioPreferencesScreen : Screen {
               TextFieldPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_preferred_languages),
                 value = preferredLanguages,
+                enabled = "alang" !in configOwnedOptions,
                 onValueChange = { preferences.preferredLanguages.set(it) },
                 textToValue = { input ->
                   input
@@ -395,6 +398,7 @@ object AudioPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_pitch_correction_title),
                 value = audioPitchCorrection,
+                enabled = "audio-pitch-correction" !in configOwnedOptions,
                 onValueChange = { preferences.audioPitchCorrection.set(it) },
                 title = { Text(stringResource(R.string.pref_audio_pitch_correction_title)) },
                 summary = {
@@ -410,6 +414,7 @@ object AudioPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_volume_normalization_title),
                 value = volumeNormalization,
+                enabled = "af" !in configOwnedOptions,
                 onValueChange = { preferences.volumeNormalization.set(it) },
                 title = { Text(stringResource(R.string.pref_audio_volume_normalization_title)) },
                 summary = {
@@ -424,6 +429,7 @@ object AudioPreferencesScreen : Screen {
               val drcEnabled by preferences.drcEnabled.collectAsState()
               SwitchPreference(
                 value = drcEnabled,
+                enabled = "af" !in configOwnedOptions,
                 onValueChange = { preferences.drcEnabled.set(it) },
                 title = { Text(stringResource(R.string.pref_audio_drc_title)) },
                 summary = {
@@ -484,6 +490,7 @@ object AudioPreferencesScreen : Screen {
                 value = audioChannel,
                 onValueChange = { preferences.audioChannels.set(it) },
                 values = AudioChannels.entries,
+                enabled = setOf("audio-channels", "af").none(configOwnedOptions::contains),
                 valueToText = { AnnotatedString(resources.getString(it.title)) },
                 title = { Text(text = stringResource(id = R.string.pref_audio_channels)) },
                 summary = {
@@ -499,6 +506,7 @@ object AudioPreferencesScreen : Screen {
               SliderPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_volume_boost_cap),
                 value = volumeBoostCap.toFloat(),
+                enabled = "volume-max" !in configOwnedOptions,
                 onValueChange = { preferences.volumeBoostCap.set(it.toInt()) },
                 title = { Text(stringResource(R.string.pref_audio_volume_boost_cap)) },
                 valueRange = 0f..200f,

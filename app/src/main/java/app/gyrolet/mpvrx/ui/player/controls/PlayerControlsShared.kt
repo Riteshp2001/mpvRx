@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerClockFormat
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
@@ -76,6 +77,8 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.CurrentChapter
 import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.utils.isAnyMpvOptionOwnedByConfig
+import app.gyrolet.mpvrx.ui.utils.isMpvOptionOwnedByConfig
 import dev.vivvvek.seeker.Segment
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
@@ -201,6 +204,8 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.PLAYBACK_SPEED -> {
+      val configOwned = isMpvOptionOwnedByConfig("speed")
+      val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
       if (isSpeedNonOne) {
         Surface(
           shape = CircleShape,
@@ -212,7 +217,8 @@ fun RenderPlayerButton(
                 alpha = 0.55f,
               )
             },
-          contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          contentColor =
+            if (configOwned) disabledColor else if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           tonalElevation = 0.dp,
           shadowElevation = 0.dp,
           border =
@@ -229,6 +235,7 @@ fun RenderPlayerButton(
               .height(buttonSize)
               .clip(CircleShape)
               .clickable(
+                enabled = !configOwned,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(bounded = true),
                 onClick = {
@@ -251,7 +258,7 @@ fun RenderPlayerButton(
               contentDescription =
                 androidx.compose.ui.res
                   .stringResource(app.gyrolet.mpvrx.R.string.ui_playback_speed),
-              tint = MaterialTheme.colorScheme.primary,
+              tint = if (configOwned) disabledColor else MaterialTheme.colorScheme.primary,
               modifier = Modifier.size(20.dp),
             )
             Text(
@@ -266,12 +273,14 @@ fun RenderPlayerButton(
           icon = Icons.RoundedFilled.Speed,
           onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
           color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          enabled = !configOwned,
           modifier = Modifier.size(buttonSize),
         )
       }
     }
 
     PlayerButton.DECODER -> {
+      val configOwned = isAnyMpvOptionOwnedByConfig(MpvConfigControlledFeatures.HARDWARE_DECODER)
       Surface(
         shape = CircleShape,
         color =
@@ -282,7 +291,14 @@ fun RenderPlayerButton(
               alpha = 0.55f,
             )
           },
-        contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        contentColor =
+          if (configOwned) {
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+          } else if (hideBackground) {
+            controlColor
+          } else {
+            MaterialTheme.colorScheme.onSurface
+          },
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border =
@@ -299,6 +315,7 @@ fun RenderPlayerButton(
             .height(buttonSize)
             .clip(CircleShape)
             .clickable(
+              enabled = !configOwned,
               interactionSource = remember { MutableInteractionSource() },
               indication = ripple(bounded = true),
               onClick = {
@@ -328,6 +345,7 @@ fun RenderPlayerButton(
 
     PlayerButton.HDR_MODE -> {
       val isHdrEnabled by viewModel.isHdrScreenOutputEnabled.collectAsState()
+      val configOwned = isAnyMpvOptionOwnedByConfig(MpvConfigControlledFeatures.HDR_OUTPUT)
       ControlsButton(
         icon = if (isHdrEnabled) Icons.RoundedFilled.HdrOn else Icons.RoundedFilled.HdrOff,
         onClick = viewModel::toggleHdrScreenOutput,
@@ -338,6 +356,7 @@ fun RenderPlayerButton(
           } else {
             if (isHdrEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
           },
+          enabled = !configOwned,
         modifier = Modifier.size(buttonSize),
       )
     }
@@ -500,6 +519,10 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.VIDEO_ZOOM -> {
+      val zoomConfigOwned = isMpvOptionOwnedByConfig("video-zoom")
+      val panXConfigOwned = isMpvOptionOwnedByConfig("video-pan-x")
+      val panYConfigOwned = isMpvOptionOwnedByConfig("video-pan-y")
+      val geometryControlsAvailable = !zoomConfigOwned || !panXConfigOwned || !panYConfigOwned
       if (kotlin.math.abs(currentZoom) >= 0.005f) {
         @OptIn(ExperimentalFoundationApi::class)
         Surface(
@@ -529,6 +552,7 @@ fun RenderPlayerButton(
               .height(buttonSize)
               .clip(CircleShape)
               .combinedClickable(
+                enabled = geometryControlsAvailable,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(bounded = true),
                 onClick = {
@@ -556,7 +580,12 @@ fun RenderPlayerButton(
                 androidx.compose.ui.res.stringResource(
                   app.gyrolet.mpvrx.R.string.player_sheets_zoom_slider_label,
                 ),
-              tint = MaterialTheme.colorScheme.primary,
+              tint =
+                if (geometryControlsAvailable) {
+                  MaterialTheme.colorScheme.primary
+                } else {
+                  MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                },
               modifier = Modifier.size(20.dp),
             )
             Text(
@@ -575,6 +604,7 @@ fun RenderPlayerButton(
           },
           onLongClick = { viewModel.resetVideoZoom() },
           color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          enabled = geometryControlsAvailable,
           modifier = Modifier.size(buttonSize),
         )
       }
@@ -600,6 +630,7 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.ASPECT_RATIO -> {
+      val configOwned = isAnyMpvOptionOwnedByConfig(MpvConfigControlledFeatures.VIDEO_ASPECT)
       ControlsButton(
         icon =
           when (aspect) {
@@ -616,6 +647,7 @@ fun RenderPlayerButton(
         },
         onLongClick = { onOpenSheet(Sheets.AspectRatios) },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        enabled = !configOwned,
         modifier = Modifier.size(buttonSize),
       )
     }
@@ -630,20 +662,23 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.AUDIO_TRACK -> {
+      val outputConfigOwned = isMpvOptionOwnedByConfig("audio-delay")
       ControlsButton(
         Icons.RoundedFilled.Audiotrack,
         onClick = { onOpenSheet(Sheets.AudioTracks) },
-        onLongClick = { onOpenPanel(Panels.AudioDelay) },
+        onLongClick = { if (!outputConfigOwned) onOpenPanel(Panels.AudioDelay) },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
       )
     }
 
     PlayerButton.SUBTITLES -> {
+      val timingConfigOwned =
+        isMpvOptionOwnedByConfig("sub-delay") && isMpvOptionOwnedByConfig("sub-speed")
       ControlsButton(
         Icons.RoundedFilled.Subtitles,
         onClick = { onOpenSheet(Sheets.SubtitleTracks) },
-        onLongClick = { onOpenPanel(Panels.SubtitleDelay) },
+        onLongClick = { if (!timingConfigOwned) onOpenPanel(Panels.SubtitleDelay) },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
       )
@@ -660,10 +695,12 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.EQUALIZER -> {
+      val configOwned = isMpvOptionOwnedByConfig("af")
       ControlsButton(
         Icons.RoundedFilled.Equalizer,
         onClick = { onOpenSheet(Sheets.Equalizer) },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        enabled = !configOwned,
         modifier = Modifier.size(buttonSize),
       )
     }
@@ -743,6 +780,7 @@ fun RenderPlayerButton(
 
     PlayerButton.MIRROR -> {
       val transform by viewModel.transformState.collectAsState()
+      val configOwned = isMpvOptionOwnedByConfig("vf")
       ControlsButton(
         icon = Icons.RoundedFilled.Flip,
         onClick = viewModel::toggleMirroring,
@@ -752,12 +790,14 @@ fun RenderPlayerButton(
           } else {
             if (transform.isMirrored) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
           },
+          enabled = !configOwned,
         modifier = Modifier.size(buttonSize),
       )
     }
 
     PlayerButton.VERTICAL_FLIP -> {
       val transform by viewModel.transformState.collectAsState()
+      val configOwned = isMpvOptionOwnedByConfig("vf")
       val isVerticalFlipped = transform.isVerticalFlipped
       val vFlipColor =
         if (hideBackground) {
@@ -789,7 +829,7 @@ fun RenderPlayerButton(
           Modifier
             .size(buttonSize)
             .clip(CircleShape)
-            .clickable(onClick = viewModel::toggleVerticalFlip),
+            .clickable(enabled = !configOwned, onClick = viewModel::toggleVerticalFlip),
       ) {
         Box(contentAlignment = Alignment.Center) {
           AppSymbolIcon(
@@ -797,7 +837,7 @@ fun RenderPlayerButton(
             contentDescription =
               androidx.compose.ui.res
                 .stringResource(app.gyrolet.mpvrx.R.string.ui_vertical_flip),
-            tint = vFlipColor,
+            tint = if (configOwned) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else vFlipColor,
             modifier =
               Modifier
                 .padding(MaterialTheme.spacing.small)
@@ -990,6 +1030,7 @@ fun RenderPlayerButton(
 
     PlayerButton.AMBIENT_MODE -> {
       val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
+      val configOwned = isAnyMpvOptionOwnedByConfig(MpvConfigControlledFeatures.AMBIENT)
       @OptIn(ExperimentalFoundationApi::class)
       Surface(
         shape = CircleShape,
@@ -1021,6 +1062,7 @@ fun RenderPlayerButton(
             .size(buttonSize)
             .clip(CircleShape)
             .combinedClickable(
+              enabled = !configOwned,
               interactionSource = remember { MutableInteractionSource() },
               indication = ripple(bounded = true),
               onClick = {
@@ -1039,7 +1081,16 @@ fun RenderPlayerButton(
             contentDescription =
               androidx.compose.ui.res
                 .stringResource(app.gyrolet.mpvrx.R.string.ui_ambience_mode),
-            tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
+            tint =
+              if (configOwned) {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+              } else if (isAmbientEnabled) {
+                MaterialTheme.colorScheme.primary
+              } else if (hideBackground) {
+                controlColor
+              } else {
+                MaterialTheme.colorScheme.onSurface
+              },
             modifier = Modifier.size(24.dp),
           )
         }

@@ -44,6 +44,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
@@ -51,6 +52,13 @@ import org.koin.compose.koinInject
 fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
   val preferences = koinInject<SubtitlesPreferences>()
   val playerPreferences = koinInject<PlayerPreferences>()
+  val configOwnedOptions = currentMpvConfigOverrideOptions()
+  val layoutOptions = setOf("sub-ass-override", "secondary-sub-ass-override", "sub-pos", "secondary-sub-pos")
+  val scaleOptions = setOf("sub-scale", "secondary-sub-scale")
+  val scaleByWindowOptions =
+    setOf("sub-scale-by-window", "sub-use-margins", "secondary-sub-scale-by-window", "secondary-sub-use-margins")
+  val blendOptions = setOf("blend-subtitles")
+  val miscellaneousOptions = layoutOptions + scaleOptions + scaleByWindowOptions + blendOptions
   var isExpanded by remember { mutableStateOf(true) }
   ExpandableCard(
     isExpanded,
@@ -74,18 +82,20 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
         }
         SwitchPreference(
           overrideAssSubs,
+          enabled = layoutOptions.none(configOwnedOptions::contains),
           onValueChange = {
             overrideAssSubs = it
             preferences.overrideAssSubs.set(it)
             applySubtitleLayout(PlaybackSession.getPropertyInt("sub-pos") ?: preferences.subPos.get(), it)
           },
-          { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
+          title = { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
         )
         var scaleByWindow by remember {
           mutableStateOf(PlaybackSession.getPropertyString("sub-scale-by-window") == "yes")
         }
         SwitchPreference(
           scaleByWindow,
+          enabled = scaleByWindowOptions.none(configOwnedOptions::contains),
           onValueChange = {
             scaleByWindow = it
             preferences.scaleByWindow.set(it)
@@ -93,7 +103,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
             PlaybackSession.setPropertyString("sub-scale-by-window", value)
             PlaybackSession.setPropertyString("sub-use-margins", value)
           },
-          { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
+          title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
           summary = { Text(stringResource(R.string.player_sheets_sub_scale_by_window_summary)) },
         )
         var blendSubtitlesWithVideo by remember {
@@ -101,13 +111,14 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
         }
         SwitchPreference(
           blendSubtitlesWithVideo,
+          enabled = blendOptions.none(configOwnedOptions::contains),
           onValueChange = {
             blendSubtitlesWithVideo = it
             preferences.blendSubtitlesWithVideo.set(it)
             val blendMode = if (it && playerPreferences.isAmbientEnabled.get()) "video" else "no"
             PlaybackSession.setPropertyString("blend-subtitles", blendMode)
           },
-          { Text(stringResource(R.string.player_sheets_sub_blend_with_video)) },
+          title = { Text(stringResource(R.string.player_sheets_sub_blend_with_video)) },
           summary = { Text(stringResource(R.string.player_sheets_sub_blend_with_video_summary)) },
         )
         val subScale by PlaybackSession.propFloat["sub-scale"].collectAsState()
@@ -121,6 +132,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
             PlaybackSession.setPropertyFloat("sub-scale", it)
           },
           max = 5f,
+          enabled = scaleOptions.none(configOwnedOptions::contains),
           icon = {
             Icon(
               Icons.RoundedFilled.FormatSize,
@@ -137,6 +149,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
             applySubtitleLayout(it, preferences.overrideAssSubs.get())
           },
           max = 150,
+          enabled = layoutOptions.none(configOwnedOptions::contains),
           icon = {
             Icon(
               Icons.RoundedFilled.AlignVerticalCenter,
@@ -152,6 +165,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           horizontalArrangement = Arrangement.End,
         ) {
           TextButton(
+            enabled = miscellaneousOptions.none(configOwnedOptions::contains),
             onClick = {
               val defaultSubPos = preferences.subPos.deleteAndGet()
               preferences.subScale.deleteAndGet().let {

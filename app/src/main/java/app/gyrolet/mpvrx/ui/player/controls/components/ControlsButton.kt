@@ -49,6 +49,7 @@ fun ControlsButton(
   onLongClick: () -> Unit = {},
   title: String? = null,
   color: Color? = null,
+  enabled: Boolean = true,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -60,6 +61,7 @@ fun ControlsButton(
       modifier
         .clip(CircleShape)
         .combinedClickable(
+          enabled = enabled,
           onClick = {
             clickEvent()
             onClick()
@@ -83,10 +85,16 @@ fun ControlsButton(
         )
       },
   ) {
+    val resolvedColor =
+      if (enabled) {
+        color ?: MaterialTheme.colorScheme.onSurface
+      } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+      }
     Icon(
       imageVector = icon,
       contentDescription = title,
-      tint = color ?: MaterialTheme.colorScheme.onSurface,
+      tint = resolvedColor,
       modifier =
         Modifier
           .padding(MaterialTheme.spacing.small)

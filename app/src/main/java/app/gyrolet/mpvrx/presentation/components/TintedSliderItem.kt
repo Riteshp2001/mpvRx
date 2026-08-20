@@ -42,6 +42,7 @@ fun TintedSliderItem(
   tint: Color,
   modifier: Modifier = Modifier,
   min: Int = 0,
+  enabled: Boolean = true,
   icon: @Composable () -> Unit = {},
 ) {
   val haptic = LocalHapticFeedback.current
@@ -90,6 +91,7 @@ fun TintedSliderItem(
         valueRange = min.toFloat()..max.toFloat(),
         steps = (max - min - 1).coerceAtLeast(0),
         tint = tint,
+        enabled = enabled,
       )
     }
   }

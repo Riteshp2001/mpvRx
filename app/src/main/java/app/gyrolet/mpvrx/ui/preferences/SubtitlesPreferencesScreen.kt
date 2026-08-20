@@ -73,6 +73,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.copyFontsFromDirectory
 import app.gyrolet.mpvrx.utils.media.loadCustomFontEntries
@@ -97,6 +98,7 @@ object SubtitlesPreferencesScreen : Screen {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val preferences = koinInject<SubtitlesPreferences>()
+    val configOwnedOptions = currentMpvConfigOverrideOptions()
     val fileManager = koinInject<FileManager>()
     val wyzieSearchRepository = koinInject<WyzieSearchRepository>()
     val scope = rememberCoroutineScope()
@@ -238,6 +240,7 @@ object SubtitlesPreferencesScreen : Screen {
               TextFieldPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_preferred_languages),
                 value = preferredLanguages,
+                enabled = "slang" !in configOwnedOptions,
                 onValueChange = preferences.preferredLanguages::set,
                 textToValue = { input ->
                   input
@@ -279,6 +282,8 @@ object SubtitlesPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_autoload_title),
                 value = autoload,
+                enabled =
+                  setOf("sub-auto", "sub-file-paths", "subs-fallback").none(configOwnedOptions::contains),
                 onValueChange = { preferences.autoloadMatchingSubtitles.set(it) },
                 title = { Text(stringResource(R.string.pref_subtitles_autoload_title)) },
                 summary = {
@@ -295,6 +300,9 @@ object SubtitlesPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_override_ass),
                 value = overrideAss,
+                enabled =
+                  setOf("sub-ass-override", "secondary-sub-ass-override", "sub-pos", "secondary-sub-pos")
+                    .none(configOwnedOptions::contains),
                 onValueChange = { preferences.overrideAssSubs.set(it) },
                 title = { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
                 summary = {
@@ -311,6 +319,13 @@ object SubtitlesPreferencesScreen : Screen {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_scale_by_window),
                 value = scaleByWindow,
+                enabled =
+                  setOf(
+                    "sub-scale-by-window",
+                    "sub-use-margins",
+                    "secondary-sub-scale-by-window",
+                    "secondary-sub-use-margins",
+                  ).none(configOwnedOptions::contains),
                 onValueChange = { preferences.scaleByWindow.set(it) },
                 title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
                 summary = {
@@ -332,6 +347,7 @@ object SubtitlesPreferencesScreen : Screen {
             PreferenceCard {
               Preference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_fonts_dir),
+                enabled = "sub-fonts-dir" !in configOwnedOptions,
                 title = { Text(stringResource(R.string.pref_subtitles_fonts_dir)) },
                 summary = {
                   val folderSummary =

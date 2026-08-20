@@ -46,6 +46,9 @@ import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigOverride
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
@@ -4357,6 +4360,7 @@ class PlayerViewModel : ViewModel(),
     aspect: VideoAspect,
     showUpdate: Boolean = true,
   ) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT)) return
     when (aspect) {
       VideoAspect.Fit -> {
         // To FIT: Reset both properties to their defaults.
@@ -4412,6 +4416,7 @@ class PlayerViewModel : ViewModel(),
     ratio: Double,
     showUpdate: Boolean = true,
   ) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT)) return
     PlaybackSession.setPropertyDouble("panscan", 0.0)
     PlaybackSession.setPropertyDouble("video-aspect-override", ratio)
     playerPreferences.lastCustomAspectRatio.set(ratio.toFloat())
@@ -4634,6 +4639,10 @@ class PlayerViewModel : ViewModel(),
   // ==================== Video Zoom ====================
 
   fun setVideoZoom(zoom: Float) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ZOOM)) {
+      _videoZoom.value = 0f
+      return
+    }
     _videoZoom.value = zoom
     runCatching { PlaybackSession.setPropertyDouble("video-zoom", zoom.toDouble()) }
   }
@@ -4649,8 +4658,8 @@ class PlayerViewModel : ViewModel(),
     x: Float,
     y: Float,
   ) {
-    _videoPanX.value = x
-    _videoPanY.value = y
+    _videoPanX.value = if (MpvConfigOverridePolicy.isOwnedByMpvConf("video-pan-x")) 0f else x
+    _videoPanY.value = if (MpvConfigOverridePolicy.isOwnedByMpvConf("video-pan-y")) 0f else y
   }
 
   fun resetVideoPan() {
@@ -5339,6 +5348,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun toggleHdrScreenOutput() {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) return
     val nextMode =
       if (_hdrScreenMode.value == HdrScreenMode.OFF) {
         val lastMode = decoderPreferences.lastHdrMode.get()
@@ -5355,6 +5365,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) return
     val resolvedMode =
       if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
         HdrScreenMode.defaultEnabledMode
@@ -5412,6 +5423,11 @@ class PlayerViewModel : ViewModel(),
   }
 
   private fun applyHdrScreenOutput(mode: HdrScreenMode) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) {
+      _isHdrScreenOutputPipelineReady.value = false
+      _isHdrScreenOutputEnabled.value = false
+      return
+    }
     val pipelineReady = refreshHdrScreenOutputPipelineState()
     runCatching {
       val boostSdr = decoderPreferences.boostSdrToHdr.get()
@@ -5429,6 +5445,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun selectAnime4KMode(mode: Anime4KManager.Mode) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) return
     decoderPreferences.anime4kMode.set(mode.name)
     viewModelScope.launch(Dispatchers.Default) {
       runCatching {
@@ -5498,6 +5515,7 @@ class PlayerViewModel : ViewModel(),
   // ==================== Ambient Mode Integration ====================
 
   fun toggleAmbientMode() {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
     _isAmbientEnabled.value = !_isAmbientEnabled.value
     playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
     if (_isAmbientEnabled.value) {
@@ -5532,7 +5550,7 @@ class PlayerViewModel : ViewModel(),
 
   /** Called when the device orientation changes. Refreshes ambient in both portrait and landscape. */
   fun onOrientationChanged(isPortrait: Boolean) {
-    if (!_isAmbientEnabled.value) return
+    if (!_isAmbientEnabled.value || MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
 
     // Force shader refresh to adapt to new screen dimensions.
     lastAmbientScaleX = -1.0
@@ -5547,7 +5565,7 @@ class PlayerViewModel : ViewModel(),
 
   /** Removes the old file-specific ambient shader while preserving the user's selected ambient mode. */
   fun prepareAmbientForNewVideo() {
-    if (!_isAmbientEnabled.value) return
+    if (!_isAmbientEnabled.value || MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
     disableAmbientShader()
     lastAmbientScaleX = -1.0
     lastAmbientScaleY = -1.0
@@ -5558,7 +5576,7 @@ class PlayerViewModel : ViewModel(),
    * Called after shader-stack changes so ambient stays as the last OUTPUT pass.
    */
   fun restartAmbientIfActive() {
-    if (!_isAmbientEnabled.value) return
+    if (!_isAmbientEnabled.value || MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
     ambientShaderFile?.let { oldFile ->
       runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
       oldFile.delete()
@@ -5647,7 +5665,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   private fun scheduleAmbientUpdate(delayMs: Long = 150L) {
-    if (!_isAmbientEnabled.value) return
+    if (!_isAmbientEnabled.value || MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
 
     ambientDebounceJob?.cancel()
     ambientDebounceJob =
@@ -5797,7 +5815,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   suspend fun updateAmbientStretch() {
-    if (!_isAmbientEnabled.value) return
+    if (!_isAmbientEnabled.value || MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
 
     runCatching {
       val osdW = PlaybackSession.getPropertyInt("osd-width") ?: 1920

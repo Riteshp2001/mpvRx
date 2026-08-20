@@ -38,6 +38,7 @@ import app.gyrolet.mpvrx.ui.player.VideoFilters
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import me.zhanghai.compose.preference.FooterPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
@@ -45,6 +46,8 @@ import org.koin.compose.koinInject
 @Composable
 fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
   val decoderPreferences = koinInject<DecoderPreferences>()
+  val configOwnedOptions = currentMpvConfigOverrideOptions()
+  val hasOwnedFilter = VideoFilters.entries.any { it.mpvProperty in configOwnedOptions }
   var isExpanded by remember { mutableStateOf(true) }
 
   ExpandableCard(
@@ -64,6 +67,7 @@ fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
     ProvidePreferenceLocals {
       Column {
         TextButton(
+          enabled = !hasOwnedFilter,
           onClick = {
             VideoFilters.entries.forEach {
               PlaybackSession.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
@@ -85,6 +89,7 @@ fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
             },
             max = filter.max,
             min = filter.min,
+            enabled = filter.mpvProperty !in configOwnedOptions,
           )
         }
 

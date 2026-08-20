@@ -19,11 +19,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.Decoder
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.TrackNode
+import app.gyrolet.mpvrx.ui.player.controls.components.MpvConfigOwnedSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AmbientSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AspectRatioSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioTracksSheet
@@ -82,6 +86,23 @@ fun PlayerSheets(
   onShowSheet: (Sheets) -> Unit,
   onDismissRequest: () -> Unit,
 ) {
+  val advancedPreferences = koinInject<AdvancedPreferences>()
+  val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
+  val configOwnedOptions =
+    remember(storedConfigOverrides) { MpvConfigOverride.resolveOptionNames(storedConfigOverrides) }
+  val fullyOwnedOptions =
+    when (sheetShown) {
+      Sheets.Decoders -> MpvConfigControlledFeatures.HARDWARE_DECODER
+      Sheets.AmbientConfig -> MpvConfigControlledFeatures.AMBIENT
+      Sheets.Equalizer -> setOf("af")
+      Sheets.AspectRatios -> MpvConfigControlledFeatures.VIDEO_ASPECT
+      else -> null
+    }
+  if (fullyOwnedOptions?.any(configOwnedOptions::contains) == true) {
+    MpvConfigOwnedSheet(onDismissRequest)
+    return
+  }
+
   when (sheetShown) {
     Sheets.None -> {}
     Sheets.SubtitleTracks -> {
@@ -164,6 +185,7 @@ fun PlayerSheets(
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
+        delayControlEnabled = setOf("sub-delay", "sub-speed").any { it !in configOwnedOptions },
         onOpenOnlineSearch = { onShowSheet(Sheets.OnlineSubtitleSearch) },
         onDismissRequest = onDismissRequest,
         onTranslateSubtitle = { track, lang -> viewModel.translateSubtitle(track, lang) },
@@ -317,6 +339,11 @@ fun PlayerSheets(
         onAddAudioTrack = { showAudioFilePicker = true },
         onOpenDelayPanel = { onOpenPanel(Panels.AudioDelay) },
         onOpenEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
+        delayControlEnabled = "audio-delay" !in configOwnedOptions,
+        equalizerControlEnabled = "af" !in configOwnedOptions,
+        audioChannelsEnabled = "audio-channels" !in configOwnedOptions,
+        reverseStereoEnabled = "af" !in configOwnedOptions,
+        audioEffectsEnabled = "af" !in configOwnedOptions,
         onDismissRequest = onDismissRequest,
       )
     }
@@ -349,6 +376,9 @@ fun PlayerSheets(
         onEnterEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
         anime4KUiState = anime4KUiState,
         onAnime4KModeSelected = viewModel::selectAnime4KMode,
+        filtersEnabled = !MpvConfigOverride.VIDEO_FILTERS.optionNames.all(configOwnedOptions::contains),
+        equalizerEnabled = "af" !in configOwnedOptions,
+        anime4KEnabled = MpvConfigControlledFeatures.ANIME4K.none(configOwnedOptions::contains),
       )
     }
 
@@ -363,6 +393,8 @@ fun PlayerSheets(
         onMakeDefault = onMakeDefaultSpeed,
         onResetDefault = onResetDefaultSpeed,
         onDismissRequest = onDismissRequest,
+        speedControlEnabled = "speed" !in configOwnedOptions,
+        pitchCorrectionEnabled = "audio-pitch-correction" !in configOwnedOptions,
       )
     }
 
@@ -373,6 +405,8 @@ fun PlayerSheets(
         onSetVideoZoom = viewModel::setVideoZoom,
         onResetVideoPan = viewModel::resetVideoPan,
         onDismissRequest = onDismissRequest,
+        zoomControlEnabled = "video-zoom" !in configOwnedOptions,
+        panControlEnabled = setOf("video-pan-x", "video-pan-y").any { it !in configOwnedOptions },
       )
     }
 

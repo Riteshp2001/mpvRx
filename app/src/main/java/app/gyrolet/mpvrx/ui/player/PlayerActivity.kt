@@ -3893,12 +3893,13 @@ class PlayerActivity :
             Log.e(TAG, "Error updating video metadata in recently played", e)
           }
 
-          // Persist the resolved title to the Network tab recent links
-          runCatching {
-            networkStreamEntryRepository.saveNormalEntry(
-              canonicalSourceUri = url,
-              fileName = betterFilename,
-            )
+          if (!isJellyfinLaunchSource(sourceIntent)) {
+            runCatching {
+              networkStreamEntryRepository.saveNormalEntry(
+                canonicalSourceUri = url,
+                fileName = betterFilename,
+              )
+            }
           }
         }
       } catch (e: Exception) {
@@ -6166,7 +6167,7 @@ class PlayerActivity :
         playlistId = historyPlaylistId,
       )
 
-      if (HttpUtils.isNetworkStream(uri)) {
+      if (HttpUtils.isNetworkStream(uri) && !isJellyfinLaunchSource(intent)) {
         val streamTitle = videoTitle?.takeIf { !HttpUtils.isLikelyJunkTitle(it) } ?: resolvedName
         if (!HttpUtils.isLikelyJunkTitle(streamTitle)) {
           runCatching {
@@ -6189,6 +6190,9 @@ class PlayerActivity :
       Log.e(TAG, "Error saving recently played for playlist item", e)
     }
   }
+
+  private fun isJellyfinLaunchSource(sourceIntent: Intent): Boolean =
+    sourceIntent.getStringExtra("launch_source") == "jellyfin_stream"
 
   /** Generates one collision-resistant identifier without including network credentials. */
   private fun getMediaIdentifier(
