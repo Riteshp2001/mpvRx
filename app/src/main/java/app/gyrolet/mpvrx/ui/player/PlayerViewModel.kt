@@ -2766,34 +2766,27 @@ class PlayerViewModel : ViewModel(),
 
     skippedSegmentTypes += activeSegment.type
     _showSkipChipAuto.value = false
-    if ((activeSegment.type == SkipSegmentType.OUTRO || activeSegment.type == SkipSegmentType.CREDITS) && hasNext()) {
-      playNext()
-    } else {
-      PlaybackSession.setPropertyDouble("time-pos", activeSegment.endSeconds)
-      syncplayManager.updatePlayerState(
-        activeSegment.endSeconds,
-        PlaybackSession.getPropertyBoolean("pause") ?: false,
-        doSeek = true,
-      )
-      showToast("${activeSegment.label} (auto)")
-    }
+    seekPastSkipSegment(activeSegment, auto = true)
   }
 
   fun skipActiveSegment() {
     val segment = _currentSkippableSegment.value ?: return
     skippedSegmentTypes += segment.type
     _showSkipChipAuto.value = false
-    if ((segment.type == SkipSegmentType.OUTRO || segment.type == SkipSegmentType.CREDITS) && hasNext()) {
-      playNext()
-    } else {
-      PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
-      syncplayManager.updatePlayerState(
-        segment.endSeconds,
-        PlaybackSession.getPropertyBoolean("pause") ?: false,
-        doSeek = true,
-      )
-      showToast(segment.label)
-    }
+    seekPastSkipSegment(segment, auto = false)
+  }
+
+  private fun seekPastSkipSegment(
+    segment: SkipSegment,
+    auto: Boolean,
+  ) {
+    PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
+    syncplayManager.updatePlayerState(
+      segment.endSeconds,
+      PlaybackSession.getPropertyBoolean("pause") ?: false,
+      doSeek = true,
+    )
+    showToast(if (auto) "${segment.label} (auto)" else segment.label)
   }
 
   private fun mergeSkipSegments() {
@@ -3196,7 +3189,15 @@ class PlayerViewModel : ViewModel(),
       chapters.mapIndexedNotNull { index, segment ->
         val type = chapterTitleToType(segment.name) ?: return@mapIndexedNotNull null
         val start = segment.start.toDouble()
-        val end = chapters.getOrNull(index + 1)?.start?.toDouble() ?: durationSec
+        val nextStart = chapters.getOrNull(index + 1)?.start?.toDouble()
+        val isTerminalType =
+          type == SkipSegmentType.OUTRO ||
+            type == SkipSegmentType.CREDITS ||
+            type == SkipSegmentType.PREVIEW
+        // A final terminal chapter has no safe in-file destination after it. Treating
+        // EOF as its end turns "skip" into normal EOF/autoplay and can advance the queue.
+        if (nextStart == null && isTerminalType) return@mapIndexedNotNull null
+        val end = nextStart ?: durationSec
         val normalizedEnd = end.coerceAtMost(durationSec)
         if (normalizedEnd - start < 5.0) return@mapIndexedNotNull null
         val durationFraction = start / durationSec
@@ -3277,16 +3278,20 @@ class PlayerViewModel : ViewModel(),
         "out" in loweredType || "ending" in loweredType || "ed" == loweredType || "mixed-ed" in loweredType -> SkipSegmentType.OUTRO
         else -> SkipSegmentType.INTRO
       }
-    val endSeconds =
-      endSecondsOrNull ?: durationSec.takeIf {
-        (type == SkipSegmentType.CREDITS || type == SkipSegmentType.PREVIEW || type == SkipSegmentType.OUTRO) && it > normalizedStart
+    // Do not synthesize EOF for an open-ended provider marker. The last timestamp
+    // from some providers has no end bound, and seeking it to duration triggers EOF.
+    val explicitEnd = endSecondsOrNull ?: return null
+    val normalizedEnd =
+      if (durationSec > 0.0) {
+        explicitEnd.coerceAtMost(durationSec)
+      } else {
+        explicitEnd
       }
-        ?: return null
-    if (endSeconds <= normalizedStart) return null
+    if (normalizedEnd <= normalizedStart) return null
     return SkipSegment(
       type = type,
       startSeconds = normalizedStart,
-      endSeconds = endSeconds,
+      endSeconds = normalizedEnd,
       source = introDbSourceKey,
     )
   }
@@ -3422,7 +3427,7 @@ class PlayerViewModel : ViewModel(),
             )
           }
         }.onFailure {
-          showProviderStatusToast("Failed to load episodes: ${it.message}")
+          showProviderStatusToast("Failed to load series details: ${it.message}")
         }
       _isFetchingEpisodes.value = false
     }
