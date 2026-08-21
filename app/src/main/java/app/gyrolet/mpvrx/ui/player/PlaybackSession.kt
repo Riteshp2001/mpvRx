@@ -1046,7 +1046,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   private fun parseEndFileReason(data: MPVNode): EndFileReason {
     val reasonNode = data["reason"]
-    return reasonNode.asString()?.lowercase()?.let { reason ->
+    return reasonNode?.asString()?.lowercase()?.let { reason ->
       when (reason) {
         "eof" -> EndFileReason.EOF
         "stop" -> EndFileReason.STOP
@@ -1055,7 +1055,7 @@ object PlaybackSession : MPVLib.EventObserver {
         "redirect" -> EndFileReason.REDIRECT
         else -> EndFileReason.UNKNOWN
       }
-    } ?: when (reasonNode.asInt()?.toInt()) {
+    } ?: when (reasonNode?.asInt()?.toInt()) {
       0 -> EndFileReason.EOF
       2 -> EndFileReason.STOP
       3 -> EndFileReason.QUIT
@@ -1067,7 +1067,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   private fun parseEndFileError(data: MPVNode): String? =
     sequenceOf(data["error"], data["file_error"])
-      .mapNotNull { node -> node.asString() ?: node.asInt()?.toString() }
+      .mapNotNull { node -> node?.asString() ?: node?.asInt()?.toString() }
       .firstOrNull { value -> value.isNotBlank() && value != "0" }
 
   /**
