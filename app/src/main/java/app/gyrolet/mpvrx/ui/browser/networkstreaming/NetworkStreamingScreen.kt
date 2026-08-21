@@ -675,6 +675,7 @@ private fun MediaContent(
         val viewed = if (infoHash != null) loadViewedFileIndices(viewedPreferences, infoHash) else emptySet()
         group.files.filter { it.fileIndex in viewed || group.groupType != MediaGroupType.TORRENT }
       }.sortedByDescending { it.updatedAt }
+        .distinctBy { it.stableKey }
     }
 
   val onPlayWithHistory: (NetworkStreamEntryEntity, String?) -> Unit = { file, infoHash ->

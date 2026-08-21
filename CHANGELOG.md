@@ -2,6 +2,49 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## 2.2.0 — Jellyfin, Torrent Series & Player Reliability Release
+
+### 🪼 Jellyfin Streaming Integration
+- **Built-in Jellyfin Client & Tab**: Connect to your Jellyfin server and browse Movies, Shows, and Music directly inside the app, with authenticated streaming, external subtitle support, and a bottom-sheet server setup flow that replaces the old dialog.
+- **JellyCine-Style Home Experience**: Completely redesigned Jellyfin tab using Material 3 Expressive components — hero carousel with autoscroll animations, resume carousel, expanded Top Picks, and a dedicated Music section on the home page.
+- **Richer Library Cards & Ratings**: Library cards now fetch real cover art and show IMDb star ratings, with Rotten Tomatoes ratings reorganized for readability and your libraries prioritized in the order you use them.
+- **Faster, Smarter Library Browsing**: Libraries are queried by item type instead of slow folder traversal, with server-side genre filtering, prioritized Shows/Movies in search results, search debouncing, and direct breadcrumb navigation.
+- **Episode Auto-Play & Next-Episode Overlay**: Series continue automatically with a next-episode overlay, audio/subtitle language sync between episodes, and an item info sheet for details before you play.
+- **Two-Way Playback Sync**: Playback state (pause/resume/stop) is reported to the server in real time, and the app pulls your freshest watch position from Jellyfin before starting playback — resume works across devices.
+
+### 🧲 Torrent Series & Network Streaming
+- **Series Torrents Become a Real Playlist**: Multi-file torrents now appear as one playlist entry per episode (sorted naturally), so you can jump between episodes from the queue sheet, use next/previous, auto-advance at the end of an episode, and keep separate resume positions per file. Switching episodes restarts the stream on the right file automatically.
+- **Media Tab Redesign**: The Torrent tab became the unified Media tab in JellyCine style — hero banner, resume carousel, poster cards, and a detail sheet — with saved torrent and network streams unified in one place and a save/open action on recent stream links.
+- **Network Tabs Reorganized**: Tabs reordered to Local Network, Media, and Syncplay, with "Saved Links" naming and a streamlined Media tab UI.
+- **Smarter Recents**: YouTube links now persist their real video titles and thumbnails into recents, and network streaming episode rows show proper episode titles with Jellyfin artwork fallback.
+- **Honest Buffering Indicator**: A proper buffering spinner for network and torrent streams that only appears during genuine cache stalls — no more flicker while seeking or when controls are hidden.
+
+### 🎤 Lyrics & Audio Experience
+- **Letter-by-Letter Karaoke Lyrics**: Synced lyrics now animate every single character on its own beat — letters rise into place with a pop, glow briefly, and sweep from dim to bright, driven by a frame-interpolated playback clock so the wave stays fluid even between position updates.
+- **Centered Lyric Focus**: The active line glides to the center of the view (instead of sticking to the top) with a depth-of-field falloff — nearby lines stay readable while distant lines blur and fade. Fullscreen lyrics are center-aligned with larger type.
+- **Visualizer Engine Cleanup**: All four visualizers (Galaxy, Blob, Cuboid, Particle) now share one audio analysis source of truth — beats, volume gating, and spectrum data are identical across styles, and a dead duplicate rendering engine was removed.
+- **Audio Quality-of-Life**: New audio file picker with persistent folder selection, an autoplay-next-audio preference, immediate audio stop when closing the player, correct "now playing" highlight in the music list, and a crash fix when starting playback from the Songs tab.
+
+### 🎬 Player Reliability & Playback Engine
+- **Load Recovery & Watchdog**: Media that never becomes ready now times out with a visible error and automatic retry instead of hanging forever; playback also recovers cleanly after reopening the app, and end-file metadata edge cases no longer crash the session.
+- **Resume Position Correctness**: Each video resumes from its own saved position — the next playlist item no longer inherits the previous video's progress, progress is persisted for the active playlist item, and history identity is unified for local files.
+- **Subtitle Improvements**: Choose preferred subtitles by ordered title keywords (e.g. "Dialogue" before "Signs"), yt-dlp subtitle titles no longer confuse language filters, and subtitle scale/position now compensate correctly during GPU video zoom and pan (#395).
+- **Skip Markers Fixed**: Intro/outro skip markers no longer accidentally advance to the next video, and marker metadata survives track changes.
+- **Zero-Permission External Playback**: Files shared from other apps play via file descriptors without any storage permission, with robust fallbacks for content URIs.
+- **mpv.conf Option Ownership Page**: A dedicated, organized settings page (replacing the old popup) to hand specific option groups — renderer, decoder, shaders, subtitles, and more — over to your mpv.conf, with per-option control, live counts, and one-tap reset.
+
+### 🧭 UI, Navigation & Updates
+- **Expressive Adaptive Navigation Bar**: New Material 3 expressive navbar that sizes its pill to the actual content, adapts between phone and tablet instead of cramming six tabs, and centers correctly on launch.
+- **Codec Support Indicators**: Per-video decoder support badges across browsing screens and a cleaned-up codec capabilities page, so you can see hardware vs. software decode support at a glance.
+- **In-App Updates Get a Bottom Sheet**: The update dialog was replaced with a modern bottom sheet that renders release notes as formatted Markdown (headings, lists, bold, links) with version chips, release date, size, and download progress.
+- **Picture-in-Picture Polish**: The media notification now stays available in PiP mode (#402).
+
+### ⚡ Performance, Networking & Stability
+- **One Shared HTTP Stack**: The bundled libcurl was replaced by the app-wide OkHttp client (scripts, Jellyfin reporting, subtitles all included), reducing native footprint and unifying cookies, headers, and TLS handling.
+- **ANR & Leak Fixes**: Fixed a teardown ANR, audio-focus races, and an HLS credential leak; preference listeners are now shared instead of one per collector.
+- **Snappier Lists**: Recently-played lookups are indexed, per-render date formatters were hoisted, recompositions were trimmed in Jellyfin browsing, and the library scrollbar no longer overlaps content.
+- **Cleaner Codebase**: The project was reorganized along MVVM lines (update feature split into domain/UI layers, domain no longer depends on UI), every compiler warning was fixed, and dead code was removed.
+
 ## 2.1.0 — Feature & Experience Release
 
 ### 🧲 Native Torrent Streaming & Media Browsing

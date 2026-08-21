@@ -948,12 +948,18 @@ object PlaybackSession : MPVLib.EventObserver {
             // Track/decoder replacement is now complete. Apply the latest user/service intent
             // once instead of allowing pause writes to race the load operation.
             MPVLib.setPropertyBoolean("pause", desiredPaused)
-            // A load issued before its Surface attached suppressed video with a file-local vid=no.
-            // If the Surface is attached by the time the file is ready, select video now instead of
-            // waiting for a bindSurface() that may never re-run for an already-attached Surface.
-            if (deferredVideoSelectionGeneration == current.generation && current.surfaceAttached) {
-              MPVLib.setPropertyString("vid", "auto")
-              deferredVideoSelectionGeneration = null
+            // Surface ownership is the source of truth at this boundary. Activity observers can
+            // detach during recreation, and deferred-generation bookkeeping only covers loads that
+            // started without video. Repair a disabled selection before exposing READY so an
+            // attached player cannot remain on a black frame with audio.
+            if (current.surfaceAttached) {
+              val selectedVideoTrack = MPVLib.getPropertyInt("vid")
+              if (selectedVideoTrack == null || selectedVideoTrack <= 0) {
+                MPVLib.setPropertyString("vid", "auto")
+              }
+              if (deferredVideoSelectionGeneration == current.generation) {
+                deferredVideoSelectionGeneration = null
+              }
             }
             updateState {
               it.copy(

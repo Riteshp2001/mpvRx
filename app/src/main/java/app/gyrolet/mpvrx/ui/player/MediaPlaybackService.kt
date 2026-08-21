@@ -397,6 +397,14 @@ class MediaPlaybackService :
   ): Int {
     Log.d(TAG, "Service starting with startId: $startId")
 
+    // MediaButtonReceiver launches us with startForegroundService(). Android 16 enforces the
+    // promotion deadline even when there is no live playback session and this start will be
+    // stopped immediately, so no validation or action branch may run before this call.
+    if (!startForegroundNotification()) {
+      stopSelf(startId)
+      return START_NOT_STICKY
+    }
+
     if (!PlaybackSession.isInitialized) {
       Log.w(TAG, "Ignoring playback service start without a live playback session")
       stopForegroundNotification()
@@ -490,6 +498,21 @@ class MediaPlaybackService :
       return START_NOT_STICKY
     }
 
+    if (!startForegroundNotification()) {
+      foregroundReady = false
+      mediaSession.isActive = false
+      stopSelf(startId)
+      return START_NOT_STICKY
+    }
+    foregroundReady = true
+    mediaSession.isActive = true
+    Log.d(TAG, "Foreground service started successfully")
+
+    return START_NOT_STICKY
+  }
+
+  @SuppressLint("ForegroundServiceType")
+  private fun startForegroundNotification(): Boolean =
     try {
       val type =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -498,19 +521,11 @@ class MediaPlaybackService :
           0
         }
       ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
-      foregroundReady = true
-      mediaSession.isActive = true
-      Log.d(TAG, "Foreground service started successfully")
-    } catch (e: Exception) {
-      foregroundReady = false
-      mediaSession.isActive = false
-      Log.e(TAG, "Error starting foreground service", e)
-      stopSelf(startId)
-      return START_NOT_STICKY
+      true
+    } catch (error: Exception) {
+      Log.e(TAG, "Error starting foreground service", error)
+      false
     }
-
-    return START_NOT_STICKY
-  }
 
   override fun onGetRoot(
     clientPackageName: String,

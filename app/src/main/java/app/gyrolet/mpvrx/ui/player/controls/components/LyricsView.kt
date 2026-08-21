@@ -43,25 +43,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
@@ -95,6 +95,10 @@ fun LyricsView(
   val currentPosMs = remember(precisePosition, state.syncOffsetMs) {
     (precisePosition * 1000).toLong() + state.syncOffsetMs
   }
+  val paused by PlaybackSession.propBoolean["pause"].collectAsState()
+  val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
+  // Position polls arrive every 50-500ms; per-letter animation needs a per-frame clock.
+  val smoothPositionMs = rememberSmoothedPositionMs(currentPosMs, paused == false, playbackSpeed ?: 1f)
 
   // BetterLyrics-style focus: glide the active line to the vertical center of the viewport
   // instead of pinning it near the top.
@@ -369,7 +373,7 @@ fun LyricsView(
                         AnimatedLyricWord(
                           word = word,
                           endTimeMs = wordEndMs,
-                          currentPositionMs = currentPosMs,
+                          positionMs = smoothPositionMs,
                           activeColor = activeColor,
                           inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                           fontSize = if (isLyricsFullscreen) 26.sp else 22.sp,
@@ -489,90 +493,103 @@ fun LyricsView(
   }
 }
 
+/**
+ * Interpolates the polled playback position with the display frame clock so letter reveals stay
+ * fluid between position updates. Backward jumps (seeks) snap; forward extrapolation is capped so
+ * a stalled poll cannot run ahead.
+ */
+@Composable
+private fun rememberSmoothedPositionMs(
+  rawPositionMs: Long,
+  isPlaying: Boolean,
+  speed: Float,
+): State<Long> {
+  val smoothed = remember { mutableLongStateOf(rawPositionMs) }
+  LaunchedEffect(rawPositionMs, isPlaying, speed) {
+    smoothed.longValue =
+      if (rawPositionMs < smoothed.longValue || rawPositionMs > smoothed.longValue + 1_000L) {
+        rawPositionMs
+      } else {
+        maxOf(smoothed.longValue, rawPositionMs)
+      }
+    if (!isPlaying) return@LaunchedEffect
+    val anchorMs = smoothed.longValue
+    var anchorFrameNanos = -1L
+    while (true) {
+      withFrameNanos { frameNanos ->
+        if (anchorFrameNanos < 0L) anchorFrameNanos = frameNanos
+        val elapsedMs = (frameNanos - anchorFrameNanos) / 1_000_000f
+        smoothed.longValue = anchorMs + (elapsedMs * speed.coerceIn(0.1f, 8f)).toLong().coerceAtMost(800L)
+      }
+    }
+  }
+  return smoothed
+}
+
+/**
+ * Letter-by-letter karaoke: each character is revealed on its own time slot inside the word's
+ * duration, rising into place with a pop and a brief glow, colors sweeping dim -> active.
+ */
 @Composable
 private fun AnimatedLyricWord(
   word: SyncedWord,
   endTimeMs: Long,
-  currentPositionMs: Long,
+  positionMs: State<Long>,
   activeColor: Color,
   inactiveColor: Color,
   fontSize: TextUnit = 22.sp,
 ) {
-  val startTimeMs = word.time.toLong()
-  val durationMs = (endTimeMs - startTimeMs).coerceAtLeast(1L)
-  val progress =
-    when {
-      currentPositionMs <= startTimeMs -> 0f
-      currentPositionMs >= endTimeMs -> 1f
-      else -> (currentPositionMs - startTimeMs).toFloat() / durationMs
-    }
-  val isActive = progress in 0.001f..0.999f
-  val pulse = kotlin.math.sin(progress * kotlin.math.PI).toFloat()
-  val lift by animateFloatAsState(
-    targetValue = if (isActive) -3f * pulse else 0f,
-    animationSpec = tween(durationMillis = if (isActive) 50 else 250, easing = FastOutSlowInEasing),
-    label = "LyricWordLift",
-  )
+  val text = word.word
   val textStyle =
     MaterialTheme.typography.headlineSmall.copy(
       fontSize = fontSize,
       fontWeight = FontWeight.Black,
       fontFamily = FontFamily.SansSerif,
     )
+  if (text.isEmpty()) {
+    Text(text = " ", style = textStyle)
+    return
+  }
 
-  Box(
-    modifier =
-      Modifier.graphicsLayer {
-        translationY = lift
-        val scale = 1f + (0.015f * pulse)
-        scaleX = scale
-        scaleY = scale
-      },
-  ) {
-    Text(
-      text = word.word + " ",
-      color = inactiveColor,
-      style = textStyle,
-    )
-    if (progress > 0f) {
+  val startTimeMs = word.time.toLong()
+  val durationMs = (endTimeMs - startTimeMs).coerceAtLeast(1L)
+  val charSlotMs = durationMs.toFloat() / text.length
+  // Each letter animates a bit longer than its slot so neighbours overlap into a wave.
+  val charAnimMs = (charSlotMs * 2f).coerceIn(90f, 320f)
+  val currentPositionMs by positionMs
+
+  Row(verticalAlignment = Alignment.CenterVertically) {
+    text.forEachIndexed { index, character ->
+      val charStartMs = startTimeMs + (charSlotMs * index).toLong()
+      val rawProgress = ((currentPositionMs - charStartMs) / charAnimMs).coerceIn(0f, 1f)
+      val eased = FastOutSlowInEasing.transform(rawProgress)
+      val pop = kotlin.math.sin(eased * Math.PI).toFloat()
       Text(
-        text = word.word + " ",
-        color = activeColor,
+        text = character.toString(),
+        color = lerp(inactiveColor, activeColor, eased),
         style =
-          textStyle.copy(
-            shadow =
-              if (isActive) {
+          if (pop > 0.05f) {
+            textStyle.copy(
+              shadow =
                 Shadow(
-                  color = activeColor.copy(alpha = 0.32f * pulse),
+                  color = activeColor.copy(alpha = 0.38f * pop),
                   offset = Offset.Zero,
-                  blurRadius = 8f * pulse,
-                )
-              } else {
-                null
-              },
-          ),
-        modifier =
-          if (isActive) {
-            Modifier
-              .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-              .drawWithContent {
-                drawContent()
-                val edgeWidth = 6.dp.toPx()
-                val edgeCenter = (size.width + edgeWidth * 2) * progress - edgeWidth
-                drawRect(
-                  brush =
-                    Brush.horizontalGradient(
-                      colors = listOf(Color.Black, Color.Transparent),
-                      startX = edgeCenter - edgeWidth,
-                      endX = edgeCenter + edgeWidth,
-                    ),
-                  blendMode = BlendMode.DstIn,
-                )
-              }
+                  blurRadius = 12f * pop,
+                ),
+            )
           } else {
-            Modifier
+            textStyle
+          },
+        modifier =
+          Modifier.graphicsLayer {
+            translationY = -5.dp.toPx() * pop
+            val scale = 1f + 0.14f * pop
+            scaleX = scale
+            scaleY = scale
+            transformOrigin = TransformOrigin(0.5f, 1f)
           },
       )
     }
+    Text(text = " ", style = textStyle)
   }
 }

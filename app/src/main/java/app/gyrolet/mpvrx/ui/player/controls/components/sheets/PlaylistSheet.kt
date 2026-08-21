@@ -363,10 +363,10 @@ fun PlaylistSheet(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 16.dp),
           ) {
-            items(displayPlaylist.size, key = { index -> displayPlaylist[index].uri.toString() }) { index ->
+            items(displayPlaylist.size, key = { index -> displayPlaylist[index].index }) { index ->
               val item = displayPlaylist[index]
               if (showDragHandle) {
-                ReorderableItem(reorderableLazyListState, key = item.uri.toString()) { isDragging ->
+                ReorderableItem(reorderableLazyListState, key = item.index) { isDragging ->
                   val isDraggingPrev = remember { mutableStateOf(false) }
                   LaunchedEffect(isDragging) {
                     if (isDraggingPrev.value && !isDragging) {
@@ -414,7 +414,7 @@ fun PlaylistSheet(
               ),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
           ) {
-            items(playlist, key = { it.uri.toString() }) { item ->
+              items(playlist, key = { it.index }) { item ->
               PlaylistTrackGridItem(
                 item = item,
                 thumbnailRepository = thumbnailRepository,
