@@ -331,6 +331,9 @@
   <string name="pref_mpv_conf_overrides_protected_message">Core Android lifecycle, playback commands, headers, and certificates remain app-managed for stability.</string>
   <string name="pref_mpv_conf_overrides_reset">Return all groups to app control</string>
   <string name="pref_mpv_conf_overrides_selected_count">%1$d of %2$d options selected</string>
+  <string name="pref_mpv_conf_ownership_active">%1$d options follow mpv.conf</string>
+  <string name="pref_mpv_conf_ownership_inactive">App settings control everything</string>
+  <string name="pref_mpv_conf_ownership_hint">Checked options are read from mpv.conf and locked in the app.</string>
   <string name="pref_mpv_conf_override_renderer">Renderer and GPU backend</string>
   <string name="pref_mpv_conf_override_renderer_summary">Overrides GPU API, Vulkan, and profile settings.</string>
   <string name="pref_mpv_conf_override_decoder">Hardware decoder</string>

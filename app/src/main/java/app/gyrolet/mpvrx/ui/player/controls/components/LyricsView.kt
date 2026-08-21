@@ -14,12 +14,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,7 +45,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
@@ -58,10 +62,13 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
@@ -82,17 +89,41 @@ fun LyricsView(
   val state by viewModel.lyricsUiState.collectAsState()
   val precisePosition by viewModel.precisePosition.collectAsState()
   val listState = rememberLazyListState()
+  val density = LocalDensity.current
+  var lyricsViewportPx by remember { mutableIntStateOf(0) }
 
   val currentPosMs = remember(precisePosition, state.syncOffsetMs) {
     (precisePosition * 1000).toLong() + state.syncOffsetMs
   }
 
-  // Auto-scroll to active line
-  LaunchedEffect(state.activeLineIndex, isLyricsFullscreen) {
-    if (state.activeLineIndex >= 0) {
-      val targetItem = (state.activeLineIndex - 2).coerceAtLeast(0)
-      runCatching {
-        listState.animateScrollToItem(targetItem)
+  // BetterLyrics-style focus: glide the active line to the vertical center of the viewport
+  // instead of pinning it near the top.
+  LaunchedEffect(state.activeLineIndex, isLyricsFullscreen, lyricsViewportPx) {
+    val target = state.activeLineIndex
+    if (target < 0) return@LaunchedEffect
+    runCatching {
+      val layout = listState.layoutInfo
+      val viewportCenter = (layout.viewportStartOffset + layout.viewportEndOffset) / 2
+      val item = layout.visibleItemsInfo.firstOrNull { it.index == target }
+      if (item != null) {
+        val itemCenter = item.offset + item.size / 2
+        listState.animateScrollBy(
+          (itemCenter - viewportCenter).toFloat(),
+          animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+        )
+      } else {
+        // Line is off-screen (seek/jump): land near mid-viewport, then fine-center it.
+        val viewportHeight = layout.viewportEndOffset - layout.viewportStartOffset
+        listState.scrollToItem(target, scrollOffset = -viewportHeight / 2)
+        val settled = listState.layoutInfo
+        val settledCenter = (settled.viewportStartOffset + settled.viewportEndOffset) / 2
+        settled.visibleItemsInfo.firstOrNull { it.index == target }?.let { visible ->
+          val itemCenter = visible.offset + visible.size / 2
+          listState.animateScrollBy(
+            (itemCenter - settledCenter).toFloat(),
+            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+          )
+        }
       }
     }
   }
@@ -192,7 +223,8 @@ fun LyricsView(
       Box(
         modifier = Modifier
           .weight(1f)
-          .fillMaxWidth(),
+          .fillMaxWidth()
+          .onSizeChanged { lyricsViewportPx = it.height },
         contentAlignment = Alignment.Center,
       ) {
         val activeLyrics = state.lyrics
@@ -211,10 +243,14 @@ fun LyricsView(
           }
 
           activeLyrics != null && !activeLyrics.synced.isNullOrEmpty() -> {
+            // Half-viewport insets let the first and last lines reach the exact center.
+            val centerInset =
+              with(density) { (lyricsViewportPx / 2 - 48.dp.roundToPx()).coerceAtLeast(0).toDp() }
             LazyColumn(
               state = listState,
               modifier = Modifier.fillMaxSize(),
               verticalArrangement = Arrangement.spacedBy(20.dp),
+              contentPadding = PaddingValues(top = centerInset, bottom = centerInset),
             ) {
               itemsIndexed(
                 items = activeLyrics.synced,
@@ -277,8 +313,8 @@ fun LyricsView(
                 )
 
                 val lineScale by animateFloatAsState(
-                  targetValue = if (isActiveLine) 1f else 0.95f,
-                  animationSpec = tween(durationMillis = 166, easing = FastOutSlowInEasing),
+                  targetValue = if (isActiveLine) 1f else 0.92f,
+                  animationSpec = spring(dampingRatio = 0.75f, stiffness = 220f),
                   label = "LineScale",
                 )
 
@@ -306,7 +342,8 @@ fun LyricsView(
                       translationY = lineTranslationY
                       scaleX = lineScale
                       scaleY = lineScale
-                      transformOrigin = TransformOrigin(0f, 0.5f)
+                      // Fullscreen scales from the middle so focused lines grow in place.
+                      transformOrigin = TransformOrigin(if (isLyricsFullscreen) 0.5f else 0f, 0.5f)
                     }
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
@@ -321,7 +358,7 @@ fun LyricsView(
                   if (isActiveLine && !isBlankLine && !line.words.isNullOrEmpty()) {
                     FlowRow(
                       modifier = Modifier.fillMaxWidth(),
-                      horizontalArrangement = Arrangement.Start,
+                      horizontalArrangement = if (isLyricsFullscreen) Arrangement.Center else Arrangement.Start,
                       verticalArrangement = Arrangement.Center,
                     ) {
                       line.words.forEachIndexed { wordIndex, word ->
@@ -335,6 +372,7 @@ fun LyricsView(
                           currentPositionMs = currentPosMs,
                           activeColor = activeColor,
                           inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                          fontSize = if (isLyricsFullscreen) 26.sp else 22.sp,
                         )
                       }
                     }
@@ -342,10 +380,15 @@ fun LyricsView(
                     Text(
                       text = displayText,
                       color = lineColor,
-                      fontSize = if (isActiveLine) 22.sp else 19.sp,
+                      fontSize = when {
+                        isActiveLine && isLyricsFullscreen -> 26.sp
+                        isActiveLine -> 22.sp
+                        isLyricsFullscreen -> 21.sp
+                        else -> 19.sp
+                      },
                       fontWeight = if (isActiveLine) FontWeight.Black else FontWeight.ExtraBold,
                       fontFamily = FontFamily.SansSerif,
-                      textAlign = TextAlign.Start,
+                      textAlign = if (isLyricsFullscreen) TextAlign.Center else TextAlign.Start,
                       modifier = Modifier.fillMaxWidth(),
                     )
                   }
@@ -364,7 +407,7 @@ fun LyricsView(
                       fontSize = if (isActiveLine) 16.sp else 14.sp,
                       fontWeight = FontWeight.Bold,
                       fontFamily = FontFamily.SansSerif,
-                      textAlign = TextAlign.Start,
+                      textAlign = if (isLyricsFullscreen) TextAlign.Center else TextAlign.Start,
                       modifier = Modifier.fillMaxWidth(),
                     )
                   }
@@ -453,6 +496,7 @@ private fun AnimatedLyricWord(
   currentPositionMs: Long,
   activeColor: Color,
   inactiveColor: Color,
+  fontSize: TextUnit = 22.sp,
 ) {
   val startTimeMs = word.time.toLong()
   val durationMs = (endTimeMs - startTimeMs).coerceAtLeast(1L)
@@ -471,7 +515,7 @@ private fun AnimatedLyricWord(
   )
   val textStyle =
     MaterialTheme.typography.headlineSmall.copy(
-      fontSize = 22.sp,
+      fontSize = fontSize,
       fontWeight = FontWeight.Black,
       fontFamily = FontFamily.SansSerif,
     )
