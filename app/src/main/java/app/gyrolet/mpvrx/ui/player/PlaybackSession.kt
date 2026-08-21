@@ -136,6 +136,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var activeNetworkStream: NetworkStreamRegistration? = null
   private val auxiliaryNetworkStreams = linkedMapOf<String, NetworkStreamRegistration>()
   private var suspendedVideoTrack: SuspendedVideoTrack? = null
+  private var deferredVideoSelectionGeneration: Long? = null
   private var desiredPaused = true
   private var seekAudioGuardToken = 0L
   private var seekAudioGuardPreviousMute: Boolean? = null
@@ -180,6 +181,7 @@ object PlaybackSession : MPVLib.EventObserver {
         nativeCoreReady = false
         observedProperties.clear()
         suspendedVideoTrack = null
+        deferredVideoSelectionGeneration = null
         desiredPaused = true
         clearSeekAudioGuardLocked(restoreMute = false)
         clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
@@ -215,6 +217,7 @@ object PlaybackSession : MPVLib.EventObserver {
           nativeCoreReady = false
           activeCoreConfigurationKey = null
           suspendedVideoTrack = null
+          deferredVideoSelectionGeneration = null
           desiredPaused = true
           clearSeekAudioGuardLocked(restoreMute = false)
           clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
@@ -256,6 +259,10 @@ object PlaybackSession : MPVLib.EventObserver {
       attachedSurfaceOwner = owner
       updateState { it.copy(surfaceAttached = true) }
       restoreSuspendedVideoTrackLocked()
+      if (deferredVideoSelectionGeneration == _state.value.generation) {
+        MPVLib.setPropertyString("vid", "auto")
+        deferredVideoSelectionGeneration = null
+      }
       true
     }
 
@@ -311,6 +318,7 @@ object PlaybackSession : MPVLib.EventObserver {
       val nextGeneration = _state.value.generation + 1L
       pendingGenerations.clear()
       suspendedVideoTrack = null
+      deferredVideoSelectionGeneration = null
       desiredPaused = true
 
       // Ambient shaders contain dimensions and scale baked for one video. Never leave them attached
@@ -373,6 +381,7 @@ object PlaybackSession : MPVLib.EventObserver {
     updateState { it.copy(phase = PlaybackPhase.STOPPING) }
     desiredPaused = true
     suspendedVideoTrack = null
+    deferredVideoSelectionGeneration = null
     clearSeekAudioGuardLocked(restoreMute = false)
     clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
     runCatching { MPVLib.setPropertyBoolean("mute", true) }
@@ -538,6 +547,7 @@ object PlaybackSession : MPVLib.EventObserver {
       beginPlaybackTransitionAudioGuardLocked()
 
       val generation = _state.value.generation + 1L
+      deferredVideoSelectionGeneration = generation.takeUnless { selectVideoForNewFile }
       pendingGenerations.addLast(generation)
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
       updateState {
@@ -561,7 +571,7 @@ object PlaybackSession : MPVLib.EventObserver {
       // render Surface is attached, explicitly make vid=auto file-local to this new load. This
       // prevents a preceding vid=no from producing "No video or audio streams selected" on
       // video-only files while preserving video suppression for true background/no-Surface loads.
-      val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes"
+      val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes,vid=no"
       MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
       propBoolean.emit("pause", false)
       generation
@@ -627,7 +637,10 @@ object PlaybackSession : MPVLib.EventObserver {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
       MPVLib.setPropertyInt(property, value)
-      if (property == "vid" && value > 0) suspendedVideoTrack = null
+      if (property == "vid" && value > 0) {
+        suspendedVideoTrack = null
+        deferredVideoSelectionGeneration = null
+      }
     }
   }
 
@@ -728,6 +741,7 @@ object PlaybackSession : MPVLib.EventObserver {
           }
         } else if (value != "no") {
           suspendedVideoTrack = null
+          deferredVideoSelectionGeneration = null
         }
       }
 
@@ -903,6 +917,7 @@ object PlaybackSession : MPVLib.EventObserver {
             releaseActiveNetworkStream()
             releaseAuxiliaryNetworkStreams()
             suspendedVideoTrack = null
+            deferredVideoSelectionGeneration = null
             desiredPaused = true
             clearSeekAudioGuardLocked(restoreMute = false)
             clearPlaybackTransitionAudioGuardLocked(restoreMute = false)

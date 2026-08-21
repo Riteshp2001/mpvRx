@@ -901,8 +901,14 @@ class PlayerActivity :
       return
     }
 
-    // Background playback or Mini Player handoff on Back: return to the browser while
-    // handing the live MPV session to the foreground service.
+    // Auto-PiP takes precedence over background playback/Mini Player. Previously the background
+    // branch consumed Back first whenever both settings were enabled, so PiP never received the
+    // navigation event. If Android rejects the PiP request, continue into the normal background
+    // fallback below rather than leaving the player open with hidden controls.
+    if (shouldEnterPipOnNavigation() && enterPipModeSmoothly()) return
+
+    // Background playback or Mini Player handoff on Back: return to the browser while handing
+    // the live MPV session to the foreground service. This is also the PiP-failure fallback.
     if (
       isMiniPlayerEnabled() ||
       PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnBack(
@@ -923,12 +929,6 @@ class PlayerActivity :
           finish()
         }
       }
-      return
-    }
-
-    // Check if auto PIP is enabled - enter PIP mode instead of finishing
-    if (playerPreferences.autoPiPOnNavigation.get() && !viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && isReady) {
-      enterPipModeSmoothly()
       return
     }
 
@@ -1198,11 +1198,21 @@ class PlayerActivity :
 
   override fun onUserLeaveHint() {
     super.onUserLeaveHint()
-    // Enter PIP mode when user presses home button if auto PIP is enabled (disabled for audio)
-    if (playerPreferences.autoPiPOnNavigation.get() && !viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && isReady && !isFinishing) {
+    // Enter PiP when Home sends the Activity away. A failed request is intentionally left to
+    // onStop(), which can still perform the configured background-playback fallback.
+    if (shouldEnterPipOnNavigation()) {
       enterPipModeSmoothly()
     }
   }
+
+  private fun shouldEnterPipOnNavigation(): Boolean =
+    PlayerLifecyclePolicy.shouldEnterPipOnNavigation(
+      autoPipEnabled = playerPreferences.autoPiPOnNavigation.get(),
+      mediaReady = isReady,
+      isAudioMedia = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio(),
+      isActivityUnavailable = isFinishing || isDestroyed || isUserFinishing,
+      isAlreadyInPip = isInPictureInPictureMode,
+    )
 
   override fun onWindowFocusChanged(hasFocus: Boolean) {
     super.onWindowFocusChanged(hasFocus)
@@ -3085,7 +3095,10 @@ class PlayerActivity :
   }
 
   private fun getPreferredCurrentTitle(): String =
-    getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
+    PlaybackSession.queue.value.currentItem?.title?.takeIf {
+      PlaybackSession.queue.value.isExplicitQueue && it.isNotBlank()
+    }
+      ?: getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
       ?: networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
       ?: fileName
 
@@ -4616,7 +4629,6 @@ class PlayerActivity :
           playableUri = uri,
           originalUri = originalUri?.toString(),
           expandM3u = true,
-          disableVideoOnFallback = true,
         )
       } else {
         startMediaLoad(uri, originalUri?.toString())
@@ -4628,7 +4640,6 @@ class PlayerActivity :
     playableUri: String,
     originalUri: String? = null,
     expandM3u: Boolean = false,
-    disableVideoOnFallback: Boolean = false,
   ) {
     mediaLoadJob?.cancel()
     playWhenFileLoaded = true
@@ -4641,8 +4652,9 @@ class PlayerActivity :
     // On cold start the render Surface attaches only after the load reaches mpv, so the
     // surface-attached gate inside PlaybackSession.load() would leave the file at vid=no and a
     // video-only (soundless) file would abort with "No video or audio streams selected".
-    // Foreground loads therefore request video explicitly; background/fallback loads keep the gate.
-    val selectVideoOnLoad = if (disableVideoOnFallback || isInBackgroundPlayback) null else true
+    // Foreground loads therefore request video explicitly. HLS URLs which look like playlists but
+    // fall back to direct mpv playback use this same policy instead of being stranded at vid=no.
+    val selectVideoOnLoad = PlayerLifecyclePolicy.shouldSelectVideoForLoad(isInBackgroundPlayback)
     val requestedSource = originalUri ?: extractUriFromIntent(sourceIntent)?.toString() ?: playableUri
     val requestedHeaders =
       buildPlaybackHeaders(
@@ -4738,7 +4750,7 @@ class PlayerActivity :
           }
 
           // Tear down the outgoing video track before replacing the file.
-          restoreVideoTrackAfterFileLoad = !disableVideoOnFallback
+          restoreVideoTrackAfterFileLoad = selectVideoOnLoad
           PlaybackSession.setPropertyString("vid", "no")
           val networkPath = sourceIntent.getStringExtra("network_file_path")
           val networkConnectionId = sourceIntent.getLongExtra("network_connection_id", -1L)
@@ -4837,24 +4849,17 @@ class PlayerActivity :
     if (isInPictureInPictureMode) {
       wasInPipMode = true
       handledPipDismissal = false
-      // PiP leaves the Activity started, so onStop never runs and the media notification it
-      // would have posted never appears. Start the service here, but leave video enabled
-      // because the PiP window is still rendering it.
-      if (
-        !isBackgroundPlaybackSessionActive &&
-        !isUserFinishing &&
-        !isFinishing &&
-        shouldShowPlaybackNotification()
-      ) {
-        if (startBackgroundPlayback(allowUserPrompt = false) == BackgroundPlaybackStartResult.Started) {
-          isBackgroundPlaybackSessionActive = true
-          startedBackgroundForPip = true
-        }
-      }
+      ensurePipPlaybackNotification()
     } else if (startedBackgroundForPip) {
-      // Expanded back to full screen, so hand playback ownership back to the Activity.
+      // Expanded back to full screen. A background-enabled session keeps its notification ready;
+      // a service created only for PiP is handed back to the Activity and stopped.
       startedBackgroundForPip = false
-      endBackgroundPlayback()
+      isBackgroundPlaybackSessionActive = false
+      if (isBackgroundPlaybackEnabled()) {
+        syncBackgroundPlaybackService(updateThumbnail = true)
+      } else {
+        endBackgroundPlayback()
+      }
     }
 
     binding.controls.animate().cancel()
@@ -4922,11 +4927,13 @@ class PlayerActivity :
       Log.e(TAG, "Error entering PiP mode with hidden overlay", e)
     }
 
-    enterPipModeSmoothly()
+    if (!enterPipModeSmoothly()) exitPipUIMode()
   }
 
-  private fun enterPipModeSmoothly() {
-    if (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()) return
+  private fun enterPipModeSmoothly(): Boolean {
+    if (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio() || !isReady || isFinishing || isDestroyed) {
+      return false
+    }
     binding.root.animate().cancel()
     binding.controls.animate().cancel()
     binding.root.scaleX = 1f
@@ -4934,7 +4941,36 @@ class PlayerActivity :
     binding.root.translationX = 0f
     binding.controls.alpha = 0f
     pipHelper.updatePictureInPictureParams()
-    pipHelper.enterPipMode()
+    val entered = pipHelper.enterPipMode()
+    if (!entered && !isInPictureInPictureMode) binding.controls.alpha = 1f
+    return entered
+  }
+
+  /**
+   * PiP normally remains in STARTED state, so onStop cannot be relied on to create the media
+   * notification. Start or reuse the playback service after PiP is confirmed, regardless of the
+   * video-background preference. Explicit notification-style and Android permission choices are
+   * still respected by [startBackgroundPlayback].
+   */
+  private fun ensurePipPlaybackNotification() {
+    if (isUserFinishing || isFinishing || isDestroyed || !isReady) return
+
+    if (isBackgroundPlaybackSessionActive && MediaPlaybackService.isForegroundActive()) {
+      syncBackgroundPlaybackService(updateThumbnail = true)
+      return
+    }
+
+    // A stale ownership flag must not suppress the notification after Android recreated or
+    // stopped the service independently of the Activity.
+    isBackgroundPlaybackSessionActive = false
+
+    if (startBackgroundPlayback(allowUserPrompt = false) == BackgroundPlaybackStartResult.Started) {
+      isBackgroundPlaybackSessionActive = true
+      startedBackgroundForPip = true
+      // An existing bound service is synchronized immediately; a newly bound service performs
+      // the same sync from onServiceConnected.
+      syncBackgroundPlaybackService(updateThumbnail = true)
+    }
   }
 
   // ==================== Orientation Management ====================
@@ -5926,7 +5962,10 @@ class PlayerActivity :
     val service = mediaPlaybackService ?: return
     val rawTitle = getPreferredCurrentTitle().ifBlank { fileName.ifBlank { getString(R.string.player_unknown_video) } }
     val title = FileTypeUtils.stripExtension(rawTitle)
-    val artist = runCatching { PlaybackSession.getPropertyString("metadata/artist") }.getOrNull() ?: ""
+    val currentQueueItem = PlaybackSession.queue.value.currentItem
+    val artist =
+      currentQueueItem?.artist?.takeIf { it.isNotBlank() }
+        ?: runCatching { PlaybackSession.getPropertyString("metadata/artist") }.getOrNull().orEmpty()
     val thumbnailKey = buildBackgroundThumbnailKey()
     val cachedThumbnail =
       if (thumbnailKey == lastBackgroundThumbnailKey) {
@@ -5955,7 +5994,10 @@ class PlayerActivity :
         delay(150)
         val generatedThumbnail =
           withContext(Dispatchers.IO) {
-            runCatching { PlaybackSession.grabThumbnail(480) }.getOrNull() ?: runCatching {
+            app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver.decodeArtworkUri(
+              this@PlayerActivity,
+              currentQueueItem?.artworkUri,
+            ) ?: runCatching { PlaybackSession.grabThumbnail(480) }.getOrNull() ?: runCatching {
               val uriStr = currentPlayableUri
               if (!uriStr.isNullOrBlank()) {
                 val parsedUri = Uri.parse(uriStr)
@@ -6014,6 +6056,10 @@ class PlayerActivity :
    * For m3u/m3u8 streams, only uses MPV's media-title when it looks valid.
    */
   fun getTitleForControls(): String {
+    PlaybackSession.queue.value.currentItem?.title?.takeIf {
+      PlaybackSession.queue.value.isExplicitQueue && it.isNotBlank()
+    }?.let { return it }
+
     getExplicitIntentTitle()?.let { return it }
 
     if (HttpUtils.shouldPreferResolvedMediaTitle(extractUriFromIntent(intent), fileName)) {

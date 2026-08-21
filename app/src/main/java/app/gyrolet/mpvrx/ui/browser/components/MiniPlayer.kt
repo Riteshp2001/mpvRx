@@ -172,6 +172,7 @@ private fun MiniPlayerContent(
   isAudioOnlyItem: Boolean,
 ) {
   val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
+  val queueState by PlaybackSession.queue.collectAsStateWithLifecycle()
   val currentItem = sessionState.currentItem
   val paused by PlaybackSession.propBoolean["pause"].collectAsStateWithLifecycle()
   val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
@@ -182,9 +183,11 @@ private fun MiniPlayerContent(
   val videoHeight by PlaybackSession.propLong["video-params/h"].collectAsStateWithLifecycle()
 
   val isPlaying = paused == false
-  val title = rawMediaTitle?.takeIf { it.isNotBlank() }
-    ?: currentItem?.title?.takeIf { it.isNotBlank() }
-    ?: "Media Track"
+  val title =
+    queueState.currentItem?.title?.takeIf { queueState.isExplicitQueue && it.isNotBlank() }
+      ?: rawMediaTitle?.takeIf { it.isNotBlank() }
+      ?: currentItem?.title?.takeIf { it.isNotBlank() }
+      ?: "Media Track"
 
   val isVideoMode = !isAudioOnlyItem && enableVideoMiniPlayer
 
@@ -200,7 +203,11 @@ private fun MiniPlayerContent(
   val coverArtPath =
     currentItem?.originalUri?.takeIf { it.isNotBlank() }
       ?: currentItem?.playableUri?.takeIf { it.isNotBlank() }
-  val coverArt = rememberMiniPlayerCoverArt(if (isAudioOnlyItem) coverArtPath else null)
+  val coverArt =
+    rememberMiniPlayerCoverArt(
+      pathOrUri = if (isAudioOnlyItem) coverArtPath else null,
+      artworkUri = if (isAudioOnlyItem) currentItem?.artworkUri else null,
+    )
 
   val coroutineScope = rememberCoroutineScope()
   var offsetX by remember { mutableFloatStateOf(0f) }
@@ -544,16 +551,20 @@ private fun MiniPlayerContent(
  * square cover instead of a bare icon. Returns null when no artwork is available.
  */
 @Composable
-private fun rememberMiniPlayerCoverArt(pathOrUri: String?): Bitmap? {
+private fun rememberMiniPlayerCoverArt(
+  pathOrUri: String?,
+  artworkUri: String?,
+): Bitmap? {
   val context = LocalContext.current
   var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-  LaunchedEffect(pathOrUri) {
+  LaunchedEffect(pathOrUri, artworkUri) {
     if (pathOrUri.isNullOrBlank()) {
       bitmap = null
       return@LaunchedEffect
     }
     withContext(Dispatchers.IO) {
       runCatching {
+        EmbeddedArtworkResolver.decodeArtworkUri(context, artworkUri)?.let { return@runCatching it }
         val cleanPath =
           when {
             pathOrUri.startsWith("file://") -> pathOrUri.removePrefix("file://")

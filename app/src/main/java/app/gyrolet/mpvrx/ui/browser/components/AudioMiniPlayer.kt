@@ -66,7 +66,10 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
   if (!isServiceRunning || sessionState.currentItem == null) return
 
   val isPlaying = paused == false
-  val title = rawMediaTitle?.takeIf { it.isNotBlank() } ?: "Audio Track"
+  val title =
+    sessionState.currentItem?.title?.takeIf { it.isNotBlank() }
+      ?: rawMediaTitle?.takeIf { it.isNotBlank() }
+      ?: "Audio Track"
 
   Surface(
     modifier =

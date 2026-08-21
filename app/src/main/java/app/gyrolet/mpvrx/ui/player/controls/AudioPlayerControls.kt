@@ -202,20 +202,30 @@ private object AudioPresentationMetadataCache {
         )
     }
 
-  fun peek(pathOrUri: String?): AudioPresentationMetadata? {
+  private fun cacheKey(
+    pathOrUri: String,
+    artworkUri: String?,
+  ): String = "$pathOrUri\u0000${artworkUri.orEmpty()}"
+
+  fun peek(
+    pathOrUri: String?,
+    artworkUri: String?,
+  ): AudioPresentationMetadata? {
     if (pathOrUri.isNullOrBlank()) return null
-    return synchronized(cache) { cache.get(pathOrUri) }
+    return synchronized(cache) { cache.get(cacheKey(pathOrUri, artworkUri)) }
   }
 
   suspend fun resolve(
     context: android.content.Context,
     pathOrUri: String,
+    artworkUri: String?,
   ): AudioPresentationMetadata =
     withContext(Dispatchers.IO) {
-      synchronized(cache) { cache.get(pathOrUri) }?.let { return@withContext it }
+      val key = cacheKey(pathOrUri, artworkUri)
+      synchronized(cache) { cache.get(key) }?.let { return@withContext it }
 
       loadMutex.withLock {
-        synchronized(cache) { cache.get(pathOrUri) }?.let { return@withLock it }
+        synchronized(cache) { cache.get(key) }?.let { return@withLock it }
 
         val cleanPath =
           when {
@@ -223,6 +233,7 @@ private object AudioPresentationMetadataCache {
             pathOrUri.startsWith("content://") -> null
             else -> pathOrUri
           }
+        val explicitArtwork = EmbeddedArtworkResolver.decodeArtworkUri(context, artworkUri)
         val retriever = MediaMetadataRetriever()
         val loaded =
           try {
@@ -233,7 +244,7 @@ private object AudioPresentationMetadataCache {
             }
 
             AudioPresentationMetadata(
-              artwork = EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever),
+              artwork = explicitArtwork ?: EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever),
               artist =
                 retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                   ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
@@ -241,37 +252,42 @@ private object AudioPresentationMetadataCache {
                   ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
             )
           } catch (_: Exception) {
-            AudioPresentationMetadata(artwork = null, artist = null)
+            AudioPresentationMetadata(artwork = explicitArtwork, artist = null)
           } finally {
             runCatching { retriever.release() }
           }
 
-        synchronized(cache) { cache.put(pathOrUri, loaded) }
+        synchronized(cache) { cache.put(key, loaded) }
         loaded
       }
     }
 }
 
 @Composable
-private fun rememberAudioPresentationMetadata(pathOrUri: String?): AudioPresentationMetadata? {
+private fun rememberAudioPresentationMetadata(
+  pathOrUri: String?,
+  artworkUri: String? = null,
+): AudioPresentationMetadata? {
   val context = LocalContext.current
-  var metadata by remember(pathOrUri) {
-    mutableStateOf(AudioPresentationMetadataCache.peek(pathOrUri))
+  var metadata by remember(pathOrUri, artworkUri) {
+    mutableStateOf(AudioPresentationMetadataCache.peek(pathOrUri, artworkUri))
   }
-  LaunchedEffect(pathOrUri) {
+  LaunchedEffect(pathOrUri, artworkUri) {
     metadata =
       if (pathOrUri.isNullOrBlank()) {
         null
       } else {
-        AudioPresentationMetadataCache.resolve(context, pathOrUri)
+        AudioPresentationMetadataCache.resolve(context, pathOrUri, artworkUri)
       }
   }
   return metadata
 }
 
 @Composable
-private fun rememberAudioAlbumArt(pathOrUri: String?): Bitmap? =
-  rememberAudioPresentationMetadata(pathOrUri)?.artwork
+private fun rememberAudioAlbumArt(
+  pathOrUri: String?,
+  artworkUri: String? = null,
+): Bitmap? = rememberAudioPresentationMetadata(pathOrUri, artworkUri)?.artwork
 
 /**
  * Cuboid is a Compose Canvas and does not pass through the GLSurfaceView VisualizerOverlay, so it
@@ -368,6 +384,8 @@ fun AudioPlayerControls(
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
+  val playbackState by PlaybackSession.state.collectAsStateWithLifecycle()
+  val currentItem = playbackState.currentItem
 
   var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
   var wasLyricsActiveBeforeLandscape by rememberSaveable { mutableStateOf(false) }
@@ -388,6 +406,10 @@ fun AudioPlayerControls(
   val currentPath by PlaybackSession.propString["path"].collectAsState()
   val currentStreamFilename by PlaybackSession.propString["stream-open-filename"].collectAsState()
   val mediaPath = currentPath?.takeIf { it.isNotBlank() } ?: currentStreamFilename
+  val currentMediaSource =
+    currentItem?.originalUri?.takeIf { it.isNotBlank() }
+      ?: currentItem?.playableUri?.takeIf { it.isNotBlank() }
+      ?: mediaPath
 
   val audioCodec by PlaybackSession.propString["audio-codec-name"].collectAsState()
   val sampleRate by PlaybackSession.propInt["audio-params/samplerate"].collectAsState()
@@ -417,7 +439,7 @@ fun AudioPlayerControls(
 
   var showLosslessDetails by remember { mutableStateOf(false) }
 
-  LaunchedEffect(mediaPath) {
+  LaunchedEffect(currentItem?.stableId, mediaPath) {
     showLosslessDetails = false
   }
 
@@ -466,7 +488,11 @@ fun AudioPlayerControls(
       }
     }
 
-  val currentAudioPresentation = rememberAudioPresentationMetadata(mediaPath)
+  val currentAudioPresentation =
+    rememberAudioPresentationMetadata(
+      pathOrUri = currentMediaSource,
+      artworkUri = currentItem?.artworkUri,
+    )
   val albumArtBitmap = currentAudioPresentation?.artwork
 
   fun cleanSongTitle(
@@ -493,12 +519,15 @@ fun AudioPlayerControls(
 
   var lastValidTitle by remember {
     mutableStateOf(
-      mediaTitle?.takeIf { it.isNotBlank() }?.stripAudioExtension() ?: "Audio Track",
+      currentItem?.title?.takeIf { it.isNotBlank() }?.stripAudioExtension()
+        ?: mediaTitle?.takeIf { it.isNotBlank() }?.stripAudioExtension()
+        ?: "Audio Track",
     )
   }
-  LaunchedEffect(mediaTitle) {
-    if (!mediaTitle.isNullOrBlank()) {
-      lastValidTitle = mediaTitle.stripAudioExtension()
+  LaunchedEffect(currentItem?.stableId, currentItem?.title, mediaTitle) {
+    val updatedTitle = currentItem?.title?.takeIf { it.isNotBlank() } ?: mediaTitle
+    if (!updatedTitle.isNullOrBlank()) {
+      lastValidTitle = updatedTitle.stripAudioExtension()
     }
   }
 
@@ -510,8 +539,8 @@ fun AudioPlayerControls(
   val retrievedArtist = currentAudioPresentation?.artist
 
   val displayArtist =
-    remember(rawArtist, rawArtistAlt, rawAlbumArtist, rawPerformer, retrievedArtist) {
-      sequenceOf(rawArtist, rawArtistAlt, rawAlbumArtist, rawPerformer, retrievedArtist)
+    remember(currentItem?.artist, rawArtist, rawArtistAlt, rawAlbumArtist, rawPerformer, retrievedArtist) {
+      sequenceOf(currentItem?.artist, rawArtist, rawArtistAlt, rawAlbumArtist, rawPerformer, retrievedArtist)
         .filterNotNull()
         .firstOrNull { it.isNotBlank() } ?: "Unknown Artist"
     }
@@ -774,10 +803,8 @@ fun AudioPlayerControls(
     val haptic = LocalHapticFeedback.current
     var activeCoverOverride by remember { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(albumArtBitmap) {
-      if (albumArtBitmap != null) {
-        activeCoverOverride = null
-      }
+    LaunchedEffect(currentItem?.stableId, albumArtBitmap) {
+      activeCoverOverride = null
     }
 
     val nextItem = remember(filteredPlaylist, mediaPath) {
@@ -790,8 +817,16 @@ fun AudioPlayerControls(
       if (idx > 0) filteredPlaylist[idx - 1] else null
     }
 
-    val nextCoverBitmap = rememberAudioAlbumArt(nextItem?.let { it.path.ifBlank { it.uri.toString() } })
-    val prevCoverBitmap = rememberAudioAlbumArt(prevItem?.let { it.path.ifBlank { it.uri.toString() } })
+    val nextCoverBitmap =
+      rememberAudioAlbumArt(
+        pathOrUri = nextItem?.let { it.path.ifBlank { it.uri.toString() } },
+        artworkUri = nextItem?.tvgLogo,
+      )
+    val prevCoverBitmap =
+      rememberAudioAlbumArt(
+        pathOrUri = prevItem?.let { it.path.ifBlank { it.uri.toString() } },
+        artworkUri = prevItem?.tvgLogo,
+      )
 
     @OptIn(ExperimentalFoundationApi::class)
     val centerVisualizerView = @Composable { visualizerModifier: Modifier ->
@@ -1871,7 +1906,11 @@ private fun UpNextPlaylistItemRow(
     MaterialTheme.colorScheme.surfaceContainer
   }
 
-  val itemCoverArt = rememberAudioAlbumArt(item.path.ifBlank { item.uri.toString() })
+  val itemCoverArt =
+    rememberAudioAlbumArt(
+      pathOrUri = item.path.ifBlank { item.uri.toString() },
+      artworkUri = item.tvgLogo,
+    )
 
   Surface(
     modifier = Modifier

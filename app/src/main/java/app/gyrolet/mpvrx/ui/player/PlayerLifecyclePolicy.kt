@@ -10,6 +10,23 @@
 package app.gyrolet.mpvrx.ui.player
 
 internal object PlayerLifecyclePolicy {
+  /** Foreground loads must select video even when their render surface attaches a little later. */
+  fun shouldSelectVideoForLoad(isInBackgroundPlayback: Boolean): Boolean = !isInBackgroundPlayback
+
+  /** Auto-PiP owns Home/Back navigation whenever a playable video can enter it. */
+  fun shouldEnterPipOnNavigation(
+    autoPipEnabled: Boolean,
+    mediaReady: Boolean,
+    isAudioMedia: Boolean,
+    isActivityUnavailable: Boolean,
+    isAlreadyInPip: Boolean,
+  ): Boolean =
+    autoPipEnabled &&
+      mediaReady &&
+      !isAudioMedia &&
+      !isActivityUnavailable &&
+      !isAlreadyInPip
+
   fun shouldPauseOnPause(
     backgroundPlaybackEnabled: Boolean,
     backgroundPlaybackSessionActive: Boolean,

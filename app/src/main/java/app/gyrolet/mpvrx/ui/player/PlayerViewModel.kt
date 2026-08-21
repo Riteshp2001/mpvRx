@@ -89,6 +89,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -294,7 +296,7 @@ class PlayerViewModel : ViewModel(),
   private var playlistMetadataJob: Job? = null
   private var controlsVisibleForPolling = false
   private var seekBarVisibleForPolling = false
-  private val skippedSegmentTypes = mutableSetOf<SkipSegmentType>()
+  private val skippedSegments = mutableSetOf<SkipSegment>()
   private var chapterDerivedSegments: List<SkipSegment> = emptyList()
   private var introDbSegments: List<app.gyrolet.mpvrx.repository.IntroDbSegment> = emptyList()
   private var introDbSourceKey: String = IntroSegmentProvider.INTRO_DB.sourceKey
@@ -1448,12 +1450,19 @@ class PlayerViewModel : ViewModel(),
 
     // Update precise duration when the integer duration changes (avoid polling)
     viewModelScope.launch(playbackStateDispatcher) {
-      _duration.collect { _ ->
+      _duration.collect { observedDuration ->
         if (!_isMpvCoreReady.value) return@collect
+        if (observedDuration == null || observedDuration <= 0) {
+          _preciseDuration.value = 0f
+          return@collect
+        }
         val dur = PlaybackSession.getPropertyDouble("duration")
         if (dur != null && dur > 0) {
           _preciseDuration.value = dur.toFloat()
-          mergeSkipSegments()
+          // chapter-list and duration are independent mpv properties. A chapter list can arrive
+          // first (or be identical to the previous file), so always derive its markers again once
+          // the new duration is known.
+          refreshChapterDerivedSegments(chapters.value)
           checkPendingIntroLookup()
           syncplayManager.updateFileInfo(currentSyncplayFileInfo())
 
@@ -1673,6 +1682,17 @@ class PlayerViewModel : ViewModel(),
     hideSeekThumbnailPreview()
     seekThumbnailCache.evictAll()
     seekThumbnailFailureAt.clear()
+    introLookupJob?.cancel()
+    _duration.value = null
+    _preciseDuration.value = 0f
+    chapterDerivedSegments = emptyList()
+    introDbSegments = emptyList()
+    skipSegmentsSnapshot = emptyList()
+    _skipSegments.value = emptyList()
+    _currentSkippableSegment.value = null
+    _showSkipChipAuto.value = false
+    skippedSegments.clear()
+    pendingIntroLookupTitle = currentMediaTitle.takeIf { it.isNotBlank() }
     _videoOpenAnimationState.update {
       it.copy(
         loadToken = it.loadToken + 1,
@@ -2123,9 +2143,8 @@ class PlayerViewModel : ViewModel(),
       setOf("fd", "fdclose", "edl", "memory", "null", "av", "lavf", "archive", "slice", "mf", "hex", "bd", "dvd", "dvb")
     const val PLAYLIST_METADATA_PREFETCH_RADIUS = 40
     const val PLAYLIST_METADATA_PREFETCH_LIMIT = 120
-    const val MIN_INTRO_MARKER_DURATION_SEC = 480.0
     const val INTRO_MARKER_CACHE_PREFS = "intro_marker_cache"
-    const val INTRO_MARKER_CACHE_PREFIX = "intro_marker:"
+    const val INTRO_MARKER_CACHE_PREFIX = "intro_marker:v2:"
     const val INTRO_MARKER_CACHE_MAX_ENTRIES = 200
     const val INTRO_MARKER_CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1000L
     const val INTRO_MARKER_CACHE_LOADED = "loaded"
@@ -2706,7 +2725,7 @@ class PlayerViewModel : ViewModel(),
       syncplayManager.updateFileInfo(currentSyncplayFileInfo())
 
       restoreSavedVideoAspect(showUpdate = false)
-      skippedSegmentTypes.clear()
+      skippedSegments.clear()
       chapterDerivedSegments = emptyList()
       introDbSegments = emptyList()
       _skipSegments.value = emptyList()
@@ -2723,6 +2742,7 @@ class PlayerViewModel : ViewModel(),
           )
         }
       lookupIntroSegments(mediaTitle)
+      refreshChapterDerivedSegments(chapters.value)
 
       // 2. Reset Video Zoom
       if (_videoZoom.value != 0f) {
@@ -2746,11 +2766,13 @@ class PlayerViewModel : ViewModel(),
   private fun maybeAutoSkipIntro(positionSeconds: Double) {
     val activeSegment =
       skipSegmentsSnapshot.firstOrNull { segment ->
-        positionSeconds >= segment.startSeconds && positionSeconds < segment.endSeconds && (segment.endSeconds - positionSeconds) >= 0.8
+        positionSeconds >= segment.startSeconds &&
+          positionSeconds < segment.endSeconds &&
+          segment !in skippedSegments
       }
 
     val showChip =
-      activeSegment != null && !skippedSegmentTypes.contains(activeSegment.type) &&
+      activeSegment != null &&
         (positionSeconds - activeSegment.startSeconds) < AUTO_SHOW_SKIP_CHIP_DURATION
     if (_currentSkippableSegment.value != activeSegment) {
       _currentSkippableSegment.value = activeSegment
@@ -2760,7 +2782,6 @@ class PlayerViewModel : ViewModel(),
     }
 
     if (paused == true || activeSegment == null) return
-    if (skippedSegmentTypes.contains(activeSegment.type)) return
     val autoSkipEnabled =
       when (activeSegment.type) {
         SkipSegmentType.INTRO -> playerPreferences.autoSkipIntro.get()
@@ -2771,14 +2792,14 @@ class PlayerViewModel : ViewModel(),
       }
     if (!autoSkipEnabled) return
 
-    skippedSegmentTypes += activeSegment.type
+    skippedSegments += activeSegment
     _showSkipChipAuto.value = false
     seekPastSkipSegment(activeSegment, auto = true)
   }
 
   fun skipActiveSegment() {
     val segment = _currentSkippableSegment.value ?: return
-    skippedSegmentTypes += segment.type
+    skippedSegments += segment
     _showSkipChipAuto.value = false
     seekPastSkipSegment(segment, auto = false)
   }
@@ -2787,9 +2808,10 @@ class PlayerViewModel : ViewModel(),
     segment: SkipSegment,
     auto: Boolean,
   ) {
-    PlaybackSession.setPropertyDouble("time-pos", segment.endSeconds)
+    val seekTarget = SkipMarkerResolver.seekTarget(segment, currentDurationSeconds())
+    PlaybackSession.setPropertyDouble("time-pos", seekTarget)
     syncplayManager.updatePlayerState(
-      segment.endSeconds,
+      seekTarget,
       PlaybackSession.getPropertyBoolean("pause") ?: false,
       doSeek = true,
     )
@@ -2797,11 +2819,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   private fun mergeSkipSegments() {
-    val merged =
-      (resolveIntroDbSegments() + chapterDerivedSegments)
-        .filter { it.isValid }
-        .sortedBy { it.startSeconds }
-        .distinctBy { Triple(it.type, it.startSeconds.toInt(), it.endSeconds.toInt()) }
+    val merged = SkipMarkerResolver.merge(resolveIntroDbSegments() + chapterDerivedSegments)
     skipSegmentsSnapshot = merged
     _skipSegments.value = merged
   }
@@ -2811,7 +2829,18 @@ class PlayerViewModel : ViewModel(),
 
   private fun resolveIntroDbSegments(): List<SkipSegment> {
     val durationSec = currentDurationSeconds()
-    return introDbSegments.mapNotNull { it.toSkipSegment(durationSec) }
+    return SkipMarkerResolver.resolveProviderSegments(
+      markers =
+        introDbSegments.map { segment ->
+          ProviderSkipMarker(
+            type = segment.segmentType,
+            startSeconds = segment.startSecondsOrNull,
+            endSeconds = segment.endSecondsOrNull,
+          )
+        },
+      durationSeconds = durationSec,
+      source = introDbSourceKey,
+    )
   }
 
   private fun lookupIntroSegments(mediaTitle: String) {
@@ -2823,11 +2852,6 @@ class PlayerViewModel : ViewModel(),
     }
 
     val durationSec = currentDurationSeconds()
-    if (durationSec > 0 && durationSec < MIN_INTRO_MARKER_DURATION_SEC) {
-      pendingIntroLookupTitle = null
-      return
-    }
-
     if (durationSec <= 0) {
       pendingIntroLookupTitle = mediaTitle
       return
@@ -2870,50 +2894,41 @@ class PlayerViewModel : ViewModel(),
       viewModelScope.launch {
         val outcome =
           if (provider == IntroSegmentProvider.HYBRID) {
-            val channel = kotlinx.coroutines.channels.Channel<IntroDbLookupOutcome>(4)
-            val lookupJobs =
+            val providers =
               listOf(
                 IntroSegmentProvider.INTRO_DB,
                 IntroSegmentProvider.THE_INTRO_DB,
                 IntroSegmentProvider.ANI_SKIP,
                 IntroSegmentProvider.ANIME_SKIP,
-              ).map { p ->
-                launch(kotlinx.coroutines.Dispatchers.IO) {
-                  try {
-                    val res = introDbRepository.lookupSegments(lookupRequest.copy(provider = p))
-                    channel.send(res)
-                  } catch (e: Exception) {
-                    channel.send(IntroDbLookupOutcome.Error(e.message ?: "unknown", p))
+              )
+            val receivedOutcomes =
+              providers
+                .map { lookupProvider ->
+                  async(Dispatchers.IO) {
+                    try {
+                      introDbRepository.lookupSegments(lookupRequest.copy(provider = lookupProvider))
+                    } catch (cancellation: kotlinx.coroutines.CancellationException) {
+                      throw cancellation
+                    } catch (error: Exception) {
+                      IntroDbLookupOutcome.Error(error.message ?: "unknown", lookupProvider)
+                    }
                   }
-                }
-              }
+                }.awaitAll()
+            val loadedOutcomes = receivedOutcomes.filterIsInstance<IntroDbLookupOutcome.Loaded>()
 
-            var finalOutcome: IntroDbLookupOutcome? = null
-            var loadedOutcome: IntroDbLookupOutcome.Loaded? = null
-            val receivedOutcomes = mutableListOf<IntroDbLookupOutcome>()
-
-            for (i in 0 until 4) {
-              val out = channel.receive()
-              receivedOutcomes.add(out)
-              if (out is IntroDbLookupOutcome.Loaded) {
-                loadedOutcome = out
-                break
-              }
-            }
-
-            // Cancel remaining lookup jobs if we got a loaded outcome
-            lookupJobs.forEach { it.cancel() }
-
-            if (loadedOutcome != null) {
+            if (loadedOutcomes.isNotEmpty()) {
+              val primary = loadedOutcomes.first()
               IntroDbLookupOutcome.Loaded(
-                imdbId = loadedOutcome.imdbId,
-                segments = loadedOutcome.segments,
-                source = loadedOutcome.source,
+                imdbId = primary.imdbId,
+                segments = loadedOutcomes.flatMap(IntroDbLookupOutcome.Loaded::segments).distinct(),
+                source = primary.source,
                 provider = IntroSegmentProvider.HYBRID,
               )
             } else {
-              val firstNonError = receivedOutcomes.firstOrNull { it !is IntroDbLookupOutcome.Error }
-              val fallbackOutcome = firstNonError ?: receivedOutcomes.firstOrNull()
+              val fallbackOutcome =
+                receivedOutcomes.firstOrNull { it is IntroDbLookupOutcome.NoSegments }
+                  ?: receivedOutcomes.firstOrNull { it is IntroDbLookupOutcome.Unresolved }
+                  ?: receivedOutcomes.firstOrNull()
 
               if (fallbackOutcome != null) {
                 when (fallbackOutcome) {
@@ -2967,7 +2982,6 @@ class PlayerViewModel : ViewModel(),
     val durationSec = currentDurationSeconds()
     if (durationSec <= 0) return
     pendingIntroLookupTitle = null
-    if (durationSec < MIN_INTRO_MARKER_DURATION_SEC) return
     lookupIntroSegments(pendingTitle)
   }
 
@@ -3193,113 +3207,38 @@ class PlayerViewModel : ViewModel(),
     }
 
     val derived =
-      chapters.mapIndexedNotNull { index, segment ->
-        val type = chapterTitleToType(segment.name) ?: return@mapIndexedNotNull null
-        val start = segment.start.toDouble()
-        val nextStart = chapters.getOrNull(index + 1)?.start?.toDouble()
-        val isTerminalType =
-          type == SkipSegmentType.OUTRO ||
-            type == SkipSegmentType.CREDITS ||
-            type == SkipSegmentType.PREVIEW
-        // A final terminal chapter has no safe in-file destination after it. Treating
-        // EOF as its end turns "skip" into normal EOF/autoplay and can advance the queue.
-        if (nextStart == null && isTerminalType) return@mapIndexedNotNull null
-        val end = nextStart ?: durationSec
-        val normalizedEnd = end.coerceAtMost(durationSec)
-        if (normalizedEnd - start < 5.0) return@mapIndexedNotNull null
-        val durationFraction = start / durationSec
-        when (type) {
-          SkipSegmentType.INTRO, SkipSegmentType.RECAP -> if (durationFraction > 0.5) return@mapIndexedNotNull null
-          SkipSegmentType.OUTRO, SkipSegmentType.CREDITS, SkipSegmentType.PREVIEW -> if (durationFraction < 0.4) return@mapIndexedNotNull null
-        }
-        SkipSegment(type = type, startSeconds = start, endSeconds = normalizedEnd, source = "chapter")
-      }
+      SkipMarkerResolver.resolveChapters(
+        chapters = chapters.map { ChapterSkipMarker(it.name, it.start.toDouble()) },
+        durationSeconds = durationSec,
+        classify = ::chapterTitleToType,
+      )
 
     chapterDerivedSegments = derived
     mergeSkipSegments()
   }
 
   private fun chapterTitleToType(title: String?): SkipSegmentType? {
-    if (title.isNullOrBlank()) return null
-    val lowered = title.lowercase()
-    val normalizedLatin = lowered.replace(Regex("""[^a-z0-9]+"""), " ").trim()
-    val compactLatin = normalizedLatin.replace(" ", "")
-    val compactRaw = lowered.replace(Regex("""[\s\p{Punct}・_]+"""), "")
-
-    fun hasKeyword(keywords: List<String>): Boolean =
-      keywords.any { rawKeyword ->
-        val keyword = rawKeyword.lowercase()
-        when {
-          keyword.matches(Regex("""[a-z0-9]+""")) -> {
-            normalizedLatin.contains(Regex("""(?:^|\s)${Regex.escape(keyword)}(?:\s|$)""")) ||
-              (keyword.length >= 4 && compactLatin.contains(keyword))
-          }
-          else -> compactRaw.contains(keyword.replace(" ", ""))
-        }
-      }
-
     val introKeywords =
       if (playerPreferences.customIntroKeywordsEnabled.get()) {
-        playerPreferences.customIntroKeywords
-          .get()
-          .split(",")
-          .map { it.trim() }
-          .filter { it.isNotEmpty() }
+        SkipMarkerResolver.parseCustomKeywords(playerPreferences.customIntroKeywords.get())
       } else {
         introKeywordPatterns
       }
 
     val outroKeywords =
       if (playerPreferences.customOutroKeywordsEnabled.get()) {
-        playerPreferences.customOutroKeywords
-          .get()
-          .split(",")
-          .map { it.trim() }
-          .filter { it.isNotEmpty() }
+        SkipMarkerResolver.parseCustomKeywords(playerPreferences.customOutroKeywords.get())
       } else {
         outroKeywordPatterns
       }
 
-    val hasIntro = hasKeyword(introKeywords)
-    val hasRecap = hasKeyword(recapKeywordPatterns)
-    val hasCredits = hasKeyword(creditsKeywordPatterns)
-    val hasPreview = hasKeyword(previewKeywordPatterns)
-    val hasOutro = hasKeyword(outroKeywords)
-    return when {
-      hasRecap -> SkipSegmentType.RECAP
-      hasCredits -> SkipSegmentType.CREDITS
-      hasPreview -> SkipSegmentType.PREVIEW
-      hasOutro && !hasIntro -> SkipSegmentType.OUTRO
-      hasIntro -> SkipSegmentType.INTRO
-      else -> null
-    }
-  }
-
-  private fun app.gyrolet.mpvrx.repository.IntroDbSegment.toSkipSegment(durationSec: Double): SkipSegment? {
-    val loweredType = segmentType?.lowercase().orEmpty().trim()
-    val type =
-      when {
-        "recap" in loweredType || "summary" in loweredType -> SkipSegmentType.RECAP
-        "credit" in loweredType -> SkipSegmentType.CREDITS
-        "preview" in loweredType || "next" in loweredType -> SkipSegmentType.PREVIEW
-        "out" in loweredType || "ending" in loweredType || "ed" == loweredType || "mixed-ed" in loweredType -> SkipSegmentType.OUTRO
-        else -> SkipSegmentType.INTRO
-      }
-    // Do not synthesize EOF for an open-ended provider marker. The last timestamp
-    // from some providers has no end bound, and seeking it to duration triggers EOF.
-    val explicitEnd = endSecondsOrNull ?: return null
-    val normalizedEnd =
-      if (durationSec > 0.0) {
-        explicitEnd.coerceAtMost(durationSec)
-      } else {
-        explicitEnd
-      }
-    if (normalizedEnd <= normalizedStart) return null
-    return SkipSegment(
-      type = type,
-      startSeconds = normalizedStart,
-      endSeconds = normalizedEnd,
-      source = introDbSourceKey,
+    return SkipMarkerResolver.classifyTitle(
+      title = title,
+      introKeywords = introKeywords,
+      outroKeywords = outroKeywords,
+      recapKeywords = recapKeywordPatterns,
+      creditsKeywords = creditsKeywordPatterns,
+      previewKeywords = previewKeywordPatterns,
     )
   }
 

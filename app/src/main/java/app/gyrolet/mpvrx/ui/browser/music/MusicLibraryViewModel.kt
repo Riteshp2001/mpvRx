@@ -288,7 +288,8 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     val queueItems = songList.map { item ->
       PlaybackItem.fromUri(
         uri = item.uri.toString(),
-        title = "${item.artist} - ${item.title}",
+        title = item.title,
+        artist = item.artist,
         mimeType = "audio/*",
         artworkUri = item.albumArtUri?.toString(),
       )
@@ -308,7 +309,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
       putExtra("launch_source", "music_library")
       putExtra("media_library_audio", true)
       putExtra("is_audio", true)
-      putExtra("title", "${song.artist} - ${song.title}")
+      putExtra("title", song.title)
     }
     context.startActivity(intent)
   }
@@ -321,7 +322,8 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     val queueItems = list.map { item ->
       PlaybackItem.fromUri(
         uri = item.uri.toString(),
-        title = "${item.artist} - ${item.title}",
+        title = item.title,
+        artist = item.artist,
         mimeType = "audio/*",
         artworkUri = item.albumArtUri?.toString(),
       )
@@ -341,7 +343,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
       putExtra("launch_source", if (shuffle) "music_shuffle" else "music_play_all")
       putExtra("media_library_audio", true)
       putExtra("is_audio", true)
-      putExtra("title", "${firstSong.artist} - ${firstSong.title}")
+      putExtra("title", firstSong.title)
     }
     context.startActivity(intent)
   }

@@ -45,6 +45,7 @@ import androidx.media.session.MediaButtonReceiver
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
+import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
@@ -65,6 +66,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.lang.ref.WeakReference
@@ -205,6 +207,7 @@ class MediaPlaybackService :
   private var mediaTitle = ""
   private var mediaArtist = ""
   private var mediaUri: String? = null
+  private var activeArtworkUri: String? = null
   private var paused = false
   private var playbackSpeed = 1.0f
   private var activeQueueItemId: Long = MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong()
@@ -532,7 +535,9 @@ class MediaPlaybackService :
     serviceScope.launch {
       val resolvedTitle = FileTypeUtils.stripExtension(title)
       val resolvedIdentifier = identifier?.takeIf { it.isNotBlank() }
-      val artworkChanged = replaceOwnedThumbnail(thumbnail)
+      // A metadata-only Activity sync must not erase artwork already resolved for this queue item.
+      // Item changes are cleared explicitly in applySessionItem before the next cover is loaded.
+      val artworkChanged = thumbnail?.let(::replaceOwnedThumbnail) ?: false
       val metadataChanged =
         mediaTitle != resolvedTitle ||
           mediaArtist != artist ||
@@ -683,17 +688,19 @@ class MediaPlaybackService :
 
   private fun applySessionItem(item: PlaybackItem) {
     val itemChanged = mediaIdentifier != item.stableId || mediaUri != item.originalUri
+    val artworkChanged = activeArtworkUri != item.artworkUri
     notificationIsAudio = resolveNotificationIsAudio(item, notificationIsAudio)
     mediaIdentifier = item.stableId
     mediaTitle = FileTypeUtils.stripExtension(item.title.orEmpty()).ifBlank { getString(R.string.player_unknown_video) }
-    mediaArtist = ""
+    mediaArtist = item.artist.orEmpty()
     mediaUri = item.originalUri
+    activeArtworkUri = item.artworkUri
     currentPositionSeconds = 0.0
     lastPublishedPositionSeconds = 0.0
     mediaDurationSeconds = 0.0
     paused = false
     playbackSpeed = 1.0f
-    if (itemChanged) {
+    if (itemChanged || artworkChanged) {
       chapters = emptyList()
       currentChapterIndex = -1
       replaceOwnedThumbnail(null)
@@ -702,6 +709,29 @@ class MediaPlaybackService :
     updateMediaSessionMetadata()
     updateMediaSessionPlaybackState()
     updateNotification()
+    loadSessionArtwork(item)
+  }
+
+  private fun loadSessionArtwork(item: PlaybackItem) {
+    val artworkUri = item.artworkUri?.takeIf { it.isNotBlank() } ?: return
+    val expectedIdentifier = item.stableId
+    serviceScope.launch {
+      val loaded =
+        withContext(Dispatchers.IO) {
+          EmbeddedArtworkResolver.decodeArtworkUri(this@MediaPlaybackService, artworkUri)
+        } ?: return@launch
+      if (mediaIdentifier != expectedIdentifier) {
+        loaded.recycle()
+        return@launch
+      }
+      val changed = replaceOwnedThumbnail(loaded)
+      loaded.recycle()
+      if (changed) {
+        refreshNotificationPalette()
+        updateMediaSessionMetadata()
+        updateNotification()
+      }
+    }
   }
 
   private fun resolveNotificationIsAudio(
@@ -740,7 +770,17 @@ class MediaPlaybackService :
     )
 
     val currentItem = queueState.currentItem
-    if (currentItem != null && (currentItem.stableId != mediaIdentifier || currentItem.originalUri != mediaUri)) {
+    val currentTitle =
+      currentItem?.title?.let { FileTypeUtils.stripExtension(it) }.orEmpty().ifBlank {
+        getString(R.string.player_unknown_video)
+      }
+    if (currentItem != null &&
+      (currentItem.stableId != mediaIdentifier ||
+        currentItem.originalUri != mediaUri ||
+        currentTitle != mediaTitle ||
+        currentItem.artist.orEmpty() != mediaArtist ||
+        currentItem.artworkUri != activeArtworkUri)
+    ) {
       applySessionItem(currentItem)
     } else {
       refreshTransportControls()
@@ -778,6 +818,7 @@ class MediaPlaybackService :
             .Builder()
             .setMediaId(item.stableId)
             .setTitle(item.title?.takeIf { it.isNotBlank() } ?: getString(R.string.player_unknown_video))
+            .setSubtitle(item.artist?.takeIf { it.isNotBlank() })
             .build(),
           queueId,
         )

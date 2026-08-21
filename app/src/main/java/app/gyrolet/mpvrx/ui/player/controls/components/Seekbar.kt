@@ -624,10 +624,13 @@ private fun SeekbarContent(
       if (skipSegmentOverlays.isNotEmpty()) {
         val trackHeight = size.height
         val edgeStroke = 2.dp.toPx()
+        val minimumMarkerWidth = 2.dp.toPx().coerceAtMost(size.width)
         skipSegmentOverlays.forEach { overlay ->
-          val startX = overlay.startFraction * size.width
-          val endX = overlay.endFraction * size.width
-          if (endX - startX < 1f) return@forEach
+          val requestedStartX = overlay.startFraction * size.width
+          val requestedEndX = overlay.endFraction * size.width
+          val markerWidth = maxOf(requestedEndX - requestedStartX, minimumMarkerWidth)
+          val startX = requestedStartX.coerceIn(0f, (size.width - markerWidth).coerceAtLeast(0f))
+          val endX = (startX + markerWidth).coerceAtMost(size.width)
           drawRect(
             color = overlay.fillColor,
             topLeft = Offset(startX, 0f),

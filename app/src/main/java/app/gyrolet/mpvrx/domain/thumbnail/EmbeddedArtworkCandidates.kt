@@ -9,9 +9,11 @@
 
 package app.gyrolet.mpvrx.domain.thumbnail
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Build
 import java.io.File
 
@@ -58,6 +60,23 @@ object EmbeddedArtworkCandidates {
 }
 
 internal object EmbeddedArtworkResolver {
+  fun decodeArtworkUri(
+    context: Context,
+    artworkUri: String?,
+  ): Bitmap? {
+    if (artworkUri.isNullOrBlank()) return null
+    val uri = Uri.parse(artworkUri)
+    return runCatching {
+      when (uri.scheme?.lowercase()) {
+        null, "" -> BitmapFactory.decodeFile(artworkUri)
+        "file" -> BitmapFactory.decodeFile(uri.path)
+        "content", "android.resource" ->
+          context.contentResolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input) }
+        else -> null
+      }
+    }.getOrNull()
+  }
+
   fun decodeEmbeddedArtwork(
     videoPath: String?,
     retriever: MediaMetadataRetriever,

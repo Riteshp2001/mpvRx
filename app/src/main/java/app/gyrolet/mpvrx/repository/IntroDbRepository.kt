@@ -605,7 +605,7 @@ class IntroDbRepository(
   private fun JsonObject.toLegacyIntroDbSegments(): List<IntroDbSegment> {
     val start = this["start"]?.jsonPrimitive?.doubleOrNull
     val end = this["end"]?.jsonPrimitive?.doubleOrNull
-    return if (start != null && end != null) {
+    return if (start != null || end != null) {
       listOf(IntroDbSegment(segmentType = "intro", start = start, end = end))
     } else {
       emptyList()

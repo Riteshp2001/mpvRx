@@ -196,16 +196,22 @@ class MPVPipHelper(
     )
   }
 
-  fun enterPipMode() {
+  /**
+   * Requests Picture-in-Picture and reports whether Android accepted the transition.
+   *
+   * Callers use the result to fall back to background playback or a normal close instead of
+   * leaving the full-screen player stranded with hidden controls when PiP is unavailable.
+   */
+  fun enterPipMode(): Boolean {
     if (isAudioPlayer() || !isVideoLoaded()) {
       Log.d("MPVPipHelper", "PiP mode is disabled: audio=${isAudioPlayer()}, videoLoaded=${isVideoLoaded()}")
-      return
+      return false
     }
-    runCatching {
+    return runCatching {
       activity.enterPictureInPictureMode(buildPipParams())
     }.onFailure {
       Log.e("MPVPipHelper", "Failed to enter PiP mode", it)
-    }
+    }.getOrDefault(false)
   }
 
   fun onStop() {

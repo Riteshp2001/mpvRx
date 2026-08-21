@@ -206,6 +206,7 @@ fun PlayerControls(
   val seekBarShown by viewModel.seekBarShown.collectAsState()
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
+  val playbackQueue by PlaybackSession.queue.collectAsStateWithLifecycle()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
   val demuxerCacheTime by PlaybackSession.propDouble["demuxer-cache-time"].collectAsState()
   val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
@@ -318,9 +319,13 @@ fun PlayerControls(
   if (isAudioOnly) {
     val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
     val activity = LocalActivity.current as? PlayerActivity
+    val queuedTitle =
+      playbackQueue.currentItem?.title?.takeIf { playbackQueue.isExplicitQueue && it.isNotBlank() }
     val mediaTitle =
-      remember(rawMediaTitle, activity) {
-        activity?.getTitleForControls() ?: rawMediaTitle?.takeIf { it.isNotBlank() }
+      remember(queuedTitle, rawMediaTitle, activity) {
+        queuedTitle
+          ?: activity?.getTitleForControls()
+          ?: rawMediaTitle?.takeIf { it.isNotBlank() }
       }
 
     val sheetShown by viewModel.sheetShown.collectAsState()
@@ -548,8 +553,12 @@ fun PlayerControls(
           val currentZoom by viewModel.videoZoom.collectAsState()
 
           val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
-          val mediaTitle = remember(rawMediaTitle, activity) {
-            activity.getTitleForControls().takeIf { it.isNotBlank() } ?: rawMediaTitle
+          val queuedTitle =
+            playbackQueue.currentItem?.title?.takeIf { playbackQueue.isExplicitQueue && it.isNotBlank() }
+          val mediaTitle = remember(queuedTitle, rawMediaTitle, activity) {
+            queuedTitle
+              ?: activity.getTitleForControls().takeIf { it.isNotBlank() }
+              ?: rawMediaTitle
           }
 
           // Slider display duration: 1000ms shown + 300ms exit animation = 1300ms total
