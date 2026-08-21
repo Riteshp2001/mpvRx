@@ -133,7 +133,6 @@ object PlaybackSession : MPVLib.EventObserver {
 
   private val nativeLock = ReentrantLock(true)
   private val observers = CopyOnWriteArraySet<MPVLib.EventObserver>()
-  private val pendingGenerations = ArrayDeque<Long>()
   private val _state = MutableStateFlow(PlaybackSessionState())
   private val _queue = MutableStateFlow(PlaybackQueueState())
   private val streamSequence = AtomicLong()
@@ -337,7 +336,6 @@ object PlaybackSession : MPVLib.EventObserver {
   fun stop(clearQueue: Boolean = true) {
     withCore(Unit) {
       val nextGeneration = _state.value.generation + 1L
-      pendingGenerations.clear()
       suspendedVideoTrack = null
       deferredVideoSelectionGeneration = null
       desiredPaused = true
@@ -421,7 +419,6 @@ object PlaybackSession : MPVLib.EventObserver {
     releaseActiveNetworkStreamLocked()
     releaseAuxiliaryNetworkStreamsLocked()
     observers.clear()
-    pendingGenerations.clear()
     observedProperties.clear()
     resetAmbientShaderTrackingLocked()
     initialized = false
@@ -576,7 +573,6 @@ object PlaybackSession : MPVLib.EventObserver {
 
       val generation = _state.value.generation + 1L
       deferredVideoSelectionGeneration = generation.takeUnless { selectVideoForNewFile }
-      pendingGenerations.addLast(generation)
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
       updateState {
         it.copy(
@@ -934,32 +930,37 @@ object PlaybackSession : MPVLib.EventObserver {
       nativeLock.withLock {
         when (eventId) {
           MPVLib.MpvEvent.MPV_EVENT_START_FILE -> {
-            val active = if (pendingGenerations.isEmpty()) _state.value.generation else pendingGenerations.removeFirst()
-            updateState { it.copy(phase = PlaybackPhase.LOADING, activeGeneration = active) }
+            // loadfile 'replace' commands can coalesce inside one mpv dispatch batch, in which case
+            // mpv only ever starts the newest target and emits a single START_FILE for it. Any
+            // per-load FIFO desyncs permanently on that skip, so the started file is always
+            // attributed to the latest requested generation.
+            updateState { it.copy(phase = PlaybackPhase.LOADING, activeGeneration = it.generation) }
             true
           }
           MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
             val current = _state.value
-            if (current.activeGeneration != 0L && current.activeGeneration != current.generation) {
-              Log.d(TAG, "Ignoring stale FILE_LOADED generation ${current.activeGeneration}; current=${current.generation}")
-              false
-            } else {
-              loadedGeneration = current.generation
-              // Track/decoder replacement is now complete. Apply the latest user/service intent
-              // once instead of allowing pause writes to race the load operation.
-              MPVLib.setPropertyBoolean("pause", desiredPaused)
-              updateState {
-                it.copy(
-                  phase = if (it.phase == PlaybackPhase.BACKGROUND) PlaybackPhase.BACKGROUND else PlaybackPhase.READY,
-                  activeGeneration = it.generation,
-                  paused = desiredPaused,
-                  error = null,
-                )
-              }
-              propBoolean.emit("pause", desiredPaused)
-              restoreSuspendedVideoTrackLocked()
-              true
+            loadedGeneration = current.generation
+            // Track/decoder replacement is now complete. Apply the latest user/service intent
+            // once instead of allowing pause writes to race the load operation.
+            MPVLib.setPropertyBoolean("pause", desiredPaused)
+            // A load issued before its Surface attached suppressed video with a file-local vid=no.
+            // If the Surface is attached by the time the file is ready, select video now instead of
+            // waiting for a bindSurface() that may never re-run for an already-attached Surface.
+            if (deferredVideoSelectionGeneration == current.generation && current.surfaceAttached) {
+              MPVLib.setPropertyString("vid", "auto")
+              deferredVideoSelectionGeneration = null
             }
+            updateState {
+              it.copy(
+                phase = if (it.phase == PlaybackPhase.BACKGROUND) PlaybackPhase.BACKGROUND else PlaybackPhase.READY,
+                activeGeneration = it.generation,
+                paused = desiredPaused,
+                error = null,
+              )
+            }
+            propBoolean.emit("pause", desiredPaused)
+            restoreSuspendedVideoTrackLocked()
+            true
           }
           MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
             scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_RESTORE_DELAY_MS)

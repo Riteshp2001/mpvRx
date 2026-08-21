@@ -4743,7 +4743,11 @@ class PlayerActivity :
     // video-only (soundless) file would abort with "No video or audio streams selected".
     // Foreground loads therefore request video explicitly. HLS URLs which look like playlists but
     // fall back to direct mpv playback use this same policy instead of being stranded at vid=no.
-    val selectVideoOnLoad = PlayerLifecyclePolicy.shouldSelectVideoForLoad(isInBackgroundPlayback)
+    val selectVideoOnLoad =
+      PlayerLifecyclePolicy.shouldSelectVideoForLoad(
+        isInBackgroundPlayback = isInBackgroundPlayback,
+        surfaceAttached = PlaybackSession.state.value.surfaceAttached,
+      )
     val requestedSource = originalUri ?: extractUriFromIntent(sourceIntent)?.toString() ?: playableUri
     val requestedHeaders =
       buildPlaybackHeaders(
