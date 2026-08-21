@@ -2,6 +2,18 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## 2.2.1 — Playback & Lyrics Hotfix
+
+### 🎬 Video Playback Reliability
+- **Black Screen on Startup Fixed**: Video output now waits for Android to attach a valid render surface before mpv initializes the renderer. This restores the proven 2.1.0 startup order and prevents `Missing surface pointer`, audio-only playback, and permanent `video=eof` states on slower devices, including Vivo devices running Android 16.
+- **Safer Surface Recreation**: If the surface disappears while a file is loading, video selection is deferred until the replacement surface is attached instead of racing a destroyed native window.
+- **Single Video-Restoration Path**: Removed duplicate Activity-level restoration state so `PlaybackSession` is the sole owner of deferred video selection.
+
+### 🎤 Lyrics & Update Notes
+- **Word-Timed Karaoke for Standard LRC**: Regular LRCLIB line-synced lyrics now receive stable per-word timing, so the active line animates word by word instead of displaying one static sentence. Enhanced LRC files keep their original word timestamps.
+- **Consistent Centered Lyrics**: Normal and fullscreen lyrics now use the same centered layout for active lines, translations, and plain lyrics.
+- **Maintained Markdown Renderer**: Update release notes now use the lightweight Material 3 Markdown renderer from Maven Central instead of a custom parser.
+
 ## 2.2.0 — Jellyfin, Torrent Series & Player Reliability Release
 
 ### 🪼 Jellyfin Streaming Integration

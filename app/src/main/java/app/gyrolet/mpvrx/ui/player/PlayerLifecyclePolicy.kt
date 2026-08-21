@@ -51,14 +51,12 @@ internal object PlayerLifecyclePolicy {
     wasInPictureInPictureMode: Boolean,
     isInPictureInPictureMode: Boolean,
     isChangingConfigurations: Boolean,
-    backgroundPlaybackEnabled: Boolean,
     isScreenOffOrLocked: Boolean,
     alreadyHandled: Boolean,
   ): Boolean =
     wasInPictureInPictureMode &&
       !isInPictureInPictureMode &&
       !isChangingConfigurations &&
-      !backgroundPlaybackEnabled &&
       !isScreenOffOrLocked &&
       !alreadyHandled
 

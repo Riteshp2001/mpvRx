@@ -1565,7 +1565,6 @@ class PlayerActivity :
           wasInPictureInPictureMode = wasInPipMode,
           isInPictureInPictureMode = isInPictureInPictureMode,
           isChangingConfigurations = isChangingConfigurations,
-          backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
           isScreenOffOrLocked = isDeviceScreenOffOrLocked(),
           alreadyHandled = handledPipDismissal,
         )
@@ -5135,15 +5134,11 @@ class PlayerActivity :
       handledPipDismissal = false
       ensurePipPlaybackNotification()
     } else if (startedBackgroundForPip) {
-      // Expanded back to full screen. A background-enabled session keeps its notification ready;
-      // a service created only for PiP is handed back to the Activity and stopped.
+      // Expanded back to full screen. A service created only to support PiP must relinquish the
+      // shared session here; normal background playback will start it again if the user later
+      // leaves the Activity with that separate preference enabled.
       startedBackgroundForPip = false
-      isBackgroundPlaybackSessionActive = false
-      if (isBackgroundPlaybackEnabled()) {
-        syncBackgroundPlaybackService(updateThumbnail = true)
-      } else {
-        endBackgroundPlayback()
-      }
+      endBackgroundPlayback()
     }
 
     binding.controls.animate().cancel()

@@ -1,0 +1,4 @@
+Fixed black-screen and audio-only startup on slower devices by waiting for a valid video surface before initializing mpv output.
+Improved surface recreation while media is loading.
+Added word-timed karaoke animation for standard line-synced LRC lyrics and centered lyrics consistently.
+Replaced the custom release-notes parser with a maintained Material 3 Markdown library.
