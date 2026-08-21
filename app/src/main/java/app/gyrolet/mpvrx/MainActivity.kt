@@ -99,8 +99,8 @@ import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
-import app.gyrolet.mpvrx.utils.update.UpdateDialog
-import app.gyrolet.mpvrx.utils.update.UpdateViewModel
+import app.gyrolet.mpvrx.ui.update.UpdateSheet
+import app.gyrolet.mpvrx.ui.update.UpdateViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -627,16 +627,16 @@ class MainActivity : AppCompatActivity() {
         }
       }
 
-      // Display Update Dialog when appropriate (only if update feature is enabled)
+      // Display the update sheet when appropriate (only if update feature is enabled)
       if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null) {
         when (updateState) {
           is UpdateViewModel.UpdateState.Available -> {
             val release = (updateState as UpdateViewModel.UpdateState.Available).release
-            UpdateDialog(
+            UpdateSheet(
               release = release,
               isDownloading = isDownloading,
               progress = downloadProgress,
-              actionLabel = if (isDownloading) "Downloading..." else "Download",
+              isInstallReady = false,
               currentVersion = currentVersion,
               onDismiss = { updateViewModel.dismiss() },
               onAction = { updateViewModel.downloadUpdate(release) },
@@ -645,11 +645,11 @@ class MainActivity : AppCompatActivity() {
           }
           is UpdateViewModel.UpdateState.ReadyToInstall -> {
             val release = (updateState as UpdateViewModel.UpdateState.ReadyToInstall).release
-            UpdateDialog(
+            UpdateSheet(
               release = release,
               isDownloading = isDownloading,
               progress = downloadProgress,
-              actionLabel = "Install",
+              isInstallReady = true,
               currentVersion = currentVersion,
               onDismiss = { updateViewModel.dismiss() },
               onAction = { updateViewModel.installUpdate(release) },

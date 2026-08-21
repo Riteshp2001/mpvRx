@@ -11,9 +11,20 @@ package app.gyrolet.mpvrx.domain.hdr
 
 import android.content.Context
 import android.util.Log
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import java.io.File
 import java.io.FileOutputStream
+
+/** Abstraction over the running player's shader pipeline so the domain layer stays UI-free. */
+interface MpvShaderRuntime {
+  fun command(vararg args: String)
+
+  fun getPropertyString(property: String): String?
+
+  fun setPropertyString(
+    property: String,
+    value: String,
+  )
+}
 
 /**
  * Manages the hdr-toys GLSL shader pipeline.
@@ -30,6 +41,7 @@ import java.io.FileOutputStream
  */
 class HdrToysManager(
   private val context: Context,
+  private val shaderRuntime: MpvShaderRuntime,
 ) {
   private var initialized = false
 
@@ -61,7 +73,7 @@ class HdrToysManager(
     }
     clear()
     profile.mpvShaderPaths.forEach { shaderPath ->
-      PlaybackSession.command("change-list", "glsl-shaders", "append", shaderPath)
+      shaderRuntime.command("change-list", "glsl-shaders", "append", shaderPath)
     }
     return true
   }
@@ -72,21 +84,21 @@ class HdrToysManager(
       .toList()
       .asReversed()
       .forEach { shaderPath ->
-        runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", shaderPath) }
+        runCatching { shaderRuntime.command("change-list", "glsl-shaders", "remove", shaderPath) }
       }
     HdrToysProfile.allShaderPaths.forEach { relPath ->
       val absolutePath = File(context.filesDir, "shaders/$relPath").absolutePath
-      runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", absolutePath) }
+      runCatching { shaderRuntime.command("change-list", "glsl-shaders", "remove", absolutePath) }
     }
     runCatching {
-      val activeShaders = PlaybackSession.getPropertyString("glsl-shaders")
+      val activeShaders = shaderRuntime.getPropertyString("glsl-shaders")
       if (!activeShaders.isNullOrEmpty()) {
         val remaining =
           activeShaders
             .split(":")
             .map { it.trim() }
             .filter { path -> path.isNotEmpty() && !path.contains("hdr-toys") }
-        PlaybackSession.setPropertyString("glsl-shaders", remaining.joinToString(":"))
+        shaderRuntime.setPropertyString("glsl-shaders", remaining.joinToString(":"))
       }
     }
   }

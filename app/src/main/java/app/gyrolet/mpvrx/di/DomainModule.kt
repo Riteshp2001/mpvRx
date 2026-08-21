@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.di
 
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.hdr.MpvShaderRuntime
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.network.SharedHttpClient
@@ -32,6 +33,7 @@ import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleFileStore
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
 import app.gyrolet.mpvrx.repository.subtitlehub.MpvRxSubtitleHubRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
+import app.gyrolet.mpvrx.ui.player.PlaybackSessionShaderRuntime
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
@@ -49,7 +51,8 @@ val domainModule =
       }
     }
     single { Anime4KManager(androidContext()) }
-    single { HdrToysManager(androidContext()) }
+    single<MpvShaderRuntime> { PlaybackSessionShaderRuntime }
+    single { HdrToysManager(androidContext(), get()) }
     single { OnlineSubtitleFileStore(androidContext(), get()) }
     single { WyzieSearchRepository(androidContext(), get(), get(), get(), get()) }
     single { MpvRxSubtitleHubRepository(get(), get(), get(), get()) }
