@@ -255,6 +255,7 @@ dependencies {
 
   implementation(libs.seeker)
   implementation(libs.compose.prefs)
+  implementation(libs.markdown.renderer.m3)
 
   implementation(libs.accompanist.permissions)
 

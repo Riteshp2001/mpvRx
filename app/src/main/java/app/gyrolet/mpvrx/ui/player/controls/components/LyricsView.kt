@@ -346,8 +346,7 @@ fun LyricsView(
                       translationY = lineTranslationY
                       scaleX = lineScale
                       scaleY = lineScale
-                      // Fullscreen scales from the middle so focused lines grow in place.
-                      transformOrigin = TransformOrigin(if (isLyricsFullscreen) 0.5f else 0f, 0.5f)
+                      transformOrigin = TransformOrigin(0.5f, 0.5f)
                     }
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
@@ -358,17 +357,19 @@ fun LyricsView(
                       }
                     }
                     .padding(vertical = 4.dp, horizontal = 6.dp),
+                  horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                   if (isActiveLine && !isBlankLine && !line.words.isNullOrEmpty()) {
                     FlowRow(
                       modifier = Modifier.fillMaxWidth(),
-                      horizontalArrangement = if (isLyricsFullscreen) Arrangement.Center else Arrangement.Start,
+                      horizontalArrangement = Arrangement.Center,
                       verticalArrangement = Arrangement.Center,
                     ) {
                       line.words.forEachIndexed { wordIndex, word ->
                         val wordEndMs =
                           line.words.getOrNull(wordIndex + 1)?.time?.toLong()
                             ?: activeLyrics.synced.getOrNull(index + 1)?.time?.toLong()
+                              ?.coerceAtMost(line.time.toLong() + 8_000L)
                             ?: (word.time + 600).toLong()
                         AnimatedLyricWord(
                           word = word,
@@ -392,7 +393,7 @@ fun LyricsView(
                       },
                       fontWeight = if (isActiveLine) FontWeight.Black else FontWeight.ExtraBold,
                       fontFamily = FontFamily.SansSerif,
-                      textAlign = if (isLyricsFullscreen) TextAlign.Center else TextAlign.Start,
+                      textAlign = TextAlign.Center,
                       modifier = Modifier.fillMaxWidth(),
                     )
                   }
@@ -411,7 +412,7 @@ fun LyricsView(
                       fontSize = if (isActiveLine) 16.sp else 14.sp,
                       fontWeight = FontWeight.Bold,
                       fontFamily = FontFamily.SansSerif,
-                      textAlign = if (isLyricsFullscreen) TextAlign.Center else TextAlign.Start,
+                      textAlign = TextAlign.Center,
                       modifier = Modifier.fillMaxWidth(),
                     )
                   }
@@ -437,7 +438,7 @@ fun LyricsView(
                   fontSize = 20.sp,
                   fontWeight = FontWeight.Black,
                   fontFamily = FontFamily.SansSerif,
-                  textAlign = TextAlign.Start,
+                  textAlign = TextAlign.Center,
                   modifier = Modifier.fillMaxWidth(),
                 )
               }

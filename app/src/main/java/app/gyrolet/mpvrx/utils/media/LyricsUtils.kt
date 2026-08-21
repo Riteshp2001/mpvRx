@@ -17,6 +17,7 @@ object LyricsUtils {
   private val LRC_WORD_TAG_REGEX = Regex("<\\d{1,2}:\\d{2}[.:]\\d{2,3}>")
   private val LRC_WORD_SPLIT_REGEX = Regex("(?=<\\d{1,2}:\\d{2}[.:]\\d{2,3}>)")
   private val LRC_METADATA_PATTERN = Pattern.compile("^\\[[a-zA-Z]+:.*]$")
+  private val LYRIC_WORD_REGEX = Regex("\\S+")
 
   fun parseLyrics(
     lyricsText: String?,
@@ -113,9 +114,19 @@ object LyricsUtils {
 
     return if (isSynced && syncedLines.isNotEmpty()) {
       val sorted = syncedLines.sortedBy { it.time }
-      val plainVersion = sorted.map { it.line }
+      val wordSynced =
+        sorted.mapIndexed { index, line ->
+          if (!line.words.isNullOrEmpty() || line.line.isBlank()) {
+            line
+          } else {
+            line.copy(
+              words = estimateWordTimings(line, sorted.getOrNull(index + 1)?.time),
+            )
+          }
+        }
+      val plainVersion = wordSynced.map { it.line }
       Lyrics(
-        synced = sorted,
+        synced = wordSynced,
         plain = plainVersion,
         areFromRemote = (sourceType == LyricsSourceType.ONLINE),
         sourceType = sourceType,
@@ -126,6 +137,34 @@ object LyricsUtils {
         synced = null,
         areFromRemote = (sourceType == LyricsSourceType.ONLINE),
         sourceType = sourceType,
+      )
+    }
+  }
+
+  private fun estimateWordTimings(
+    line: SyncedLine,
+    nextLineTimeMs: Int?,
+  ): List<SyncedWord>? {
+    val words = LYRIC_WORD_REGEX.findAll(line.line).map { it.value }.toList()
+    if (words.isEmpty()) return null
+
+    val weights = words.map { word -> word.count(Char::isLetterOrDigit).coerceAtLeast(1) }
+    val totalWeight = weights.sum().coerceAtLeast(1)
+    val naturalDurationMs = (totalWeight * 90L).coerceIn(1_200L, 6_000L)
+    val availableDurationMs =
+      nextLineTimeMs
+        ?.takeIf { it > line.time }
+        ?.let { (it - line.time).toLong().coerceAtMost(8_000L) }
+        ?: naturalDurationMs
+
+    var elapsedWeight = 0
+    return words.mapIndexed { index, word ->
+      val wordTimeMs = line.time.toLong() + availableDurationMs * elapsedWeight / totalWeight
+      elapsedWeight += weights[index]
+      SyncedWord(
+        time = wordTimeMs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+        word = word,
+        startsNewWord = true,
       )
     }
   }
