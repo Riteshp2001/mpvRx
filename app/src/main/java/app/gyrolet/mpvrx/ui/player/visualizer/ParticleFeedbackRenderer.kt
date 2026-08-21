@@ -60,9 +60,7 @@ internal class ParticleFeedbackRenderer(
   private var energySmoothed = 0.10f
   private var fluxSmoothed = 0.05f
   private var beatSmoothed = 0f
-  private var bassAvg = 0.25f
   private var lastBeatNanos = 0L
-  private var beatCount = 0
   private var hueCurrent = 0.55f
   private var hueTarget = 0.55f
   private var flareSmoothed = 0.15f
@@ -354,12 +352,12 @@ internal class ParticleFeedbackRenderer(
       energySmoothed = smoothVal(energySmoothed, energyTarget, dt, 11f, 4f)
       fluxSmoothed = smoothVal(fluxSmoothed, fluxTarget, dt, 30f, 8f)
 
-      bassAvg += (bassTarget - bassAvg) * (1f - exp(-dt * 0.8f))
+      // The analyzer is the sole beat authority; the local debounce only edge-detects the ~50ms
+      // FFT window during which the shared beat flag stays high.
       val nowNanos = System.nanoTime()
-      if (sourceAudio.scaledBeat() > 0.5f || (bassTarget > bassAvg * 1.25f + 0.04f && (nowNanos - lastBeatNanos) > 160_000_000L)) {
+      if (sourceAudio.scaledBeat() > 0.5f && (nowNanos - lastBeatNanos) > 160_000_000L) {
         beatSmoothed = 1f
         lastBeatNanos = nowNanos
-        beatCount++
       }
     } else {
       // Fluid continuous fallback motion when audio features are starting up

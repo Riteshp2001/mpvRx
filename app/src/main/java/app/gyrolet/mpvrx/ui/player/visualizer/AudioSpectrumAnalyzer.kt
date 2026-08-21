@@ -18,9 +18,12 @@ import kotlin.math.sqrt
  *
  * Captures live time-domain PCM waveforms and frequency-domain FFT bytes from the output mix / session ID
  * to drive [AudioFeatures] for 60 FPS visualizer rendering.
+ *
+ * Callers must supply the shared [AudioFeatures] instance; the analyzer never owns a private one so
+ * every renderer, seekbar and capture effect observes the same feature state.
  */
 class AudioSpectrumAnalyzer(
-  val features: AudioFeatures = AudioFeatures(),
+  val features: AudioFeatures,
 ) {
   private var visualizerManager: VisualizerManager? = null
   private var lastBeatNanos = 0L

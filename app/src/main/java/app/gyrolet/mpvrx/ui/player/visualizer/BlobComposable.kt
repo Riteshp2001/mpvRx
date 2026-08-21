@@ -186,16 +186,21 @@ internal fun rememberAudioVisualizerFeatures(
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive) {
+          val captureEpoch = features.lastCaptureNanos
           val realCapture = features.active && features.hasRecentCapture(1_500_000_000L)
           if (!realCapture && isPlaying) {
             val time = System.nanoTime() / 1_000_000_000f
-            features.energy = 0.025f + sin(time * 0.72f) * 0.006f
-            features.bass = 0.018f + sin(time * 0.55f) * 0.004f
-            features.mid = 0.014f + sin(time * 0.83f) * 0.003f
-            features.treble = 0.010f + sin(time * 1.05f) * 0.002f
-            features.beat = 0f
-            features.centroid = 0.35f
-            features.active = false
+            // A real capture can land while the idle frame is being synthesized. Re-check the
+            // capture epoch right before writing so fresh analyzer data is never clobbered.
+            if (features.lastCaptureNanos == captureEpoch) {
+              features.energy = 0.025f + sin(time * 0.72f) * 0.006f
+              features.bass = 0.018f + sin(time * 0.55f) * 0.004f
+              features.mid = 0.014f + sin(time * 0.83f) * 0.003f
+              features.treble = 0.010f + sin(time * 1.05f) * 0.002f
+              features.beat = 0f
+              features.centroid = 0.35f
+              features.active = false
+            }
           } else if (!isPlaying) {
             features.decay(0.90f, beatFactor = 0.75f)
           }

@@ -242,7 +242,6 @@ internal fun CuboidOverlay(
       state = state,
       features = features,
       isPlaying = isPlaying,
-      volumeScale = volumeScale,
     )
   }
 }
@@ -251,7 +250,6 @@ private fun DrawScope.drawCuboidTunnel(
   state: CuboidTunnelState,
   features: AudioFeatures,
   isPlaying: Boolean,
-  volumeScale: Float,
 ) {
   if (size.width <= 1f || size.height <= 1f || state.rings.size < 2) return
 
@@ -263,7 +261,8 @@ private fun DrawScope.drawCuboidTunnel(
     isPlaying &&
       spectrum.size > CUBOID_AUDIO_BIN_MIN &&
       features.hasRecentCapture(CUBOID_CAPTURE_MAX_AGE_NS)
-  val gain = volumeScale.coerceIn(0f, 1.5f)
+  // Volume gating comes from the shared feature state, matching every scaled*() consumer.
+  val gain = features.volumeScale.coerceIn(0f, 1.5f)
 
   val width = size.width
   val height = size.height

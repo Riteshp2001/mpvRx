@@ -16,7 +16,7 @@ import android.view.MotionEvent
 
 internal class BlobVisualizerView(
   context: Context,
-  features: AudioFeatures = AudioFeatures(),
+  features: AudioFeatures,
   palette: VisualizerPalette,
   reducedMotion: Boolean = false,
 ) : GLSurfaceView(context),
