@@ -354,6 +354,14 @@ class PlayerActivity :
     val originalUri: String?,
   )
 
+  private data class PendingMediaLoadRecovery(
+    val item: PlaybackItem,
+    val selectVideo: Boolean,
+    val generation: Long,
+    val attempt: Int,
+    val requestGeneration: Long,
+  )
+
   private var pendingSavedPlaylistSelection: SavedPlaylistSelection? = null
 
   /**
@@ -389,6 +397,7 @@ class PlayerActivity :
   private var isReady = false // Single flag: true when video loaded and ready
   private var isUserFinishing = false
   private var isBackgroundPlaybackSessionActive = false
+  private var reusingPlaybackSessionOnLaunch = false
   private var startedBackgroundForPip = false
   private var wasInPipMode = false
   private var handledPipDismissal = false
@@ -414,6 +423,9 @@ class PlayerActivity :
   private var videoParamRefreshJob: Job? = null
   private var intentSubtitleJob: Job? = null
   private var mediaLoadJob: Job? = null
+  private var playbackLoadRetryJob: Job? = null
+  private var playbackLoadWatchdogJob: Job? = null
+  @Volatile private var pendingMediaLoadRecovery: PendingMediaLoadRecovery? = null
   @Volatile private var mediaRequestGeneration = 0L
   private var eofAdvanceJob: Job? = null
   // Keep the old video decoder detached until mpv has completed the replacement load.
@@ -1132,7 +1144,7 @@ class PlayerActivity :
     // Reopening an existing session: the detached service already owns focus and playback is
     // ongoing. Requesting focus here would steal it from the service and make it pause, so the
     // foreground Activity re-acquires focus from onStart() after the service is torn down.
-    val reattachingSession = intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER && PlaybackSession.isInitialized
+    val reattachingSession = reusingPlaybackSessionOnLaunch
     if (!serviceBound && !reattachingSession) {
       requestAudioFocus()
     }
@@ -1252,6 +1264,7 @@ class PlayerActivity :
 
     runCatching {
       mediaLoadJob?.cancel()
+      cancelPlaybackLoadRecovery()
       if (::castPlaybackController.isInitialized) castPlaybackController.release()
       cancelSystemBarsAutoHide()
       if (playbackWasInitialized) saveVideoPlaybackState(fileName, immediate = true)
@@ -1309,6 +1322,7 @@ class PlayerActivity :
     backgroundHandoffJob?.cancel()
     deferredFontSyncJob?.cancel()
     mediaLoadJob?.cancel()
+    cancelPlaybackLoadRecovery()
     eofAdvanceJob?.cancel()
     resumeAfterUnlockJob?.cancel()
     runCatching { PlaybackSession.removeObserver(playerObserver) }
@@ -1854,24 +1868,45 @@ class PlayerActivity :
   }
 
   private fun releaseDetachedBackgroundPlaybackBeforeFreshLaunch() {
-    if ((intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER || hasValidSavedPlaybackSession()) &&
+    if ((hasAttachableNotificationSession() || hasValidSavedPlaybackSession()) &&
       PlaybackSession.isInitialized
     ) {
+      reusingPlaybackSessionOnLaunch = true
       MediaPlaybackService.prepareForActivityHandoff()
       PlaybackSession.markForeground()
       return
     }
 
+    reusingPlaybackSessionOnLaunch = false
+
     if (MediaPlaybackService.isRunning()) {
       Log.d(TAG, "Stopping detached service before replacing its media")
       MediaPlaybackService.relinquishMediaSessionToActivity()
+      MediaPlaybackService.prepareForMpvShutdown()
       stopService(Intent(this, MediaPlaybackService::class.java))
+    }
+
+    if (PlaybackSession.isInitialized) {
+      // A normal player close keeps libmpv warm briefly. Reusing that half-stopped core is unsafe:
+      // some hardware decoders retain the old file/Surface state and the replacement never reaches
+      // FILE_LOADED, leaving a black frame and a 00:00 duration. A genuine fresh launch has no live
+      // session to preserve, so recreate the native core before attaching the new Surface. The
+      // process-wide queue intentionally survives destroy() and is consumed after setupMPV().
+      Log.i(TAG, "Discarding stopped libmpv core before fresh playback launch")
+      PlaybackSession.destroy()
     }
   }
 
   private fun attachToCurrentPlaybackSessionIfRequested(sourceIntent: Intent = intent): Boolean {
     if (sourceIntent.action != MediaPlaybackService.ACTION_OPEN_PLAYER) return false
     return attachToPlaybackSession(sourceIntent)
+  }
+
+  private fun hasAttachableNotificationSession(): Boolean {
+    if (intent.action != MediaPlaybackService.ACTION_OPEN_PLAYER) return false
+    val state = PlaybackSession.state.value
+    return state.currentItem != null &&
+      state.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
   }
 
   private fun attachToSavedPlaybackSessionIfValid(sourceIntent: Intent = intent): Boolean {
@@ -1884,7 +1919,11 @@ class PlayerActivity :
   private fun hasValidSavedPlaybackSession(): Boolean {
     val saved = pendingSavedPlaylistSelection ?: return false
     val state = PlaybackSession.state.value
-    if (state.phase !in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return false
+    // A LOADING session has no verified timeline or decoder yet. Reattaching to it can preserve a
+    // permanently stalled load across Activity recreation, which is exactly the black/00:00 state
+    // this guard is meant to prevent. READY/BACKGROUND sessions have completed FILE_LOADED and are
+    // safe to hand off without reloading.
+    if (state.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return false
     val queue = PlaybackSession.queue.value
     if (queue.currentIndex != saved.index) return false
     val item = queue.currentItem ?: return false
@@ -1939,7 +1978,23 @@ class PlayerActivity :
       }
     setIntent(mediaIntent)
 
-    if (isReady) viewModel.onVideoLoadCompleted() else viewModel.onVideoLoadStarted()
+    if (isReady) {
+      viewModel.onVideoLoadCompleted()
+    } else {
+      viewModel.onVideoLoadStarted()
+      // Notification re-entry can legitimately attach while mpv is still opening a remote file.
+      // Transfer timeout ownership to this Activity so destroying the old screen cannot leave the
+      // process-wide session stuck in LOADING forever without a retry or visible failure.
+      armPlaybackLoadRecovery(
+        PendingMediaLoadRecovery(
+          item = currentItem,
+          selectVideo = true,
+          generation = sessionState.generation,
+          attempt = 0,
+          requestGeneration = mediaRequestGeneration,
+        ),
+      )
+    }
     viewModel.refreshPlaylistItems()
     syncBackgroundPlaybackService(updateThumbnail = false)
     return true
@@ -2918,7 +2973,10 @@ class PlayerActivity :
       .getStringExtra("local_media_path")
       ?.takeIf { path -> File(path).canRead() }
       ?: when (intent.action) {
-        Intent.ACTION_VIEW -> intent.data?.resolveUri(this)
+        // A value returned here is retained in PlaybackItem. Never detach an fd at this stage:
+        // fd:// handles are consumed by their first mpv load and cannot survive replay/reopen.
+        // PlaybackSession opens one fresh descriptor immediately before every actual load.
+        Intent.ACTION_VIEW -> intent.data?.resolveUri(this, allowFdFallback = false)
         Intent.ACTION_SEND -> parsePathFromSendIntent(intent)
         else -> intent.getStringExtra("uri")
       }
@@ -2940,12 +2998,12 @@ class PlayerActivity :
           @Suppress("DEPRECATION")
           intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
         }
-      uri?.resolveUri(this@PlayerActivity)
+      uri?.resolveUri(this@PlayerActivity, allowFdFallback = false)
     } else {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
         val uri = text.trim().toUri()
         if (uri.isHierarchical && !uri.isRelative) {
-          uri.resolveUri(this)
+          uri.resolveUri(this, allowFdFallback = false)
         } else {
           null
         }
@@ -3529,6 +3587,8 @@ class PlayerActivity :
       MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
         val loadGeneration = PlaybackSession.state.value.activeGeneration
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
+        val recovery = pendingMediaLoadRecovery
+        if (recovery?.generation == loadGeneration) cancelPlaybackLoadRecovery()
         eofAdvanceJob?.cancel()
         eofAdvanceJob = null
         isAdvancingAtEof = false
@@ -3548,12 +3608,39 @@ class PlayerActivity :
       }
 
       MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
+        if (PlaybackSession.state.value.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return
         isAdvancingAtEof = false
         player.isExiting = false
         if (!isReady) {
           isReady = true
         }
         viewModel.onVideoLoadCompleted()
+      }
+
+      MPVLib.MpvEvent.MPV_EVENT_END_FILE -> {
+        val recovery = pendingMediaLoadRecovery ?: return
+        val session = PlaybackSession.state.value
+        if (session.generation == recovery.generation && session.phase == PlaybackPhase.ERROR) {
+          // Some playlist/redirect paths emit END_FILE immediately before a new START_FILE for the
+          // same app-level request. Give that ordered native transition a brief chance to continue;
+          // only a generation that remains in ERROR is retried.
+          playbackLoadWatchdogJob?.cancel()
+          playbackLoadWatchdogJob =
+            lifecycleScope.launch {
+              delay(PLAYBACK_LOAD_ERROR_SETTLE_MS)
+              val latest = PlaybackSession.state.value
+              if (pendingMediaLoadRecovery != recovery || latest.generation != recovery.generation) {
+                return@launch
+              }
+              when (latest.phase) {
+                PlaybackPhase.ERROR -> retryOrFinishPlaybackLoad(recovery, latest.error)
+                PlaybackPhase.READY,
+                PlaybackPhase.BACKGROUND,
+                -> cancelPlaybackLoadRecovery()
+                else -> armPlaybackLoadRecovery(recovery)
+              }
+            }
+        }
       }
     }
   }
@@ -4479,6 +4566,7 @@ class PlayerActivity :
 
     setIntent(intent)
     mediaRequestGeneration++
+    cancelPlaybackLoadRecovery()
     pendingSavedPlaylistSelection = null
     if (isKnownAudioLaunch(intent)) setOrientation()
 
@@ -4642,6 +4730,7 @@ class PlayerActivity :
     expandM3u: Boolean = false,
   ) {
     mediaLoadJob?.cancel()
+    cancelPlaybackLoadRecovery()
     playWhenFileLoaded = true
     val sourceIntent = Intent(intent)
     val requestedFileName = fileName
@@ -4784,10 +4873,16 @@ class PlayerActivity :
               .onFailure { error -> Log.w(TAG, "Failed to prepare playback cookies", error) }
           }
           if (requestedQueueItem == null || isTorrentRequest) PlaybackSession.replaceQueue(listOf(item), 0)
-          PlaybackSession.load(item, selectVideo = selectVideoOnLoad)
+          issuePlaybackLoad(
+            item = item,
+            selectVideo = selectVideoOnLoad,
+            attempt = 0,
+            requestGeneration = requestGeneration,
+          )
         } catch (error: CancellationException) {
           throw error
         } catch (error: Exception) {
+          cancelPlaybackLoadRecovery()
           playWhenFileLoaded = false
           isAdvancingAtEof = false
           Log.e(TAG, "Failed to load media URL", error)
@@ -4803,6 +4898,161 @@ class PlayerActivity :
           }
         }
       }
+  }
+
+  private suspend fun issuePlaybackLoad(
+    item: PlaybackItem,
+    selectVideo: Boolean,
+    attempt: Int,
+    requestGeneration: Long,
+  ) {
+    if (requestGeneration != mediaRequestGeneration) throw CancellationException("Media request was replaced")
+    val generation = PlaybackSession.load(item, selectVideo = selectVideo)
+    if (generation < 0L) throw IllegalStateException("libmpv core is unavailable")
+
+    val request =
+      PendingMediaLoadRecovery(
+        item = item,
+        selectVideo = selectVideo,
+        generation = generation,
+        attempt = attempt,
+        requestGeneration = requestGeneration,
+      )
+    withContext(Dispatchers.Main) { armPlaybackLoadRecovery(request) }
+  }
+
+  private fun armPlaybackLoadRecovery(request: PendingMediaLoadRecovery) {
+    if (request.requestGeneration != mediaRequestGeneration ||
+      !PlaybackSession.isCurrentGeneration(request.generation)
+    ) {
+      return
+    }
+
+    playbackLoadWatchdogJob?.cancel()
+    pendingMediaLoadRecovery = request
+    val phase = PlaybackSession.state.value.phase
+    when (phase) {
+      PlaybackPhase.READY,
+      PlaybackPhase.BACKGROUND,
+      -> {
+        cancelPlaybackLoadRecovery()
+        return
+      }
+      PlaybackPhase.ERROR -> {
+        retryOrFinishPlaybackLoad(request, PlaybackSession.state.value.error)
+        return
+      }
+      PlaybackPhase.LOADING -> Unit
+      else -> {
+        cancelPlaybackLoadRecovery()
+        return
+      }
+    }
+
+    playbackLoadWatchdogJob =
+      lifecycleScope.launch {
+        delay(playbackLoadTimeoutMs(request.item))
+        val current = PlaybackSession.state.value
+        if (pendingMediaLoadRecovery != request ||
+          request.requestGeneration != mediaRequestGeneration ||
+          current.generation != request.generation ||
+          current.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+        ) {
+          return@launch
+        }
+        if (current.phase !in setOf(PlaybackPhase.LOADING, PlaybackPhase.ERROR)) {
+          cancelPlaybackLoadRecovery()
+          return@launch
+        }
+        retryOrFinishPlaybackLoad(request, "Timed out while opening media")
+      }
+  }
+
+  private fun retryOrFinishPlaybackLoad(
+    request: PendingMediaLoadRecovery,
+    error: String?,
+  ) {
+    if (pendingMediaLoadRecovery != request || request.requestGeneration != mediaRequestGeneration) return
+
+    playbackLoadWatchdogJob?.cancel()
+    playbackLoadWatchdogJob = null
+    pendingMediaLoadRecovery = null
+
+    if (request.attempt >= MAX_PLAYBACK_LOAD_RETRIES || isFinishing || isDestroyed || player.isExiting) {
+      finishPlaybackLoadFailure(request, error)
+      return
+    }
+
+    Log.w(
+      TAG,
+      "Retrying failed media load generation ${request.generation}: ${error ?: "unknown native error"}",
+    )
+    isReady = false
+    playWhenFileLoaded = true
+    viewModel.onVideoLoadStarted()
+    playbackLoadRetryJob?.cancel()
+    playbackLoadRetryJob =
+      lifecycleScope.launch(mediaLoadDispatcher) {
+        try {
+          delay(PLAYBACK_LOAD_RETRY_DELAY_MS)
+          if (request.requestGeneration != mediaRequestGeneration ||
+            !PlaybackSession.isCurrentGeneration(request.generation)
+          ) {
+            return@launch
+          }
+          issuePlaybackLoad(
+            item = request.item,
+            selectVideo = request.selectVideo,
+            attempt = request.attempt + 1,
+            requestGeneration = request.requestGeneration,
+          )
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (retryError: Exception) {
+          Log.e(TAG, "Playback load retry could not be issued", retryError)
+          withContext(Dispatchers.Main) {
+            finishPlaybackLoadFailure(request, retryError.message ?: error)
+          }
+        }
+      }
+  }
+
+  private fun finishPlaybackLoadFailure(
+    request: PendingMediaLoadRecovery,
+    error: String?,
+  ) {
+    if (request.requestGeneration != mediaRequestGeneration) return
+    playbackLoadWatchdogJob?.cancel()
+    playbackLoadWatchdogJob = null
+    pendingMediaLoadRecovery = null
+    playWhenFileLoaded = false
+    restoreVideoTrackAfterFileLoad = false
+    isAdvancingAtEof = false
+    isReady = false
+    val message = error?.takeIf { it.isNotBlank() } ?: "Media did not become ready"
+    PlaybackSession.reportLoadTimeout(request.generation, message)
+    viewModel.onVideoLoadCompleted()
+    viewModel.showToast(getString(R.string.toast_playback_load_failed))
+    Log.e(TAG, "Media load failed after recovery: $message")
+  }
+
+  private fun cancelPlaybackLoadRecovery() {
+    playbackLoadWatchdogJob?.cancel()
+    playbackLoadWatchdogJob = null
+    playbackLoadRetryJob?.cancel()
+    playbackLoadRetryJob = null
+    pendingMediaLoadRecovery = null
+  }
+
+  private fun playbackLoadTimeoutMs(item: PlaybackItem): Long {
+    val sourceSchemes =
+      sequenceOf(item.originalUri, item.playableUri)
+        .mapNotNull { value -> runCatching { Uri.parse(value).scheme?.lowercase() }.getOrNull() }
+        .toSet()
+    val isRemote =
+      item.networkSource != null ||
+        sourceSchemes.any { scheme -> scheme in setOf("http", "https", "rtsp", "rtmp", "magnet", "torrent") }
+    return if (isRemote) NETWORK_PLAYBACK_LOAD_TIMEOUT_MS else LOCAL_PLAYBACK_LOAD_TIMEOUT_MS
   }
 
   private fun redirectUnselectedTorrentToPicker(
@@ -6828,6 +7078,16 @@ class PlayerActivity :
      * Default subtitle speed (1.0 = normal).
      */
     private const val DEFAULT_SUB_SPEED = 1.0
+
+    /** Local opens should finish quickly; this only catches a native load that stopped making progress. */
+    private const val LOCAL_PLAYBACK_LOAD_TIMEOUT_MS = 20_000L
+
+    /** Remote/proxied media gets enough time for authentication, connection and manifest resolution. */
+    private const val NETWORK_PLAYBACK_LOAD_TIMEOUT_MS = 60_000L
+
+    private const val PLAYBACK_LOAD_RETRY_DELAY_MS = 200L
+    private const val PLAYBACK_LOAD_ERROR_SETTLE_MS = 300L
+    private const val MAX_PLAYBACK_LOAD_RETRIES = 1
 
     /**
      * General tag for logging from PlayerActivity.

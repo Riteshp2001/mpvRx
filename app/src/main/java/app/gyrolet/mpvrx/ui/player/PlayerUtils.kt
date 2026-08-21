@@ -232,7 +232,10 @@ private fun Uri.tryFileDescriptorFallback(context: Context): String? =
  *
  * Returns null if URI scheme is null or unsupported.
  */
-internal fun Uri.resolveUri(context: Context): String? {
+internal fun Uri.resolveUri(
+  context: Context,
+  allowFdFallback: Boolean = true,
+): String? {
   if (scheme == null) {
     Log.e(TAG, "URI has null scheme: $this")
     return null
@@ -240,7 +243,9 @@ internal fun Uri.resolveUri(context: Context): String? {
 
   return when (scheme) {
     "file" -> path
-    "content" -> openContentFd(context)
+    "content" ->
+      openContentFd(context, allowFdFallback = allowFdFallback)
+        ?: if (allowFdFallback) null else toString()
     "data" -> "data://$schemeSpecificPart"
     "magnet", "torrent" -> toString()
     NetworkPlaybackUri.SCHEME -> toString()

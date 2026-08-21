@@ -1683,7 +1683,12 @@ class PlayerViewModel : ViewModel(),
     seekThumbnailCache.evictAll()
     seekThumbnailFailureAt.clear()
     introLookupJob?.cancel()
+    // PlaybackSession is process-wide, while this ViewModel can be recreated. Clear both halves of
+    // the timeline so a stopped file's last position cannot be rendered beside the incoming file's
+    // reset 00:00 duration while mpv is still opening it.
+    _pos.value = null
     _duration.value = null
+    _precisePosition.value = 0f
     _preciseDuration.value = 0f
     chapterDerivedSegments = emptyList()
     introDbSegments = emptyList()
