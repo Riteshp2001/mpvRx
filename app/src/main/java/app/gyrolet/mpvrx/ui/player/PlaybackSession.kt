@@ -493,6 +493,9 @@ object PlaybackSession : MPVLib.EventObserver {
 
   fun playQueueItem(index: Int): PlaybackItem? =
     nativeLock.withLock {
+      // Unresolved torrent episodes need the player screen's streaming engine; loading the raw
+      // magnet/torrent source into mpv would fail and desync the queue.
+      if (_queue.value.items.getOrNull(index)?.requiresTorrentResolution() == true) return@withLock null
       val item = selectQueueItem(index) ?: return@withLock null
       load(item)
       item
@@ -500,6 +503,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   fun playNext(): PlaybackItem? =
     nativeLock.withLock {
+      if (PlaybackQueueReducer.peekNext(_queue.value)?.requiresTorrentResolution() == true) return@withLock null
       val item = selectNext() ?: return@withLock null
       load(item)
       item
@@ -507,6 +511,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   fun playPrevious(): PlaybackItem? =
     nativeLock.withLock {
+      if (PlaybackQueueReducer.peekPrevious(_queue.value)?.requiresTorrentResolution() == true) return@withLock null
       val item = selectPrevious() ?: return@withLock null
       load(item)
       item

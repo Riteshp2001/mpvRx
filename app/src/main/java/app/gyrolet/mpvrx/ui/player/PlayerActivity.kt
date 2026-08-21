@@ -77,6 +77,7 @@ import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamRequest
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamException
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamResult
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.domain.torrent.canonicalInfoHash
 import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
@@ -4786,6 +4787,7 @@ class PlayerActivity :
           var resolvedFileName = requestedFileName
           var resolvedMediaIdentifier = requestedMediaIdentifier
           var resolvedMimeType = sourceIntent.type
+          var torrentResult: TorrentStreamResult? = null
 
           if (isTorrentRequest) {
             val result =
@@ -4800,6 +4802,7 @@ class PlayerActivity :
             if (requestGeneration != mediaRequestGeneration) {
               throw CancellationException("Torrent request was replaced")
             }
+            torrentResult = result
             resolvedPlayableUri = result.localUrl
             resolvedOriginalUri = result.source
             resolvedFileName = result.selectedFile.name
@@ -4867,6 +4870,7 @@ class PlayerActivity :
                 mimeType = resolvedMimeType,
                 headers = requestedHeaders,
                 networkSource = networkSource,
+                torrentFileIndex = torrentResult?.selectedFile?.index,
               )
           val cookieSource =
             sequenceOf(resolvedPlayableUri, resolvedOriginalUri)
@@ -4876,7 +4880,51 @@ class PlayerActivity :
               .exportForPlayback(cookieSource, AndroidCookieJar.playbackCookieFile(this@PlayerActivity))
               .onFailure { error -> Log.w(TAG, "Failed to prepare playback cookies", error) }
           }
-          if (requestedQueueItem == null || isTorrentRequest) PlaybackSession.replaceQueue(listOf(item), 0)
+          if (requestedQueueItem == null || isTorrentRequest) {
+            val torrentSeries = torrentResult?.takeIf { it.playableFiles.size > 1 }
+            if (torrentSeries != null) {
+              // A multi-file torrent is a series: expose every episode as its own queue entry so
+              // the playlist sheet and next/previous can navigate between them.
+              val orderedFiles =
+                torrentSeries.playableFiles.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+              val seriesItems =
+                orderedFiles.map { file ->
+                  if (file.index == torrentSeries.selectedFile.index) {
+                    item
+                  } else {
+                    PlaybackItem(
+                      stableId = PlaybackIdentity.forTorrent(torrentSeries.infoHash, file.index),
+                      originalUri = torrentSeries.source,
+                      playableUri = torrentSeries.source,
+                      title = file.name,
+                      mimeType = file.mimeType,
+                      headers = requestedHeaders,
+                      torrentFileIndex = file.index,
+                    )
+                  }
+                }
+              val selectedPosition =
+                orderedFiles.indexOfFirst { it.index == torrentSeries.selectedFile.index }.coerceAtLeast(0)
+              PlaybackSession.replaceQueue(seriesItems, selectedPosition, isExplicitQueue = true)
+              withContext(Dispatchers.Main) {
+                playlistId = null
+                playlistItems = emptyList()
+                playlistEntity = null
+                isM3uPlaylist = false
+                playlist = seriesItems.map { queued -> Uri.parse(queued.originalUri) }
+                playlistIndex = selectedPosition
+                playlistWindowOffset = 0
+                playlistTotalCount = seriesItems.size
+                networkPlaylistPaths = seriesItems.map { "" }
+                networkPlaylistTitles = seriesItems.map { queued -> queued.title.orEmpty() }
+                networkPlaylistHeaders = seriesItems.map(PlaybackItem::headers)
+                networkPlaylistConnectionId = -1L
+                viewModel.refreshPlaylistItems()
+              }
+            } else {
+              PlaybackSession.replaceQueue(listOf(item), 0)
+            }
+          }
           issuePlaybackLoad(
             item = item,
             selectVideo = selectVideoOnLoad,
@@ -6113,6 +6161,14 @@ class PlayerActivity :
     // Update playlist index
     playlistIndex = index
     PlaybackSession.selectQueueItem(index)
+    // Torrent series entries carry their file index; the torrent branch of startMediaLoad reads
+    // it from the intent to restart the stream on the right episode.
+    val queueTorrentFileIndex = PlaybackSession.queue.value.items.getOrNull(index)?.torrentFileIndex
+    if (queueTorrentFileIndex != null) {
+      intent.putExtra("torrent_file_index", queueTorrentFileIndex)
+    } else {
+      intent.removeExtra("torrent_file_index")
+    }
     viewModel.calculateVideoHash(uri)
 
     // Extract and set the new file name

@@ -51,7 +51,12 @@ data class PlaybackItem(
   val networkSource: NetworkPlaybackSource? = null,
   val playlistItemId: Int? = null,
   val artworkUri: String? = null,
+  /** File index inside a multi-file torrent; lets a series episode restart its stream. */
+  val torrentFileIndex: Int? = null,
 ) {
+  /** True while this torrent episode still points at its magnet/torrent source instead of a live stream URL. */
+  fun requiresTorrentResolution(): Boolean = torrentFileIndex != null && playableUri == originalUri
+
   companion object {
     fun fromUri(
       uri: String,
@@ -195,6 +200,10 @@ internal object PlaybackQueueReducer {
   fun hasNext(previous: PlaybackQueueState): Boolean = peek(previous, forward = true) != null
 
   fun hasPrevious(previous: PlaybackQueueState): Boolean = peek(previous, forward = false) != null
+
+  fun peekNext(previous: PlaybackQueueState): PlaybackItem? = peek(previous, forward = true)
+
+  fun peekPrevious(previous: PlaybackQueueState): PlaybackItem? = peek(previous, forward = false)
 
   private fun advance(
     previous: PlaybackQueueState,
