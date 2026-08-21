@@ -429,9 +429,6 @@ class PlayerActivity :
   @Volatile private var pendingMediaLoadRecovery: PendingMediaLoadRecovery? = null
   @Volatile private var mediaRequestGeneration = 0L
   private var eofAdvanceJob: Job? = null
-  // Keep the old video decoder detached until mpv has completed the replacement load.
-  // Reattaching it as part of `loadfile` can make the old and new outputs overlap.
-  private var restoreVideoTrackAfterFileLoad = false
 
   @Volatile private var isAdvancingAtEof = false
 
@@ -3594,10 +3591,6 @@ class PlayerActivity :
         eofAdvanceJob = null
         isAdvancingAtEof = false
         isReady = true
-        if (restoreVideoTrackAfterFileLoad) {
-          restoreVideoTrackAfterFileLoad = false
-          PlaybackSession.setPropertyString("vid", "auto")
-        }
         if (playWhenFileLoaded) {
           playWhenFileLoaded = false
         }
@@ -4739,16 +4732,7 @@ class PlayerActivity :
     val requestedPlaylistIndex = playlistIndex
     val requestedQueueItem = PlaybackSession.queue.value.items.getOrNull(requestedPlaylistIndex)
     val requestGeneration = mediaRequestGeneration
-    // On cold start the render Surface attaches only after the load reaches mpv, so the
-    // surface-attached gate inside PlaybackSession.load() would leave the file at vid=no and a
-    // video-only (soundless) file would abort with "No video or audio streams selected".
-    // Foreground loads therefore request video explicitly. HLS URLs which look like playlists but
-    // fall back to direct mpv playback use this same policy instead of being stranded at vid=no.
-    val selectVideoOnLoad =
-      PlayerLifecyclePolicy.shouldSelectVideoForLoad(
-        isInBackgroundPlayback = isInBackgroundPlayback,
-        surfaceAttached = PlaybackSession.state.value.surfaceAttached,
-      )
+    val selectVideoOnLoad = PlaybackSession.state.value.surfaceAttached
     val requestedSource = originalUri ?: extractUriFromIntent(sourceIntent)?.toString() ?: playableUri
     val requestedHeaders =
       buildPlaybackHeaders(
@@ -4846,7 +4830,6 @@ class PlayerActivity :
           }
 
           // Tear down the outgoing video track before replacing the file.
-          restoreVideoTrackAfterFileLoad = selectVideoOnLoad
           PlaybackSession.setPropertyString("vid", "no")
           val networkPath = sourceIntent.getStringExtra("network_file_path")
           val networkConnectionId = sourceIntent.getLongExtra("network_connection_id", -1L)
@@ -5078,7 +5061,6 @@ class PlayerActivity :
     playbackLoadWatchdogJob = null
     pendingMediaLoadRecovery = null
     playWhenFileLoaded = false
-    restoreVideoTrackAfterFileLoad = false
     isAdvancingAtEof = false
     isReady = false
     val message = error?.takeIf { it.isNotBlank() } ?: "Media did not become ready"

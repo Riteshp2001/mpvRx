@@ -301,7 +301,12 @@ object PlaybackSession : MPVLib.EventObserver {
 
       // Never leave a hardware video decoder attached to a Surface that Android is destroying.
       // Audio remains untouched, so background/audio-only playback continues normally.
-      suspendVideoTrackForSurfaceLossLocked()
+      if (_state.value.phase == PlaybackPhase.LOADING) {
+        deferredVideoSelectionGeneration = _state.value.generation
+        runCatching { MPVLib.setPropertyString("vid", "no") }
+      } else {
+        suspendVideoTrackForSurfaceLossLocked()
+      }
       runCatching { MPVLib.setPropertyString("vo", "null") }
       runCatching { MPVLib.setOptionString("force-window", "no") }
       runCatching { MPVLib.detachSurface() }
@@ -552,12 +557,9 @@ object PlaybackSession : MPVLib.EventObserver {
     selectVideo: Boolean? = null,
   ): Long =
     withCore(default = -1L) {
-      // A preceding surface detach may have left the outgoing file at vid=no. Select video for the
-      // incoming file when the caller expects to render it, or when a valid render Surface is
-      // attached. Callers must pass an explicit choice for foreground loads: on cold start the
-      // Surface attaches only after this load reaches mpv, and a global vid=no would make a
-      // video-only (soundless) file abort with "No video or audio streams selected". The choice is
-      // file-local in the load command instead of mutating the process-wide vid property.
+      // A preceding surface detach may have left the outgoing file at vid=no. Select video in the
+      // load command only when Android has already attached a valid render Surface; otherwise
+      // bindSurface() enables it after the native window exists.
       val selectVideoForNewFile = selectVideo ?: _state.value.surfaceAttached
 
       // An OUTPUT Ambient shader bakes the previous video's aspect ratio into its GLSL. Because the
@@ -600,11 +602,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
 
 
-      // Keep the native core paused while tracks/decoder/output are being replaced. When a valid
-      // render Surface is attached, explicitly make vid=auto file-local to this new load. This
-      // prevents a preceding vid=no from producing "No video or audio streams selected" on
-      // video-only files while preserving video suppression for true background/no-Surface loads.
-      val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes,vid=no"
+      val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes"
       MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
       propBoolean.emit("pause", true)
       generation
