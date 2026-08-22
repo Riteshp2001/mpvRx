@@ -50,7 +50,7 @@ class AppearancePreferences(
   val showUnplayedOldVideoLabel = preferenceStore.getBoolean("show_unplayed_old_video_label", true)
   val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)
   val showNetworkThumbnails = preferenceStore.getBoolean("show_network_thumbnails", false)
-  val seekbarStyle = preferenceStore.getEnum("seekbar_style", SeekbarStyle.Thick)
+  val seekbarStyle = preferenceStore.getEnum("seekbar_style", SeekbarStyle.Wavy)
   val portraitPlaybackControlsPosition =
     preferenceStore.getEnum("portrait_playback_controls_position", PortraitPlaybackControlsPosition.Center)
   val showHomeTab = preferenceStore.getBoolean("show_home_tab", true)
