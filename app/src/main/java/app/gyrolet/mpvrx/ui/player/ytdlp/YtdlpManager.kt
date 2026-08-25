@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player.ytdlp
 
 import android.content.Context
+import android.net.Uri
 import android.system.Os
 import android.util.Log
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
@@ -17,19 +18,83 @@ import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.*
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStreamReader
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+
+internal data class YtdlpPlaybackResolution(
+  val videoUrl: String,
+  val audioUrl: String? = null,
+  val title: String? = null,
+  val headers: Map<String, String> = emptyMap(),
+)
 
 object YtdlpManager {
   private const val TAG = "YtdlpManager"
   private const val YTDL_DIR = "ytdl"
+  private const val PLAYBACK_RESOLVE_TIMEOUT_SECONDS = 60L
+  private const val INFO_RETRIES = "3"
+  private const val SOCKET_TIMEOUT_SECONDS = "15"
 
-  // Lua patterns (ytdl_hook `exclude` syntax, `|`-separated) for direct media/manifest
-  // URLs that must skip yt-dlp and go straight to mpv/ffmpeg's native demuxers. `%.`
-  // escapes the dot in a Lua pattern; each entry matches the extension anywhere in the URL
-  // so tokenized query strings (…/index.m3u8?token=…) are still excluded.
-  private const val DIRECT_MEDIA_EXCLUDE =
-    "%.m3u8|%.m3u|%.mpd|%.mp4|%.m4v|%.mkv|%.webm|%.ts|%.m2ts|%.mov|%.avi|" +
-      "%.flv|%.wmv|%.mp3|%.m4a|%.aac|%.flac|%.wav|%.ogg|%.opus"
+  private val directMediaExtensions =
+    setOf(
+      ".m3u8",
+      ".m3u",
+      ".mpd",
+      ".mp4",
+      ".m4v",
+      ".mkv",
+      ".webm",
+      ".ts",
+      ".m2ts",
+      ".mov",
+      ".avi",
+      ".flv",
+      ".wmv",
+      ".mp3",
+      ".m4a",
+      ".aac",
+      ".flac",
+      ".wav",
+      ".ogg",
+      ".opus",
+    )
+
+  private val resolverReservedOptions =
+    setOf(
+      "format",
+      "dump-json",
+      "dump-single-json",
+      "get-url",
+      "print",
+      "output",
+      "paths",
+      "exec",
+      "skip-download",
+      "no-simulate",
+      "write-subs",
+      "write-auto-subs",
+      "write-thumbnail",
+      "write-info-json",
+      "sub-langs",
+      "ignore-config",
+      "no-playlist",
+      "playlist-items",
+      "retries",
+      "socket-timeout",
+    )
+
+  @Volatile
+  private var playbackSettings = YtdlpOptionSettings()
+
+  @Volatile
+  private var playbackFormat = YtdlpOptionsBuilder.build(playbackSettings).format
 
   fun getYtdlDir(context: Context): File = File(context.filesDir, YTDL_DIR).apply { if (!exists()) mkdirs() }
 
@@ -40,22 +105,17 @@ object YtdlpManager {
     withContext(Dispatchers.IO) {
       val ytdlDir = getYtdlDir(context)
 
-      // Clean up old potentially problematic scripts from multiple possible locations
       listOf("youtube-dl", "youtube-dl.sh").forEach { name ->
         File(context.filesDir, name).delete()
         File(ytdlDir, name).delete()
       }
 
-      // Files to copy from assets/ytdl/ to filesDir/ytdl/
       val ytdlFiles = arrayOf("setup.py", "wrapper", "python313.zip")
       for (name in ytdlFiles) {
         copyAssetFile(context, "ytdl/$name", File(ytdlDir, name))
       }
 
-      // cacert.pem goes to filesDir/
       copyAssetFile(context, "cacert.pem", File(context.filesDir, "cacert.pem"))
-
-      // Set executable permission on wrapper (just in case it's used)
       File(ytdlDir, "wrapper").setExecutable(true)
     }
 
@@ -71,9 +131,7 @@ object YtdlpManager {
           Log.v(TAG, "Skipping copy: $assetPath (exists same size)")
           return true
         }
-        FileOutputStream(outFile).use { output ->
-          input.copyTo(output)
-        }
+        FileOutputStream(outFile).use { output -> input.copyTo(output) }
         Log.d(TAG, "Copied asset: $assetPath")
         true
       }
@@ -88,99 +146,327 @@ object YtdlpManager {
     ytdlPreferences: YtdlPreferences,
     subtitlesPreferences: SubtitlesPreferences,
   ) {
-    val nativeLibDir = context.applicationInfo.nativeLibraryDir
-    val ytdlBinaryPath = File(nativeLibDir, "libytdl.so").absolutePath
-    val ytdlDir = getYtdlDir(context).absolutePath
-    val ytDlpScriptPath = File(ytdlDir, "yt-dlp").absolutePath
-    val pythonPath = File(nativeLibDir, "libpython.so").absolutePath
+    configureProcessEnvironment(context)
 
-    // Set environment variables for the subprocesses started by libmpv
+    val settings = YtdlpOptionSettings.fromPreferences(ytdlPreferences, subtitlesPreferences)
+    val resolvedOptions = YtdlpOptionsBuilder.build(settings)
+    playbackSettings = settings
+    playbackFormat = resolvedOptions.format
+
+    // Follow Seal Plus' app-owned metadata-probe model. Android launches yt-dlp and parses its
+    // JSON; mpv only receives the resolved media URLs. Keeping ytdl_hook disabled avoids mpv's
+    // native subprocess path entirely on Android.
+    PlaybackSession.setOptionString("ytdl", "no")
+
+    // Old installs may still have the app-generated ytdl_hook configuration. Remove it so an
+    // upgrade cannot accidentally re-enable the native hook path.
+    runCatching { File(context.filesDir, "script-opts/ytdl_hook.conf").delete() }
+
+    val userAgent = settings.userAgent.ifBlank { YtdlpOptionsBuilder.DEFAULT_USER_AGENT }
+    PlaybackSession.setOptionString("user-agent", userAgent)
+
+    Log.d(TAG, "Seal-style app-owned yt-dlp metadata resolver enabled; mpv ytdl_hook disabled")
+    Log.d(TAG, "Setting yt-dlp playback format to: ${resolvedOptions.format}")
+  }
+
+  /**
+   * Probe a web page in the Android layer, following Seal Plus' extraction model: ask yt-dlp for
+   * one JSON metadata object, select the requested media streams from that metadata, and hand only
+   * those direct URLs and headers to libmpv. Direct media/manifest URLs bypass the probe and remain
+   * native mpv/ffmpeg inputs.
+   */
+  internal fun resolveForPlayback(
+    context: Context,
+    sourceUrl: String,
+  ): YtdlpPlaybackResolution? {
+    if (!shouldResolveForPlayback(sourceUrl)) return null
+
+    val ytdlDir = getYtdlDir(context)
+    val ytDlpScript = File(ytdlDir, "yt-dlp")
+    if (!ytDlpScript.isFile) {
+      Log.w(TAG, "Skipping web extraction because yt-dlp is not installed: ${ytDlpScript.absolutePath}")
+      return null
+    }
+
+    val processBuilder =
+      ProcessBuilder(buildPlaybackCommand(context, sourceUrl))
+        .directory(ytdlDir)
+        .redirectErrorStream(false)
+    configureProcessEnvironment(context, processBuilder.environment(), wrapYtdlp = true)
+
+    return try {
+      val process = processBuilder.start()
+      val stdout = StringBuilder()
+      val stderr = StringBuilder()
+      val stdoutReader =
+        Thread({
+          process.inputStream.bufferedReader().use { reader ->
+            reader.forEachLine { line -> stdout.appendLine(line) }
+          }
+        }, "mpvrx-ytdlp-stdout")
+      val stderrReader =
+        Thread({
+          process.errorStream.bufferedReader().use { reader ->
+            reader.forEachLine { line -> stderr.appendLine(line) }
+          }
+        }, "mpvrx-ytdlp-stderr")
+
+      stdoutReader.start()
+      stderrReader.start()
+      val finished = process.waitFor(PLAYBACK_RESOLVE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      if (!finished) process.destroyForcibly()
+      stdoutReader.join(2_000L)
+      stderrReader.join(2_000L)
+
+      if (!finished || process.exitValue() != 0) {
+        val detail = stderr.toString().trim().take(1_000)
+        Log.w(TAG, "yt-dlp metadata probe failed for ${safeHost(sourceUrl)}: $detail")
+        return null
+      }
+
+      val jsonLine =
+        stdout
+          .lineSequence()
+          .map(String::trim)
+          .lastOrNull { line -> line.startsWith("{") && line.endsWith("}") }
+          ?: stdout.toString().trim().takeIf { value -> value.startsWith("{") }
+          ?: return null
+      parsePlaybackResolution(JSONObject(jsonLine))
+    } catch (error: Exception) {
+      Log.w(TAG, "yt-dlp metadata probe crashed for ${safeHost(sourceUrl)}", error)
+      null
+    }
+  }
+
+  private fun shouldResolveForPlayback(sourceUrl: String): Boolean {
+    val uri = runCatching { Uri.parse(sourceUrl) }.getOrNull() ?: return false
+    val scheme = uri.scheme?.lowercase(Locale.ROOT)
+    if (scheme != "http" && scheme != "https") return false
+
+    val path = uri.path.orEmpty().lowercase(Locale.ROOT)
+    return directMediaExtensions.none { extension -> path.endsWith(extension) }
+  }
+
+  private fun buildPlaybackCommand(
+    context: Context,
+    sourceUrl: String,
+  ): List<String> {
+    val settings = playbackSettings
+    val command =
+      mutableListOf(
+        getExecutablePath(context),
+        "--ignore-config",
+        "--dump-single-json",
+        "--skip-download",
+        "--no-warnings",
+        "--no-progress",
+        "--no-playlist",
+        "-R",
+        INFO_RETRIES,
+        "--socket-timeout",
+        SOCKET_TIMEOUT_SECONDS,
+        "--format",
+        playbackFormat,
+      )
+
+    addCliOption(command, "user-agent", settings.userAgent.ifBlank { YtdlpOptionsBuilder.DEFAULT_USER_AGENT })
+    addCliOption(command, "referer", settings.referer)
+    addCliOption(command, "cookies", settings.cookiesFile)
+    addCliOption(command, "proxy", settings.proxy)
+    addCliOption(command, "extractor-args", settings.extractorArgs)
+    addCliOption(command, "format-sort", settings.formatSort)
+    if (settings.geoBypass) command += "--geo-bypass"
+    if (settings.liveFromStart) command += "--live-from-start"
+
+    YtdlpOptionsBuilder.parseRawOptions(settings.rawOptions).forEach { option ->
+      val key = option.key.trim().trimStart('-')
+      if (key.isBlank() || key.lowercase(Locale.ROOT) in resolverReservedOptions) return@forEach
+      command += "--$key"
+      option.value?.takeIf(String::isNotBlank)?.let { value -> command += value }
+    }
+
+    command += sourceUrl
+    return command
+  }
+
+  private fun addCliOption(
+    command: MutableList<String>,
+    name: String,
+    value: String,
+  ) {
+    if (value.isBlank()) return
+    command += "--$name"
+    command += value.trim()
+  }
+
+  private data class SelectedStreams(
+    val main: JSONObject,
+    val audio: JSONObject?,
+  )
+
+  private fun parsePlaybackResolution(info: JSONObject): YtdlpPlaybackResolution? {
+    val selected = selectStreams(info) ?: return null
+    val videoUrl = selected.main.nonBlankString("url") ?: info.nonBlankString("url") ?: return null
+    val audioUrl = selected.audio?.nonBlankString("url")?.takeUnless { it == videoUrl }
+
+    val headers = linkedMapOf<String, String>()
+    mergeJsonHeaders(headers, info.optJSONObject("http_headers"))
+    mergeJsonHeaders(headers, selected.main.optJSONObject("http_headers"))
+    mergeJsonHeaders(headers, selected.audio?.optJSONObject("http_headers"))
+
+    return YtdlpPlaybackResolution(
+      videoUrl = videoUrl,
+      audioUrl = audioUrl,
+      title = info.nonBlankString("title"),
+      headers = headers,
+    )
+  }
+
+  /**
+   * yt-dlp normally exposes the concrete -f selection through requested_formats or
+   * requested_downloads. If an extractor only supplies the broader formats list, fall back to it
+   * from the end so the fallback follows yt-dlp's usual low-to-high quality ordering.
+   */
+  private fun selectStreams(info: JSONObject): SelectedStreams? {
+    val requested = mutableListOf<JSONObject>()
+    collectRequestedFormats(info.optJSONArray("requested_formats"), requested)
+    if (requested.isEmpty()) collectRequestedDownloads(info.optJSONArray("requested_downloads"), requested)
+    selectStreamsFrom(requested)?.let { return it }
+
+    if (info.nonBlankString("url") != null) {
+      selectStreamsFrom(listOf(info))?.let { return it }
+    }
+
+    val formats = mutableListOf<JSONObject>()
+    collectFormatsInReverse(info.optJSONArray("formats"), formats)
+    return selectStreamsFrom(formats)
+  }
+
+  private fun selectStreamsFrom(formats: List<JSONObject>): SelectedStreams? {
+    if (formats.isEmpty()) return null
+
+    var combined: JSONObject? = null
+    var video: JSONObject? = null
+    var audio: JSONObject? = null
+    formats.forEach { format ->
+      if (format.nonBlankString("url") == null) return@forEach
+      val hasVideo = format.hasCodec("vcodec")
+      val hasAudio = format.hasCodec("acodec")
+      when {
+        hasVideo && hasAudio && combined == null -> combined = format
+        hasVideo && video == null -> video = format
+        hasAudio && audio == null -> audio = format
+      }
+    }
+
+    val main = combined ?: video ?: audio ?: formats.firstOrNull { it.nonBlankString("url") != null } ?: return null
+    return SelectedStreams(main = main, audio = if (main === audio || combined != null) null else audio)
+  }
+
+  private fun collectRequestedFormats(
+    array: JSONArray?,
+    target: MutableList<JSONObject>,
+  ) {
+    if (array == null) return
+    for (index in 0 until array.length()) {
+      array.optJSONObject(index)?.let(target::add)
+    }
+  }
+
+  private fun collectRequestedDownloads(
+    array: JSONArray?,
+    target: MutableList<JSONObject>,
+  ) {
+    if (array == null) return
+    for (index in 0 until array.length()) {
+      val download = array.optJSONObject(index) ?: continue
+      val nested = download.optJSONArray("requested_formats")
+      if (nested != null && nested.length() > 0) {
+        collectRequestedFormats(nested, target)
+      } else {
+        target += download
+      }
+    }
+  }
+
+  private fun collectFormatsInReverse(
+    array: JSONArray?,
+    target: MutableList<JSONObject>,
+  ) {
+    if (array == null) return
+    for (index in array.length() - 1 downTo 0) {
+      array.optJSONObject(index)?.let(target::add)
+    }
+  }
+
+  private fun JSONObject.hasCodec(key: String): Boolean {
+    val codec = nonBlankString(key) ?: return false
+    return !codec.equals("none", ignoreCase = true)
+  }
+
+  private fun JSONObject.nonBlankString(key: String): String? =
+    if (!has(key) || isNull(key)) {
+      null
+    } else {
+      optString(key).takeIf { value -> value.isNotBlank() && value != "null" }
+    }
+
+  private fun mergeJsonHeaders(
+    target: MutableMap<String, String>,
+    source: JSONObject?,
+  ) {
+    if (source == null) return
+    val keys = source.keys()
+    while (keys.hasNext()) {
+      val name = keys.next()
+      val value = source.optString(name).trim()
+      if (name.isNotBlank() && value.isNotBlank()) target[name] = value
+    }
+  }
+
+  private fun safeHost(url: String): String =
+    runCatching { Uri.parse(url).host }.getOrNull().orEmpty().ifBlank { "web URL" }
+
+  private fun configureProcessEnvironment(context: Context) {
+    val ytdlDir = getYtdlDir(context).absolutePath
+    val nativeLibDir = context.applicationInfo.nativeLibraryDir
+    val pythonPath = File(nativeLibDir, "libpython.so").absolutePath
+    val ytDlpScriptPath = File(ytdlDir, "yt-dlp").absolutePath
     try {
       Os.setenv("YTDL_PYTHON", pythonPath, true)
       Os.setenv("YTDL_SCRIPT", ytDlpScriptPath, true)
       Os.setenv("PYTHONHOME", ytdlDir, true)
-      // Include both the zip and the directory itself in PYTHONPATH
-      // Also include nativeLibDir for potential .so modules
       Os.setenv("PYTHONPATH", "$ytdlDir/python313.zip:$ytdlDir:$nativeLibDir", true)
       Os.setenv("SSL_CERT_FILE", File(context.filesDir, "cacert.pem").absolutePath, true)
 
-      // Add nativeLibDir to PATH so scripts can find our bridge if they search PATH
       val currentPath = runCatching { Os.getenv("PATH") }.getOrNull()
-      val newPath = if (currentPath.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentPath"
-      Os.setenv("PATH", newPath, true)
-
-      // Set LD_LIBRARY_PATH for the subprocess to find libpython.so's dependencies
+      Os.setenv("PATH", if (currentPath.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentPath", true)
       val currentLd = runCatching { Os.getenv("LD_LIBRARY_PATH") }.getOrNull()
-      val newLd = if (currentLd.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentLd"
-      Os.setenv("LD_LIBRARY_PATH", newLd, true)
-
-      Log.d(TAG, "Environment variables set for ytdl bridge")
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to set environment variables", e)
+      Os.setenv("LD_LIBRARY_PATH", if (currentLd.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentLd", true)
+      Log.d(TAG, "Environment variables set for app-owned yt-dlp runtime")
+    } catch (error: Exception) {
+      Log.e(TAG, "Failed to set yt-dlp environment variables", error)
     }
+  }
 
-    // Check if yt-dlp actually exists. If not, log a warning.
-    val ytDlpFile = File(ytdlDir, "yt-dlp")
-    if (!ytDlpFile.exists()) {
-      Log.w(TAG, "yt-dlp not found in ${ytDlpFile.absolutePath}. Subprocess will fail until installed.")
+  private fun configureProcessEnvironment(
+    context: Context,
+    env: MutableMap<String, String>,
+    wrapYtdlp: Boolean,
+  ) {
+    val ytdlDir = getYtdlDir(context).absolutePath
+    val nativeLibDir = context.applicationInfo.nativeLibraryDir
+    env["YTDL_PYTHON"] = File(nativeLibDir, "libpython.so").absolutePath
+    if (wrapYtdlp) {
+      env["YTDL_SCRIPT"] = File(ytdlDir, "yt-dlp").absolutePath
+    } else {
+      env.remove("YTDL_SCRIPT")
     }
-
-    val settings = YtdlpOptionSettings.fromPreferences(ytdlPreferences, subtitlesPreferences)
-    val resolvedOptions = YtdlpOptionsBuilder.build(settings)
-    val ua = ytdlPreferences.customUserAgent.get().ifBlank { YtdlpOptionsBuilder.DEFAULT_USER_AGENT }
-    // Keep mpv's delay-loaded all-format path enabled for every audio preference. Disabling it for
-    // the default Auto mode was a post-v1.4.1 regression: split video/audio URLs then depended on a
-    // single eagerly selected result and some supported sites failed before mpv could choose tracks.
-    val allFormats = "yes"
-
-    // Create script-opts/ytdl_hook.conf to ensure the script picks up our bridge
-    // This is the most reliable way to override ytdl_hook options
-    try {
-      val scriptOptsDir = File(context.filesDir, "script-opts")
-      if (!scriptOptsDir.exists()) scriptOptsDir.mkdirs()
-      val ytdlConf = File(scriptOptsDir, "ytdl_hook.conf")
-      val confContent =
-        """
-        ytdl_path=$ytdlBinaryPath
-        all_formats=$allFormats
-        exclude=$DIRECT_MEDIA_EXCLUDE
-        """.trimIndent()
-      ytdlConf.writeText(confContent)
-      Log.d(TAG, "Created ytdl_hook.conf at ${ytdlConf.absolutePath}")
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to create ytdl_hook.conf", e)
-    }
-
-    // Apply options to MPV core
-    PlaybackSession.setOptionString("ytdl", "yes")
-    PlaybackSession.setOptionString("ytdl-path", ytdlBinaryPath)
-
-    // Use script-opts-append for runtime flexibility
-    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-path=$ytdlBinaryPath")
-    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-ytdl_path=$ytdlBinaryPath")
-    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-all_formats=$allFormats")
-    // Skip yt-dlp for direct media/manifest URLs (.m3u8/.mpd/.mp4/.ts/...). Without this,
-    // ytdl_hook intercepts every http(s) URL and routes it through yt-dlp's generic
-    // extractor, which chokes on tokenized HLS/CDN links — so mpv never falls back to
-    // ffmpeg's native HLS demuxer and playback fails (while MX Player/VLC play it fine).
-    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-exclude=$DIRECT_MEDIA_EXCLUDE")
-
-    // Always derive this from typed preferences so newly added format controls cannot
-    // be shadowed by an older cached generated string.
-    val ytdlFormat = resolvedOptions.format
-    if (ytdlFormat.isNotBlank()) {
-      PlaybackSession.setOptionString("ytdl-format", ytdlFormat)
-    }
-
-    // Global User-Agent to avoid blocks at the network level
-    PlaybackSession.setOptionString("user-agent", ua)
-
-    Log.d(TAG, "Setting ytdl-format to: $ytdlFormat")
-    Log.d(TAG, "Setting ytdl-raw-options to: ${resolvedOptions.rawOptions}")
-    PlaybackSession.setOptionString("ytdl-raw-options", resolvedOptions.rawOptions)
-    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-user_agent=\"$ua\"")
-
-    Log.d(TAG, "MPV ytdl options set. Binary: $ytdlBinaryPath")
+    env["PYTHONHOME"] = ytdlDir
+    env["PYTHONPATH"] = "$ytdlDir/python313.zip:$ytdlDir:$nativeLibDir"
+    env["SSL_CERT_FILE"] = File(context.filesDir, "cacert.pem").absolutePath
+    env["PATH"] = "$nativeLibDir:${env["PATH"].orEmpty()}".trimEnd(':')
+    env["LD_LIBRARY_PATH"] = "$nativeLibDir:${env["LD_LIBRARY_PATH"].orEmpty()}".trimEnd(':')
   }
 
   suspend fun runInstall(
@@ -194,10 +480,7 @@ object YtdlpManager {
       val nativeLibDir = context.applicationInfo.nativeLibraryDir
       val pythonBinary = getExecutablePath(context)
       val setupPy = File(ytdlDir, "setup.py").absolutePath
-
-      // We use the bridge to run setup.py
       val command = mutableListOf(pythonBinary, setupPy, nativeLibDir)
-
       runPythonProcess("Installing yt-dlp...", command, context, onLog)
     }
 
@@ -209,9 +492,7 @@ object YtdlpManager {
       val ytdlDir = getYtdlDir(context)
       val pythonBinary = getExecutablePath(context)
       val ytDlp = File(ytdlDir, "yt-dlp").absolutePath
-
       val command = mutableListOf(pythonBinary, ytDlp, "--update")
-
       runPythonProcess("Updating yt-dlp...", command, context, onLog)
     }
 
@@ -223,9 +504,7 @@ object YtdlpManager {
       val ytdlDir = getYtdlDir(context)
       val pythonBinary = getExecutablePath(context)
       val ytDlp = File(ytdlDir, "yt-dlp").absolutePath
-
       val command = mutableListOf(pythonBinary, ytDlp, "--update-to", "nightly")
-
       runPythonProcess("Updating to yt-dlp nightly...", command, context, onLog)
     }
 
@@ -241,22 +520,9 @@ object YtdlpManager {
         ProcessBuilder(command)
           .directory(getYtdlDir(context))
           .redirectErrorStream(true)
-
-      val env = processBuilder.environment()
-      val ytdlDir = getYtdlDir(context).absolutePath
-      val nativeLibDir = context.applicationInfo.nativeLibraryDir
-
-      // Clear YTDL_SCRIPT so the bridge doesn't try to wrap yt-dlp during setup/update
-      env.remove("YTDL_SCRIPT")
-
-      env["YTDL_PYTHON"] = File(nativeLibDir, "libpython.so").absolutePath
-      env["PYTHONHOME"] = ytdlDir
-      env["PYTHONPATH"] = "$ytdlDir/python313.zip"
-      env["SSL_CERT_FILE"] = File(context.filesDir, "cacert.pem").absolutePath
-      env["LD_LIBRARY_PATH"] = nativeLibDir
+      configureProcessEnvironment(context, processBuilder.environment(), wrapYtdlp = false)
 
       val process = processBuilder.start()
-
       val reader = BufferedReader(InputStreamReader(process.inputStream))
       var line: String?
       while (reader.readLine().also { line = it } != null) {

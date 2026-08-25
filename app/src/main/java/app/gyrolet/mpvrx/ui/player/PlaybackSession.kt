@@ -20,6 +20,7 @@ import app.gyrolet.mpvrx.data.network.proxy.HlsStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -518,43 +519,60 @@ object PlaybackSession : MPVLib.EventObserver {
       next.currentItem
     }
 
-  fun playQueueItem(index: Int): PlaybackItem? =
-    nativeLock.withLock {
-      // Unresolved torrent episodes need the player screen's streaming engine; loading the raw
-      // magnet/torrent source into mpv would fail and desync the queue.
-      if (_queue.value.items.getOrNull(index)?.requiresTorrentResolution() == true) return@withLock null
-      val item = selectQueueItem(index) ?: return@withLock null
-      load(item)
-      item
-    }
+  fun playQueueItem(index: Int): PlaybackItem? {
+    val item =
+      nativeLock.withLock {
+        if (_queue.value.items.getOrNull(index)?.requiresTorrentResolution() == true) return@withLock null
+        selectQueueItem(index)
+      } ?: return null
+    load(item)
+    return item
+  }
 
-  fun playNext(): PlaybackItem? =
-    nativeLock.withLock {
-      if (PlaybackQueueReducer.peekNext(_queue.value)?.requiresTorrentResolution() == true) return@withLock null
-      val item = selectNext() ?: return@withLock null
-      load(item)
-      item
-    }
+  fun playNext(): PlaybackItem? {
+    val item =
+      nativeLock.withLock {
+        if (PlaybackQueueReducer.peekNext(_queue.value)?.requiresTorrentResolution() == true) return@withLock null
+        selectNext()
+      } ?: return null
+    load(item)
+    return item
+  }
 
-  fun playPrevious(): PlaybackItem? =
-    nativeLock.withLock {
-      if (PlaybackQueueReducer.peekPrevious(_queue.value)?.requiresTorrentResolution() == true) return@withLock null
-      val item = selectPrevious() ?: return@withLock null
-      load(item)
-      item
-    }
+  fun playPrevious(): PlaybackItem? {
+    val item =
+      nativeLock.withLock {
+        if (PlaybackQueueReducer.peekPrevious(_queue.value)?.requiresTorrentResolution() == true) return@withLock null
+        selectPrevious()
+      } ?: return null
+    load(item)
+    return item
+  }
 
   fun load(
     item: PlaybackItem,
     selectVideo: Boolean? = null,
     restoreSavedPosition: Boolean = false,
   ): Long {
-    val resolved = resolvePlayableUri(item)
+    val extraction =
+      applicationContext?.let { context ->
+        YtdlpManager.resolveForPlayback(context, item.playableUri)
+      }
+    val playbackItem =
+      extraction?.let { resolved ->
+        item.copy(
+          playableUri = resolved.videoUrl,
+          title = item.title ?: resolved.title,
+          headers = PlaybackHttpHeaders.merge(item.headers, resolved.headers),
+        )
+      } ?: item
+    val resolved = resolvePlayableUri(playbackItem)
     return try {
       val generation =
         load(
           playableUri = resolved.uri,
-          item = item,
+          item = playbackItem,
+          externalAudioUri = extraction?.audioUrl,
           selectVideo = selectVideo,
           restoreSavedPosition = restoreSavedPosition,
         )
@@ -583,6 +601,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private fun load(
     playableUri: String,
     item: PlaybackItem? = null,
+    externalAudioUri: String? = null,
     selectVideo: Boolean? = null,
     restoreSavedPosition: Boolean = false,
   ): Long =
@@ -628,10 +647,11 @@ object PlaybackSession : MPVLib.EventObserver {
       MPVLib.setPropertyString("http-header-fields", headerFields)
       MPVLib.setPropertyString("force-media-title", "")
 
-
-
       val loadOptions = if (selectVideoForNewFile) "pause=yes,vid=auto" else "pause=yes"
       MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
+      externalAudioUri?.takeIf(String::isNotBlank)?.let { audioUrl ->
+        MPVLib.command("audio-add", audioUrl, "select")
+      }
       propBoolean.emit("pause", desiredPaused)
       generation
     }

@@ -77,6 +77,19 @@
         </activity>
 
         <activity
+            android:name=".ui.player.ShareLinkActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.mpvrx">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".ui.player.PlayerActivity"
             android:windowSoftInputMode="adjustResize"
             android:enableOnBackInvokedCallback="false"
@@ -158,7 +171,6 @@
                 <data android:mimeType="video/*" />
                 <data android:mimeType="audio/*" />
                 <data android:mimeType="image/*" />
-                <data android:mimeType="text/plain" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
