@@ -97,7 +97,26 @@ internal object TvPlayerRemotePolicy {
     }
 
   fun shouldRepeat(action: TvPlayerRemoteAction): Boolean =
-    action == TvPlayerRemoteAction.SEEK_BACKWARD || action == TvPlayerRemoteAction.SEEK_FORWARD
+    when (action) {
+      TvPlayerRemoteAction.SEEK_BACKWARD,
+      TvPlayerRemoteAction.SEEK_FORWARD,
+      -> true
+      TvPlayerRemoteAction.DELEGATE,
+      TvPlayerRemoteAction.SHOW_CONTROLS,
+      TvPlayerRemoteAction.SHOW_MENU,
+      TvPlayerRemoteAction.SHOW_SUBTITLES,
+      TvPlayerRemoteAction.SHOW_AUDIO_TRACKS,
+      TvPlayerRemoteAction.SEEK_TO_PERCENT,
+      TvPlayerRemoteAction.SPEED_UP,
+      TvPlayerRemoteAction.SPEED_DOWN,
+      TvPlayerRemoteAction.TOGGLE_PLAYBACK,
+      TvPlayerRemoteAction.PLAY,
+      TvPlayerRemoteAction.PAUSE,
+      TvPlayerRemoteAction.STOP,
+      TvPlayerRemoteAction.PREVIOUS,
+      TvPlayerRemoteAction.NEXT,
+      -> false
+    }
 
   fun seekPercentForKeyCode(keyCode: Int): Int? =
     when (keyCode) {

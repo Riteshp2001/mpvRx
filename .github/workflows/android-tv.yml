@@ -35,16 +35,54 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Test TV policies and assemble APK
-        run: >-
-          ./gradlew
-          :app:testStandardDebugUnitTest
-          :app:assembleStandardDebug
-          --stacktrace
-          --no-daemon
-          --max-workers=2
+      - name: Test TV policies
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew \
+            :app:testStandardDebugUnitTest \
+            --stacktrace \
+            --no-daemon \
+            --max-workers=2 \
+            2>&1 | tee android-tv-tests.log
+
+      - name: Assemble standard debug APK
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew \
+            :app:assembleStandardDebug \
+            --stacktrace \
+            --no-daemon \
+            --max-workers=2 \
+            2>&1 | tee android-tv-build.log
+
+      - name: Report validation failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat android-tv-tests.log android-tv-build.log 2>/dev/null > android-tv-failure.log || true
+          summary="$(grep -E '(^e: |^FAILURE:|^\* What went wrong:|Execution failed for task|There were failing tests)' android-tv-failure.log | tail -n 12 | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
+          echo "::error title=Android TV validation failed::${summary:-See android-tv-validation-logs artifact}"
+          {
+            echo '### Android TV validation failure'
+            echo '```text'
+            tail -n 200 android-tv-failure.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-tv-validation-logs-${{ github.sha }}
+          path: android-tv-*.log
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload standard debug APKs
+        if: success()
         uses: actions/upload-artifact@v7
         with:
           name: mpvRx-android-tv-${{ github.sha }}

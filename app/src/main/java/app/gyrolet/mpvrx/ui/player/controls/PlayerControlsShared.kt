@@ -9,6 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import android.content.pm.PackageManager
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 import android.content.Context
@@ -622,7 +623,9 @@ fun RenderPlayerButton(
 
     PlayerButton.PICTURE_IN_PICTURE -> {
       val isAudioOnly by viewModel.isAudioOnly.collectAsState()
-      if (!isAudioOnly) {
+      val supportsPictureInPicture =
+        LocalContext.current.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+      if (!isAudioOnly && supportsPictureInPicture) {
         ControlsButton(
           Icons.RoundedFilled.PictureInPictureAlt,
           onClick = { activity.enterPipModeHidingOverlay() },

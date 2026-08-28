@@ -145,7 +145,11 @@ fun TvFocusScene(
     if (isTelevision && requestFocus) {
       withFrameNanos { }
       val requested = runCatching { rootRequester.requestFocus() }.getOrDefault(false)
-      if (!requested) focusManager.moveFocus(FocusDirection.Next)
+      if (requested) {
+        focusManager.moveFocus(FocusDirection.Enter)
+      } else {
+        focusManager.moveFocus(FocusDirection.Next)
+      }
     }
   }
 
