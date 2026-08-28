@@ -81,6 +81,8 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.CurrentChapter
 import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.ui.utils.isAnyMpvOptionOwnedByConfig
 import app.gyrolet.mpvrx.ui.utils.isMpvOptionOwnedByConfig
 import dev.vivvvek.seeker.Segment
@@ -155,6 +157,7 @@ fun RenderPlayerButton(
         modifier =
           Modifier
             .height(buttonSize)
+            .tvFocusable(shape = CircleShape, enabled = playlistModeEnabled)
             .clip(CircleShape)
             .clickable(
               interactionSource = titleInteractionSource,
@@ -367,12 +370,14 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.SCREEN_ROTATION -> {
-      ControlsButton(
-        icon = Icons.RoundedFilled.ScreenRotation,
-        onClick = viewModel::cycleScreenRotations,
-        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(buttonSize),
-      )
+      if (!LocalTvUiEnvironment.current.isTelevision) {
+        ControlsButton(
+          icon = Icons.RoundedFilled.ScreenRotation,
+          onClick = viewModel::cycleScreenRotations,
+          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(buttonSize),
+        )
+      }
     }
 
     PlayerButton.FRAME_NAVIGATION -> {
@@ -658,12 +663,14 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.LOCK_CONTROLS -> {
-      ControlsButton(
-        Icons.RoundedFilled.LockOpen,
-        onClick = viewModel::lockControls,
-        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(buttonSize),
-      )
+      if (!LocalTvUiEnvironment.current.isTelevision) {
+        ControlsButton(
+          Icons.RoundedFilled.LockOpen,
+          onClick = viewModel::lockControls,
+          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(buttonSize),
+        )
+      }
     }
 
     PlayerButton.VIDEO_QUALITY -> {

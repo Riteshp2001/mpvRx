@@ -155,6 +155,10 @@ import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberBufferingState
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.rememberTvInitialFocusRequester
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -197,6 +201,7 @@ fun PlayerControls(
   modifier: Modifier = Modifier,
 ) {
   val spacing = MaterialTheme.spacing
+  val isTelevision = LocalTvUiEnvironment.current.isTelevision
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
   val aiPreferences = koinInject<AiPreferences>()
@@ -212,6 +217,7 @@ fun PlayerControls(
   val showSystemNavigationBar by playerPreferences.showSystemNavigationBar.collectAsState()
   val interactionSource = remember { MutableInteractionSource() }
   val controlsShown by viewModel.controlsShown.collectAsState()
+  val tvPlayFocusRequester = rememberTvInitialFocusRequester(enabled = controlsShown)
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekBarShown by viewModel.seekBarShown.collectAsState()
@@ -248,7 +254,9 @@ fun PlayerControls(
   val isMpvBuffering = bufferingState.isCacheStall
   val safeAreaWindow by playerPreferences.safeAreaWindow.collectAsState()
   val safeAreaInsetModifier =
-    if (safeAreaWindow) {
+    if (isTelevision) {
+      Modifier.padding(horizontal = 48.dp, vertical = 24.dp)
+    } else if (safeAreaWindow) {
       Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
     } else {
       Modifier
@@ -449,7 +457,7 @@ fun PlayerControls(
     isUnlockSliderDragging,
     isAudioOnly,
   ) {
-    if (!isAudioOnly && controlsShown && paused == false && !isSeeking && !isUnlockSliderDragging) {
+    if (!isTelevision && !isAudioOnly && controlsShown && paused == false && !isSeeking && !isUnlockSliderDragging) {
       // Use 2 second delay when controls are locked, otherwise use user preference
       val delayTime = if (areControlsLocked) 2000L else playerTimeToDisappear.toLong()
       delay(delayTime)
@@ -1314,6 +1322,7 @@ fun PlayerControls(
                   modifier =
                     Modifier
                       .size(56.dp)
+                      .tvFocusable(shape = CircleShape, enabled = viewModel.hasPrevious())
                       .clip(CircleShape)
                       .clickable(
                         enabled = viewModel.hasPrevious(),
@@ -1372,6 +1381,8 @@ fun PlayerControls(
                   modifier =
                     Modifier
                       .size(64.dp)
+                      .tvInitialFocus(tvPlayFocusRequester)
+                      .tvFocusable(CircleShape)
                       .clip(CircleShape)
                       .clickable(interaction, ripple(), onClick = {
                         resetControlsTimestamp = System.currentTimeMillis()
@@ -1415,6 +1426,7 @@ fun PlayerControls(
                   modifier =
                     Modifier
                       .size(56.dp)
+                      .tvFocusable(shape = CircleShape, enabled = viewModel.hasNext())
                       .clip(CircleShape)
                       .clickable(
                         enabled = viewModel.hasNext(),
@@ -1474,6 +1486,8 @@ fun PlayerControls(
                 modifier =
                   Modifier
                     .size(64.dp)
+                    .tvInitialFocus(tvPlayFocusRequester)
+                    .tvFocusable(CircleShape)
                     .clip(CircleShape)
                     .clickable(interaction, ripple(), onClick = {
                       resetControlsTimestamp = System.currentTimeMillis()

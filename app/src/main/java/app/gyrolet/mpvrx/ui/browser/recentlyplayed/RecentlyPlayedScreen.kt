@@ -104,6 +104,7 @@ import app.gyrolet.mpvrx.ui.browser.sheets.PlayLinkSheet
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
 import app.gyrolet.mpvrx.utils.media.MediaUtils
@@ -490,6 +491,7 @@ object RecentlyPlayedScreen : Screen {
         else -> {
           HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !LocalTvUiEnvironment.current.isTelevision,
             modifier = Modifier.fillMaxSize(),
           ) { page ->
             val pageType = MediaLibraryType.entries.getOrNull(page) ?: MediaLibraryType.Video

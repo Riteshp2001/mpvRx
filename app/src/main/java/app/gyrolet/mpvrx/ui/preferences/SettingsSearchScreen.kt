@@ -69,6 +69,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -81,13 +82,23 @@ object SettingsSearchScreen : Screen {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
     val emphasizedTypography = LocalEmphasizedTypography.current
+    val isTelevision = LocalTvUiEnvironment.current.isTelevision
 
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
-    val searchResults by remember(searchQuery, resources) {
+    val searchResults by remember(searchQuery, resources, isTelevision) {
       derivedStateOf {
         SearchablePreferences.search(searchQuery) { resId ->
           resources.getString(resId)
+        }.filterNot { result ->
+          isTelevision &&
+            result.preference.titleRes in
+            setOf(
+              R.string.pref_export_settings_title,
+              R.string.pref_import_settings_title,
+              R.string.pref_advanced_mpv_conf_storage_location,
+              R.string.pref_clear_storage_root_title,
+            )
         }
       }
     }

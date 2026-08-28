@@ -39,6 +39,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import org.koin.compose.koinInject
 
 import androidx.compose.foundation.layout.aspectRatio
@@ -65,6 +66,7 @@ fun NetworkFolderCard(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(AppShapeScale.large)
         .combinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,

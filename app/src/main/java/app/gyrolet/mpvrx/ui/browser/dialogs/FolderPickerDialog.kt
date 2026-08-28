@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import java.io.File
 
@@ -348,6 +350,7 @@ private fun StorageVolumeItem(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clickable(onClick = onClick)
         .padding(horizontal = 12.dp, vertical = 12.dp),
     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -391,6 +394,7 @@ private fun FolderItem(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clickable(onClick = onClick)
         .padding(horizontal = 12.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(12.dp),

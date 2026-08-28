@@ -37,6 +37,7 @@ import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 
 @Composable
 fun SettingsClickableItem(
@@ -62,6 +63,7 @@ fun SettingsClickableItem(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(shape = shape, enabled = enabled)
         .clickable(
           enabled = enabled,
           onClick = onClick,

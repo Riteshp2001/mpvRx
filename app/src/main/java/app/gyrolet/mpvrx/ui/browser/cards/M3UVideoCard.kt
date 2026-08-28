@@ -54,6 +54,8 @@ import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.tvExcludeFromFocus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
@@ -196,6 +198,7 @@ fun M3UVideoCard(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(AppShapeScale.large)
         .combinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
@@ -229,6 +232,7 @@ fun M3UVideoCard(
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .tvExcludeFromFocus()
             .combinedClickable(
               onClick = onClick,
               onLongClick = onLongClick,

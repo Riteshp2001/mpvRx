@@ -66,6 +66,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
@@ -130,6 +131,7 @@ object AdvancedPreferencesScreen : Screen {
     val settingsManager = koinInject<SettingsManager>()
     val foldersPreferences = koinInject<FoldersPreferences>()
     val subtitlesPreferences = koinInject<SubtitlesPreferences>()
+    val isTelevision = LocalTvUiEnvironment.current.isTelevision
     val scope = rememberCoroutineScope()
     var showImportDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
@@ -378,111 +380,113 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           // Backup & Restore Section
-          item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_backup_restore))
-          }
-
-          item {
-            PreferenceCard {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_export_settings_title),
-                title = { Text(text = stringResource(R.string.pref_export_settings_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(R.string.pref_export_settings_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.FileUpload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = {
-                  exportLauncher.launch(settingsManager.getDefaultExportFilename())
-                },
-              )
-
-              PreferenceDivider()
-
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_import_settings_title),
-                title = { Text(text = stringResource(R.string.pref_import_settings_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(R.string.pref_import_settings_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.FileDownload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = {
-                  importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
-                },
-              )
+          if (!isTelevision) {
+            item {
+              PreferenceSectionHeader(title = stringResource(R.string.pref_section_backup_restore))
             }
-          }
 
-          // Storage Root Section
-          item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_storage_root))
-          }
-
-          item {
-            PreferenceCard {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf_storage_location),
-                title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
-                summary = {
-                  Text(
-                    text =
-                      if (baseStorageFolder.isNotEmpty()) {
-                        getSimplifiedStoragePath(baseStorageFolder)
-                      } else {
-                        stringResource(R.string.pref_base_storage_folder_summary)
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.Folder,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = { storageRootPicker.launch(null) },
-              )
-
-              if (baseStorageFolder.isNotEmpty()) {
-                PreferenceDivider()
+            item {
+              PreferenceCard {
                 Preference(
-                  title = { Text(stringResource(R.string.pref_clear_storage_root_title)) },
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_export_settings_title),
+                  title = { Text(text = stringResource(R.string.pref_export_settings_title)) },
+                  summary = {
+                    Text(
+                      text = stringResource(R.string.pref_export_settings_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
                   icon = {
                     Icon(
-                      Icons.RoundedFilled.Clear,
+                      Icons.RoundedFilled.FileUpload,
                       contentDescription = null,
-                      tint = MaterialTheme.colorScheme.error,
+                      tint = MaterialTheme.colorScheme.primary,
                     )
                   },
                   onClick = {
-                    if (subtitlesPreferences.fontsFolder.get() == baseStorageFolder) {
-                      subtitlesPreferences.fontsFolder.set("")
-                    }
-                    foldersPreferences.baseStorageFolder.set("")
-                    preferences.mpvConfStorageUri.set("")
-                    subtitlesPreferences.subtitleSaveFolder.set("")
+                    exportLauncher.launch(settingsManager.getDefaultExportFilename())
                   },
                 )
+
+                PreferenceDivider()
+
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_import_settings_title),
+                  title = { Text(text = stringResource(R.string.pref_import_settings_title)) },
+                  summary = {
+                    Text(
+                      text = stringResource(R.string.pref_import_settings_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  icon = {
+                    Icon(
+                      Icons.RoundedFilled.FileDownload,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.primary,
+                    )
+                  },
+                  onClick = {
+                    importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
+                  },
+                )
+              }
+            }
+
+            // Storage Root Section
+            item {
+              PreferenceSectionHeader(title = stringResource(R.string.pref_section_storage_root))
+            }
+
+            item {
+              PreferenceCard {
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf_storage_location),
+                  title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
+                  summary = {
+                    Text(
+                      text =
+                        if (baseStorageFolder.isNotEmpty()) {
+                          getSimplifiedStoragePath(baseStorageFolder)
+                        } else {
+                          stringResource(R.string.pref_base_storage_folder_summary)
+                        },
+                      color = MaterialTheme.colorScheme.outline,
+                      maxLines = 1,
+                      overflow = TextOverflow.Ellipsis,
+                    )
+                  },
+                  icon = {
+                    Icon(
+                      Icons.RoundedFilled.Folder,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.primary,
+                    )
+                  },
+                  onClick = { storageRootPicker.launch(null) },
+                )
+
+                if (baseStorageFolder.isNotEmpty()) {
+                  PreferenceDivider()
+                  Preference(
+                    title = { Text(stringResource(R.string.pref_clear_storage_root_title)) },
+                    icon = {
+                      Icon(
+                        Icons.RoundedFilled.Clear,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                      )
+                    },
+                    onClick = {
+                      if (subtitlesPreferences.fontsFolder.get() == baseStorageFolder) {
+                        subtitlesPreferences.fontsFolder.set("")
+                      }
+                      foldersPreferences.baseStorageFolder.set("")
+                      preferences.mpvConfStorageUri.set("")
+                      subtitlesPreferences.subtitleSaveFolder.set("")
+                    },
+                  )
+                }
               }
             }
           }

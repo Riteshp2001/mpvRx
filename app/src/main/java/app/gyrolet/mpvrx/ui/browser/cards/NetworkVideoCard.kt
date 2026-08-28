@@ -52,6 +52,8 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.tvExcludeFromFocus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -156,6 +158,7 @@ fun NetworkVideoCard(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(AppShapeScale.large)
         .combinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
@@ -275,6 +278,7 @@ fun NetworkVideoCard(
               .aspectRatio(16f / 9f)
               .clip(AppShapeScale.medium)
               .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+              .tvExcludeFromFocus()
               .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,

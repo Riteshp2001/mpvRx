@@ -66,6 +66,7 @@ import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -338,6 +339,7 @@ private fun SortTypeSelector(
           modifier =
             Modifier
               .size(64.dp)
+              .tvFocusable(AppShapeScale.large)
               .clip(AppShapeScale.large)
               .background(
                 color =

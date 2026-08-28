@@ -62,6 +62,8 @@ import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
 
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -88,6 +90,7 @@ fun JellyfinMusicView(
       .fillMaxSize()
       .background(MaterialTheme.colorScheme.background),
     beyondViewportPageCount = 1,
+    userScrollEnabled = !LocalTvUiEnvironment.current.isTelevision,
     key = { page -> visibleTabs.getOrNull(page) ?: page },
   ) { page ->
     val tab = visibleTabs.getOrNull(page) ?: JellyfinMusicTab.HOME
@@ -296,6 +299,7 @@ fun JellyfinCompactTrackGridSection(
           style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
           color = MaterialTheme.colorScheme.primary,
           modifier = Modifier
+            .tvFocusable(RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onSeeAllClick)
             .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -406,6 +410,7 @@ fun JellyfinPlaylistsRowSection(
           style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
           color = MaterialTheme.colorScheme.primary,
           modifier = Modifier
+            .tvFocusable(RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onSeeAllClick)
             .padding(horizontal = 8.dp, vertical = 4.dp),

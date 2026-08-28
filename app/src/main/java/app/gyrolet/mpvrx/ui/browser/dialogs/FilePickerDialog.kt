@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -49,6 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.TvFocusScene
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import java.io.File
 
@@ -192,16 +196,17 @@ fun FilePickerDialog(
     onDismissRequest = onDismiss,
     properties = DialogProperties(usePlatformDefaultWidth = false),
   ) {
-    Surface(
-      modifier = modifier.fillMaxWidth(if (isPortrait) 0.9f else 0.50f),
-      shape = MaterialTheme.shapes.extraLarge,
-      color = MaterialTheme.colorScheme.surface,
-      tonalElevation = 6.dp,
-    ) {
-      Column(
-        modifier = Modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    TvFocusScene(modifier = modifier.fillMaxWidth(if (isPortrait) 0.9f else 0.50f)) {
+      Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 6.dp,
       ) {
+        Column(
+          modifier = Modifier.padding(24.dp),
+          verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
         // Title Section - orientation-aware layout
         if (isPortrait) {
           // Portrait: title/path stacked on top, nav buttons centered below
@@ -360,6 +365,7 @@ fun FilePickerDialog(
               fontWeight = FontWeight.Medium,
             )
           }
+          }
         }
       }
     }
@@ -390,6 +396,7 @@ private fun StorageVolumeItem(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clickable(onClick = onClick)
         .padding(horizontal = 12.dp, vertical = 12.dp),
     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -433,6 +440,7 @@ private fun FolderItem(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clickable(onClick = onClick)
         .padding(horizontal = 12.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -469,6 +477,7 @@ private fun FileItem(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clickable(onClick = onClick)
         .padding(horizontal = 12.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -531,15 +540,17 @@ private fun NavigationButtons(
     Icon(Icons.RoundedFilled.Home, "Home", modifier = Modifier.size(iconSize))
   }
 
-  FilledTonalIconButton(
-    onClick = onSystemPicker,
-    modifier = Modifier.size(buttonSize),
-    colors =
-      IconButtonDefaults.filledTonalIconButtonColors(
-        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-      ),
-  ) {
-    Icon(Icons.RoundedFilled.DriveFolderUpload, "System Picker", modifier = Modifier.size(iconSize))
+  if (!LocalTvUiEnvironment.current.isTelevision) {
+    FilledTonalIconButton(
+      onClick = onSystemPicker,
+      modifier = Modifier.size(buttonSize),
+      colors =
+        IconButtonDefaults.filledTonalIconButtonColors(
+          containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+          contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        ),
+    ) {
+      Icon(Icons.RoundedFilled.DriveFolderUpload, "System Picker", modifier = Modifier.size(iconSize))
+    }
   }
 }

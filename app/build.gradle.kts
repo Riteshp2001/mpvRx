@@ -308,6 +308,8 @@ dependencies {
   implementation(libs.reorderable)
   implementation(libs.androidx.biometric)
 
+  testImplementation(libs.kotlin.test.junit)
+
   // libtorrent4j's Java API plus the native library for every enabled APK ABI.
   implementation(libs.libtorrent4j)
   implementation(libs.libtorrent4j.android.arm64)

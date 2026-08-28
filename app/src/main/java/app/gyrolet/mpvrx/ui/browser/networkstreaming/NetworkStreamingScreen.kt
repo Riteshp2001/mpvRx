@@ -112,6 +112,7 @@ import app.gyrolet.mpvrx.ui.browser.dialogs.EditConnectionSheet
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallPromptDialog
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallProgressDialog
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
@@ -447,6 +448,7 @@ object NetworkStreamingScreen : Screen {
       ) {
         HorizontalPager(
           state = pagerState,
+          userScrollEnabled = !LocalTvUiEnvironment.current.isTelevision,
           modifier =
             Modifier
               .fillMaxSize(),

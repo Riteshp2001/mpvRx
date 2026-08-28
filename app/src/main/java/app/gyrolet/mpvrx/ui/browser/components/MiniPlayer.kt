@@ -93,6 +93,7 @@ import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.player.declaredMediaKind
 import app.gyrolet.mpvrx.ui.player.toObject
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -273,6 +274,7 @@ private fun MiniPlayerContent(
           },
         )
       }
+      .tvFocusable(RoundedCornerShape(20.dp))
       .clip(RoundedCornerShape(20.dp))
       .clickable { launchPlayer() },
     color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),

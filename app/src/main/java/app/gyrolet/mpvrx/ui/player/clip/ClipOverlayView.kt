@@ -85,6 +85,9 @@ import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.DraggablePanel
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.TvFocusScene
+import app.gyrolet.mpvrx.ui.tv.tvUiEnvironment
 import app.gyrolet.mpvrx.ui.theme.spacing
 import java.util.Locale
 import kotlin.math.abs
@@ -411,14 +414,20 @@ class ClipOverlayView @JvmOverloads constructor(
       isClickable = true
       setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
       setContent {
-        MpvrxTheme {
-          ClipCropControls(
-            onCancel = { exitCropMode(keepSelection = false) },
-            onDone = {
-              draft?.crop = selector.currentCrop()
-              exitCropMode(keepSelection = true)
-            },
-          )
+        androidx.compose.runtime.CompositionLocalProvider(
+          LocalTvUiEnvironment provides context.tvUiEnvironment(),
+        ) {
+          MpvrxTheme {
+            TvFocusScene {
+              ClipCropControls(
+                onCancel = { exitCropMode(keepSelection = false) },
+                onDone = {
+                  draft?.crop = selector.currentCrop()
+                  exitCropMode(keepSelection = true)
+                },
+              )
+            }
+          }
         }
       }
     }

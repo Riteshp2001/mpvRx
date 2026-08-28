@@ -43,6 +43,7 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
@@ -116,7 +117,11 @@ private fun BookmarkQuickCard(
   onClick: () -> Unit,
 ) {
   Card(
-    modifier = Modifier.width(208.dp).clickable(onClick = onClick),
+    modifier =
+      Modifier
+        .width(208.dp)
+        .tvFocusable(RoundedCornerShape(8.dp))
+        .clickable(onClick = onClick),
     shape = RoundedCornerShape(8.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
   ) {
@@ -224,7 +229,11 @@ private fun BookmarkManageCard(
   onRemove: () -> Unit,
 ) {
   Card(
-    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
+        .clickable(onClick = onOpen),
     shape = RoundedCornerShape(8.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
   ) {

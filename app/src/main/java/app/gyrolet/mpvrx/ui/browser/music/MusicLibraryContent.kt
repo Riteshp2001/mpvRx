@@ -146,6 +146,8 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
@@ -731,6 +733,7 @@ fun MusicLibraryContent(
         } else {
           HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !LocalTvUiEnvironment.current.isTelevision,
             modifier = Modifier.fillMaxSize(),
             beyondViewportPageCount = 1,
           ) { page ->
@@ -1414,6 +1417,7 @@ private fun SongGridCard(
   Card(
     modifier = Modifier
       .fillMaxWidth()
+      .tvFocusable(AppShapeScale.large)
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     shape = AppShapeScale.large,
     colors = CardDefaults.cardColors(
@@ -1601,6 +1605,7 @@ private fun AlbumGridCard(
   Card(
     modifier = Modifier
       .fillMaxWidth()
+      .tvFocusable(AppShapeScale.large)
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     shape = AppShapeScale.large,
     colors = CardDefaults.cardColors(
@@ -1691,6 +1696,7 @@ private fun AlbumListCard(
     modifier = Modifier
       .fillMaxWidth()
       .padding(horizontal = 8.dp, vertical = 3.dp)
+      .tvFocusable(AppShapeScale.large)
       .clip(AppShapeScale.large)
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     shape = AppShapeScale.large,
@@ -1824,6 +1830,7 @@ private fun ArtistGridCard(
   Card(
     modifier = Modifier
       .fillMaxWidth()
+      .tvFocusable(AppShapeScale.large)
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     shape = AppShapeScale.large,
     colors = CardDefaults.cardColors(
@@ -1898,6 +1905,7 @@ private fun ArtistListCard(
     modifier = Modifier
       .fillMaxWidth()
       .padding(horizontal = 8.dp, vertical = 3.dp)
+      .tvFocusable(AppShapeScale.large)
       .clip(AppShapeScale.large)
       .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     shape = AppShapeScale.large,
@@ -2146,6 +2154,7 @@ private fun MusicPlaylistCard(
     Card(
       modifier = Modifier
         .fillMaxWidth()
+        .tvFocusable(AppShapeScale.large)
         .combinedClickable(onClick = onClick, onLongClick = onLongClick),
       shape = AppShapeScale.large,
       colors = CardDefaults.cardColors(
@@ -2202,6 +2211,7 @@ private fun MusicPlaylistCard(
     Surface(
       modifier = Modifier
         .fillMaxWidth()
+        .tvFocusable(AppShapeScale.large)
         .combinedClickable(onClick = onClick, onLongClick = onLongClick),
       color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
     ) {

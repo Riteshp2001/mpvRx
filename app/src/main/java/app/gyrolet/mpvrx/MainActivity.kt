@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -81,6 +82,10 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.theme.rememberThemeTransitionState
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.TvFocusScene
+import app.gyrolet.mpvrx.ui.tv.rememberTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.tvSafeContentPadding
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.compose.foundation.background
@@ -97,6 +102,7 @@ import app.gyrolet.mpvrx.ui.player.toObject
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
@@ -239,6 +245,10 @@ class MainActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
+    if (DeviceFormFactor.isTelevision(this)) {
+      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    }
 
     pipHelper = MPVPipHelper(
       activity = this,
@@ -508,6 +518,7 @@ class MainActivity : AppCompatActivity() {
   @Composable
   fun Navigator() {
     val backstack = rememberNavBackStack(MainScreen)
+    val tvUiEnvironment = rememberTvUiEnvironment()
 
     @Suppress("UNCHECKED_CAST")
     val typedBackstack = backstack as NavBackStack<Screen>
@@ -544,6 +555,7 @@ class MainActivity : AppCompatActivity() {
     // Provide both LocalBackStack and the LazyList/Grid states to all screens
     CompositionLocalProvider(
       LocalBackStack provides typedBackstack,
+      LocalTvUiEnvironment provides tvUiEnvironment,
     ) {
       val hasNavEntries = typedBackstack.isNotEmpty()
 
@@ -569,7 +581,9 @@ class MainActivity : AppCompatActivity() {
                   modifier = Modifier.fillMaxSize(),
                   color = MaterialTheme.colorScheme.background,
                 ) {
-                  route.Content()
+                  TvFocusScene(modifier = Modifier.fillMaxSize().tvSafeContentPadding()) {
+                    route.Content()
+                  }
                 }
               }
             },
@@ -588,6 +602,12 @@ class MainActivity : AppCompatActivity() {
 
           val miniPlayerModifier =
             when {
+              tvUiEnvironment.isTelevision ->
+                Modifier
+                  .align(Alignment.BottomEnd)
+                  .fillMaxWidth(0.48f)
+                  .padding(horizontal = 48.dp, vertical = 24.dp)
+
               // Dual-pane tablets: the mini player lives inside the 2nd (right) pane.
               isDualPane ->
                 Modifier

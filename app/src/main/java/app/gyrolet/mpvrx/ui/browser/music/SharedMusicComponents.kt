@@ -45,6 +45,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.controls.components.MiniAudioVisualizer
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -65,6 +66,7 @@ fun SharedMusicTrackListItem(
     modifier = modifier
       .fillMaxWidth()
       .padding(horizontal = 8.dp, vertical = 3.dp)
+      .tvFocusable(AppShapeScale.large)
       .clip(AppShapeScale.large)
       .then(
         if (onLongClick != null) {
@@ -204,6 +206,7 @@ fun SharedMusicGridCard(
   Column(
     modifier = modifier
       .width(cardWidth)
+      .tvFocusable(if (isCircular) CircleShape else AppShapeScale.extraLarge)
       .clip(if (isCircular) CircleShape else AppShapeScale.extraLarge)
       .then(
         if (onLongClick != null) {

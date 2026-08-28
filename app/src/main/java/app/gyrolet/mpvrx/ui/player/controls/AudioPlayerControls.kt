@@ -164,6 +164,9 @@ import app.gyrolet.mpvrx.ui.player.visualizer.ParticleOverlay
 import app.gyrolet.mpvrx.ui.player.visualizer.VisualizerPalette
 import app.gyrolet.mpvrx.ui.player.visualizer.rememberAudioVisualizerFeatures
 import app.gyrolet.mpvrx.ui.utils.isMpvOptionOwnedByConfig
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.rememberTvInitialFocusRequester
+import app.gyrolet.mpvrx.ui.tv.tvInitialFocus
 
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import kotlinx.collections.immutable.persistentListOf
@@ -413,6 +416,7 @@ fun AudioPlayerControls(
   onOpenPanel: (Panels) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val tvPlayFocusRequester = rememberTvInitialFocusRequester()
   val speedConfigOwned = isMpvOptionOwnedByConfig("speed")
   val audioFiltersConfigOwned = isMpvOptionOwnedByConfig("af")
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
@@ -1448,7 +1452,10 @@ fun AudioPlayerControls(
           onClick = { viewModel.pauseUnpause() },
           shape = CircleShape,
           color = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.size(if (isPortrait) 76.dp else 64.dp),
+          modifier =
+            Modifier
+              .size(if (isPortrait) 76.dp else 64.dp)
+              .tvInitialFocus(tvPlayFocusRequester),
           shadowElevation = 8.dp,
         ) {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -2221,6 +2228,7 @@ private fun ReactiveIconButton(
             scaleX = scale
             scaleY = scale
           }
+          .tvFocusable(shape = CircleShape, enabled = enabled)
           .clip(CircleShape)
           .combinedClickable(
             interactionSource = interactionSource,
@@ -2249,10 +2257,11 @@ private fun ReactiveIconButton(
       enabled = enabled,
       interactionSource = interactionSource,
       modifier =
-        modifier.graphicsLayer {
-          scaleX = scale
-          scaleY = scale
-        },
+        modifier
+          .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+          }.tvFocusable(shape = CircleShape, enabled = enabled),
     ) {
       content()
     }
@@ -2290,10 +2299,11 @@ private fun ReactiveSurfaceButton(
     enabled = enabled,
     interactionSource = interactionSource,
     modifier =
-      modifier.graphicsLayer {
-        scaleX = scale
-        scaleY = scale
-      },
+      modifier
+        .graphicsLayer {
+          scaleX = scale
+          scaleY = scale
+        }.tvFocusable(shape = shape, enabled = enabled),
   ) {
     content()
   }

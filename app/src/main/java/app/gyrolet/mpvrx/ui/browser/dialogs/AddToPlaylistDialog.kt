@@ -52,6 +52,7 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -256,6 +257,7 @@ private fun PlaylistItemCard(
     modifier =
       Modifier
         .fillMaxWidth()
+        .tvFocusable(AppShapeScale.medium)
         .clickable(onClick = onClick),
     shape = AppShapeScale.medium,
     colors =

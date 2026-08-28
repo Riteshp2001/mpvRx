@@ -37,6 +37,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.gyrolet.mpvrx.ui.theme.LocalDarkAppColorScheme
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 
 @Suppress("CompositionLocalAllowlist")
 internal val LocalForceDarkPlayerButtonsBackground = staticCompositionLocalOf { false }
@@ -82,6 +83,7 @@ fun ControlsButton(
   Surface(
     modifier =
       modifier
+        .tvFocusable(shape = CircleShape, enabled = enabled)
         .clip(CircleShape)
         .combinedClickable(
           enabled = enabled,

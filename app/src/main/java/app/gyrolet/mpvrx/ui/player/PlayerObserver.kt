@@ -46,6 +46,7 @@ class PlayerObserver(
 
     activity.runOnUiThread {
       if (shouldIgnoreCallback() || activity.isFinishing || activity.isDestroyed) return@runOnUiThread
+      if (activity.isTelevisionDevice()) return@runOnUiThread
       if (playerPreferences.orientation.get() != PlayerOrientation.Video) return@runOnUiThread
       if (playerPreferences.lastCustomAspectRatio.get() > 0f) return@runOnUiThread
       if (playerPreferences.lastVideoAspect.get() != VideoAspect.Stretch) return@runOnUiThread

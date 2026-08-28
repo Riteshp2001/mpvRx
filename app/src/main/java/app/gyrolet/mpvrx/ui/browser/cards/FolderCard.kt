@@ -55,6 +55,8 @@ import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.tvExcludeFromFocus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -196,6 +198,7 @@ fun FolderCard(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(cardShape)
         .combinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
@@ -276,6 +279,7 @@ fun FolderCard(
                 }
               ).clip(AppShapeScale.medium)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .tvExcludeFromFocus()
                 .combinedClickable(
                   onClick = onThumbClick,
                   onLongClick = onLongClick,
@@ -397,6 +401,7 @@ fun FolderCard(
                 .size(64.dp)
                 .clip(AppShapeScale.medium)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .tvExcludeFromFocus()
                 .combinedClickable(
                   onClick = onThumbClick,
                   onLongClick = onLongClick,

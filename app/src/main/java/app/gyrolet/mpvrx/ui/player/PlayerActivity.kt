@@ -52,6 +52,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,8 +111,12 @@ import app.gyrolet.mpvrx.ui.player.components.VideoAmbientBackground
 import app.gyrolet.mpvrx.ui.player.components.rememberVideoAmbientFrame
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.TvFocusScene
+import app.gyrolet.mpvrx.ui.tv.tvUiEnvironment
 import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionActivity
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.JellyfinSessionReporter
@@ -191,6 +196,8 @@ class PlayerActivity :
    * Binding for the player layout.
    */
   private val binding by lazy { PlayerLayoutBinding.inflate(layoutInflater) }
+  private val tvUiEnvironment by lazy { applicationContext.tvUiEnvironment() }
+  private val consumedTvRemoteKeys = mutableSetOf<Int>()
 
   /**
    * Observer for MPV events.
@@ -612,6 +619,9 @@ class PlayerActivity :
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    if (tvUiEnvironment.isTelevision) {
+      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    }
     if (redirectUnselectedTorrentToPicker(intent, finishCurrent = true)) return
     if (!acceptPreparedPlaybackLaunch(intent)) {
       finish()
@@ -946,6 +956,11 @@ class PlayerActivity :
       return
     }
 
+    if (tvUiEnvironment.isTelevision && viewModel.controlsShown.value) {
+      viewModel.hideControls()
+      return
+    }
+
     // Auto-PiP takes precedence over background playback/Mini Player. Previously the background
     // branch consumed Back first whenever both settings were enabled, so PiP never received the
     // navigation event. If Android rejects the PiP request, continue into the normal background
@@ -983,13 +998,22 @@ class PlayerActivity :
 
   private fun setupPlayerControls() {
     binding.controls.setContent {
-      MpvrxTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
-          PlayerControls(
-            viewModel = viewModel,
-            onBackPress = ::handleBackPress,
-            modifier = Modifier,
-          )
+      CompositionLocalProvider(LocalTvUiEnvironment provides tvUiEnvironment) {
+        MpvrxTheme {
+          val controlsShown by viewModel.controlsShown.collectAsState()
+          val sheetShown by viewModel.sheetShown.collectAsState()
+          val panelShown by viewModel.panelShown.collectAsState()
+          val isAudioOnly by viewModel.isAudioOnly.collectAsState()
+          TvFocusScene(
+            modifier = Modifier.fillMaxSize(),
+            requestFocus = isAudioOnly || controlsShown || sheetShown != Sheets.None || panelShown != Panels.None,
+          ) {
+            PlayerControls(
+              viewModel = viewModel,
+              onBackPress = ::handleBackPress,
+              modifier = Modifier,
+            )
+          }
         }
       }
     }
@@ -1045,14 +1069,16 @@ class PlayerActivity :
         setVideoAmbientPresentationActive(presentationActive)
       }
 
-      MpvrxTheme {
-        if (presentationActive) {
-          VideoAmbientBackground(
-            frame = ambientFrame.frame,
-            baseColor = ambientFrame.base,
-            accentColor = ambientFrame.accent,
-            modifier = Modifier.fillMaxSize(),
-          )
+      CompositionLocalProvider(LocalTvUiEnvironment provides tvUiEnvironment) {
+        MpvrxTheme {
+          if (presentationActive) {
+            VideoAmbientBackground(
+              frame = ambientFrame.frame,
+              baseColor = ambientFrame.base,
+              accentColor = ambientFrame.accent,
+              modifier = Modifier.fillMaxSize(),
+            )
+          }
         }
       }
     }
@@ -5853,6 +5879,10 @@ class PlayerActivity :
    * to the correct orientation, starting with landscape as fallback.
    */
   private fun setOrientation() {
+    if (DeviceFormFactor.isTelevision(this)) {
+      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+      return
+    }
     if (isKnownAudioLaunch(intent) || viewModel.isAudioOnly.value) {
       val audioOrient =
         when (audioPreferences.audioOrientation.get()) {
@@ -5949,6 +5979,11 @@ class PlayerActivity :
         it.isShiftPressed || it.isCtrlPressed || it.isAltPressed || it.isMetaPressed
       }
     val hasModifiers = modifierEvent != null
+
+    if (tvUiEnvironment.isTelevision && !hasModifiers) {
+      if (handleTvRemoteKeyDown(keyCode, event)) return true
+      if (TvPlayerRemotePolicy.isNavigationKey(keyCode)) return super.onKeyDown(keyCode, event)
+    }
 
     when (keyCode) {
       KeyEvent.KEYCODE_DPAD_UP -> {
@@ -6089,10 +6124,79 @@ class PlayerActivity :
     keyCode: Int,
     event: KeyEvent?,
   ): Boolean {
+    if (tvUiEnvironment.isTelevision && consumedTvRemoteKeys.remove(keyCode)) return true
+    if (tvUiEnvironment.isTelevision && TvPlayerRemotePolicy.isNavigationKey(keyCode)) {
+      return super.onKeyUp(keyCode, event)
+    }
     event?.let {
       if (player.onKey(it)) return true
     }
     return super.onKeyUp(keyCode, event)
+  }
+
+  private fun handleTvRemoteKeyDown(
+    keyCode: Int,
+    event: KeyEvent?,
+  ): Boolean {
+    val overlayVisible = viewModel.sheetShown.value != Sheets.None || viewModel.panelShown.value != Panels.None
+    val action =
+      TvPlayerRemotePolicy.actionFor(
+        keyCode = keyCode,
+        controlsVisible = viewModel.controlsShown.value,
+        overlayVisible = overlayVisible,
+      )
+    if (action == TvPlayerRemoteAction.DELEGATE) return false
+
+    consumedTvRemoteKeys += keyCode
+    val repeatCount = event?.repeatCount ?: 0
+    if (repeatCount > 0) {
+      if (!TvPlayerRemotePolicy.shouldRepeat(action) || repeatCount % TV_REMOTE_SEEK_REPEAT_INTERVAL != 0) {
+        return true
+      }
+    }
+
+    when (action) {
+      TvPlayerRemoteAction.DELEGATE -> Unit
+      TvPlayerRemoteAction.SHOW_CONTROLS -> viewModel.showControls()
+      TvPlayerRemoteAction.SHOW_MENU -> {
+        viewModel.showControls()
+        viewModel.sheetShown.value = Sheets.More
+        viewModel.hideControls()
+      }
+      TvPlayerRemoteAction.SHOW_SUBTITLES -> {
+        viewModel.sheetShown.value = Sheets.SubtitleTracks
+        viewModel.hideControls()
+      }
+      TvPlayerRemoteAction.SHOW_AUDIO_TRACKS -> {
+        viewModel.sheetShown.value = Sheets.AudioTracks
+        viewModel.hideControls()
+      }
+      TvPlayerRemoteAction.SEEK_BACKWARD -> viewModel.handleLeftDoubleTap()
+      TvPlayerRemoteAction.SEEK_FORWARD -> viewModel.handleRightDoubleTap()
+      TvPlayerRemoteAction.SEEK_TO_PERCENT -> {
+        val durationSeconds = PlaybackSession.getPropertyInt("duration") ?: 0
+        TvPlayerRemotePolicy.seekPercentForKeyCode(keyCode)
+          ?.takeIf { durationSeconds > 0 }
+          ?.let { percent -> viewModel.seekTo(durationSeconds * percent / 100) }
+      }
+      TvPlayerRemoteAction.SPEED_UP,
+      TvPlayerRemoteAction.SPEED_DOWN,
+      -> {
+        val direction = if (action == TvPlayerRemoteAction.SPEED_UP) 1f else -1f
+        val currentSpeed = PlaybackSession.getPropertyFloat("speed") ?: 1f
+        PlaybackSession.setPropertyFloat("speed", (currentSpeed + direction * 0.05f).coerceIn(0.25f, 4f))
+      }
+      TvPlayerRemoteAction.TOGGLE_PLAYBACK -> {
+        viewModel.pauseUnpause()
+        viewModel.showControls()
+      }
+      TvPlayerRemoteAction.PLAY -> viewModel.unpause()
+      TvPlayerRemoteAction.PAUSE -> viewModel.pause()
+      TvPlayerRemoteAction.STOP -> finishAndRemoveTask()
+      TvPlayerRemoteAction.PREVIOUS -> viewModel.handleMediaPrevious()
+      TvPlayerRemoteAction.NEXT -> viewModel.handleMediaNext()
+    }
+    return true
   }
 
   // ==================== System UI Management ====================
@@ -6664,8 +6768,15 @@ class PlayerActivity :
   override var hostRequestedOrientation: Int
     get() = requestedOrientation
     set(value) {
-      requestedOrientation = value
+      requestedOrientation =
+        if (tvUiEnvironment.isTelevision) {
+          ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+          value
+        }
     }
+
+  internal fun isTelevisionDevice(): Boolean = tvUiEnvironment.isTelevision
 
   // ==================== Playlist Management ====================
 
@@ -7847,6 +7958,7 @@ class PlayerActivity :
     private const val PLAYBACK_LOAD_RETRY_DELAY_MS = 200L
     private const val PLAYBACK_LOAD_ERROR_SETTLE_MS = 300L
     private const val MAX_PLAYBACK_LOAD_RETRIES = 1
+    private const val TV_REMOTE_SEEK_REPEAT_INTERVAL = 3
     private const val DEFERRED_MPV_ASSET_SYNC_DELAY_MS = 5_000L
     private const val MPV_ASSET_SYNC_PREFERENCES = "mpv_asset_sync"
     private const val USER_MPV_ASSET_SELECTION = "user_mpv_asset_selection_v1"

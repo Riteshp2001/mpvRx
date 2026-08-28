@@ -88,6 +88,7 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -655,6 +656,7 @@ fun JellyfinResumeCard(
         Modifier
           .fillMaxWidth()
           .aspectRatio(16f / 9f)
+          .tvFocusable(RoundedCornerShape(10.dp))
           .then(posterBorderModifier)
           .background(MaterialTheme.colorScheme.surfaceContainerHighest)
           .combinedClickable(
@@ -861,6 +863,7 @@ fun JellyfinPosterCard(
         Modifier
           .fillMaxWidth()
           .aspectRatio(2f / 3f)
+          .tvFocusable(RoundedCornerShape(8.dp))
           .then(posterBorderModifier)
           .background(MaterialTheme.colorScheme.surfaceContainerHighest)
           .combinedClickable(
@@ -1056,6 +1059,7 @@ fun JellyfinMusicCard(
         Modifier
           .fillMaxWidth()
           .aspectRatio(1f)
+          .tvFocusable(RoundedCornerShape(8.dp))
           .then(posterBorderModifier)
           .background(MaterialTheme.colorScheme.surfaceContainerHighest)
           .combinedClickable(
@@ -1310,6 +1314,7 @@ fun JellyfinLibraryCard(
     modifier =
       modifier
         .width(cardWidth)
+        .tvFocusable(RoundedCornerShape(10.dp))
         .clickable(onClick = onClick),
   ) {
     Card(
@@ -1414,6 +1419,7 @@ fun JellyfinEpisodeCard(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clip(RoundedCornerShape(8.dp))
         .combinedClickable(
           onClick = onPlay,
@@ -1598,6 +1604,7 @@ fun JellyfinListItemCard(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clip(RoundedCornerShape(8.dp))
         .combinedClickable(
           onClick = onClick,

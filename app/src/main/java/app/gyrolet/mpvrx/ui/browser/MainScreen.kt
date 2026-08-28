@@ -103,6 +103,9 @@ import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
+import app.gyrolet.mpvrx.ui.tv.tvFocusRestorer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
@@ -172,6 +175,7 @@ object MainScreen : Screen {
     val isPermissionDenied = NavigationBarState.isPermissionDenied
     val isDualPaneFolderSelected = NavigationBarState.isDualPaneFolderSelected
     val isMiniPlayerVisible = NavigationBarState.isMiniPlayerVisible
+    val isTelevision = LocalTvUiEnvironment.current.isTelevision
 
     val visibleTabs =
       remember(
@@ -379,8 +383,9 @@ object MainScreen : Screen {
             HorizontalPager(
               state = pagerState,
               modifier = Modifier.fillMaxSize(),
-              beyondViewportPageCount = 1,
+              beyondViewportPageCount = if (isTelevision) 0 else 1,
               flingBehavior = pagerFlingBehavior,
+              userScrollEnabled = !isTelevision,
             ) { page ->
               val tab = visibleTabs.getOrNull(page) ?: return@HorizontalPager
               when (tab) {
@@ -515,6 +520,7 @@ private fun ExpressivePillNavigationBar(
   pagerState: PagerState? = null,
 ) {
   val haptics = LocalHapticFeedback.current
+  val isTelevision = LocalTvUiEnvironment.current.isTelevision
 
   val position =
     if (pagerState != null && visibleTabs.isNotEmpty()) {
@@ -605,6 +611,7 @@ private fun ExpressivePillNavigationBar(
 
       // Tab buttons row positioned directly on top of the track
       Row(
+        modifier = Modifier.tvFocusRestorer(),
         horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
       ) {
@@ -625,6 +632,12 @@ private fun ExpressivePillNavigationBar(
                 .width(tabWidth)
                 .height(44.dp)
                 .clip(CircleShape)
+                .tvFocusable(
+                  shape = CircleShape,
+                  onFocusChanged = { focused ->
+                    if (focused && tab != selectedTab) onTabSelected(tab)
+                  },
+                )
                 .clickable(
                   interactionSource = remember { MutableInteractionSource() },
                   indication = androidx.compose.material3.ripple(bounded = true),

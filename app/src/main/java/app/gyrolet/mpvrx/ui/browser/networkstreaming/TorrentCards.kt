@@ -66,6 +66,7 @@ import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.delay
@@ -457,6 +458,7 @@ fun TorrentResumeCard(
         .width(240.dp)
         .aspectRatio(16f / 9.5f)
         .shadow(6.dp, RoundedCornerShape(18.dp))
+        .tvFocusable(RoundedCornerShape(18.dp))
         .clip(RoundedCornerShape(18.dp))
         .combinedClickable(
           onClick = onClick,
@@ -610,6 +612,7 @@ fun TorrentPosterCard(
     modifier =
       modifier
         .width(135.dp)
+        .tvFocusable(RoundedCornerShape(16.dp))
         .clip(RoundedCornerShape(16.dp))
         .combinedClickable(
           onClick = onClick,

@@ -53,6 +53,7 @@ import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.controls.components.MiniAudioVisualizer
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 
 @Composable
 fun AudioMiniPlayer(modifier: Modifier = Modifier) {
@@ -76,6 +77,7 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(RoundedCornerShape(24.dp))
         .clip(RoundedCornerShape(24.dp))
         .clickable {
           val intent =

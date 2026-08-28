@@ -85,6 +85,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 
 private fun checkFilePermission(context: Context): Boolean {
@@ -564,6 +565,7 @@ private fun PermissionSectionCard(
       .fillMaxWidth()
       .alpha(if (isGranted) 0.65f else 1f)
       .then(borderModifier)
+      .tvFocusable(shape = AppShapeScale.largeIncreased, enabled = !isGranted)
       .clip(AppShapeScale.largeIncreased)
       .clickable(enabled = !isGranted, onClick = onClick),
     colors = CardDefaults.cardColors(containerColor = cardBgColor),

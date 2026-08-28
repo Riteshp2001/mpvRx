@@ -73,6 +73,7 @@ androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.r
 seeker = { module = "com.github.abdallahmehiz:seeker", version.ref = "seeker" }
 markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlinTest" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlinTest" }
 mediainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"
 
 google-material = { module = "com.google.android.material:material", version.ref = "googleMaterial" }

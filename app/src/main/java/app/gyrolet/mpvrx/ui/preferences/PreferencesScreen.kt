@@ -62,6 +62,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -354,6 +355,7 @@ private fun SettingsSearchEntry(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusable(MaterialTheme.shapes.extraExtraLarge)
         .clickable(onClick = onClick),
     shape = MaterialTheme.shapes.extraExtraLarge,
     color = MaterialTheme.colorScheme.secondaryContainer,
@@ -477,6 +479,7 @@ private fun SettingsDestinationRow(
       Modifier
         .fillMaxWidth()
         .background(rowBgColor)
+        .tvFocusable(MaterialTheme.shapes.large)
         .clickable(onClick = onClick)
         .padding(horizontal = 14.dp, vertical = 13.dp),
     verticalAlignment = Alignment.CenterVertically,

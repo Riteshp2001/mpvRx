@@ -60,6 +60,7 @@ import app.gyrolet.mpvrx.domain.seerr.SearchResultItem
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.tv.tvFocusable
 
 @Composable
 fun SeerrMediaCard(
@@ -75,6 +76,7 @@ fun SeerrMediaCard(
       modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(2f / 3f)
+        .tvFocusable(RoundedCornerShape(8.dp))
         .clip(RoundedCornerShape(8.dp))
         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         .clickable(onClick = onClick),
@@ -301,6 +303,7 @@ fun SeerrRequestCard(
       modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(16f / 9f)
+        .tvFocusable(RoundedCornerShape(10.dp))
         .clip(RoundedCornerShape(10.dp))
         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         .clickable(onClick = onClick),
