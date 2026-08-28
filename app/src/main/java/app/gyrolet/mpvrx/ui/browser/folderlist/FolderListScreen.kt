@@ -129,6 +129,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
@@ -788,7 +789,7 @@ object FolderListScreen : Screen {
               FloatingActionButtonMenuItem(
                 onClick = {
                   isFabExpanded.value = false
-                  filePicker.launch(arrayOf("video/*"))
+                  filePicker.launchSafely(context, arrayOf("video/*"))
                 },
                 icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
                 text = {
@@ -955,7 +956,7 @@ object FolderListScreen : Screen {
               if (CopyPasteOps.canUseDirectFileOperations()) {
                 folderPickerOpen.value = true
               } else {
-                treePickerLauncher.launch(null)
+                treePickerLauncher.launchSafely(context, null)
               }
             },
             onMoveClick = {
@@ -963,7 +964,7 @@ object FolderListScreen : Screen {
               if (CopyPasteOps.canUseDirectFileOperations()) {
                 folderPickerOpen.value = true
               } else {
-                treePickerLauncher.launch(null)
+                treePickerLauncher.launchSafely(context, null)
               }
             },
             onRenameClick = { renameDialogOpen = true },

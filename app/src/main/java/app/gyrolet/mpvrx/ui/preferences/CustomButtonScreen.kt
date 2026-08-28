@@ -92,6 +92,7 @@ import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -400,7 +401,7 @@ object CustomButtonScreen : Screen {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
               ) {
                 OutlinedButton(
-                  onClick = { importLauncher.launch(arrayOf("text/xml", "application/xml")) },
+                  onClick = { importLauncher.launchSafely(context, arrayOf("text/xml", "application/xml")) },
                   modifier = Modifier.weight(1f),
                   shape = RoundedCornerShape(12.dp),
                 ) {
@@ -418,7 +419,8 @@ object CustomButtonScreen : Screen {
 
                 Button(
                   onClick = {
-                    exportLauncher.launch(
+                    exportLauncher.launchSafely(
+                      context,
                       "custom_buttons_${System.currentTimeMillis()}.xml",
                     )
                   },

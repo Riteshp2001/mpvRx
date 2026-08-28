@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="tv_system_picker_unavailable">Aucun sélecteur de fichiers système compatible n’est disponible sur ce téléviseur.</string>
   <string name="generic_reset">Réinitialiser</string>
   <string name="generic_share">Partager</string>
   <string name="generic_confirm">Confirmer</string>

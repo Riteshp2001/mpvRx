@@ -136,12 +136,13 @@ fun Modifier.tvInitialFocus(requester: FocusRequester): Modifier =
 fun TvFocusScene(
   modifier: Modifier = Modifier,
   requestFocus: Boolean = true,
+  focusRequestKey: Any? = requestFocus,
   content: @Composable BoxScope.() -> Unit,
 ) {
   val isTelevision = LocalTvUiEnvironment.current.isTelevision
   val rootRequester = remember { FocusRequester() }
   val focusManager = LocalFocusManager.current
-  LaunchedEffect(isTelevision, requestFocus) {
+  LaunchedEffect(isTelevision, requestFocus, focusRequestKey) {
     if (isTelevision && requestFocus) {
       withFrameNanos { }
       val requested = runCatching { rootRequester.requestFocus() }.getOrDefault(false)

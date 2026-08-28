@@ -1007,6 +1007,7 @@ class PlayerActivity :
           TvFocusScene(
             modifier = Modifier.fillMaxSize(),
             requestFocus = isAudioOnly || controlsShown || sheetShown != Sheets.None || panelShown != Panels.None,
+            focusRequestKey = Triple(controlsShown, sheetShown, panelShown),
           ) {
             PlayerControls(
               viewModel = viewModel,

@@ -1,4 +1,5 @@
 <resources>
+  <string name="tv_system_picker_unavailable">इस टीवी पर कोई संगत सिस्टम फ़ाइल पिकर उपलब्ध नहीं है।</string>
   <string name="app_name">mpvRx</string>
   <string name="generic_reset">रीसेट करें</string>
   <string name="generic_share">शेयर करें</string>

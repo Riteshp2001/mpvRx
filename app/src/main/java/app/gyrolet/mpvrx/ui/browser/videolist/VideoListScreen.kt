@@ -115,6 +115,7 @@ import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
@@ -555,7 +556,7 @@ data class VideoListScreen(
               if (CopyPasteOps.canUseDirectFileOperations()) {
                 folderPickerOpen.value = true
               } else {
-                treePickerLauncher.launch(null)
+                treePickerLauncher.launchSafely(context, null)
               }
             },
             onMoveClick = {
@@ -563,7 +564,7 @@ data class VideoListScreen(
               if (CopyPasteOps.canUseDirectFileOperations()) {
                 folderPickerOpen.value = true
               } else {
-                treePickerLauncher.launch(null)
+                treePickerLauncher.launchSafely(context, null)
               }
             },
             onDownscaleClick = { compressorDialogOpen.value = true },

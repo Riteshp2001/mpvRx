@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="tv_system_picker_unavailable">لا يتوفر منتقي ملفات نظام متوافق على هذا التلفزيون.</string>
   <string name="generic_reset">إعادة تعيين</string>
   <string name="generic_share">مشاركة</string>
   <string name="generic_confirm">تأكيد</string>

@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.utils.media.SharedUrlExtractor
 import kotlinx.coroutines.launch
 
@@ -392,7 +393,7 @@ fun PlaylistActionSheet(
             // Local file picker button
             OutlinedButton(
               onClick = {
-                filePickerLauncher.launch("*/*")
+                filePickerLauncher.launchSafely(context, "*/*")
               },
               enabled = !isLoading,
               modifier = Modifier.fillMaxWidth(),

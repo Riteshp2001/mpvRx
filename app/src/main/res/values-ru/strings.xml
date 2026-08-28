@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="tv_system_picker_unavailable">На этом телевизоре нет совместимого системного средства выбора файлов.</string>
   <string name="generic_reset">Сбросить</string>
   <string name="generic_share">Поделиться</string>
   <string name="generic_confirm">Подтвердить</string>

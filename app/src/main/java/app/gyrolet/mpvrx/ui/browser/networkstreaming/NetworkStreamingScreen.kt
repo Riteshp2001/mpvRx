@@ -452,7 +452,6 @@ object NetworkStreamingScreen : Screen {
           modifier =
             Modifier
               .fillMaxSize(),
-          userScrollEnabled = true,
           beyondViewportPageCount = 1,
         ) { page ->
           when (NetworkTab.entries[page]) {

@@ -113,6 +113,7 @@ import app.gyrolet.mpvrx.ui.player.PreparedPlaybackLaunchStore
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
@@ -576,7 +577,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
             FloatingActionButtonMenuItem(
               onClick = {
                 isFabExpanded.value = false
-                filePicker.launch(arrayOf(if (mediaType == MediaLibraryType.Audio) "audio/*" else "video/*"))
+                filePicker.launchSafely(context, arrayOf(if (mediaType == MediaLibraryType.Audio) "audio/*" else "video/*"))
               },
               icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
               text = {
@@ -734,7 +735,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
             if (CopyPasteOps.canUseDirectFileOperations()) {
               folderPickerOpen.value = true
             } else {
-              treePickerLauncher.launch(null)
+              treePickerLauncher.launchSafely(context, null)
             }
           },
           onMoveClick = {
@@ -742,7 +743,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
             if (CopyPasteOps.canUseDirectFileOperations()) {
               folderPickerOpen.value = true
             } else {
-              treePickerLauncher.launch(null)
+              treePickerLauncher.launchSafely(context, null)
             }
           },
           onDownscaleClick = { compressorDialogOpen.value = true },

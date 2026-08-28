@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="tv_system_picker_unavailable">このテレビでは互換性のあるシステム ファイル選択ツールを利用できません。</string>
   <string name="generic_reset">リセット</string>
   <string name="generic_share">共有</string>
   <string name="generic_confirm">確認</string>

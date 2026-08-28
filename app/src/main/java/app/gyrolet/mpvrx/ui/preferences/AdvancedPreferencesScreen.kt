@@ -66,6 +66,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.ui.tv.LocalTvUiEnvironment
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -404,7 +405,7 @@ object AdvancedPreferencesScreen : Screen {
                     )
                   },
                   onClick = {
-                    exportLauncher.launch(settingsManager.getDefaultExportFilename())
+                    exportLauncher.launchSafely(context, settingsManager.getDefaultExportFilename())
                   },
                 )
 
@@ -427,7 +428,7 @@ object AdvancedPreferencesScreen : Screen {
                     )
                   },
                   onClick = {
-                    importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
+                    importLauncher.launchSafely(context, arrayOf("text/xml", "application/xml", "*/*"))
                   },
                 )
               }
@@ -463,7 +464,7 @@ object AdvancedPreferencesScreen : Screen {
                       tint = MaterialTheme.colorScheme.primary,
                     )
                   },
-                  onClick = { storageRootPicker.launch(null) },
+                  onClick = { storageRootPicker.launchSafely(context, null) },
                 )
 
                 if (baseStorageFolder.isNotEmpty()) {

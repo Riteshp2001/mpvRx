@@ -115,6 +115,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import kotlinx.coroutines.Dispatchers
@@ -181,7 +182,7 @@ fun VideoCompressorOverlay(
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       viewModel.saveToGallery(context)
     } else {
-      saveLauncher.launch(filename)
+      saveLauncher.launchSafely(context, filename)
     }
   }
 

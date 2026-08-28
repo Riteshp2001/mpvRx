@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
@@ -43,6 +44,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoZoomSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoQualitySheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VisualizerStyleSheet
 import app.gyrolet.mpvrx.ui.player.setTrackSelectionId
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -87,6 +89,7 @@ fun PlayerSheets(
   onShowSheet: (Sheets) -> Unit,
   onDismissRequest: () -> Unit,
 ) {
+  val context = LocalContext.current
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
   val configOwnedOptions =
@@ -145,7 +148,8 @@ fun PlayerSheets(
           },
           onSystemPickerRequest = {
             showFilePicker = false
-            subtitlesPicker.launch(
+            subtitlesPicker.launchSafely(
+              context,
               arrayOf(
                 "text/plain",
                 "text/srt",
@@ -318,7 +322,8 @@ fun PlayerSheets(
           },
           onSystemPickerRequest = {
             showAudioFilePicker = false
-            audioPicker.launch(
+            audioPicker.launchSafely(
+              context,
               arrayOf(
                 "audio/*",
                 "application/ogg",

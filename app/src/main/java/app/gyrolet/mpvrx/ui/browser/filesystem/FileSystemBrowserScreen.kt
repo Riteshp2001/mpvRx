@@ -120,6 +120,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.launchSafely
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
@@ -723,7 +724,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
               FloatingActionButtonMenuItem(
                 onClick = {
                   isFabExpanded.value = false
-                  filePicker.launch(arrayOf("video/*"))
+                  filePicker.launchSafely(context, arrayOf("video/*"))
                 },
                 icon = { Icon(Icons.RoundedFilled.FileOpen, contentDescription = null) },
                 text = {
@@ -922,7 +923,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           if (CopyPasteOps.canUseDirectFileOperations()) {
             folderPickerOpen.value = true
           } else {
-            treePickerLauncher.launch(null)
+            treePickerLauncher.launchSafely(context, null)
           }
         },
         onMoveClick = {
@@ -930,7 +931,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           if (CopyPasteOps.canUseDirectFileOperations()) {
             folderPickerOpen.value = true
           } else {
-            treePickerLauncher.launch(null)
+            treePickerLauncher.launchSafely(context, null)
           }
         },
         onDownscaleClick = { compressorDialogOpen.value = true },

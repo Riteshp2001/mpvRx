@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="tv_system_picker_unavailable">此电视上没有可用的兼容系统文件选择器。</string>
   <string name="generic_reset">重置</string>
   <string name="generic_share">分享</string>
   <string name="generic_confirm">确认</string>

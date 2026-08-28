@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="tv_system_picker_unavailable">Auf diesem Fernseher ist keine kompatible Systemdateiauswahl verfügbar.</string>
   <string name="generic_reset">Zurücksetzen</string>
   <string name="generic_share">Teilen</string>
   <string name="generic_confirm">Bestätigen</string>
