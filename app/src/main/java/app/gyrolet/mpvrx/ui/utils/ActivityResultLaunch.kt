@@ -12,7 +12,7 @@ package app.gyrolet.mpvrx.ui.utils
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.widget.Toast
-import androidx.activity.result.ManagedActivityResultLauncher
+import androidx.activity.compose.ManagedActivityResultLauncher
 import app.gyrolet.mpvrx.R
 
 fun <I, O> ManagedActivityResultLauncher<I, O>.launchSafely(
