@@ -177,6 +177,8 @@
   <string name="pref_player_seeking_title">Suchen</string>
   <string name="pref_player_seek_preview_thumbfast_title">ThumbFast-Suchvorschau verwenden</string>
   <string name="pref_player_seek_preview_thumbfast_summary">Beim Ziehen eine schnelle Vorschaublase anzeigen. Für die ältere Suche in Livevideos deaktivieren.</string>
+  <string name="pref_thumbfast_network_streams_title">Vorschaubilder für Netzwerk-Streams</string>
+  <string name="pref_thumbfast_network_streams_summary">Suchvorschaubilder für Online-Streams und Remote-URLs generieren.</string>
   <string name="pref_player_close_after_eof">Nach Wiedergabeende schließen</string>
   <string name="pref_player_remember_brightness">Displayhelligkeit merken</string>
   <string name="pref_player_gestures">Gesten</string>

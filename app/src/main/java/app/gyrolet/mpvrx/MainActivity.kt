@@ -10,11 +10,14 @@
 package app.gyrolet.mpvrx
 
 import android.Manifest
+import android.app.KeyguardManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -228,6 +231,7 @@ class MainActivity : AppCompatActivity() {
   private var appliedEdgeToEdgeDarkMode: Boolean? = null
   private lateinit var pipHelper: MPVPipHelper
   private var isPipMode by mutableStateOf(false)
+  private var wasInPipMode = false
 
   // Register the ActivityResultLauncher at class level
   private val mediaAccessLauncher =
@@ -388,6 +392,7 @@ class MainActivity : AppCompatActivity() {
 
   override fun onStart() {
     super.onStart()
+    if (!isPipMode) wasInPipMode = false
     pipHelper.updatePictureInPictureParams()
   }
 
@@ -421,12 +426,26 @@ class MainActivity : AppCompatActivity() {
   ) {
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
     this.isPipMode = isInPictureInPictureMode
+    if (isInPictureInPictureMode) {
+      wasInPipMode = true
+    }
     pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
   }
 
   override fun onStop() {
+    val isPipDismissal = wasInPipMode && !isPipMode && !isChangingConfigurations && !isDeviceScreenOffOrLocked()
+    if (isPipDismissal) {
+      wasInPipMode = false
+      MediaPlaybackService.stopForTerminalDismissal()
+    }
     super.onStop()
     pipHelper.onStop()
+  }
+
+  private fun isDeviceScreenOffOrLocked(): Boolean {
+    val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+    val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+    return keyguardManager?.isDeviceLocked == true || powerManager?.isInteractive == false
   }
 
   private fun isCurrentMediaAudioOnly(): Boolean {

@@ -50,6 +50,7 @@ class PlayerPreferences(
   val showSeekTimeWhileSeeking = preferenceStore.getBoolean("show_seek_time_while_seeking", true)
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
   val useThumbFastSeekPreview = preferenceStore.getBoolean("use_thumbfast_seek_preview", true)
+  val thumbFastNetworkStreams = preferenceStore.getBoolean("thumbfast_network_streams", true)
   val showBufferedRange = preferenceStore.getBoolean("show_buffered_range", true)
   val showChapterIndicators = preferenceStore.getBoolean("show_chapter_indicators", true)
 

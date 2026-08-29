@@ -172,6 +172,8 @@
   <string name="pref_player_seeking_title">सीकिंग</string>
   <string name="pref_player_seek_preview_thumbfast_title">ThumbFast सीक प्रीव्यू इस्तेमाल करें</string>
   <string name="pref_player_seek_preview_thumbfast_summary">स्क्रबिंग के दौरान एक तेज थंबनेल बबल दिखाएं। लीगेसी लाइव वीडियो सीकिंग के लिए इसे बंद करें।</string>
+  <string name="pref_thumbfast_network_streams_title">नेटवर्क स्ट्रीम सीक थंबनेल</string>
+  <string name="pref_thumbfast_network_streams_summary">ऑनलाइन स्ट्रीम और रिमोट URL के लिए सीक थंबनेल पूर्वावलोकन बनाएं।</string>
   <string name="pref_player_close_after_eof">प्लेबैक खत्म होने पर बंद करें</string>
   <string name="pref_player_remember_brightness">डिस्प्ले ब्राइटनेस याद रखें</string>
   <string name="pref_player_gestures">जेस्चर</string>

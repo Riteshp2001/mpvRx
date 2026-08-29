@@ -1769,6 +1769,21 @@ class PlayerActivity :
         screenStateReceiverRegistered = false
       }
 
+      val isPipDismissal =
+        PlayerLifecyclePolicy.shouldTreatStopAsPipDismissal(
+          wasInPictureInPictureMode = wasInPipMode,
+          isInPictureInPictureMode = isInPictureInPictureMode,
+          isActivityFinishing = isFinishing || isUserFinishing,
+          isChangingConfigurations = isChangingConfigurations,
+          isScreenOffOrLocked = isDeviceScreenOffOrLocked(),
+          alreadyHandled = handledPipDismissal,
+        )
+
+      if (isPipDismissal) {
+        handlePipDismissed()
+        return@runCatching
+      }
+
       if (
         PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnStop(
           backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
@@ -1807,7 +1822,7 @@ class PlayerActivity :
   private fun handlePipDismissed() {
     if (!commitPipDismissal()) return
     if (!isFinishing && !isDestroyed) {
-      finish()
+      finishAndRemoveTask()
     }
   }
 
@@ -1828,7 +1843,7 @@ class PlayerActivity :
 
   private fun schedulePipExitResolution() {
     pendingPipExitResolution = true
-    if (isFinishing) {
+    if (isFinishing || isUserFinishing) {
       handlePipDismissed()
       return
     }
@@ -1837,7 +1852,7 @@ class PlayerActivity :
       return
     }
     // PiP=false can arrive while the Activity is still stopped during fullscreen expansion.
-    // Keep the exit pending until foreground focus confirms expansion or onDestroy confirms close.
+    // Keep the exit pending until foreground focus confirms expansion or onStop/onDestroy confirms close.
   }
 
   private fun completePipExpansion() {

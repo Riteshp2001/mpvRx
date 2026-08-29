@@ -144,7 +144,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButto
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.MultipleSpeedPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekPlayerUpdate
-import app.gyrolet.mpvrx.ui.player.controls.components.SeekThumbnailPreviewBubble
+import app.gyrolet.mpvrx.ui.player.controls.components.ThumbFastPreviewBubble
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.controls.components.SlideToUnlock
 import app.gyrolet.mpvrx.ui.player.controls.components.TextPlayerUpdate
@@ -224,7 +224,7 @@ fun PlayerControls(
   val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
   val seekbarDuration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f
   val seekState by viewModel.seekState.collectAsState()
-  val seekPreview by viewModel.seekThumbnailPreview.collectAsState()
+  val thumbFastPreview by viewModel.thumbFastPreviewState.collectAsState()
   val brightness by viewModel.currentBrightness.collectAsState()
   val doubleTapSeekAmount = seekState.amount
   val showDoubleTapOvals by playerPreferences.showDoubleTapOvals.collectAsState()
@@ -462,7 +462,7 @@ fun PlayerControls(
 
   LaunchedEffect(useThumbFastSeekPreview) {
     if (!useThumbFastSeekPreview) {
-      viewModel.hideSeekThumbnailPreview()
+      viewModel.dismissThumbFastSeek()
     }
   }
 
@@ -1552,8 +1552,8 @@ fun PlayerControls(
             val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
             val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
             val displayedSeekbarPosition =
-              if (useThumbFastSeekPreview && seekPreview.visible) {
-                seekPreview.positionSeconds
+              if (useThumbFastSeekPreview && thumbFastPreview.isVisible) {
+                thumbFastPreview.positionSeconds
               } else {
                 precisePosition
               }
@@ -1574,7 +1574,9 @@ fun PlayerControls(
                 isSeeking = true
                 resetControlsTimestamp = System.currentTimeMillis()
                 if (useThumbFastSeekPreview) {
-                  viewModel.updateSeekThumbnailPreview(it, seekbarDuration)
+                  val xFraction = if (seekbarDuration > 0f) (it / seekbarDuration).coerceIn(0f, 1f) else 0f
+                  val chapterTitle = chapterNameForPosition(chapters, it)
+                  viewModel.updateThumbFastSeek(it, xFraction, null, chapterTitle)
                 } else {
                   // Legacy mode previews on the actual video surface. The ViewModel conflates
                   // pointer events so this remains responsive instead of issuing a seek per pixel.
@@ -1585,7 +1587,7 @@ fun PlayerControls(
                 isSeeking = false
                 resetControlsTimestamp = System.currentTimeMillis()
                 if (useThumbFastSeekPreview) {
-                  viewModel.hideSeekThumbnailPreview()
+                  viewModel.dismissThumbFastSeek()
                 }
                 viewModel.seekTo(targetPosition.toInt(), fast = false)
                 viewModel.showControls()
@@ -1609,19 +1611,13 @@ fun PlayerControls(
             )
           }
 
-          val seekPreviewChapterTitle =
-            remember(chapters, seekPreview.positionSeconds) {
-              chapterNameForPosition(chapters, seekPreview.positionSeconds)
-            }
-
-          SeekThumbnailPreviewBubble(
-            position = seekPreview.positionSeconds,
-            duration = seekbarDuration,
-            visible = useThumbFastSeekPreview && seekPreview.visible && !areControlsLocked,
-            bitmap = seekPreview.bitmap,
-            isLoading = seekPreview.isLoading,
+          ThumbFastPreviewBubble(
+            previewState =
+              thumbFastPreview.copy(
+                isVisible = useThumbFastSeekPreview && thumbFastPreview.isVisible && !areControlsLocked,
+                durationSeconds = seekbarDuration,
+              ),
             isPortrait = isPortrait,
-            chapterTitle = seekPreviewChapterTitle,
             modifier =
               Modifier
                 .then(navigationHorizontalPaddingModifier)

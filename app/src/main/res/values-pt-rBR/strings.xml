@@ -177,6 +177,8 @@
   <string name="pref_player_seeking_title">Busca</string>
   <string name="pref_player_seek_preview_thumbfast_title">Usar prévia de busca ThumbFast</string>
   <string name="pref_player_seek_preview_thumbfast_summary">Mostrar rapidamente uma bolha de miniatura ao arrastar. Desative para a busca antiga em vídeo ao vivo.</string>
+  <string name="pref_thumbfast_network_streams_title">Miniaturas de busca em transmissões de rede</string>
+  <string name="pref_thumbfast_network_streams_summary">Gerar prévias de miniaturas ao buscar em transmissões online e URLs remotas.</string>
   <string name="pref_player_close_after_eof">Fechar após o fim da reprodução</string>
   <string name="pref_player_remember_brightness">Lembrar o brilho da tela</string>
   <string name="pref_player_gestures">Gestos</string>

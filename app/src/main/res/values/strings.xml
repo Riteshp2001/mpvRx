@@ -196,6 +196,8 @@
   <string name="pref_player_seeking_title">Seeking</string>
   <string name="pref_player_seek_preview_thumbfast_title">Use ThumbFast seek preview</string>
   <string name="pref_player_seek_preview_thumbfast_summary">Show a fast thumbnail bubble while scrubbing. Turn off for legacy live video seeking.</string>
+  <string name="pref_thumbfast_network_streams_title">Network stream seek thumbnails</string>
+  <string name="pref_thumbfast_network_streams_summary">Generate seek thumbnail previews for online streams and remote URLs.</string>
   <string name="pref_player_close_after_eof">Close after the end of playback</string>
   <string name="pref_player_remember_brightness">Remember display brightness</string>
   <string name="pref_player_gestures">Gestures</string>

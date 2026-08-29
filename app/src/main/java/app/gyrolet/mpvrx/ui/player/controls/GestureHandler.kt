@@ -1265,11 +1265,6 @@ fun GestureHandler(
                       val maxDuration = duration?.toFloat() ?: 0f
                       val clampedPosition = targetPosition.coerceAtMost(maxDuration)
                       pendingSeekPosition = clampedPosition
-                      if (useThumbFastSeekPreview) {
-                        viewModel.updateSeekThumbnailPreview(clampedPosition, maxDuration)
-                      } else {
-                        viewModel.previewSeekTo(clampedPosition)
-                      }
 
                       // Format and display time position updates
                       val currentPos = clampedPosition.toInt()
@@ -1284,6 +1279,18 @@ fun GestureHandler(
                         } else {
                           "-${formatSeekTime(-seekDelta)}"
                         }
+
+                      if (useThumbFastSeekPreview) {
+                        val xFraction = if (maxDuration > 0f) (clampedPosition / maxDuration).coerceIn(0f, 1f) else 0.5f
+                        viewModel.updateThumbFastSeek(
+                          positionSeconds = clampedPosition,
+                          xFraction = xFraction,
+                          relativeDeltaText = deltaStr,
+                          chapterTitle = null,
+                        )
+                      } else {
+                        viewModel.previewSeekTo(clampedPosition)
+                      }
 
                       // Use PlayerUpdates system like zoom updates
                       viewModel.playerUpdate.update {
@@ -1300,7 +1307,7 @@ fun GestureHandler(
                   hasStartedSeeking = false
                   // Clean up seeking state without showing controls
                   if (useThumbFastSeekPreview) {
-                    viewModel.hideSeekThumbnailPreview()
+                    viewModel.dismissThumbFastSeek()
                   }
                   viewModel.playerUpdate.update { PlayerUpdates.None }
                   if (gestureType == "horizontal_seek") {
@@ -1317,7 +1324,7 @@ fun GestureHandler(
             if (hasStartedSeeking) {
               if (useThumbFastSeekPreview) {
                 pendingSeekPosition?.let { viewModel.seekTo(it.toInt()) }
-                viewModel.hideSeekThumbnailPreview()
+                viewModel.dismissThumbFastSeek()
               } else {
                 pendingSeekPosition?.let { viewModel.seekTo(it.toInt(), fast = false) }
               }

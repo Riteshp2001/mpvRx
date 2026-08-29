@@ -177,6 +177,8 @@
   <string name="pref_player_seeking_title">Перемотка</string>
   <string name="pref_player_seek_preview_thumbfast_title">Использовать предпросмотр перемотки ThumbFast</string>
   <string name="pref_player_seek_preview_thumbfast_summary">Показывать быструю миниатюру при перетаскивании. Отключите для старого режима перемотки прямого эфира.</string>
+  <string name="pref_thumbfast_network_streams_title">Миниатюры перемотки для сетевых потоков</string>
+  <string name="pref_thumbfast_network_streams_summary">Генерировать миниатюры предварительного просмотра для онлайн-трансляций и удалённых URL.</string>
   <string name="pref_player_close_after_eof">Закрывать после окончания воспроизведения</string>
   <string name="pref_player_remember_brightness">Запоминать яркость экрана</string>
   <string name="pref_player_gestures">Жесты</string>

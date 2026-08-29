@@ -493,6 +493,24 @@ object PlayerPreferencesScreen : Screen {
                 },
               )
 
+              if (useThumbFastSeekPreview) {
+                PreferenceDivider()
+
+                val thumbFastNetworkStreams by preferences.thumbFastNetworkStreams.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_thumbfast_network_streams_title),
+                  value = thumbFastNetworkStreams,
+                  onValueChange = preferences.thumbFastNetworkStreams::set,
+                  title = { Text(stringResource(R.string.pref_thumbfast_network_streams_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_thumbfast_network_streams_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
+
               PreferenceDivider()
 
               val customSkipDuration by preferences.customSkipDuration.collectAsState()

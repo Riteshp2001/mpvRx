@@ -177,6 +177,8 @@
   <string name="pref_player_seeking_title">定位播放</string>
   <string name="pref_player_seek_preview_thumbfast_title">使用 ThumbFast 定位预览</string>
   <string name="pref_player_seek_preview_thumbfast_summary">拖动时显示快速缩略图气泡。传统直播视频定位播放请关闭此项。</string>
+  <string name="pref_thumbfast_network_streams_title">网络流定位缩略图</string>
+  <string name="pref_thumbfast_network_streams_summary">为在线流和远程 URL 生成定位缩略图预览。</string>
   <string name="pref_player_close_after_eof">播放结束后关闭</string>
   <string name="pref_player_remember_brightness">记住屏幕亮度</string>
   <string name="pref_player_gestures">手势</string>

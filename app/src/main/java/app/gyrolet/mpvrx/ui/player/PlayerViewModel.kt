@@ -77,6 +77,8 @@ import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
 import app.gyrolet.mpvrx.ui.preferences.CustomButton
 import app.gyrolet.mpvrx.ui.preferences.CustomButtonScriptLanguage
+import app.gyrolet.mpvrx.domain.thumbnail.ThumbFastEngine
+import app.gyrolet.mpvrx.ui.player.thumbfast.ThumbFastPreviewState
 import app.gyrolet.mpvrx.utils.media.AudioEqualizerManager
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
@@ -86,6 +88,7 @@ import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.FastThumbnails
+import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -480,18 +483,7 @@ class PlayerViewModel : ViewModel(),
   private val metadataCache = object : android.util.LruCache<String, Pair<String, String>>(100) {}
   private val playbackStateDispatcher = Dispatchers.Default.limitedParallelism(1)
   private val renderPrepDispatcher = Dispatchers.Default.limitedParallelism(1)
-  private val seekThumbnailDispatcher = Dispatchers.Default.limitedParallelism(1)
   private val ambientCropRegex = Regex("""^(\d+)x(\d+)""")
-  private val seekThumbnailCache =
-    object : LruCache<String, Bitmap>(SEEK_THUMBNAIL_CACHE_KB) {
-      override fun sizeOf(
-        key: String,
-        value: Bitmap,
-      ): Int = (value.allocationByteCount / 1024).coerceAtLeast(1)
-    }
-  private val seekThumbnailFailureAt = ConcurrentHashMap<String, Long>()
-  private val seekThumbnailDecodes = ConcurrentHashMap<String, Deferred<Bitmap?>>()
-
   @Volatile private var pinnedSeekThumbnailSource: String? = null
 
   private fun updateMetadataCache(
@@ -1360,35 +1352,11 @@ class PlayerViewModel : ViewModel(),
   private val _seekState = MutableStateFlow(SeekState())
   val seekState: StateFlow<SeekState> = _seekState.asStateFlow()
 
-  data class SeekThumbnailPreview(
-    val visible: Boolean = false,
-    val positionSeconds: Float = 0f,
-    val fraction: Float = 0f,
-    val bitmap: Bitmap? = null,
-    val isLoading: Boolean = false,
-  )
+  private val _thumbFastPreviewState = MutableStateFlow(ThumbFastPreviewState())
+  val thumbFastPreviewState: StateFlow<ThumbFastPreviewState> = _thumbFastPreviewState.asStateFlow()
 
-  private val _seekThumbnailPreview = MutableStateFlow(SeekThumbnailPreview())
-  val seekThumbnailPreview: StateFlow<SeekThumbnailPreview> = _seekThumbnailPreview.asStateFlow()
-
-  private data class SeekThumbnailRequest(
-    val source: String,
-    val positionSeconds: Float,
-    val durationSeconds: Float,
-    val bucket: Int,
-    val requestId: Long,
-  )
-
-  private data class SeekThumbnailLoadResult(
-    val bitmap: Bitmap? = null,
-    val capacityBlocked: Boolean = false,
-  )
-
-  private val seekThumbnailRequestLock = Any()
-  private var pendingSeekThumbnailRequest: SeekThumbnailRequest? = null
-  private var seekThumbnailWorkerJob: Job? = null
-  private var seekThumbnailRequestId = 0L
-  private var lastQueuedSeekThumbnailKey: String? = null
+  private var thumbFastJob: Job? = null
+  private var thumbFastRequestId = 0L
 
   // Frame navigation
   private val _currentFrame = MutableStateFlow(0)
@@ -1975,11 +1943,8 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun onVideoLoadStarted() {
-    hideSeekThumbnailPreview()
+    dismissThumbFastSeek()
     pinnedSeekThumbnailSource = null
-    cancelSeekThumbnailDecodes()
-    seekThumbnailCache.evictAll()
-    seekThumbnailFailureAt.clear()
     introLookupJob?.cancel()
     // PlaybackSession is process-wide, while this ViewModel can be recreated. Clear both halves of
     // the timeline so a stopped file's last position cannot be rendered beside the incoming file's
@@ -4008,396 +3973,128 @@ class PlayerViewModel : ViewModel(),
     seekBarVisibleForPolling = false
   }
 
-  fun updateSeekThumbnailPreview(
+  fun updateThumbFastSeek(
     positionSeconds: Float,
-    durationSeconds: Float,
+    xFraction: Float,
+    relativeDeltaText: String? = null,
+    chapterTitle: String? = null,
   ) {
     if (!playerPreferences.useThumbFastSeekPreview.get()) {
-      hideSeekThumbnailPreview()
+      dismissThumbFastSeek()
       return
     }
 
     if (host.isCurrentMediaKnownAudio() || isAudioOnly.value) {
-      hideSeekThumbnailPreview()
+      dismissThumbFastSeek()
       return
     }
 
+    val durationSec = duration?.toFloat() ?: _preciseDuration.value.coerceAtLeast(0f)
     val clampedPosition =
-      if (durationSeconds > 0f) {
-        positionSeconds.coerceIn(0f, durationSeconds)
+      if (durationSec > 0f) {
+        positionSeconds.coerceIn(0f, durationSec)
       } else {
         positionSeconds.coerceAtLeast(0f)
       }
-    val fraction =
-      if (durationSeconds > 0f) {
-        (clampedPosition / durationSeconds).coerceIn(0f, 1f)
-      } else {
-        0f
-      }
+
+    val clampedFraction = xFraction.coerceIn(0f, 1f)
+    val formattedTime = Utils.prettyTime(clampedPosition.toInt(), false)
 
     val source = resolveSeekThumbnailSource()
     if (source.isNullOrBlank()) {
-      _seekThumbnailPreview.update {
+      _thumbFastPreviewState.update {
         it.copy(
-          visible = true,
+          isVisible = true,
           positionSeconds = clampedPosition,
-          fraction = fraction,
+          durationSeconds = durationSec,
+          formattedTime = formattedTime,
+          relativeDeltaText = relativeDeltaText,
+          chapterTitle = chapterTitle,
+          normalizedXFraction = clampedFraction,
           isLoading = false,
         )
       }
       return
     }
 
-    val bucket = seekThumbnailBucket(clampedPosition)
-    val cacheKey = seekThumbnailCacheKey(source, bucket)
-    val cachedBitmap = seekThumbnailCache.get(cacheKey)
-    val nearestCachedBitmap = cachedBitmap ?: findNearestSeekThumbnail(source, bucket)
-    val recentlyFailed =
-      seekThumbnailFailureAt[cacheKey]?.let { failedAt ->
-        SystemClock.elapsedRealtime() - failedAt < SEEK_THUMBNAIL_FAILURE_COOLDOWN_MS
-      } == true
-    _seekThumbnailPreview.update {
-      it.copy(
-        visible = true,
+    val isNetwork = ThumbFastEngine.isNetworkSource(source)
+    val allowNetwork = playerPreferences.thumbFastNetworkStreams.get()
+    val canDecode = !isNetwork || allowNetwork
+
+    val cachedBitmap = ThumbFastEngine.getCached(source, clampedPosition.toDouble())
+    val nearestCachedBitmap = cachedBitmap ?: ThumbFastEngine.getNearestCached(source, clampedPosition.toDouble())
+
+    _thumbFastPreviewState.update { current ->
+      current.copy(
+        isVisible = true,
         positionSeconds = clampedPosition,
-        fraction = fraction,
-        bitmap = nearestCachedBitmap ?: it.bitmap,
-        isLoading = !recentlyFailed && nearestCachedBitmap == null && it.bitmap == null,
+        durationSeconds = durationSec,
+        formattedTime = formattedTime,
+        relativeDeltaText = relativeDeltaText,
+        chapterTitle = chapterTitle,
+        bitmap = nearestCachedBitmap ?: current.bitmap,
+        isLoading = canDecode && cachedBitmap == null && nearestCachedBitmap == null,
+        normalizedXFraction = clampedFraction,
       )
     }
 
-    if (cachedBitmap != null || recentlyFailed || cacheKey == lastQueuedSeekThumbnailKey) return
+    if (cachedBitmap != null || !canDecode) return
 
-    val requestId = ++seekThumbnailRequestId
-    lastQueuedSeekThumbnailKey = cacheKey
-    synchronized(seekThumbnailRequestLock) {
-      pendingSeekThumbnailRequest =
-        SeekThumbnailRequest(
-          source = source,
-          positionSeconds = clampedPosition,
-          durationSeconds = durationSeconds,
-          bucket = bucket,
-          requestId = requestId,
-        )
-    }
-    ensureSeekThumbnailWorker()
-  }
-
-  private fun ensureSeekThumbnailWorker() {
-    synchronized(seekThumbnailRequestLock) {
-      if (seekThumbnailWorkerJob?.isActive == true) return
-      seekThumbnailWorkerJob =
-        viewModelScope.launch(seekThumbnailDispatcher) {
-          while (isActive) {
-            val request =
-              synchronized(seekThumbnailRequestLock) {
-                pendingSeekThumbnailRequest.also {
-                  pendingSeekThumbnailRequest = null
-                  if (it == null) seekThumbnailWorkerJob = null
-                }
-              } ?: return@launch
-
-            val cacheKey = seekThumbnailCacheKey(request.source, request.bucket)
-            val loadResult = loadSeekThumbnail(request.source, request.bucket, request.durationSeconds)
-            val bitmap = loadResult.bitmap
-            if (loadResult.capacityBlocked && request.requestId == seekThumbnailRequestId) {
-              synchronized(seekThumbnailRequestLock) {
-                val pending = pendingSeekThumbnailRequest
-                if (pending == null || pending.requestId < request.requestId) {
-                  pendingSeekThumbnailRequest = request
-                }
-              }
-              awaitSeekThumbnailDecodeSlot()
-              continue
-            }
-            if (bitmap != null) {
-              publishSeekThumbnail(request, bitmap)
-            } else if (
-              request.requestId == seekThumbnailRequestId &&
-              !seekThumbnailDecodes.containsKey(cacheKey)
-            ) {
-              // No decode left in flight to late-publish this bucket; stop the spinner.
-              _seekThumbnailPreview.update { it.copy(isLoading = false) }
-            }
-            if (lastQueuedSeekThumbnailKey == cacheKey) {
-              lastQueuedSeekThumbnailKey = null
-            }
-
-            val hasNewerRequest =
-              synchronized(seekThumbnailRequestLock) {
-                pendingSeekThumbnailRequest != null
-              }
-            if (bitmap != null && !hasNewerRequest && !isNetworkSeekThumbnailSource(request.source)) {
-              prefetchSeekThumbnails(request)
-            }
+    val requestId = ++thumbFastRequestId
+    thumbFastJob?.cancel()
+    thumbFastJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        val bitmap = ThumbFastEngine.getThumbnail(source, clampedPosition.toDouble(), isNetwork = isNetwork)
+        if (requestId == thumbFastRequestId) {
+          _thumbFastPreviewState.update { current ->
+            if (!current.isVisible) return@update current
+            current.copy(
+              bitmap = bitmap ?: current.bitmap,
+              isLoading = false,
+            )
           }
         }
+      }
+  }
+
+  fun dismissThumbFastSeek() {
+    thumbFastJob?.cancel()
+    thumbFastJob = null
+    thumbFastRequestId++
+    _thumbFastPreviewState.update {
+      it.copy(
+        isVisible = false,
+        bitmap = null,
+        isLoading = false,
+        relativeDeltaText = null,
+        chapterTitle = null,
+      )
     }
   }
 
-  private suspend fun awaitSeekThumbnailDecodeSlot() {
-    val inFlight = seekThumbnailDecodes.values.toList()
-    if (inFlight.isEmpty()) return
-    select {
-      inFlight.forEach { decode -> decode.onJoin { } }
-    }
+  fun updateSeekThumbnailPreview(
+    positionSeconds: Float,
+    durationSeconds: Float,
+  ) {
+    val xFraction = if (durationSeconds > 0f) (positionSeconds / durationSeconds).coerceIn(0f, 1f) else 0f
+    updateThumbFastSeek(positionSeconds, xFraction)
   }
 
   fun hideSeekThumbnailPreview() {
-    seekThumbnailWorkerJob?.cancel()
-    seekThumbnailWorkerJob = null
-    seekThumbnailRequestId++
-    lastQueuedSeekThumbnailKey = null
-    synchronized(seekThumbnailRequestLock) {
-      pendingSeekThumbnailRequest = null
-    }
-    _seekThumbnailPreview.update {
-      it.copy(
-        visible = false,
-        bitmap = null,
-        isLoading = false,
-      )
-    }
-  }
-
-  private suspend fun loadSeekThumbnail(
-    source: String,
-    bucket: Int,
-    durationSeconds: Float,
-  ): SeekThumbnailLoadResult {
-    val cacheKey = seekThumbnailCacheKey(source, bucket)
-    seekThumbnailCache.get(cacheKey)?.let { return SeekThumbnailLoadResult(bitmap = it) }
-    val recentlyFailed =
-      seekThumbnailFailureAt[cacheKey]?.let { failedAt ->
-        SystemClock.elapsedRealtime() - failedAt < SEEK_THUMBNAIL_FAILURE_COOLDOWN_MS
-      } == true
-    if (recentlyFailed) return SeekThumbnailLoadResult()
-
-    val decode =
-      startSeekThumbnailDecode(cacheKey, source, bucket, durationSeconds)
-        ?: return SeekThumbnailLoadResult(capacityBlocked = true)
-    // Bounded wait keeps the worker responsive while scrubbing; the decode itself is NOT cancelled
-    // on timeout. Its completion caches and late-publishes the bitmap, which is what lets slow
-    // local decodes and network streams (whose open alone can exceed this window) still show up.
-    return SeekThumbnailLoadResult(
-      bitmap =
-        withTimeoutOrNull(SEEK_THUMBNAIL_TIMEOUT_MS) {
-          try {
-            decode.await()
-          } catch (cancellation: kotlinx.coroutines.CancellationException) {
-            currentCoroutineContext().ensureActive()
-            null
-          }
-        },
-    )
-  }
-
-  private fun startSeekThumbnailDecode(
-    cacheKey: String,
-    source: String,
-    bucket: Int,
-    durationSeconds: Float,
-  ): Deferred<Bitmap?>? {
-    seekThumbnailDecodes[cacheKey]?.let { return it }
-    if (seekThumbnailDecodes.size >= SEEK_THUMBNAIL_MAX_INFLIGHT_DECODES) return null
-
-    val thumbnailTime = seekThumbnailBucketTime(bucket, durationSeconds)
-    val decode =
-      viewModelScope.async(Dispatchers.IO) {
-        val bitmap =
-          try {
-            if (!FastThumbnails.isInitialized()) {
-              FastThumbnails.initialize(appContext)
-            }
-            generateSeekThumbnail(source, thumbnailTime)
-          } catch (cancellation: kotlinx.coroutines.CancellationException) {
-            throw cancellation
-          } catch (_: Exception) {
-            null
-          }
-        if (bitmap != null) {
-          seekThumbnailCache.put(cacheKey, bitmap)
-          seekThumbnailFailureAt.remove(cacheKey)
-          maybePublishLateSeekThumbnail(source, bucket, bitmap)
-        } else {
-          if (seekThumbnailFailureAt.size >= SEEK_THUMBNAIL_FAILURE_CACHE_MAX) {
-            seekThumbnailFailureAt.clear()
-          }
-          seekThumbnailFailureAt[cacheKey] = SystemClock.elapsedRealtime()
-          clearSeekThumbnailLoadingFor(source, bucket)
-        }
-        bitmap
-      }
-    seekThumbnailDecodes[cacheKey] = decode
-    decode.invokeOnCompletion { seekThumbnailDecodes.remove(cacheKey, decode) }
-    return decode
-  }
-
-  private suspend fun generateSeekThumbnail(
-    source: String,
-    thumbnailTime: Float,
-  ): Bitmap? {
-    if (source.startsWith("content://", ignoreCase = true)) {
-      val descriptor = appContext.contentResolver.openFileDescriptor(source.toUri(), "r") ?: return null
-      descriptor.use {
-        return FastThumbnails.generateAsync(
-          "/proc/self/fd/${it.fd}",
-          thumbnailTime.toDouble(),
-          SEEK_THUMBNAIL_MAX_SIZE,
-          useHwDec = false,
-        )
-      }
-    }
-    return FastThumbnails.generateAsync(
-      source,
-      thumbnailTime.toDouble(),
-      SEEK_THUMBNAIL_MAX_SIZE,
-      useHwDec = false,
-    )
-  }
-
-  private fun maybePublishLateSeekThumbnail(
-    source: String,
-    bucket: Int,
-    bitmap: Bitmap,
-  ) {
-    if (source != pinnedSeekThumbnailSource) return
-    _seekThumbnailPreview.update { current ->
-      if (!current.visible) return@update current
-      val currentBucket = seekThumbnailBucket(current.positionSeconds)
-      val exactBucket = currentBucket == bucket
-      val nearbyAndEmpty =
-        current.bitmap == null && abs(currentBucket - bucket) <= SEEK_THUMBNAIL_PREFETCH_RADIUS
-      if (exactBucket || nearbyAndEmpty) {
-        current.copy(bitmap = bitmap, isLoading = false)
-      } else {
-        current
-      }
-    }
-  }
-
-  private fun clearSeekThumbnailLoadingFor(
-    source: String,
-    bucket: Int,
-  ) {
-    if (source != pinnedSeekThumbnailSource) return
-    _seekThumbnailPreview.update { current ->
-      if (current.visible && seekThumbnailBucket(current.positionSeconds) == bucket) {
-        current.copy(isLoading = false)
-      } else {
-        current
-      }
-    }
-  }
-
-  private fun cancelSeekThumbnailDecodes() {
-    val inFlight = seekThumbnailDecodes.values.toList()
-    seekThumbnailDecodes.clear()
-    inFlight.forEach { it.cancel() }
-  }
-
-  private fun publishSeekThumbnail(
-    request: SeekThumbnailRequest,
-    bitmap: Bitmap,
-  ) {
-    _seekThumbnailPreview.update { current ->
-      if (!current.visible || request.requestId != seekThumbnailRequestId) {
-        current
-      } else {
-        current.copy(
-          bitmap = bitmap,
-          isLoading = false,
-        )
-      }
-    }
-  }
-
-  private suspend fun prefetchSeekThumbnails(request: SeekThumbnailRequest) {
-    val maxBucket =
-      if (request.durationSeconds > 0f) {
-        seekThumbnailBucket(request.durationSeconds)
-      } else {
-        Int.MAX_VALUE
-      }
-    for (distance in 1..SEEK_THUMBNAIL_PREFETCH_RADIUS) {
-      val hasNewerRequest =
-        synchronized(seekThumbnailRequestLock) {
-          pendingSeekThumbnailRequest != null
-        }
-      if (hasNewerRequest) return
-
-      val nextBucket = request.bucket + distance
-      if (nextBucket <= maxBucket) {
-        loadSeekThumbnail(request.source, nextBucket, request.durationSeconds)
-      }
-
-      val previousBucket = request.bucket - distance
-      if (previousBucket >= 0) {
-        loadSeekThumbnail(request.source, previousBucket, request.durationSeconds)
-      }
-    }
+    dismissThumbFastSeek()
   }
 
   private fun resolveSeekThumbnailSource(): String? {
-    // Pin the first successful resolution for this media item: the mpv property reads below are
-    // volatile (mid-seek they can briefly return null or flip between the logical and resolved
-    // URL), and any drift in this string orphans every bitmap cached under the previous key.
     pinnedSeekThumbnailSource?.let { return it }
     val resolved =
-      // mpv's resolved filename comes first: network-library items are converted to an authenticated
-      // loopback range URL by PlaybackSession, while the host may still hold the unplayable logical URI.
-      // Candidates that only mpv itself can open (fd://, edl://, ...) are skipped because the
-      // ThumbFast engine reopens the source with FFmpeg directly.
       sequenceOf(
         runCatching { PlaybackSession.getPropertyString("stream-open-filename") }.getOrNull(),
         runCatching { PlaybackSession.getPropertyString("path") }.getOrNull(),
         host.currentThumbnailSource(),
       ).mapNotNull { candidate -> candidate?.takeIf { it.isNotBlank() } }
-        .firstOrNull(::isSeekThumbnailSourceDecodable)
+        .firstOrNull(ThumbFastEngine::isSourceDecodable)
     if (resolved != null) pinnedSeekThumbnailSource = resolved
     return resolved
-  }
-
-  private fun isSeekThumbnailSourceDecodable(source: String): Boolean {
-    val scheme = source.substringBefore("://", missingDelimiterValue = "").lowercase()
-    return scheme !in MPV_ONLY_PSEUDO_PROTOCOLS
-  }
-
-  private fun isNetworkSeekThumbnailSource(source: String): Boolean =
-    source.startsWith("http://", ignoreCase = true) || source.startsWith("https://", ignoreCase = true)
-
-  private fun seekThumbnailBucket(positionSeconds: Float): Int =
-    (positionSeconds * SEEK_THUMBNAIL_CACHE_BUCKETS_PER_SECOND).roundToInt().coerceAtLeast(0)
-
-  private fun seekThumbnailBucketTime(
-    bucket: Int,
-    durationSeconds: Float,
-  ): Float =
-    (bucket / SEEK_THUMBNAIL_CACHE_BUCKETS_PER_SECOND)
-      .coerceAtLeast(0f)
-      .let {
-        if (durationSeconds > 0f) {
-          // Asking decoders for the exact EOF commonly returns a black frame on short clips.
-          it.coerceAtMost((durationSeconds - 0.1f).coerceAtLeast(0f))
-        } else {
-          it
-        }
-      }
-
-  private fun seekThumbnailCacheKey(
-    source: String,
-    bucket: Int,
-  ): String = "$source|$bucket|$SEEK_THUMBNAIL_MAX_SIZE"
-
-  private fun findNearestSeekThumbnail(
-    source: String,
-    bucket: Int,
-  ): Bitmap? {
-    for (distance in 1..SEEK_THUMBNAIL_PREFETCH_RADIUS) {
-      seekThumbnailCache.get(seekThumbnailCacheKey(source, bucket - distance))?.let { return it }
-      seekThumbnailCache.get(seekThumbnailCacheKey(source, bucket + distance))?.let { return it }
-    }
-    return null
   }
 
   fun lockControls() {
@@ -6342,12 +6039,10 @@ class PlayerViewModel : ViewModel(),
     // it, and the service may keep an active session open.
     runCatching { stopRealtimeSubtitles(showToastMessage = false) }
 
-    // Evict all cached Bitmaps from the seek-thumbnail LruCache so the
-    // memory is returned immediately rather than waiting for the next GC
-    // pass (which may not happen before the next playback session starts,
-    // causing cumulative heap growth across rapid back-to-back plays).
-    runCatching { seekThumbnailCache.evictAll() }
-    seekThumbnailFailureAt.clear()
+    // Evict all cached Bitmaps from the ThumbFast LruCache so the
+    // memory is returned immediately rather than waiting for the next GC pass.
+    runCatching { ThumbFastEngine.clearMemoryCache() }
+    runCatching { ThumbFastEngine.clearFailures() }
 
     // The metadataCache (Pair<String, String> entries) is small and
     // bounded at 100 entries, so it is not urgent to clear, but clearing

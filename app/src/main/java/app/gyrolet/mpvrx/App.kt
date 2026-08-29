@@ -26,6 +26,7 @@ import app.gyrolet.mpvrx.di.PreferencesModule
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.domain.thumbnail.ThumbFastEngine
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.GlobalExceptionHandler
 import app.gyrolet.mpvrx.repository.NetworkRepository
@@ -220,6 +221,7 @@ class App :
       try {
         delay(THUMBNAIL_WARMUP_DELAY_MS)
         FastThumbnails.initialize(this@App)
+        ThumbFastEngine.initialize(this@App)
       } catch (cancellation: CancellationException) {
         fastThumbnailsStarted.set(false)
         throw cancellation
