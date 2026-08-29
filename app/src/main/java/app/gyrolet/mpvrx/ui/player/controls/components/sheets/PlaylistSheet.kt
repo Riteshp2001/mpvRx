@@ -297,6 +297,8 @@ fun PlaylistSheet(
       screenWidth * 0.85f
     }
 
+  var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = Modifier.fillMaxWidth(),
@@ -366,16 +368,31 @@ fun PlaylistSheet(
             )
           }
 
-          // Toggle button for list/grid view (only in landscape)
-          if (!isPortrait) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+          ) {
             IconButton(
-              onClick = { isListMode = !isListMode },
+              onClick = { showAddToPlaylistDialog = true },
             ) {
               Icon(
-                imageVector = if (isListMode) Icons.RoundedFilled.GridView else Icons.RoundedFilled.ViewList,
-                contentDescription = if (isListMode) "Switch to Grid View" else "Switch to List View",
+                imageVector = Icons.RoundedFilled.PlaylistAdd,
+                contentDescription = stringResource(R.string.save_queue_as_playlist),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
               )
+            }
+
+            // Toggle button for list/grid view (only in landscape)
+            if (!isPortrait) {
+              IconButton(
+                onClick = { isListMode = !isListMode },
+              ) {
+                Icon(
+                  imageVector = if (isListMode) Icons.RoundedFilled.GridView else Icons.RoundedFilled.ViewList,
+                  contentDescription = if (isListMode) "Switch to Grid View" else "Switch to List View",
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
             }
           }
         }
@@ -477,6 +494,16 @@ fun PlaylistSheet(
         }
       }
     }
+  }
+
+  if (showAddToPlaylistDialog && playlist.isNotEmpty()) {
+    val queueVideos = remember(playlist) { playlist.map { it.toVideo() } }
+    AddToPlaylistDialog(
+      isOpen = true,
+      videos = queueVideos,
+      onDismiss = { showAddToPlaylistDialog = false },
+      onSuccess = { showAddToPlaylistDialog = false },
+    )
   }
 }
 
