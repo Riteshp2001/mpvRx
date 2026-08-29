@@ -63,12 +63,15 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.controls.components.MiniAudioVisualizer
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -82,6 +85,29 @@ import org.koin.compose.koinInject
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+
+fun PlaylistItem.toVideo(): Video =
+  Video(
+    id = uri.toString().hashCode().toLong(),
+    title = title,
+    displayName = title,
+    path = path.ifBlank { uri.toString() },
+    uri = uri,
+    duration = 0L,
+    durationFormatted = duration,
+    size = 0L,
+    sizeFormatted = "",
+    dateModified = 0L,
+    dateAdded = 0L,
+    mimeType = if (isAudio) "audio/*" else "video/*",
+    bucketId = "",
+    bucketDisplayName = "",
+    width = 0,
+    height = 0,
+    fps = 0f,
+    resolution = resolution,
+    isAudio = isAudio,
+  )
 
 data class PlaylistItem(
   val uri: Uri,

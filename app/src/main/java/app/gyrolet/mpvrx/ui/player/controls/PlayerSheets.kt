@@ -494,18 +494,10 @@ fun PlayerSheets(
       val isPlaylistSwipeActive by viewModel.isPlaylistSwipeActive.collectAsState()
       val playlistSwipeOffset by viewModel.playlistSwipeOffset.collectAsState()
 
-      val filteredPlaylist =
-        remember(playlist, isAudioOnly) {
-          if (isAudioOnly) {
-            playlist.filter { it.isAudio }
-          } else {
-            playlist.filter { !it.isAudio }
-          }
-        }
+      val playlistImmutable = remember(playlist) { playlist.toImmutableList() }
 
-      if (filteredPlaylist.isNotEmpty()) {
-        val playlistImmutable = filteredPlaylist.toImmutableList()
-        val totalCount = filteredPlaylist.size
+      if (playlistImmutable.isNotEmpty()) {
+        val totalCount = playlistImmutable.size
         val isM3U = viewModel.isPlaylistM3U()
         PlaylistSheet(
           playlist = playlistImmutable,

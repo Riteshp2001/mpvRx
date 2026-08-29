@@ -9,8 +9,10 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.declaredMediaKind
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingState
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentSpeed
@@ -333,7 +335,13 @@ fun PlayerControls(
 
   val isAudioOnly by viewModel.isAudioOnly.collectAsState()
   val activity = LocalActivity.current as? PlayerActivity
-  val useAudioPlayer = isAudioOnly || activity?.isCurrentMediaKnownAudio() == true
+  val currentPlaybackItem = playbackQueue.currentItem
+  val useAudioPlayer =
+    when (currentPlaybackItem?.declaredMediaKind()) {
+      DeclaredPlaybackMediaKind.VIDEO -> false
+      DeclaredPlaybackMediaKind.AUDIO -> true
+      else -> isAudioOnly || activity?.isCurrentMediaKnownAudio() == true
+    }
   if (useAudioPlayer) {
     val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsState()
     val queuedTitle =

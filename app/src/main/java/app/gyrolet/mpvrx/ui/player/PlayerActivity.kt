@@ -5072,8 +5072,8 @@ class PlayerActivity :
           PlaybackSession.markForeground()
           isReady = PlaybackSession.state.value.phase == PlaybackPhase.READY
           if (isReady) viewModel.onVideoLoadCompleted()
-          applyPlaybackBrightnessPolicy(isAudio = isKnownAudioLaunch(this.intent))
-          if (isKnownAudioLaunch(this.intent)) setOrientation()
+          applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
+          if (isCurrentMediaKnownAudio()) setOrientation()
           if (isBackgroundPlaybackEnabled()) {
             if (!serviceBound || mediaPlaybackService == null) {
               startBackgroundPlaybackInternal(bindToActivity = true)
@@ -5117,11 +5117,11 @@ class PlayerActivity :
     val previousItemWasReady = isReady
 
     setIntent(intent)
-    applyPlaybackBrightnessPolicy(isAudio = isKnownAudioLaunch(intent))
+    applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
     if (!beginMediaRequest()) return
     cancelPlaybackLoadRecovery()
     pendingSavedPlaylistSelection = null
-    if (isKnownAudioLaunch(intent)) setOrientation()
+    if (isCurrentMediaKnownAudio()) setOrientation()
 
     isBackgroundPlaybackSessionActive = false
     pendingBackgroundTransition = false
@@ -5877,7 +5877,7 @@ class PlayerActivity :
    * to the correct orientation, starting with landscape as fallback.
    */
   private fun setOrientation() {
-    if (isKnownAudioLaunch(intent) || viewModel.isAudioOnly.value) {
+    if (isCurrentMediaKnownAudio() || viewModel.isAudioOnly.value) {
       val audioOrient =
         when (audioPreferences.audioOrientation.get()) {
           AudioPlayerOrientation.Auto -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
@@ -5930,7 +5930,7 @@ class PlayerActivity :
         .any { source -> source.fileExtension() in FileTypeUtils.AUDIO_EXTENSIONS }
 
   private fun applyPlaybackBrightnessPolicy(
-    isAudio: Boolean = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio(),
+    isAudio: Boolean = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio(),
   ) {
     if (isAudio || !playerPreferences.rememberBrightness.get()) {
       // Audio playback must never hold a per-window video brightness override. Resetting to
