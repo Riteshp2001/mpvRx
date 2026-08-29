@@ -131,6 +131,8 @@
   <string name="queue_requires_playback">Start playback before adding items to the queue</string>
   <string name="queue_added_next">Added %1$d item(s) to play next</string>
   <string name="queue_added_end">Added %1$d item(s) to the queue</string>
+  <string name="queue_started">Playing queue with %1$d item(s)</string>
+  <string name="save_queue_as_playlist">Save queue as playlist</string>
   <string name="pref_auto_pip_title">Auto Picture-in-Picture</string>
   <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
   <string name="pref_enable_video_mini_player_title">Enable Video Mini Player</string>
@@ -589,6 +591,7 @@
   <string name="notification_playing">Playing</string>
   <string name="notification_add_to_favorites">Add to Favorites</string>
   <string name="notification_saved_to_favorites">Saved to Favorites</string>
+  <string name="notification_close">Close</string>
   <string name="notification_repeat_off">Repeat off</string>
   <string name="notification_repeat_one">Repeat one</string>
   <string name="notification_repeat_all">Repeat all</string>

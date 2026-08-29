@@ -284,6 +284,15 @@ interface PlaylistDao {
   )
   suspend fun getFavoriteFilePaths(playlistId: Int): List<String>
 
+  @Query(
+    """
+    SELECT pi.filePath FROM PlaylistItemEntity pi
+    INNER JOIN PlaylistEntity p ON pi.playlistId = p.id
+    WHERE LOWER(p.name) = 'favorites' AND p.isAudio = :isAudio
+    """,
+  )
+  fun observeFavoriteFilePaths(isAudio: Boolean): kotlinx.coroutines.flow.Flow<List<String>>
+
   companion object {
     private const val PLAYLIST_WRITE_CHUNK_SIZE = 500
   }

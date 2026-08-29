@@ -23,6 +23,7 @@ import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.M3UPlaylistItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -76,14 +77,12 @@ class PlaylistRepository(
     return playlist.name.equals(FAVORITES_PLAYLIST_NAME, ignoreCase = true)
   }
 
-  fun observeIsFavorite(filePath: String, isAudio: Boolean = true): Flow<Boolean> =
-    playlistDao.observeAllPlaylists().map { playlists ->
-      if (filePath.isBlank()) return@map false
-      val favPlaylist = playlists.find { it.name.equals(FAVORITES_PLAYLIST_NAME, ignoreCase = true) && it.isAudio == isAudio }
-        ?: return@map false
-      val items = playlistDao.getPlaylistItems(favPlaylist.id)
-      items.any { isPathMatching(it.filePath, filePath) }
+  fun observeIsFavorite(filePath: String, isAudio: Boolean = true): Flow<Boolean> {
+    if (filePath.isBlank()) return flowOf(false)
+    return playlistDao.observeFavoriteFilePaths(isAudio).map { paths ->
+      paths.any { isPathMatching(it, filePath) }
     }
+  }
 
   suspend fun isFavorite(filePath: String, isAudio: Boolean = true): Boolean {
     if (filePath.isBlank()) return false

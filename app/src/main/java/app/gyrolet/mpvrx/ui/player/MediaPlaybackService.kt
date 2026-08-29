@@ -453,15 +453,11 @@ class MediaPlaybackService :
           if (foregroundReady) return START_NOT_STICKY
         }
         ACTION_NOTIFICATION_FAVORITE -> {
-          addCurrentItemToFavorites()
-          if (foregroundReady) return START_NOT_STICKY
-        }
-        ACTION_NOTIFICATION_REPEAT -> {
-          cycleRepeatModeFromNotification()
+          toggleCurrentItemFavorite()
           if (foregroundReady) return START_NOT_STICKY
         }
         ACTION_NOTIFICATION_STOP -> {
-          stopPlaybackAndService()
+          stopPlaybackAndService(force = true)
           return START_NOT_STICKY
         }
         else -> MediaButtonReceiver.handleIntent(mediaSession, it)
@@ -774,58 +770,42 @@ class MediaPlaybackService :
     val expectedIdentifier = item.stableId
     val favoritePath = item.originalUri.ifBlank { item.playableUri }
     val isAudio = resolveNotificationIsAudio(item, notificationIsAudio)
+    if (favoritePath.isBlank()) {
+      if (isCurrentFavorite) {
+        isCurrentFavorite = false
+        refreshTransportControls()
+      }
+      return
+    }
     favoriteStateJob =
       serviceScope.launch {
-        val favorite =
-          withContext(Dispatchers.IO) {
-            playlistRepository.isFavorite(favoritePath, isAudio)
+        playlistRepository.observeIsFavorite(favoritePath, isAudio).collect { favorite ->
+          if (mediaIdentifier == expectedIdentifier) {
+            if (isCurrentFavorite != favorite) {
+              isCurrentFavorite = favorite
+              refreshTransportControls()
+            }
           }
-        if (mediaIdentifier == expectedIdentifier) {
-          isCurrentFavorite = favorite
-          refreshTransportControls()
         }
       }
   }
 
-  private fun addCurrentItemToFavorites() {
+  private fun toggleCurrentItemFavorite() {
     if (favoriteActionJob?.isActive == true) return
     val item = PlaybackSession.queue.value.currentItem ?: return
-    val expectedIdentifier = item.stableId
     val favoritePath = item.originalUri.ifBlank { item.playableUri }
     val favoriteName = item.title?.takeIf { it.isNotBlank() } ?: mediaTitle
     val isAudio = resolveNotificationIsAudio(item, notificationIsAudio)
     favoriteActionJob =
       serviceScope.launch {
-        val favoriteStored =
-          runCatching {
-            withContext(Dispatchers.IO) {
-              playlistRepository.addToFavorites(favoritePath, favoriteName, isAudio) ||
-                playlistRepository.isFavorite(favoritePath, isAudio)
-            }
-          }.getOrElse { error ->
-            Log.e(TAG, "Failed to add current item to Favorites", error)
-            false
+        runCatching {
+          withContext(Dispatchers.IO) {
+            playlistRepository.toggleFavorite(favoritePath, favoriteName, isAudio)
           }
-        if (!favoriteStored) return@launch
-        if (mediaIdentifier == expectedIdentifier) {
-          isCurrentFavorite = true
-          refreshTransportControls()
+        }.onFailure { error ->
+          Log.e(TAG, "Failed to toggle favorite from notification", error)
         }
       }
-  }
-
-  private fun cycleRepeatModeFromNotification() {
-    if (!canHandleTransportAction()) return
-    val queueState = PlaybackSession.queue.value
-    val nextMode =
-      when (queueState.repeatMode) {
-        RepeatMode.OFF -> RepeatMode.ONE
-        RepeatMode.ONE -> if (queueState.isExplicitQueue) RepeatMode.ALL else RepeatMode.OFF
-        RepeatMode.ALL -> RepeatMode.OFF
-      }
-    playerPreferences.repeatMode.set(nextMode)
-    PlaybackSession.setRepeatMode(nextMode)
-    refreshTransportControls()
   }
 
   private fun loadSessionArtwork(item: PlaybackItem) {
@@ -1096,8 +1076,8 @@ class MediaPlaybackService :
             ) {
               if (!canHandleTransportAction()) return
               when (action) {
-                ACTION_NOTIFICATION_FAVORITE -> addCurrentItemToFavorites()
-                ACTION_NOTIFICATION_REPEAT -> cycleRepeatModeFromNotification()
+                ACTION_NOTIFICATION_FAVORITE -> toggleCurrentItemFavorite()
+                ACTION_NOTIFICATION_STOP -> stopPlaybackAndService(force = true)
               }
             }
           },
@@ -1195,7 +1175,6 @@ class MediaPlaybackService :
           .setState(state, sanitizedPositionMs(), stateSpeed, SystemClock.elapsedRealtime())
       if (actions != 0L && currentNotificationStyle() == NotificationStyle.Media) {
         val favoriteLabel = favoriteActionLabel()
-        val (repeatIcon, repeatLabel) = repeatActionState()
         stateBuilder.addCustomAction(
           PlaybackStateCompat.CustomAction
             .Builder(ACTION_NOTIFICATION_FAVORITE, favoriteLabel, favoriteActionIcon())
@@ -1203,7 +1182,7 @@ class MediaPlaybackService :
         )
         stateBuilder.addCustomAction(
           PlaybackStateCompat.CustomAction
-            .Builder(ACTION_NOTIFICATION_REPEAT, repeatLabel, repeatIcon)
+            .Builder(ACTION_NOTIFICATION_STOP, getString(R.string.notification_close), Icons.Platform.Close)
             .build(),
         )
       }
@@ -1237,6 +1216,10 @@ class MediaPlaybackService :
   }
 
   private fun sanitizedPositionMs(): Long {
+    val livePosition = runCatching { PlaybackSession.getPropertyDouble("time-pos") }.getOrNull()
+    if (livePosition != null && livePosition.isFinite() && livePosition >= 0.0) {
+      currentPositionSeconds = livePosition
+    }
     val seconds = currentPositionSeconds.takeIf { it.isFinite() && it > 0.0 } ?: return 0L
     return (seconds * 1000.0)
       .coerceAtMost(Long.MAX_VALUE.toDouble())
@@ -1336,21 +1319,12 @@ class MediaPlaybackService :
       if (isCurrentFavorite) R.string.notification_saved_to_favorites else R.string.notification_add_to_favorites,
     )
 
-  private fun repeatActionState(): Pair<Int, String> =
-    when (PlaybackSession.queue.value.repeatMode) {
-      RepeatMode.OFF -> Icons.Platform.Repeat to getString(R.string.notification_repeat_off)
-      RepeatMode.ONE -> Icons.Platform.RepeatOne to getString(R.string.notification_repeat_one)
-      RepeatMode.ALL -> Icons.Platform.RepeatOn to getString(R.string.notification_repeat_all)
-    }
-
-  private fun repeatAction(): NotificationCompat.Action {
-    val (icon, label) = repeatActionState()
-    return NotificationCompat.Action(
-      icon,
-      label,
-      buildTransportIntent(ACTION_NOTIFICATION_REPEAT, 1007),
+  private fun closeAction() =
+    NotificationCompat.Action(
+      Icons.Platform.Close,
+      getString(R.string.notification_close),
+      buildTransportIntent(ACTION_NOTIFICATION_STOP, 1006),
     )
-  }
 
   private fun stopAction() =
     NotificationCompat.Action(
@@ -1532,7 +1506,7 @@ class MediaPlaybackService :
       .addAction(prevAction())
       .addAction(playPauseAction())
       .addAction(nextAction())
-      .addAction(repeatAction())
+      .addAction(closeAction())
       .setStyle(
         androidx.media.app.NotificationCompat
           .MediaStyle()

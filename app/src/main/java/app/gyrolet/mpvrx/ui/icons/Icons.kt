@@ -506,6 +506,7 @@ object Icons {
     @DrawableRes val RepeatOne = MaterialSymbolsR.drawable.materialsymbols_ic_repeat_one_rounded_filled
 
     @DrawableRes val Stop = MaterialSymbolsR.drawable.materialsymbols_ic_stop_rounded_filled
+    @DrawableRes val Close = MaterialSymbolsR.drawable.materialsymbols_ic_close_rounded_filled
   }
 }
 

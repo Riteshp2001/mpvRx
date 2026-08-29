@@ -22,11 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -34,28 +30,26 @@ import kotlinx.coroutines.withTimeoutOrNull
  * High-performance, thread-safe thumbnail engine for mpvRx.
  *
  * Provides asynchronous frame extraction with time-bucketed in-memory LRU caching,
- * debounced in-flight decode management, failure cooldowns, and full support for both
- * local content and remote network streams (HTTP/HTTPS, HLS/DASH, WebDAV, SMB, yt-dlp).
+ * failure cooldowns, and full support for both local files (including content:// URIs)
+ * and remote network streams (HTTP/HTTPS, HLS/DASH, WebDAV, SMB, yt-dlp).
  */
 object ThumbFastEngine {
   private const val TAG = "ThumbFastEngine"
 
   const val DEFAULT_THUMBNAIL_DIMENSION = 320
-  const val BUCKET_STEP_SECONDS = 0.5
+  const val BUCKETS_PER_SECOND = 1.0
   private const val FAILURE_COOLDOWN_MS = 10_000L
   private const val MAX_FAILURE_CACHE_SIZE = 256
-  private const val MAX_IN_FLIGHT_DECODES = 4
-  private const val DECODE_TIMEOUT_MS = 4_000L
+  private const val DECODE_TIMEOUT_MS = 3_000L
+  private const val NETWORK_DECODE_TIMEOUT_MS = 6_000L
 
   private val isInitialized = AtomicBoolean(false)
-  @Volatile private var appContext: Context? = null
-
-  private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-  private val engineDispatcher = Dispatchers.IO.limitedParallelism(2)
+  @Volatile private var storedAppContext: Context? = null
 
   private val nonDecodableSchemes =
     setOf(
       "fd",
+      "fdclose",
       "edl",
       "bd",
       "dvd",
@@ -65,6 +59,9 @@ object ThumbFastEngine {
       "lavf",
       "slice",
       "concat",
+      "archive",
+      "mf",
+      "dvb",
     )
 
   // In-Memory LRU Cache sized according to available heap memory (1/8th of RAM, 16MB to 64MB)
@@ -79,14 +76,13 @@ object ThumbFastEngine {
     }
   }
 
-  private val inFlightDecodes = ConcurrentHashMap<String, Deferred<Bitmap?>>()
   private val failureTimestamps = ConcurrentHashMap<String, Long>()
 
   /**
    * Initializes the native FastThumbnails subsystem.
    */
   fun initialize(context: Context) {
-    appContext = context.applicationContext
+    storedAppContext = context.applicationContext
     if (isInitialized.compareAndSet(false, true)) {
       try {
         if (!FastThumbnails.isInitialized()) {
@@ -121,9 +117,19 @@ object ThumbFastEngine {
       source.startsWith("mms://", ignoreCase = true)
 
   fun getBucket(positionSeconds: Double): Int =
-    (positionSeconds / BUCKET_STEP_SECONDS).roundToInt().coerceAtLeast(0)
+    (positionSeconds * BUCKETS_PER_SECOND).roundToInt().coerceAtLeast(0)
 
-  fun getBucketTime(bucket: Int): Double = bucket * BUCKET_STEP_SECONDS
+  fun getBucketTime(
+    bucket: Int,
+    durationSeconds: Double = 0.0,
+  ): Double {
+    val raw = (bucket / BUCKETS_PER_SECOND).coerceAtLeast(0.0)
+    return if (durationSeconds > 0.0) {
+      raw.coerceAtMost((durationSeconds - 0.1).coerceAtLeast(0.0))
+    } else {
+      raw
+    }
+  }
 
   fun getCacheKey(
     mediaIdentifier: String,
@@ -151,7 +157,7 @@ object ThumbFastEngine {
     mediaPath: String,
     positionSeconds: Double,
     dimension: Int = DEFAULT_THUMBNAIL_DIMENSION,
-    radiusBuckets: Int = 6,
+    radiusBuckets: Int = 4,
   ): Bitmap? {
     val centerBucket = getBucket(positionSeconds)
     getCached(mediaPath, positionSeconds, dimension)?.let { return it }
@@ -172,6 +178,8 @@ object ThumbFastEngine {
   suspend fun getThumbnail(
     mediaPath: String,
     positionSeconds: Double,
+    durationSeconds: Double = 0.0,
+    context: Context? = null,
     dimension: Int = DEFAULT_THUMBNAIL_DIMENSION,
     isNetwork: Boolean = isNetworkSource(mediaPath),
   ): Bitmap? {
@@ -189,61 +197,40 @@ object ThumbFastEngine {
       return null
     }
 
-    // Coalesce duplicate requests with in-flight Deferred
-    inFlightDecodes[cacheKey]?.let { ongoing ->
-      return try {
-        ongoing.await()
-      } catch (_: Exception) {
-        null
-      }
-    }
+    val targetTime = getBucketTime(bucket, durationSeconds)
+    val timeoutMs = if (isNetwork) NETWORK_DECODE_TIMEOUT_MS else DECODE_TIMEOUT_MS
 
-    if (inFlightDecodes.size >= MAX_IN_FLIGHT_DECODES) {
-      return null
-    }
-
-    val deferred =
-      engineScope.async(engineDispatcher) {
-        val targetTime = getBucketTime(bucket)
-        var decoded: Bitmap? = null
-        try {
-          ensureNativeReady()
-          decoded = decodeFrame(mediaPath, targetTime, dimension)
-        } catch (cancellation: CancellationException) {
-          throw cancellation
-        } catch (e: Exception) {
-          Log.w(TAG, "Thumbnail decode failed for $mediaPath at $targetTime: ${e.message}")
-        }
-
-        if (decoded != null && !decoded.isRecycled) {
-          memoryCache.put(cacheKey, decoded)
-          failureTimestamps.remove(cacheKey)
-        } else {
-          if (failureTimestamps.size >= MAX_FAILURE_CACHE_SIZE) {
-            failureTimestamps.clear()
+    val decoded =
+      withContext(Dispatchers.IO) {
+        withTimeoutOrNull(timeoutMs) {
+          try {
+            ensureNativeReady(context)
+            decodeFrame(mediaPath, targetTime, dimension, context)
+          } catch (cancellation: CancellationException) {
+            throw cancellation
+          } catch (e: Exception) {
+            Log.w(TAG, "Thumbnail decode exception for $mediaPath at $targetTime: ${e.message}")
+            null
           }
-          failureTimestamps[cacheKey] = SystemClock.elapsedRealtime()
         }
-        decoded
       }
 
-    inFlightDecodes[cacheKey] = deferred
-    deferred.invokeOnCompletion { inFlightDecodes.remove(cacheKey, deferred) }
-
-    return try {
-      withTimeoutOrNull(if (isNetwork) DECODE_TIMEOUT_MS * 2 else DECODE_TIMEOUT_MS) {
-        deferred.await()
+    if (decoded != null && !decoded.isRecycled) {
+      memoryCache.put(cacheKey, decoded)
+      failureTimestamps.remove(cacheKey)
+    } else {
+      if (failureTimestamps.size >= MAX_FAILURE_CACHE_SIZE) {
+        failureTimestamps.clear()
       }
-    } catch (cancellation: CancellationException) {
-      throw cancellation
-    } catch (_: Exception) {
-      null
+      failureTimestamps[cacheKey] = SystemClock.elapsedRealtime()
     }
+    return decoded
   }
 
-  private fun ensureNativeReady() {
+  private fun ensureNativeReady(context: Context?) {
     if (!FastThumbnails.isInitialized()) {
-      appContext?.let { ctx ->
+      val ctx = context?.applicationContext ?: storedAppContext
+      if (ctx != null) {
         try {
           FastThumbnails.initialize(ctx)
           isInitialized.set(true)
@@ -258,11 +245,12 @@ object ThumbFastEngine {
     mediaPath: String,
     timeSeconds: Double,
     dimension: Int,
+    context: Context?,
   ): Bitmap? {
     if (mediaPath.startsWith("content://", ignoreCase = true)) {
+      val ctx = context?.applicationContext ?: storedAppContext ?: return null
       val uri = mediaPath.toUri()
-      val resolver = appContext?.contentResolver ?: return null
-      val pfd = runCatching { resolver.openFileDescriptor(uri, "r") }.getOrNull() ?: return null
+      val pfd = runCatching { ctx.contentResolver.openFileDescriptor(uri, "r") }.getOrNull() ?: return null
       return pfd.use {
         FastThumbnails.generateAsync(
           "/proc/self/fd/${it.fd}",

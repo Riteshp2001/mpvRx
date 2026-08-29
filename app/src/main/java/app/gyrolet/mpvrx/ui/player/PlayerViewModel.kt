@@ -1355,8 +1355,18 @@ class PlayerViewModel : ViewModel(),
   private val _thumbFastPreviewState = MutableStateFlow(ThumbFastPreviewState())
   val thumbFastPreviewState: StateFlow<ThumbFastPreviewState> = _thumbFastPreviewState.asStateFlow()
 
-  private var thumbFastJob: Job? = null
+  private data class ThumbFastRequest(
+    val source: String,
+    val positionSeconds: Float,
+    val durationSeconds: Float,
+    val requestId: Long,
+  )
+
+  private val thumbFastRequestLock = Any()
+  private var pendingThumbFastRequest: ThumbFastRequest? = null
+  private var thumbFastWorkerJob: Job? = null
   private var thumbFastRequestId = 0L
+  private val thumbFastDispatcher = Dispatchers.Default.limitedParallelism(1)
 
   // Frame navigation
   private val _currentFrame = MutableStateFlow(0)
@@ -1588,6 +1598,7 @@ class PlayerViewModel : ViewModel(),
   )
 
   init {
+    ThumbFastEngine.initialize(appContext)
     viewModelScope.launch {
       combine(
         PlaybackSession.propString["path"],
@@ -3989,6 +4000,8 @@ class PlayerViewModel : ViewModel(),
       return
     }
 
+    ThumbFastEngine.initialize(appContext)
+
     val durationSec = duration?.toFloat() ?: _preciseDuration.value.coerceAtLeast(0f)
     val clampedPosition =
       if (durationSec > 0f) {
@@ -4022,7 +4035,7 @@ class PlayerViewModel : ViewModel(),
     val canDecode = !isNetwork || allowNetwork
 
     val cachedBitmap = ThumbFastEngine.getCached(source, clampedPosition.toDouble())
-    val nearestCachedBitmap = cachedBitmap ?: ThumbFastEngine.getNearestCached(source, clampedPosition.toDouble())
+    val nearestCachedBitmap = cachedBitmap ?: ThumbFastEngine.getNearestCached(source, clampedPosition.toDouble(), radiusBuckets = 3)
 
     _thumbFastPreviewState.update { current ->
       current.copy(
@@ -4033,7 +4046,7 @@ class PlayerViewModel : ViewModel(),
         relativeDeltaText = relativeDeltaText,
         chapterTitle = chapterTitle,
         bitmap = nearestCachedBitmap ?: current.bitmap,
-        isLoading = canDecode && cachedBitmap == null && nearestCachedBitmap == null,
+        isLoading = canDecode && cachedBitmap == null && (nearestCachedBitmap == null || isNetwork),
         normalizedXFraction = clampedFraction,
       )
     }
@@ -4041,26 +4054,145 @@ class PlayerViewModel : ViewModel(),
     if (cachedBitmap != null || !canDecode) return
 
     val requestId = ++thumbFastRequestId
-    thumbFastJob?.cancel()
-    thumbFastJob =
-      viewModelScope.launch(Dispatchers.IO) {
-        val bitmap = ThumbFastEngine.getThumbnail(source, clampedPosition.toDouble(), isNetwork = isNetwork)
-        if (requestId == thumbFastRequestId) {
-          _thumbFastPreviewState.update { current ->
-            if (!current.isVisible) return@update current
-            current.copy(
-              bitmap = bitmap ?: current.bitmap,
-              isLoading = false,
-            )
+    synchronized(thumbFastRequestLock) {
+      pendingThumbFastRequest =
+        ThumbFastRequest(
+          source = source,
+          positionSeconds = clampedPosition,
+          durationSeconds = durationSec,
+          requestId = requestId,
+        )
+    }
+    ensureThumbFastWorker()
+  }
+
+  private fun ensureThumbFastWorker() {
+    synchronized(thumbFastRequestLock) {
+      if (thumbFastWorkerJob?.isActive == true) return
+      thumbFastWorkerJob =
+        viewModelScope.launch(thumbFastDispatcher) {
+          while (isActive) {
+            val request =
+              synchronized(thumbFastRequestLock) {
+                pendingThumbFastRequest.also {
+                  pendingThumbFastRequest = null
+                  if (it == null) thumbFastWorkerJob = null
+                }
+              } ?: return@launch
+
+            val isNetwork = ThumbFastEngine.isNetworkSource(request.source)
+            val bitmap =
+              ThumbFastEngine.getThumbnail(
+                mediaPath = request.source,
+                positionSeconds = request.positionSeconds.toDouble(),
+                durationSeconds = request.durationSeconds.toDouble(),
+                context = appContext,
+                isNetwork = isNetwork,
+              )
+
+            if (bitmap != null) {
+              publishThumbFastThumbnail(request, bitmap)
+              maybePublishLateThumbFastThumbnail(request.source, request.positionSeconds, bitmap)
+            } else if (request.requestId == thumbFastRequestId) {
+              _thumbFastPreviewState.update { it.copy(isLoading = false) }
+            }
+
+            val hasNewerRequest =
+              synchronized(thumbFastRequestLock) {
+                pendingThumbFastRequest != null
+              }
+
+            if (bitmap != null && !hasNewerRequest && !isNetwork) {
+              prefetchThumbFastThumbnails(request)
+            }
           }
         }
+    }
+  }
+
+  private fun publishThumbFastThumbnail(
+    request: ThumbFastRequest,
+    bitmap: Bitmap,
+  ) {
+    _thumbFastPreviewState.update { current ->
+      if (!current.isVisible || request.requestId != thumbFastRequestId) {
+        current
+      } else {
+        current.copy(
+          bitmap = bitmap,
+          isLoading = false,
+        )
       }
+    }
+  }
+
+  private fun maybePublishLateThumbFastThumbnail(
+    source: String,
+    targetPosition: Float,
+    bitmap: Bitmap,
+  ) {
+    if (source != pinnedSeekThumbnailSource) return
+    _thumbFastPreviewState.update { current ->
+      if (!current.isVisible) return@update current
+      val currentBucket = ThumbFastEngine.getBucket(current.positionSeconds.toDouble())
+      val targetBucket = ThumbFastEngine.getBucket(targetPosition.toDouble())
+      val exactMatch = currentBucket == targetBucket
+      val nearbyAndEmpty = current.bitmap == null && abs(currentBucket - targetBucket) <= 3
+      if (exactMatch || nearbyAndEmpty) {
+        current.copy(bitmap = bitmap, isLoading = false)
+      } else {
+        current
+      }
+    }
+  }
+
+  private suspend fun prefetchThumbFastThumbnails(request: ThumbFastRequest) {
+    val maxBucket =
+      if (request.durationSeconds > 0f) {
+        ThumbFastEngine.getBucket(request.durationSeconds.toDouble())
+      } else {
+        Int.MAX_VALUE
+      }
+    val centerBucket = ThumbFastEngine.getBucket(request.positionSeconds.toDouble())
+
+    for (distance in 1..2) {
+      val hasNewerRequest =
+        synchronized(thumbFastRequestLock) {
+          pendingThumbFastRequest != null
+        }
+      if (hasNewerRequest) return
+
+      val nextBucket = centerBucket + distance
+      if (nextBucket <= maxBucket) {
+        ThumbFastEngine.getThumbnail(
+          mediaPath = request.source,
+          positionSeconds = ThumbFastEngine.getBucketTime(nextBucket, request.durationSeconds.toDouble()),
+          durationSeconds = request.durationSeconds.toDouble(),
+          context = appContext,
+          isNetwork = false,
+        )
+      }
+
+      val prevBucket = centerBucket - distance
+      if (prevBucket >= 0) {
+        ThumbFastEngine.getThumbnail(
+          mediaPath = request.source,
+          positionSeconds = ThumbFastEngine.getBucketTime(prevBucket, request.durationSeconds.toDouble()),
+          durationSeconds = request.durationSeconds.toDouble(),
+          context = appContext,
+          isNetwork = false,
+        )
+      }
+    }
   }
 
   fun dismissThumbFastSeek() {
-    thumbFastJob?.cancel()
-    thumbFastJob = null
+    thumbFastWorkerJob?.cancel()
+    thumbFastWorkerJob = null
     thumbFastRequestId++
+    synchronized(thumbFastRequestLock) {
+      pendingThumbFastRequest = null
+    }
     _thumbFastPreviewState.update {
       it.copy(
         isVisible = false,

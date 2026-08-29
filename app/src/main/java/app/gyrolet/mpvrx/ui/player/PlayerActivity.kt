@@ -289,6 +289,14 @@ class PlayerActivity :
   override fun currentThumbnailSource(): String? = currentPlayableUri
 
   override fun isCurrentMediaKnownAudio(): Boolean {
+    val currentItem = PlaybackSession.queue.value.currentItem
+    if (currentItem != null) {
+      if (currentItem.mimeType?.startsWith("video/", ignoreCase = true) == true) return false
+      if (currentItem.mimeType?.startsWith("audio/", ignoreCase = true) == true) return true
+      val kind = currentItem.declaredMediaKind()
+      if (kind == DeclaredPlaybackMediaKind.AUDIO) return true
+      if (kind == DeclaredPlaybackMediaKind.VIDEO) return false
+    }
     val extension =
       sequenceOf(fileName, currentPlayableUri)
         .filterNotNull()
@@ -774,7 +782,7 @@ class PlayerActivity :
 
     // Only set orientation immediately if NOT in Video mode
     // For Video mode, wait for video-params/aspect to become available
-    if (isKnownAudioLaunch(intent) || playerPreferences.orientation.get() != PlayerOrientation.Video) {
+    if (isCurrentMediaKnownAudio() || playerPreferences.orientation.get() != PlayerOrientation.Video) {
       setOrientation()
     }
 
@@ -814,7 +822,7 @@ class PlayerActivity :
 
     lifecycleScope.launch {
       audioPreferences.audioOrientation.changes().drop(1).collect {
-        if (isKnownAudioLaunch(intent) || viewModel.isAudioOnly.value) {
+        if (isCurrentMediaKnownAudio() || viewModel.isAudioOnly.value) {
           setOrientation()
         }
       }
@@ -1930,7 +1938,7 @@ class PlayerActivity :
 
   private fun setupWindowFlags() {
     pipHelper.updatePictureInPictureParams()
-    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    val isAudio = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()
     if (isAudio) {
       WindowCompat.setDecorFitsSystemWindows(window, true)
       window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
@@ -1975,7 +1983,7 @@ class PlayerActivity :
   }
 
   private fun handleSystemBarsVisibility(insets: WindowInsetsCompat) {
-    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    val isAudio = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()
     if (isAudio) {
       cancelSystemBarsAutoHide()
       try {
@@ -2003,7 +2011,7 @@ class PlayerActivity :
   }
 
   private fun shouldAutoHideSystemBars(): Boolean {
-    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    val isAudio = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()
     return !isInPictureInPictureMode &&
       !isAudio &&
       !viewModel.controlsShown.value &&
@@ -2035,7 +2043,7 @@ class PlayerActivity :
   @Suppress("DEPRECATION")
   private fun hideSystemBarsForPlayback() {
     cancelSystemBarsAutoHide()
-    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    val isAudio = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()
     if (isAudio) {
       try {
         WindowCompat.setDecorFitsSystemWindows(window, true)
@@ -2077,7 +2085,7 @@ class PlayerActivity :
   }
 
   private fun setupSystemUI() {
-    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    val isAudio = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()
     setLayoutInDisplayCutoutModeIfSupported(shortEdges = !isAudio)
 
     // Set status bar color for when it will be shown (with controls)
@@ -3881,7 +3889,7 @@ class PlayerActivity :
       return
     }
 
-    val isAudio = viewModel.isAudioOnly.value || isKnownAudioLaunch(intent) || isCurrentMediaKnownAudio()
+    val isAudio = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()
     val autoplay = if (isAudio) playerPreferences.autoplayNextAudio.get() else playerPreferences.autoplayNextVideo.get()
     val repeatAll = repeatMode == RepeatMode.ALL
 
