@@ -69,6 +69,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -94,7 +96,7 @@ class MediaPlaybackService :
     private const val NOTIFICATION_CHANNEL_ID = "mpvrx_playback_channel"
     private const val PLAYBACK_STATE_SAVE_INTERVAL_MS = 5000L
     private const val PROGRESS_NOTIFICATION_UPDATE_INTERVAL_MS = 2000L
-    private const val MEDIA_NOTIFICATION_UPDATE_INTERVAL_MS = 5000L
+    private const val MEDIA_NOTIFICATION_UPDATE_INTERVAL_MS = 1000L
     private const val MAX_MEDIA_SESSION_QUEUE_ITEMS = 200
     private const val VIDEO_CONTENT_INTENT_REQUEST_CODE = 1100
     private const val AUDIO_CONTENT_INTENT_REQUEST_CODE = 1101
@@ -104,7 +106,8 @@ class MediaPlaybackService :
     const val ACTION_NOTIFICATION_PLAY_PAUSE = "app.gyrolet.mpvrx.action.NOTIFICATION_PLAY_PAUSE"
     const val ACTION_NOTIFICATION_NEXT = "app.gyrolet.mpvrx.action.NOTIFICATION_NEXT"
     const val ACTION_NOTIFICATION_FAVORITE = "app.gyrolet.mpvrx.action.NOTIFICATION_FAVORITE"
-    const val ACTION_NOTIFICATION_REPEAT = "app.gyrolet.mpvrx.action.NOTIFICATION_REPEAT"
+    const val ACTION_NOTIFICATION_MEDIA_FAVORITE = "app.gyrolet.mpvrx.action.NOTIFICATION_MEDIA_FAVORITE"
+    const val ACTION_NOTIFICATION_CLOSE = "app.gyrolet.mpvrx.action.NOTIFICATION_CLOSE"
     const val ACTION_NOTIFICATION_STOP = "app.gyrolet.mpvrx.action.NOTIFICATION_STOP"
 
     @Volatile
@@ -260,6 +263,7 @@ class MediaPlaybackService :
   private var playbackStateSaveJob: Job? = null
   private var favoriteStateJob: Job? = null
   private var favoriteActionJob: Job? = null
+  private val mediaFavoriteActionMutex = Mutex()
   @Volatile private var mpvAccessReleased = false
   @Volatile private var isCurrentFavorite = false
   private var usesAudioBackgroundPlayback = false
@@ -456,7 +460,13 @@ class MediaPlaybackService :
           toggleCurrentItemFavorite()
           if (foregroundReady) return START_NOT_STICKY
         }
-        ACTION_NOTIFICATION_STOP -> {
+        ACTION_NOTIFICATION_MEDIA_FAVORITE -> {
+          toggleCurrentMediaNotificationFavorite()
+          if (foregroundReady) return START_NOT_STICKY
+        }
+        ACTION_NOTIFICATION_CLOSE,
+        ACTION_NOTIFICATION_STOP,
+        -> {
           stopPlaybackAndService(force = true)
           return START_NOT_STICKY
         }
@@ -790,6 +800,7 @@ class MediaPlaybackService :
       }
   }
 
+  /** Existing Progress-with-Chapters favorite path. Keep its behavior isolated and unchanged. */
   private fun toggleCurrentItemFavorite() {
     if (favoriteActionJob?.isActive == true) return
     val item = PlaybackSession.queue.value.currentItem ?: return
@@ -806,6 +817,33 @@ class MediaPlaybackService :
           Log.e(TAG, "Failed to toggle favorite from notification", error)
         }
       }
+  }
+
+  /** Media notification favorite path: serialize taps and publish the resulting state immediately. */
+  private fun toggleCurrentMediaNotificationFavorite() {
+    val item = PlaybackSession.queue.value.currentItem ?: return
+    val favoritePath = item.originalUri.ifBlank { item.playableUri }
+    if (favoritePath.isBlank()) return
+    val favoriteName = item.title?.takeIf { it.isNotBlank() } ?: mediaTitle
+    val isAudio = resolveNotificationIsAudio(item, notificationIsAudio)
+    val expectedIdentifier = item.stableId
+
+    serviceScope.launch {
+      runCatching {
+        withContext(Dispatchers.IO) {
+          mediaFavoriteActionMutex.withLock {
+            playlistRepository.toggleFavorite(favoritePath, favoriteName, isAudio)
+          }
+        }
+      }.onSuccess { favorite ->
+        if (mediaIdentifier == expectedIdentifier && isCurrentFavorite != favorite) {
+          isCurrentFavorite = favorite
+          refreshTransportControls()
+        }
+      }.onFailure { error ->
+        Log.e(TAG, "Failed to toggle favorite from media notification", error)
+      }
+    }
   }
 
   private fun loadSessionArtwork(item: PlaybackItem) {
@@ -841,13 +879,8 @@ class MediaPlaybackService :
   private fun syncQueueState(queueState: PlaybackQueueState) {
     if (!::mediaSession.isInitialized) return
     publishMediaSessionQueue(queueState)
-    mediaSession.setRepeatMode(
-      when (queueState.repeatMode) {
-        RepeatMode.OFF -> PlaybackStateCompat.REPEAT_MODE_NONE
-        RepeatMode.ONE -> PlaybackStateCompat.REPEAT_MODE_ONE
-        RepeatMode.ALL -> PlaybackStateCompat.REPEAT_MODE_ALL
-      },
-    )
+    // Repeat mode remains a player/queue feature, but is intentionally not published through
+    // MediaSession so the Media notification cannot expose Repeat / Repeat One / Repeat All.
     mediaSession.setShuffleMode(
       if (queueState.shuffleEnabled) PlaybackStateCompat.SHUFFLE_MODE_ALL else PlaybackStateCompat.SHUFFLE_MODE_NONE,
     )
@@ -1048,20 +1081,6 @@ class MediaPlaybackService :
               refreshTransportControls()
             }
 
-            override fun onSetRepeatMode(repeatMode: Int) {
-              if (!canHandleTransportAction()) return
-              val resolvedMode =
-                when (repeatMode) {
-                  PlaybackStateCompat.REPEAT_MODE_NONE -> RepeatMode.OFF
-                  PlaybackStateCompat.REPEAT_MODE_ONE -> RepeatMode.ONE
-                  PlaybackStateCompat.REPEAT_MODE_ALL -> RepeatMode.ALL
-                  else -> return
-                }
-              playerPreferences.repeatMode.set(resolvedMode)
-              PlaybackSession.setRepeatMode(resolvedMode)
-              refreshTransportControls()
-            }
-
             override fun onSetShuffleMode(shuffleMode: Int) {
               if (!canHandleDetachedTransport()) return
               when (shuffleMode) {
@@ -1076,8 +1095,8 @@ class MediaPlaybackService :
             ) {
               if (!canHandleTransportAction()) return
               when (action) {
-                ACTION_NOTIFICATION_FAVORITE -> toggleCurrentItemFavorite()
-                ACTION_NOTIFICATION_STOP -> stopPlaybackAndService(force = true)
+                ACTION_NOTIFICATION_MEDIA_FAVORITE -> toggleCurrentMediaNotificationFavorite()
+                ACTION_NOTIFICATION_CLOSE -> stopPlaybackAndService(force = true)
               }
             }
           },
@@ -1177,12 +1196,12 @@ class MediaPlaybackService :
         val favoriteLabel = favoriteActionLabel()
         stateBuilder.addCustomAction(
           PlaybackStateCompat.CustomAction
-            .Builder(ACTION_NOTIFICATION_FAVORITE, favoriteLabel, favoriteActionIcon())
+            .Builder(ACTION_NOTIFICATION_MEDIA_FAVORITE, favoriteLabel, favoriteActionIcon())
             .build(),
         )
         stateBuilder.addCustomAction(
           PlaybackStateCompat.CustomAction
-            .Builder(ACTION_NOTIFICATION_STOP, getString(R.string.notification_close), Icons.Platform.Close)
+            .Builder(ACTION_NOTIFICATION_CLOSE, getString(R.string.notification_close), Icons.Platform.Close)
             .build(),
         )
       }
@@ -1304,11 +1323,20 @@ class MediaPlaybackService :
       buildTransportIntent(ACTION_NOTIFICATION_NEXT, 1003),
     )
 
+  /** Existing Progress-with-Chapters favorite action. */
   private fun favoriteAction() =
     NotificationCompat.Action(
       favoriteActionIcon(),
       favoriteActionLabel(),
       buildTransportIntent(ACTION_NOTIFICATION_FAVORITE, 1004),
+    )
+
+  /** Media notification favorite action, isolated from Progress-with-Chapters. */
+  private fun mediaFavoriteAction() =
+    NotificationCompat.Action(
+      favoriteActionIcon(),
+      favoriteActionLabel(),
+      buildTransportIntent(ACTION_NOTIFICATION_MEDIA_FAVORITE, 1008),
     )
 
   private fun favoriteActionIcon(): Int =
@@ -1323,7 +1351,7 @@ class MediaPlaybackService :
     NotificationCompat.Action(
       Icons.Platform.Close,
       getString(R.string.notification_close),
-      buildTransportIntent(ACTION_NOTIFICATION_STOP, 1006),
+      buildTransportIntent(ACTION_NOTIFICATION_CLOSE, 1006),
     )
 
   private fun stopAction() =
@@ -1352,8 +1380,11 @@ class MediaPlaybackService :
     }
   }
 
-  private fun playbackTimeText(): String =
-    "${formatSeconds(currentPositionSeconds)} / ${formatSeconds(mediaDurationSeconds)}"
+  private fun playbackTimeText(): String {
+    val positionSeconds = sanitizedPositionMs() / 1000.0
+    val durationSeconds = sanitizedDurationMs() / 1000.0
+    return "${formatSeconds(positionSeconds)} / ${formatSeconds(durationSeconds)}"
+  }
 
   private fun refreshNotificationPalette() {
     val currentThumbnail = thumbnail
@@ -1493,7 +1524,7 @@ class MediaPlaybackService :
       .setSmallIcon(R.drawable.ic_launcher_monochrome)
       .setLargeIcon(thumbnail)
       .setContentIntent(buildContentIntent())
-      .setDeleteIntent(buildTransportIntent(ACTION_NOTIFICATION_STOP, 1005))
+      .setDeleteIntent(buildTransportIntent(ACTION_NOTIFICATION_CLOSE, 1005))
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setOnlyAlertOnce(true)
       .setOngoing(!paused)
@@ -1502,7 +1533,7 @@ class MediaPlaybackService :
       .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
       .setColor(DEFAULT_ACCENT_COLOR)
       .setColorized(false)
-      .addAction(favoriteAction())
+      .addAction(mediaFavoriteAction())
       .addAction(prevAction())
       .addAction(playPauseAction())
       .addAction(nextAction())
