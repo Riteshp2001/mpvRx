@@ -16,8 +16,8 @@ import app.gyrolet.mpvrx.domain.hdr.HdrToysProfile
 /**
  * Available HDR screen output modes.
  *
- * Every mode below owns the mpv HDR/color-output state needed by its pipeline. Tone and gamut
- * mapping remain under mpv/user control rather than being overwritten by mode transitions.
+ * Every mode below owns the mpv HDR/color-output state needed by its pipeline. Linear HDR also
+ * owns tone mapping so its SDR expansion curve cannot leak into the other modes.
  *
  * - [OFF]         — restore mpv's normal automatic SDR/HDR handling.
  * - [BT_2100_PQ]  — HDR10 hdr-toys pipeline.
@@ -82,6 +82,7 @@ private val HDR_OWNED_PROPERTIES =
     "target-trc",
     "target-peak",
     "inverse-tone-mapping",
+    "tone-mapping",
     "hdr-compute-peak",
     "hdr-reference-white",
     "tone-mapping-visualize",
@@ -115,6 +116,7 @@ private fun commonSettings(
   targetTrc: String,
   targetPeak: String,
   inverseToneMapping: String,
+  toneMapping: String,
   hdrComputePeak: String,
   shaderOptions: String,
 ): List<Pair<String, String>> =
@@ -125,6 +127,7 @@ private fun commonSettings(
     "target-trc" to targetTrc,
     "target-peak" to targetPeak,
     "inverse-tone-mapping" to inverseToneMapping,
+    "tone-mapping" to toneMapping,
     "hdr-compute-peak" to hdrComputePeak,
     "hdr-reference-white" to "203",
     "tone-mapping-visualize" to "no",
@@ -139,6 +142,7 @@ private fun offSettings(): List<Pair<String, String>> =
     targetTrc = "auto",
     targetPeak = "auto",
     inverseToneMapping = "no",
+    toneMapping = "auto",
     hdrComputePeak = "auto",
     shaderOptions = "",
   )
@@ -153,6 +157,7 @@ private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>>
     targetTrc = profile.targetTrc,
     targetPeak = "auto",
     inverseToneMapping = "no",
+    toneMapping = "auto",
     hdrComputePeak = "no",
     shaderOptions = profile.shaderOptionsValue,
   )
@@ -168,6 +173,7 @@ private fun linearHdrSettings(boostSdrToHdr: Boolean): List<Pair<String, String>
     targetTrc = "auto",
     targetPeak = "auto",
     inverseToneMapping = if (boostSdrToHdr) "yes" else "no",
+    toneMapping = if (boostSdrToHdr) "bt.2446a" else "auto",
     hdrComputePeak = "yes",
     shaderOptions = "",
   )
