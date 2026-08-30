@@ -96,11 +96,22 @@ class MPVView(
     return result
   }
 
-  fun releaseSurface() {
+  /**
+   * Release the SurfaceView's hold on the mpv renderer.
+   *
+   * @param softHandoff When `true`, the surface is detached without resetting `vo` so that
+   *   the next surface owner (e.g. the mini-player SurfaceView) can hand a new surface straight
+   *   to the live VO without triggering a black-frame VO re-initialization.
+   */
+  fun releaseSurface(softHandoff: Boolean = false) {
     holder.removeCallback(this)
     if (isSurfaceReady || PlaybackSession.state.value.surfaceAttached) {
       isSurfaceReady = false
-      PlaybackSession.unbindSurface(this)
+      if (softHandoff) {
+        PlaybackSession.softUnbindSurface(this)
+      } else {
+        PlaybackSession.unbindSurface(this)
+      }
     }
   }
 

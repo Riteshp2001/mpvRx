@@ -338,12 +338,40 @@ object PlaybackSession : MPVLib.EventObserver {
     }
 
   /**
+   * Like [unbindSurface] but keeps the VO pipeline alive (skips `vo=null`).
+   *
+   * Use this when transitioning from the full player to the mini player so that mpv's
+   * video-output state is preserved and the next [bindSurface] call (from the mini-player
+   * SurfaceView) can render the first frame immediately without a black-frame VO restart.
+   */
+  fun softUnbindSurface(owner: Any): Boolean =
+    withCore(default = false) {
+      if (attachedSurfaceOwner !== owner || !_state.value.surfaceAttached) return@withCore false
+      softDetachRendererSurfaceLocked()
+      true
+    }
+
+  /**
    * Detaches only Android's renderer resources. Surface transitions are not media lifecycle events:
    * they must not change video-track selection or disturb the live demuxer/cache.
    */
   private fun detachRendererSurfaceLocked() {
     runCatching { MPVLib.setPropertyString("vo", "null") }
     runCatching { MPVLib.setOptionString("force-window", "no") }
+    runCatching { MPVLib.detachSurface() }
+    attachedSurfaceOwner = null
+    updateState { it.copy(surfaceAttached = false) }
+  }
+
+  /**
+   * Soft-detaches the Android surface buffer without resetting mpv's VO pipeline.
+   *
+   * The VO output (`vo`, `force-window`) remain set so that the next [bindSurface] call can
+   * hand a new surface straight to the live VO without triggering a full re-initialization.
+   * Only call this when a replacement surface is guaranteed to arrive very soon (e.g. the
+   * full-player → mini-player handoff).
+   */
+  private fun softDetachRendererSurfaceLocked() {
     runCatching { MPVLib.detachSurface() }
     attachedSurfaceOwner = null
     updateState { it.copy(surfaceAttached = false) }

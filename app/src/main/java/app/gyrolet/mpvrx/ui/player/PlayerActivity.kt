@@ -1489,7 +1489,7 @@ class PlayerActivity :
     runCatching { PlaybackSession.removeObserver(playerObserver) }
       .onFailure { e -> Log.e(TAG, "Error removing MPV observer", e) }
 
-    runCatching { player.releaseSurface() }
+    runCatching { player.releaseSurface(softHandoff = keepBackgroundPlaybackAlive) }
       .onFailure { e -> Log.e(TAG, "Error releasing MPV surface", e) }
 
     if (!ownsPlaybackSession) {
@@ -1888,6 +1888,10 @@ class PlayerActivity :
         viewModel.setAmbientLifecycleActive(true)
         if (MediaPlaybackService.isRunning()) endBackgroundPlayback()
         isBackgroundPlaybackSessionActive = false
+        // The Activity is back in the foreground — clear any stale finishing flag so that
+        // onStop (which fires when the surface transitions) does not treat this lifecycle
+        // event as a teardown and pause playback.
+        isUserFinishing = false
         // The detached service released focus during the handoff; take it back over so a
         // future focus loss (e.g. a phone call) pauses the now-foreground playback.
         if (viewModel.paused != true) requestAudioFocus()
@@ -5046,6 +5050,10 @@ class PlayerActivity :
         isBackgroundPlaybackSessionActive = false
         pendingBackgroundTransition = false
         if (attachToCurrentPlaybackSessionIfRequested(intent)) {
+          // Returning from the mini player (or notification): this is a voluntary re-attach,
+          // not a teardown. Clear isUserFinishing so onStop cannot treat the Activity's
+          // finishing state as a signal to pause playback while the surface transitions.
+          isUserFinishing = false
           PlaybackSession.markForeground()
           isReady = PlaybackSession.state.value.phase == PlaybackPhase.READY
           if (isReady) viewModel.onVideoLoadCompleted()
