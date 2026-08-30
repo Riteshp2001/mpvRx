@@ -946,11 +946,10 @@ class PlayerActivity :
       return
     }
 
-    // Auto-PiP takes precedence over background playback/Mini Player. Previously the background
-    // branch consumed Back first whenever both settings were enabled, so PiP never received the
-    // navigation event. If Android rejects the PiP request, continue into the normal background
-    // fallback below rather than leaving the player open with hidden controls.
-    if (shouldEnterPipOnNavigation() && enterPipModeSmoothly()) return
+    // When mini player is enabled, Back handoff to the mini player takes precedence over PiP.
+    // When mini player is disabled, auto-PiP takes precedence on Back navigation.
+    // If Android rejects the PiP request, continue into the normal background fallback below.
+    if (shouldEnterPipOnBack() && enterPipModeSmoothly()) return
 
     // Background playback or Mini Player handoff on Back: return to the browser while handing
     // the live MPV session to the foreground service. This is also the PiP-failure fallback.
@@ -964,10 +963,12 @@ class PlayerActivity :
       when (startBackgroundPlayback()) {
         BackgroundPlaybackStartResult.Started -> {
           pendingBackNavigationBackgroundTransition = true
+          pipHelper.updatePictureInPictureParams()
           completePendingBackgroundHandoff()
         }
         BackgroundPlaybackStartResult.PendingPermission -> {
           pendingBackNavigationBackgroundTransition = true
+          pipHelper.updatePictureInPictureParams()
         }
         BackgroundPlaybackStartResult.Blocked -> {
           isUserFinishing = true
@@ -1204,7 +1205,7 @@ class PlayerActivity :
       activity = this,
       mpvView = player,
       isAudioPlayer = { viewModel.isAudioOnly.value || isCurrentMediaKnownAudio() },
-      isVideoLoaded = { isReady },
+      isVideoLoaded = { isReady && !isUserFinishing && !pendingBackNavigationBackgroundTransition },
     )
   }
 
@@ -1360,6 +1361,16 @@ class PlayerActivity :
 
   private fun shouldEnterPipOnNavigation(): Boolean =
     PlayerLifecyclePolicy.shouldEnterPipOnNavigation(
+      autoPipEnabled = playerPreferences.autoPiPOnNavigation.get(),
+      mediaReady = isReady,
+      isAudioMedia = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio(),
+      isActivityUnavailable = isFinishing || isDestroyed || isUserFinishing,
+      isAlreadyInPip = isInPictureInPictureMode,
+    )
+
+  private fun shouldEnterPipOnBack(): Boolean =
+    PlayerLifecyclePolicy.shouldEnterPipOnBack(
+      miniPlayerEnabled = isMiniPlayerEnabled(),
       autoPipEnabled = playerPreferences.autoPiPOnNavigation.get(),
       mediaReady = isReady,
       isAudioMedia = viewModel.isAudioOnly.value || isCurrentMediaKnownAudio(),

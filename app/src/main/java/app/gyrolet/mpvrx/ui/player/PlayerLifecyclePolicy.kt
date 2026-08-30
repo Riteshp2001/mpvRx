@@ -80,7 +80,7 @@ internal object PlayerLifecyclePolicy {
     }
   }
 
-  /** Auto-PiP owns Home/Back navigation whenever a playable video can enter it. */
+  /** Auto-PiP owns Home navigation (or Back navigation when mini player is disabled) whenever a playable video can enter it. */
   fun shouldEnterPipOnNavigation(
     autoPipEnabled: Boolean,
     mediaReady: Boolean,
@@ -93,6 +93,24 @@ internal object PlayerLifecyclePolicy {
       !isAudioMedia &&
       !isActivityUnavailable &&
       !isAlreadyInPip
+
+  /** When mini player is enabled, Back should hand off to the mini player instead of entering PiP. */
+  fun shouldEnterPipOnBack(
+    miniPlayerEnabled: Boolean,
+    autoPipEnabled: Boolean,
+    mediaReady: Boolean,
+    isAudioMedia: Boolean,
+    isActivityUnavailable: Boolean,
+    isAlreadyInPip: Boolean,
+  ): Boolean =
+    !miniPlayerEnabled &&
+      shouldEnterPipOnNavigation(
+        autoPipEnabled = autoPipEnabled,
+        mediaReady = mediaReady,
+        isAudioMedia = isAudioMedia,
+        isActivityUnavailable = isActivityUnavailable,
+        isAlreadyInPip = isAlreadyInPip,
+      )
 
   fun shouldPauseOnPause(
     backgroundPlaybackEnabled: Boolean,

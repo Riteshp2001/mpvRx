@@ -88,6 +88,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.viewinterop.AndroidView
+import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
+import app.gyrolet.mpvrx.ui.player.declaredMediaKind
 import app.gyrolet.mpvrx.ui.player.MPVPipHelper
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
@@ -264,6 +266,7 @@ class MainActivity : AppCompatActivity() {
       val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
       val autoPiPOnNavigation by playerPreferences.autoPiPOnNavigation.collectAsState()
       val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
+      val isMiniPlayerVisible = NavigationBarState.isMiniPlayerVisible
       val rendererNoticePreferences =
         remember { getSharedPreferences(RENDERER_NOTICE_PREFERENCES, MODE_PRIVATE) }
       var showRendererBuildNotice by remember {
@@ -274,7 +277,7 @@ class MainActivity : AppCompatActivity() {
       }
       val deviceSupportsVulkan = remember { VulkanCapabilities.isDeviceSupported(this@MainActivity) }
 
-      LaunchedEffect(sessionState, enableVideoMiniPlayer, autoPiPOnNavigation, trackListNode) {
+      LaunchedEffect(sessionState, enableVideoMiniPlayer, autoPiPOnNavigation, trackListNode, isMiniPlayerVisible) {
         pipHelper.updatePictureInPictureParams()
       }
 
@@ -403,6 +406,7 @@ class MainActivity : AppCompatActivity() {
     val isMediaActive = isServiceRunning && sessionState.currentItem != null &&
       NavigationBarState.isMiniPlayerVisible &&
       sessionState.phase != PlaybackPhase.IDLE &&
+      sessionState.phase != PlaybackPhase.STOPPING &&
       sessionState.phase != PlaybackPhase.UNINITIALIZED &&
       sessionState.phase != PlaybackPhase.ERROR
     if (
@@ -433,6 +437,12 @@ class MainActivity : AppCompatActivity() {
     val sessionState = PlaybackSession.state.value
     val currentItem = sessionState.currentItem ?: return true
 
+    when (currentItem.declaredMediaKind()) {
+      DeclaredPlaybackMediaKind.AUDIO -> return true
+      DeclaredPlaybackMediaKind.VIDEO -> return false
+      DeclaredPlaybackMediaKind.UNKNOWN -> Unit
+    }
+
     val ext = (currentItem.originalUri.ifBlank { currentItem.title.orEmpty() }).fileExtension()
     val mimeIsAudio = currentItem.mimeType?.startsWith("audio/", ignoreCase = true) == true
     val extIsAudio = ext in FileTypeUtils.AUDIO_EXTENSIONS
@@ -458,6 +468,7 @@ class MainActivity : AppCompatActivity() {
       sessionState.currentItem != null &&
       NavigationBarState.isMiniPlayerVisible &&
       sessionState.phase != PlaybackPhase.IDLE &&
+      sessionState.phase != PlaybackPhase.STOPPING &&
       sessionState.phase != PlaybackPhase.UNINITIALIZED &&
       sessionState.phase != PlaybackPhase.ERROR
   }

@@ -147,6 +147,12 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
     NavigationBarState.isMiniPlayerVisible = isMediaActive
   }
 
+  DisposableEffect(Unit) {
+    onDispose {
+      NavigationBarState.isMiniPlayerVisible = false
+    }
+  }
+
   AnimatedVisibility(
     visible = isMediaActive,
     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
