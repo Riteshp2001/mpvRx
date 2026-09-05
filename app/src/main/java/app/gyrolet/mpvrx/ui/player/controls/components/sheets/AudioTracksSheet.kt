@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +45,11 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.TrackNode
+import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import kotlinx.collections.immutable.ImmutableList
 import org.koin.compose.koinInject
 
@@ -65,6 +70,8 @@ fun AudioTracksSheet(
 ) {
   val audioPreferences = koinInject<AudioPreferences>()
   val audioChannels by audioPreferences.audioChannels.collectAsState()
+  val initialFocusRequester = rememberTvInitialFocusRequester(tracks.isNotEmpty())
+  val initialTrackId = remember(tracks) { tracks.firstOrNull { it.isSelected }?.id ?: tracks.firstOrNull()?.id }
   val (embeddedTracks, externalTracks) =
     remember(tracks) {
       tracks.partition { track -> track.external != true }
@@ -99,6 +106,7 @@ fun AudioTracksSheet(
             details = audioTrackDetails(it),
             isSelected = it.isSelected,
             onClick = { onSelect(it) },
+            modifier = if (it.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
           )
         }
         if (externalTracks.isNotEmpty()) {
@@ -112,6 +120,7 @@ fun AudioTracksSheet(
             details = audioTrackDetails(it),
             isSelected = it.isSelected,
             onClick = { onSelect(it) },
+            modifier = if (it.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
           )
         }
         item {
@@ -211,10 +220,12 @@ fun AudioTrackRow(
   enabled: Boolean = true,
   details: String? = null,
 ) {
+  val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
   Row(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusHighlight(enabled = enabled)
         .clickable(enabled = enabled, onClick = onClick)
         .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
     verticalAlignment = Alignment.CenterVertically,
@@ -222,7 +233,7 @@ fun AudioTrackRow(
   ) {
     RadioButton(
       selected = isSelected,
-      onClick = onClick,
+      onClick = if (isTelevision) null else onClick,
       enabled = enabled,
     )
     Column(modifier = Modifier.weight(1f)) {

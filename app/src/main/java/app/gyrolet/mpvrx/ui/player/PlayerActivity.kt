@@ -111,6 +111,7 @@ import app.gyrolet.mpvrx.ui.player.components.rememberVideoAmbientFrame
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionActivity
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.HttpUtils
@@ -191,6 +192,8 @@ class PlayerActivity :
    * Binding for the player layout.
    */
   private val binding by lazy { PlayerLayoutBinding.inflate(layoutInflater) }
+  private val isTelevision by lazy(LazyThreadSafetyMode.NONE) { DeviceFormFactor.isTelevision(this) }
+  private val consumedTvRemoteKeys = mutableSetOf<Int>()
 
   /**
    * Observer for MPV events.
@@ -948,6 +951,11 @@ class PlayerActivity :
     if (viewModel.panelShown.value != Panels.None) {
       viewModel.panelShown.update { Panels.None }
       viewModel.showControls()
+      return
+    }
+
+    if (isTelevision && viewModel.controlsShown.value) {
+      viewModel.hideControls()
       return
     }
 
@@ -6056,6 +6064,42 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
       }
     val hasModifiers = modifierEvent != null
 
+    if (isTelevision && !hasModifiers) {
+      val overlayVisible = viewModel.sheetShown.value != Sheets.None || viewModel.panelShown.value != Panels.None
+      when (
+        TvPlayerRemotePolicy.actionFor(
+          keyCode = keyCode,
+          controlsVisible = viewModel.controlsShown.value,
+          overlayVisible = overlayVisible,
+        )
+      ) {
+        TvPlayerRemoteAction.SHOW_CONTROLS -> {
+          consumedTvRemoteKeys += keyCode
+          viewModel.showControls()
+          return true
+        }
+        TvPlayerRemoteAction.SEEK_BACKWARD -> {
+          consumedTvRemoteKeys += keyCode
+          viewModel.handleLeftDoubleTap()
+          return true
+        }
+        TvPlayerRemoteAction.SEEK_FORWARD -> {
+          consumedTvRemoteKeys += keyCode
+          viewModel.handleRightDoubleTap()
+          return true
+        }
+        TvPlayerRemoteAction.TOGGLE_PLAYBACK -> {
+          consumedTvRemoteKeys += keyCode
+          if ((event?.repeatCount ?: 0) == 0) viewModel.pauseUnpause()
+          viewModel.showControls()
+          return true
+        }
+        TvPlayerRemoteAction.DELEGATE -> {
+          if (TvPlayerRemotePolicy.isNavigationKey(keyCode)) return super.onKeyDown(keyCode, event)
+        }
+      }
+    }
+
     if (!viewModel.isAudioOnly.value &&
       event?.isShiftPressed == true &&
       (event.isCtrlPressed || event.isMetaPressed)
@@ -6211,6 +6255,10 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
     keyCode: Int,
     event: KeyEvent?,
   ): Boolean {
+    if (isTelevision && consumedTvRemoteKeys.remove(keyCode)) return true
+    if (isTelevision && TvPlayerRemotePolicy.isNavigationKey(keyCode)) {
+      return super.onKeyUp(keyCode, event)
+    }
     event?.let {
       if (player.onKey(it)) return true
     }
