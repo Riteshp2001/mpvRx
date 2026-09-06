@@ -1873,9 +1873,11 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
     // Track selection is now handled by TrackSelector in PlayerActivity
 
-    // Repeat mode remains a player preference; shuffle belongs to the active queue only.
+    // Restore repeat mode and shuffle state from preferences
     _repeatMode.value = playerPreferences.repeatMode.get()
+    _shuffleEnabled.value = playerPreferences.shuffleEnabled.get()
     PlaybackSession.setRepeatMode(_repeatMode.value)
+    PlaybackSession.setShuffleEnabled(_shuffleEnabled.value)
 
     // Observe volume boost cap changes to enforce limits dynamically (in PiP)
     viewModelScope.launch(playbackStateDispatcher) {
@@ -5746,13 +5748,11 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
   // ==================== Repeat and Shuffle ====================
 
-  fun syncShuffleStateFromSession() {
-    _shuffleEnabled.value = PlaybackSession.queue.value.shuffleEnabled
-  }
-
-  fun resetShuffleForNewPlayback() {
-    _shuffleEnabled.value = false
-    PlaybackSession.setShuffleEnabled(false)
+  fun applyPersistedShuffleState() {
+    PlaybackSession.setShuffleEnabled(_shuffleEnabled.value)
+    if (_shuffleEnabled.value) {
+      host.onQueueShuffleChanged(true)
+    }
   }
 
   fun cycleRepeatMode() {
@@ -5776,6 +5776,8 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   fun toggleShuffle() {
     _shuffleEnabled.value = !_shuffleEnabled.value
 
+    // Persist the shuffle state
+    playerPreferences.shuffleEnabled.set(_shuffleEnabled.value)
     PlaybackSession.setShuffleEnabled(_shuffleEnabled.value)
 
     // Notify activity to handle shuffle state change
