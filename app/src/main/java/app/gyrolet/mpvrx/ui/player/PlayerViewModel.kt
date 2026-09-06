@@ -4249,13 +4249,11 @@ val isBrightnessSliderShown = MutableStateFlow(false)
             return@launch
           }
 
-          // A backward keyframe seek can expose pre-target video while audio still starts at the
-          // requested timestamp. Exact seeking decodes through that gap and keeps A/V aligned.
-          // A clamped forward seek uses an absolute target, but non-precise mode must still let
-          // MPV choose a safe keyframe instead of HR-seeking into the EOF boundary.
+          // Keep non-precise double-taps on MPV's fast keyframe path in both directions. Only a
+          // boundary-clamped seek needs an absolute target; it can still remain keyframe-based.
           val targetWasClamped = targetPosition != null && targetPosition < requestedTarget
-          val useRelativeKeyframeSeek = !preciseSeeking && toApply > 0 && !targetWasClamped
-          val useExactSeeking = toApply < 0 || preciseSeeking
+          val useRelativeKeyframeSeek = !preciseSeeking && !targetWasClamped
+          val useExactSeeking = preciseSeeking
           val seekMode =
             if (useRelativeKeyframeSeek) {
               "relative+keyframes"
