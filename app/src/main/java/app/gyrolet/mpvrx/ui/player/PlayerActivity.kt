@@ -1101,10 +1101,10 @@ class PlayerActivity :
     val videoHeight: Int
     if (containerAspect > videoAspect) {
       videoHeight = containerHeight
-      videoWidth = (videoHeight * videoAspect).roundToInt().coerceAtLeast(1)
+      videoWidth = centeredFittedDimension((videoHeight * videoAspect).roundToInt(), containerWidth)
     } else {
       videoWidth = containerWidth
-      videoHeight = (videoWidth / videoAspect).roundToInt().coerceAtLeast(1)
+      videoHeight = centeredFittedDimension((videoWidth / videoAspect).roundToInt(), containerHeight)
     }
 
     val params = binding.player.layoutParams as ConstraintLayout.LayoutParams
@@ -1116,6 +1116,16 @@ class PlayerActivity :
     params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
     params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
     binding.player.layoutParams = params
+  }
+
+  private fun centeredFittedDimension(
+    requested: Int,
+    container: Int,
+  ): Int {
+    val fitted = requested.coerceIn(1, container)
+    // An odd remainder cannot be split equally by ConstraintLayout. Prefer one pixel less video
+    // over visibly placing the extra ambient/letterbox pixel on only one side.
+    return if (fitted > 1 && (container - fitted) % 2 != 0) fitted - 1 else fitted
   }
 
   private fun restoreFullSizePlayerBounds() {
