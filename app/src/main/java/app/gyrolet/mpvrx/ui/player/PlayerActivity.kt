@@ -4960,11 +4960,6 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
         return@runCatching
       }
 
-      if (isTorrentSource(uri.toString(), intent.type)) {
-        // Torrent files have their own durable, per-file catalog in the Network tab.
-        return@runCatching
-      }
-
       val filePath =
         when (uri.scheme) {
           "file" -> {
