@@ -195,7 +195,7 @@ fun NetworkConnectionCard(
           Modifier
             .fillMaxWidth()
             .padding(top = 12.dp),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.Start,
       ) {
         when {
           isConnecting -> {

@@ -783,8 +783,11 @@ class PlayerActivity :
       setOrientation()
     }
 
-    // Apply persisted shuffle state after playlist is loaded
-    viewModel.applyPersistedShuffleState()
+    if (attachedToCurrentSession) {
+      viewModel.syncShuffleStateFromSession()
+    } else {
+      viewModel.resetShuffleForNewPlayback()
+    }
 
     // Observe selected Lua scripts for runtime loading
     lifecycleScope.launch {
@@ -1101,10 +1104,10 @@ class PlayerActivity :
     val videoHeight: Int
     if (containerAspect > videoAspect) {
       videoHeight = containerHeight
-      videoWidth = (videoHeight * videoAspect).roundToInt().coerceAtLeast(1)
+      videoWidth = centeredFittedDimension((videoHeight * videoAspect).roundToInt(), containerWidth)
     } else {
       videoWidth = containerWidth
-      videoHeight = (videoWidth / videoAspect).roundToInt().coerceAtLeast(1)
+      videoHeight = centeredFittedDimension((videoWidth / videoAspect).roundToInt(), containerHeight)
     }
 
     val params = binding.player.layoutParams as ConstraintLayout.LayoutParams
@@ -1116,6 +1119,16 @@ class PlayerActivity :
     params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
     params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
     binding.player.layoutParams = params
+  }
+
+  private fun centeredFittedDimension(
+    requested: Int,
+    container: Int,
+  ): Int {
+    val fitted = requested.coerceIn(1, container)
+    // An odd remainder cannot be split equally by ConstraintLayout. Prefer one pixel less video
+    // over visibly placing the extra ambient/letterbox pixel on only one side.
+    return if (fitted > 1 && (container - fitted) % 2 != 0) fitted - 1 else fitted
   }
 
   private fun restoreFullSizePlayerBounds() {
@@ -5129,6 +5142,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
         isBackgroundPlaybackSessionActive = false
         pendingBackgroundTransition = false
         if (attachToCurrentPlaybackSessionIfRequested(intent)) {
+          viewModel.syncShuffleStateFromSession()
           PlaybackSession.markForeground()
           isReady = PlaybackSession.state.value.phase == PlaybackPhase.READY
           if (isReady) viewModel.onVideoLoadCompleted()
@@ -5176,6 +5190,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
     val previouslyLoadedTorrentFileIndex = this.intent.getIntExtra("torrent_file_index", -1)
     val previousItemWasReady = isReady
 
+    viewModel.resetShuffleForNewPlayback()
     setIntent(intent)
     applyInitialVideoOrientation(intent)
     applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
@@ -5990,12 +6005,47 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
   private fun applyInitialVideoOrientation(sourceIntent: Intent) {
     if (playerPreferences.orientation.get() != PlayerOrientation.Video || isKnownAudioLaunch(sourceIntent)) return
 
-    val width = sourceIntent.getIntExtra(EXTRA_VIDEO_WIDTH, 0)
-    val height = sourceIntent.getIntExtra(EXTRA_VIDEO_HEIGHT, 0)
+    var width = sourceIntent.getIntExtra(EXTRA_VIDEO_WIDTH, 0)
+    var height = sourceIntent.getIntExtra(EXTRA_VIDEO_HEIGHT, 0)
+    var rotation = 0
+
+    extractUriFromIntent(sourceIntent)
+      ?.takeIf { uri -> uri.scheme.equals("content", true) || uri.scheme.equals("file", true) }
+      ?.let { uri ->
+        runCatching {
+          val retriever = android.media.MediaMetadataRetriever()
+          try {
+            retriever.setDataSource(this, uri)
+            if (width <= 0) {
+              width =
+                retriever
+                  .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                  ?.toIntOrNull()
+                  ?: 0
+            }
+            if (height <= 0) {
+              height =
+                retriever
+                  .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                  ?.toIntOrNull()
+                  ?: 0
+            }
+            rotation =
+              retriever
+                .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                ?.toIntOrNull()
+                ?: 0
+          } finally {
+            retriever.release()
+          }
+        }
+      }
     if (width <= 0 || height <= 0) return
 
+    val normalizedRotation = ((rotation % 360) + 360) % 360
+    val swapsDimensions = normalizedRotation == 90 || normalizedRotation == 270
     val initialOrientation =
-      if (width > height) {
+      if ((width > height) != swapsDimensions) {
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
       } else {
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT

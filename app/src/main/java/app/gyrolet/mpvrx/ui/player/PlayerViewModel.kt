@@ -1873,11 +1873,9 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
     // Track selection is now handled by TrackSelector in PlayerActivity
 
-    // Restore repeat mode and shuffle state from preferences
+    // Repeat mode remains a player preference; shuffle belongs to the active queue only.
     _repeatMode.value = playerPreferences.repeatMode.get()
-    _shuffleEnabled.value = playerPreferences.shuffleEnabled.get()
     PlaybackSession.setRepeatMode(_repeatMode.value)
-    PlaybackSession.setShuffleEnabled(_shuffleEnabled.value)
 
     // Observe volume boost cap changes to enforce limits dynamically (in PiP)
     viewModelScope.launch(playbackStateDispatcher) {
@@ -4249,13 +4247,11 @@ val isBrightnessSliderShown = MutableStateFlow(false)
             return@launch
           }
 
-          // A backward keyframe seek can expose pre-target video while audio still starts at the
-          // requested timestamp. Exact seeking decodes through that gap and keeps A/V aligned.
-          // A clamped forward seek uses an absolute target, but non-precise mode must still let
-          // MPV choose a safe keyframe instead of HR-seeking into the EOF boundary.
+          // Keep non-precise double-taps on MPV's fast keyframe path in both directions. Only a
+          // boundary-clamped seek needs an absolute target; it can still remain keyframe-based.
           val targetWasClamped = targetPosition != null && targetPosition < requestedTarget
-          val useRelativeKeyframeSeek = !preciseSeeking && toApply > 0 && !targetWasClamped
-          val useExactSeeking = toApply < 0 || preciseSeeking
+          val useRelativeKeyframeSeek = !preciseSeeking && !targetWasClamped
+          val useExactSeeking = preciseSeeking
           val seekMode =
             if (useRelativeKeyframeSeek) {
               "relative+keyframes"
@@ -5750,11 +5746,13 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
   // ==================== Repeat and Shuffle ====================
 
-  fun applyPersistedShuffleState() {
-    PlaybackSession.setShuffleEnabled(_shuffleEnabled.value)
-    if (_shuffleEnabled.value) {
-      host.onQueueShuffleChanged(true)
-    }
+  fun syncShuffleStateFromSession() {
+    _shuffleEnabled.value = PlaybackSession.queue.value.shuffleEnabled
+  }
+
+  fun resetShuffleForNewPlayback() {
+    _shuffleEnabled.value = false
+    PlaybackSession.setShuffleEnabled(false)
   }
 
   fun cycleRepeatMode() {
@@ -5778,8 +5776,6 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   fun toggleShuffle() {
     _shuffleEnabled.value = !_shuffleEnabled.value
 
-    // Persist the shuffle state
-    playerPreferences.shuffleEnabled.set(_shuffleEnabled.value)
     PlaybackSession.setShuffleEnabled(_shuffleEnabled.value)
 
     // Notify activity to handle shuffle state change
