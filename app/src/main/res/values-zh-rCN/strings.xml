@@ -2093,4 +2093,35 @@
   <string name="player_restart_action">重新开始</string>
   <string name="pref_resume_indicator_overlay_title">继续播放提示</string>
   <string name="pref_resume_indicator_overlay_summary">显示继续播放或起始位置反馈提示条。询问模式始终显示可操作的继续播放提示条</string>
+
+  <!-- Media Servers Settings -->
+  <string name="pref_section_media_servers">媒体服务器</string>
+  <string name="pref_media_servers_title">媒体服务器</string>
+  <string name="pref_media_servers_summary">Jellyfin、Seerr 与流媒体库</string>
+  <string name="pref_jellyfin_title">Jellyfin</string>
+  <string name="pref_jellyfin_server_management">服务器管理</string>
+  <string name="pref_jellyfin_server_management_desc">管理已连接服务器与当前活动实例</string>
+  <string name="pref_music_player_switch_title">切换音乐播放器</string>
+  <string name="pref_music_player_switch_desc">选择“音乐”标签页的默认音频源</string>
+  <string name="music_source_local">本地设备</string>
+  <string name="music_source_local_desc">播放存储在设备上的音频文件</string>
+  <string name="music_source_jellyfin">Jellyfin 音乐</string>
+  <string name="music_source_jellyfin_desc">从 Jellyfin 服务器串流音乐</string>
+  <string name="pref_seerr_title">Seerr</string>
+  <string name="pref_seerr_add_server">连接 Seerr</string>
+  <string name="pref_seerr_add_server_desc">添加并连接到 Seerr 服务器</string>
+  <string name="pref_seerr_server_management">服务器连接</string>
+  <string name="pref_seerr_server_management_desc">配置 Seerr 实例 URL 与凭据</string>
+  <string name="pref_seerr_disconnect">断开连接</string>
+  <string name="pref_seerr_connected_as">已连接为 %1$s</string>
+  <string name="pref_seerr_not_connected">未连接</string>
+  <string name="pref_jellyfin_no_server">未连接 Jellyfin 服务器</string>
+  <string name="pref_jellyfin_add_server">连接 Jellyfin</string>
+  <string name="pref_jellyfin_add_server_desc">添加并连接到 Jellyfin 服务器</string>
+  <string name="pref_jellyfin_add_another_server">添加其他服务器</string>
+  <string name="pref_jellyfin_add_another_server_desc">连接额外的 Jellyfin 服务器</string>
+  <string name="pref_server_active">当前活动</string>
+  <string name="pref_server_set_active">设为活动服务器</string>
+  <string name="pref_server_more_options">更多选项</string>
+  <string name="jellyfin_no_music_library">在此 Jellyfin 服务器上未找到音乐库</string>
 </resources>

@@ -2091,4 +2091,35 @@
   <string name="player_restart_action">最初から再生</string>
   <string name="pref_resume_indicator_overlay_title">再開インジケーター</string>
   <string name="pref_resume_indicator_overlay_summary">再開位置または開始位置のフィードバックピルを表示します。確認モードの操作用再開ピルは常に表示されます</string>
+
+  <!-- Media Servers Settings -->
+  <string name="pref_section_media_servers">メディアサーバー</string>
+  <string name="pref_media_servers_title">メディアサーバー</string>
+  <string name="pref_media_servers_summary">Jellyfin、Seerr、ストリーミングライブラリ</string>
+  <string name="pref_jellyfin_title">Jellyfin</string>
+  <string name="pref_jellyfin_server_management">サーバー管理</string>
+  <string name="pref_jellyfin_server_management_desc">接続済みサーバーとアクティブなインスタンスを管理</string>
+  <string name="pref_music_player_switch_title">音楽プレーヤーの切り替え</string>
+  <string name="pref_music_player_switch_desc">「音楽」タブのデフォルト音源を選択</string>
+  <string name="music_source_local">ローカル端末</string>
+  <string name="music_source_local_desc">端末に保存されている音声ファイルを再生</string>
+  <string name="music_source_jellyfin">Jellyfin ミュージック</string>
+  <string name="music_source_jellyfin_desc">Jellyfin サーバーから音楽をストリーミング</string>
+  <string name="pref_seerr_title">Seerr</string>
+  <string name="pref_seerr_add_server">Seerr に接続</string>
+  <string name="pref_seerr_add_server_desc">Seerr サーバーを追加して接続</string>
+  <string name="pref_seerr_server_management">サーバー接続</string>
+  <string name="pref_seerr_server_management_desc">Seerr インスタンスの URL と認証情報を設定</string>
+  <string name="pref_seerr_disconnect">切断</string>
+  <string name="pref_seerr_connected_as">%1$s として接続中</string>
+  <string name="pref_seerr_not_connected">未接続</string>
+  <string name="pref_jellyfin_no_server">Jellyfin サーバーに接続されていません</string>
+  <string name="pref_jellyfin_add_server">Jellyfin に接続</string>
+  <string name="pref_jellyfin_add_server_desc">Jellyfin サーバーを追加して接続</string>
+  <string name="pref_jellyfin_add_another_server">別のサーバーを追加</string>
+  <string name="pref_jellyfin_add_another_server_desc">追加の Jellyfin サーバーに接続</string>
+  <string name="pref_server_active">アクティブ</string>
+  <string name="pref_server_set_active">アクティブに設定</string>
+  <string name="pref_server_more_options">その他のオプション</string>
+  <string name="jellyfin_no_music_library">この Jellyfin サーバーに音楽ライブラリが見つかりません</string>
 </resources>

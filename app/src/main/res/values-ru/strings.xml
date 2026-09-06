@@ -2091,4 +2091,35 @@
   <string name="player_restart_action">Начать сначала</string>
   <string name="pref_resume_indicator_overlay_title">Индикатор возобновления</string>
   <string name="pref_resume_indicator_overlay_summary">Показывать плашки позиции продолжения или начала. В режиме запроса интерактивная плашка продолжения показывается всегда</string>
+
+  <!-- Media Servers Settings -->
+  <string name="pref_section_media_servers">Медиасерверы</string>
+  <string name="pref_media_servers_title">Медиасерверы</string>
+  <string name="pref_media_servers_summary">Jellyfin, Seerr и библиотеки стриминга</string>
+  <string name="pref_jellyfin_title">Jellyfin</string>
+  <string name="pref_jellyfin_server_management">Управление серверами</string>
+  <string name="pref_jellyfin_server_management_desc">Управление подключёнными серверами и активным экземпляром</string>
+  <string name="pref_music_player_switch_title">Сменить аудиоплеер</string>
+  <string name="pref_music_player_switch_desc">Выбрать источник аудио по умолчанию для вкладки «Музыка»</string>
+  <string name="music_source_local">Локальное устройство</string>
+  <string name="music_source_local_desc">Воспроизведение аудиофайлов с устройства</string>
+  <string name="music_source_jellyfin">Музыка Jellyfin</string>
+  <string name="music_source_jellyfin_desc">Стриминг музыки с вашего сервера Jellyfin</string>
+  <string name="pref_seerr_title">Seerr</string>
+  <string name="pref_seerr_add_server">Подключить Seerr</string>
+  <string name="pref_seerr_add_server_desc">Добавить и подключить сервер Seerr</string>
+  <string name="pref_seerr_server_management">Подключение к серверу</string>
+  <string name="pref_seerr_server_management_desc">Настройка URL и учётных данных экземпляра Seerr</string>
+  <string name="pref_seerr_disconnect">Отключить</string>
+  <string name="pref_seerr_connected_as">Подключено как %1$s</string>
+  <string name="pref_seerr_not_connected">Не подключено</string>
+  <string name="pref_jellyfin_no_server">Нет подключённых серверов Jellyfin</string>
+  <string name="pref_jellyfin_add_server">Подключить Jellyfin</string>
+  <string name="pref_jellyfin_add_server_desc">Добавить и подключить сервер Jellyfin</string>
+  <string name="pref_jellyfin_add_another_server">Добавить другой сервер</string>
+  <string name="pref_jellyfin_add_another_server_desc">Подключить дополнительный сервер Jellyfin</string>
+  <string name="pref_server_active">Активен</string>
+  <string name="pref_server_set_active">Сделать активным</string>
+  <string name="pref_server_more_options">Другие параметры</string>
+  <string name="jellyfin_no_music_library">Музыкальная библиотека на этом сервере Jellyfin не найдена</string>
 </resources>

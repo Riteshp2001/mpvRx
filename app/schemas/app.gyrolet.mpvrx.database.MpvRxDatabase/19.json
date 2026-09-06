@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 12,
-    "identityHash": "2e80bc5017922101a0aaebdfd4386d0c",
+    "version": 19,
+    "identityHash": "d8cf36e4ccc6d0d6afbe872fe28bad3c",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
@@ -167,7 +167,27 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_RecentlyPlayedEntity_filePath",
+            "unique": false,
+            "columnNames": [
+              "filePath"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RecentlyPlayedEntity_filePath` ON `${TABLE_NAME}` (`filePath`)"
+          },
+          {
+            "name": "index_RecentlyPlayedEntity_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RecentlyPlayedEntity_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ]
       },
       {
         "tableName": "video_metadata_cache",
@@ -327,7 +347,7 @@
       },
       {
         "tableName": "PlaylistEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `m3uSourceUrl` TEXT, `isM3uPlaylist` INTEGER NOT NULL, `userAgent` TEXT, `isAudio` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `m3uSourceUrl` TEXT, `isM3uPlaylist` INTEGER NOT NULL, `userAgent` TEXT, `isAudio` INTEGER NOT NULL, `isXtreamPlaylist` INTEGER NOT NULL, `xtreamAccountKey` TEXT, `xtreamServerUrl` TEXT, `xtreamUsername` TEXT, `xtreamEncryptedPassword` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -374,6 +394,32 @@
             "columnName": "isAudio",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "isXtreamPlaylist",
+            "columnName": "isXtreamPlaylist",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "xtreamAccountKey",
+            "columnName": "xtreamAccountKey",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "xtreamServerUrl",
+            "columnName": "xtreamServerUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "xtreamUsername",
+            "columnName": "xtreamUsername",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "xtreamEncryptedPassword",
+            "columnName": "xtreamEncryptedPassword",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -381,7 +427,28 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_PlaylistEntity_xtreamAccountKey",
+            "unique": true,
+            "columnNames": [
+              "xtreamAccountKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_PlaylistEntity_xtreamAccountKey` ON `${TABLE_NAME}` (`xtreamAccountKey`)"
+          },
+          {
+            "name": "index_PlaylistEntity_xtreamServerUrl_xtreamUsername",
+            "unique": false,
+            "columnNames": [
+              "xtreamServerUrl",
+              "xtreamUsername"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_PlaylistEntity_xtreamServerUrl_xtreamUsername` ON `${TABLE_NAME}` (`xtreamServerUrl`, `xtreamUsername`)"
+          }
+        ]
       },
       {
         "tableName": "PlaylistItemEntity",
@@ -683,11 +750,329 @@
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_secure_media_secureFilePath` ON `${TABLE_NAME}` (`secureFilePath`)"
           }
         ]
+      },
+      {
+        "tableName": "network_stream_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`stableKey` TEXT NOT NULL, `entryType` TEXT NOT NULL, `canonicalSourceUri` TEXT NOT NULL, `infoHash` TEXT, `fileIndex` INTEGER, `filePath` TEXT, `fileName` TEXT NOT NULL, `fileSize` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `posterUrl` TEXT, `backdropUrl` TEXT, `groupTitle` TEXT, `overview` TEXT, `releaseYear` TEXT, `mediaType` TEXT, PRIMARY KEY(`stableKey`))",
+        "fields": [
+          {
+            "fieldPath": "stableKey",
+            "columnName": "stableKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryType",
+            "columnName": "entryType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "canonicalSourceUri",
+            "columnName": "canonicalSourceUri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "infoHash",
+            "columnName": "infoHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fileIndex",
+            "columnName": "fileIndex",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "filePath",
+            "columnName": "filePath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "fileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileSize",
+            "columnName": "fileSize",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "posterUrl",
+            "columnName": "posterUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "backdropUrl",
+            "columnName": "backdropUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "groupTitle",
+            "columnName": "groupTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "overview",
+            "columnName": "overview",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseYear",
+            "columnName": "releaseYear",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mediaType",
+            "columnName": "mediaType",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "stableKey"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_network_stream_entries_entryType_updatedAt",
+            "unique": false,
+            "columnNames": [
+              "entryType",
+              "updatedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_network_stream_entries_entryType_updatedAt` ON `${TABLE_NAME}` (`entryType`, `updatedAt`)"
+          },
+          {
+            "name": "index_network_stream_entries_infoHash_fileIndex",
+            "unique": true,
+            "columnNames": [
+              "infoHash",
+              "fileIndex"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_network_stream_entries_infoHash_fileIndex` ON `${TABLE_NAME}` (`infoHash`, `fileIndex`)"
+          }
+        ]
+      },
+      {
+        "tableName": "jellyfin_servers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `serverUrl` TEXT NOT NULL, `userId` TEXT NOT NULL, `username` TEXT NOT NULL, `accessToken` TEXT NOT NULL, `lastConnected` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverUrl",
+            "columnName": "serverUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "username",
+            "columnName": "username",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accessToken",
+            "columnName": "accessToken",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastConnected",
+            "columnName": "lastConnected",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "download_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `systemDownloadId` INTEGER NOT NULL, `url` TEXT NOT NULL, `dirPath` TEXT NOT NULL, `fileName` TEXT NOT NULL, `stagingPath` TEXT, `status` TEXT NOT NULL, `progress` INTEGER NOT NULL, `totalBytes` INTEGER NOT NULL, `failureReason` TEXT, `timeQueued` INTEGER NOT NULL, `source` TEXT NOT NULL, `title` TEXT NOT NULL, `posterUrl` TEXT, `sourceUrl` TEXT, `jellyfinServerId` TEXT, `jellyfinItemId` TEXT, `jellyfinSeriesName` TEXT, `seasonNumber` INTEGER, `episodeNumber` INTEGER, `isAudio` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "systemDownloadId",
+            "columnName": "systemDownloadId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dirPath",
+            "columnName": "dirPath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "fileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stagingPath",
+            "columnName": "stagingPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "progress",
+            "columnName": "progress",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalBytes",
+            "columnName": "totalBytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failureReason",
+            "columnName": "failureReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timeQueued",
+            "columnName": "timeQueued",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "posterUrl",
+            "columnName": "posterUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourceUrl",
+            "columnName": "sourceUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "jellyfinServerId",
+            "columnName": "jellyfinServerId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "jellyfinItemId",
+            "columnName": "jellyfinItemId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "jellyfinSeriesName",
+            "columnName": "jellyfinSeriesName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seasonNumber",
+            "columnName": "seasonNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "episodeNumber",
+            "columnName": "episodeNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isAudio",
+            "columnName": "isAudio",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_download_items_systemDownloadId",
+            "unique": false,
+            "columnNames": [
+              "systemDownloadId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_download_items_systemDownloadId` ON `${TABLE_NAME}` (`systemDownloadId`)"
+          },
+          {
+            "name": "index_download_items_jellyfinItemId",
+            "unique": false,
+            "columnNames": [
+              "jellyfinItemId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_download_items_jellyfinItemId` ON `${TABLE_NAME}` (`jellyfinItemId`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2e80bc5017922101a0aaebdfd4386d0c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd8cf36e4ccc6d0d6afbe872fe28bad3c')"
     ]
   }
 }

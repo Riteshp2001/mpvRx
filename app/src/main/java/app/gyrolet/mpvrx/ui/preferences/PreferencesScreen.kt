@@ -292,6 +292,19 @@ object PreferencesScreen : Screen {
           ),
       ),
       SettingsSection(
+        title = stringResource(R.string.pref_section_media_servers),
+        tint = colorScheme.onSurfaceVariant,
+        items =
+          listOf(
+            SettingsDestination(
+              title = stringResource(R.string.pref_media_servers_title),
+              summary = stringResource(R.string.pref_media_servers_summary),
+              icon = Icons.RoundedFilled.BringYourOwnIp,
+              screen = MediaServersPreferencesScreen,
+            ),
+          ),
+      ),
+      SettingsSection(
         title = stringResource(R.string.pref_section_ai),
         tint = colorScheme.onSurfaceVariant,
         items =

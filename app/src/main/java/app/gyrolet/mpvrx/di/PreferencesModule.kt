@@ -18,6 +18,7 @@ import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.DownloadPreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
+import app.gyrolet.mpvrx.preferences.MediaServerPreferences
 import app.gyrolet.mpvrx.preferences.NetworkBookmarkPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
@@ -51,5 +52,6 @@ val PreferencesModule =
     singleOf(::SettingsManager)
     singleOf(::SecureFolderPreferences)
     singleOf(::SeerrPreferences)
+    singleOf(::MediaServerPreferences)
     singleOf(::DownloadPreferences)
   }

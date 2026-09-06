@@ -2093,4 +2093,35 @@
   <string name="player_restart_action">إعادة البدء</string>
   <string name="pref_resume_indicator_overlay_title">مؤشر الاستئناف</string>
   <string name="pref_resume_indicator_overlay_summary">عرض مؤشرات موضع الاستئناف أو البدء. وضع السؤال يعرض دائمًا مؤشر الاستئناف التفاعلي</string>
+
+  <!-- Media Servers Settings -->
+  <string name="pref_section_media_servers">خوادم الوسائط</string>
+  <string name="pref_media_servers_title">خوادم الوسائط</string>
+  <string name="pref_media_servers_summary">Jellyfin و Seerr ومكتبات البث</string>
+  <string name="pref_jellyfin_title">Jellyfin</string>
+  <string name="pref_jellyfin_server_management">إدارة الخوادم</string>
+  <string name="pref_jellyfin_server_management_desc">إدارة الخوادم المتصلة والمثيل النشط</string>
+  <string name="pref_music_player_switch_title">تبديل مشغل الموسيقى</string>
+  <string name="pref_music_player_switch_desc">اختر مصدر الصوت الافتراضي لتبويب الموسيقى</string>
+  <string name="music_source_local">الجهاز المحلي</string>
+  <string name="music_source_local_desc">تشغيل الملفات الصوتية المخزنة على الجهاز</string>
+  <string name="music_source_jellyfin">موسيقى Jellyfin</string>
+  <string name="music_source_jellyfin_desc">بث الموسيقى من خادم Jellyfin الخاص بك</string>
+  <string name="pref_seerr_title">Seerr</string>
+  <string name="pref_seerr_add_server">الاتصال بـ Seerr</string>
+  <string name="pref_seerr_add_server_desc">إضافة خادم Seerr والاتصال به</string>
+  <string name="pref_seerr_server_management">اتصال الخادم</string>
+  <string name="pref_seerr_server_management_desc">تهيئة رابط ومصادقة مثيل Seerr</string>
+  <string name="pref_seerr_disconnect">قطع الاتصال</string>
+  <string name="pref_seerr_connected_as">متصل كـ %1$s</string>
+  <string name="pref_seerr_not_connected">غير متصل</string>
+  <string name="pref_jellyfin_no_server">لا يوجد خادم Jellyfin متصل</string>
+  <string name="pref_jellyfin_add_server">الاتصال بـ Jellyfin</string>
+  <string name="pref_jellyfin_add_server_desc">إضافة خادم Jellyfin والاتصال به</string>
+  <string name="pref_jellyfin_add_another_server">إضافة خادم آخر</string>
+  <string name="pref_jellyfin_add_another_server_desc">اتصال بخادم Jellyfin إضافي</string>
+  <string name="pref_server_active">نشط</string>
+  <string name="pref_server_set_active">تعيين كنشط</string>
+  <string name="pref_server_more_options">مزيد من الخيارات</string>
+  <string name="jellyfin_no_music_library">لم يتم العثور على مكتبة موسيقى في خادم Jellyfin هذا</string>
 </resources>

@@ -1555,6 +1555,19 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.pref_override_instructions_title, listOf("ai", "prompt", "override", "instructions", "custom"), R.string.pref_section_ai_title),
       )
 
+      addSearchEntries(
+        category = "Media Servers",
+        screen = MediaServersPreferencesScreen,
+        anchorItemIndex = 1,
+        SearchEntrySpec(R.string.pref_jellyfin_server_management, listOf("jellyfin", "server", "remote", "streaming", "account")),
+      )
+      addSearchEntries(
+        category = "Media Servers",
+        screen = MediaServersPreferencesScreen,
+        anchorItemIndex = 2,
+        SearchEntrySpec(R.string.pref_seerr_server_management, listOf("seerr", "jellyseerr", "overseerr", "requests", "server", "api")),
+      )
+
       // About
       add(
         SearchablePreference(
@@ -1672,6 +1685,13 @@ object SearchablePreferences {
           ),
         category = "AI",
         screen = AiIntegrationScreen,
+      ),
+      SearchablePreference(
+        titleRes = R.string.pref_media_servers_title,
+        summaryRes = R.string.pref_media_servers_summary,
+        keywords = listOf("jellyfin seerr jellyseerr overseerr media server streaming remote music player"),
+        category = "Media Servers",
+        screen = MediaServersPreferencesScreen,
       ),
       SearchablePreference(
         titleRes = R.string.pref_advanced,

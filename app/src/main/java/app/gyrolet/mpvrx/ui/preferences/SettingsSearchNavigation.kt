@@ -202,6 +202,12 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced_verbose_logging_title, itemIndex = 17),
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced_dump_logs_title, itemIndex = 17),
       ),
+    MediaServersPreferencesScreen to
+      listOf(
+        SettingsSearchListAnchor(titleRes = R.string.pref_media_servers_title, itemIndex = 0),
+        SettingsSearchListAnchor(titleRes = R.string.pref_jellyfin_server_management, itemIndex = 1),
+        SettingsSearchListAnchor(titleRes = R.string.pref_seerr_server_management, itemIndex = 2),
+      ),
   )
 
 object SettingsSearchNavigation {

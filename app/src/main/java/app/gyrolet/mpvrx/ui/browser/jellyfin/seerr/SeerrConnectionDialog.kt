@@ -188,7 +188,7 @@ fun SeerrConnectionDialog(
               fontWeight = FontWeight.Bold,
             )
             Text(
-              text = if (isConnected) "Active Connection" else "Overseerr / Jellyseerr",
+              text = if (isConnected) "Active Connection" else "Seerr",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

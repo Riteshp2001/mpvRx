@@ -2091,4 +2091,35 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="player_restart_action">Neu starten</string>
   <string name="pref_resume_indicator_overlay_title">Fortsetzungsanzeige</string>
   <string name="pref_resume_indicator_overlay_summary">Feedback-Pillen für Fortsetzen und Startposition anzeigen. Im Fragen-Modus wird die interaktive Fortsetzen-Pille immer angezeigt</string>
+
+  <!-- Media Servers Settings -->
+  <string name="pref_section_media_servers">Medienserver</string>
+  <string name="pref_media_servers_title">Medienserver</string>
+  <string name="pref_media_servers_summary">Jellyfin, Seerr und Streaming-Bibliotheken</string>
+  <string name="pref_jellyfin_title">Jellyfin</string>
+  <string name="pref_jellyfin_server_management">Serververwaltung</string>
+  <string name="pref_jellyfin_server_management_desc">Verbundene Server und aktive Instanz verwalten</string>
+  <string name="pref_music_player_switch_title">Musikplayer wechseln</string>
+  <string name="pref_music_player_switch_desc">Standard-Audioquelle für den Musik-Tab auswählen</string>
+  <string name="music_source_local">Lokales Gerät</string>
+  <string name="music_source_local_desc">Auf dem Gerät gespeicherte Audiodateien abspielen</string>
+  <string name="music_source_jellyfin">Jellyfin-Musik</string>
+  <string name="music_source_jellyfin_desc">Musik von Ihrem Jellyfin-Server streamen</string>
+  <string name="pref_seerr_title">Seerr</string>
+  <string name="pref_seerr_add_server">Seerr verbinden</string>
+  <string name="pref_seerr_add_server_desc">Einen Seerr-Server hinzufügen und verbinden</string>
+  <string name="pref_seerr_server_management">Serververbindung</string>
+  <string name="pref_seerr_server_management_desc">Seerr-Instanz-URL und Anmeldedaten konfigurieren</string>
+  <string name="pref_seerr_disconnect">Trennen</string>
+  <string name="pref_seerr_connected_as">Verbunden als %1$s</string>
+  <string name="pref_seerr_not_connected">Nicht verbunden</string>
+  <string name="pref_jellyfin_no_server">Kein Jellyfin-Server verbunden</string>
+  <string name="pref_jellyfin_add_server">Jellyfin verbinden</string>
+  <string name="pref_jellyfin_add_server_desc">Einen Jellyfin-Server hinzufügen und verbinden</string>
+  <string name="pref_jellyfin_add_another_server">Weitere Server hinzufügen</string>
+  <string name="pref_jellyfin_add_another_server_desc">Einen zusätzlichen Jellyfin-Server verbinden</string>
+  <string name="pref_server_active">Aktiv</string>
+  <string name="pref_server_set_active">Als aktiv festlegen</string>
+  <string name="pref_server_more_options">Weitere Optionen</string>
+  <string name="jellyfin_no_music_library">Keine Musikbibliothek auf diesem Jellyfin-Server gefunden</string>
 </resources>

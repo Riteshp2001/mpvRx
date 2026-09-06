@@ -19,6 +19,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +51,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -98,6 +101,8 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSearchCategory
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.MediaServerPreferences
+import app.gyrolet.mpvrx.preferences.MusicSourceProvider
 import kotlinx.coroutines.launch
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
@@ -122,12 +127,15 @@ import org.koin.compose.koinInject
 fun JellyfinContent(
   viewModel: JellyfinViewModel,
   modifier: Modifier = Modifier,
+  isMusicOnlyMode: Boolean = false,
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val context = LocalContext.current
   val backstack = LocalBackStack.current
   val browserPreferences = koinInject<BrowserPreferences>()
+  val mediaServerPreferences = koinInject<MediaServerPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
+  val currentMusicSource by mediaServerPreferences.musicSourceProvider.collectAsState()
   val layoutMode by browserPreferences.jellyfinLayoutMode.collectAsState()
   val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
   val quickPlayFabDirect by appearancePreferences.quickPlayFabDirect.collectAsState()
@@ -223,6 +231,19 @@ fun JellyfinContent(
       },
     )
 
+  // Clear selection when navigating into or out of a folder
+  LaunchedEffect(uiState.openLibrary) {
+    selectionManager.clear()
+  }
+
+  // Clear selection and close detail when active server changes
+  LaunchedEffect(uiState.activeServer) {
+    selectionManager.clear()
+    if (uiState.detailItem != null) {
+      viewModel.closeDetail()
+    }
+  }
+
   DisposableEffect(selectionManager.isInSelectionMode) {
     NavigationBarState.updateSelectionState(
       inSelectionMode = selectionManager.isInSelectionMode,
@@ -234,10 +255,18 @@ fun JellyfinContent(
   }
 
   // Intercept back button if searching, selecting, requests open, details open, or browsing inside a folder
-  BackHandler(
-    enabled =
+  val isBackEnabled =
+    if (isMusicOnlyMode) {
+      isSearching || selectionManager.isInSelectionMode || uiState.detailItem != null ||
+        (uiState.openLibrary?.isMusic == true && uiState.musicActiveTab != JellyfinMusicTab.HOME) ||
+        (isFabExpanded && !quickPlayFabDirect)
+    } else {
       isSeerrRequestsOpen || isSearching || selectionManager.isInSelectionMode ||
-        uiState.detailItem != null || uiState.openLibrary != null || (isFabExpanded && !quickPlayFabDirect),
+        uiState.detailItem != null || uiState.openLibrary != null || (isFabExpanded && !quickPlayFabDirect)
+    }
+
+  BackHandler(
+    enabled = isBackEnabled,
   ) {
     when {
       isFabExpanded && !quickPlayFabDirect -> {
@@ -256,6 +285,11 @@ fun JellyfinContent(
       }
       selectionManager.isInSelectionMode -> {
         selectionManager.clear()
+      }
+      isMusicOnlyMode -> {
+        if (uiState.musicActiveTab != JellyfinMusicTab.HOME) {
+          viewModel.setMusicTab(JellyfinMusicTab.HOME)
+        }
       }
       else -> {
         viewModel.navigateBack()
@@ -285,6 +319,7 @@ fun JellyfinContent(
 
   val pageTitle =
     when {
+      isMusicOnlyMode -> stringResource(R.string.ui_music)
       uiState.openLibrary != null -> uiState.openLibrary!!.title
       uiState.activeServer != null -> uiState.activeServer!!.name
       else -> stringResource(R.string.ui_jellyfin)
@@ -384,13 +419,13 @@ fun JellyfinContent(
           onDeselectAll = { selectionManager.clear() },
           onPlayClick = { viewModel.playSelected(context, selectionManager.getSelectedItems()) },
           isSingleSelection = selectionManager.isSingleSelection,
-          onBackClick = if (uiState.openLibrary != null) { { viewModel.navigateBack() } } else null,
+          onBackClick = if (!isMusicOnlyMode && uiState.openLibrary != null) { { viewModel.navigateBack() } } else null,
           onSortClick = if (uiState.openLibrary != null && !(uiState.openLibrary?.isMusic == true && uiState.musicActiveTab == JellyfinMusicTab.HOME)) {
             { isSortDialogOpen = true }
           } else null,
           onSearchClick = { isSearching = true },
           // Seerr requests only surface on the untouched Jellyfin home page.
-          onRequestClick = if (uiState.openLibrary == null && uiState.selectedLibraryId == null) {
+          onRequestClick = if (!isMusicOnlyMode && uiState.openLibrary == null && uiState.selectedLibraryId == null) {
             { isSeerrRequestsOpen = true }
           } else {
             null
@@ -398,7 +433,141 @@ fun JellyfinContent(
           onSettingsClick = {
             backstack.add(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
           },
-          additionalActions = {
+          preSearchActions = {
+            if (!selectionManager.isInSelectionMode) {
+              if (isMusicOnlyMode) {
+                var isSourceDropdownOpen by remember { mutableStateOf(false) }
+                Box {
+                  Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
+                    modifier = Modifier
+                      .padding(horizontal = 4.dp, vertical = 6.dp)
+                      .clickable { isSourceDropdownOpen = true },
+                  ) {
+                    Row(
+                      verticalAlignment = Alignment.CenterVertically,
+                      modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                      if (currentMusicSource == MusicSourceProvider.JELLYFIN) {
+                        androidx.compose.material3.Icon(
+                          painter = painterResource(R.drawable.ic_jellyfin),
+                          contentDescription = null,
+                          modifier = Modifier.size(16.dp),
+                          tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                      } else {
+                        Icon(
+                          Icons.RoundedFilled.Folder,
+                          contentDescription = null,
+                          modifier = Modifier.size(16.dp),
+                          tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                      }
+                      Spacer(Modifier.width(6.dp))
+                      Text(
+                        text = if (currentMusicSource == MusicSourceProvider.JELLYFIN) {
+                          stringResource(R.string.pref_jellyfin_title)
+                        } else {
+                          stringResource(R.string.music_source_local)
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                      )
+                      Spacer(Modifier.width(2.dp))
+                      Icon(
+                        Icons.RoundedFilled.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                      )
+                    }
+                  }
+
+                  DropdownMenu(
+                    expanded = isSourceDropdownOpen,
+                    onDismissRequest = { isSourceDropdownOpen = false },
+                  ) {
+                    DropdownMenuItem(
+                      text = {
+                        Row(
+                          verticalAlignment = Alignment.CenterVertically,
+                          horizontalArrangement = Arrangement.SpaceBetween,
+                          modifier = Modifier.fillMaxWidth(),
+                        ) {
+                          Text(stringResource(R.string.music_source_local))
+                          if (currentMusicSource == MusicSourceProvider.LOCAL) {
+                            Spacer(Modifier.width(12.dp))
+                            Icon(
+                              Icons.RoundedFilled.Check,
+                              contentDescription = null,
+                              modifier = Modifier.size(18.dp),
+                              tint = MaterialTheme.colorScheme.primary,
+                            )
+                          }
+                        }
+                      },
+                      leadingIcon = {
+                        Icon(Icons.RoundedFilled.Folder, contentDescription = null)
+                      },
+                      onClick = {
+                        mediaServerPreferences.musicSourceProvider.set(MusicSourceProvider.LOCAL)
+                        isSourceDropdownOpen = false
+                      },
+                    )
+
+                    DropdownMenuItem(
+                      text = {
+                        Row(
+                          verticalAlignment = Alignment.CenterVertically,
+                          horizontalArrangement = Arrangement.SpaceBetween,
+                          modifier = Modifier.fillMaxWidth(),
+                        ) {
+                          Text(stringResource(R.string.music_source_jellyfin))
+                          if (currentMusicSource == MusicSourceProvider.JELLYFIN) {
+                            Spacer(Modifier.width(12.dp))
+                            Icon(
+                              Icons.RoundedFilled.Check,
+                              contentDescription = null,
+                              modifier = Modifier.size(18.dp),
+                              tint = MaterialTheme.colorScheme.primary,
+                            )
+                          }
+                        }
+                      },
+                      leadingIcon = {
+                        androidx.compose.material3.Icon(
+                          painter = painterResource(R.drawable.ic_jellyfin),
+                          contentDescription = null,
+                          modifier = Modifier.size(20.dp),
+                          tint = MaterialTheme.colorScheme.primary,
+                        )
+                      },
+                      onClick = {
+                        mediaServerPreferences.musicSourceProvider.set(MusicSourceProvider.JELLYFIN)
+                        isSourceDropdownOpen = false
+                      },
+                    )
+
+                    HorizontalDivider()
+
+                    DropdownMenuItem(
+                      text = { Text(stringResource(R.string.pref_media_servers_title)) },
+                      leadingIcon = {
+                        Icon(Icons.RoundedFilled.Settings, contentDescription = null)
+                      },
+                      onClick = {
+                        isSourceDropdownOpen = false
+                        backstack.add(app.gyrolet.mpvrx.ui.preferences.MediaServersPreferencesScreen)
+                      },
+                    )
+                  }
+                }
+              }
+            }
+          },
+          postSearchActions = {
             if (!selectionManager.isInSelectionMode) {
               IconButton(
                 onClick = { backstack.add(app.gyrolet.mpvrx.ui.downloads.DownloadsScreen) },

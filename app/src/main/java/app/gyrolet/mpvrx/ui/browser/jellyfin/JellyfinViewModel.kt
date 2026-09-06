@@ -127,7 +127,10 @@ data class JellyfinUiState(
   val detailSimilarItems: List<JellyfinItem> = emptyList(),
   val isDetailLoading: Boolean = false,
   val isDetailEpisodesLoading: Boolean = false,
-)
+) {
+  val hasMusicLibrary: Boolean
+    get() = activeServer != null && libraries.any { JellyfinViewModel.isMusicLibrary(it) }
+}
 
 class JellyfinViewModel(
   application: Application,
@@ -540,6 +543,15 @@ class JellyfinViewModel(
           }
         }
       }
+    }
+  }
+
+  fun ensureMusicLibraryOpened() {
+    val active = _uiState.value.activeServer ?: return
+    if (_uiState.value.openLibrary?.isMusic == true) return
+    val musicLib = _uiState.value.libraries.firstOrNull { isMusicLibrary(it) }
+    if (musicLib != null) {
+      navigateToItem(musicLib)
     }
   }
 
@@ -2032,6 +2044,13 @@ class JellyfinViewModel(
   }
 
   companion object {
+    fun isMusicLibrary(item: JellyfinItem): Boolean {
+      val col = item.collectionType?.lowercase()?.trim() ?: ""
+      val type = item.type.lowercase().trim()
+      val name = item.name.lowercase().trim()
+      return col == "music" || type == "music" || type == "audio" || (name.contains("music") && !name.contains("video"))
+    }
+
     fun factory(application: Application): ViewModelProvider.Factory =
       viewModelFactory {
         initializer {

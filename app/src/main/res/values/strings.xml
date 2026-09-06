@@ -2116,4 +2116,35 @@
   <string name="downloads_episodes_queued">%1$d episodes queued for download</string>
   <string name="downloads_play">Play</string>
   <string name="downloads_open_downloads">Open downloads</string>
+
+  <!-- Media Servers Settings -->
+  <string name="pref_section_media_servers">Media Servers</string>
+  <string name="pref_media_servers_title">Media Servers</string>
+  <string name="pref_media_servers_summary">Jellyfin, Seerr and streaming libraries</string>
+  <string name="pref_jellyfin_title">Jellyfin</string>
+  <string name="pref_jellyfin_server_management">Server Management</string>
+  <string name="pref_jellyfin_server_management_desc">Manage connected servers and active instance</string>
+  <string name="pref_music_player_switch_title">Switch Music Player</string>
+  <string name="pref_music_player_switch_desc">Choose default audio source for the Music tab</string>
+  <string name="music_source_local">Local Device</string>
+  <string name="music_source_local_desc">Play audio files stored on device</string>
+  <string name="music_source_jellyfin">Jellyfin Music</string>
+  <string name="music_source_jellyfin_desc">Stream music from your Jellyfin server</string>
+  <string name="pref_seerr_title">Seerr</string>
+  <string name="pref_seerr_add_server">Connect Seerr</string>
+  <string name="pref_seerr_add_server_desc">Add and connect to a Seerr server</string>
+  <string name="pref_seerr_server_management">Server Connection</string>
+  <string name="pref_seerr_server_management_desc">Configure Seerr instance URL and credentials</string>
+  <string name="pref_seerr_disconnect">Disconnect</string>
+  <string name="pref_seerr_connected_as">Connected as %1$s</string>
+  <string name="pref_seerr_not_connected">Not connected</string>
+  <string name="pref_jellyfin_no_server">No Jellyfin server connected</string>
+  <string name="pref_jellyfin_add_server">Connect Jellyfin</string>
+  <string name="pref_jellyfin_add_server_desc">Add and connect to a Jellyfin server</string>
+  <string name="pref_jellyfin_add_another_server">Add another server</string>
+  <string name="pref_jellyfin_add_another_server_desc">Connect an additional Jellyfin server</string>
+  <string name="pref_server_active">Active</string>
+  <string name="pref_server_set_active">Set as active</string>
+  <string name="pref_server_more_options">More options</string>
+  <string name="jellyfin_no_music_library">No music library found on this Jellyfin server</string>
 </resources>
