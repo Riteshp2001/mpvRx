@@ -766,7 +766,7 @@ private fun LocalNetworkContent(
   val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current.takeIf { it > 0.dp } ?: 88.dp
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = navBarHeight + 16.dp),
+    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = navBarHeight + 88.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
     // 1. Stream Link Section (URL input & recent streams with Save to Media action)
