@@ -783,8 +783,11 @@ class PlayerActivity :
       setOrientation()
     }
 
-    // Apply persisted shuffle state after playlist is loaded
-    viewModel.applyPersistedShuffleState()
+    if (attachedToCurrentSession) {
+      viewModel.syncShuffleStateFromSession()
+    } else {
+      viewModel.resetShuffleForNewPlayback()
+    }
 
     // Observe selected Lua scripts for runtime loading
     lifecycleScope.launch {
@@ -5139,6 +5142,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
         isBackgroundPlaybackSessionActive = false
         pendingBackgroundTransition = false
         if (attachToCurrentPlaybackSessionIfRequested(intent)) {
+          viewModel.syncShuffleStateFromSession()
           PlaybackSession.markForeground()
           isReady = PlaybackSession.state.value.phase == PlaybackPhase.READY
           if (isReady) viewModel.onVideoLoadCompleted()
@@ -5186,6 +5190,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
     val previouslyLoadedTorrentFileIndex = this.intent.getIntExtra("torrent_file_index", -1)
     val previousItemWasReady = isReady
 
+    viewModel.resetShuffleForNewPlayback()
     setIntent(intent)
     applyInitialVideoOrientation(intent)
     applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
