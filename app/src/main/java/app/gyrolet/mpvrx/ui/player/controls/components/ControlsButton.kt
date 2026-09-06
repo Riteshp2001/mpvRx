@@ -82,6 +82,7 @@ fun ControlsButton(
   Surface(
     modifier =
       modifier
+        .tvFocusHighlight(CircleShape, enabled)
         .clip(CircleShape)
         .combinedClickable(
           enabled = enabled,

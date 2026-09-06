@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,7 +50,11 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.TrackNode
+import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
@@ -98,6 +104,8 @@ fun SubtitlesSheet(
   delayControlEnabled: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
+  val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
+  val initialFocusRequester = rememberTvInitialFocusRequester()
   val items =
     remember(tracks, subtitlesOff) {
       val list = mutableListOf<SubtitleItem>()
@@ -465,12 +473,18 @@ fun SubtitlesSheet(
                 modifier =
                   Modifier
                     .fillMaxWidth()
+                    .tvInitialFocus(initialFocusRequester)
+                    .tvFocusHighlight()
                     .clickable(onClick = onDisableSubtitles)
                     .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
               ) {
-                Checkbox(checked = subtitlesOff, onCheckedChange = { onDisableSubtitles() })
+                if (isTelevision) {
+                  RadioButton(selected = subtitlesOff, onClick = null)
+                } else {
+                  Checkbox(checked = subtitlesOff, onCheckedChange = { onDisableSubtitles() })
+                }
                 Text(
                   stringResource(R.string.player_sheets_off),
                   fontWeight = if (subtitlesOff) FontWeight.Bold else FontWeight.Normal,
@@ -511,16 +525,22 @@ fun SubtitleTrackRow(
   isCurrentlyTranslating: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
+  val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
   Row(
     modifier =
       modifier
         .fillMaxWidth()
+        .tvFocusHighlight()
         .clickable(onClick = onToggle)
         .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
-    Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
+    if (isTelevision) {
+      RadioButton(selected = isSelected, onClick = null)
+    } else {
+      Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
+    }
     Text(title, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
 
     if (selectionIndicator != null) {

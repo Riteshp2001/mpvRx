@@ -3974,6 +3974,15 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     syncSubtitleLayout()
   }
 
+  fun selectPrimarySubtitle(id: Int) {
+    setTrackSelectionId("sid", id)
+    setTrackSelectionId("secondary-sid", null)
+    if (!subtitlesPreferences.autoEnableSubtitles.get()) {
+      subtitlesPreferences.autoEnableSubtitles.set(true)
+    }
+    syncSubtitleLayout()
+  }
+
   fun isSubtitleSelected(id: Int): Boolean {
     val primarySid = getTrackSelectionId("sid")
     val secondarySid = getTrackSelectionId("secondary-sid")
