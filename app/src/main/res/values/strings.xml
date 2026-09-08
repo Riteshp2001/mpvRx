@@ -1176,6 +1176,17 @@
   <string name="pref_section_support">Support</string>
   <string name="pref_section_updates">Updates</string>
   <string name="pref_section_system">System</string>
+  <string name="pref_section_contributors">Contributors</string>
+  <string name="contributors_loading">Loading contributors...</string>
+  <string name="contributors_load_error">Couldn&apos;t load contributors</string>
+  <string name="contributors_empty">No contributors found.</string>
+  <string name="contributors_retry">Retry</string>
+  <string name="contributors_view_all">View all contributors</string>
+  <string name="network_connection_invalid_port">Enter a port from 1 to 65535</string>
+  <plurals name="contributors_contribution_count">
+    <item quantity="one">%1$d contribution</item>
+    <item quantity="other">%1$d contributions</item>
+  </plurals>
   <string name="ytdlp_engine_installer">Engine Installer</string>
   <string name="ytdlp_quality_format">Quality &amp; Format</string>
   <string name="ytdlp_video_codec">Video Codec</string>

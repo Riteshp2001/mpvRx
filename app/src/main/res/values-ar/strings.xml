@@ -1032,6 +1032,17 @@
   <string name="pref_section_support">الدعم</string>
   <string name="pref_section_updates">التحديثات</string>
   <string name="pref_section_system">النظام</string>
+  <string name="pref_section_contributors">المساهمون</string>
+  <string name="contributors_loading">جارٍ تحميل المساهمين...</string>
+  <string name="contributors_load_error">تعذر تحميل المساهمين</string>
+  <string name="contributors_empty">لم يتم العثور على مساهمين.</string>
+  <string name="contributors_retry">إعادة المحاولة</string>
+  <string name="contributors_view_all">عرض جميع المساهمين</string>
+  <string name="network_connection_invalid_port">أدخل منفذًا من 1 إلى 65535</string>
+  <plurals name="contributors_contribution_count">
+    <item quantity="one">%1$d مساهمة</item>
+    <item quantity="other">%1$d مساهمة</item>
+  </plurals>
   <string name="ytdlp_engine_installer">مثبّت المحرك</string>
   <string name="ytdlp_quality_format">الجودة والتنسيق</string>
   <string name="ytdlp_video_codec">ترميز الفيديو</string>

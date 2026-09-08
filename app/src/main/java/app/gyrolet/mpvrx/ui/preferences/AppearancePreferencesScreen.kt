@@ -905,7 +905,7 @@ object AppearancePreferencesScreen : Screen {
                 title = { Text(stringResource(R.string.pref_anim_screen_nav_style_title)) },
                 summary = {
                   Text(
-                    "${appNavStyle.displayName}\n${stringResource(R.string.pref_anim_screen_nav_style_summary)}",
+                    appNavStyle.displayName,
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

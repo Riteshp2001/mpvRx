@@ -1032,6 +1032,16 @@
   <string name="pref_section_support">サポート</string>
   <string name="pref_section_updates">アップデート</string>
   <string name="pref_section_system">システム</string>
+  <string name="pref_section_contributors">貢献者</string>
+  <string name="contributors_loading">貢献者を読み込んでいます...</string>
+  <string name="contributors_load_error">貢献者を読み込めませんでした</string>
+  <string name="contributors_empty">貢献者が見つかりません。</string>
+  <string name="contributors_retry">再試行</string>
+  <string name="contributors_view_all">すべての貢献者を表示</string>
+  <string name="network_connection_invalid_port">1～65535 のポート番号を入力してください</string>
+  <plurals name="contributors_contribution_count">
+    <item quantity="other">%1$d 件の貢献</item>
+  </plurals>
   <string name="ytdlp_engine_installer">エンジンインストーラー</string>
   <string name="ytdlp_quality_format">画質と形式</string>
   <string name="ytdlp_video_codec">動画コーデック</string>

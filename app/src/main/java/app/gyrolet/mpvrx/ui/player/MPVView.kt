@@ -53,6 +53,7 @@ class MPVView(
   private val playerPreferences: PlayerPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
+  private val mpvConfigCache: MpvConfigCache by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val ytdlPreferences: YtdlPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
@@ -78,7 +79,8 @@ class MPVView(
     MpvConfigOverridePolicy.configure(advancedPreferences.mpvConfOverrides.get())
     val requestedBackend = selectRenderBackend(ignoreForcedOpenGlFallback = true)
     val coreConfigurationKey =
-      "${requestedBackend.configurationKey}|conf=${MpvConfigOverridePolicy.configurationKey()}"
+      "${requestedBackend.configurationKey}|conf=${MpvConfigOverridePolicy.configurationKey()}" +
+        "|mpv=${mpvConfigCache.configurationKey()}"
     val result =
       PlaybackSession.initialize(
         context = context.applicationContext,

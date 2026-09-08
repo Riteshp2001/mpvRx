@@ -964,6 +964,17 @@
   <string name="pref_section_support">सपोर्ट</string>
   <string name="pref_section_updates">अपडेट</string>
   <string name="pref_section_system">सिस्टम</string>
+  <string name="pref_section_contributors">योगदानकर्ता</string>
+  <string name="contributors_loading">योगदानकर्ताओं को लोड किया जा रहा है...</string>
+  <string name="contributors_load_error">योगदानकर्ताओं को लोड नहीं किया जा सका</string>
+  <string name="contributors_empty">कोई योगदानकर्ता नहीं मिला।</string>
+  <string name="contributors_retry">फिर से प्रयास करें</string>
+  <string name="contributors_view_all">सभी योगदानकर्ता देखें</string>
+  <string name="network_connection_invalid_port">1 से 65535 तक का पोर्ट दर्ज करें</string>
+  <plurals name="contributors_contribution_count">
+    <item quantity="one">%1$d योगदान</item>
+    <item quantity="other">%1$d योगदान</item>
+  </plurals>
   <string name="ytdlp_engine_installer">इंजन इंस्टॉलर</string>
   <string name="ytdlp_quality_format">क्वालिटी और फॉर्मेट</string>
   <string name="ytdlp_video_codec">वीडियो कोडेक</string>

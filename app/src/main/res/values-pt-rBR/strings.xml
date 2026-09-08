@@ -1032,6 +1032,17 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_section_support">Suporte</string>
   <string name="pref_section_updates">Atualizações</string>
   <string name="pref_section_system">Sistema</string>
+  <string name="pref_section_contributors">Colaboradores</string>
+  <string name="contributors_loading">Carregando colaboradores...</string>
+  <string name="contributors_load_error">Não foi possível carregar os colaboradores</string>
+  <string name="contributors_empty">Nenhum colaborador encontrado.</string>
+  <string name="contributors_retry">Tentar novamente</string>
+  <string name="contributors_view_all">Ver todos os colaboradores</string>
+  <string name="network_connection_invalid_port">Insira uma porta entre 1 e 65535</string>
+  <plurals name="contributors_contribution_count">
+    <item quantity="one">%1$d contribuição</item>
+    <item quantity="other">%1$d contribuições</item>
+  </plurals>
   <string name="ytdlp_engine_installer">Instalador do mecanismo</string>
   <string name="ytdlp_quality_format">Qualidade e formato</string>
   <string name="ytdlp_video_codec">Codec de vídeo</string>

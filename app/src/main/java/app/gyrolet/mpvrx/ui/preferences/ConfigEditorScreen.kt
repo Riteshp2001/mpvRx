@@ -44,6 +44,7 @@ import app.gyrolet.mpvrx.ui.editor.MpvHelpScreen
 import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.MpvConfigCache
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -53,10 +54,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
-import kotlin.io.path.createTempFile
-import kotlin.io.path.deleteIfExists
-import kotlin.io.path.outputStream
-import kotlin.io.path.readLines
 
 @Serializable
 data class ConfigEditorScreen(
@@ -73,6 +70,7 @@ data class ConfigEditorScreen(
     val context = LocalContext.current
     val backStack = LocalBackStack.current
     val preferences = koinInject<AdvancedPreferences>()
+    val mpvConfigCache = koinInject<MpvConfigCache>()
     val scope = rememberCoroutineScope()
 
     val (fileName, initialValue) =
@@ -99,29 +97,26 @@ data class ConfigEditorScreen(
     LaunchedEffect(mpvConfStorageLocation) {
       if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
       withContext(Dispatchers.IO) {
-        val tempFile = createTempFile()
         runCatching {
           val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
           val configFile = tree?.findFile(fileName)
           if (configFile != null && configFile.exists()) {
-            context.contentResolver.openInputStream(configFile.uri)?.copyTo(tempFile.outputStream())
-            val content = tempFile.readLines().joinToString("\n")
-            withContext(Dispatchers.Main) { configText = content }
+            val content =
+              context.contentResolver.openInputStream(configFile.uri)?.bufferedReader()?.use { reader ->
+                reader.readText()
+              }
+            if (content != null) {
+              withContext(Dispatchers.Main) { configText = content }
+            }
           }
         }
-        tempFile.deleteIfExists()
       }
     }
 
     fun saveConfig() {
+      val contentToSave = configText
       scope.launch(Dispatchers.IO) {
         try {
-          when (configType) {
-            ConfigType.MPV_CONF -> preferences.mpvConf.set(configText)
-            ConfigType.INPUT_CONF -> preferences.inputConf.set(configText)
-          }
-          File(context.filesDir, fileName).writeText(configText)
-
           if (mpvConfStorageLocation.isNotBlank()) {
             val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
             if (tree == null) {
@@ -149,9 +144,21 @@ data class ConfigEditorScreen(
                 }
                 return@launch
               }
-            context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
-              out.write(configText.toByteArray())
+            val output =
+              checkNotNull(context.contentResolver.openOutputStream(uri, "wt")) {
+                context.getString(R.string.ui_failed_to_open_output_stream)
+              }
+            output.use { out ->
+              out.write(contentToSave.toByteArray(Charsets.UTF_8))
               out.flush()
+            }
+          }
+
+          when (configType) {
+            ConfigType.MPV_CONF -> mpvConfigCache.update(contentToSave)
+            ConfigType.INPUT_CONF -> {
+              preferences.inputConf.set(contentToSave)
+              File(context.filesDir, fileName).writeText(contentToSave)
             }
           }
 

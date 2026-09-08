@@ -1032,6 +1032,19 @@
   <string name="pref_section_support">Поддержка</string>
   <string name="pref_section_updates">Обновления</string>
   <string name="pref_section_system">Система</string>
+  <string name="pref_section_contributors">Участники</string>
+  <string name="contributors_loading">Загрузка списка участников...</string>
+  <string name="contributors_load_error">Не удалось загрузить список участников</string>
+  <string name="contributors_empty">Участники не найдены.</string>
+  <string name="contributors_retry">Повторить</string>
+  <string name="contributors_view_all">Показать всех участников</string>
+  <string name="network_connection_invalid_port">Введите порт от 1 до 65535</string>
+  <plurals name="contributors_contribution_count">
+    <item quantity="one">%1$d вклад</item>
+    <item quantity="few">%1$d вклада</item>
+    <item quantity="many">%1$d вкладов</item>
+    <item quantity="other">%1$d вклада</item>
+  </plurals>
   <string name="ytdlp_engine_installer">Установщик движка</string>
   <string name="ytdlp_quality_format">Качество и формат</string>
   <string name="ytdlp_video_codec">Видеокодек</string>

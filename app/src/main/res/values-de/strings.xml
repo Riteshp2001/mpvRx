@@ -1032,6 +1032,17 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_section_support">Support</string>
   <string name="pref_section_updates">Updates</string>
   <string name="pref_section_system">System</string>
+  <string name="pref_section_contributors">Mitwirkende</string>
+  <string name="contributors_loading">Mitwirkende werden geladen...</string>
+  <string name="contributors_load_error">Mitwirkende konnten nicht geladen werden</string>
+  <string name="contributors_empty">Keine Mitwirkenden gefunden.</string>
+  <string name="contributors_retry">Erneut versuchen</string>
+  <string name="contributors_view_all">Alle Mitwirkenden anzeigen</string>
+  <string name="network_connection_invalid_port">Gib einen Port zwischen 1 und 65535 ein</string>
+  <plurals name="contributors_contribution_count">
+    <item quantity="one">%1$d Beitrag</item>
+    <item quantity="other">%1$d Beiträge</item>
+  </plurals>
   <string name="ytdlp_engine_installer">Engine-Installer</string>
   <string name="ytdlp_quality_format">Qualität &amp; Format</string>
   <string name="ytdlp_video_codec">Videocodec</string>

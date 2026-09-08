@@ -188,6 +188,18 @@ object PlaybackSession : MPVLib.EventObserver {
     nativeLock.withLock { activeCoreConfigurationKey = null }
   }
 
+  fun reloadMpvConfig(configPath: String): Boolean =
+    nativeLock.withLock {
+      activeCoreConfigurationKey = null
+      if (!initialized) return@withLock false
+      runCatching {
+        MPVLib.command("load-config-file", configPath)
+        true
+      }.onFailure { error ->
+        Log.e(TAG, "Failed to reload mpv.conf", error)
+      }.getOrDefault(false)
+    }
+
   val propInt = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_INT64, ::getPropertyInt)
   val propLong = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_INT64) { property -> getPropertyInt(property)?.toLong() }
   val propBoolean = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_FLAG, ::getPropertyBoolean)

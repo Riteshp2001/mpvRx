@@ -634,6 +634,8 @@ object AboutScreen : Screen {
           }
         }
 
+        AboutContributorsSection(githubRepoUrl = githubRepoUrl)
+
         Spacer(Modifier.height(12.dp))
       }
     }

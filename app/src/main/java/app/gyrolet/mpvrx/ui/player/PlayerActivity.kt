@@ -260,6 +260,8 @@ class PlayerActivity :
    */
   private val advancedPreferences: AdvancedPreferences by inject()
 
+  private val mpvConfigCache: MpvConfigCache by inject()
+
   /**
    * Preferences for browser settings.
    */
@@ -2441,6 +2443,7 @@ class PlayerActivity :
   }
 
   private fun prepareUserMpvAssetsForStartup() {
+    ensureConfigCacheForStartup()
     val syncPreferences = getSharedPreferences(MPV_ASSET_SYNC_PREFERENCES, MODE_PRIVATE)
     val currentSelection = currentUserMpvAssetSelection()
     val storedSelection = syncPreferences.getString(USER_MPV_ASSET_SELECTION, null)
@@ -2460,6 +2463,11 @@ class PlayerActivity :
     syncFromUserMpvDirectory()
     rememberUserMpvAssetSelection(syncPreferences)
     deferredUserMpvAssetRefreshStarted.set(true)
+  }
+
+  private fun ensureConfigCacheForStartup() {
+    mpvConfigCache.ensureCurrent()
+    writeTextFileIfChanged(File(filesDir, "input.conf"), advancedPreferences.inputConf.get())
   }
 
   private fun currentUserMpvAssetSelection(): String {
@@ -2500,8 +2508,7 @@ class PlayerActivity :
     fileName: String,
     preferenceContent: String,
   ): Boolean =
-    preferenceContent.isBlank() ||
-      runCatching { File(filesDir, fileName).readText() == preferenceContent }.getOrDefault(false)
+    runCatching { File(filesDir, fileName).readText() == preferenceContent }.getOrDefault(false)
 
   private fun cachedScriptsMatchSelection(): Boolean {
     val cachedScripts =
@@ -2589,11 +2596,12 @@ class PlayerActivity :
         if (configFile != null && configFile.exists() && configFile.canRead()) {
           contentResolver.openInputStream(configFile.uri)?.use { input ->
             val content = input.bufferedReader().readText()
-            writeTextFileIfChanged(File(filesDir, configName), content)
-            // Cache in preferences for the config editor
             when (configName) {
-              "mpv.conf" -> advancedPreferences.mpvConf.set(content)
-              "input.conf" -> advancedPreferences.inputConf.set(content)
+              "mpv.conf" -> mpvConfigCache.update(content)
+              "input.conf" -> {
+                writeTextFileIfChanged(File(filesDir, configName), content)
+                advancedPreferences.inputConf.set(content)
+              }
             }
             Log.d(TAG, "Synced config: $configName (${content.length} chars)")
           }
@@ -2605,9 +2613,10 @@ class PlayerActivity :
               "input.conf" -> advancedPreferences.inputConf.get()
               else -> ""
             }
-          File(filesDir, configName).apply {
-            if (!exists()) createNewFile()
-            if (prefContent.isNotBlank()) writeTextFileIfChanged(this, prefContent)
+          if (configName == MpvConfigCache.FILE_NAME) {
+            mpvConfigCache.ensureCurrent()
+          } else {
+            writeTextFileIfChanged(File(filesDir, configName), prefContent)
           }
           Log.d(TAG, "Config not found in directory, used preferences: $configName")
         }
@@ -3117,16 +3126,8 @@ class PlayerActivity :
    */
   private fun copyMPVConfigFromPreferences() {
     runCatching {
-      File(filesDir, "mpv.conf").apply {
-        if (!exists()) createNewFile()
-        val content = advancedPreferences.mpvConf.get()
-        if (content.isNotBlank()) writeTextFileIfChanged(this, content)
-      }
-      File(filesDir, "input.conf").apply {
-        if (!exists()) createNewFile()
-        val content = advancedPreferences.inputConf.get()
-        if (content.isNotBlank()) writeTextFileIfChanged(this, content)
-      }
+      mpvConfigCache.ensureCurrent()
+      writeTextFileIfChanged(File(filesDir, "input.conf"), advancedPreferences.inputConf.get())
       // Ensure scripts directory exists even without user dir
       File(filesDir, "scripts").mkdirs()
       File(filesDir, "script-modules").mkdirs()
