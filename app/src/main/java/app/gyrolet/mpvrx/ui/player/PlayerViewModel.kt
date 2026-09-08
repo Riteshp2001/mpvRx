@@ -4862,7 +4862,11 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     val generation = session.generation
     if (!force && autoCropAnalyzedGeneration == generation) return
     val source = runCatching { host.currentThumbnailSource() }.getOrNull()?.takeIf(String::isNotBlank)
-    val durationSeconds = PlaybackSession.getPropertyDouble("duration") ?: preciseDuration.value.toDouble()
+    val durationSeconds =
+      sequenceOf(
+        PlaybackSession.getPropertyDouble("duration"),
+        preciseDuration.value.toDouble(),
+      ).filterNotNull().firstOrNull { it.isFinite() && it > 0.0 }
     val sourceWidth = PlaybackSession.getPropertyInt("video-params/w") ?: 0
     val sourceHeight = PlaybackSession.getPropertyInt("video-params/h") ?: 0
     val rotation = (PlaybackSession.getPropertyInt("video-params/rotate") ?: 0).mod(360)
@@ -4876,16 +4880,21 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     autoCropJob?.cancel()
     _autoCropState.value = AutoCropState.ANALYZING
     val sourceIdentity = source ?: session.currentItem?.stableId ?: "generation:$generation"
-    val cacheKey = "$sourceIdentity|$sourceWidth|$sourceHeight|${durationSeconds.toLong()}"
+    val androidReadableSource = source?.let(::isAndroidReadableMediaSource) == true
+    // A URL can identify a changing live channel, so only cache results for local/Android media.
+    val cacheKey =
+      durationSeconds?.takeIf { androidReadableSource }?.let { duration ->
+        "$sourceIdentity|$sourceWidth|$sourceHeight|${duration.toLong()}"
+      }
     autoCropJob =
       viewModelScope.launch(Dispatchers.IO) {
         Log.i(TAG, "Auto-crop analyzing generation=$generation source=$sourceIdentity")
         val result =
           try {
-            val cached = autoCropResultCache.get(cacheKey)
+            val cached = cacheKey?.let(autoCropResultCache::get)
             if (cached != null) {
               AutoCropAnalysisResult.Detected(cached)
-            } else if (source != null && durationSeconds > 0.0 && isAndroidReadableMediaSource(source)) {
+            } else if (source != null && durationSeconds != null && androidReadableSource) {
               val positions = autoCropSamplePositions(source, durationSeconds)
               val combined = extractAutoCropSamples(source, positions)
               when {
@@ -4937,7 +4946,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
             return@withContext
           }
 
-          autoCropResultCache.put(cacheKey, sourceEdges)
+          cacheKey?.let { autoCropResultCache.put(it, sourceEdges) }
           PlaybackSession.setPropertyString("video-crop", cropValue)
           Log.i(TAG, "Auto-crop applied generation=$generation crop=$cropValue edges=$sourceEdges")
           autoCropApplied = true
