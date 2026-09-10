@@ -9,19 +9,23 @@ mpvRx is open source and does not ship ads or analytics trackers. Features that 
 
 | Permission or capability | Why it is used |
 | --- | --- |
-| Internet | Network streams, metadata, subtitle search, servers, casting support, updates, and configured AI providers. |
+| Internet | Network streams, metadata, subtitle search, servers, casting support, non-Play updates, and configured AI providers. |
 | Video and audio access | Build and browse the local media library on current Android versions. |
-| Legacy/external storage access | File browsing and file operations on Android versions and storage layouts that require broader access. |
+| Legacy/external storage access | File browsing and file operations on older Android versions. The Play Store build does not request All files access. |
 | Modify audio settings | Playback volume and audio routing behavior. |
 | Foreground services | Ongoing media playback and user-started downloads. |
 | Wake lock | Keep active playback from being interrupted by device sleep. |
 | Notifications | Media controls, progress, chapters, downloads, and supported promoted notifications. |
-| Microphone | Optional speech or audio-capture workflows that require live recording. |
-| Install packages | The in-app update flow can hand an APK to Android's package installer. Android still asks for approval. |
+| Microphone | Optional speech and audio-visualization workflows. Audio capture is processed on-device unless a user explicitly invokes a configured speech provider. |
+| Install packages | Non-Play builds can hand a downloaded mpvRx update to Android's package installer. The Play Store build does not request this permission or offer APK updates. |
 | Biometrics | Optional secure-folder unlock. Biometric verification is handled by Android. |
 | USB host | Optional access to compatible attached storage or devices. |
 
 Permissions are requested by feature and Android version. Denying an optional permission should limit that feature rather than normal local playback where Android provides another file-access path.
+
+## Google Play build
+
+The Google Play distribution uses the same Standard playback engine. It disables GitHub APK updates, removes All files access and package-install permissions, and uses MediaStore or the Android document picker for file changes that require user consent. Other distributions retain their existing behavior.
 
 ## Data boundaries
 

@@ -392,6 +392,7 @@ For help, reproducible bug reports, or feature suggestions, start with the [supp
 | Variant | Description |
 |---|---|
 | `standard` | Main release with in-app update support |
+| `playstore` | Google Play distribution using the Standard engine, scoped storage, and Play-managed updates |
 | `noVulkan` | Vulkan-free native distribution, packaged as a universal APK |
 | `fongmi` | Alternate native distribution with MediaCodec/Vulkan support, packaged as a universal APK |
 

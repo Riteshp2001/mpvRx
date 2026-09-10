@@ -110,6 +110,7 @@ object AboutScreen : Screen {
         ?: BuildConfig.VERSION_NAME
     val buildType = BuildConfig.BUILD_TYPE
     val githubRepoUrl = stringResource(R.string.github_repo_url)
+    val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
     val settingsScrollState = rememberScrollState()
     val settingsHighlight =
       rememberSettingsSearchHighlight(AboutScreen, settingsScrollState, MaterialTheme.colorScheme.primary)
@@ -336,6 +337,24 @@ object AboutScreen : Screen {
                 }
               }
 
+              Spacer(modifier = Modifier.height(12.dp))
+
+              OutlinedButton(
+                onClick = {
+                  context.startActivity(Intent(Intent.ACTION_VIEW, privacyPolicyUrl.toUri()))
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+              ) {
+                Icon(Icons.RoundedFilled.Security, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                  text = stringResource(R.string.ui_privacy_policy),
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = FontWeight.SemiBold,
+                )
+              }
+
               Spacer(modifier = Modifier.height(20.dp))
 
               Column(
@@ -383,8 +402,8 @@ object AboutScreen : Screen {
         Spacer(Modifier.height(8.dp))
 
         // Support / Donation Section
-        PreferenceSectionHeader(title = stringResource(R.string.pref_section_support))
-        PreferenceCard {
+        if (!BuildConfig.IS_PLAY_STORE_BUILD) PreferenceSectionHeader(title = stringResource(R.string.pref_section_support))
+        if (!BuildConfig.IS_PLAY_STORE_BUILD) PreferenceCard {
           Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
               Icon(
@@ -508,7 +527,7 @@ object AboutScreen : Screen {
           }
         }
 
-        Spacer(Modifier.height(8.dp))
+        if (!BuildConfig.IS_PLAY_STORE_BUILD) Spacer(Modifier.height(8.dp))
 
         // Updates Section (only show if update feature is enabled)
         if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null) {

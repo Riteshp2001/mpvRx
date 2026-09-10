@@ -1416,6 +1416,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_increase_zoom">Augmenter le zoom</string>
   <string name="ui_by_ritesh_pandit">Par Ritesh Pandit</string>
   <string name="ui_github">GitHub</string>
+  <string name="ui_privacy_policy">Politique de confidentialité</string>
   <string name="ui_device_info">Informations sur l’appareil</string>
   <string name="ui_buy_me_a_coffee">Offrez-moi un café</string>
   <string name="ui_if_you_enjoy_mpvrx_consider_supporting_its_development_every_bit">Si vous appréciez mpvRx, pensez à soutenir son développement. Chaque contribution compte !</string>

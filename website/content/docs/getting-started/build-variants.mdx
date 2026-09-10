@@ -1,13 +1,14 @@
 ---
 title: Build variants
-description: Choose between Standard, No Vulkan, and FongMi releases and select the right APK architecture.
+description: Choose between Standard, Play Store, No Vulkan, and FongMi distributions.
 ---
 
-mpvRx publishes three native distributions. They share the same Android application and settings surface, but package different native playback libraries.
+mpvRx has three native playback profiles. The Play Store distribution reuses the Standard profile with policy-specific storage, permission, and update behavior.
 
 | Variant | Choose it when | Packaging |
 | --- | --- | --- |
 | **Standard** | You want the recommended build and normal Vulkan-capable playback path. | Universal and architecture-specific APKs may be available. |
+| **Play Store** | You install through Google Play and want the Standard engine with scoped storage and Play-managed updates. | Android App Bundle delivered by Google Play. |
 | **No Vulkan** | Vulkan is unavailable, unstable, or unnecessarily expensive on the device. | Universal APK. |
 | **FongMi** | You specifically need the alternate native MediaCodec/Vulkan integration. | Universal APK. |
 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.POST_PROMOTED_NOTIFICATION"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"
+        tools:node="remove" />
+
+    <application tools:remove="android:requestLegacyExternalStorage" />
+
+</manifest>

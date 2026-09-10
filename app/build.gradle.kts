@@ -76,6 +76,7 @@ android {
   productFlavors {
     create("standard") {
       dimension = "distribution"
+      buildConfigField("boolean", "IS_PLAY_STORE_BUILD", "false")
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"standard\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
@@ -83,8 +84,19 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
     }
 
+    create("playstore") {
+      dimension = "distribution"
+      buildConfigField("boolean", "IS_PLAY_STORE_BUILD", "true")
+      buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
+      buildConfigField("String", "UPDATE_APK_VARIANT", "\"standard\"")
+      buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "true")
+      buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
+      buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
+    }
+
     create("noVulkan") {
       dimension = "distribution"
+      buildConfigField("boolean", "IS_PLAY_STORE_BUILD", "false")
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"no-vulkan\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
@@ -94,6 +106,7 @@ android {
 
     create("fongmi") {
       dimension = "distribution"
+      buildConfigField("boolean", "IS_PLAY_STORE_BUILD", "false")
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"fongmi\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
@@ -295,6 +308,7 @@ dependencies {
   implementation(libs.google.cast.framework)
 
   "standardImplementation"(variantOf(libs.mpvlib.standard) { artifactType("aar") })
+  "playstoreImplementation"(variantOf(libs.mpvlib.standard) { artifactType("aar") })
   "noVulkanImplementation"(variantOf(libs.mpvlib.no.vulkan) { artifactType("aar") })
   "fongmiImplementation"(variantOf(libs.mpvlib.fongmi) { artifactType("aar") })
 

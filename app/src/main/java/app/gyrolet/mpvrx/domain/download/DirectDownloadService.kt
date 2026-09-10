@@ -67,6 +67,15 @@ class DirectDownloadService : Service() {
     super.onDestroy()
   }
 
+  override fun onTimeout(
+    startId: Int,
+    fgsType: Int,
+  ) {
+    drainJob?.cancel()
+    downloadManager.cancelActive()
+    stopSelf(startId)
+  }
+
   private fun startAsForeground(notification: android.app.Notification) {
     val type =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

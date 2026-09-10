@@ -99,8 +99,8 @@ import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import org.koin.compose.koinInject
 
 private fun checkFilePermission(context: Context): Boolean {
-  val isPlayStoreBuild = BuildConfig.SCOPED_STORAGE_ONLY
-  return if (!isPlayStoreBuild && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+  val scopedStorageOnly = BuildConfig.SCOPED_STORAGE_ONLY
+  return if (!scopedStorageOnly && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
     Environment.isExternalStorageManager()
   } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
     true
@@ -221,7 +221,7 @@ fun PermissionDeniedState(
       buildList {
         add(OnboardingStep.STORAGE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(OnboardingStep.NOTIFICATIONS)
-        add(OnboardingStep.AUDIO)
+        if (!BuildConfig.IS_PLAY_STORE_BUILD) add(OnboardingStep.AUDIO)
         add(OnboardingStep.FINISH)
       }
     }
@@ -449,7 +449,9 @@ fun PermissionDeniedState(
                       if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         add(stringResource(R.string.ui_notification_permission_title))
                       }
-                      if (!isAudioGranted) add(stringResource(R.string.ui_audio_record_permission_title))
+                      if (!BuildConfig.IS_PLAY_STORE_BUILD && !isAudioGranted) {
+                        add(stringResource(R.string.ui_audio_record_permission_title))
+                      }
                     }
                     if (missingPermissions.isNotEmpty()) {
                       val warningColor = Color(0xFFFFB300)

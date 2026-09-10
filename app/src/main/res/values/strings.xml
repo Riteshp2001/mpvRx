@@ -1617,6 +1617,8 @@
   <string name="ui_increase_zoom">Increase zoom</string>
   <string name="ui_by_ritesh_pandit">By Ritesh Pandit</string>
   <string name="ui_github">GitHub</string>
+  <string name="ui_privacy_policy">Privacy policy</string>
+  <string name="privacy_policy_url" translatable="false">https://mpvrx.vercel.app/docs/reference/privacy-and-permissions</string>
   <string name="ui_device_info">Device Info</string>
   <string name="ui_buy_me_a_coffee">Buy Me a Coffee</string>
   <string name="ui_if_you_enjoy_mpvrx_consider_supporting_its_development_every_bit">If you enjoy mpvRx, consider supporting its development. Every bit helps!</string>

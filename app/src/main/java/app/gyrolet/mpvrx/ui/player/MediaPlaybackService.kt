@@ -1479,7 +1479,7 @@ class MediaPlaybackService :
         .setContentIntent(buildContentIntent())
         .setDeleteIntent(buildTransportIntent(ACTION_NOTIFICATION_STOP, 1005))
         .setOngoing(!paused)
-        .setRequestPromotedOngoing(true)
+        .setRequestPromotedOngoing(!BuildConfig.IS_PLAY_STORE_BUILD)
         .setAutoCancel(false)
         .setSilent(true)
         .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
