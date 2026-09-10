@@ -17,6 +17,7 @@ import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinAuthResult
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinUser
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
@@ -581,6 +582,77 @@ class JellyfinClient(
       }
     }
 
+  suspend fun getPerson(
+    serverUrl: String,
+    userId: String,
+    personName: String,
+    token: String,
+  ): Result<JellyfinItem> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val endpoint = "$base/Persons/${java.net.URLEncoder.encode(personName, "UTF-8")}?userId=$userId"
+        val request =
+          Request
+            .Builder()
+            .url(endpoint)
+            .addJellyfinHeaders(token)
+            .get()
+            .build()
+
+        httpClient.newCall(request).awaitResponse().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to load person: HTTP ${response.code}")
+          }
+          val bodyStr = response.body.string()
+          val root = json.parseToJsonElement(bodyStr).jsonObject
+          parseItem(root)
+        }
+      }
+    }
+
+  suspend fun getPersonMedia(
+    serverUrl: String,
+    userId: String,
+    personId: String? = null,
+    personName: String? = null,
+    token: String,
+    limit: Int = 100,
+  ): Result<List<JellyfinItem>> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val urlBuilder =
+          StringBuilder(
+            "$base/Users/$userId/Items?Recursive=true&IncludeItemTypes=Movie,Series&Fields=Overview,PrimaryImageAspectRatio,UserData,ChildCount,CumulativeRunTimeTicks,MediaSources,MediaStreams,ProductionYear,CommunityRating,CriticRating,Genres,OfficialRating,Taglines,SeriesName,SeriesId,SeriesPrimaryImageTag,SeasonName,IndexNumber,ParentIndexNumber,PremiereDate,Status,RemoteTrailers&SortBy=PremiereDate,ProductionYear,SortName&SortOrder=Descending&Limit=$limit",
+          )
+        if (!personId.isNullOrBlank()) {
+          urlBuilder.append("&PersonIds=${java.net.URLEncoder.encode(personId, "UTF-8")}")
+        }
+        if (!personName.isNullOrBlank()) {
+          urlBuilder.append("&Person=${java.net.URLEncoder.encode(personName, "UTF-8")}")
+        }
+
+        val request =
+          Request
+            .Builder()
+            .url(urlBuilder.toString())
+            .addJellyfinHeaders(token)
+            .get()
+            .build()
+
+        httpClient.newCall(request).awaitResponse().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to load person media: HTTP ${response.code}")
+          }
+          val bodyStr = response.body.string()
+          val root = json.parseToJsonElement(bodyStr).jsonObject
+          val itemsArray = root["Items"]?.jsonArray ?: JsonArray(emptyList())
+          itemsArray.map { parseItem(it.jsonObject) }
+        }
+      }
+    }
+
   suspend fun getArtists(
     serverUrl: String,
     userId: String,
@@ -1068,6 +1140,24 @@ class JellyfinClient(
       }
     } ?: obj["RemoteTrailerUrl"]?.jsonPrimitive?.content
 
+    val peopleList =
+      obj["People"]?.jsonArray?.mapNotNull { element ->
+        if (element is JsonObject) {
+          val personId = element["Id"]?.jsonPrimitive?.content ?: return@mapNotNull null
+          val personName = element["Name"]?.jsonPrimitive?.content ?: ""
+          val personRole = element["Role"]?.jsonPrimitive?.content
+          val personType = element["Type"]?.jsonPrimitive?.content
+          val personImageTag = element["PrimaryImageTag"]?.jsonPrimitive?.content
+          JellyfinPerson(
+            id = personId,
+            name = personName,
+            role = personRole,
+            type = personType,
+            primaryImageTag = personImageTag,
+          )
+        } else null
+      } ?: emptyList()
+
     return JellyfinItem(
       id = id,
       name = name,
@@ -1107,6 +1197,7 @@ class JellyfinClient(
       lastPlayedDate = lastPlayedDate,
       remoteTrailerUrl = remoteTrailerUrl,
       canDelete = obj["CanDelete"]?.jsonPrimitive?.booleanOrNull ?: true,
+      people = peopleList,
     )
   }
 

@@ -314,6 +314,21 @@ fun JellyfinHeroBanner(
               }
             }
 
+            // Year Pill
+            item.productionYear?.let { year ->
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color.Black.copy(alpha = 0.6f),
+              ) {
+                Text(
+                  text = year.toString(),
+                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                  color = Color.White,
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+              }
+            }
+
             // Quality Badge (4K / HDR)
             item.qualityBadge?.let { badge ->
               Surface(
@@ -328,15 +343,6 @@ fun JellyfinHeroBanner(
                   modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 )
               }
-            }
-
-            // Year
-            item.productionYear?.let { year ->
-              Text(
-                text = year.toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
             }
           }
 

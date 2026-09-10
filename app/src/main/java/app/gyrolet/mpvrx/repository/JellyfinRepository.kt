@@ -94,6 +94,20 @@ class JellyfinRepository(
   ): Result<Unit> =
     client.deleteItem(server.serverUrl, itemId, server.accessToken)
 
+  suspend fun getPerson(
+    server: JellyfinServer,
+    personName: String,
+  ): Result<JellyfinItem> =
+    client.getPerson(server.serverUrl, server.userId, personName, server.accessToken)
+
+  suspend fun getPersonMedia(
+    server: JellyfinServer,
+    personId: String? = null,
+    personName: String? = null,
+    limit: Int = 100,
+  ): Result<List<JellyfinItem>> =
+    client.getPersonMedia(server.serverUrl, server.userId, personId, personName, server.accessToken, limit)
+
   suspend fun getItems(
     server: JellyfinServer,
     parentId: String? = null,

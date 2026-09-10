@@ -224,8 +224,8 @@ fun SeerrDetailSheet(
       resolutionOptions.firstOrNull { !it.is4k } ?: resolutionOptions.first(),
     )
   }
-  var isResolutionDropdownExpanded by remember { mutableStateOf(false) }
-  var isOverviewExpanded by remember { mutableStateOf(false) }
+  var isOverviewExpanded by remember(details?.id, searchItem?.id) { mutableStateOf(false) }
+  var canExpandOverview by remember(details?.id, searchItem?.id) { mutableStateOf(false) }
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,
@@ -771,9 +771,14 @@ fun SeerrDetailSheet(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = if (isOverviewExpanded) Int.MAX_VALUE else 3,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.clickable { isOverviewExpanded = !isOverviewExpanded },
+            onTextLayout = { textLayoutResult ->
+              if (!isOverviewExpanded) {
+                canExpandOverview = textLayoutResult.hasVisualOverflow
+              }
+            },
+            modifier = Modifier.clickable(enabled = canExpandOverview) { isOverviewExpanded = !isOverviewExpanded },
           )
-          if (overview.length > 150) {
+          if (canExpandOverview) {
             Text(
               text = if (isOverviewExpanded) "Show less" else "Read more",
               style = MaterialTheme.typography.labelSmall,

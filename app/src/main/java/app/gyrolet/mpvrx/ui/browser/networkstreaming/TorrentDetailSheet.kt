@@ -113,7 +113,8 @@ fun TorrentDetailSheet(
       enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
     )
   val context = LocalContext.current
-  var isOverviewExpanded by remember { mutableStateOf(false) }
+  var isOverviewExpanded by remember(group.id) { mutableStateOf(false) }
+  var canExpandOverview by remember(group.id) { mutableStateOf(false) }
   var searchQuery by remember { mutableStateOf("") }
   var isSearchOpen by remember { mutableStateOf(false) }
   var sortDescending by remember { mutableStateOf(false) }
@@ -496,7 +497,7 @@ fun TorrentDetailSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 8.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .clickable { isOverviewExpanded = !isOverviewExpanded },
+                .clickable(enabled = canExpandOverview) { isOverviewExpanded = !isOverviewExpanded },
           ) {
             Text(
               text = "Storyline",
@@ -511,14 +512,21 @@ fun TorrentDetailSheet(
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               maxLines = if (isOverviewExpanded) Int.MAX_VALUE else 3,
               overflow = TextOverflow.Ellipsis,
+              onTextLayout = { textLayoutResult ->
+                if (!isOverviewExpanded) {
+                  canExpandOverview = textLayoutResult.hasVisualOverflow
+                }
+              },
             )
-            Text(
-              text = if (isOverviewExpanded) "Show less" else "Read more",
-              style = MaterialTheme.typography.labelSmall,
-              fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.padding(top = 4.dp),
-            )
+            if (canExpandOverview) {
+              Text(
+                text = if (isOverviewExpanded) "Show less" else "Read more",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp),
+              )
+            }
           }
         }
       }

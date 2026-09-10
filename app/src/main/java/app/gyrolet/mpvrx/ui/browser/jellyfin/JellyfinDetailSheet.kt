@@ -81,6 +81,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,6 +93,7 @@ import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -120,6 +122,7 @@ fun JellyfinDetailSheet(
   onToggleFavorite: (JellyfinItem) -> Unit,
   onTogglePlayed: (JellyfinItem) -> Unit,
   onItemClick: (JellyfinItem) -> Unit,
+  onPersonClick: ((JellyfinPerson) -> Unit)? = null,
   onDeleteItem: ((JellyfinItem) -> Unit)? = null,
   onDownload: ((JellyfinItem) -> Unit)? = null,
   onDownloadSeason: (() -> Unit)? = null,
@@ -259,7 +262,8 @@ fun JellyfinDetailSheet(
     return
   }
 
-  var isOverviewExpanded by remember { mutableStateOf(false) }
+  var isOverviewExpanded by remember(item.id) { mutableStateOf(false) }
+  var canExpandOverview by remember(item.id) { mutableStateOf(false) }
   val context = LocalContext.current
 
   ModalBottomSheet(
@@ -579,30 +583,123 @@ fun JellyfinDetailSheet(
           modifier = Modifier.fillMaxWidth(),
           verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-          // Play / Resume Button
-          Button(
-            onClick = { onPlay(item, false) },
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+          // Compute playback state for Series, Episode, or Movie
+          val inProgressEpisode = remember(episodes) {
+            episodes
+              .filter { it.progressPercent > 0.05f }
+              .maxWithOrNull(
+                compareBy<JellyfinItem> { it.lastPlayedDate ?: "" }
+                  .thenBy { it.parentIndexNumber ?: 1 }
+                  .thenBy { it.indexNumber ?: 1 },
+              )
+          }
+          val nextUnplayedEpisode = remember(episodes) { episodes.firstOrNull { !it.isPlayed } }
+          val isAllEpisodesPlayed = remember(episodes) { episodes.isNotEmpty() && episodes.all { it.isPlayed } }
+
+          val targetItem: JellyfinItem
+          val playLabel: String
+          val isResumeMode: Boolean
+          val isRestartSeriesMode: Boolean
+
+          if (item.isSeries) {
+            when {
+              inProgressEpisode != null -> {
+                targetItem = inProgressEpisode
+                val s = inProgressEpisode.parentIndexNumber ?: 1
+                val e = inProgressEpisode.indexNumber ?: 1
+                playLabel = "Resume S$s:E$e"
+                isResumeMode = true
+                isRestartSeriesMode = false
+              }
+              nextUnplayedEpisode != null -> {
+                targetItem = nextUnplayedEpisode
+                val s = nextUnplayedEpisode.parentIndexNumber ?: 1
+                val e = nextUnplayedEpisode.indexNumber ?: 1
+                playLabel = "Watch S$s:E$e"
+                isResumeMode = false
+                isRestartSeriesMode = false
+              }
+              isAllEpisodesPlayed || item.isPlayed -> {
+                targetItem = episodes.firstOrNull() ?: item
+                playLabel = "Restart Series"
+                isResumeMode = false
+                isRestartSeriesMode = true
+              }
+              else -> {
+                targetItem = episodes.firstOrNull() ?: item
+                val s = targetItem.parentIndexNumber ?: 1
+                val e = targetItem.indexNumber ?: 1
+                playLabel = "Watch S$s:E$e"
+                isResumeMode = false
+                isRestartSeriesMode = false
+              }
+            }
+          } else {
+            targetItem = item
+            isRestartSeriesMode = false
+            when {
+              item.progressPercent > 0.05f -> {
+                playLabel = "Resume"
+                isResumeMode = true
+              }
+              item.isPlayed -> {
+                playLabel = "Watch Again"
+                isResumeMode = false
+              }
+              item.type == "Episode" -> {
+                val s = item.parentIndexNumber ?: 1
+                val e = item.indexNumber ?: 1
+                playLabel = "Watch S$s:E$e"
+                isResumeMode = false
+              }
+              else -> {
+                playLabel = "Play Movie"
+                isResumeMode = false
+              }
+            }
+          }
+
+          // Play / Resume Row
+          Row(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
           ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.PlayArrow,
-              contentDescription = null,
-              modifier = Modifier.size(20.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              text =
-                when {
-                  item.progressPercent > 0.05f -> "Resume"
-                  item.isSeries -> "Watch S1:E1"
-                  else -> "Play Movie"
-                },
-              fontWeight = FontWeight.Bold,
-              style = MaterialTheme.typography.labelLarge,
-            )
+            Button(
+              onClick = { onPlay(targetItem, isRestartSeriesMode) },
+              shape = RoundedCornerShape(14.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+              modifier = Modifier.weight(1f),
+              contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+              Icon(
+                imageVector = if (isRestartSeriesMode) Icons.RoundedFilled.Refresh else Icons.RoundedFilled.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+              )
+              Spacer(modifier = Modifier.width(8.dp))
+              Text(
+                text = playLabel,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelLarge,
+              )
+            }
+
+            // Play from Beginning icon button if in progress
+            if (isResumeMode) {
+              FilledTonalIconButton(
+                onClick = { onPlay(targetItem, true) },
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.size(48.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Refresh,
+                  contentDescription = "Play from Beginning",
+                  tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                  modifier = Modifier.size(22.dp),
+                )
+              }
+            }
           }
 
           Row(
@@ -775,23 +872,6 @@ fun JellyfinDetailSheet(
           }
         }
 
-        // Restart from Beginning option if in progress
-        if (item.progressPercent > 0.05f) {
-          OutlinedButton(
-            onClick = { onPlay(item, true) },
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-          ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Refresh,
-              contentDescription = null,
-              modifier = Modifier.size(16.dp),
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("Play from Beginning", style = MaterialTheme.typography.labelMedium)
-          }
-        }
-
         // Overview / Synopsis with expand animation
         val isArtistItem = item.type == "MusicArtist" || item.type == "Artist" || item.type == "AlbumArtist"
         if (!isArtistItem && !item.overview.isNullOrBlank()) {
@@ -800,7 +880,7 @@ fun JellyfinDetailSheet(
               Modifier
                 .fillMaxWidth()
                 .animateContentSize()
-                .clickable { isOverviewExpanded = !isOverviewExpanded },
+                .clickable(enabled = canExpandOverview) { isOverviewExpanded = !isOverviewExpanded },
             verticalArrangement = Arrangement.spacedBy(4.dp),
           ) {
             Text(
@@ -815,13 +895,195 @@ fun JellyfinDetailSheet(
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               maxLines = if (isOverviewExpanded) Int.MAX_VALUE else 3,
               overflow = TextOverflow.Ellipsis,
+              onTextLayout = { textLayoutResult ->
+                if (!isOverviewExpanded) {
+                  canExpandOverview = textLayoutResult.hasVisualOverflow
+                }
+              },
             )
+            if (canExpandOverview) {
+              Text(
+                text = if (isOverviewExpanded) "Show less" else "Read more",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+              )
+            }
+          }
+        }
+
+        // Directors, Writers, Producers
+        val directors = remember(item.people) { item.directors }
+        val writers = remember(item.people) { item.writers }
+        val producers = remember(item.people) { item.producers }
+
+        if (directors.isNotEmpty() || writers.isNotEmpty() || producers.isNotEmpty()) {
+          Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+          ) {
+            if (directors.isNotEmpty()) {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(
+                  text = if (directors.size > 1) "Directors: " else "Director: ",
+                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+                directors.forEachIndexed { index, person ->
+                  Text(
+                    text = person.name + if (index < directors.lastIndex) ", " else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (onPersonClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable(enabled = onPersonClick != null) {
+                      onPersonClick?.invoke(person)
+                    },
+                  )
+                }
+              }
+            }
+
+            if (writers.isNotEmpty()) {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(
+                  text = if (writers.size > 1) "Writers: " else "Writer: ",
+                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+                writers.forEachIndexed { index, person ->
+                  Text(
+                    text = person.name + if (index < writers.lastIndex) ", " else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (onPersonClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable(enabled = onPersonClick != null) {
+                      onPersonClick?.invoke(person)
+                    },
+                  )
+                }
+              }
+            }
+
+            if (producers.isNotEmpty()) {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(
+                  text = if (producers.size > 1) "Producers: " else "Producer: ",
+                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+                producers.forEachIndexed { index, person ->
+                  Text(
+                    text = person.name + if (index < producers.lastIndex) ", " else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (onPersonClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable(enabled = onPersonClick != null) {
+                      onPersonClick?.invoke(person)
+                    },
+                  )
+                }
+              }
+            }
+          }
+        }
+
+        // Cast Section
+        val cast = remember(item.people) { item.actors }
+        if (cast.isNotEmpty()) {
+          Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
             Text(
-              text = if (isOverviewExpanded) "Show less" else "Read more",
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.primary,
-              fontWeight = FontWeight.SemiBold,
+              text = "Cast",
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+              color = MaterialTheme.colorScheme.onSurface,
             )
+
+            LazyRow(
+              horizontalArrangement = Arrangement.spacedBy(14.dp),
+              contentPadding = PaddingValues(vertical = 4.dp),
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              items(cast, key = { "${it.id}|${it.role ?: ""}" }) { person ->
+                Column(
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                  modifier = Modifier
+                    .width(72.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(enabled = onPersonClick != null) { onPersonClick?.invoke(person) }
+                    .padding(vertical = 4.dp),
+                  verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                  val personImageUrl = remember(person.id, person.primaryImageTag, server.serverUrl, server.accessToken) {
+                    JellyfinClient.getImageUrl(
+                      serverUrl = server.serverUrl,
+                      itemId = person.id,
+                      imageTag = person.primaryImageTag,
+                      maxWidth = 200,
+                      token = server.accessToken,
+                    )
+                  }
+
+                  if (!person.primaryImageTag.isNullOrBlank()) {
+                    RemoteImage(
+                      url = personImageUrl,
+                      contentDescription = person.name,
+                      contentScale = ContentScale.Crop,
+                      modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape),
+                    )
+                  } else {
+                    Box(
+                      modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                      contentAlignment = Alignment.Center,
+                    ) {
+                      Text(
+                        text = person.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                      )
+                    }
+                  }
+
+                  Text(
+                    text = person.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                  )
+
+                  person.role?.takeIf { it.isNotBlank() }?.let { role ->
+                    Text(
+                      text = role,
+                      style = MaterialTheme.typography.labelSmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                      maxLines = 1,
+                      overflow = TextOverflow.Ellipsis,
+                      textAlign = TextAlign.Center,
+                    )
+                  }
+                }
+              }
+            }
           }
         }
 

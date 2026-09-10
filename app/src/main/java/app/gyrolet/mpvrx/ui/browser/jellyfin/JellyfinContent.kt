@@ -96,6 +96,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSearchCategory
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -254,11 +255,12 @@ fun JellyfinContent(
   val isBackEnabled =
     if (isMusicOnlyMode) {
       isSearching || selectionManager.isInSelectionMode || uiState.detailItem != null ||
+        uiState.personDetail != null ||
         uiState.musicActiveTab != JellyfinMusicTab.HOME ||
         (isFabExpanded && !quickPlayFabDirect)
     } else {
       isSeerrRequestsOpen || isSearching || selectionManager.isInSelectionMode ||
-        uiState.detailItem != null || uiState.openLibrary != null || (isFabExpanded && !quickPlayFabDirect)
+        uiState.detailItem != null || uiState.personDetail != null || uiState.openLibrary != null || (isFabExpanded && !quickPlayFabDirect)
     }
 
   BackHandler(
@@ -267,6 +269,9 @@ fun JellyfinContent(
     when {
       isFabExpanded && !quickPlayFabDirect -> {
         isFabExpanded = false
+      }
+      uiState.personDetail != null -> {
+        viewModel.closePerson()
       }
       uiState.detailItem != null -> {
         viewModel.closeDetail()
@@ -312,6 +317,8 @@ fun JellyfinContent(
       searchFocusRequester.requestFocus()
     }
   }
+
+  val isMusicMode = isMusicOnlyMode || uiState.openLibrary?.isMusic == true
 
   val pageTitle =
     when {
@@ -416,7 +423,7 @@ fun JellyfinContent(
           onPlayClick = { viewModel.playSelected(context, selectionManager.getSelectedItems()) },
           isSingleSelection = selectionManager.isSingleSelection,
           onBackClick = if (!isMusicOnlyMode && uiState.openLibrary != null) { { viewModel.navigateBack() } } else null,
-          onSortClick = if (uiState.openLibrary != null && !(uiState.openLibrary?.isMusic == true && uiState.musicActiveTab == JellyfinMusicTab.HOME)) {
+          onSortClick = if (if (isMusicMode) uiState.musicActiveTab != JellyfinMusicTab.HOME else uiState.openLibrary != null) {
             { isSortDialogOpen = true }
           } else null,
           onSearchClick = { isSearching = true },
@@ -627,7 +634,7 @@ fun JellyfinContent(
         )
       }
 
-      if (uiState.openLibrary != null && uiState.openLibrary?.isMusic != true && !isSearching) {
+      if (uiState.openLibrary != null && !isMusicMode && !isSearching) {
         JellyfinGenreChipRow(
           genres = uiState.availableGenres,
           selectedGenre = uiState.selectedGenreFilter,
@@ -635,7 +642,7 @@ fun JellyfinContent(
         )
       }
 
-      if (uiState.openLibrary?.isMusic == true && !isSearching) {
+      if (isMusicMode && !isSearching) {
         val selectedTabIndex = musicPagerState.currentPage.coerceIn(0, (musicTabs.size - 1).coerceAtLeast(0))
 
         PrimaryScrollableTabRow(
@@ -648,7 +655,10 @@ fun JellyfinContent(
           musicTabs.forEachIndexed { index, tab ->
             Tab(
               selected = selectedTabIndex == index,
-              onClick = { viewModel.setMusicTab(tab) },
+              onClick = {
+                viewModel.setMusicTab(tab)
+                navigateMusicTab(index)
+              },
               text = {
                 Text(
                   text = tab.title,
@@ -1361,6 +1371,7 @@ fun JellyfinContent(
       onToggleFavorite = { item -> viewModel.toggleItemFavorite(item) },
       onTogglePlayed = { item -> viewModel.togglePlayed(item) },
       onItemClick = { item -> viewModel.openDetail(item) },
+      onPersonClick = { person -> viewModel.openPerson(person) },
       onDeleteItem = { itemToDelete ->
         viewModel.deleteItem(itemToDelete.id) {
           viewModel.closeDetail()
@@ -1372,9 +1383,21 @@ fun JellyfinContent(
       downloadedItemIds = downloadedItemIds,
       activeDownloadItemIds = activeDownloadItemIds,
     )
+
+    JellyfinPersonSheet(
+      person = uiState.personDetail,
+      server = server,
+      overview = uiState.personOverview,
+      media = uiState.personMedia,
+      isLoading = uiState.isPersonLoading,
+      onDismiss = { viewModel.closePerson() },
+      onItemClick = { item ->
+        viewModel.openDetail(item)
+      },
+    )
   }
 
-  if (uiState.openLibrary?.isMusic == true) {
+  if (isMusicMode) {
     val availableFields = remember(uiState.musicActiveTab) {
       when (uiState.musicActiveTab) {
         JellyfinMusicTab.TRACKS -> listOf(
