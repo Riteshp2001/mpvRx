@@ -1355,6 +1355,9 @@
   <string name="ui_music">Music</string>
   <string name="ui_recents">Recents</string>
   <string name="ui_playlists">Playlists</string>
+  <string name="ui_songs">Songs</string>
+  <string name="ui_albums">Albums</string>
+  <string name="ui_artists">Artists</string>
   <string name="ui_network">Network</string>
   <string name="ui_pinned_folder">Pinned folder</string>
   <string name="ui_folder">Folder</string>
@@ -1487,6 +1490,29 @@
   <string name="playlist_add_videos_empty_title">No videos found</string>
   <string name="playlist_add_videos_empty_message">There are no videos available to add right now.</string>
   <string name="playlist_add_videos_success">Added %1$d file(s) to playlist</string>
+  <string name="playlist_add_songs">Add songs</string>
+  <string name="playlist_add_songs_title">Select Songs to Add</string>
+  <string name="playlist_add_songs_button">Add %1$d Songs</string>
+  <string name="playlist_add_songs_empty_folder_title">No music folders found</string>
+  <string name="playlist_add_songs_empty_folder_message">No folders with songs are available.</string>
+  <string name="playlist_add_songs_empty_title">No songs found</string>
+  <string name="playlist_add_songs_empty_message">No songs are available in this folder.</string>
+  <string name="playlist_add_songs_success">Added %1$d songs to playlist</string>
+  <string name="ui_no_songs_in_playlist">No songs in playlist</string>
+  <string name="ui_add_songs_to_get_started">Add songs to get started</string>
+  <string name="ui_recently_played_disabled_message">Enable it in Advanced Settings to track your playback history.</string>
+  <plurals name="folder_song_count">
+    <item quantity="one">%1$d song</item>
+    <item quantity="other">%1$d songs</item>
+  </plurals>
+  <plurals name="folder_media_item_count">
+    <item quantity="one">%1$d media item</item>
+    <item quantity="other">%1$d media items</item>
+  </plurals>
+  <plurals name="folder_video_count">
+    <item quantity="one">%1$d video</item>
+    <item quantity="other">%1$d videos</item>
+  </plurals>
   <string name="ui_saved">Saved</string>
   <string name="ui_stream_url">Stream URL</string>
   <string name="ui_remove_from_playlist">Remove from Playlist</string>

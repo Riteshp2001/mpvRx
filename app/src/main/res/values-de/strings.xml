@@ -1286,6 +1286,32 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="playlist_add_videos_empty_title">Keine Videos gefunden</string>
   <string name="playlist_add_videos_empty_message">Derzeit sind keine Videos zum Hinzufügen verfügbar.</string>
   <string name="playlist_add_videos_success">%1$d Datei(en) zur Wiedergabeliste hinzugefügt</string>
+  <string name="playlist_add_songs">Titel hinzufügen</string>
+  <string name="playlist_add_songs_title">Titel zum Hinzufügen auswählen</string>
+  <string name="playlist_add_songs_button">%1$d Titel hinzufügen</string>
+  <string name="playlist_add_songs_empty_folder_title">Keine Musikordner gefunden</string>
+  <string name="playlist_add_songs_empty_folder_message">Keine Ordner mit Titeln verfügbar.</string>
+  <string name="playlist_add_songs_empty_title">Keine Titel gefunden</string>
+  <string name="playlist_add_songs_empty_message">In diesem Ordner sind keine Titel verfügbar.</string>
+  <string name="playlist_add_songs_success">%1$d Titel zur Wiedergabeliste hinzugefügt</string>
+  <string name="ui_no_songs_in_playlist">Keine Titel in der Wiedergabeliste</string>
+  <string name="ui_add_songs_to_get_started">Titel hinzufügen, um zu beginnen</string>
+  <string name="ui_songs">Titel</string>
+  <string name="ui_albums">Alben</string>
+  <string name="ui_artists">Interpreten</string>
+  <string name="ui_recently_played_disabled_message">In den erweiterten Einstellungen aktivieren, um den Wiedergabeverlauf zu erfassen.</string>
+  <plurals name="folder_song_count">
+    <item quantity="one">%1$d Titel</item>
+    <item quantity="other">%1$d Titel</item>
+  </plurals>
+  <plurals name="folder_media_item_count">
+    <item quantity="one">%1$d Medienelement</item>
+    <item quantity="other">%1$d Medienelemente</item>
+  </plurals>
+  <plurals name="folder_video_count">
+    <item quantity="one">%1$d Video</item>
+    <item quantity="other">%1$d Videos</item>
+  </plurals>
   <string name="ui_saved">Gespeichert</string>
   <string name="ui_stream_url">Stream-URL</string>
   <string name="ui_remove_from_playlist">Aus Wiedergabeliste entfernen</string>

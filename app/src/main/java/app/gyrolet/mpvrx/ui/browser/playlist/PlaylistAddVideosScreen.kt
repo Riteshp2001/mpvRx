@@ -132,7 +132,7 @@ data class PlaylistAddVideosScreen(
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
     val sortedVideos = remember(currentVideos, videoSortType, videoSortOrder, isAudio) {
-      val filtered = if (isAudio) currentVideos.filter { it.isAudio } else currentVideos
+      val filtered = currentVideos.filter { it.isAudio == isAudio }
       SortUtils.sortVideos(filtered, videoSortType, videoSortOrder)
     }
 
@@ -156,7 +156,10 @@ data class PlaylistAddVideosScreen(
         withContext(Dispatchers.Main) {
           Toast.makeText(
             context,
-            if (isAudio) "Added ${videos.size} songs to playlist" else context.getString(R.string.playlist_add_videos_success, videos.size),
+            context.getString(
+              if (isAudio) R.string.playlist_add_songs_success else R.string.playlist_add_videos_success,
+              videos.size,
+            ),
             Toast.LENGTH_SHORT,
           ).show()
           backstack.popSafely()
@@ -176,7 +179,7 @@ data class PlaylistAddVideosScreen(
       topBar = {
         if (folder == null) {
           BrowserTopBar(
-            title = if (isAudio) "Add Songs" else stringResource(R.string.playlist_add_videos_title),
+            title = stringResource(if (isAudio) R.string.playlist_add_songs_title else R.string.playlist_add_videos_title),
             isInSelectionMode = false,
             selectedCount = 0,
             totalCount = sortedFolders.size,
@@ -207,7 +210,12 @@ data class PlaylistAddVideosScreen(
               onClick = { addSelectedToPlaylist() },
               modifier = Modifier.fillMaxWidth().padding(16.dp),
             ) {
-              Text(if (isAudio) "Add $selectedCount Songs" else stringResource(R.string.playlist_add_videos_button, selectedCount))
+              Text(
+                stringResource(
+                  if (isAudio) R.string.playlist_add_songs_button else R.string.playlist_add_videos_button,
+                  selectedCount,
+                ),
+              )
             }
           }
         }
@@ -217,8 +225,8 @@ data class PlaylistAddVideosScreen(
         if (sortedFolders.isEmpty()) {
           EmptyState(
             icon = Icons.RoundedFilled.Folder,
-            title = if (isAudio) "No music folders found" else stringResource(R.string.playlist_add_videos_empty_title),
-            message = if (isAudio) "No folders with songs available" else stringResource(R.string.playlist_add_videos_empty_message),
+            title = stringResource(if (isAudio) R.string.playlist_add_songs_empty_folder_title else R.string.playlist_add_videos_empty_title),
+            message = stringResource(if (isAudio) R.string.playlist_add_songs_empty_folder_message else R.string.playlist_add_videos_empty_message),
             modifier = Modifier.padding(padding),
           )
         } else {
@@ -239,8 +247,8 @@ data class PlaylistAddVideosScreen(
       } else if (sortedVideos.isEmpty()) {
         EmptyState(
           icon = Icons.RoundedFilled.Folder,
-          title = if (isAudio) "No songs found" else stringResource(R.string.playlist_add_videos_empty_title),
-          message = if (isAudio) "No songs available in this folder" else stringResource(R.string.playlist_add_videos_empty_message),
+          title = stringResource(if (isAudio) R.string.playlist_add_songs_empty_title else R.string.playlist_add_videos_empty_title),
+          message = stringResource(if (isAudio) R.string.playlist_add_songs_empty_message else R.string.playlist_add_videos_empty_message),
           modifier = Modifier.padding(padding),
         )
       } else {

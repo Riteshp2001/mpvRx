@@ -240,11 +240,11 @@ object AudioPreferencesScreen : Screen {
               PreferenceDivider()
               val enabledMusicTabs by preferences.enabledMusicTabs.collectAsState()
               val musicTabOrder by preferences.musicTabOrder.collectAsState()
-              val musicTabsSummary = remember(enabledMusicTabs, musicTabOrder) {
+              val musicTabsSummary = remember(enabledMusicTabs, musicTabOrder, resources) {
                 val tabMap = MusicTab.entries.associateBy { it.name }
                 val orderedTabs = (musicTabOrder.mapNotNull { tabMap[it] } + (MusicTab.entries - musicTabOrder.mapNotNull { tabMap[it] }.toSet())).distinct()
-                val names = orderedTabs.filter { it.name in enabledMusicTabs }.map { it.title }
-                if (names.isEmpty()) "Songs" else names.joinToString(", ")
+                val names = orderedTabs.filter { it.name in enabledMusicTabs }.map { resources.getString(it.titleRes) }
+                if (names.isEmpty()) resources.getString(R.string.ui_songs) else names.joinToString(", ")
               }
 
               Column(
@@ -699,7 +699,7 @@ object AudioPreferencesScreen : Screen {
                   },
                 )
                 Text(
-                  text = tab.title,
+                  text = stringResource(tab.titleRes),
                   style = MaterialTheme.typography.bodyLarge,
                   modifier = Modifier
                     .weight(1f)

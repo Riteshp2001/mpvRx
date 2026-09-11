@@ -1285,6 +1285,29 @@
   <string name="playlist_add_videos_empty_title">動画が見つかりません</string>
   <string name="playlist_add_videos_empty_message">現在追加できる動画がありません。</string>
   <string name="playlist_add_videos_success">%1$d件をプレイリストに追加しました</string>
+  <string name="playlist_add_songs">曲を追加</string>
+  <string name="playlist_add_songs_title">追加する曲を選択</string>
+  <string name="playlist_add_songs_button">%1$d曲を追加</string>
+  <string name="playlist_add_songs_empty_folder_title">音楽フォルダーが見つかりません</string>
+  <string name="playlist_add_songs_empty_folder_message">曲を含むフォルダーがありません。</string>
+  <string name="playlist_add_songs_empty_title">曲が見つかりません</string>
+  <string name="playlist_add_songs_empty_message">このフォルダーには追加できる曲がありません。</string>
+  <string name="playlist_add_songs_success">%1$d曲をプレイリストに追加しました</string>
+  <string name="ui_no_songs_in_playlist">プレイリストに曲がありません</string>
+  <string name="ui_add_songs_to_get_started">曲を追加して始めましょう</string>
+  <string name="ui_songs">曲</string>
+  <string name="ui_albums">アルバム</string>
+  <string name="ui_artists">アーティスト</string>
+  <string name="ui_recently_played_disabled_message">再生履歴を記録するには、詳細設定で有効にしてください。</string>
+  <plurals name="folder_song_count">
+    <item quantity="other">%1$d 曲</item>
+  </plurals>
+  <plurals name="folder_media_item_count">
+    <item quantity="other">%1$d 件</item>
+  </plurals>
+  <plurals name="folder_video_count">
+    <item quantity="other">%1$d 本の動画</item>
+  </plurals>
   <string name="ui_saved">保存済み</string>
   <string name="ui_stream_url">ストリームURL</string>
   <string name="ui_remove_from_playlist">プレイリストから削除</string>

@@ -110,9 +110,10 @@ class AddToPlaylistViewModel :
       val itemIds = videos.map { extractJellyfinItemId(it) }
       jellyfinRepository.createPlaylist(server, name, itemIds)
     } else {
-      val isAudio = videos.any { it.isAudio }
+      val isAudio = videos.firstOrNull()?.isAudio ?: return@withContext
+      val compatibleVideos = videos.filter { it.isAudio == isAudio }
       val playlistId = repository.createPlaylist(name, isAudio = isAudio).toInt()
-      repository.addItemsToPlaylist(playlistId, videos.asPlaylistItems())
+      repository.addItemsToPlaylist(playlistId, compatibleVideos.asPlaylistItems())
     }
   }
 
@@ -127,7 +128,8 @@ class AddToPlaylistViewModel :
       jellyfinRepository.addToPlaylist(server, option.id, itemIds)
     } else {
       val playlistId = option.id.toIntOrNull() ?: return@withContext
-      repository.addItemsToPlaylist(playlistId, videos.asPlaylistItems())
+      val isAudio = option.localPlaylist?.isAudio ?: return@withContext
+      repository.addItemsToPlaylist(playlistId, videos.filter { it.isAudio == isAudio }.asPlaylistItems())
     }
   }
 

@@ -1224,6 +1224,32 @@
   <string name="playlist_add_videos_empty_title">कोई वीडियो नहीं मिला</string>
   <string name="playlist_add_videos_empty_message">अभी जोड़ने के लिए कोई वीडियो उपलब्ध नहीं है।</string>
   <string name="playlist_add_videos_success">प्लेलिस्ट में %1$d फाइलें जोड़ी गईं</string>
+  <string name="playlist_add_songs">गाने जोड़ें</string>
+  <string name="playlist_add_songs_title">जोड़ने के लिए गाने चुनें</string>
+  <string name="playlist_add_songs_button">%1$d गाने जोड़ें</string>
+  <string name="playlist_add_songs_empty_folder_title">कोई संगीत फ़ोल्डर नहीं मिला</string>
+  <string name="playlist_add_songs_empty_folder_message">गानों वाला कोई फ़ोल्डर उपलब्ध नहीं है।</string>
+  <string name="playlist_add_songs_empty_title">कोई गाना नहीं मिला</string>
+  <string name="playlist_add_songs_empty_message">इस फ़ोल्डर में कोई गाना उपलब्ध नहीं है।</string>
+  <string name="playlist_add_songs_success">प्लेलिस्ट में %1$d गाने जोड़े गए</string>
+  <string name="ui_no_songs_in_playlist">प्लेलिस्ट में कोई गाना नहीं है</string>
+  <string name="ui_add_songs_to_get_started">शुरू करने के लिए गाने जोड़ें</string>
+  <string name="ui_songs">गाने</string>
+  <string name="ui_albums">एल्बम</string>
+  <string name="ui_artists">कलाकार</string>
+  <string name="ui_recently_played_disabled_message">अपना प्लेबैक इतिहास ट्रैक करने के लिए इसे उन्नत सेटिंग में चालू करें।</string>
+  <plurals name="folder_song_count">
+    <item quantity="one">%1$d गाना</item>
+    <item quantity="other">%1$d गाने</item>
+  </plurals>
+  <plurals name="folder_media_item_count">
+    <item quantity="one">%1$d मीडिया आइटम</item>
+    <item quantity="other">%1$d मीडिया आइटम</item>
+  </plurals>
+  <plurals name="folder_video_count">
+    <item quantity="one">%1$d वीडियो</item>
+    <item quantity="other">%1$d वीडियो</item>
+  </plurals>
   <string name="ui_saved">सेव हुआ</string>
   <string name="ui_stream_url">स्ट्रीम URL</string>
   <string name="ui_remove_from_playlist">प्लेलिस्ट से हटाएं</string>

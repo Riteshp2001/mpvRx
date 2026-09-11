@@ -773,7 +773,7 @@ fun MusicLibraryContent(
               onClick = { musicViewModel.setTab(tab) },
               text = {
                 Text(
-                  text = tab.title,
+                  text = stringResource(tab.titleRes),
                   style = MaterialTheme.typography.titleMedium,
                   fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Medium,
                   maxLines = 1,

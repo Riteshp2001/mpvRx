@@ -490,9 +490,7 @@ fun PlayerControls(
     ) {
       allPlayerButtons.filter { button ->
         when (button) {
-          PlayerButton.BOOKMARKS_CHAPTERS,
-          PlayerButton.CURRENT_CHAPTER,
-          -> chapters.isNotEmpty()
+          PlayerButton.CURRENT_CHAPTER -> chapters.isNotEmpty()
           PlayerButton.PICTURE_IN_PICTURE -> !isAudioOnly
           PlayerButton.VIDEO_QUALITY -> showVideoQualitySelector
           PlayerButton.SHUFFLE -> hasPlaylistSupport

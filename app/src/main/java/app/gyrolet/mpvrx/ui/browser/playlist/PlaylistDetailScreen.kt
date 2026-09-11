@@ -450,8 +450,7 @@ data class PlaylistDetailScreen(
                       Spacer(modifier = Modifier.width(4.dp))
                     }
 
-                    // Play button
-                    Button(
+                    IconButton(
                       onClick = {
                         val mostRecentlyPlayedItem =
                           videoItems
@@ -471,31 +470,15 @@ data class PlaylistDetailScreen(
                           launchPlaylistPlayback(itemToPlay, startIndex)
                         }
                       },
-                      colors =
-                        ButtonDefaults.buttonColors(
-                          containerColor = MaterialTheme.colorScheme.primaryContainer,
-                          contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                      shape = MaterialTheme.shapes.large,
                       modifier = Modifier.padding(end = 20.dp),
                     ) {
-                      Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                      ) {
-                        Icon(
-                          imageVector = Icons.RoundedFilled.PlayArrow,
-                          contentDescription = null,
-                          modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                          text =
-                            androidx.compose.ui.res
-                              .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
-                          style = MaterialTheme.typography.labelLarge,
-                          fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        )
-                      }
+                      Icon(
+                        imageVector = Icons.RoundedFilled.PlayArrow,
+                        contentDescription =
+                          androidx.compose.ui.res
+                            .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+                        tint = MaterialTheme.colorScheme.primary,
+                      )
                     }
                   }
                 }
@@ -507,12 +490,20 @@ data class PlaylistDetailScreen(
       floatingActionButton = {
         if (!isSearching && !isReorderMode && !selectionManager.isInSelectionMode) {
           val isAudioPlaylist = playlist?.isAudio == true || videoItems.any { it.video.isAudio }
+          val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
+          val miniPlayerClearance = app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance
           ExtendedFloatingActionButton(
             modifier =
-              Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance),
+              Modifier.padding(
+                bottom =
+                  maxOf(
+                    (navigationBarHeight - 16.dp).coerceAtLeast(0.dp),
+                    miniPlayerClearance,
+                  ),
+              ),
             onClick = { backStack.navigateTo(PlaylistAddVideosScreen(playlistId, isAudio = isAudioPlaylist)) },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
-            text = { Text(if (isAudioPlaylist) "Add Songs" else stringResource(R.string.playlist_add_videos)) },
+              text = { Text(stringResource(if (isAudioPlaylist) R.string.playlist_add_songs else R.string.playlist_add_videos)) },
           )
         }
       },
@@ -781,14 +772,14 @@ private fun PlaylistVideoListContent(
           )
           Text(
             text =
-              if (isAudio) "No songs in playlist"
+              if (isAudio) stringResource(R.string.ui_no_songs_in_playlist)
               else androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_videos_in_playlist),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Text(
             text =
-              if (isAudio) "Add songs to get started"
+              if (isAudio) stringResource(R.string.ui_add_songs_to_get_started)
               else androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_videos_to_get_started),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

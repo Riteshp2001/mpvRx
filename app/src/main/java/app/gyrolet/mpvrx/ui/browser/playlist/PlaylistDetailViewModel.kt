@@ -279,7 +279,9 @@ class PlaylistDetailViewModel(
   }
 
   suspend fun addVideosToPlaylist(videos: List<Video>) {
-    playlistRepository.addItemsToPlaylist(playlistId, videos.map { it.path to it.displayName })
+    val isAudio = _playlist.value?.isAudio ?: return
+    val compatibleVideos = videos.filter { it.isAudio == isAudio }
+    playlistRepository.addItemsToPlaylist(playlistId, compatibleVideos.map { it.path to it.displayName })
   }
 
   suspend fun updatePlayHistory(

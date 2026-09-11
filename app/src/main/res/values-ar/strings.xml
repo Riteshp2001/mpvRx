@@ -1286,6 +1286,44 @@
   <string name="playlist_add_videos_empty_title">لم يتم العثور على مقاطع فيديو</string>
   <string name="playlist_add_videos_empty_message">لا توجد مقاطع فيديو متاحة للإضافة الآن.</string>
   <string name="playlist_add_videos_success">تمت إضافة %1$d ملف(ات) إلى قائمة التشغيل</string>
+  <string name="playlist_add_songs">إضافة أغانٍ</string>
+  <string name="playlist_add_songs_title">تحديد الأغاني لإضافتها</string>
+  <string name="playlist_add_songs_button">إضافة %1$d من الأغاني</string>
+  <string name="playlist_add_songs_empty_folder_title">لم يتم العثور على مجلدات موسيقى</string>
+  <string name="playlist_add_songs_empty_folder_message">لا توجد مجلدات تحتوي على أغانٍ.</string>
+  <string name="playlist_add_songs_empty_title">لم يتم العثور على أغانٍ</string>
+  <string name="playlist_add_songs_empty_message">لا توجد أغانٍ متاحة في هذا المجلد.</string>
+  <string name="playlist_add_songs_success">تمت إضافة %1$d من الأغاني إلى قائمة التشغيل</string>
+  <string name="ui_no_songs_in_playlist">لا توجد أغانٍ في قائمة التشغيل</string>
+  <string name="ui_add_songs_to_get_started">أضف أغانٍ للبدء</string>
+  <string name="ui_songs">الأغاني</string>
+  <string name="ui_albums">الألبومات</string>
+  <string name="ui_artists">الفنانون</string>
+  <string name="ui_recently_played_disabled_message">فعّلها في الإعدادات المتقدمة لتتبّع سجل التشغيل.</string>
+  <plurals name="folder_song_count">
+    <item quantity="zero">%1$d أغنية</item>
+    <item quantity="one">%1$d أغنية</item>
+    <item quantity="two">%1$d أغنيتان</item>
+    <item quantity="few">%1$d أغانٍ</item>
+    <item quantity="many">%1$d أغنية</item>
+    <item quantity="other">%1$d أغنية</item>
+  </plurals>
+  <plurals name="folder_media_item_count">
+    <item quantity="zero">%1$d عنصر وسائط</item>
+    <item quantity="one">%1$d عنصر وسائط</item>
+    <item quantity="two">%1$d عنصرا وسائط</item>
+    <item quantity="few">%1$d عناصر وسائط</item>
+    <item quantity="many">%1$d عنصر وسائط</item>
+    <item quantity="other">%1$d عنصر وسائط</item>
+  </plurals>
+  <plurals name="folder_video_count">
+    <item quantity="zero">%1$d فيديو</item>
+    <item quantity="one">%1$d فيديو</item>
+    <item quantity="two">%1$d مقطعا فيديو</item>
+    <item quantity="few">%1$d مقاطع فيديو</item>
+    <item quantity="many">%1$d مقطع فيديو</item>
+    <item quantity="other">%1$d فيديو</item>
+  </plurals>
   <string name="ui_saved">تم الحفظ</string>
   <string name="ui_stream_url">رابط البث</string>
   <string name="ui_remove_from_playlist">إزالة من قائمة التشغيل</string>

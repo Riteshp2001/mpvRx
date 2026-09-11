@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -372,15 +373,15 @@ fun FolderCard(
 
           if (showTotalVideosChip && folder.videoCount > 0) {
             Text(
-              if (isAudioOnly) {
-                if (folder.videoCount == 1) "1 Song" else "${folder.videoCount} Songs"
-              } else if (includeAudio) {
-                if (folder.videoCount == 1) "1 Media item" else "${folder.videoCount} Media items"
-              } else if (folder.videoCount == 1) {
-                "1 Video"
-              } else {
-                "${folder.videoCount} Videos"
-              },
+              androidx.compose.ui.res.pluralStringResource(
+                when {
+                  isAudioOnly -> R.plurals.folder_song_count
+                  includeAudio -> R.plurals.folder_media_item_count
+                  else -> R.plurals.folder_video_count
+                },
+                folder.videoCount,
+                folder.videoCount,
+              ),
               style = MaterialTheme.typography.labelSmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -497,15 +498,15 @@ fun FolderCard(
               // Hide chips at storage root level (when videoCount is 0)
               if (showTotalVideosChip && folder.videoCount > 0) {
                 Text(
-                  if (isAudioOnly) {
-                    if (folder.videoCount == 1) "1 Song" else "${folder.videoCount} Songs"
-                  } else if (includeAudio) {
-                    if (folder.videoCount == 1) "1 Media item" else "${folder.videoCount} Media items"
-                  } else if (folder.videoCount == 1) {
-                    "1 Video"
-                  } else {
-                    "${folder.videoCount} Videos"
-                  },
+                  androidx.compose.ui.res.pluralStringResource(
+                    when {
+                      isAudioOnly -> R.plurals.folder_song_count
+                      includeAudio -> R.plurals.folder_media_item_count
+                      else -> R.plurals.folder_video_count
+                    },
+                    folder.videoCount,
+                    folder.videoCount,
+                  ),
                   style = MaterialTheme.typography.labelSmall,
                   modifier =
                     Modifier

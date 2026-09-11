@@ -201,14 +201,12 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.BOOKMARKS_CHAPTERS -> {
-      if (chapters.isNotEmpty()) {
-        ControlsButton(
-          Icons.RoundedFilled.Bookmarks,
-          onClick = { onOpenSheet(Sheets.Chapters) },
-          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-          modifier = Modifier.size(buttonSize),
-        )
-      }
+      ControlsButton(
+        Icons.RoundedFilled.Bookmarks,
+        onClick = { onOpenSheet(Sheets.Chapters) },
+        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(buttonSize),
+      )
     }
 
     PlayerButton.PLAYBACK_SPEED -> {

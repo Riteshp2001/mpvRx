@@ -48,6 +48,7 @@ class PlaylistRepository(
     const val FAVORITES_PLAYLIST_NAME = "Favorites"
   }
 
+  private val playlistWriteMutex = Mutex()
   private val remotePlaylistWriteMutex = Mutex()
 
   // Playlist operations
@@ -66,7 +67,10 @@ class PlaylistRepository(
     )
   }
 
-  suspend fun getOrCreateFavoritesPlaylist(isAudio: Boolean = true): PlaylistEntity {
+  suspend fun getOrCreateFavoritesPlaylist(isAudio: Boolean = true): PlaylistEntity =
+    playlistWriteMutex.withLock { getOrCreateFavoritesPlaylistLocked(isAudio) }
+
+  private suspend fun getOrCreateFavoritesPlaylistLocked(isAudio: Boolean): PlaylistEntity {
     val existing = playlistDao.getAllPlaylists().find {
       it.name.equals(FAVORITES_PLAYLIST_NAME, ignoreCase = true) && it.isAudio == isAudio
     }
@@ -110,46 +114,41 @@ class PlaylistRepository(
     isAudio: Boolean = true,
   ): Boolean {
     if (filePath.isBlank()) return false
-    val cleanPath = normalizeFavoritePath(filePath)
-    val favorites = getOrCreateFavoritesPlaylist(isAudio)
-    val exists = playlistDao.getPlaylistItems(favorites.id).any { isPathMatching(it.filePath, cleanPath) }
-    if (exists) return false
-    addItemToPlaylist(favorites.id, cleanPath, fileName)
-    return true
+    val cleanPath = normalizePlaylistPath(filePath)
+    return playlistWriteMutex.withLock {
+      val favorites = getOrCreateFavoritesPlaylistLocked(isAudio)
+      addItemToPlaylistLocked(favorites.id, cleanPath, fileName)
+    }
   }
 
   suspend fun toggleFavorite(filePath: String, fileName: String, isAudio: Boolean = true): Boolean {
     if (filePath.isBlank()) return false
-    val cleanPath = normalizeFavoritePath(filePath)
-    val favPlaylist = getOrCreateFavoritesPlaylist(isAudio)
-    val items = playlistDao.getPlaylistItems(favPlaylist.id)
-    val existing = items.find { isPathMatching(it.filePath, cleanPath) }
-    return if (existing != null) {
-      removeItemFromPlaylist(existing)
-      false
-    } else {
-      addItemToPlaylist(favPlaylist.id, cleanPath, fileName)
-      true
+    val cleanPath = normalizePlaylistPath(filePath)
+    return playlistWriteMutex.withLock {
+      val favPlaylist = getOrCreateFavoritesPlaylistLocked(isAudio)
+      val items = playlistDao.getPlaylistItems(favPlaylist.id)
+      val existing = items.filter { isPathMatching(it.filePath, cleanPath) }
+      if (existing.isNotEmpty()) {
+        playlistDao.deletePlaylistItems(existing)
+        updatePlaylist(favPlaylist)
+        false
+      } else {
+        addItemToPlaylistLocked(favPlaylist.id, cleanPath, fileName)
+      }
     }
   }
 
-  private fun normalizeFavoritePath(filePath: String): String =
-    if (filePath.startsWith("file://")) Uri.parse(filePath).path ?: filePath else filePath
+  private fun normalizePlaylistPath(filePath: String): String =
+    if (filePath.startsWith("file://", ignoreCase = true)) Uri.parse(filePath).path ?: filePath else filePath
 
-  private fun isPathMatching(pathA: String, pathB: String): Boolean {
-    if (pathA == pathB) return true
-    if (pathA.isBlank() || pathB.isBlank()) return false
-    val cleanA = if (pathA.startsWith("file://")) Uri.parse(pathA).path ?: pathA else pathA
-    val cleanB = if (pathB.startsWith("file://")) Uri.parse(pathB).path ?: pathB else pathB
-    if (cleanA == cleanB) return true
-    val uriA = runCatching { Uri.parse(pathA) }.getOrNull()
-    val uriB = runCatching { Uri.parse(pathB) }.getOrNull()
-    if (uriA != null && uriB != null && uriA == uriB) return true
-    if (uriA?.path != null && uriB?.path != null && uriA.path == uriB.path) return true
-    if (uriA?.path != null && uriA.path == cleanB) return true
-    if (uriB?.path != null && uriB.path == cleanA) return true
-    return false
+  private fun playlistPathKey(filePath: String): String {
+    val cleanPath = normalizePlaylistPath(filePath)
+    val uri = runCatching { Uri.parse(cleanPath) }.getOrNull() ?: return cleanPath
+    return if (uri.scheme.isNullOrBlank()) cleanPath else uri.normalizeScheme().toString()
   }
+
+  private fun isPathMatching(pathA: String, pathB: String): Boolean =
+    pathA.isNotBlank() && pathB.isNotBlank() && playlistPathKey(pathA) == playlistPathKey(pathB)
 
   suspend fun updatePlaylist(playlist: PlaylistEntity) {
     playlistDao.updatePlaylist(playlist.copy(updatedAt = System.currentTimeMillis()))
@@ -226,12 +225,22 @@ class PlaylistRepository(
     playlistId: Int,
     filePath: String,
     fileName: String,
-  ) {
+  ): Boolean = playlistWriteMutex.withLock { addItemToPlaylistLocked(playlistId, filePath, fileName) }
+
+  private suspend fun addItemToPlaylistLocked(
+    playlistId: Int,
+    filePath: String,
+    fileName: String,
+  ): Boolean {
+    if (filePath.isBlank()) return false
+    val cleanPath = normalizePlaylistPath(filePath)
+    val exists = playlistDao.getPlaylistItems(playlistId).any { isPathMatching(it.filePath, cleanPath) }
+    if (exists) return false
     val maxPosition = playlistDao.getMaxPosition(playlistId) ?: -1
     playlistDao.insertPlaylistItem(
       PlaylistItemEntity(
         playlistId = playlistId,
-        filePath = filePath,
+        filePath = cleanPath,
         fileName = fileName,
         position = maxPosition + 1,
         addedAt = System.currentTimeMillis(),
@@ -240,27 +249,39 @@ class PlaylistRepository(
     getPlaylistById(playlistId)?.let { playlist ->
       updatePlaylist(playlist)
     }
+    return true
   }
 
   suspend fun addItemsToPlaylist(
     playlistId: Int,
     items: List<Pair<String, String>>,
   ) {
-    val maxPosition = playlistDao.getMaxPosition(playlistId) ?: -1
-    val now = System.currentTimeMillis()
-    val playlistItems =
-      items.mapIndexed { index, (filePath, fileName) ->
-        PlaylistItemEntity(
-          playlistId = playlistId,
-          filePath = filePath,
-          fileName = fileName,
-          position = maxPosition + 1 + index,
-          addedAt = now,
-        )
+    playlistWriteMutex.withLock {
+      if (items.isEmpty()) return@withLock
+      val seenPaths = playlistDao.getPlaylistItems(playlistId).mapTo(mutableSetOf()) { playlistPathKey(it.filePath) }
+      val uniqueItems =
+        items.mapNotNull { (filePath, fileName) ->
+          if (filePath.isBlank()) return@mapNotNull null
+          val cleanPath = normalizePlaylistPath(filePath)
+          if (seenPaths.add(playlistPathKey(cleanPath))) cleanPath to fileName else null
+        }
+      if (uniqueItems.isEmpty()) return@withLock
+      val maxPosition = playlistDao.getMaxPosition(playlistId) ?: -1
+      val now = System.currentTimeMillis()
+      val playlistItems =
+        uniqueItems.mapIndexed { index, (filePath, fileName) ->
+          PlaylistItemEntity(
+            playlistId = playlistId,
+            filePath = filePath,
+            fileName = fileName,
+            position = maxPosition + 1 + index,
+            addedAt = now,
+          )
+        }
+      playlistDao.insertPlaylistItemsAtomically(playlistItems)
+      getPlaylistById(playlistId)?.let { playlist ->
+        updatePlaylist(playlist)
       }
-    playlistDao.insertPlaylistItemsAtomically(playlistItems)
-    getPlaylistById(playlistId)?.let { playlist ->
-      updatePlaylist(playlist)
     }
   }
 

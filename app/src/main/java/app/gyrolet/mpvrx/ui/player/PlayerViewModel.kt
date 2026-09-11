@@ -4949,8 +4949,32 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     val sourceHeight = PlaybackSession.getPropertyInt("video-params/h") ?: 0
     val rotation = (PlaybackSession.getPropertyInt("video-params/rotate") ?: 0).mod(360)
     if (sourceWidth <= 0 || sourceHeight <= 0) {
-      autoCropAnalyzedGeneration = generation
-      _autoCropState.value = AutoCropState.UNSUPPORTED
+      if (autoCropReadinessJob?.isActive != true) {
+        _autoCropState.value = AutoCropState.ANALYZING
+        autoCropReadinessJob =
+          viewModelScope.launch {
+            val dimensionsReady =
+              withTimeoutOrNull(AUTO_CROP_READY_TIMEOUT_MS) {
+                while (currentCoroutineContext().isActive && PlaybackSession.isCurrentGeneration(generation)) {
+                  val width = PlaybackSession.getPropertyInt("video-params/w") ?: 0
+                  val height = PlaybackSession.getPropertyInt("video-params/h") ?: 0
+                  if (width > 0 && height > 0) return@withTimeoutOrNull true
+                  delay(AUTO_CROP_METADATA_POLL_MS)
+                }
+                false
+              } == true
+            autoCropReadinessJob = null
+            if (!PlaybackSession.isCurrentGeneration(generation) || !playerPreferences.autoCropBlackBars.get()) {
+              return@launch
+            }
+            if (dimensionsReady) {
+              scheduleAutoCropAnalysis(force)
+            } else {
+              autoCropAnalyzedGeneration = generation
+              _autoCropState.value = AutoCropState.UNSUPPORTED
+            }
+          }
+      }
       return
     }
 

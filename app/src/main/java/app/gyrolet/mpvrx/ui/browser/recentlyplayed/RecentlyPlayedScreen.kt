@@ -466,7 +466,7 @@ object RecentlyPlayedScreen : Screen {
             EmptyState(
               icon = Icons.RoundedFilled.History,
               title = stringResource(R.string.ui_recently_played_disabled),
-              message = "Enable it in Advanced Settings to track your playback history",
+              message = stringResource(R.string.ui_recently_played_disabled_message),
             )
           }
         }

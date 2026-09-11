@@ -1288,6 +1288,38 @@
   <string name="playlist_add_videos_empty_title">Видео не найдено</string>
   <string name="playlist_add_videos_empty_message">Сейчас нет доступных видео для добавления.</string>
   <string name="playlist_add_videos_success">Добавлено %1$d видео в плейлист</string>
+  <string name="playlist_add_songs">Добавить песни</string>
+  <string name="playlist_add_songs_title">Выберите песни для добавления</string>
+  <string name="playlist_add_songs_button">Добавить песни: %1$d</string>
+  <string name="playlist_add_songs_empty_folder_title">Папки с музыкой не найдены</string>
+  <string name="playlist_add_songs_empty_folder_message">Нет доступных папок с песнями.</string>
+  <string name="playlist_add_songs_empty_title">Песни не найдены</string>
+  <string name="playlist_add_songs_empty_message">В этой папке нет доступных песен.</string>
+  <string name="playlist_add_songs_success">Добавлено песен в плейлист: %1$d</string>
+  <string name="ui_no_songs_in_playlist">В плейлисте нет песен</string>
+  <string name="ui_add_songs_to_get_started">Добавьте песни, чтобы начать</string>
+  <string name="ui_songs">Песни</string>
+  <string name="ui_albums">Альбомы</string>
+  <string name="ui_artists">Исполнители</string>
+  <string name="ui_recently_played_disabled_message">Включите эту функцию в расширенных настройках, чтобы отслеживать историю воспроизведения.</string>
+  <plurals name="folder_song_count">
+    <item quantity="one">%1$d песня</item>
+    <item quantity="few">%1$d песни</item>
+    <item quantity="many">%1$d песен</item>
+    <item quantity="other">%1$d песни</item>
+  </plurals>
+  <plurals name="folder_media_item_count">
+    <item quantity="one">%1$d медиафайл</item>
+    <item quantity="few">%1$d медиафайла</item>
+    <item quantity="many">%1$d медиафайлов</item>
+    <item quantity="other">%1$d медиафайла</item>
+  </plurals>
+  <plurals name="folder_video_count">
+    <item quantity="one">%1$d видео</item>
+    <item quantity="few">%1$d видео</item>
+    <item quantity="many">%1$d видео</item>
+    <item quantity="other">%1$d видео</item>
+  </plurals>
   <string name="ui_saved">Сохранено</string>
   <string name="ui_stream_url">URL потока</string>
   <string name="ui_remove_from_playlist">Удалить из плейлиста</string>
