@@ -24,6 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.download.AppDownloadManager
+import app.gyrolet.mpvrx.domain.download.DownloadLocations
+import app.gyrolet.mpvrx.domain.download.DownloadMetadata
+import app.gyrolet.mpvrx.domain.download.DownloadSources
 import app.gyrolet.mpvrx.domain.download.YtdlpDownloadEngine
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
@@ -619,14 +622,31 @@ private fun rememberQualityDownloadAction(viewModel: PlayerViewModel): ((TrackNo
   val ytdlpEngine = koinInject<YtdlpDownloadEngine>()
   var pendingRequest by remember { mutableStateOf<PlayerViewModel.QualityDownloadRequest?>(null) }
 
-  val enqueueRequest: (PlayerViewModel.QualityDownloadRequest) -> Unit = { request ->
-    ytdlpEngine.enqueue(
-      url = request.sourceUrl,
-      title = request.title,
-      directory = downloadManager.locations.linksDir(),
-      formatSelector = request.formatSelector,
-      mergeSeparateStreams = request.mergeSeparateStreams,
-    )
+  val enqueueRequest: (PlayerViewModel.QualityDownloadRequest) -> Unit = enqueue@{ request ->
+    if (request.jellyfinItemId != null) {
+      downloadManager.enqueueVideo(
+        url = request.sourceUrl,
+        directory = downloadManager.locations.linksDir(),
+        fileName = "${DownloadLocations.sanitizeName(request.title)}.${request.fileExtension}",
+        meta =
+          DownloadMetadata(
+            source = DownloadSources.JELLYFIN,
+            title = request.title,
+            sourceUrl = request.sourceUrl,
+            jellyfinItemId = request.jellyfinItemId,
+          ),
+        headers = request.headers,
+      )
+    } else {
+      val formatSelector = request.formatSelector ?: return@enqueue
+      ytdlpEngine.enqueue(
+        url = request.sourceUrl,
+        title = request.title,
+        directory = downloadManager.locations.linksDir(),
+        formatSelector = formatSelector,
+        mergeSeparateStreams = request.mergeSeparateStreams,
+      )
+    }
     Toast.makeText(context, R.string.downloads_queued, Toast.LENGTH_SHORT).show()
   }
   val locationPicker =

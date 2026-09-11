@@ -693,30 +693,42 @@ class PlayerViewModel : ViewModel(),
   data class QualityDownloadRequest(
     val sourceUrl: String,
     val title: String,
-    val formatSelector: String,
-    val mergeSeparateStreams: Boolean,
+    val formatSelector: String? = null,
+    val mergeSeparateStreams: Boolean = false,
+    val headers: Map<String, String> = emptyMap(),
+    val jellyfinItemId: String? = null,
+    val fileExtension: String = "mkv",
   )
 
-  fun canDownloadCurrentVideoQuality(): Boolean = currentYouTubeSource() != null
+  fun canDownloadCurrentVideoQuality(): Boolean =
+    currentYouTubeSource() != null || currentJellyfinVideoSource() != null
 
   fun qualityDownloadRequest(track: TrackNode): QualityDownloadRequest? {
+    val itemTitle = PlaybackSession.state.value.currentItem?.title?.trim()?.takeIf(String::isNotBlank)
+    val jellyfinSource = currentJellyfinVideoSource()
+    if (jellyfinSource != null) {
+      val qualityLabel = videoQualityLabel(track)
+      val baseTitle = itemTitle ?: "Jellyfin"
+      return QualityDownloadRequest(
+        sourceUrl = jellyfinSource.sourceUrl,
+        title = if (qualityLabel.isBlank()) baseTitle else "$qualityLabel - $baseTitle",
+        headers = jellyfinSource.headers,
+        jellyfinItemId = jellyfinSource.itemId,
+        fileExtension = currentVideoContainerExtension(),
+      )
+    }
+
     val sourceUrl = currentYouTubeSource() ?: return null
     val selectedAudio =
       pairedYtdlTrack(track, TrackNode::isAudio)
         ?: allTracks.value.firstOrNull { candidate -> candidate.isAudio && candidate.isSelected }
     val downloadSelection = buildYtdlDownloadSelection(videoTrack = track, audioTrack = selectedAudio) ?: return null
-    val itemTitle = PlaybackSession.state.value.currentItem?.title?.trim()?.takeIf(String::isNotBlank)
     val fallbackTitle =
       runCatching { HttpUtils.extractYouTubeVideoId(Uri.parse(sourceUrl)) }
         .getOrNull()
         ?.takeIf(String::isNotBlank)
         ?: "YouTube"
-    val qualityLabel =
-      buildList {
-        videoQualityDimension(track).takeIf { it > 0L }?.let { dimension -> add("${dimension}p") }
-        track.demuxFps?.takeIf { it > 0.0 }?.toInt()?.let { fps -> add("${fps}fps") }
-        track.codec?.trim()?.takeIf(String::isNotBlank)?.uppercase(Locale.ROOT)?.let(::add)
-      }.joinToString(" ")
+    val qualityLabel = videoQualityLabel(track)
     val baseTitle = itemTitle ?: fallbackTitle
     return QualityDownloadRequest(
       sourceUrl = sourceUrl,
@@ -724,6 +736,48 @@ class PlayerViewModel : ViewModel(),
       formatSelector = downloadSelection.formatSelector,
       mergeSeparateStreams = downloadSelection.mergeSeparateStreams,
     )
+  }
+
+  private fun videoQualityLabel(track: TrackNode): String =
+    buildList {
+      videoQualityDimension(track).takeIf { it > 0L }?.let { dimension -> add("${dimension}p") }
+      track.demuxFps?.takeIf { it > 0.0 }?.toInt()?.let { fps -> add("${fps}fps") }
+      track.codec?.trim()?.takeIf(String::isNotBlank)?.uppercase(Locale.ROOT)?.let(::add)
+    }.joinToString(" ")
+
+  private data class JellyfinVideoSource(
+    val sourceUrl: String,
+    val headers: Map<String, String>,
+    val itemId: String,
+  )
+
+  private fun currentJellyfinVideoSource(): JellyfinVideoSource? {
+    val item = PlaybackSession.state.value.currentItem ?: return null
+    val sourceUrl = item.playableUri.trim().takeIf(String::isNotBlank) ?: return null
+    val uri = runCatching { Uri.parse(sourceUrl) }.getOrNull() ?: return null
+    val videoSegmentIndex = uri.pathSegments.indexOfFirst { it.equals("Videos", ignoreCase = true) }
+    val itemId = uri.pathSegments.getOrNull(videoSegmentIndex + 1)?.takeIf(String::isNotBlank) ?: return null
+    val isStaticStream = runCatching { uri.getQueryParameter("static")?.equals("true", ignoreCase = true) }.getOrNull() == true
+    val hasAuthentication =
+      item.headers.any { (name, value) -> name.equals("X-Emby-Token", ignoreCase = true) && value.isNotBlank() } ||
+        runCatching { !uri.getQueryParameter("api_key").isNullOrBlank() }.getOrDefault(false)
+    return if (videoSegmentIndex >= 0 && isStaticStream && hasAuthentication) {
+      JellyfinVideoSource(sourceUrl = sourceUrl, headers = item.headers, itemId = itemId)
+    } else {
+      null
+    }
+  }
+
+  private fun currentVideoContainerExtension(): String {
+    val format = PlaybackSession.getPropertyString("file-format")?.lowercase(Locale.ROOT).orEmpty()
+    return when {
+      "matroska" in format -> "mkv"
+      "webm" in format -> "webm"
+      "mp4" in format || "mov" in format -> "mp4"
+      "mpegts" in format -> "ts"
+      "avi" in format -> "avi"
+      else -> "mkv"
+    }
   }
 
   fun selectVideoQuality(track: TrackNode) {
@@ -1521,6 +1575,9 @@ class PlayerViewModel : ViewModel(),
   // UI state
   private val _controlsShown = MutableStateFlow(false)
   val controlsShown: StateFlow<Boolean> = _controlsShown.asStateFlow()
+
+  private val _controlsInteractionEpoch = MutableStateFlow(0L)
+  val controlsInteractionEpoch: StateFlow<Long> = _controlsInteractionEpoch.asStateFlow()
 
   private val _seekBarShown = MutableStateFlow(false)
   val seekBarShown: StateFlow<Boolean> = _seekBarShown.asStateFlow()
@@ -4362,6 +4419,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
       }
     }
     _controlsShown.value = true
+    _controlsInteractionEpoch.value++
     controlsVisibleForPolling = true
   }
 

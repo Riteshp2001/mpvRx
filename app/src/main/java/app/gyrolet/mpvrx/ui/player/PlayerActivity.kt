@@ -2012,7 +2012,7 @@ class PlayerActivity :
     if (isAudio) {
       WindowCompat.setDecorFitsSystemWindows(window, true)
       window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-      window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      updateKeepScreenOn()
       window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
       return
     }
@@ -2021,8 +2021,19 @@ class PlayerActivity :
       WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
       WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
     )
-    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    updateKeepScreenOn()
     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+  }
+
+  private fun updateKeepScreenOn(isPaused: Boolean = viewModel.paused == true) {
+    val shouldKeepScreenOn =
+      externalDisplayManager?.isActive != true &&
+        (!isPaused || playerPreferences.keepScreenOnWhenPaused.get())
+    if (shouldKeepScreenOn) {
+      window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    } else {
+      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
   }
 
   private fun onExternalDisplayStateChanged(active: Boolean) {
@@ -3295,6 +3306,7 @@ class PlayerActivity :
     if (!mpvInitialized || !ownsPlaybackSession() || isDeviceScreenOffOrLocked()) return false
     enableVideoAfterBackground()
     viewModel.setAmbientLifecycleActive(true)
+    updateKeepScreenOn()
     return true
   }
 
@@ -3322,6 +3334,7 @@ class PlayerActivity :
             wasPlayingBeforePause = false
             if (viewModel.paused == true && !isFinishing && !isUserFinishing) {
               viewModel.unpause()
+              updateKeepScreenOn(isPaused = false)
             }
             return@launch
           }
@@ -3952,14 +3965,7 @@ class PlayerActivity :
    * @param isPaused true if playback is paused, false if playing
    */
   private fun handlePauseStateChange(isPaused: Boolean) {
-    if (isPaused) {
-      // Only clear keep-screen-on if the preference is NOT enabled
-      if (!playerPreferences.keepScreenOnWhenPaused.get()) {
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-      }
-    } else {
-      window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-    }
+    updateKeepScreenOn(isPaused)
     updateMediaSessionPlaybackState(!isPaused)
     runCatching {
       if (isInPictureInPictureMode) {

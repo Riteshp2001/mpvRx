@@ -219,6 +219,7 @@ fun PlayerControls(
   val showControlsDrawer by playerPreferences.showControlsDrawer.collectAsState()
   val interactionSource = remember { MutableInteractionSource() }
   val controlsShown by viewModel.controlsShown.collectAsState()
+  val controlsInteractionEpoch by viewModel.controlsInteractionEpoch.collectAsState()
   val tvPlayFocusRequester = rememberTvInitialFocusRequester(enabled = controlsShown)
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
@@ -522,6 +523,7 @@ fun PlayerControls(
 
   LaunchedEffect(
     controlsShown,
+    controlsInteractionEpoch,
     paused,
     isSeeking,
     resetControlsTimestamp,
