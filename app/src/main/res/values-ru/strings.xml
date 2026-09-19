@@ -2391,4 +2391,23 @@
   <string name="audio_swipe_delete_folder_message">Безвозвратно удалить %1$d аудиофайлов из %2$s и вложенных папок? Остальные файлы и папки будут сохранены. Это действие нельзя отменить.</string>
   <string name="audio_swipe_loading">Сбор аудиофайлов</string>
   <string name="audio_swipe_folder_empty">В этой папке нет аудиофайлов</string>
+  <string name="playlist_source_local">Локальные медиа</string>
+  <string name="playlist_source_network">Сеть</string>
+  <string name="playlist_unavailable_connection">Сетевое подключение этого видео удалено</string>
+  <string name="playlist_unavailable_offline">Сетевое подключение этого видео недоступно</string>
+  <string name="playlist_unavailable_auth">Ошибка аутентификации — проверьте настройки подключения</string>
+  <string name="playlist_connecting_network">Подключение к сетевой папке…</string>
+  <string name="playlist_source_not_connected">Сетевое подключение этого видео не установлено — подключите его на вкладке «Сеть»</string>
+  <string name="playlist_unavailable_file">был перемещён или удалён</string>
+  <string name="playlist_item_unavailable">«%1$s» %2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">Удалить %1$d видео из плейлиста?</item>
+    <item quantity="other">Удалить %1$d видео из плейлиста?</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">Выбранное видео будет удалено из этого плейлиста. Исходный файл не будет удалён.</item>
+    <item quantity="other">Выбранные видео будут удалены из этого плейлиста. Исходные файлы не будут удалены.</item>
+  </plurals>
+  <string name="playlist_connect_source_title">Нет подключённых источников</string>
+  <string name="playlist_connect_source_message">Сначала подключите источник на вкладке «Сеть» — здесь показываются только подключённые источники.</string>
 </resources>

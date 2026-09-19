@@ -1511,7 +1511,24 @@
   <string name="playlist_add_songs_empty_folder_message">No folders with songs are available.</string>
   <string name="playlist_add_songs_empty_title">No songs found</string>
   <string name="playlist_add_songs_empty_message">No songs are available in this folder.</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">Remove %1$d video from playlist?</item>
+    <item quantity="other">Remove %1$d videos from playlist?</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">The selected video will be removed from this playlist. The original file will not be deleted.</item>
+    <item quantity="other">The selected videos will be removed from this playlist. The original files will not be deleted.</item>
+  </plurals>
   <string name="playlist_add_songs_success">Added %1$d songs to playlist</string>
+  <string name="playlist_source_local">Local media</string>
+  <string name="playlist_source_network">Network</string>
+  <string name="playlist_unavailable_connection">Its network connection was deleted</string>
+  <string name="playlist_unavailable_offline">Its network connection is unavailable</string>
+  <string name="playlist_unavailable_auth">Authentication failed — check the connection settings</string>
+  <string name="playlist_connecting_network">Connecting to the network share…</string>
+  <string name="playlist_source_not_connected">This video\'s network connection isn\'t connected — connect it on the Network tab</string>
+  <string name="playlist_unavailable_file">has been moved or deleted</string>
+  <string name="playlist_item_unavailable">\"%1$s\" %2$s</string>
   <string name="ui_no_songs_in_playlist">No songs in playlist</string>
   <string name="ui_add_songs_to_get_started">Add songs to get started</string>
   <string name="ui_recently_played_disabled_message">Enable it in Advanced Settings to track your playback history.</string>
@@ -2418,4 +2435,6 @@
   <string name="audio_swipe_delete_folder_message">Permanently delete %1$d audio files in %2$s and its subfolders? Other files and folders will be kept. This cannot be undone.</string>
   <string name="audio_swipe_loading">Collecting audio files</string>
   <string name="audio_swipe_folder_empty">No audio files found in this folder</string>
+  <string name="playlist_connect_source_title">No connected sources</string>
+  <string name="playlist_connect_source_message">Connect a source on the Network tab first — only connected sources appear here.</string>
 </resources>

@@ -2383,4 +2383,23 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="audio_swipe_delete_folder_message">%1$d Audiodateien in %2$s und dessen Unterordnern dauerhaft löschen? Andere Dateien und Ordner bleiben erhalten. Dies kann nicht rückgängig gemacht werden.</string>
   <string name="audio_swipe_loading">Audiodateien werden gesammelt</string>
   <string name="audio_swipe_folder_empty">Keine Audiodateien in diesem Ordner gefunden</string>
+  <string name="playlist_source_local">Lokale Medien</string>
+  <string name="playlist_source_network">Netzwerk</string>
+  <string name="playlist_unavailable_connection">Die zugehörige Netzwerkverbindung wurde gelöscht</string>
+  <string name="playlist_unavailable_offline">Die zugehörige Netzwerkverbindung ist nicht verfügbar</string>
+  <string name="playlist_unavailable_auth">Authentifizierung fehlgeschlagen – prüfe die Verbindungseinstellungen</string>
+  <string name="playlist_connecting_network">Verbindung zum Netzwerkspeicher wird hergestellt…</string>
+  <string name="playlist_source_not_connected">Die Netzwerkverbindung dieses Videos ist nicht verbunden – stelle sie im Tab „Netzwerk“ her</string>
+  <string name="playlist_unavailable_file">wurde verschoben oder gelöscht</string>
+  <string name="playlist_item_unavailable">„%1$s“ %2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">%1$d Video aus der Wiedergabeliste entfernen?</item>
+    <item quantity="other">%1$d Videos aus der Wiedergabeliste entfernen?</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">Das ausgewählte Video wird aus dieser Wiedergabeliste entfernt. Die Originaldatei wird nicht gelöscht.</item>
+    <item quantity="other">Die ausgewählten Videos werden aus dieser Wiedergabeliste entfernt. Die Originaldateien werden nicht gelöscht.</item>
+  </plurals>
+  <string name="playlist_connect_source_title">Keine verbundenen Quellen</string>
+  <string name="playlist_connect_source_message">Verbinde zuerst eine Quelle im Tab „Netzwerk“ – hier erscheinen nur verbundene Quellen.</string>
 </resources>

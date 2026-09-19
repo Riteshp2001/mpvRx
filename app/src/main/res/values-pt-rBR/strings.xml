@@ -2383,4 +2383,23 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="audio_swipe_delete_folder_message">Excluir permanentemente %1$d arquivos de áudio de %2$s e suas subpastas? Outros arquivos e pastas serão mantidos. Esta ação não pode ser desfeita.</string>
   <string name="audio_swipe_loading">Reunindo arquivos de áudio</string>
   <string name="audio_swipe_folder_empty">Nenhum arquivo de áudio encontrado nesta pasta</string>
+  <string name="playlist_source_local">Mídia local</string>
+  <string name="playlist_source_network">Rede</string>
+  <string name="playlist_unavailable_connection">A conexão de rede dele foi excluída</string>
+  <string name="playlist_unavailable_offline">A conexão de rede dele está indisponível</string>
+  <string name="playlist_unavailable_auth">Falha na autenticação — verifique as configurações da conexão</string>
+  <string name="playlist_connecting_network">Conectando ao compartilhamento de rede…</string>
+  <string name="playlist_source_not_connected">A conexão de rede deste vídeo não está conectada — conecte-a na aba Rede</string>
+  <string name="playlist_unavailable_file">foi movido ou excluído</string>
+  <string name="playlist_item_unavailable">“%1$s” %2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">Remover %1$d vídeo da playlist?</item>
+    <item quantity="other">Remover %1$d vídeos da playlist?</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">O vídeo selecionado será removido desta playlist. O arquivo original não será excluído.</item>
+    <item quantity="other">Os vídeos selecionados serão removidos desta playlist. Os arquivos originais não serão excluídos.</item>
+  </plurals>
+  <string name="playlist_connect_source_title">Nenhuma fonte conectada</string>
+  <string name="playlist_connect_source_message">Conecte uma fonte primeiro na aba Rede — só fontes conectadas aparecem aqui.</string>
 </resources>

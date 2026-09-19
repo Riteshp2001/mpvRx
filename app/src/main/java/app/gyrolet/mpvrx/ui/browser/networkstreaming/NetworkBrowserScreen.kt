@@ -26,11 +26,13 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,10 +54,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.widget.Toast
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.database.repository.PlaylistItemInput
+import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkPath
+import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.NetworkBookmarkPreferences
@@ -71,6 +78,7 @@ import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.dialogs.NetworkSortDialog
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistDetailScreen
+import app.gyrolet.mpvrx.ui.browser.selection.rememberSelectionManager
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -79,6 +87,10 @@ import app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.ui.utils.popUpTo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -87,14 +99,25 @@ data class NetworkBrowserScreen(
   val connectionId: Long,
   val connectionName: String,
   val currentPath: String = "/",
+  /**
+   * When set, the browser runs as a picker for that playlist: selecting files is enabled and
+   * confirming writes them via `PlaylistRepository`. Null means the normal browse/play mode.
+   */
+  val targetPlaylistId: Int? = null,
+  /** Media type of the target playlist; decides what the picker may offer. Null outside picker use. */
+  val targetPlaylistIsAudio: Boolean? = null,
 ) : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
     val bookmarkPreferences = koinInject<NetworkBookmarkPreferences>()
+    val playlistRepository = koinInject<PlaylistRepository>()
+
+    val selectionMode = targetPlaylistId != null
 
     val networkSortType by browserPreferences.networkSortType.collectAsState()
     val networkSortOrder by browserPreferences.networkSortOrder.collectAsState()
@@ -148,12 +171,76 @@ data class NetworkBrowserScreen(
       }
     }
 
-    BackHandler {
-      if (isSearching) {
-        isSearching = false
-        searchQuery = ""
+    // Picker mode: what may be added is decided by the target playlist's own media type, matching
+    // how the local flow filters (video.path == isAudio). Outside picker mode the browser keeps
+    // following its include-audio preference.
+    fun isSelectable(file: NetworkFile): Boolean =
+      when (targetPlaylistIsAudio) {
+        null -> file.isPlayableNetworkMedia(includeAudioInBrowser)
+        true -> file.isPlayableNetworkAudio()
+        false -> file.isPlayableNetworkVideo()
+      }
+
+    // Only the media files currently visible (search applied) are selectable, so select-all and
+    // select-invert match what the user can actually see.
+    val selectableVideos =
+      remember(files, includeAudioInBrowser, searchQuery, targetPlaylistIsAudio) {
+        val visible =
+          if (searchQuery.isBlank()) files else files.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        visible.filter(::isSelectable)
+      }
+
+    // Membership set: the list also renders files the picker cannot add (e.g. .m3u), and toggling
+    // one would count it without getSelectedItems() ever returning it.
+    val selectablePaths = remember(selectableVideos) { selectableVideos.mapTo(mutableSetOf()) { it.path } }
+
+    val selectionManager =
+      if (selectionMode) {
+        rememberSelectionManager(
+          items = selectableVideos,
+          getId = { it.path },
+          onDeleteItems = { _, _ -> Pair(0, 0) },
+        )
       } else {
-        backstack.popSafely()
+        null
+      }
+
+    fun addSelectedToPlaylist() {
+      val target = targetPlaylistId ?: return
+      val selected = selectionManager?.getSelectedItems().orEmpty()
+      if (selected.isEmpty()) return
+      scope.launch {
+        withContext(Dispatchers.IO) {
+          playlistRepository.addItemsToPlaylist(
+            target,
+            selected.map { file ->
+              PlaylistItemInput(
+                filePath = NetworkPlaybackUri.create(connectionId, file.path),
+                fileName = file.name,
+                // -1 means the share did not report a size.
+                fileSize = file.size.takeIf { it > 0L },
+              )
+            },
+          )
+        }
+        Toast.makeText(
+          context,
+          context.getString(R.string.playlist_add_videos_success, selected.size),
+          Toast.LENGTH_SHORT,
+        ).show()
+        // Leave the whole picker flow (this browser plus the source picker that opened it).
+        backstack.popUpTo { it is PlaylistDetailScreen }
+      }
+    }
+
+    BackHandler {
+      when {
+        isSearching -> {
+          isSearching = false
+          searchQuery = ""
+        }
+        selectionManager?.isInSelectionMode == true -> selectionManager.clear()
+        else -> backstack.popSafely()
       }
     }
 
@@ -198,11 +285,17 @@ data class NetworkBrowserScreen(
         } else {
           BrowserTopBar(
             title = connectionName,
-            isInSelectionMode = false,
-            selectedCount = 0,
-            totalCount = files.size,
-            onBackClick = { backstack.popSafely() },
-            onCancelSelection = {},
+            isInSelectionMode = selectionManager?.isInSelectionMode == true,
+            selectedCount = selectionManager?.selectedCount ?: 0,
+            totalCount = if (selectionMode) selectableVideos.size else files.size,
+            onBackClick = {
+              if (selectionManager?.isInSelectionMode == true) {
+                selectionManager.clear()
+              } else {
+                backstack.popSafely()
+              }
+            },
+            onCancelSelection = { selectionManager?.clear() },
             onSortClick = { sortDialogOpen.value = true },
             onSearchClick = { isSearching = true },
             onSettingsClick = {
@@ -214,9 +307,9 @@ data class NetworkBrowserScreen(
             onInfoClick = null,
             onShareClick = null,
             onPlayClick = null,
-            onSelectAll = null,
-            onInvertSelection = null,
-            onDeselectAll = null,
+            onSelectAll = selectionManager?.let { { it.selectAll() } },
+            onInvertSelection = selectionManager?.let { { it.invertSelection() } },
+            onDeselectAll = selectionManager?.let { { it.clear() } },
             additionalActions = {
               if (canBookmarkCurrentFolder) {
                 IconButton(
@@ -253,6 +346,19 @@ data class NetworkBrowserScreen(
           )
         }
       },
+      bottomBar = {
+        val selectedCount = selectionManager?.selectedCount ?: 0
+        if (selectionMode && selectedCount > 0) {
+          Surface(tonalElevation = 3.dp) {
+            Button(
+              onClick = { addSelectedToPlaylist() },
+              modifier = Modifier.fillMaxWidth().padding(16.dp),
+            ) {
+              Text(stringResource(R.string.playlist_add_videos_button, selectedCount))
+            }
+          }
+        }
+      },
     ) { padding ->
       NetworkBrowserContent(
         files = files,
@@ -266,7 +372,8 @@ data class NetworkBrowserScreen(
         manualGridColumnsEnabled = manualGridColumnsEnabled,
         videoGridColumnsPortrait = videoGridColumnsPortrait,
         videoGridColumnsLandscape = videoGridColumnsLandscape,
-        includeAudio = includeAudioInBrowser,
+        // Upstream added the manual-grid columns; the picker keeps overriding include-audio.
+        includeAudio = targetPlaylistIsAudio ?: includeAudioInBrowser,
         searchQuery = searchQuery,
         onRefresh = { viewModel.loadFiles() },
         onFolderClick = { folder ->
@@ -275,12 +382,23 @@ data class NetworkBrowserScreen(
               connectionId = connectionId,
               connectionName = connectionName,
               currentPath = folder.path,
+              targetPlaylistId = targetPlaylistId,
+              targetPlaylistIsAudio = targetPlaylistIsAudio,
             ),
           )
         },
         onVideoClick = { video ->
-          viewModel.openMedia(video)
+          if (selectionMode) {
+            if (video.path in selectablePaths) selectionManager?.toggle(video)
+          } else {
+            viewModel.openMedia(video)
+          }
         },
+        onVideoLongClick =
+          selectionManager?.let { manager ->
+            { video: NetworkFile -> manager.handleLongClick(video) }
+          },
+        isVideoSelected = { video -> selectionManager?.isSelected(video) == true },
         modifier = Modifier.padding(padding),
       )
 
@@ -310,6 +428,8 @@ private fun NetworkBrowserContent(
   onRefresh: suspend () -> Unit,
   onFolderClick: (NetworkFile) -> Unit,
   onVideoClick: (NetworkFile) -> Unit,
+  onVideoLongClick: ((NetworkFile) -> Unit)? = null,
+  isVideoSelected: (NetworkFile) -> Boolean = { false },
   modifier: Modifier = Modifier,
 ) {
   val sortedFiles =
@@ -496,6 +616,8 @@ private fun NetworkBrowserContent(
                       file = video,
                       connection = conn,
                       onClick = { onVideoClick(video) },
+                      onLongClick = onVideoLongClick?.let { handler -> { handler(video) } },
+                      isSelected = isVideoSelected(video),
                       isGridMode = true,
                       modifier = Modifier,
                     )
@@ -555,6 +677,8 @@ private fun NetworkBrowserContent(
                       file = video,
                       connection = conn,
                       onClick = { onVideoClick(video) },
+                      onLongClick = onVideoLongClick?.let { handler -> { handler(video) } },
+                      isSelected = isVideoSelected(video),
                       isGridMode = false,
                       modifier = Modifier,
                     )

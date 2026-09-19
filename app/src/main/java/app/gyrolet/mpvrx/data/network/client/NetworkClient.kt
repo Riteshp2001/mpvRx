@@ -59,3 +59,14 @@ interface NetworkClient {
    */
   suspend fun getFileUri(path: String): Result<Uri>
 }
+
+/**
+ * The server rejected the stored credentials (as opposed to being unreachable).
+ *
+ * Clients throw this instead of leaking their protocol library's own error type, so callers can
+ * tell "wrong password" apart from "server offline" without depending on that library.
+ */
+class NetworkAuthenticationException(
+  message: String,
+  cause: Throwable? = null,
+) : IllegalStateException(message, cause)

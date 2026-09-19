@@ -154,7 +154,9 @@ class WebDavClient(
         try {
           candidate.list(buildUrl("", trailingSlash = true), 0)
         } catch (probeError: SardineException) {
-          if (probeError.statusCode == 401 || probeError.statusCode == 403) throw probeError
+          if (probeError.statusCode == 401 || probeError.statusCode == 403) {
+            throw NetworkAuthenticationException("WebDAV rejected the saved credentials", probeError)
+          }
         }
 
         sardine = candidate

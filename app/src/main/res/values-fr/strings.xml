@@ -2383,4 +2383,23 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="audio_swipe_delete_folder_message">Supprimer définitivement %1$d fichiers audio dans %2$s et ses sous-dossiers ? Les autres fichiers et dossiers seront conservés. Cette action est irréversible.</string>
   <string name="audio_swipe_loading">Recherche des fichiers audio</string>
   <string name="audio_swipe_folder_empty">Aucun fichier audio trouvé dans ce dossier</string>
+  <string name="playlist_source_local">Médias locaux</string>
+  <string name="playlist_source_network">Réseau</string>
+  <string name="playlist_unavailable_connection">Sa connexion réseau a été supprimée</string>
+  <string name="playlist_unavailable_offline">Sa connexion réseau est indisponible</string>
+  <string name="playlist_unavailable_auth">Échec de l\'authentification — vérifiez les paramètres de connexion</string>
+  <string name="playlist_connecting_network">Connexion au partage réseau…</string>
+  <string name="playlist_source_not_connected">La connexion réseau de cette vidéo n\'est pas établie — connectez-la dans l\'onglet Réseau</string>
+  <string name="playlist_unavailable_file">a été déplacé ou supprimé</string>
+  <string name="playlist_item_unavailable">« %1$s » %2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">Retirer %1$d vidéo de la liste de lecture ?</item>
+    <item quantity="other">Retirer %1$d vidéos de la liste de lecture ?</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">La vidéo sélectionnée sera retirée de cette liste de lecture. Le fichier d\'origine ne sera pas supprimé.</item>
+    <item quantity="other">Les vidéos sélectionnées seront retirées de cette liste de lecture. Les fichiers d\'origine ne seront pas supprimés.</item>
+  </plurals>
+  <string name="playlist_connect_source_title">Aucune source connectée</string>
+  <string name="playlist_connect_source_message">Connectez d\'abord une source dans l\'onglet Réseau — seules les sources connectées apparaissent ici.</string>
 </resources>

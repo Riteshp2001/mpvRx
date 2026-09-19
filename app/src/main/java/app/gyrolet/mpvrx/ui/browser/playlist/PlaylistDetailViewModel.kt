@@ -10,28 +10,40 @@
 package app.gyrolet.mpvrx.ui.browser.playlist
 
 import android.app.Application
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistItemEntity
+import app.gyrolet.mpvrx.database.repository.PlaylistItemInput
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import android.net.Uri
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.domain.network.ConnectionStatus
+import app.gyrolet.mpvrx.domain.network.NetworkConnection
+import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
+import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.repository.MediaFileRepository
+import app.gyrolet.mpvrx.repository.NetworkProbeResult
+import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.player.extractLocalPath
 import app.gyrolet.mpvrx.ui.player.resolveUri
 import app.gyrolet.mpvrx.utils.media.M3UParser
+import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
@@ -39,6 +51,18 @@ import java.io.File
 data class PlaylistVideoItem(
   val playlistItem: PlaylistItemEntity,
   val video: Video,
+  val isNetwork: Boolean = false,
+  /** Backing connection for network entries; null for local files. Drives the source warning dot. */
+  val connectionId: Long? = null,
+  /** Network transport of the backing connection; null means the entry is a local file. */
+  val protocol: NetworkProtocol? = null,
+  /** Display name of the backing connection; null for local files. */
+  val connectionName: String? = null,
+  /** Share-relative path for network entries, parent directory for local ones. */
+  val sourcePath: String? = null,
+  val isAvailable: Boolean = true,
+  /** String resource appended to the item name when the entry cannot be played. Null while [isAvailable]. */
+  @androidx.annotation.StringRes val unavailableReasonRes: Int? = null,
 )
 
 class PlaylistDetailViewModel(
@@ -47,6 +71,7 @@ class PlaylistDetailViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playlistRepository: PlaylistRepository by inject()
+  private val networkRepository: NetworkRepository by inject()
   // Using MediaFileRepository singleton directly
 
   private val _playlist = MutableStateFlow<PlaylistEntity?>(null)
@@ -63,8 +88,17 @@ class PlaylistDetailViewModel(
   private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+  /**
+   * Live per-connection status, read straight from [NetworkRepository] so the playlist's source
+   * dots always agree with what the Network tab shows for the same connection.
+   */
+  val connectionStatuses: StateFlow<Map<Long, ConnectionStatus>> = networkRepository.connectionStatuses
+
   companion object {
     private const val TAG = "PlaylistDetailViewModel"
+
+    /** Upper bound on the pre-playback reachability probe; see [probeIfNetwork]. */
+    private const val NETWORK_PROBE_TIMEOUT_MS = 6_000L
 
     fun factory(
       application: Application,
@@ -92,7 +126,13 @@ class PlaylistDetailViewModel(
 
     // Observe playlist items and load video metadata
     viewModelScope.launch(Dispatchers.IO) {
-      playlistRepository.observePlaylistItems(playlistId).collectLatest { items ->
+      combine(
+        playlistRepository.observePlaylistItems(playlistId),
+        // Connections are part of the input: deleting or re-creating one must re-evaluate every
+        // entry that references it instead of waiting for the playlist itself to be reloaded.
+        networkRepository.observeAllConnectionsIncludingDeleted(),
+      ) { items, connections -> items to connections }
+        .collectLatest { (items, connections) ->
         _isLoading.value = true
         try {
           if (items.isEmpty()) {
@@ -108,20 +148,31 @@ class PlaylistDetailViewModel(
               Log.d(TAG, "Loaded ${videoItems.size} M3U playlist items")
               _videoItems.value = videoItems
             } else {
-              // For regular playlists, use the existing logic with MediaFileRepository
-              val fileObjects = items.map { item ->
-                when {
-                  item.filePath.startsWith("content://") || item.filePath.startsWith("file://") -> {
-                    val uri = Uri.parse(item.filePath)
-                    val resolved = uri.resolveUri(getApplication(), allowFdFallback = false)
-                    if (!resolved.isNullOrBlank()) File(resolved) else File(uri.path ?: item.filePath)
-                  }
-                  else -> File(item.filePath)
-                }
-              }
+              val networkRefs = items.map { NetworkPlaybackUri.parse(it.filePath) }
+              val connectionsById = connections.associateBy { it.id }
 
-              // Get unique bucket IDs from playlist items' parent folders
-              val bucketIds = fileObjects.mapNotNull { it.parent }.filter { it.isNotBlank() }.toSet()
+              // For regular playlists, use the existing logic with MediaFileRepository
+              val fileObjects =
+                items.map { item ->
+                  when {
+                    item.filePath.startsWith("content://") || item.filePath.startsWith("file://") -> {
+                      val uri = Uri.parse(item.filePath)
+                      val resolved = uri.resolveUri(getApplication(), allowFdFallback = false)
+                      if (!resolved.isNullOrBlank()) File(resolved) else File(uri.path ?: item.filePath)
+                    }
+                    else -> File(item.filePath)
+                  }
+                }
+
+              // Get unique bucket IDs from local playlist items' parent folders.
+              // Network entries are excluded: their paths are not filesystem paths and would
+              // otherwise inject junk buckets into the MediaStore lookup.
+              val bucketIds =
+                items.indices
+                  .filter { networkRefs[it] == null }
+                  .mapNotNull { fileObjects[it].parent }
+                  .filter { it.isNotBlank() }
+                  .toSet()
 
               // Get all videos and audio files from those folders (uses cache)
               val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
@@ -129,15 +180,22 @@ class PlaylistDetailViewModel(
               // Match videos by path, maintaining playlist order
               val videoItems =
                 items.mapIndexedNotNull { index, item ->
-                  val file = fileObjects.getOrNull(index) ?: File(item.filePath)
-                  val isAudioFile = FileTypeUtils.isAudioFile(file)
-                  val matchedVideo = allVideos.find { video ->
-                    video.path == item.filePath ||
-                      video.path == file.absolutePath ||
-                      video.uri.toString() == item.filePath
+                  val networkRef = networkRefs[index]
+                  if (networkRef != null) {
+                    return@mapIndexedNotNull buildNetworkVideoItem(item, networkRef, connectionsById[networkRef.connectionId])
                   }
+
+                  val file = fileObjects.getOrNull(index) ?: File(item.filePath)
+                  val fileExists = file.exists()
+                  val isAudioFile = FileTypeUtils.isAudioFile(file)
+                  val matchedVideo =
+                    allVideos.find { video ->
+                      video.path == item.filePath ||
+                        video.path == file.absolutePath ||
+                        video.uri.toString() == item.filePath
+                    }
                   val video = (matchedVideo?.let { if (isAudioFile && !it.isAudio) it.copy(isAudio = true) else it }) ?: run {
-                    if (file.exists()) {
+                    if (fileExists) {
                       MediaFileRepository.getVideosFromFiles(getApplication(), listOf(file)).firstOrNull()?.let {
                         if (isAudioFile && !it.isAudio) it.copy(isAudio = true) else it
                       }
@@ -145,20 +203,21 @@ class PlaylistDetailViewModel(
                       null
                     }
                   } ?: run {
-                    val rawUri = when {
-                      item.filePath.startsWith("content://") || item.filePath.startsWith("http://") || item.filePath.startsWith("https://") -> Uri.parse(item.filePath)
-                      file.exists() -> Uri.fromFile(file)
-                      else -> Uri.parse(item.filePath)
-                    }
+                    val rawUri =
+                      when {
+                        item.filePath.startsWith("content://") || item.filePath.startsWith("http://") || item.filePath.startsWith("https://") -> Uri.parse(item.filePath)
+                        fileExists -> Uri.fromFile(file)
+                        else -> Uri.parse(item.filePath)
+                      }
                     Video(
                       id = item.id.toLong(),
                       title = item.fileName,
                       displayName = item.fileName,
-                      path = if (file.exists()) file.absolutePath else item.filePath,
+                      path = if (fileExists) file.absolutePath else item.filePath,
                       uri = rawUri,
                       duration = 0L,
                       durationFormatted = "--",
-                      size = if (file.exists()) file.length() else 0L,
+                      size = if (fileExists) file.length() else 0L,
                       sizeFormatted = "--",
                       dateModified = item.addedAt,
                       dateAdded = item.addedAt,
@@ -172,7 +231,14 @@ class PlaylistDetailViewModel(
                       isAudio = isAudioFile,
                     )
                   }
-                  PlaylistVideoItem(item, video)
+                  val available = matchedVideo != null || isLocalEntryAvailable(item.filePath, fileExists)
+                  PlaylistVideoItem(
+                    playlistItem = item,
+                    video = video,
+                    sourcePath = file.parent,
+                    isAvailable = available,
+                    unavailableReasonRes = if (available) null else R.string.playlist_unavailable_file,
+                  )
                 }
 
               Log.d(TAG, "Loaded ${videoItems.size} items out of ${items.size} playlist items")
@@ -209,18 +275,27 @@ class PlaylistDetailViewModel(
           _videoItems.value = buildM3UVideoItems(playlist, items)
         } else {
           // For regular playlists, use existing logic
+          val networkRefs = items.map { NetworkPlaybackUri.parse(it.filePath) }
+          val connectionsById = networkRepository.getAllConnectionsIncludingDeleted().associateBy { it.id }
           val bucketIds =
             items
+              .filterIndexed { index, _ -> networkRefs[index] == null }
               .map { item ->
                 File(item.filePath).parent ?: ""
               }.toSet()
           val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
           val videoItems =
-            items.mapNotNull { item ->
+            items.mapIndexedNotNull { index, item ->
+              val networkRef = networkRefs[index]
+              if (networkRef != null) {
+                return@mapIndexedNotNull buildNetworkVideoItem(item, networkRef, connectionsById[networkRef.connectionId])
+              }
+
+              val file = File(item.filePath)
+              val fileExists = file.exists()
+              val isAudioFile = FileTypeUtils.isAudioFile(file)
               val matchedVideo = allVideos.find { video -> video.path == item.filePath }
               val video = matchedVideo ?: run {
-                val file = File(item.filePath)
-                val isAudioFile = FileTypeUtils.isAudioFile(file)
                 Video(
                   id = item.id.toLong(),
                   title = item.fileName,
@@ -229,7 +304,7 @@ class PlaylistDetailViewModel(
                   uri = android.net.Uri.fromFile(file),
                   duration = 0L,
                   durationFormatted = "--",
-                  size = if (file.exists()) file.length() else 0L,
+                  size = if (fileExists) file.length() else 0L,
                   sizeFormatted = "--",
                   dateModified = item.addedAt,
                   dateAdded = item.addedAt,
@@ -243,7 +318,14 @@ class PlaylistDetailViewModel(
                   isAudio = isAudioFile,
                 )
               }
-              PlaylistVideoItem(item, video)
+              val available = matchedVideo != null || isLocalEntryAvailable(item.filePath, fileExists)
+              PlaylistVideoItem(
+                playlistItem = item,
+                video = video,
+                sourcePath = file.parent,
+                isAvailable = available,
+                unavailableReasonRes = if (available) null else R.string.playlist_unavailable_file,
+              )
             }
           _videoItems.value = videoItems
         }
@@ -271,6 +353,29 @@ class PlaylistDetailViewModel(
     }
   }
 
+  /**
+   * Null for local entries — there is nothing to probe. For network entries, classifies whether
+   * the backing connection is usable *before* the player opens, so an offline server produces a
+   * prompt instead of a long misleading "loading" state.
+   *
+   * Bounded: a route that silently drops packets would otherwise wait out the HTTP client's own
+   * connect timeout. A premature UNREACHABLE is recoverable — tapping the entry again re-probes.
+   */
+  suspend fun probeIfNetwork(item: PlaylistVideoItem): NetworkProbeResult? {
+    if (!item.isNetwork) return null
+    val ref = NetworkPlaybackUri.parse(item.playlistItem.filePath) ?: return NetworkProbeResult.UNREACHABLE
+    val connection = networkRepository.getConnectionById(ref.connectionId) ?: return NetworkProbeResult.UNREACHABLE
+    val startedAt = SystemClock.elapsedRealtime()
+    val result =
+      withTimeoutOrNull(NETWORK_PROBE_TIMEOUT_MS) { networkRepository.probe(connection) }
+        ?: NetworkProbeResult.UNREACHABLE
+    Log.d(
+      TAG,
+      "Probe connection=${ref.connectionId} -> $result in ${SystemClock.elapsedRealtime() - startedAt}ms",
+    )
+    return result
+  }
+
   suspend fun removeVideosFromPlaylist(videos: List<Video>) {
     val items = playlistRepository.getPlaylistItems(playlistId)
     val videoPaths = videos.map { it.path }.toSet()
@@ -281,7 +386,7 @@ class PlaylistDetailViewModel(
   suspend fun addVideosToPlaylist(videos: List<Video>) {
     val isAudio = _playlist.value?.isAudio ?: return
     val compatibleVideos = videos.filter { it.isAudio == isAudio }
-    playlistRepository.addItemsToPlaylist(playlistId, compatibleVideos.map { it.path to it.displayName })
+    playlistRepository.addItemsToPlaylist(playlistId, compatibleVideos.map { PlaylistItemInput(it.path, it.displayName) })
   }
 
   suspend fun updatePlayHistory(
@@ -321,6 +426,73 @@ class PlaylistDetailViewModel(
   suspend fun toggleFavorite(itemId: Int) {
     playlistRepository.toggleFavorite(itemId)
   }
+
+
+  /**
+   * Builds a playlist entry backed by a saved network connection.
+   *
+   * Availability is deliberately shallow: only the connection *config* is checked, never the
+   * server. Probing reachability here would block list loading, and a connection that is simply
+   * offline must not be reported as missing — that case is left to the player's error path.
+   */
+  private fun buildNetworkVideoItem(
+    item: PlaylistItemEntity,
+    ref: NetworkPlaybackUri.Reference,
+    connection: NetworkConnection?,
+  ): PlaylistVideoItem {
+    val isAudioFile = FileTypeUtils.isAudioFile(File(item.fileName))
+    // A tombstoned connection still names the share it pointed at, so the badge keeps saying
+    // "WebDAV", but it is not usable: the row exists only so a re-created connection can revive it.
+    val available = connection != null && !connection.isDeleted
+    return PlaylistVideoItem(
+      playlistItem = item,
+      video =
+        Video(
+          id = item.id.toLong(),
+          title = item.fileName,
+          displayName = item.fileName,
+          path = item.filePath,
+          uri = Uri.parse(item.filePath),
+          duration = 0L,
+          durationFormatted = "--",
+          size = item.fileSize ?: 0L,
+          sizeFormatted = item.fileSize?.let { MediaUtils.formatFileSize(it) } ?: "--",
+          dateModified = item.addedAt,
+          dateAdded = item.addedAt,
+          mimeType = if (isAudioFile) "audio/*" else "video/*",
+          bucketId = "network_${ref.connectionId}",
+          bucketDisplayName = connection?.name ?: "",
+          width = 0,
+          height = 0,
+          fps = 0f,
+          resolution = "--",
+          isAudio = isAudioFile,
+        ),
+      isNetwork = true,
+      connectionId = ref.connectionId,
+      protocol = connection?.protocol,
+      connectionName = connection?.name,
+      sourcePath = ref.path.value,
+      isAvailable = available,
+      unavailableReasonRes = if (available) null else R.string.playlist_unavailable_connection,
+    )
+  }
+
+  /**
+   * Only plain filesystem paths can be judged with [File.exists]. A `content://` entry needs a
+   * provider and `http(s)://` is remote, so neither can be probed here — both stay playable
+   * rather than risking a false "missing" report.
+   */
+  private fun isLocalEntryAvailable(
+    filePath: String,
+    fileExists: Boolean,
+  ): Boolean =
+    when {
+      filePath.startsWith("content://", ignoreCase = true) -> true
+      filePath.startsWith("http://", ignoreCase = true) -> true
+      filePath.startsWith("https://", ignoreCase = true) -> true
+      else -> fileExists
+    }
 
   private suspend fun buildM3UVideoItems(
     playlist: PlaylistEntity?,

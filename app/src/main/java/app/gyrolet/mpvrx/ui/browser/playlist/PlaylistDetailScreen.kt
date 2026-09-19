@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -71,12 +72,15 @@ import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistItemEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.domain.network.ConnectionStatus
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.repository.NetworkProbeResult
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.cards.M3UVideoCard
+import app.gyrolet.mpvrx.ui.browser.cards.sourceChipColor
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
@@ -95,6 +99,7 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -142,6 +147,7 @@ data class PlaylistDetailScreen(
     val playlist by viewModel.playlist.collectAsState()
     val videoItems by viewModel.videoItems.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val connectionStatuses by viewModel.connectionStatuses.collectAsState()
     val videos = videoItems.map { it.video }
     val isLoading by viewModel.isLoading.collectAsState()
     val isRefreshing = remember { mutableStateOf(false) }
@@ -298,6 +304,68 @@ data class PlaylistDetailScreen(
           buildM3UHeadersExtra(playlist, item.playlistItem)?.let { putExtra("headers", it) }
         }
       context.startActivity(intent)
+    }
+
+    fun showToast(message: String) {
+      Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
+
+    fun reportUnavailable(
+      item: PlaylistVideoItem,
+      @androidx.annotation.StringRes reasonRes: Int,
+    ) {
+      showToast(
+        context.getString(
+          R.string.playlist_item_unavailable,
+          item.video.displayName,
+          context.getString(reasonRes),
+        ),
+      )
+    }
+
+    fun startPlayback(item: PlaylistVideoItem) {
+      coroutineScope.launch {
+        viewModel.updatePlayHistory(item.video.path)
+      }
+
+      val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
+      if (startIndex >= 0) {
+        launchPlaylistPlayback(item, startIndex)
+      } else {
+        MediaUtils.playFile(item.video, context, "playlist_detail", title = item.playlistItem.fileName)
+      }
+    }
+
+    /**
+     * Network entries are probed before the player opens, so an offline share reports itself here
+     * instead of stalling the player on a stream the proxy cannot reach.
+     */
+    suspend fun playWithNetworkCheck(item: PlaylistVideoItem) {
+      if (!item.isNetwork) {
+        startPlayback(item)
+        return
+      }
+
+      // Only surface the hint if the probe is slow enough to be noticeable on its own. It is
+      // cancelled rather than left to expire so the outcome toast can take the screen immediately.
+      var hint: Toast? = null
+      val hintJob =
+        coroutineScope.launch {
+          delay(NETWORK_HINT_DELAY_MS)
+          hint =
+            Toast
+              .makeText(context, context.getString(R.string.playlist_connecting_network), Toast.LENGTH_SHORT)
+              .also { it.show() }
+        }
+      val result = viewModel.probeIfNetwork(item)
+      hintJob.cancel()
+      hint?.cancel()
+
+      when (result) {
+        NetworkProbeResult.AUTHENTICATION_FAILED -> reportUnavailable(item, R.string.playlist_unavailable_auth)
+        NetworkProbeResult.UNREACHABLE -> reportUnavailable(item, R.string.playlist_unavailable_offline)
+        else -> startPlayback(item)
+      }
     }
 
     Scaffold(
@@ -604,6 +672,7 @@ data class PlaylistDetailScreen(
               selectionManager = selectionManager,
               isM3uPlaylist = playlist?.isM3uPlaylist == true,
               isAudio = playlist?.isAudio == true || videoItems.any { it.video.isAudio },
+              isSourceDisconnected = { item -> item.isSourceDisconnected(connectionStatuses) },
               isReorderMode = isReorderMode,
               onReorder = { fromIndex, toIndex ->
                 coroutineScope.launch {
@@ -621,19 +690,13 @@ data class PlaylistDetailScreen(
                   null
                 },
               onVideoItemClick = { item ->
-                if (selectionManager.isInSelectionMode) {
-                  selectionManager.toggleFromUser(item)
-                } else {
-                  coroutineScope.launch {
-                    viewModel.updatePlayHistory(item.video.path)
-                  }
-
-                  val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
-                  if (startIndex >= 0) {
-                    launchPlaylistPlayback(item, startIndex)
-                  } else {
-                    MediaUtils.playFile(item.video, context, "playlist_detail", title = item.playlistItem.fileName)
-                  }
+                when {
+                  selectionManager.isInSelectionMode -> selectionManager.toggleFromUser(item)
+                  !item.isAvailable ->
+                    reportUnavailable(item, item.unavailableReasonRes ?: R.string.playlist_unavailable_file)
+                  item.isSourceDisconnected(connectionStatuses) ->
+                    showToast(context.getString(R.string.playlist_source_not_connected))
+                  else -> coroutineScope.launch { playWithNetworkCheck(item) }
                 }
               },
               onVideoItemLongClick = { item ->
@@ -684,6 +747,8 @@ private fun PlaylistVideoListContent(
   isAudio: Boolean = false,
   onChanged: () -> Unit,
   onDeleted: suspend (List<Video>) -> Unit,
+  /** True when the entry's backing network connection is not currently connected. */
+  isSourceDisconnected: (PlaylistVideoItem) -> Boolean = { false },
 ) {
   val swipeActions = rememberVideoSwipeActions(onDeleted = onDeleted, onChanged = onChanged)
   val swipePlaybackInfo = rememberSwipePlaybackInfo(videoItems.map { it.video })
@@ -856,7 +921,24 @@ private fun PlaylistVideoListContent(
                 modifier = Modifier.fillMaxWidth().shadow(elevation, MaterialTheme.shapes.medium, clip = false),
                 verticalAlignment = Alignment.CenterVertically,
               ) {
-                if (isM3uPlaylist) {
+                // M3U entries keep their stored URL; everything else gets a source badge so the
+                // internal mpvrx-network:// form never reaches the user.
+                val sourceLabel =
+                  when {
+                    isM3uPlaylist -> null
+                    item.protocol != null -> item.protocol.displayName
+                    // A network entry can outlive the row that named its protocol; it is still not
+                    // a local file, so fall back to a generic network badge rather than "Local".
+                    item.isNetwork -> stringResource(R.string.playlist_source_network)
+                    else -> "Local"
+                  }
+                val sourceSubtitle =
+                  listOfNotNull(item.connectionName, item.sourcePath).joinToString(" · ").ifBlank { null }
+
+                // Network entries share the M3U card: it is the only card that resolves network
+                // thumbnails through ThumbnailRepository's network APIs, whose cache keys differ
+                // from the plain Video path used by VideoCard.
+                if (isM3uPlaylist || item.isNetwork) {
                   M3UVideoCard(
                     title = item.video.displayName,
                     url = item.video.path,
@@ -872,6 +954,10 @@ private fun PlaylistVideoListContent(
                     isRecentlyPlayed = item.playlistItem.id == mostRecentlyPlayedItem?.playlistItem?.id,
                     isFavorite = item.playlistItem.isFavorite,
                     video = item.video,
+                    showSourceWarning = isSourceDisconnected(item),
+                    sourceLabel = sourceLabel,
+                    sourceColor = sourceChipColor(item.protocol, item.isNetwork),
+                    sourceSubtitle = sourceSubtitle,
                     modifier = Modifier.weight(1f),
                   )
                 } else {
@@ -895,6 +981,9 @@ private fun PlaylistVideoListContent(
                     showSubtitleIndicator = showSubtitleIndicator,
                     thumbnailWidthPx = if (isAudio) audioThumbnailSizePx else null,
                     thumbnailHeightPx = if (isAudio) audioThumbnailSizePx else null,
+                    sourceLabel = sourceLabel,
+                    sourceColor = sourceChipColor(item.protocol, item.isNetwork),
+                    sourceSubtitle = sourceSubtitle,
                     modifier = Modifier.weight(1f),
                     uiConfig = videoCardUiConfig,
                   )
@@ -1067,13 +1156,12 @@ private fun RemoveFromPlaylistDialog(
 ) {
   if (!isOpen) return
 
-  val itemText = if (itemCount == 1) "video" else "videos"
 
   androidx.compose.material3.AlertDialog(
     onDismissRequest = onDismiss,
     title = {
       Text(
-        text = "Remove $itemCount $itemText from playlist?",
+        text = pluralStringResource(R.plurals.playlist_remove_dialog_title, itemCount, itemCount),
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
       )
@@ -1092,7 +1180,7 @@ private fun RemoveFromPlaylistDialog(
           shape = MaterialTheme.shapes.extraLarge,
         ) {
           Text(
-            text = "The selected $itemText will be removed from this playlist. The original ${if (itemCount == 1) "file" else "files"} will not be deleted.",
+            text = pluralStringResource(R.plurals.playlist_remove_dialog_message, itemCount),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -1155,4 +1243,21 @@ private fun getFileNameFromUri(
   }
 
 private const val M3U_FILTER_ALL = "__m3u_all__"
+
+/**
+ * True when the entry belongs to a saved network connection that currently has no live session.
+ * Reads the same status map the Network tab renders, so the two can never disagree.
+ *
+ * A connect already in flight counts as "not disconnected": the probe publishes
+ * `isConnecting = true` with `isConnected` still false, and treating that as disconnected would
+ * flash the warning dot across every card of that source for the duration of the probe.
+ */
+private fun PlaylistVideoItem.isSourceDisconnected(statuses: Map<Long, ConnectionStatus>): Boolean {
+  val id = connectionId ?: return false
+  val status = statuses[id] ?: return true
+  return !status.isConnected && !status.isConnecting
+}
+
+/** Don't flash a "connecting" hint for probes that finish faster than this. */
+private const val NETWORK_HINT_DELAY_MS = 400L
 private const val M3U_FILTER_FAVORITES = "__m3u_favorites__"

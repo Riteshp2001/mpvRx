@@ -2397,4 +2397,23 @@
   <string name="audio_swipe_delete_folder_message">هل تريد حذف %1$d من الملفات الصوتية نهائيًا من %2$s ومجلداته الفرعية؟ ستبقى الملفات والمجلدات الأخرى. لا يمكن التراجع عن هذا الإجراء.</string>
   <string name="audio_swipe_loading">جارٍ جمع الملفات الصوتية</string>
   <string name="audio_swipe_folder_empty">لم يتم العثور على ملفات صوتية في هذا المجلد</string>
+  <string name="playlist_source_local">وسائط محلية</string>
+  <string name="playlist_source_network">الشبكة</string>
+  <string name="playlist_unavailable_connection">تم حذف اتصال الشبكة الخاص بهذا الفيديو</string>
+  <string name="playlist_unavailable_offline">اتصال الشبكة الخاص بهذا الفيديو غير متاح</string>
+  <string name="playlist_unavailable_auth">فشلت المصادقة — تحقق من إعدادات الاتصال</string>
+  <string name="playlist_connecting_network">جارٍ الاتصال بمشاركة الشبكة…</string>
+  <string name="playlist_source_not_connected">اتصال الشبكة الخاص بهذا الفيديو غير متصل — اتصل به من علامة تبويب الشبكة</string>
+  <string name="playlist_unavailable_file">تم نقله أو حذفه</string>
+  <string name="playlist_item_unavailable">«%1$s» %2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">إزالة مقطع فيديو واحد من قائمة التشغيل؟</item>
+    <item quantity="other">إزالة %1$d مقطع فيديو من قائمة التشغيل؟</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">سيتم إزالة مقطع الفيديو المحدد من قائمة التشغيل هذه. لن يتم حذف الملف الأصلي.</item>
+    <item quantity="other">سيتم إزالة مقاطع الفيديو المحددة من قائمة التشغيل هذه. لن يتم حذف الملفات الأصلية.</item>
+  </plurals>
+  <string name="playlist_connect_source_title">لا توجد مصادر متصلة</string>
+  <string name="playlist_connect_source_message">اتصل بمصدر أولاً من علامة تبويب الشبكة — لن تظهر هنا إلا المصادر المتصلة.</string>
 </resources>

@@ -493,6 +493,7 @@ object PlaylistScreen : Screen {
               PlaylistCard(
                 playlist = playlistWithCount.playlist,
                 itemCount = playlistWithCount.itemCount,
+                sources = playlistWithCount.sources,
                 isSelected = selectionManager.isSelected(playlistWithCount),
                 onClick = { onPlaylistClick(playlistWithCount) },
                 onLongClick = { onPlaylistLongClick(playlistWithCount) },
@@ -538,6 +539,7 @@ object PlaylistScreen : Screen {
               PlaylistCard(
                 playlist = playlistWithCount.playlist,
                 itemCount = playlistWithCount.itemCount,
+                sources = playlistWithCount.sources,
                 isSelected = selectionManager.isSelected(playlistWithCount),
                 onClick = { onPlaylistClick(playlistWithCount) },
                 onLongClick = { onPlaylistLongClick(playlistWithCount) },

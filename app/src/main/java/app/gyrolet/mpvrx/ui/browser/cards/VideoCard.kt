@@ -179,6 +179,11 @@ fun VideoCard(
   allowThumbnailLoading: Boolean = true,
   uiConfig: VideoCardUiConfig? = null,
   onSwipeAction: ((Video, Boolean, VideoSwipeAction) -> Unit)? = null,
+  /** Source badge shown ahead of the metadata chips, e.g. "Local". Null renders nothing. */
+  sourceLabel: String? = null,
+  sourceColor: Color? = null,
+  /** Path line under the title, mirroring the network card's source line. */
+  sourceSubtitle: String? = null,
 ) {
   // Screens hoist this once and pass it down; collecting per card would register a dozen
   // preference observers for every visible item in a grid.
@@ -254,6 +259,7 @@ fun VideoCard(
               .fillMaxWidth()
               .padding(horizontal = 4.dp, vertical = 6.dp),
           horizontalAlignment = horizontalAlignment,
+          verticalArrangement = if (sourceLabel != null) Arrangement.spacedBy(6.dp) else Arrangement.Top,
         ) {
           val thumbnailRepository = koinInject<ThumbnailRepository>()
           val aspect = if (video.isAudio) 1f else 16f / 10f
@@ -469,15 +475,24 @@ fun VideoCard(
               } else {
                 MaterialTheme.colorScheme.onSurface
               },
-            maxLines = maxLines,
+            maxLines = if (sourceLabel != null) 1 else maxLines,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
           )
+          if (!sourceSubtitle.isNullOrBlank()) {
+            Text(
+              text = sourceSubtitle,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
           if (
-            showSizeChip || showDateChip ||
+            showSizeChip || showDateChip || sourceLabel != null ||
             (!video.isAudio && (showResolutionChip || showFramerateInResolution || showSubtitleIndicator))
           ) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(if (sourceLabel != null) 0.dp else 4.dp))
             FlowRow(
               modifier = Modifier.fillMaxWidth(),
               horizontalArrangement =
@@ -487,6 +502,9 @@ fun VideoCard(
                 androidx.compose.foundation.layout.Arrangement
                   .spacedBy(4.dp),
             ) {
+              if (sourceLabel != null) {
+                SourceChip(label = sourceLabel, color = sourceColor ?: MaterialTheme.colorScheme.surfaceContainerHigh)
+              }
               if (showSubtitleIndicator && !video.isAudio) {
                 if (video.hasEmbeddedSubtitles && video.subtitleCodec.isNotBlank()) {
                   video.subtitleCodec.split(" ").forEach { codec ->
@@ -773,6 +791,9 @@ fun VideoCard(
           Spacer(modifier = Modifier.width(12.dp))
           Column(
             modifier = Modifier.weight(1f),
+            // Mirror M3UVideoCard's line rhythm when a source line is present, so the two card
+            // types produce the same text-block height in a mixed playlist and stay aligned.
+            verticalArrangement = if (sourceLabel != null) Arrangement.spacedBy(6.dp) else Arrangement.Top,
           ) {
             Text(
               displayName,
@@ -792,10 +813,19 @@ fun VideoCard(
                 } else {
                   MaterialTheme.colorScheme.onSurface
                 },
-              maxLines = maxLines,
+              maxLines = if (sourceLabel != null) 1 else maxLines,
               overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.height(4.dp))
+          if (!sourceSubtitle.isNullOrBlank()) {
+            Text(
+              text = sourceSubtitle,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+            Spacer(modifier = Modifier.height(if (sourceLabel != null) 0.dp else 4.dp))
             FlowRow(
               horizontalArrangement =
                 androidx.compose.foundation.layout.Arrangement
@@ -804,6 +834,9 @@ fun VideoCard(
                 androidx.compose.foundation.layout.Arrangement
                   .spacedBy(4.dp),
             ) {
+              if (sourceLabel != null) {
+                SourceChip(label = sourceLabel, color = sourceColor ?: MaterialTheme.colorScheme.surfaceContainerHigh)
+              }
               if (showCodecSupportIndicator && !video.isAudio && video.videoCodec.isNotBlank()) {
                 CodecSupportIndicator(video = video)
               }

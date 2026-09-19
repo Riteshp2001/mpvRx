@@ -2383,4 +2383,23 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="audio_swipe_delete_folder_message">¿Eliminar permanentemente %1$d archivos de audio de %2$s y sus subcarpetas? Se conservarán los demás archivos y carpetas. Esta acción no se puede deshacer.</string>
   <string name="audio_swipe_loading">Recopilando archivos de audio</string>
   <string name="audio_swipe_folder_empty">No se encontraron archivos de audio en esta carpeta</string>
+  <string name="playlist_source_local">Medios locales</string>
+  <string name="playlist_source_network">Red</string>
+  <string name="playlist_unavailable_connection">Su conexión de red se ha eliminado</string>
+  <string name="playlist_unavailable_offline">Su conexión de red no está disponible</string>
+  <string name="playlist_unavailable_auth">Error de autenticación: comprueba la configuración de la conexión</string>
+  <string name="playlist_connecting_network">Conectando con el recurso de red…</string>
+  <string name="playlist_source_not_connected">La conexión de red de este vídeo no está conectada: conéctala en la pestaña Red</string>
+  <string name="playlist_unavailable_file">se ha movido o eliminado</string>
+  <string name="playlist_item_unavailable">«%1$s» %2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">¿Quitar %1$d vídeo de la lista de reproducción?</item>
+    <item quantity="other">¿Quitar %1$d vídeos de la lista de reproducción?</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">El vídeo seleccionado se quitará de esta lista de reproducción. El archivo original no se eliminará.</item>
+    <item quantity="other">Los vídeos seleccionados se quitarán de esta lista de reproducción. Los archivos originales no se eliminarán.</item>
+  </plurals>
+  <string name="playlist_connect_source_title">Sin fuentes conectadas</string>
+  <string name="playlist_connect_source_message">Conecta primero una fuente en la pestaña Red: aquí solo aparecen las fuentes conectadas.</string>
 </resources>

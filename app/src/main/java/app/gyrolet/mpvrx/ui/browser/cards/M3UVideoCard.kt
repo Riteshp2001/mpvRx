@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.browser.cards
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -81,6 +83,15 @@ fun M3UVideoCard(
   isRecentlyPlayed: Boolean = false,
   isFavorite: Boolean = false,
   video: Video? = null,
+  /** Marks a playlist entry whose backing source is not currently connected. */
+  showSourceWarning: Boolean = false,
+  /**
+   * Replaces the raw [url] line with a source badge plus [sourceSubtitle]. Left null for M3U
+   * entries, whose stored URL is the meaningful thing to show.
+   */
+  sourceLabel: String? = null,
+  sourceColor: Color? = null,
+  sourceSubtitle: String? = null,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -221,10 +232,12 @@ fun M3UVideoCard(
       }
 
       Row(
+        // Matches VideoCard's list layout exactly (8dp inset, 12dp thumbnail gap) so a mixed
+        // playlist's thumbnails and text columns line up across both card types.
         modifier =
           Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
       Box(
@@ -270,8 +283,21 @@ fun M3UVideoCard(
             tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.65f),
           )
         }
+
+        if (showSourceWarning) {
+          Box(
+            modifier =
+              Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(SourceWarningAmber)
+                .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+          )
+        }
       }
-      Spacer(modifier = Modifier.width(16.dp))
+      Spacer(modifier = Modifier.width(12.dp))
       Column(
         modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -285,17 +311,29 @@ fun M3UVideoCard(
             } else {
               MaterialTheme.colorScheme.onSurface
             },
-          maxLines = maxLines,
+          maxLines = if (sourceLabel != null) 1 else maxLines,
           overflow = TextOverflow.Ellipsis,
           fontWeight = if (isFavorite) FontWeight.SemiBold else FontWeight.Normal,
         )
-        Text(
-          url,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
-        )
+        if (sourceLabel != null) {
+          if (!sourceSubtitle.isNullOrBlank()) {
+            Text(
+              sourceSubtitle,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+        } else {
+          Text(
+            url,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
         FlowRow(
           horizontalArrangement =
             androidx.compose.foundation.layout.Arrangement
@@ -304,6 +342,25 @@ fun M3UVideoCard(
             androidx.compose.foundation.layout.Arrangement
               .spacedBy(6.dp),
         ) {
+          if (sourceLabel != null) {
+            SourceChip(label = sourceLabel, color = sourceColor ?: MaterialTheme.colorScheme.surfaceContainerHigh)
+            val sizeText = video?.sizeFormatted
+            if (!sizeText.isNullOrBlank() && sizeText != "0 B" && sizeText != "--") {
+              // Deliberately not M3UMetadataChip: that one is a pill. This sits next to the source
+              // badge, and matching VideoCard's rounded-rect metadata chips keeps a mixed
+              // playlist's third line reading as one row instead of two chip systems.
+              Text(
+                text = sizeText,
+                style = MaterialTheme.typography.labelSmall,
+                modifier =
+                  Modifier
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, AppShapeScale.small)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+              )
+            }
+          }
           if (!groupTitle.isNullOrBlank()) {
             M3UMetadataChip(
               text = groupTitle,
@@ -374,3 +431,6 @@ private fun M3UMetadataChip(
     overflow = TextOverflow.Ellipsis,
   )
 }
+
+/** Amber reads as "needs attention" rather than a hard error, on both light and dark themes. */
+private val SourceWarningAmber = Color(0xFFFFB300)

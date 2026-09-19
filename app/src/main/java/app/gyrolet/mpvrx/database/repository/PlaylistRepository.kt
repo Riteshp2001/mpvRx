@@ -36,6 +36,19 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+/**
+ * One entry to append to a playlist.
+ *
+ * [fileSize] only applies to network entries — local entries resolve their size from the file, and
+ * leaving it null keeps them doing exactly that.
+ */
+data class PlaylistItemInput(
+  val filePath: String,
+  val fileName: String,
+  val fileSize: Long? = null,
+)
+
+
 class PlaylistRepository(
   private val playlistDao: PlaylistDao,
   private val httpClient: OkHttpClient,
@@ -254,28 +267,29 @@ class PlaylistRepository(
 
   suspend fun addItemsToPlaylist(
     playlistId: Int,
-    items: List<Pair<String, String>>,
+    items: List<PlaylistItemInput>,
   ) {
     playlistWriteMutex.withLock {
       if (items.isEmpty()) return@withLock
       val seenPaths = playlistDao.getPlaylistItems(playlistId).mapTo(mutableSetOf()) { playlistPathKey(it.filePath) }
       val uniqueItems =
-        items.mapNotNull { (filePath, fileName) ->
-          if (filePath.isBlank()) return@mapNotNull null
-          val cleanPath = normalizePlaylistPath(filePath)
-          if (seenPaths.add(playlistPathKey(cleanPath))) cleanPath to fileName else null
+        items.mapNotNull { input ->
+          if (input.filePath.isBlank()) return@mapNotNull null
+          val cleanPath = normalizePlaylistPath(input.filePath)
+          if (seenPaths.add(playlistPathKey(cleanPath))) input.copy(filePath = cleanPath) else null
         }
       if (uniqueItems.isEmpty()) return@withLock
       val maxPosition = playlistDao.getMaxPosition(playlistId) ?: -1
       val now = System.currentTimeMillis()
       val playlistItems =
-        uniqueItems.mapIndexed { index, (filePath, fileName) ->
+        uniqueItems.mapIndexed { index, input ->
           PlaylistItemEntity(
             playlistId = playlistId,
-            filePath = filePath,
-            fileName = fileName,
+            filePath = input.filePath,
+            fileName = input.fileName,
             position = maxPosition + 1 + index,
             addedAt = now,
+            fileSize = input.fileSize,
           )
         }
       playlistDao.insertPlaylistItemsAtomically(playlistItems)

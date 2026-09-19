@@ -1307,7 +1307,22 @@
   <string name="playlist_add_songs_empty_folder_message">没有包含歌曲的文件夹。</string>
   <string name="playlist_add_songs_empty_title">未找到歌曲</string>
   <string name="playlist_add_songs_empty_message">此文件夹中没有可添加的歌曲。</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="other">从播放列表中移除 %1$d 个视频？</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="other">选中的视频将从此播放列表中移除，原始文件不会被删除。</item>
+  </plurals>
   <string name="playlist_add_songs_success">已添加 %1$d 首歌曲到播放列表</string>
+  <string name="playlist_source_local">本地媒体</string>
+  <string name="playlist_source_network">网络连接</string>
+  <string name="playlist_unavailable_connection">所在连接配置已被删除</string>
+  <string name="playlist_unavailable_offline">所在连接当前不可用</string>
+  <string name="playlist_unavailable_auth">认证失败，请检查连接设置</string>
+  <string name="playlist_connecting_network">正在连接网络共享…</string>
+  <string name="playlist_source_not_connected">该视频所在的网络连接尚未连接，请先在「网络连接」页连接</string>
+  <string name="playlist_unavailable_file">已被移动或删除</string>
+  <string name="playlist_item_unavailable">「%1$s」%2$s</string>
   <string name="ui_no_songs_in_playlist">播放列表中没有歌曲</string>
   <string name="ui_add_songs_to_get_started">添加歌曲以开始使用</string>
   <string name="ui_songs">歌曲</string>
@@ -2379,4 +2394,6 @@
   <string name="audio_swipe_delete_folder_message">永久删除 %2$s 及其子文件夹中的 %1$d 个音频文件？其他文件和文件夹将保留。此操作无法撤销。</string>
   <string name="audio_swipe_loading">正在收集音频文件</string>
   <string name="audio_swipe_folder_empty">此文件夹中未找到音频文件</string>
+  <string name="playlist_connect_source_title">尚未连接来源</string>
+  <string name="playlist_connect_source_message">请先在「网络连接」页连接来源，连接后才会显示在这里。</string>
 </resources>

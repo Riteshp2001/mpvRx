@@ -16,7 +16,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
+import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
+import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.repository.MediaFileRepository
+import app.gyrolet.mpvrx.repository.NetworkRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +33,8 @@ import java.io.File
 data class PlaylistWithCount(
   val playlist: PlaylistEntity,
   val itemCount: Int,
+  /** Source kinds actually present among the counted entries; null means a local file. */
+  val sources: List<NetworkProtocol?> = emptyList(),
 )
 
 class PlaylistViewModel(
@@ -37,6 +42,7 @@ class PlaylistViewModel(
 ) : androidx.lifecycle.AndroidViewModel(application),
   KoinComponent {
   private val repository: PlaylistRepository by inject()
+  private val networkRepository: NetworkRepository by inject()
   // Using MediaFileRepository singleton directly
 
   private val _playlistsWithCount = MutableStateFlow<List<PlaylistWithCount>>(emptyList())
@@ -83,13 +89,7 @@ class PlaylistViewModel(
     // Then observe for updates with actual counts
     viewModelScope.launch(Dispatchers.IO) {
       repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
-        val playlistsWithCounts =
-          visiblePlaylists(playlistsFromDb).map { playlist ->
-            val count = getActualVideoCount(playlist.id)
-            PlaylistWithCount(playlist, count)
-          }
-
-        _playlistsWithCount.value = playlistsWithCounts
+        _playlistsWithCount.value = loadPlaylistsWithCounts(playlistsFromDb)
         _hasCompletedInitialLoad.value = true
       }
     }
@@ -98,27 +98,74 @@ class PlaylistViewModel(
   /**
    * Get the actual count of videos that exist for a playlist
    */
-  private suspend fun getActualVideoCount(playlistId: Int): Int {
-    val playlist = repository.getPlaylistById(playlistId)
-    val items = repository.getPlaylistItems(playlistId)
-    if (items.isEmpty()) return 0
+  private data class PlaylistStats(
+    val count: Int,
+    val sources: List<NetworkProtocol?>,
+  )
 
-    // For M3U playlists, return item count directly (URLs don't need file system check)
-    if (playlist?.isM3uPlaylist == true) {
-      return items.size
+  /**
+   * Counts the entries that are still usable and reports which sources they come from, so the
+   * card can badge every distinct source the playlist actually contains.
+   *
+   * [protocolById] is resolved once by the caller rather than per playlist.
+   */
+  private suspend fun getPlaylistStats(
+    playlist: PlaylistEntity,
+    protocolById: Map<Long, NetworkProtocol>,
+  ): PlaylistStats {
+    val items = repository.getPlaylistItems(playlist.id)
+    if (items.isEmpty()) return PlaylistStats(0, emptyList())
+
+    // M3U entries are remote streams rather than files, so those cards keep their playlist-type
+    // badge instead of per-source chips.
+    if (playlist.isM3uPlaylist) {
+      return PlaylistStats(items.size, emptyList())
     }
 
-    // For regular playlists, check if files still exist
+    // Parsed once per entry: constructing the URI is the costly part and both the counting and the
+    // source badges need the same answer.
+    val references = items.map { NetworkPlaybackUri.parse(it.filePath) }
+    val networkItems = items.filterIndexed { index, _ -> references[index] != null }
+    val localItems = items.filterIndexed { index, _ -> references[index] == null }
+
     val bucketIds =
-      items
+      localItems
         .map { item ->
           File(item.filePath).parent ?: ""
         }.toSet()
 
     val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
+    val knownPaths = allVideos.mapTo(mutableSetOf()) { it.path }
 
-    return items.count { item ->
-      allVideos.any { video -> video.path == item.filePath }
+    // Network entries are mpvrx-network:// references with no local file to verify: they always
+    // count. Only local entries are checked against MediaStore for a file that still exists —
+    // their paths are meaningless as filesystem paths, so mixing them in would drop them entirely.
+    val liveLocalItems = localItems.filter { item -> item.filePath in knownPaths }
+
+    val protocols =
+      references
+        .filterNotNull()
+        .mapNotNull { protocolById[it.connectionId] }
+        .distinct()
+        .sortedBy { it.ordinal }
+
+    val sources =
+      buildList {
+        if (liveLocalItems.isNotEmpty()) add(null)
+        addAll(protocols)
+      }
+
+    return PlaylistStats(liveLocalItems.size + networkItems.size, sources)
+  }
+
+  /** Resolves connection protocols once, then counts and badges every visible playlist. */
+  private suspend fun loadPlaylistsWithCounts(playlists: List<PlaylistEntity>): List<PlaylistWithCount> {
+    // Tombstones included: a playlist entry keeps naming its share after that connection is
+    // deleted, so the badge stays honest instead of silently dropping to "Local".
+    val protocolById = networkRepository.getAllConnectionsIncludingDeleted().associate { it.id to it.protocol }
+    return visiblePlaylists(playlists).map { playlist ->
+      val stats = getPlaylistStats(playlist, protocolById)
+      PlaylistWithCount(playlist, stats.count, stats.sources)
     }
   }
 
@@ -131,13 +178,7 @@ class PlaylistViewModel(
         _isLoading.value = true
         val playlistsFromDb = repository.getAllPlaylists()
 
-        val playlistsWithCounts =
-          visiblePlaylists(playlistsFromDb).map { playlist ->
-            val count = getActualVideoCount(playlist.id)
-            PlaylistWithCount(playlist, count)
-          }
-
-        _playlistsWithCount.value = playlistsWithCounts
+        _playlistsWithCount.value = loadPlaylistsWithCounts(playlistsFromDb)
       } catch (e: Exception) {
         Log.e(TAG, "Error refreshing playlists", e)
       } finally {

@@ -2379,4 +2379,23 @@
   <string name="audio_swipe_delete_folder_message">%2$s とそのサブフォルダー内の音声ファイル %1$d 件を完全に削除しますか？他のファイルとフォルダーは保持されます。この操作は取り消せません。</string>
   <string name="audio_swipe_loading">音声ファイルを収集中</string>
   <string name="audio_swipe_folder_empty">このフォルダーに音声ファイルがありません</string>
+  <string name="playlist_source_local">ローカルメディア</string>
+  <string name="playlist_source_network">ネットワーク</string>
+  <string name="playlist_unavailable_connection">この動画のネットワーク接続は削除されています</string>
+  <string name="playlist_unavailable_offline">この動画のネットワーク接続は利用できません</string>
+  <string name="playlist_unavailable_auth">認証に失敗しました — 接続設定を確認してください</string>
+  <string name="playlist_connecting_network">ネットワーク共有に接続しています…</string>
+  <string name="playlist_source_not_connected">この動画のネットワーク接続は未接続です — 「ネットワーク」タブで接続してください</string>
+  <string name="playlist_unavailable_file">移動または削除されています</string>
+  <string name="playlist_item_unavailable">「%1$s」%2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">%1$d 件の動画をプレイリストから削除しますか？</item>
+    <item quantity="other">%1$d 件の動画をプレイリストから削除しますか？</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">選択した動画はこのプレイリストから削除されます。元のファイルは削除されません。</item>
+    <item quantity="other">選択した動画はこのプレイリストから削除されます。元のファイルは削除されません。</item>
+  </plurals>
+  <string name="playlist_connect_source_title">接続済みのソースがありません</string>
+  <string name="playlist_connect_source_message">先に「ネットワーク」タブでソースを接続してください。接続済みのソースだけがここに表示されます。</string>
 </resources>

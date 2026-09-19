@@ -2287,4 +2287,23 @@
   <string name="audio_swipe_delete_folder_message">%2$s और उसके सबफ़ोल्डर की %1$d ऑडियो फ़ाइलें स्थायी रूप से मिटाएँ? अन्य फ़ाइलें और फ़ोल्डर रखे जाएँगे। इसे पूर्ववत नहीं किया जा सकता।</string>
   <string name="audio_swipe_loading">ऑडियो फ़ाइलें एकत्र की जा रही हैं</string>
   <string name="audio_swipe_folder_empty">इस फ़ोल्डर में कोई ऑडियो फ़ाइल नहीं मिली</string>
+  <string name="playlist_source_local">स्थानीय मीडिया</string>
+  <string name="playlist_source_network">नेटवर्क</string>
+  <string name="playlist_unavailable_connection">इसका नेटवर्क कनेक्शन हटा दिया गया है</string>
+  <string name="playlist_unavailable_offline">इसका नेटवर्क कनेक्शन उपलब्ध नहीं है</string>
+  <string name="playlist_unavailable_auth">प्रमाणीकरण विफल — कनेक्शन सेटिंग जाँचें</string>
+  <string name="playlist_connecting_network">नेटवर्क शेयर से कनेक्ट हो रहा है…</string>
+  <string name="playlist_source_not_connected">इस वीडियो का नेटवर्क कनेक्शन जुड़ा नहीं है — इसे नेटवर्क टैब में कनेक्ट करें</string>
+  <string name="playlist_unavailable_file">स्थानांतरित या हटा दिया गया है</string>
+  <string name="playlist_item_unavailable">“%1$s” %2$s</string>
+  <plurals name="playlist_remove_dialog_title">
+    <item quantity="one">प्लेलिस्ट से %1$d वीडियो हटाएँ?</item>
+    <item quantity="other">प्लेलिस्ट से %1$d वीडियो हटाएँ?</item>
+  </plurals>
+  <plurals name="playlist_remove_dialog_message">
+    <item quantity="one">चुना गया वीडियो इस प्लेलिस्ट से हटा दिया जाएगा। मूल फ़ाइल नहीं हटाई जाएगी।</item>
+    <item quantity="other">चुने गए वीडियो इस प्लेलिस्ट से हटा दिए जाएंगे। मूल फ़ाइलें नहीं हटाई जाएंगी।</item>
+  </plurals>
+  <string name="playlist_connect_source_title">कोई जुड़ा हुआ स्रोत नहीं</string>
+  <string name="playlist_connect_source_message">पहले नेटवर्क टैब में कोई स्रोत कनेक्ट करें — यहाँ केवल जुड़े हुए स्रोत दिखाई देते हैं।</string>
 </resources>

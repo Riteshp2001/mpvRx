@@ -23,13 +23,17 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface NetworkConnectionDao {
-  @Query("SELECT * FROM network_connections ORDER BY id ASC")
+  @Query("SELECT * FROM network_connections WHERE isDeleted = 0 ORDER BY id ASC")
   fun getAllConnections(): Flow<List<NetworkConnection>>
 
-  @Query("SELECT * FROM network_connections WHERE id = :id")
+  @Query("SELECT * FROM network_connections WHERE id = :id AND isDeleted = 0")
   suspend fun getConnectionById(id: Long): NetworkConnection?
 
-  @Query("SELECT * FROM network_connections WHERE autoConnect = 1 ORDER BY id ASC")
+  /** Tombstones included, for callers that need a connection's identity rather than its usability. */
+  @Query("SELECT * FROM network_connections WHERE id = :id")
+  suspend fun getConnectionByIdIncludingDeleted(id: Long): NetworkConnection?
+
+  @Query("SELECT * FROM network_connections WHERE autoConnect = 1 AND isDeleted = 0 ORDER BY id ASC")
   suspend fun getAutoConnectConnections(): List<NetworkConnection>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -53,10 +57,25 @@ interface NetworkConnectionDao {
     encryptedPassword: String,
   )
 
-  @Query("DELETE FROM network_connections WHERE id = :id")
-  suspend fun deleteById(id: Long)
+  /** Tombstones the row so its id survives for re-creation to revive. */
+  @Query("UPDATE network_connections SET isDeleted = 1 WHERE id = :id")
+  suspend fun markDeleted(id: Long)
+
+  /** Rows available for revival; matched against new connections by their settings. */
+  @Query("SELECT * FROM network_connections WHERE isDeleted = 1 ORDER BY id ASC")
+  suspend fun getDeletedConnections(): List<NetworkConnection>
+
+  /**
+   * Includes tombstones. Callers use these for display and for deciding availability themselves —
+   * a playlist entry must still be able to name the share it came from after that share is deleted.
+   */
+  @Query("SELECT * FROM network_connections ORDER BY id ASC")
+  fun observeAllConnectionsIncludingDeleted(): Flow<List<NetworkConnection>>
 
   @Query("SELECT * FROM network_connections ORDER BY id ASC")
+  suspend fun getAllConnectionsIncludingDeleted(): List<NetworkConnection>
+
+  @Query("SELECT * FROM network_connections WHERE isDeleted = 0 ORDER BY id ASC")
   suspend fun getAllConnectionsList(): List<NetworkConnection>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
@@ -49,6 +50,8 @@ fun PlaylistCard(
   isSelected: Boolean = false,
   isGridMode: Boolean = false,
   thumbnail: android.graphics.Bitmap? = null,
+  /** Source kinds present in this playlist; null means a local file. Empty for M3U playlists. */
+  sources: List<NetworkProtocol?> = emptyList(),
 ) {
   val isFavorites = playlist.name.equals(PlaylistRepository.FAVORITES_PLAYLIST_NAME, ignoreCase = true)
   val displayName =
@@ -69,40 +72,51 @@ fun PlaylistCard(
       lastModified = playlist.updatedAt / 1000,
     )
 
-  // Create a custom chip renderer for playlist type
+  // Playlists imported from a URL are identified by their type. A regular playlist has no such
+  // type of its own, so it badges every source its entries actually come from instead — the same
+  // chips the detail screen puts on each video.
   val customChipRenderer: @Composable () -> Unit = {
     val isOnlinePlaylist =
       playlist.m3uSourceUrl?.let { source ->
         YtdlpManager.isPotentialPlaylistUrl(source) && YtdlpManager.requiresYtdlp(source)
       } == true
-    val chipText =
+    val typeBadge =
       when {
         playlist.isXtreamPlaylist -> stringResource(R.string.playlist_xtream_badge)
         isOnlinePlaylist -> stringResource(R.string.playlist_online_badge)
         playlist.isM3uPlaylist -> stringResource(R.string.playlist_m3u_badge)
-        else -> "Local"
+        else -> null
       }
 
-    // Use Material Design theme colors
-    val materialTheme = androidx.compose.material3.MaterialTheme.colorScheme
-    val (chipColor, chipBgColor) =
-      if (playlist.isM3uPlaylist) {
-        Pair(materialTheme.tertiary, materialTheme.tertiaryContainer)
-      } else {
-        Pair(materialTheme.primary, materialTheme.primaryContainer)
-      }
+    if (typeBadge != null) {
+      // Use Material Design theme colors
+      val materialTheme = androidx.compose.material3.MaterialTheme.colorScheme
+      val (chipColor, chipBgColor) =
+        if (playlist.isM3uPlaylist) {
+          Pair(materialTheme.tertiary, materialTheme.tertiaryContainer)
+        } else {
+          Pair(materialTheme.primary, materialTheme.primaryContainer)
+        }
 
-    androidx.compose.material3.Text(
-      text = chipText,
-      style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-      modifier =
-        Modifier
-          .background(
-            chipBgColor,
-            AppShapeScale.small,
-          ).padding(horizontal = 8.dp, vertical = 4.dp),
-      color = chipColor,
-    )
+      androidx.compose.material3.Text(
+        text = typeBadge,
+        style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+        modifier =
+          Modifier
+            .background(
+              chipBgColor,
+              AppShapeScale.small,
+            ).padding(horizontal = 8.dp, vertical = 4.dp),
+        color = chipColor,
+      )
+    } else {
+      sources.forEach { protocol ->
+        SourceChip(
+          label = protocol?.displayName ?: "Local",
+          color = sourceChipColor(protocol),
+        )
+      }
+    }
   }
 
   val thumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }

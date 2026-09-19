@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.ui.browser.dialogs
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
+import app.gyrolet.mpvrx.database.repository.PlaylistItemInput
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
@@ -150,6 +151,6 @@ class AddToPlaylistViewModel :
     return video.id.toString()
   }
 
-  private fun List<Video>.asPlaylistItems(): List<Pair<String, String>> =
-    map { video -> video.path to video.displayName }
+  private fun List<Video>.asPlaylistItems(): List<PlaylistItemInput> =
+    map { video -> PlaylistItemInput(video.path, video.displayName) }
 }

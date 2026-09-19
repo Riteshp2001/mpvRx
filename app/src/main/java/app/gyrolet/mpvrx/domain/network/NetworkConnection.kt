@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.domain.network
 
 import androidx.compose.runtime.Immutable
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.PrimaryKey
 
 /**
@@ -32,6 +33,13 @@ data class NetworkConnection(
   val lastConnected: Long = 0,
   val autoConnect: Boolean = false,
   val useHttps: Boolean = false, // For WebDAV: use HTTPS instead of HTTP
+  /**
+   * Deleted connections are kept as tombstones rather than removed. Playlist entries reference a
+   * connection by this row's id, so re-creating the same settings can revive the row and keep that
+   * id instead of orphaning every entry that pointed at it.
+   */
+  @ColumnInfo(defaultValue = "0")
+  val isDeleted: Boolean = false,
 ) {
   override fun toString(): String =
     "NetworkConnection(id=$id, name=$name, protocol=$protocol, credentials=<redacted>)"

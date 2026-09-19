@@ -991,12 +991,11 @@ class ThumbnailRepository(
     connection: NetworkConnection? = null,
     fileSize: Long = -1L,
     mimeType: String? = null,
-    lastModified: Long = 0L,
   ): Bitmap? =
     withContext(Dispatchers.IO) {
       if (!appearancePreferences.showNetworkThumbnails.get()) return@withContext null
 
-      val identity = networkThumbnailIdentity(path, connection, fileSize, lastModified)
+      val identity = networkThumbnailIdentity(path, connection)
       val memKey = networkThumbnailMemoryKey(identity, widthPx, heightPx)
       synchronized(memoryCache) { memoryCache.get(memKey) }?.let { return@withContext it }
       ongoingOperations[memKey]?.let { return@withContext it.await() }
@@ -1072,7 +1071,9 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? {
-    val connection = networkRepository.getConnectionById(connectionId) ?: return null
+    // Tombstones included: the cache key needs only this connection's identity, and an entry whose
+    // share was deleted must keep showing the frame that is already on disk.
+    val connection = networkRepository.getConnectionIncludingDeleted(connectionId) ?: return null
     return getThumbnailForNetworkPath(
       path = path,
       widthPx = widthPx,
@@ -1191,26 +1192,30 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
     connection: NetworkConnection? = null,
-    fileSize: Long = -1L,
-    lastModified: Long = 0L,
   ): String =
     networkThumbnailMemoryKey(
-      networkThumbnailIdentity(path, connection, fileSize, lastModified),
+      networkThumbnailIdentity(path, connection),
       widthPx,
       heightPx,
     )
 
+  /**
+   * Cache identity for a network thumbnail: the share endpoint plus the path, nothing else.
+   *
+   * Size and modification time are deliberately excluded. A playlist entry knows neither, so
+   * folding them in gave one file two different cache entries — one per screen showing it — and
+   * made the second screen download and extract the frame again. The trade-off is that replacing
+   * a file in place keeps serving the previous thumbnail until the cache is cleared.
+   */
   private fun networkThumbnailIdentity(
     path: String,
     connection: NetworkConnection?,
-    fileSize: Long,
-    lastModified: Long,
   ): String {
     val endpoint =
       connection?.let {
         "${it.id}|${it.protocol.name}|${it.host.lowercase()}|${it.port}|${it.path}|${it.useHttps}"
       } ?: "direct"
-    return "$endpoint|$path|$fileSize|$lastModified"
+    return "$endpoint|$path"
   }
 
   private fun networkThumbnailMemoryKey(
