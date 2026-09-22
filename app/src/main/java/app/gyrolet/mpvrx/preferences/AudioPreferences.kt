@@ -13,6 +13,7 @@ import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
+import app.gyrolet.mpvrx.ui.player.AudioEngineKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -20,6 +21,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 class AudioPreferences(
   preferenceStore: PreferenceStore,
 ) {
+  val audioEngine = preferenceStore.getEnum("audio_playback_engine", AudioEngineKind.ExoPlayer)
+  val crossfadeDurationMs = preferenceStore.getInt("audio_crossfade_duration_ms", 5_000)
+  val outputSampleRate = preferenceStore.getEnum("audio_output_sample_rate", AudioOutputSampleRate.Auto)
   val preferredLanguages = preferenceStore.getString("audio_preferred_languages")
   val defaultAudioDelay = preferenceStore.getInt("audio_delay_default")
   val pickerPath = preferenceStore.getString("audio_picker_path")
@@ -133,6 +137,17 @@ enum class AudioVisualizerStyle(
   Galaxy(R.string.pref_audio_visualizer_style_galaxy),
   Cuboid(R.string.pref_audio_visualizer_style_cuboid),
   Particle(R.string.pref_audio_visualizer_style_particle),
+}
+
+/** ExoPlayer PCM output rate; a fixed or device rate is converted in-app before AudioFlinger. */
+enum class AudioOutputSampleRate(
+  val hz: Int,
+) {
+  Auto(0),
+  Device(-1),
+  Rate44100(44_100),
+  Rate48000(48_000),
+  Rate96000(96_000),
 }
 
 

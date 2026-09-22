@@ -712,7 +712,9 @@ fun RenderPlayerButton(
       ControlsButton(
         Icons.RoundedFilled.Audiotrack,
         onClick = { onOpenSheet(Sheets.AudioTracks) },
-        onLongClick = { if (!outputConfigOwned) onOpenPanel(Panels.AudioDelay) },
+        onLongClick = {
+          if (!outputConfigOwned && !app.gyrolet.mpvrx.ui.player.PlaybackSession.usingExoPlayer) onOpenPanel(Panels.AudioDelay)
+        },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
       )

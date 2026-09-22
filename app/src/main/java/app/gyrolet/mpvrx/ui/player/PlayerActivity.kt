@@ -600,7 +600,9 @@ class PlayerActivity :
           }
 
           AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-            if (volumeBeforeAudioFocusDuck == null) {
+            if (PlaybackSession.usingExoPlayer) {
+              PlaybackSession.setAudioFocusDucked("activity", true)
+            } else if (volumeBeforeAudioFocusDuck == null) {
               PlaybackSession.getPropertyDouble("volume")?.let { volume ->
                 volumeBeforeAudioFocusDuck = volume
                 PlaybackSession.setPropertyDouble("volume", volume * 0.5)
@@ -1621,8 +1623,31 @@ class PlayerActivity :
 
   private fun observePlaybackSessionQueue() {
     lifecycleScope.launch {
-      PlaybackSession.state.collect {
-        finishStoppedBackgroundPlaybackIfNeeded()
+      PlaybackSession.state.collect { finishStoppedBackgroundPlaybackIfNeeded() }
+    }
+    lifecycleScope.launch {
+      var handledAudioGeneration = 0L
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        kotlinx.coroutines.flow.combine(PlaybackSession.state, PlaybackSession.audioState) { session, audio -> session to audio }
+          .collect { (session, audio) ->
+            if (session.engine == AudioEngineKind.ExoPlayer && audio.ready && audio.generation == session.generation &&
+              session.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) &&
+              audio.generation != handledAudioGeneration && isActivePlaybackOwner() && MediaPlaybackService.activityForeground
+            ) {
+              handledAudioGeneration = audio.generation
+              handleExoAudioReady(audio)
+            }
+          }
+      }
+    }
+    lifecycleScope.launch {
+      PlaybackSession.audioEvents.collect { event ->
+        if (event is AudioPlaybackEvent.Leaving && event.snapshot.item?.stableId == activeSaveMediaIdentifier) {
+          reportJellyfinStop(event.snapshot.positionMs)
+        }
+        if (event is AudioPlaybackEvent.Finished && PlaybackSession.isCurrentGeneration(event.generation) &&
+          isActivePlaybackOwner() && MediaPlaybackService.activityForeground
+        ) finishAtEofIfRequested()
       }
     }
     lifecycleScope.launch {
@@ -1646,9 +1671,12 @@ class PlayerActivity :
             legacyMediaIdentifier = PlaybackIdentity.forUri(item.originalUri)
             mediaIdentifier = item.stableId
             currentPlayableUri = item.playableUri
-            isReady = false
-            viewModel.onVideoLoadStarted()
-            viewModel.calculateVideoHash(Uri.parse(item.originalUri))
+            val audioReady = PlaybackSession.usingExoPlayer && PlaybackSession.audioState.value.let {
+              it.ready && it.generation == PlaybackSession.state.value.generation
+            }
+            isReady = audioReady
+            if (!audioReady) viewModel.onVideoLoadStarted()
+            if (!PlaybackSession.usingExoPlayer) viewModel.calculateVideoHash(Uri.parse(item.originalUri))
           }
       }
     }
@@ -1678,6 +1706,32 @@ class PlayerActivity :
     }
   }
 
+  private fun handleExoAudioReady(audio: AudioEngineSnapshot) {
+    val item = audio.item ?: return
+    cancelPlaybackLoadRecovery()
+    eofAdvanceJob?.cancel()
+    eofAdvanceJob = null
+    isAdvancingAtEof = false
+    playWhenFileLoaded = false
+    player.isExiting = false
+    isReady = true
+    syncPlaylistFromSession()
+    playlistIndex = PlaybackSession.queue.value.currentIndex
+    fileName = audio.title?.takeIf(String::isNotBlank) ?: getFileNameFromUri(Uri.parse(item.originalUri))
+    mediaIdentifier = item.stableId
+    legacyMediaIdentifier = PlaybackIdentity.forUri(item.originalUri)
+    activeSaveMediaIdentifier = item.stableId
+    currentPlayableUri = item.playableUri
+    viewModel.setMediaTitle(fileName)
+    viewModel.onVideoLoadCompleted()
+    setOrientation()
+    reportJellyfinStop()
+    updateMediaSessionMetadata(fileName, audio.durationMs)
+    updateMediaSessionPlaybackState(!audio.paused)
+    syncBackgroundPlaybackService(updateThumbnail = true)
+    if (isBackgroundPlaybackEnabled()) startBackgroundPlayback(allowUserPrompt = false)
+  }
+
   private fun observeTorrentStreamingState() {
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -1700,6 +1754,7 @@ class PlayerActivity :
   }
 
   private fun restoreDuckedAudioVolume() {
+    PlaybackSession.setAudioFocusDucked("activity", false)
     volumeBeforeAudioFocusDuck?.let { volume -> PlaybackSession.setPropertyDouble("volume", volume) }
     volumeBeforeAudioFocusDuck = null
   }
@@ -4069,6 +4124,7 @@ class PlayerActivity :
    * @param isEof true if end of file reached
    */
   private fun handleEndOfFile(isEof: Boolean) {
+    if (PlaybackSession.usingExoPlayer) return
     if (!isEof) {
       eofAdvanceJob?.cancel()
       eofAdvanceJob = null
@@ -4846,6 +4902,10 @@ class PlayerActivity :
     mediaTitle: String,
     immediate: Boolean = false,
   ) {
+    if (PlaybackSession.usingExoPlayer) {
+      PlaybackSession.saveAudioPlaybackState()
+      return
+    }
     val snapshot = capturePlaybackStateSnapshot(mediaTitle) ?: return
 
     // Cancel any previous pending save operation
@@ -4900,11 +4960,11 @@ class PlayerActivity :
       }
   }
 
-  private fun reportJellyfinStop() {
+  private fun reportJellyfinStop(positionMs: Long? = null) {
     jellyfinProgressJob?.cancel()
     jellyfinProgressJob = null
     jellyfinSessionReporter?.let { reporter ->
-      val currentPosMs = readMpvIntSeconds("time-pos", viewModel.pos ?: 0).toLong() * 1000L
+      val currentPosMs = positionMs ?: readMpvIntSeconds("time-pos", viewModel.pos ?: 0).toLong() * 1000L
       reporter.reportPlaybackStop(currentPosMs)
       jellyfinSessionReporter = null
     }
@@ -5892,11 +5952,18 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       throw IllegalStateException("Timed out waiting for previous playback to stop")
     }
     ensureCurrentMediaRequest(requestGeneration)
+    val focusedPositionOverride = if (item.isDefinitelyAudioOnly()) {
+      withContext(Dispatchers.Main) {
+        if (effectivePositionOverride?.paused == true || requestAudioFocus()) effectivePositionOverride
+        else (effectivePositionOverride ?: PlaybackPositionRestoreOverride(null, true)).copy(paused = true)
+      }
+    } else effectivePositionOverride
+    ensureCurrentMediaRequest(requestGeneration)
     val generation =
       PlaybackSession.load(
         item = item,
         restoreSavedPosition = restoreSavedPosition,
-        positionRestoreOverride = effectivePositionOverride,
+        positionRestoreOverride = focusedPositionOverride,
         initialPositionSeconds = initialPositionSeconds,
         flattenEditions = requiresYtdlp && !MpvConfigOverridePolicy.isOwnedByMpvConf("flatten-editions"),
         commit = { nativeLoad ->
@@ -5904,6 +5971,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
             if (requestGeneration != mediaRequestGeneration) {
               -1L
             } else {
+              PlaybackSession.configureAudioHistory(!isSecureFolderLaunch, playlistId?.takeUnless(::isAllVideosPlaylist))
               if (requiresYtdlp) PlaybackSession.setPropertyString("ytdl-format", ytdlFormat.orEmpty())
               nativeLoad()
             }
@@ -5929,7 +5997,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         requestGeneration = requestGeneration,
         legacyMediaIdentifier = legacyMediaIdentifier,
         ytdlFormat = ytdlFormat,
-        positionRestoreOverride = effectivePositionOverride,
+        positionRestoreOverride = focusedPositionOverride,
       )
     withContext(Dispatchers.Main) { armPlaybackLoadRecovery(request) }
   }

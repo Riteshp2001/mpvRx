@@ -254,11 +254,14 @@ internal object AudiobookPlayback {
       }
       if (!PlaybackSession.isCurrentGeneration(generation)) return@launch
       val track = book.tracks.firstOrNull { it.id == info.trackId } ?: return@launch
-      val tags = runCatching { PlaybackSession.getPropertyNode("metadata")?.toObject<Map<String, String>>(json) }
-        .getOrNull().orEmpty().mapKeys { it.key.lowercase(java.util.Locale.ROOT) }
+      val audio = PlaybackSession.audioState.value.takeIf { PlaybackSession.usingExoPlayer && it.generation == generation }
+      val tags = if (audio != null) audio.metadata else
+        runCatching { PlaybackSession.getPropertyNode("metadata")?.toObject<Map<String, String>>(json) }
+          .getOrNull().orEmpty().mapKeys { it.key.lowercase(java.util.Locale.ROOT) }
       fun tag(vararg keys: String) = keys.firstNotNullOfOrNull { tags[it]?.trim()?.takeIf(String::isNotBlank) }.orEmpty()
       val duration = PlaybackSession.getPropertyDouble("duration")?.takeIf { it.isFinite() && it > 0 }?.times(1000)?.toLong() ?: track.durationMs
-      val nodes = runCatching { PlaybackSession.getPropertyNode("chapter-list")?.toObject<List<ChapterNode>>(json) }.getOrNull().orEmpty()
+      val nodes = (audio?.chapters?.map { ChapterNode(it.positionMs / 1000f, it.title) }
+        ?: runCatching { PlaybackSession.getPropertyNode("chapter-list")?.toObject<List<ChapterNode>>(json) }.getOrNull().orEmpty())
         .filter { it.time.isFinite() && it.time >= 0 && it.time * 1000 < duration }
         .distinctBy { it.time }.sortedBy { it.time }
       if (!PlaybackSession.isCurrentGeneration(generation)) return@launch

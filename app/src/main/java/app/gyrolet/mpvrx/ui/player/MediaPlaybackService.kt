@@ -318,7 +318,9 @@ class MediaPlaybackService :
           PlaybackSession.setPropertyBoolean("pause", true)
         }
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-          if (volumeBeforeDuck == null) {
+          if (PlaybackSession.usingExoPlayer) {
+            PlaybackSession.setAudioFocusDucked("service", true)
+          } else if (volumeBeforeDuck == null) {
             PlaybackSession.getPropertyDouble("volume")?.let { volume ->
               volumeBeforeDuck = volume
               PlaybackSession.setPropertyDouble("volume", volume * 0.5)
@@ -424,6 +426,33 @@ class MediaPlaybackService :
 
     serviceScope.launch {
       PlaybackSession.queue.collect(::syncQueueState)
+    }
+
+    serviceScope.launch {
+      PlaybackSession.audioState.collect { audio ->
+        if (!PlaybackSession.usingExoPlayer || audio.generation != PlaybackSession.state.value.generation) return@collect
+        audio.item?.let { item ->
+          if (mediaIdentifier != item.stableId) applySessionItem(item)
+        }
+        val metadataChanged = audio.title != null && audio.title != mediaTitle || audio.artist != null && audio.artist != mediaArtist
+        if (audio.title != null) mediaTitle = audio.title
+        if (audio.artist != null) mediaArtist = audio.artist
+        paused = audio.paused
+        val currentChapters = audio.chapters.map { ChapterNode(title = it.title, time = it.positionMs / 1000f) }
+        if (chapters != currentChapters) setChapters(currentChapters)
+        if (metadataChanged) {
+          updateMediaSessionMetadata()
+          updateNotification()
+        }
+      }
+    }
+
+    serviceScope.launch {
+      PlaybackSession.audioEvents.collect { event ->
+        if (event is AudioPlaybackEvent.Finished && !activityForeground &&
+          PlaybackSession.isCurrentGeneration(event.generation)
+        ) stopPlaybackAndService()
+      }
     }
 
     serviceScope.launch {
@@ -730,6 +759,7 @@ class MediaPlaybackService :
   }
 
   private fun restoreDuckedVolume() {
+    PlaybackSession.setAudioFocusDucked("service", false)
     volumeBeforeDuck?.let { volume -> PlaybackSession.setPropertyDouble("volume", volume) }
     volumeBeforeDuck = null
   }
@@ -1049,6 +1079,7 @@ class MediaPlaybackService :
   }
 
   private fun handleDetachedEndOfFile() {
+    if (PlaybackSession.usingExoPlayer) return
     if (activityForeground || PlaybackSession.state.value.surfaceAttached || !foregroundReady) return
     if (AudiobookPlayback.handleEndOfFile()) return
     val queueState = PlaybackSession.queue.value
@@ -1816,6 +1847,10 @@ class MediaPlaybackService :
   }
 
   private fun schedulePlaybackStateSave(force: Boolean = false) {
+    if (PlaybackSession.usingExoPlayer) {
+      PlaybackSession.saveAudioPlaybackState()
+      return
+    }
     val identifier = mediaIdentifier
     if (identifier.isBlank()) return
 
@@ -1832,6 +1867,10 @@ class MediaPlaybackService :
   }
 
   private fun savePlaybackStateNow() {
+    if (PlaybackSession.usingExoPlayer) {
+      PlaybackSession.saveAudioPlaybackState()
+      return
+    }
     val identifier = mediaIdentifier
     if (identifier.isBlank()) return
     // Every libmpv read happens here, so the database write can safely outlive the service.
@@ -1848,6 +1887,10 @@ class MediaPlaybackService :
   }
 
   private fun savePlaybackStateBeforeTaskRemoval() {
+    if (PlaybackSession.usingExoPlayer) {
+      runBlocking(Dispatchers.IO) { PlaybackSession.flushAudioPlaybackState() }
+      return
+    }
     val identifier = mediaIdentifier
     if (identifier.isBlank()) return
     val snapshot = capturePlaybackStateSnapshot(identifier, oldState = null) ?: return
@@ -1896,6 +1939,11 @@ class MediaPlaybackService :
     oldState: PlaybackStateEntity?,
   ): PlaybackStateSnapshot? {
     if (identifier.isBlank()) return null
+    if (PlaybackSession.usingExoPlayer) {
+      val audio = PlaybackSession.audioState.value
+      if (!audio.ready || audio.item?.stableId != identifier || audio.generation != PlaybackSession.state.value.generation) return null
+      return PlaybackStatePersistence.fromAudio(audio, oldState)
+    }
 
     return PlaybackSession.readLoadedPlaybackState(identifier) { position, duration ->
       PlaybackStateSnapshot(

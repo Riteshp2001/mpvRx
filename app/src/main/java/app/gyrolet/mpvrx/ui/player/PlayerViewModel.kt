@@ -638,8 +638,14 @@ class PlayerViewModel : ViewModel(),
 
   // These MPV-backed state flows must be initialized before any init block collects them.
   private val allTracks: StateFlow<List<TrackNode>> =
-    PlaybackSession.propNode["track-list"]
-      .map { node -> parseTracks(node).toImmutableList() }
+    combine(PlaybackSession.propNode["track-list"], PlaybackSession.state, PlaybackSession.audioState) { node, session, audio ->
+      if (session.engine == AudioEngineKind.ExoPlayer) {
+        audio.tracks.map { track ->
+          TrackNode(id = track.id, type = "audio", title = track.title, lang = track.language,
+            selected = track.selected, codec = track.codec)
+        }.toImmutableList()
+      } else parseTracks(node).toImmutableList()
+    }.distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val subtitleTracks: StateFlow<List<TrackNode>> =
@@ -969,11 +975,14 @@ class PlayerViewModel : ViewModel(),
       .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   val chapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
-    PlaybackSession.propNode["chapter-list"]
-      .map { node ->
+    combine(PlaybackSession.propNode["chapter-list"], PlaybackSession.state, PlaybackSession.audioState) { node, session, audio ->
+      if (session.engine == AudioEngineKind.ExoPlayer) {
+        audio.chapters.map { dev.vivvvek.seeker.Segment(it.title, it.positionMs / 1000f) }.toImmutableList()
+      } else {
         runCatching { node?.toObject<List<ChapterNode>>(json) }.getOrNull()?.map { it.toSegment() }?.toImmutableList()
           ?: persistentListOf()
-      }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
+      }
+    }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   private fun bookmarkMediaId(item: PlaybackItem?): String? = item?.audiobook?.let {
     app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity.audiobookMediaId(it.bookId)
@@ -1018,7 +1027,7 @@ class PlayerViewModel : ViewModel(),
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
   // The style and artwork/visualizer display choice are persisted via audioPreferences.
   val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.showAudioVisualizer.get())
-  val equalizerState = MutableStateFlow(EqualizerState())
+  val equalizerState = PlaybackSession.equalizerState
   private val audioEqualizerManager = AudioEqualizerManager()
   private var equalizerMpvDebounceJob: Job? = null
 
@@ -1409,15 +1418,12 @@ class PlayerViewModel : ViewModel(),
 
   fun applyEqualizerMpvFilters(immediate: Boolean = false) {
     val state = equalizerState.value
+    audioEqualizerManager.release()
+    if (PlaybackSession.usingExoPlayer) {
+      equalizerMpvDebounceJob?.cancel()
+      return
+    }
 
-    // 1. Hardware Android AudioFx (Equalizer & LoudnessEnhancer matching AFinity)
-    audioEqualizerManager.updateState(
-      enabled = state.isEnabled,
-      bandGains = state.bandGains,
-      volumeBoostDb = state.volumeBoostDb,
-    )
-
-    // 2. MPV Audio Filter Fallback
     // Changing MPV "af" filter property during playback causes MPV to recreate audio filter graph.
     // Debouncing while dragging prevents audio stutter/breaking.
     equalizerMpvDebounceJob?.cancel()
@@ -1432,23 +1438,10 @@ class PlayerViewModel : ViewModel(),
     }
   }
 
-  private fun getCustomMpvAf(): String {
-    val confFile = File(appContext.filesDir, "mpv.conf")
-    val text = if (confFile.exists()) {
-      runCatching { confFile.readText() }.getOrDefault("")
-    } else {
-      advancedPreferences.mpvConf.get()
-    }
-    if (text.isBlank()) return ""
-    val afFilters = text.lines()
-      .map { it.trim() }
-      .filter { !it.startsWith("#") && (it.startsWith("af=") || it.startsWith("af =") || it.startsWith("af-add=") || it.startsWith("af-add =") || it.startsWith("af-append=") || it.startsWith("af-append =")) }
-      .map { line -> line.substringAfter("=").trim() }
-      .filter { it.isNotBlank() }
-    return afFilters.joinToString(",")
-  }
+  private fun getCustomMpvAf(): String = PlaybackSession.nativeAudioFilters()
 
   private fun updateMpvAfProperty(state: EqualizerState) {
+    if (PlaybackSession.usingExoPlayer) return
     val filterList = mutableListOf<String>()
 
     // 1. Preserve custom af filters from mpv.conf
@@ -1511,23 +1504,6 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun getAudioPropertiesData(): List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem> {
-    val title =
-      currentMediaTitle.takeIf { it.isNotBlank() }
-        ?: PlaybackSession.getPropertyString("metadata/by-key/Title")
-        ?: PlaybackSession.getPropertyString("media-title")
-        ?: "Unknown Title"
-
-    val artist =
-      PlaybackSession.getPropertyString("metadata/by-key/Artist")
-        ?: PlaybackSession.getPropertyString("metadata/by-key/ARTIST")
-        ?: PlaybackSession.getPropertyString("metadata/by-key/album_artist")
-        ?: "Unknown Artist"
-
-    val album =
-      PlaybackSession.getPropertyString("metadata/by-key/Album")
-        ?: PlaybackSession.getPropertyString("metadata/by-key/ALBUM")
-        ?: "Unknown Album"
-
     val codec = PlaybackSession.getPropertyString("audio-codec-name")?.uppercase() ?: "Unknown"
     val samplerateInt = PlaybackSession.getPropertyInt("audio-params/samplerate") ?: 0
     val sampleRateStr =
@@ -1552,16 +1528,20 @@ class PlayerViewModel : ViewModel(),
     val bitrateInt = PlaybackSession.getPropertyInt("audio-bitrate") ?: 0
     val bitrateStr = if (bitrateInt > 0) "${bitrateInt / 1000} kbps" else "Variable / Unknown"
 
-    val path = PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename") ?: ""
+    val sourcePath = PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename") ?: ""
+    val sourceUri = sourcePath.takeIf(String::isNotBlank)?.let(Uri::parse)
+    val contentDetails = sourceUri?.takeIf { it.scheme.equals("content", ignoreCase = true) }?.let(::contentAudioDetails)
+    val path = when {
+      sourceUri?.scheme.equals("file", ignoreCase = true) -> sourceUri?.path.orEmpty()
+      contentDetails?.displayLocation != null -> contentDetails.displayLocation
+      else -> sourcePath
+    }
     val fileSizeStr =
-      if (path.isNotBlank() && !path.startsWith("content://") && !path.startsWith("http")) {
-        runCatching {
-          val bytes = java.io.File(path.removePrefix("file://")).length()
-          if (bytes > 0) String.format(java.util.Locale.US, "%.2f MB", bytes / (1024f * 1024f)) else ""
-        }.getOrDefault("")
-      } else {
-        ""
-      }
+      (contentDetails?.sizeBytes ?: path.takeIf { it.isNotBlank() && sourceUri?.scheme in setOf(null, "file") }
+        ?.let { runCatching { java.io.File(it).length() }.getOrDefault(0L) })
+        ?.takeIf { it > 0L }
+        ?.let { String.format(java.util.Locale.US, "%.2f MB", it / (1024f * 1024f)) }
+        .orEmpty()
 
     val formatExt =
       path
@@ -1571,18 +1551,46 @@ class PlayerViewModel : ViewModel(),
         .uppercase()
 
     return buildList {
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Title", title),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Artist", artist),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Album", album),
-      )
+      val session = PlaybackSession.state.value
+      val engineLabel = when (session.audioFallback) {
+        AudioEngineFallback.NativeConfiguration -> R.string.audio_fallback_config
+        AudioEngineFallback.FormatCompatibility -> R.string.audio_fallback_format
+        null -> if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
+      }
+      add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
+        appContext.getString(R.string.audio_output_engine), appContext.getString(engineLabel)))
+      if (session.engine == AudioEngineKind.ExoPlayer) {
+        val audio = PlaybackSession.audioState.value
+        val output = audio.output
+        if (output.dolbyAtmosSource) {
+          val decoder = output.decoderName
+          val atmosPath = when {
+            output.outputEncoding == android.media.AudioFormat.ENCODING_E_AC3_JOC -> appContext.getString(R.string.audio_atmos_path_passthrough)
+            output.outputEncoding == android.media.AudioFormat.ENCODING_E_AC3 -> appContext.getString(R.string.audio_atmos_path_passthrough_core)
+            decoder != null && output.decoderSupportsAtmos -> appContext.getString(R.string.audio_atmos_path_decoded_joc, decoder)
+            decoder != null -> appContext.getString(R.string.audio_atmos_path_decoded_core, decoder)
+            else -> appContext.getString(R.string.audio_atmos_rendering_unverified)
+          }
+          add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
+            appContext.getString(R.string.audio_atmos_source), atmosPath))
+        }
+        output.decoderName?.let { decoder ->
+          add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
+            appContext.getString(R.string.audio_output_decoder), decoder))
+        }
+        val formatLabel = when (output.outputEncoding) {
+          android.media.AudioFormat.ENCODING_PCM_FLOAT -> R.string.audio_output_float
+          android.media.AudioFormat.ENCODING_PCM_16BIT -> R.string.audio_output_processing
+          0 -> null
+          else -> R.string.audio_output_encoded
+        }
+        formatLabel?.let { label ->
+          val outputFormat = appContext.getString(label) +
+            if (output.outputSampleRate > 0) " (${output.outputSampleRate} Hz, ${output.outputChannels} ch)" else ""
+          add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
+            appContext.getString(R.string.audio_output_format), outputFormat))
+        }
+      }
       add(
         app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
           "Format / Codec",
@@ -1615,6 +1623,29 @@ class PlayerViewModel : ViewModel(),
       }
     }
   }
+
+  private data class ContentAudioDetails(val displayLocation: String?, val sizeBytes: Long?)
+
+  private fun contentAudioDetails(uri: Uri): ContentAudioDetails? = runCatching {
+    appContext.contentResolver.query(
+      uri,
+      null,
+      null,
+      null,
+      null,
+    )?.use { cursor ->
+      if (!cursor.moveToFirst()) return@use null
+      val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+      val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+      val relativePathIndex = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.RELATIVE_PATH)
+      val displayName = nameIndex.takeIf { it >= 0 }?.let(cursor::getString)?.takeIf(String::isNotBlank)
+      val relativePath = relativePathIndex.takeIf { it >= 0 }?.let(cursor::getString)?.takeIf(String::isNotBlank)
+      ContentAudioDetails(
+        displayLocation = if (displayName != null && relativePath != null) "$relativePath$displayName" else displayName,
+        sizeBytes = sizeIndex.takeIf { it >= 0 && !cursor.isNull(it) }?.let(cursor::getLong),
+      )
+    }
+  }.getOrNull()
 
   // Audio state
   val maxVolume = (appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -1990,6 +2021,21 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   )
 
   init {
+    viewModelScope.launch {
+      PlaybackSession.state.map { it.engine }.distinctUntilChanged().collect {
+        if (it == AudioEngineKind.ExoPlayer) {
+          equalizerMpvDebounceJob?.cancel()
+          audioEqualizerManager.release()
+        }
+      }
+    }
+    viewModelScope.launch {
+      PlaybackSession.audioState.map { Triple(it.generation, it.loopStartMs, it.loopEndMs) }.distinctUntilChanged().collect { (_, start, end) ->
+        if (PlaybackSession.usingExoPlayer) {
+          _abLoopState.update { it.copy(a = start?.div(1000.0), b = end?.div(1000.0)) }
+        }
+      }
+    }
     viewModelScope.launch {
       decoderPreferences.gpuNext.changes().collect { enabled ->
         _isGpuNextEnabled.value = enabled
@@ -2468,8 +2514,8 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     }
     syncplayManager.updateFileInfo(currentSyncplayFileInfo())
     applyEqualizerMpvFilters()
-    if (isAudioOnly.value) loadLyricsForCurrentTrack()
-    scheduleAutoCropAnalysis()
+    if (isAudioOnly.value || PlaybackSession.usingExoPlayer) loadLyricsForCurrentTrack()
+    if (!PlaybackSession.usingExoPlayer) scheduleAutoCropAnalysis()
   }
 
   fun updateTorrentState(state: TorrentStreamingState) {
@@ -2986,6 +3032,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   fun startTimer(seconds: Int) {
     timerJob?.cancel()
     _remainingTime.value = seconds
+    PlaybackSession.setAudioTransitionBlocked("sleep-timer", seconds > 0)
     if (seconds < 1) return
 
     timerJob =
@@ -2995,6 +3042,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
           delay(1000)
         }
         PlaybackSession.setPropertyBoolean("pause", true)
+        PlaybackSession.setAudioTransitionBlocked("sleep-timer", false)
         showToast(appContext.getString(R.string.toast_sleep_timer_ended))
       }
   }
@@ -3004,6 +3052,10 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   // ==================== Audio/Subtitle Management ====================
 
   fun addAudio(uri: Uri) {
+    if (PlaybackSession.usingExoPlayer) {
+      showToast(appContext.getString(R.string.audio_native_controls))
+      return
+    }
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
         if (uri.scheme == "content") {
@@ -7457,6 +7509,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   }
 
   override fun onCleared() {
+    PlaybackSession.setAudioTransitionBlocked("sleep-timer", false)
     // Deterministic cleanup of resources that previously relied on GC.
     // viewModelScope is auto-cancelled by ViewModel, but the following
     // resources are not coroutine-scoped and need explicit release.

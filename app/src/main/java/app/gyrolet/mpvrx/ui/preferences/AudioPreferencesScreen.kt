@@ -32,6 +32,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
+import app.gyrolet.mpvrx.preferences.AudioOutputSampleRate
 import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
@@ -70,6 +73,7 @@ import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.TextFieldPreference
 import org.koin.compose.koinInject
+import kotlin.math.roundToInt
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.AlertDialog
@@ -80,6 +84,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import app.gyrolet.mpvrx.ui.browser.music.MusicTab
+import app.gyrolet.mpvrx.ui.player.AudioEngineKind
+import app.gyrolet.mpvrx.ui.player.AudioEngineFallback
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 @Serializable
 object AudioPreferencesScreen : Screen {
@@ -136,6 +143,74 @@ object AudioPreferencesScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_audio_engine))
+            PreferenceCard {
+              val engine by preferences.audioEngine.collectAsState()
+              ListPreference(
+                value = engine,
+                onValueChange = preferences.audioEngine::set,
+                values = AudioEngineKind.entries,
+                valueToText = { AnnotatedString(resources.getString(if (it == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv)) },
+                title = { Text(stringResource(R.string.pref_audio_engine)) },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_engine),
+              )
+              PreferenceDivider()
+              val duration by preferences.crossfadeDurationMs.collectAsState()
+              var seconds by remember(duration) { mutableFloatStateOf((duration / 1000f).coerceIn(0f, 12f)) }
+              Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(stringResource(R.string.pref_audio_crossfade), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                  if (seconds < 1f) stringResource(R.string.generic_disabled)
+                  else stringResource(R.string.pref_audio_crossfade_seconds, seconds.roundToInt()),
+                  color = MaterialTheme.colorScheme.outline,
+                )
+                Slider(
+                  value = seconds,
+                  onValueChange = { seconds = it },
+                  onValueChangeFinished = { preferences.crossfadeDurationMs.set(seconds.roundToInt() * 1000) },
+                  enabled = engine == AudioEngineKind.ExoPlayer,
+                  valueRange = 0f..12f,
+                  steps = 11,
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_crossfade),
+                )
+              }
+              PreferenceDivider()
+              val outputRate by preferences.outputSampleRate.collectAsState()
+              val outputRateText: (AudioOutputSampleRate) -> String = { mode ->
+                when (mode) {
+                  AudioOutputSampleRate.Auto -> resources.getString(R.string.audio_output_rate_auto)
+                  AudioOutputSampleRate.Device -> resources.getString(R.string.audio_output_rate_device)
+                  else -> resources.getString(R.string.audio_output_rate_khz, (mode.hz / 1000f).toString().removeSuffix(".0"))
+                }
+              }
+              ListPreference(
+                value = outputRate,
+                onValueChange = preferences.outputSampleRate::set,
+                values = AudioOutputSampleRate.entries,
+                enabled = engine == AudioEngineKind.ExoPlayer,
+                valueToText = { AnnotatedString(outputRateText(it)) },
+                title = { Text(stringResource(R.string.pref_audio_output_sample_rate)) },
+                summary = {
+                  Text(outputRateText(outputRate), color = MaterialTheme.colorScheme.outline)
+                },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_output_sample_rate),
+              )
+              val session by PlaybackSession.state.collectAsState()
+              if (session.currentItem != null) {
+                val activeEngine = when (session.audioFallback) {
+                  AudioEngineFallback.NativeConfiguration -> R.string.audio_fallback_config
+                  AudioEngineFallback.FormatCompatibility -> R.string.audio_fallback_format
+                  null -> if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
+                }
+                Text(
+                  stringResource(R.string.audio_output_engine) + ": " + stringResource(activeEngine),
+                  style = MaterialTheme.typography.bodyMedium,
+                  modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+              }
+            }
+          }
           item {
             PreferenceSectionHeader(
               title = stringResource(R.string.pref_media_library_section),

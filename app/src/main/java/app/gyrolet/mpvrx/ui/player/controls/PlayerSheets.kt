@@ -474,6 +474,9 @@ fun PlayerSheets(
     }
 
     Sheets.PlaybackSpeed -> {
+      val session by app.gyrolet.mpvrx.ui.player.PlaybackSession.state.composeCollectAsState()
+      val audio by app.gyrolet.mpvrx.ui.player.PlaybackSession.audioState.composeCollectAsState()
+      val speedAvailable = session.engine != app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer || !audio.output.processingBypassed
       PlaybackSpeedSheet(
         speed,
         onSpeedChange = onSpeedChange,
@@ -484,8 +487,8 @@ fun PlayerSheets(
         onMakeDefault = onMakeDefaultSpeed,
         onResetDefault = onResetDefaultSpeed,
         onDismissRequest = onDismissRequest,
-        speedControlEnabled = "speed" !in configOwnedOptions,
-        pitchCorrectionEnabled = "audio-pitch-correction" !in configOwnedOptions,
+        speedControlEnabled = speedAvailable && "speed" !in configOwnedOptions,
+        pitchCorrectionEnabled = speedAvailable && "audio-pitch-correction" !in configOwnedOptions,
       )
     }
 
@@ -676,7 +679,11 @@ fun PlayerSheets(
     }
 
     Sheets.AudioProperties -> {
-      val properties = remember { viewModel.getAudioPropertiesData() }
+      val session by app.gyrolet.mpvrx.ui.player.PlaybackSession.state.composeCollectAsState()
+      val audio by app.gyrolet.mpvrx.ui.player.PlaybackSession.audioState.composeCollectAsState()
+      val properties = remember(session.engine, session.audioFallback, session.generation, audio.output, audio.title, audio.crossfadeAvailable) {
+        viewModel.getAudioPropertiesData()
+      }
       app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertiesSheet(
         properties = properties,
         onDismissRequest = onDismissRequest,

@@ -109,6 +109,7 @@ class CastPlaybackController(
         session: CastSession,
         error: Int,
       ) {
+        app.gyrolet.mpvrx.ui.player.PlaybackSession.setAudioTransitionBlocked("cast", false)
         CastMediaServer.stop()
         stopPositionPolling()
         if (transferredByThisController) {
@@ -160,6 +161,7 @@ class CastPlaybackController(
     }
 
   private fun onSessionReady(session: CastSession) {
+    app.gyrolet.mpvrx.ui.player.PlaybackSession.setAudioTransitionBlocked("cast", true)
     castSession = session
     remoteMediaClient = session.remoteMediaClient
     remoteMediaClient?.registerCallback(remoteMediaClientCallback)
@@ -204,6 +206,7 @@ class CastPlaybackController(
     castSession = null
     context?.sessionManager?.removeSessionManagerListener(sessionListener, CastSession::class.java)
     if (context?.sessionManager?.currentCastSession?.isConnected != true) {
+      app.gyrolet.mpvrx.ui.player.PlaybackSession.setAudioTransitionBlocked("cast", false)
       CastMediaServer.stop()
     }
   }

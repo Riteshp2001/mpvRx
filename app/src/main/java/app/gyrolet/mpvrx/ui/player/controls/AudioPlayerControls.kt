@@ -534,6 +534,12 @@ private fun AudioSpectrumCaptureEffect(
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val analyzerActive = remember(features) { AtomicBoolean(false) }
+  val session by PlaybackSession.state.collectAsState()
+  val audio by PlaybackSession.audioState.collectAsState()
+  val exoPlayer = session.engine == app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer
+  val captureSessionId = if (exoPlayer) audio.audioSessionIds.firstOrNull() else 0
+  val captureEnabled = enabled && captureSessionId != null &&
+    (!exoPlayer || audio.ready && audio.output.outputEncoding != 0 && !audio.output.offloaded && !audio.output.processingBypassed)
   var hasRecordPermission by remember {
     mutableStateOf(
       ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
@@ -545,20 +551,20 @@ private fun AudioSpectrumCaptureEffect(
       hasRecordPermission = granted
     }
 
-  LaunchedEffect(enabled, hasRecordPermission) {
-    if (enabled && !hasRecordPermission) {
+  LaunchedEffect(captureEnabled, hasRecordPermission) {
+    if (captureEnabled && !hasRecordPermission) {
       recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
   }
 
-  DisposableEffect(enabled, hasRecordPermission, features) {
-    val analyzer = if (enabled && hasRecordPermission) AudioSpectrumAnalyzer(features) else null
+  DisposableEffect(captureEnabled, captureSessionId, hasRecordPermission, features) {
+    val analyzer = if (captureEnabled && hasRecordPermission) AudioSpectrumAnalyzer(features) else null
     val job =
       scope.launch(Dispatchers.Default) {
         while (isActive && analyzer != null) {
           val captureFresh = features.active && features.hasRecentCapture(1_500_000_000L)
           if (!analyzerActive.get() || !captureFresh) {
-            analyzerActive.set(analyzer.start(0).isSuccess)
+            analyzerActive.set(analyzer.start(checkNotNull(captureSessionId)).isSuccess)
           }
           kotlinx.coroutines.delay(if (analyzerActive.get()) 1_500L else 400L)
         }

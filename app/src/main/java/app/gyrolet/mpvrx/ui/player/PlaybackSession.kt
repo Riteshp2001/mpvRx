@@ -22,13 +22,33 @@ import app.gyrolet.mpvrx.data.network.proxy.XtreamStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.AudioChannels
+import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
+import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
+import app.gyrolet.mpvrx.utils.media.JellyfinSessionReporter
+import app.gyrolet.mpvrx.utils.media.HttpUtils
+import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerState
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +58,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.ArrayDeque
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicLong
@@ -52,14 +73,18 @@ data class PlaybackSessionState(
   val paused: Boolean = true,
   val currentItem: PlaybackItem? = null,
   val error: String? = null,
+  val engine: AudioEngineKind = AudioEngineKind.Mpv,
+  val audioFallback: AudioEngineFallback? = null,
 )
+
+enum class AudioEngineFallback { NativeConfiguration, FormatCompatibility }
 
 data class PlaybackPositionRestoreOverride(
   val positionSeconds: Double?,
   val paused: Boolean,
 )
 
-/** A native-backed property that remains safe to access before the libmpv core exists. */
+/** A session-backed property that remains safe to access before playback is initialized. */
 class PlaybackProperty<T> internal constructor(
   internal val format: Int,
   private val reader: (String) -> T?,
@@ -93,13 +118,14 @@ class PlaybackProperty<T> internal constructor(
 }
 
 /**
- * The one process-wide owner of libmpv playback state.
+ * The one process-wide owner of playback state and the active engine.
  *
  * Android screens and the playback service may observe or control this object, but none of them
  * owns the native core. This makes rotation, PiP, background playback, and notification re-entry
  * attachment changes instead of competing create/destroy cycles.
  */
 @Suppress("TooManyFunctions")
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 object PlaybackSession : MPVLib.EventObserver {
   private const val TAG = "PlaybackSession"
   private const val SEEK_AUDIO_RESTORE_DELAY_MS = 60L
@@ -153,6 +179,40 @@ object PlaybackSession : MPVLib.EventObserver {
   private val observers = CopyOnWriteArraySet<MPVLib.EventObserver>()
   private val _state = MutableStateFlow(PlaybackSessionState())
   private val _queue = MutableStateFlow(PlaybackQueueState())
+  private val _audioState = MutableStateFlow(AudioEngineSnapshot())
+  private val _audioEvents = MutableSharedFlow<AudioPlaybackEvent>(extraBufferCapacity = 32)
+  private val audioScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+  private val audioTransitionBlocks = MutableStateFlow(emptySet<String>())
+  private val audioDuckOwners = mutableSetOf<String>()
+  private val audioPreloadSequence = AtomicLong()
+  @Volatile private var audioEngine: AudioPlaybackEngine? = null
+  private var audioReleaseCompletion = CompletableDeferred(Unit)
+  private var audioObserversStarted = false
+  private var audioProcessing = AudioProcessingSettings()
+  private val nativeOnlyAudioExtensions = setOf(
+    "wma", "aif", "aiff", "aifc", "ape", "mpc", "tta", "tak", "caf", "au", "snd", "ra", "spx",
+    "dsf", "dff", "dts", "mlp", "truehd", "mid", "midi",
+  )
+  private val nativeOnlyAudioMimeTypes = setOf(
+    "audio/x-ms-wma", "audio/aiff", "audio/x-aiff", "audio/ape", "audio/x-ape", "audio/x-musepack",
+    "audio/x-tta", "audio/x-tak", "audio/x-caf", "audio/basic", "audio/vnd.rn-realaudio", "audio/x-speex",
+    "audio/x-dsf", "audio/x-dff", "audio/vnd.dts", "audio/vnd.dolby.mlp", "audio/midi",
+  )
+  private var acceptedCrossfadeQueue: PlaybackQueueState? = null
+  private var audioHistoryGeneration = 0L
+  private var audioHistoryAllowed = false
+  private var audioHistoryPlaylistId: Int? = null
+  private var audioLeavingGeneration = 0L
+  private var audioLoopStartMs: Long? = null
+  private var audioLoopEndMs: Long? = null
+  private data class AudioSave(val snapshot: AudioEngineSnapshot, val completion: CompletableDeferred<Unit>? = null)
+  private val audioSaves = Channel<AudioSave>(Channel.UNLIMITED)
+  private var lastAudioSaveTime = 0L
+  private var audioReporter: JellyfinSessionReporter? = null
+  private var audioReporterGeneration = 0L
+  private var audioReportedPaused = true
+  private var lastAudioReportTime = 0L
+  val equalizerState = MutableStateFlow(EqualizerState())
   private val _videoZoom = MutableStateFlow(0f)
   private val _videoPanX = MutableStateFlow(0f)
   private val _videoPanY = MutableStateFlow(0f)
@@ -163,6 +223,9 @@ object PlaybackSession : MPVLib.EventObserver {
 
   val state: StateFlow<PlaybackSessionState> = _state.asStateFlow()
   val queue: StateFlow<PlaybackQueueState> = _queue.asStateFlow()
+  val audioState: StateFlow<AudioEngineSnapshot> = _audioState.asStateFlow()
+  val audioEvents = _audioEvents.asSharedFlow()
+  val usingExoPlayer: Boolean get() = _state.value.engine == AudioEngineKind.ExoPlayer
   val videoZoom: StateFlow<Float> = _videoZoom.asStateFlow()
   val videoPanX: StateFlow<Float> = _videoPanX.asStateFlow()
   val videoPanY: StateFlow<Float> = _videoPanY.asStateFlow()
@@ -210,7 +273,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var deferredVideoSelectionGeneration: Long? = null
   private var pendingStopClearQueue = false
   private var supersededStopGeneration = 0L
-  private var desiredPaused = true
+  @Volatile private var desiredPaused = true
   private var loadedGeneration = 0L
   private var loadedPlaybackItem: PlaybackItem? = null
   private var loadedAudiobookDurationMs = 0L
@@ -328,6 +391,7 @@ object PlaybackSession : MPVLib.EventObserver {
           activeCoreConfigurationKey = coreConfigurationKey
           activeUserScriptsKey = userScriptsKey
           updateState { it.copy(phase = PlaybackPhase.IDLE, paused = true, error = null) }
+          startAudioObservers()
           true
         } catch (error: Throwable) {
           runCatching { MPVLib.removeObserver(this) }
@@ -458,6 +522,34 @@ object PlaybackSession : MPVLib.EventObserver {
 
   /** Stop playback while keeping the app-scoped core ready for a later screen attachment. */
   fun stop(clearQueue: Boolean = true) {
+    if (usingExoPlayer) {
+      nativeLock.withLock {
+        if (_state.value.phase == PlaybackPhase.STOPPING) {
+          pendingStopClearQueue = pendingStopClearQueue || clearQueue
+          return
+        }
+        AudiobookPlayback.capture()
+        publishAudioLeaving()
+        AudiobookPlayback.clearTimer()
+        audioPreloadSequence.incrementAndGet()
+        val generation = _state.value.generation + 1
+        desiredPaused = true
+        loadedPlaybackItem = null
+        loadedGeneration = 0L
+        pendingStopClearQueue = clearQueue
+        updateState { it.copy(phase = PlaybackPhase.STOPPING, generation = generation, paused = true) }
+        releaseAudioEngineLocked {
+          nativeLock.withLock {
+            if (_state.value.generation == generation && _state.value.phase == PlaybackPhase.STOPPING) {
+              val previous = _audioState.value
+              _audioState.value = AudioEngineSnapshot(volume = previous.volume, muted = previous.muted, speed = previous.speed)
+              finalizeStopLocked()
+            }
+          }
+        }
+      }
+      return
+    }
     withCore(Unit) {
       AudiobookPlayback.capture()
       loadedPlaybackItem = null
@@ -546,6 +638,7 @@ object PlaybackSession : MPVLib.EventObserver {
     nativeLock.withLock {
       val current = _state.value
       if (current.phase != PlaybackPhase.STOPPING) return@withLock true
+      if (usingExoPlayer) return@withLock false
       if (!initialized || activeNetworkStream != null || auxiliaryNetworkStreams.isNotEmpty()) {
         return@withLock false
       }
@@ -609,11 +702,24 @@ object PlaybackSession : MPVLib.EventObserver {
    */
   fun muteForTeardown() {
     PlaybackPerformanceTrace.mark("CLOSE_AUDIO_SILENCE")
+    if (usingExoPlayer) {
+      audioEngine?.silence()
+      return
+    }
     withCore(Unit) { beginPlaybackTransitionAudioGuardLocked(canRestore = false) }
   }
 
   private fun destroyLocked() {
     AudiobookPlayback.capture()
+    publishAudioLeaving()
+    audioPreloadSequence.incrementAndGet()
+    releaseAudioEngineLocked()
+    _audioState.value = AudioEngineSnapshot()
+    audioLeavingGeneration = 0L
+    audioHistoryGeneration = 0L
+    audioLoopStartMs = null
+    audioLoopEndMs = null
+    audioDuckOwners.clear()
     loadedPlaybackItem = null
     speedBeforeAudiobook = null
     AudiobookPlayback.clearTimer()
@@ -665,7 +771,9 @@ object PlaybackSession : MPVLib.EventObserver {
         // A newly accepted launch supersedes the old Activity's pending clear-queue request.
         pendingStopClearQueue = false
       }
-      _queue.value = PlaybackQueueReducer.replace(_queue.value, items, currentIndex, isExplicitQueue, isM3u)
+      val previous = _queue.value
+      val next = PlaybackQueueReducer.replace(previous, items, currentIndex, isExplicitQueue, isM3u)
+      _queue.value = next
       if (_queue.value.currentItem?.audiobook != null) {
         _queue.value = PlaybackQueueReducer.setRepeatMode(PlaybackQueueReducer.setShuffleEnabled(_queue.value, false), RepeatMode.OFF)
       }
@@ -755,7 +863,7 @@ object PlaybackSession : MPVLib.EventObserver {
       ) return@withLock false
       val index = _queue.value.items.indexOfFirst { it.audiobook == AudiobookPlaybackInfo(bookId, trackId) }
       if (index < 0) return@withLock false
-      val paused = !resumePlayback && (MPVLib.getPropertyBoolean("pause") ?: current.paused)
+      val paused = !resumePlayback && (getPropertyBoolean("pause") ?: current.paused)
       val item = selectQueueItem(index) ?: return@withLock false
       if (load(item, initialPositionSeconds = positionMs.coerceAtLeast(0) / 1000.0) < 0) return@withLock false
       setPropertyBoolean("pause", paused)
@@ -794,8 +902,18 @@ object PlaybackSession : MPVLib.EventObserver {
     positionRestoreOverride: PlaybackPositionRestoreOverride? = null,
     initialPositionSeconds: Double? = null,
     flattenEditions: Boolean = false,
+    engineOverride: AudioEngineKind? = null,
     commit: ((() -> Long) -> Long)? = null,
   ): Long {
+    val nativeAudio = item.isDefinitelyAudioOnly() &&
+      (nativeAudioFilters().isNotBlank() || MpvConfigOverridePolicy.isOwnedByMpvConf("af"))
+    val nativeSource = requiresNativeAudioSource(item)
+    val selectedEngine = AudioPlaybackPolicy.engine(
+      engineOverride ?: audioPreferences.audioEngine.get(), item.isDefinitelyAudioOnly(), nativeAudio || nativeSource,
+    )
+    if (selectedEngine == AudioEngineKind.ExoPlayer) {
+      return loadAudio(item, positionRestoreOverride, initialPositionSeconds, commit)
+    }
     val preparationStartedAt = android.os.SystemClock.elapsedRealtime()
     PlaybackPerformanceTrace.mark("MEDIA_PREPARATION_START")
     val resolved =
@@ -822,6 +940,14 @@ object PlaybackSession : MPVLib.EventObserver {
               flattenEditions = flattenEditions,
             )
           if (generation >= 0L) {
+            updateState {
+              it.copy(audioFallback = when {
+                engineOverride == AudioEngineKind.Mpv || nativeSource && item.isDefinitelyAudioOnly() &&
+                  audioPreferences.audioEngine.get() == AudioEngineKind.ExoPlayer -> AudioEngineFallback.FormatCompatibility
+                nativeAudio && audioPreferences.audioEngine.get() == AudioEngineKind.ExoPlayer -> AudioEngineFallback.NativeConfiguration
+                else -> null
+              })
+            }
             previous = activeNetworkStream
             activeNetworkStream = resolved.registration
             previousAuxiliary = auxiliaryNetworkStreams.values.toList()
@@ -859,6 +985,14 @@ object PlaybackSession : MPVLib.EventObserver {
     withCore(default = -1L) {
       if (_state.value.phase == PlaybackPhase.STOPPING) return@withCore -1L
       AudiobookPlayback.capture()
+      publishAudioLeaving()
+      audioPreloadSequence.incrementAndGet()
+      val needsAudioRelease = audioEngine != null || !audioReleaseCompletion.isCompleted
+      if (_state.value.engine == AudioEngineKind.ExoPlayer) {
+        MPVLib.setPropertyBoolean("mute", _audioState.value.muted)
+        MPVLib.setPropertyDouble("volume", _audioState.value.volume.toDouble())
+        MPVLib.setPropertyDouble("speed", _audioState.value.speed.toDouble())
+      }
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
       loadedPlaybackItem = null
       if (resolvedItem.audiobook != null) AudiobookPlayback.ensureStarted()
@@ -904,6 +1038,8 @@ object PlaybackSession : MPVLib.EventObserver {
           paused = holdForPositionRestore || desiredPaused,
           currentItem = resolvedItem,
           error = null,
+          engine = AudioEngineKind.Mpv,
+          audioFallback = null,
         )
       }
       clearTimelinePropertiesLocked()
@@ -934,7 +1070,14 @@ object PlaybackSession : MPVLib.EventObserver {
           }
         }.joinToString(",")
       PlaybackPerformanceTrace.mark("LOADFILE_SENT", "generation=$generation")
-      MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
+      val startNativePlayback = {
+        nativeLock.withLock {
+          if (_state.value.generation == generation && !usingExoPlayer) {
+            MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
+          }
+        }
+      }
+      if (needsAudioRelease) releaseAudioEngineLocked { startNativePlayback() } else startNativePlayback()
       propBoolean.emit("pause", holdForPositionRestore || desiredPaused)
       generation
     }
@@ -952,6 +1095,7 @@ object PlaybackSession : MPVLib.EventObserver {
         return@withLock false
       }
       desiredPaused = true
+      if (usingExoPlayer) audioEngine?.setPaused(true)
       updateState { it.copy(phase = PlaybackPhase.ERROR, paused = true, error = message) }
       propBoolean.emit("pause", true)
       clearTimelinePropertiesLocked()
@@ -986,7 +1130,7 @@ object PlaybackSession : MPVLib.EventObserver {
         return@withLock
       }
 
-      MPVLib.setPropertyBoolean("pause", desiredPaused)
+      if (usingExoPlayer) audioEngine?.setPaused(desiredPaused) else MPVLib.setPropertyBoolean("pause", desiredPaused)
       updateState {
         it.copy(
           phase = if (it.phase == PlaybackPhase.BACKGROUND) PlaybackPhase.BACKGROUND else PlaybackPhase.READY,
@@ -1008,6 +1152,10 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   fun command(vararg command: String) {
+    if (usingExoPlayer) {
+      audioCommand(command)
+      return
+    }
     if (MpvConfigOverridePolicy.shouldSuppress(command)) return
     withCore(Unit) {
       val preparedCommand = prepareSeekCommandLocked(command)
@@ -1023,13 +1171,14 @@ object PlaybackSession : MPVLib.EventObserver {
   ): Boolean =
     nativeLock.withLock {
       if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
+      if (usingExoPlayer) return@withLock audioCommand(command)
       if (MpvConfigOverridePolicy.shouldSuppress(command)) return@withLock true
       val preparedCommand = prepareSeekCommandLocked(command)
       if (!handleAmbientShaderCommandLocked(preparedCommand)) MPVLib.command(*preparedCommand)
       true
     }
 
-  fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
+  fun commandNode(vararg command: String): MPVNode? = if (usingExoPlayer) null else withCore(null) { MPVLib.commandNode(*command) }
 
   internal fun removeVideoFilter(label: String) {
     val removal = arrayOf("vf", "remove", "@$label")
@@ -1069,12 +1218,20 @@ object PlaybackSession : MPVLib.EventObserver {
     value: String,
   ): Int = withCore(-1, allowInitializing = true) { MPVLib.setOptionString(name, value) }
 
-  fun getPropertyInt(property: String): Int? = withReadyCore(null) { MPVLib.getPropertyInt(property) }
+  fun getPropertyInt(property: String): Int? =
+    if (usingExoPlayer) {
+      if (property == "volume-max") 100 + audioPreferences.volumeBoostCap.get()
+      else AudioPropertyAdapter.number(_audioState.value, property)?.toInt()
+    } else withReadyCore(null) { MPVLib.getPropertyInt(property) }
 
   fun setPropertyInt(
     property: String,
     value: Int,
   ) {
+    if (usingExoPlayer) {
+      setAudioNumber(property, value.toDouble())
+      return
+    }
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
       if (property in AUDIO_SUBTITLE_TRACK_PROPERTIES && MPVLib.getPropertyInt(property) == value) {
@@ -1106,12 +1263,18 @@ object PlaybackSession : MPVLib.EventObserver {
     }
   }
 
-  fun getPropertyDouble(property: String): Double? = withReadyCore(null) { MPVLib.getPropertyDouble(property) }
+  fun getPropertyDouble(property: String): Double? =
+    if (usingExoPlayer) AudioPropertyAdapter.number(_audioState.value, property)
+    else withReadyCore(null) { MPVLib.getPropertyDouble(property) }
 
   fun setPropertyDouble(
     property: String,
     value: Double,
   ) {
+    if (usingExoPlayer) {
+      setAudioNumber(property, value)
+      return
+    }
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
       when (property) {
@@ -1132,17 +1295,25 @@ object PlaybackSession : MPVLib.EventObserver {
     }
   }
 
-  fun getPropertyFloat(property: String): Float? = withReadyCore(null) { MPVLib.getPropertyFloat(property) }
+  fun getPropertyFloat(property: String): Float? =
+    if (usingExoPlayer) getPropertyDouble(property)?.toFloat() else withReadyCore(null) { MPVLib.getPropertyFloat(property) }
 
   fun setPropertyFloat(
     property: String,
     value: Float,
   ) {
+    if (usingExoPlayer) {
+      setAudioNumber(property, value.toDouble())
+      return
+    }
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) { MPVLib.setPropertyFloat(property, value) }
   }
 
-  fun getPropertyBoolean(property: String): Boolean? = withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
+  fun getPropertyBoolean(property: String): Boolean? =
+    if (usingExoPlayer) {
+      if (property == "pause") _state.value.paused else AudioPropertyAdapter.flag(_audioState.value, property)
+    } else withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
 
   internal fun audiobookProgress(reachedEnd: Boolean = false): AudiobookProgress? = withCore(null) {
     val book = loadedPlaybackItem?.audiobook ?: return@withCore null
@@ -1151,10 +1322,10 @@ object PlaybackSession : MPVLib.EventObserver {
     if (!reachedEnd && current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return@withCore null
     if (reachedEnd) loadedAudiobookEnded = true
     val position = if (reachedEnd) loadedAudiobookDurationMs else {
-      val seconds = MPVLib.getPropertyDouble("time-pos")?.takeIf { it.isFinite() } ?: return@withCore null
+      val seconds = getPropertyDouble("time-pos")?.takeIf { it.isFinite() } ?: return@withCore null
       (seconds * 1000).toLong().coerceAtLeast(0)
     }
-    AudiobookProgress(book, position, loadedAudiobookEnded || MPVLib.getPropertyBoolean("eof-reached") == true,
+    AudiobookProgress(book, position, loadedAudiobookEnded || getPropertyBoolean("eof-reached") == true,
       android.os.SystemClock.elapsedRealtimeNanos())
   }
 
@@ -1163,9 +1334,9 @@ object PlaybackSession : MPVLib.EventObserver {
     val item = loadedPlaybackItem ?: return@withReadyCore null
     if (state.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) || loadedGeneration != state.generation ||
       state.currentItem?.stableId != item.stableId || state.currentItem?.audiobook != item.audiobook ||
-      MPVLib.getPropertyBoolean("seekable") == false
+      getPropertyBoolean("seekable") == false
     ) return@withReadyCore null
-    val position = MPVLib.getPropertyDouble("time-pos")?.takeIf { it.isFinite() && it >= 0 } ?: return@withReadyCore null
+    val position = getPropertyDouble("time-pos")?.takeIf { it.isFinite() && it >= 0 } ?: return@withReadyCore null
     item to (position * 1000).toLong()
   }
 
@@ -1178,9 +1349,9 @@ object PlaybackSession : MPVLib.EventObserver {
     if (item.stableId != mediaIdentifier || loadedGeneration != current.generation ||
       current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
     ) return@withReadyCore null
-    val position = MPVLib.getPropertyDouble("time-pos")?.takeIf { it.isFinite() && it >= 0.0 }
+    val position = getPropertyDouble("time-pos")?.takeIf { it.isFinite() && it >= 0.0 }
       ?: return@withReadyCore null
-    val duration = MPVLib.getPropertyDouble("duration")?.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
+    val duration = getPropertyDouble("duration")?.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
     capture(position, duration)
   }
 
@@ -1188,14 +1359,33 @@ object PlaybackSession : MPVLib.EventObserver {
     if (_state.value.generation != generation || _state.value.currentItem?.audiobook == null || MpvConfigOverridePolicy.isOwnedByMpvConf("speed")) {
       return@withCore
     }
-    if (speedBeforeAudiobook == null) speedBeforeAudiobook = MPVLib.getPropertyDouble("speed")?.toFloat() ?: 1f
-    MPVLib.setPropertyDouble("speed", speed.coerceIn(0.1f, 4f).toDouble())
+    if (speedBeforeAudiobook == null) speedBeforeAudiobook = getPropertyDouble("speed")?.toFloat() ?: 1f
+    setPropertyDouble("speed", speed.coerceIn(0.1f, 4f).toDouble())
   }
 
   fun setPropertyBoolean(
     property: String,
     value: Boolean,
   ) {
+    if (usingExoPlayer) {
+      nativeLock.withLock {
+        when (property) {
+          "pause" -> {
+            AudiobookPlayback.onPauseRequested(value)
+            desiredPaused = value
+            updateState { it.copy(paused = value) }
+            propBoolean.emit("pause", value)
+            audioEngine?.setPaused(value)
+          }
+          "mute" -> {
+            _audioState.update { it.copy(muted = value) }
+            audioEngine?.setMuted(value)
+          }
+          else -> Unit
+        }
+      }
+      return
+    }
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
       if (property == "pause") {
@@ -1283,6 +1473,11 @@ object PlaybackSession : MPVLib.EventObserver {
   /** Atomically toggles pause so rapid UI/media-button taps cannot race separate reads and writes. */
   fun togglePause(): Boolean? =
     withCore(default = null) {
+      if (usingExoPlayer) {
+        val next = !_state.value.paused
+        setPropertyBoolean("pause", next)
+        return@withCore next
+      }
       val currentPaused =
         if (_state.value.phase == PlaybackPhase.LOADING) {
           desiredPaused
@@ -1301,14 +1496,27 @@ object PlaybackSession : MPVLib.EventObserver {
       nextPaused
     }
 
-  fun getPropertyString(property: String): String? = withReadyCore(null) { MPVLib.getPropertyString(property) }
+  fun getPropertyString(property: String): String? =
+    if (usingExoPlayer) AudioPropertyAdapter.text(_audioState.value, property)
+    else withReadyCore(null) { MPVLib.getPropertyString(property) }
 
-  fun getPropertyNode(property: String): MPVNode? = withReadyCore(null) { MPVLib.getPropertyNode(property) }
+  fun getPropertyNode(property: String): MPVNode? =
+    if (usingExoPlayer) null else withReadyCore(null) { MPVLib.getPropertyNode(property) }
 
   fun setPropertyString(
     property: String,
     value: String,
   ) {
+    if (usingExoPlayer) {
+      when (property) {
+        "pause", "mute" -> setPropertyBoolean(property, value == "yes")
+        "aid" -> audioEngine?.selectTrack(if (value == "no") -1 else value.toIntOrNull() ?: 1)
+        "ab-loop-a", "ab-loop-b" -> setAudioLoopPoint(property, value.toDoubleOrNull()?.takeIf(Double::isFinite)?.times(1000)?.toLong())
+        "speed", "time-pos", "volume" -> value.toDoubleOrNull()?.let { setAudioNumber(property, it) }
+        else -> Unit
+      }
+      return
+    }
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
       if (property in AUDIO_SUBTITLE_TRACK_PROPERTIES && MPVLib.getPropertyString(property) == value) {
@@ -1336,7 +1544,7 @@ object PlaybackSession : MPVLib.EventObserver {
     }
   }
 
-  fun grabThumbnail(dimension: Int): Bitmap? = withCore(null) { MPVLib.grabThumbnail(dimension) }
+  fun grabThumbnail(dimension: Int): Bitmap? = if (usingExoPlayer) null else withCore(null) { MPVLib.grabThumbnail(dimension) }
 
   fun grabThumbnailFast(
     path: String,
@@ -1391,6 +1599,7 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   override fun eventProperty(property: String) {
+    if (usingExoPlayer) return
     propBoolean.emit(property, null)
     propString.emit(property, null)
     propDouble.emit(property, null)
@@ -1405,6 +1614,7 @@ object PlaybackSession : MPVLib.EventObserver {
     property: String,
     value: Long,
   ) {
+    if (usingExoPlayer) return
     if (shouldSuppressTimelineUpdate(property)) {
       propLong.emit(property, null)
       propInt.emit(property, null)
@@ -1419,6 +1629,7 @@ object PlaybackSession : MPVLib.EventObserver {
     property: String,
     value: Boolean,
   ) {
+    if (usingExoPlayer) return
     val effectiveValue =
       if (property == "pause" && _state.value.phase == PlaybackPhase.LOADING) _state.value.paused else value
     if (property == "pause") updateState { it.copy(paused = effectiveValue) }
@@ -1430,6 +1641,7 @@ object PlaybackSession : MPVLib.EventObserver {
     property: String,
     value: String,
   ) {
+    if (usingExoPlayer) return
     propString.emit(property, value)
     observerSnapshot().forEach { observer -> runCatching { observer.eventProperty(property, value) } }
   }
@@ -1438,6 +1650,7 @@ object PlaybackSession : MPVLib.EventObserver {
     property: String,
     value: Double,
   ) {
+    if (usingExoPlayer) return
     if (shouldSuppressTimelineUpdate(property)) {
       propDouble.emit(property, null)
       propFloat.emit(property, null)
@@ -1452,6 +1665,7 @@ object PlaybackSession : MPVLib.EventObserver {
     property: String,
     value: MPVNode,
   ) {
+    if (usingExoPlayer) return
     propNode.emit(property, value)
     observerSnapshot().forEach { observer -> runCatching { observer.eventProperty(property, value) } }
   }
@@ -1460,8 +1674,10 @@ object PlaybackSession : MPVLib.EventObserver {
     eventId: Int,
     data: MPVNode,
   ) {
+    if (usingExoPlayer) return
     val shouldForward =
       nativeLock.withLock {
+        if (usingExoPlayer) return@withLock false
         when (eventId) {
           MPVLib.MpvEvent.MPV_EVENT_START_FILE -> {
             // loadfile 'replace' commands can coalesce inside one mpv dispatch batch, in which case
@@ -1920,7 +2136,599 @@ object PlaybackSession : MPVLib.EventObserver {
       }
   }
 
-  private fun resolvePlayableUri(item: PlaybackItem): ResolvedPlayable {
+  fun setAudioTransitionBlocked(owner: String, blocked: Boolean) {
+    audioTransitionBlocks.update { if (blocked) it + owner else it - owner }
+  }
+
+  fun setAudioFocusDucked(owner: String, ducked: Boolean) = nativeLock.withLock {
+    if (ducked) audioDuckOwners.add(owner) else audioDuckOwners.remove(owner)
+    audioEngine?.setDuckGain(if (audioDuckOwners.isEmpty()) 1f else 0.5f)
+  }
+
+  fun configureAudioHistory(allowed: Boolean, playlistId: Int?) = nativeLock.withLock {
+    audioHistoryAllowed = allowed
+    audioHistoryPlaylistId = playlistId
+  }
+
+  fun saveAudioPlaybackState() {
+    nativeLock.withLock {
+      val snapshot = _audioState.value
+      if (usingExoPlayer && snapshot.ready && snapshot.generation == _state.value.generation) audioSaves.trySend(AudioSave(snapshot))
+    }
+  }
+
+  suspend fun flushAudioPlaybackState() {
+    val completion = CompletableDeferred<Unit>()
+    val snapshot = _audioState.value
+    if (!snapshot.ready || !usingExoPlayer) return
+    audioSaves.send(AudioSave(snapshot, completion))
+    completion.await()
+  }
+
+  fun nativeAudioFilters(): String {
+    val context = applicationContext ?: return ""
+    val config = File(context.filesDir, "mpv.conf")
+    val text = if (config.exists()) runCatching { config.readText() }.getOrDefault("") else
+      org.koin.java.KoinJavaComponent.get<AdvancedPreferences>(AdvancedPreferences::class.java).mpvConf.get()
+    return text.lineSequence().map(String::trim).filter {
+      !it.startsWith('#') && it.substringBefore('=').trim() in setOf("af", "af-add", "af-append")
+    }.map { it.substringAfter('=', "").trim() }.filter(String::isNotBlank).joinToString(",")
+  }
+
+  private fun requiresNativeAudioSource(item: PlaybackItem): Boolean {
+    if (item.playableUri.startsWith("fd://")) return !item.originalUri.startsWith("content://")
+    if (item.networkSource != null || NetworkPlaybackUri.parse(item.playableUri) != null || XtreamPlaybackUri.parse(item.playableUri) != null) return false
+    if (knownNativeOnlyAudioFormat(item)) return true
+    val uri = Uri.parse(item.playableUri)
+    if ((HttpUtils.isMusicStreamingUrl(uri) || HttpUtils.isYouTubeUrl(uri)) && !HttpUtils.isDirectMediaUrl(uri)) return true
+    return uri.scheme?.lowercase() !in setOf(null, "file", "content", "http", "https", "android.resource", "data") &&
+      !File(item.playableUri).isAbsolute
+  }
+
+  private fun knownNativeOnlyAudioFormat(item: PlaybackItem): Boolean {
+    val extension = sequenceOf(item.playableUri, item.originalUri, item.title.orEmpty()).mapNotNull { value ->
+      val uri = Uri.parse(value)
+      val name = when (uri.scheme?.lowercase()) {
+        null -> value
+        "file" -> uri.path
+        "content" -> null
+        else -> uri.lastPathSegment
+      }
+      name?.substringBefore('?')?.substringBefore('#')?.substringAfterLast('.', "")
+        ?.lowercase(java.util.Locale.ROOT)?.takeIf(String::isNotBlank)
+    }.firstOrNull()
+    if (extension in nativeOnlyAudioExtensions) return true
+
+    val declaredMime = item.mimeType?.lowercase(java.util.Locale.ROOT)?.takeUnless { '*' in it }
+    val providerMime = sequenceOf(item.originalUri, item.playableUri)
+      .map(Uri::parse)
+      .firstOrNull { it.scheme.equals("content", ignoreCase = true) }
+      ?.let { uri -> runCatching { applicationContext?.contentResolver?.getType(uri) }.getOrNull() }
+      ?.lowercase(java.util.Locale.ROOT)
+    return declaredMime in nativeOnlyAudioMimeTypes || providerMime in nativeOnlyAudioMimeTypes
+  }
+
+  private fun startAudioObservers() {
+    if (audioObserversStarted) return
+    audioObserversStarted = true
+    val playerPreferences = org.koin.java.KoinJavaComponent.get<PlayerPreferences>(PlayerPreferences::class.java)
+    audioScope.launch(Dispatchers.IO) {
+      val repository = org.koin.java.KoinJavaComponent.get<PlaybackStateRepository>(PlaybackStateRepository::class.java)
+      val browser = org.koin.java.KoinJavaComponent.get<BrowserPreferences>(BrowserPreferences::class.java)
+      for (request in audioSaves) {
+        val audio = request.snapshot
+        runCatching {
+          val item = audio.item ?: return@runCatching
+          val old = repository.getVideoDataByTitle(item.stableId)
+          val snapshot = PlaybackStatePersistence.fromAudio(audio, old) ?: return@runCatching
+          repository.upsert(PlaybackStatePersistence.buildEntity(old, snapshot, playerPreferences.savePositionOnQuit.get(), browser.watchedThreshold.get()))
+          PlaybackStateEvents.notifyChanged(item.stableId)
+        }.onFailure { Log.w(TAG, "Could not save the outgoing audio position") }
+        request.completion?.complete(Unit)
+      }
+    }
+    audioScope.launch {
+      combine(
+        equalizerState,
+        audioPreferences.volumeNormalization.changes(),
+        audioPreferences.drcEnabled.changes(),
+        audioPreferences.audioChannels.changes(),
+      ) { equalizer, normalize, compress, channels ->
+        AudioProcessingSettings(
+          equalizer.isEnabled, equalizer.bandGains, equalizer.volumeBoostDb, normalize, compress,
+          when (channels) {
+            AudioChannels.Mono -> AudioChannelMix.Mono
+            AudioChannels.Stereo -> AudioChannelMix.Stereo
+            AudioChannels.ReverseStereo -> AudioChannelMix.ReverseStereo
+            else -> AudioChannelMix.Auto
+          },
+        )
+      }.distinctUntilChanged().collect {
+        audioProcessing = it
+        audioEngine?.setProcessing(it)
+      }
+    }
+    audioScope.launch {
+      combine(_queue, audioPreferences.crossfadeDurationMs.changes(), playerPreferences.autoplayNextAudio.changes(), audioTransitionBlocks,
+        audioPreferences.audioEngine.changes()) { queue, duration, autoplay, blocks, engine ->
+        Triple(queue, duration, engine == AudioEngineKind.ExoPlayer &&
+          (autoplay || queue.repeatMode == RepeatMode.ALL) && queue.repeatMode != RepeatMode.ONE && blocks.isEmpty())
+      }.collect { (queue, duration, allowed) ->
+        if (queue != acceptedCrossfadeQueue) {
+          audioPreloadSequence.incrementAndGet()
+          audioEngine?.cancelTransition()
+        }
+        acceptedCrossfadeQueue = null
+        audioEngine?.setCrossfade(duration, allowed)
+      }
+    }
+    audioScope.launch {
+      audioPreferences.audioPitchCorrection.changes().collect { preservePitch ->
+        audioEngine?.setSpeed(_audioState.value.speed, preservePitch)
+      }
+    }
+    audioScope.launch {
+      audioPreferences.outputSampleRate.changes().collect { mode -> audioEngine?.setOutputSampleRate(mode) }
+    }
+    audioScope.launch {
+      val syncplay = org.koin.java.KoinJavaComponent.get<app.gyrolet.mpvrx.domain.syncplay.SyncplayManager>(
+        app.gyrolet.mpvrx.domain.syncplay.SyncplayManager::class.java,
+      )
+      syncplay.state.collect { setAudioTransitionBlocked("syncplay", it.isConnected || it.isConnecting) }
+    }
+  }
+
+  private fun loadAudio(
+    item: PlaybackItem,
+    restore: PlaybackPositionRestoreOverride?,
+    initialSeconds: Double?,
+    commit: ((() -> Long) -> Long)?,
+  ): Long {
+    val resolved = resolvePlayableUri(item, forExoPlayer = true)
+    val source = AudioPlaybackSource(item, resolved.uri) { resolved.registration?.let(::releaseNetworkStream) }
+    val performCommit = {
+      nativeLock.withLock {
+        if (!initialized || _state.value.phase == PlaybackPhase.STOPPING) -1L else {
+          AudiobookPlayback.capture()
+          publishAudioLeaving()
+          audioPreloadSequence.incrementAndGet()
+          interruptAudioReplacementLocked()
+          val previousAudio = _audioState.value.takeIf { usingExoPlayer }
+          clearSeekAudioGuardLocked(restoreMute = true)
+          clearPlaybackTransitionAudioGuardLocked(restoreMute = true)
+          val currentVolume = previousAudio?.volume ?: MPVLib.getPropertyDouble("volume")?.toFloat() ?: 100f
+          val currentMute = previousAudio?.muted ?: MPVLib.getPropertyBoolean("mute") ?: false
+          val currentSpeed = if (item.audiobook == null && speedBeforeAudiobook != null) speedBeforeAudiobook!!.also { speedBeforeAudiobook = null }
+            else previousAudio?.speed ?: MPVLib.getPropertyDouble("speed")?.toFloat() ?: 1f
+          MPVLib.setPropertyBoolean("mute", true)
+          MPVLib.setPropertyBoolean("pause", true)
+          MPVLib.command("stop")
+          releaseActiveNetworkStreamLocked()
+          releaseAuxiliaryNetworkStreamsLocked()
+          val generation = _state.value.generation + 1L
+          loadedGeneration = 0L
+          loadedPlaybackItem = null
+          loadedAudiobookEnded = false
+          desiredPaused = restore?.paused ?: false
+          pendingPositionRestoreGeneration = 0L
+          pendingPositionRestoreOverride = null
+          initialPositionGeneration = generation
+          val position = ((initialSeconds ?: restore?.positionSeconds ?: 0.0).coerceAtLeast(0.0) * 1000).toLong()
+          _audioState.value = AudioEngineSnapshot(generation = generation, item = item, paused = desiredPaused, volume = currentVolume, muted = currentMute, speed = currentSpeed)
+          updateState { it.copy(engine = AudioEngineKind.ExoPlayer, audioFallback = null, phase = PlaybackPhase.LOADING,
+            generation = generation, activeGeneration = generation, currentItem = item, paused = desiredPaused, error = null) }
+          clearTimelinePropertiesLocked()
+          propNode.emit("track-list", null)
+          audioLoopStartMs = null
+          audioLoopEndMs = null
+          val releaseCompletion = audioReleaseCompletion
+          audioScope.launch {
+            var transferred = false
+            try {
+              releaseCompletion.await()
+              if (item.audiobook != null) {
+                AudiobookPlayback.ensureStarted()
+                kotlinx.coroutines.withContext(Dispatchers.IO) { AudiobookPlayback.applyBookSettings(item, generation) }
+              }
+              nativeLock.withLock {
+                if (initialized && usingExoPlayer && isCurrentGeneration(generation) && _state.value.phase == PlaybackPhase.LOADING) {
+                  val latest = _audioState.value
+                  val engine = audioEngine ?: createAudioEngine().also { audioEngine = it }
+                  engine.setProcessing(audioProcessing)
+                  engine.setOutputSampleRate(audioPreferences.outputSampleRate.get())
+                  engine.setSpeed(latest.speed, audioPreferences.audioPitchCorrection.get())
+                  engine.setVolume(latest.volume)
+                  engine.setDuckGain(if (audioDuckOwners.isEmpty()) 1f else 0.5f)
+                  engine.setMuted(latest.muted)
+                  engine.setLoop(null, null)
+                  engine.setCrossfade(audioPreferences.crossfadeDurationMs.get(), audioAutoplayAllowed() && audioTransitionBlocks.value.isEmpty())
+                  engine.load(source, generation, position)
+                  transferred = true
+                }
+              }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+              throw cancelled
+            } catch (_: Exception) {
+              failAudioState(generation)
+            } finally {
+              if (!transferred) source.close()
+            }
+          }
+          generation
+        }
+      }
+    }
+    return try {
+      (commit?.invoke(performCommit) ?: performCommit()).also { if (it < 0) source.close() }
+    } catch (error: Throwable) {
+      source.close()
+      throw error
+    }
+  }
+
+  private fun interruptAudioReplacementLocked() {
+    if (!usingExoPlayer) return
+    audioPreloadSequence.incrementAndGet()
+    acceptedCrossfadeQueue = null
+    audioEngine?.silence()
+  }
+
+  private fun releaseAudioEngineLocked(onReleased: () -> Unit = {}) {
+    val engine = audioEngine
+    audioEngine = null
+    val previousRelease = audioReleaseCompletion
+    val completion = CompletableDeferred<Unit>()
+    audioReleaseCompletion = completion
+    val finishRelease = {
+      audioScope.launch {
+        previousRelease.await()
+        try {
+          onReleased()
+        } finally {
+          completion.complete(Unit)
+        }
+      }
+      Unit
+    }
+    if (engine == null) finishRelease() else engine.release(finishRelease)
+  }
+
+  private fun createAudioEngine(): AudioPlaybackEngine = ExoAudioEngine(
+    checkNotNull(applicationContext),
+    org.koin.java.KoinJavaComponent.get<okhttp3.OkHttpClient>(okhttp3.OkHttpClient::class.java),
+    pauseRequested = { desiredPaused },
+    isCurrentGeneration = { usingExoPlayer && isCurrentGeneration(it) &&
+      _state.value.phase !in setOf(PlaybackPhase.STOPPING, PlaybackPhase.IDLE, PlaybackPhase.UNINITIALIZED, PlaybackPhase.ERROR) },
+    onSnapshot = ::acceptAudioSnapshot,
+    onReady = { generation ->
+      nativeLock.withLock {
+        if (usingExoPlayer && isCurrentGeneration(generation)) {
+          loadedGeneration = generation
+          loadedPlaybackItem = _state.value.currentItem
+          loadedAudiobookDurationMs = _audioState.value.durationMs
+          loadedPlaybackItem?.let { AudiobookPlayback.onFileLoaded(it, generation) }
+          _audioEvents.tryEmit(AudioPlaybackEvent.Ready(generation))
+        }
+      }
+    },
+    onEnded = ::audioEnded,
+    onError = ::audioFailed,
+    onPrepareNext = ::prepareNextAudio,
+    onHandoff = { next, outgoing ->
+      nativeLock.withLock {
+        if (!usingExoPlayer || _state.value.paused || _state.value.generation != next.generation || _queue.value != next.before ||
+          !audioAutoplayAllowed() || audioTransitionBlocks.value.isNotEmpty() ||
+          audioPreferences.audioEngine.get() != AudioEngineKind.ExoPlayer || audioPreferences.crossfadeDurationMs.get() <= 0
+        ) null else {
+          publishAudioLeaving(outgoing)
+          acceptedCrossfadeQueue = next.after
+          _queue.value = next.after
+          val generation = next.generation + 1
+          loadedGeneration = generation
+          loadedPlaybackItem = next.source.item
+          updateState { it.copy(generation = generation, activeGeneration = generation, currentItem = next.source.item) }
+          generation
+        }
+      }
+    },
+  )
+
+  private fun acceptAudioSnapshot(engineSnapshot: AudioEngineSnapshot) {
+    nativeLock.withLock {
+      val snapshot = engineSnapshot.copy(paused = desiredPaused)
+      if (!usingExoPlayer || !isCurrentGeneration(snapshot.generation) ||
+        _state.value.phase in setOf(PlaybackPhase.STOPPING, PlaybackPhase.ERROR)
+      ) return
+      val previous = _audioState.value
+      _audioState.value = snapshot
+      if (snapshot.ready) {
+        loadedGeneration = snapshot.generation
+        loadedPlaybackItem = snapshot.item
+        loadedAudiobookDurationMs = snapshot.durationMs
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastAudioSaveTime >= 5_000L) {
+          lastAudioSaveTime = now
+          audioSaves.trySend(AudioSave(snapshot))
+        }
+      }
+      updateAudioReporter(snapshot)
+      updateState { it.copy(paused = snapshot.paused, phase = if (snapshot.ready) {
+        if (it.phase == PlaybackPhase.BACKGROUND) PlaybackPhase.BACKGROUND else PlaybackPhase.READY
+      } else PlaybackPhase.LOADING) }
+      val listeners = observerSnapshot()
+      for (property in AudioPropertyAdapter.numbers) {
+        val value = AudioPropertyAdapter.number(snapshot, property)
+        propDouble.emit(property, value)
+        propFloat.emit(property, value?.toFloat())
+        propInt.emit(property, value?.toInt())
+        propLong.emit(property, value?.toLong())
+        if (value != null && (snapshot.generation != previous.generation || value != AudioPropertyAdapter.number(previous, property))) {
+          listeners.forEach { observer ->
+            runCatching {
+              if (property in setOf("aid", "vid", "sid", "secondary-sid", "chapter", "chapters")) observer.eventProperty(property, value.toLong())
+              else observer.eventProperty(property, value)
+            }
+          }
+        }
+      }
+      for (property in AudioPropertyAdapter.flags) {
+        val value = AudioPropertyAdapter.flag(snapshot, property) ?: continue
+        propBoolean.emit(property, value)
+        if (property != "eof-reached" && (snapshot.generation != previous.generation || value != AudioPropertyAdapter.flag(previous, property))) {
+          listeners.forEach { runCatching { it.eventProperty(property, value) } }
+        }
+      }
+      for (property in AudioPropertyAdapter.strings) {
+        val value = AudioPropertyAdapter.text(snapshot, property)
+        propString.emit(property, value)
+        if (value != null && (snapshot.generation != previous.generation || value != AudioPropertyAdapter.text(previous, property))) {
+          listeners.forEach { runCatching { it.eventProperty(property, value) } }
+        }
+      }
+    }
+  }
+
+  private fun prepareNextAudio(generation: Long) {
+    val before = _queue.value
+    val after = PlaybackQueueReducer.next(before) ?: return
+    val item = after.currentItem ?: return
+    if (!item.isDefinitelyAudioOnly() || item.audiobook != null || item.requiresTorrentResolution() ||
+      audioPreferences.audioEngine.get() != AudioEngineKind.ExoPlayer || requiresNativeAudioSource(item)
+    ) return
+    val request = audioPreloadSequence.incrementAndGet()
+    audioScope.launch(Dispatchers.IO) {
+      var source: AudioPlaybackSource? = null
+      try {
+        val resolved = resolvePlayableUri(item, forExoPlayer = true)
+        source = AudioPlaybackSource(item, resolved.uri) { resolved.registration?.let(::releaseNetworkStream) }
+        nativeLock.withLock {
+          val engine = audioEngine
+          if (engine != null && usingExoPlayer && isCurrentGeneration(generation) && _queue.value == before && request == audioPreloadSequence.get()) {
+            engine.prepareNext(PreparedAudioNext(checkNotNull(source), generation, before, after))
+            source = null
+          }
+        }
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+      } catch (_: Exception) {
+        Log.d(TAG, "Next audio item was not preloaded; using sequential playback")
+      } finally {
+        source?.close()
+      }
+    }
+  }
+
+  private fun audioAutoplayAllowed(): Boolean {
+    val preferences = org.koin.java.KoinJavaComponent.get<PlayerPreferences>(PlayerPreferences::class.java)
+    return _queue.value.repeatMode != RepeatMode.ONE &&
+      (preferences.autoplayNextAudio.get() || _queue.value.repeatMode == RepeatMode.ALL)
+  }
+
+  private fun audioEnded(generation: Long) {
+    if (!usingExoPlayer || !isCurrentGeneration(generation) || _state.value.paused) return
+    if (_state.value.currentItem?.audiobook != null) {
+      AudiobookPlayback.capture(reachedEnd = true)
+      if (AudiobookPlayback.handleEndOfFile()) return
+    }
+    if (_queue.value.repeatMode == RepeatMode.ONE) {
+      audioEngine?.seekTo(0)
+      audioEngine?.setPaused(false)
+      return
+    }
+    if ((_state.value.currentItem?.audiobook != null || audioAutoplayAllowed()) && hasNext()) {
+      audioScope.launch(Dispatchers.IO) {
+        nativeLock.withLock {
+          if (usingExoPlayer && isCurrentGeneration(generation)) {
+            runCatching { playNext() }.onFailure { failAudioState(generation) }
+          }
+        }
+      }
+    } else {
+      publishAudioLeaving()
+      desiredPaused = true
+      audioEngine?.setPaused(true)
+      updateState { it.copy(paused = true) }
+      _audioEvents.tryEmit(AudioPlaybackEvent.Finished(generation))
+    }
+  }
+
+  private fun audioFailed(generation: Long, errorCode: Int, positionMs: Long) {
+    if (!usingExoPlayer || !isCurrentGeneration(generation)) return
+    val item = _state.value.currentItem ?: return
+    val atmosSource = _audioState.value.output.dolbyAtmosSource || item.mimeType == androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC
+    // A device with a Dolby decoder failed a genuine Atmos stream; software decoding cannot preserve it.
+    if (atmosSource && ExoAudioEngine.hasDolbyDecoder()) {
+      failAudioState(generation, app.gyrolet.mpvrx.R.string.audio_atmos_unsupported)
+      return
+    }
+    val paused = _state.value.paused
+    val resumeMs = positionMs.takeIf { _audioState.value.seekable && !_audioState.value.live } ?: 0L
+    val localSource = sequenceOf(item.originalUri, item.playableUri).any(::isLocalAudioUri)
+    val compatibleFailure = errorCode in setOf(
+      androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED,
+    ) || localSource && errorCode in setOf(
+      androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+      androidx.media3.common.PlaybackException.ERROR_CODE_IO_NO_PERMISSION,
+      androidx.media3.common.PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE,
+      androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+    )
+    if (!compatibleFailure) {
+      failAudioState(generation)
+      return
+    }
+    audioScope.launch(Dispatchers.IO) {
+      runCatching {
+        load(item, initialPositionSeconds = resumeMs / 1000.0, engineOverride = AudioEngineKind.Mpv, commit = { load ->
+          nativeLock.withLock {
+            if (!usingExoPlayer || !isCurrentGeneration(generation)) -1L else load().also { setPropertyBoolean("pause", paused) }
+          }
+        })
+      }.onFailure { failAudioState(generation) }
+    }
+  }
+
+  private fun failAudioState(generation: Long, @androidx.annotation.StringRes messageRes: Int = app.gyrolet.mpvrx.R.string.toast_playback_load_failed) {
+    nativeLock.withLock {
+      if (!isCurrentGeneration(generation)) return
+      desiredPaused = true
+      audioEngine?.setPaused(true)
+      updateState { it.copy(phase = PlaybackPhase.ERROR, paused = true,
+        error = applicationContext?.getString(messageRes)) }
+    }
+  }
+
+  private fun publishAudioLeaving(snapshot: AudioEngineSnapshot = _audioState.value) {
+    if (snapshot.generation == audioReporterGeneration) {
+      audioReporter?.reportPlaybackStop(snapshot.positionMs)
+      audioReporter = null
+      audioReporterGeneration = 0L
+    }
+    if (usingExoPlayer && snapshot.ready && snapshot.generation != audioLeavingGeneration) {
+      audioLeavingGeneration = snapshot.generation
+      audioSaves.trySend(AudioSave(snapshot))
+      _audioEvents.tryEmit(AudioPlaybackEvent.Leaving(snapshot))
+    }
+  }
+
+  private fun updateAudioReporter(snapshot: AudioEngineSnapshot) {
+    val item = snapshot.item ?: return
+    if (snapshot.playing && audioHistoryGeneration != snapshot.generation) {
+      audioHistoryGeneration = snapshot.generation
+      val allowed = audioHistoryAllowed
+      val playlistId = audioHistoryPlaylistId
+      val context = applicationContext
+      if (allowed && context != null) audioScope.launch(Dispatchers.IO) {
+        runCatching {
+          val uri = Uri.parse(item.originalUri)
+          val path = when (uri.scheme) {
+            "file" -> uri.path ?: item.originalUri
+            "content" -> runCatching {
+              context.contentResolver.query(uri, arrayOf(android.provider.MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
+                val column = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DATA)
+                if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+              }
+            }.getOrNull() ?: item.originalUri
+            else -> item.originalUri
+          }
+          RecentlyPlayedOps.addRecentlyPlayed(
+            filePath = path,
+            fileName = item.title ?: snapshot.title ?: uri.lastPathSegment.orEmpty(),
+            videoTitle = snapshot.title,
+            duration = snapshot.durationMs,
+            launchSource = "playlist",
+            playlistId = playlistId,
+            artworkUrl = item.artworkUri,
+          )
+        }.onFailure { Log.w(TAG, "Could not record audio playback history") }
+      }
+    }
+    val now = android.os.SystemClock.elapsedRealtime()
+    if (snapshot.playing && audioReporterGeneration != snapshot.generation) {
+      audioReporter = JellyfinSessionReporter.create(
+        url = item.originalUri,
+        httpClient = org.koin.java.KoinJavaComponent.get<okhttp3.OkHttpClient>(okhttp3.OkHttpClient::class.java),
+        fallbackToken = item.headers.entries.firstOrNull { it.key.equals("X-Emby-Token", true) }?.value,
+      )
+      audioReporterGeneration = snapshot.generation
+      audioReportedPaused = snapshot.paused
+      lastAudioReportTime = now
+      audioReporter?.reportPlaybackStart(snapshot.positionMs)
+    } else if (snapshot.generation == audioReporterGeneration &&
+      (now - lastAudioReportTime >= 10_000L || snapshot.paused != audioReportedPaused)
+    ) {
+      audioReporter?.reportPlaybackProgress(snapshot.positionMs, snapshot.paused)
+      audioReportedPaused = snapshot.paused
+      lastAudioReportTime = now
+    }
+  }
+
+  private fun setAudioNumber(property: String, value: Double) {
+    if (!value.isFinite()) return
+    when (property) {
+      "time-pos", "playback-time" -> audioEngine?.seekTo((value.coerceAtLeast(0.0) * 1000).toLong())
+      "volume" -> {
+        _audioState.update { it.copy(volume = value.toFloat().coerceIn(0f, 300f)) }
+        audioEngine?.setVolume(value.toFloat())
+      }
+      "speed" -> {
+        _audioState.update { it.copy(speed = value.toFloat().coerceIn(0.1f, 4f)) }
+        audioEngine?.setSpeed(value.toFloat(), audioPreferences.audioPitchCorrection.get())
+      }
+      "aid" -> audioEngine?.selectTrack(value.toInt())
+      "chapter" -> _audioState.value.chapters.getOrNull(value.toInt())?.let { audioEngine?.seekTo(it.positionMs) }
+      "ab-loop-a", "ab-loop-b" -> setAudioLoopPoint(property, (value * 1000).toLong())
+      else -> Unit
+    }
+  }
+
+  private fun setAudioLoopPoint(property: String, positionMs: Long?) = nativeLock.withLock {
+    if (property == "ab-loop-a") audioLoopStartMs = positionMs else audioLoopEndMs = positionMs
+    audioEngine?.setLoop(audioLoopStartMs, audioLoopEndMs)
+  }
+
+  private fun audioCommand(command: Array<out String>): Boolean {
+    when (command.firstOrNull()) {
+      "seek" -> {
+        val amount = command.getOrNull(1)?.toDoubleOrNull()?.takeIf(Double::isFinite) ?: return false
+        val mode = command.getOrNull(2).orEmpty()
+        val snapshot = _audioState.value
+        val position = when {
+          "absolute-percent" in mode -> snapshot.durationMs * amount / 100.0
+          "relative-percent" in mode -> snapshot.positionMs + snapshot.durationMs * amount / 100.0
+          "absolute" in mode -> amount * 1000.0
+          else -> snapshot.positionMs + amount * 1000.0
+        }
+        audioEngine?.seekTo(position.coerceAtLeast(0.0).toLong())
+      }
+      "cycle" -> if (command.getOrNull(1) == "pause") togglePause() else return false
+      "set" -> setPropertyString(command.getOrNull(1) ?: return false, command.getOrNull(2) ?: return false)
+      "add" -> {
+        val property = command.getOrNull(1) ?: return false
+        val delta = command.getOrNull(2)?.toDoubleOrNull() ?: return false
+        setAudioNumber(property, (getPropertyDouble(property) ?: 0.0) + delta)
+      }
+      "stop", "quit" -> stop()
+      "playlist-next" -> playNext()
+      "playlist-prev" -> playPrevious()
+      else -> return false
+    }
+    return true
+  }
+
+  private fun resolvePlayableUri(item: PlaybackItem, forExoPlayer: Boolean = false): ResolvedPlayable {
+    if (forExoPlayer && item.networkSource == null) {
+      exoLocalUri(item.originalUri)?.let { return ResolvedPlayable(it) }
+      exoLocalUri(item.playableUri)?.let { return ResolvedPlayable(it) }
+    }
     val xtreamReference = XtreamPlaybackUri.parse(item.playableUri)
     if (xtreamReference != null) {
       val proxy = XtreamStreamingProxy.getInstance()
@@ -1953,7 +2761,7 @@ object PlaybackSession : MPVLib.EventObserver {
       return ResolvedPlayable(uri, NetworkStreamRegistration(proxy = proxy, streamId = streamId))
     }
 
-    if (M3uPlaybackPolicy.shouldProxyHls(item.playableUri, item.mimeType)) {
+    if (!forExoPlayer && M3uPlaybackPolicy.shouldProxyHls(item.playableUri, item.mimeType)) {
       val hlsProxy = HlsStreamingProxy.getInstance()
       val streamId = "hls-${streamSequence.incrementAndGet()}"
       val userAgent = PlaybackHttpHeaders.userAgent(item.headers)
@@ -1981,6 +2789,22 @@ object PlaybackSession : MPVLib.EventObserver {
     if (!item.playableUri.startsWith("content://")) return ResolvedPlayable(item.playableUri)
     val context = applicationContext ?: return ResolvedPlayable(item.playableUri)
     return ResolvedPlayable(Uri.parse(item.playableUri).openContentFd(context) ?: item.playableUri)
+  }
+
+  private fun exoLocalUri(value: String): String? {
+    if (value.startsWith("fd://", ignoreCase = true)) return null
+    val uri = Uri.parse(value)
+    return when (uri.scheme?.lowercase()) {
+      "content", "android.resource" -> uri.toString()
+      "file" -> uri.path?.let { Uri.fromFile(File(it)).toString() }
+      null -> value.takeIf { File(it).isAbsolute }?.let { Uri.fromFile(File(it)).toString() }
+      else -> null
+    }
+  }
+
+  private fun isLocalAudioUri(value: String): Boolean {
+    val scheme = Uri.parse(value).scheme?.lowercase()
+    return scheme in setOf(null, "file", "content", "android.resource", "fd") || File(value).isAbsolute
   }
 
   private fun releaseActiveNetworkStream() {

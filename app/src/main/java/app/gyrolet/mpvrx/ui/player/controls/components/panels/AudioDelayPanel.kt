@@ -45,6 +45,7 @@ fun AudioDelayPanel(
   modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<AudioPreferences>()
+  val session by PlaybackSession.state.collectAsState()
 
   DraggablePanel(
     modifier = modifier,
@@ -52,6 +53,14 @@ fun AudioDelayPanel(
       AudioDelayCardTitle(onClose = onDismissRequest)
     },
   ) {
+    if (session.engine == app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer) {
+      Text(
+        text = stringResource(R.string.audio_native_controls),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(MaterialTheme.spacing.medium),
+      )
+      return@DraggablePanel
+    }
     val delay by PlaybackSession.propDouble["audio-delay"].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
 

@@ -33,6 +33,25 @@ internal data class PlaybackStateSnapshot(
 )
 
 internal object PlaybackStatePersistence {
+  fun fromAudio(audio: AudioEngineSnapshot, oldState: PlaybackStateEntity?): PlaybackStateSnapshot? {
+    val item = audio.item ?: return null
+    return PlaybackStateSnapshot(
+      mediaIdentifier = item.stableId,
+      mediaTitle = audio.title ?: item.title ?: item.originalUri,
+      currentPosition = (audio.positionMs / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+      duration = (audio.durationMs / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+      playbackSpeed = audio.speed.toDouble(),
+      videoZoom = oldState?.videoZoom ?: 0f,
+      sid = oldState?.sid ?: -1,
+      secondarySid = oldState?.secondarySid ?: -1,
+      subDelayMs = oldState?.subDelay ?: 0,
+      subSpeed = oldState?.subSpeed ?: DEFAULT_PLAYBACK_STATE_SUB_SPEED,
+      aid = oldState?.aid ?: -1,
+      audioDelayMs = oldState?.audioDelay ?: 0,
+      externalSubtitles = oldState?.externalSubtitles.orEmpty(),
+    )
+  }
+
   fun buildEntity(
     oldState: PlaybackStateEntity?,
     snapshot: PlaybackStateSnapshot,

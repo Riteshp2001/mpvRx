@@ -67,6 +67,9 @@ import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusReq
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import org.koin.compose.koinInject
+import androidx.compose.runtime.collectAsState
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.AudioEngineKind
 import kotlin.math.roundToInt
 
 enum class EqualizerPreset(
@@ -126,6 +129,10 @@ fun EqualizerSheet(
   modifier: Modifier = Modifier,
 ) {
   val dimBackground by koinInject<PlayerPreferences>().reduceMotion.collectAsState()
+  val session by PlaybackSession.state.collectAsState()
+  val audio by PlaybackSession.audioState.collectAsState()
+  val processingAvailable = session.engine != AudioEngineKind.ExoPlayer || !audio.ready || !audio.output.processingBypassed
+  val controlsEnabled = state.isEnabled && processingAvailable
   val initialFocusRequester =
     rememberTvInitialFocusRequester(requestKey = state.isEnabled)
   val sheetState =
@@ -144,7 +151,7 @@ fun EqualizerSheet(
     modifier = modifier.tvFocusGroup(),
   ) {
     PlayerSheetHeader(stringResource(R.string.btn_label_equalizer)) {
-      IconSwitch(
+      if (processingAvailable) IconSwitch(
         checked = state.isEnabled,
         onCheckedChange = onEnabledChanged,
         modifier = Modifier.tvInitialFocus(initialFocusRequester)
@@ -159,6 +166,10 @@ fun EqualizerSheet(
           .verticalScroll(rememberScrollState())
           .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
     ) {
+      if (!processingAvailable) {
+        Text(stringResource(R.string.audio_output_preserved), style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
       val presetsToShow =
         if (state.currentPreset == EqualizerPreset.CUSTOM) {
           listOf(EqualizerPreset.CUSTOM) + EqualizerPreset.MUSIC
@@ -175,7 +186,7 @@ fun EqualizerSheet(
           PresetChip(
             preset = preset,
             isSelected = preset == state.currentPreset,
-            isEnabled = state.isEnabled,
+            isEnabled = controlsEnabled,
             onClick =
               if (preset != EqualizerPreset.CUSTOM) {
                 { onPresetSelected(preset) }
@@ -199,7 +210,7 @@ fun EqualizerSheet(
           BandColumn(
             label = EQ_BAND_LABELS.getOrElse(index) { "" },
             gainDb = gain,
-            isEnabled = state.isEnabled,
+            isEnabled = controlsEnabled,
             onGainChanged = { db -> onBandChanged(index, db) },
             modifier = Modifier.weight(1f),
           )
@@ -256,11 +267,11 @@ fun EqualizerSheet(
           onVolumeBoostChanged(newValue.roundToInt())
         },
         valueRange = 0f..10f,
-        enabled = state.isEnabled,
+        enabled = controlsEnabled,
         modifier =
           Modifier
             .fillMaxWidth()
-            .tvFocusHighlight(MaterialTheme.shapes.small, enabled = state.isEnabled),
+            .tvFocusHighlight(MaterialTheme.shapes.small, enabled = controlsEnabled),
       )
 
       Row(

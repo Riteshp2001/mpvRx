@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -45,6 +46,8 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import androidx.compose.runtime.collectAsState
+import app.gyrolet.mpvrx.ui.player.AudioEngineKind
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
@@ -76,6 +79,10 @@ fun AudioTracksSheet(
 ) {
   val audioPreferences = koinInject<AudioPreferences>()
   val audioChannels by audioPreferences.audioChannels.collectAsState()
+  val session by PlaybackSession.state.collectAsState()
+  val audio by PlaybackSession.audioState.collectAsState()
+  val exoPlayer = session.engine == AudioEngineKind.ExoPlayer
+  val processingAvailable = !exoPlayer || !audio.ready || !audio.output.processingBypassed
   val initialFocusRequester = rememberTvInitialFocusRequester(tracks.isNotEmpty())
   val initialTrackId = remember(tracks) { tracks.firstOrNull { it.isSelected }?.id ?: tracks.firstOrNull()?.id }
   val (embeddedTracks, externalTracks) =
@@ -92,7 +99,17 @@ fun AudioTracksSheet(
         contentPadding = PaddingValues(bottom = 8.dp),
       ) {
         item(key = "add_audio_track") {
-          AddTrackRow(
+          if (exoPlayer) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+              Spacer(modifier = Modifier.weight(1f))
+              if (onOpenEqualizerSheet != null) {
+                PlayerSheetAction(icon = Icons.RoundedFilled.Equalizer, label = stringResource(R.string.btn_label_equalizer),
+                  onClick = onOpenEqualizerSheet, enabled = equalizerControlEnabled && processingAvailable)
+              }
+            }
+          } else AddTrackRow(
             title = stringResource(R.string.player_sheets_add_ext_audio),
             onClick = onAddAudioTrack,
             actions = {
@@ -143,6 +160,11 @@ fun AudioTracksSheet(
         }
         item {
           Column(modifier = Modifier.fillMaxWidth()) {
+            if (exoPlayer && !processingAvailable) {
+              Text(stringResource(R.string.audio_output_preserved), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+            }
             PlayerSheetSectionHeader(stringResource(R.string.pref_audio_channels))
             FlowRow(
               modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -151,7 +173,7 @@ fun AudioTracksSheet(
               AudioChannels.entries.forEach {
                 FilterChip(
                   selected = audioChannels == it,
-                  enabled = if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
+                  enabled = processingAvailable && if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
                   onClick = {
                     audioPreferences.audioChannels.set(it)
                     if (it == AudioChannels.ReverseStereo) {
@@ -172,7 +194,7 @@ fun AudioTracksSheet(
             PlayerSheetSectionHeader(stringResource(R.string.pref_audio_effects))
             Row(
               modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                .toggleable(value = volumeNormalization, enabled = audioEffectsEnabled, role = Role.Switch,
+                .toggleable(value = volumeNormalization, enabled = audioEffectsEnabled && processingAvailable, role = Role.Switch,
                   onValueChange = audioPreferences.volumeNormalization::set)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
               horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -180,11 +202,11 @@ fun AudioTracksSheet(
             ) {
               Text(stringResource(R.string.pref_audio_volume_normalization_title), modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge)
-              Switch(checked = volumeNormalization, onCheckedChange = null, enabled = audioEffectsEnabled)
+              Switch(checked = volumeNormalization, onCheckedChange = null, enabled = audioEffectsEnabled && processingAvailable)
             }
             Row(
               modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                .toggleable(value = drcEnabled, enabled = audioEffectsEnabled, role = Role.Switch,
+                .toggleable(value = drcEnabled, enabled = audioEffectsEnabled && processingAvailable, role = Role.Switch,
                   onValueChange = audioPreferences.drcEnabled::set)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
               horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -192,7 +214,7 @@ fun AudioTracksSheet(
             ) {
               Text(stringResource(R.string.pref_audio_drc_title), modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge)
-              Switch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled)
+              Switch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled && processingAvailable)
             }
           }
         }
