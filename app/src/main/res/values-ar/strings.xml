@@ -2543,6 +2543,7 @@
   <string name="pref_audio_engine_exo">ExoPlayer (الافتراضي)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="audio_active_engine">المحرك: %1$s</string>
+  <string name="audio_playback_failed">تعذر بدء تشغيل الصوت</string>
   <string name="pref_audio_crossfade">تداخل تدريجي بين المقاطع</string>
   <string name="pref_audio_crossfade_seconds">%1$d ثانية</string>
   <string name="audio_output_engine">المحرك النشط</string>

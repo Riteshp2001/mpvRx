@@ -2517,6 +2517,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_audio_engine_exo">ExoPlayer (par défaut)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="audio_active_engine">Moteur : %1$s</string>
+  <string name="audio_playback_failed">Impossible de démarrer la lecture audio</string>
   <string name="pref_audio_crossfade">Fondu enchaîné</string>
   <string name="pref_audio_crossfade_seconds">%1$d secondes</string>
   <string name="audio_output_engine">Moteur actif</string>

@@ -1626,6 +1626,29 @@ class PlayerActivity :
       PlaybackSession.state.collect { finishStoppedBackgroundPlaybackIfNeeded() }
     }
     lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.RESUMED) {
+        var attemptedSwitch: Pair<Long, AudioEngineKind>? = null
+        combine(audioPreferences.audioEngine.changes(), PlaybackSession.state, viewModel.isAudioOnly) { preferred, session, _ ->
+          preferred to session
+        }
+          .collect { (preferred, session) ->
+            if (session.engine == preferred) {
+              attemptedSwitch = null
+              return@collect
+            }
+            val item = session.currentItem ?: return@collect
+            if (session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND, PlaybackPhase.ERROR) ||
+              !isActivePlaybackOwner() || !MediaPlaybackService.activityForeground || !isCurrentPlaybackAudio()
+            ) return@collect
+            val request = session.generation to preferred
+            if (attemptedSwitch == request) return@collect
+            attemptedSwitch = request
+            val audioItem = if (item.isDefinitelyAudioOnly()) item else item.copy(mimeType = "audio/*")
+            if (!reloadCurrentPlayback(audioItem)) attemptedSwitch = null
+          }
+      }
+    }
+    lifecycleScope.launch {
       var handledAudioGeneration = 0L
       repeatOnLifecycle(Lifecycle.State.STARTED) {
         kotlinx.coroutines.flow.combine(PlaybackSession.state, PlaybackSession.audioState) { session, audio -> session to audio }
@@ -3894,7 +3917,11 @@ class PlayerActivity :
     ) {
       return false
     }
+    return reloadCurrentPlayback(item, ytdlFormat = format)
+  }
 
+  private fun reloadCurrentPlayback(item: PlaybackItem, ytdlFormat: String? = null): Boolean {
+    val session = PlaybackSession.state.value
     val duration =
       PlaybackSession.getPropertyDouble("duration")
         ?: PlaybackSession.getPropertyInt("duration")?.toDouble()
@@ -3908,7 +3935,7 @@ class PlayerActivity :
     val restoreOverride =
       PlaybackPositionRestoreOverride(
         positionSeconds = position,
-        paused = PlaybackSession.getPropertyBoolean("pause") ?: session.paused,
+        paused = if (session.phase == PlaybackPhase.ERROR) false else PlaybackSession.getPropertyBoolean("pause") ?: session.paused,
       )
 
     if (!beginMediaRequest()) return false
@@ -3926,13 +3953,13 @@ class PlayerActivity :
             attempt = 0,
             requestGeneration = requestGeneration,
             legacyMediaIdentifier = legacyMediaIdentifier,
-            ytdlFormat = format,
+            ytdlFormat = ytdlFormat,
             positionRestoreOverride = restoreOverride,
           )
         } catch (cancellation: CancellationException) {
           throw cancellation
         } catch (error: Exception) {
-          Log.e(TAG, "Unable to reload yt-dlp format: $format", error)
+          Log.e(TAG, "Unable to reload current playback", error)
           withContext(Dispatchers.Main) {
             if (!isCurrentMediaRequest(requestGeneration)) return@withContext
             playWhenFileLoaded = false

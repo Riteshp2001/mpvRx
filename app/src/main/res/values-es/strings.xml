@@ -2517,6 +2517,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_audio_engine_exo">ExoPlayer (predeterminado)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="audio_active_engine">Motor: %1$s</string>
+  <string name="audio_playback_failed">No se pudo iniciar la reproducción de audio</string>
   <string name="pref_audio_crossfade">Fundido cruzado</string>
   <string name="pref_audio_crossfade_seconds">%1$d segundos</string>
   <string name="audio_output_engine">Motor activo</string>

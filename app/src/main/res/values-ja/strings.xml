@@ -2510,6 +2510,7 @@
   <string name="pref_audio_engine_exo">ExoPlayer（既定）</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="audio_active_engine">再生エンジン: %1$s</string>
+  <string name="audio_playback_failed">音声の再生を開始できませんでした</string>
   <string name="pref_audio_crossfade">クロスフェード</string>
   <string name="pref_audio_crossfade_seconds">%1$d 秒</string>
   <string name="audio_output_engine">使用中のエンジン</string>

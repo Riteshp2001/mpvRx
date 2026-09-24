@@ -2421,6 +2421,7 @@
   <string name="pref_audio_engine_exo">ExoPlayer (डिफ़ॉल्ट)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="audio_active_engine">प्लेबैक इंजन: %1$s</string>
+  <string name="audio_playback_failed">ऑडियो प्लेबैक शुरू नहीं हो सका</string>
   <string name="pref_audio_crossfade">क्रॉसफ़ेड</string>
   <string name="pref_audio_crossfade_seconds">%1$d सेकंड</string>
   <string name="audio_output_engine">सक्रिय इंजन</string>

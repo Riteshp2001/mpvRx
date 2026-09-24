@@ -2560,6 +2560,7 @@
   <string name="pref_audio_engine_exo">ExoPlayer (default)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="audio_active_engine">Engine: %1$s</string>
+  <string name="audio_playback_failed">Could not start audio playback</string>
   <string name="pref_audio_crossfade">Crossfade</string>
   <string name="pref_audio_crossfade_seconds">%1$d seconds</string>
   <string name="audio_output_engine">Active engine</string>

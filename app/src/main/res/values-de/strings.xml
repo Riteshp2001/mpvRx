@@ -2517,6 +2517,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_audio_engine_exo">ExoPlayer (Standard)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="audio_active_engine">Wiedergabe-Engine: %1$s</string>
+  <string name="audio_playback_failed">Audiowiedergabe konnte nicht gestartet werden</string>
   <string name="pref_audio_crossfade">Überblenden</string>
   <string name="pref_audio_crossfade_seconds">%1$d Sekunden</string>
   <string name="audio_output_engine">Aktive Engine</string>

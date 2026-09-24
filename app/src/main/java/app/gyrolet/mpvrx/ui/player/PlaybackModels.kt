@@ -107,7 +107,9 @@ internal enum class DeclaredPlaybackMediaKind {
 
 internal fun PlaybackItem.declaredMediaKind(): DeclaredPlaybackMediaKind {
   if (mimeType?.startsWith("audio/", ignoreCase = true) == true) return DeclaredPlaybackMediaKind.AUDIO
-  if (mimeType?.startsWith("video/", ignoreCase = true) == true) return DeclaredPlaybackMediaKind.VIDEO
+  if (mimeType?.startsWith("video/", ignoreCase = true) == true && !mimeType.equals("video/*", ignoreCase = true)) {
+    return DeclaredPlaybackMediaKind.VIDEO
+  }
   if (HttpUtils.isMusicStreamingUrl(originalUri) || HttpUtils.isMusicStreamingUrl(playableUri)) return DeclaredPlaybackMediaKind.AUDIO
 
   val extensions =
@@ -124,7 +126,7 @@ internal fun PlaybackItem.declaredMediaKind(): DeclaredPlaybackMediaKind {
     }) {
     return DeclaredPlaybackMediaKind.AUDIO
   }
-  return DeclaredPlaybackMediaKind.UNKNOWN
+  return if (mimeType.equals("video/*", ignoreCase = true)) DeclaredPlaybackMediaKind.VIDEO else DeclaredPlaybackMediaKind.UNKNOWN
 }
 
 @Serializable

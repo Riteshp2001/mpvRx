@@ -177,7 +177,7 @@ internal class ExoAudioEngine(
         releaseDeck(primary)
         primary = null
         source.close()
-        onError(generation, PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED), positionMs)
+        onError(generation, it as? PlaybackException ?: PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_UNSPECIFIED), positionMs)
         return@execute
       }
       nextRequested = false
@@ -392,7 +392,8 @@ internal class ExoAudioEngine(
     val renderers = object : DefaultRenderersFactory(context) {
       override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): AudioSink {
         val sink = DefaultAudioSink.Builder(context)
-          .setEnableFloatOutput(!processing)
+          .setEnableFloatOutput(enableFloatOutput && !processing)
+          .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
           .setAudioProcessors(arrayOf(processor, resampler))
           .build()
         return object : ForwardingAudioSink(sink) {
@@ -428,13 +429,6 @@ internal class ExoAudioEngine(
         })
       }
     }.setEnableDecoderFallback(true)
-      .setMediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
-        // Float PCM requests break Samsung's vendor FLAC decoder timestamps; prefer software there.
-        val floatFlac = !processing && mimeType == MimeTypes.AUDIO_FLAC
-        val selector = if (floatFlac) MediaCodecSelector.PREFER_SOFTWARE else MediaCodecSelector.DEFAULT
-        val decoders = selector.getDecoderInfos(mimeType, requiresSecureDecoder, requiresTunnelingDecoder)
-        if (floatFlac) decoders.filterNot { isUnsafeFloatFlacDecoder(it.name) } else decoders
-      }
     val selector = DefaultTrackSelector(context).apply {
       setParameters(buildUponParameters().setAllowInvalidateSelectionsOnRendererCapabilitiesChange(true))
     }
@@ -1001,7 +995,7 @@ internal class ExoAudioEngine(
       releaseDeck(primary)
       primary = null
       current.source.close()
-      onError(current.generation, PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED), position)
+      onError(current.generation, it as? PlaybackException ?: PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_UNSPECIFIED), position)
       return
     }
   }
@@ -1094,10 +1088,5 @@ internal class ExoAudioEngine(
 
     private fun decoderNames(mimeType: String): List<String> =
       runCatching { MediaCodecUtil.getDecoderInfos(mimeType, false, false).map { it.name } }.getOrDefault(emptyList())
-
-    private fun isUnsafeFloatFlacDecoder(name: String): Boolean {
-      val normalized = name.lowercase(java.util.Locale.ROOT)
-      return normalized == "c2.sec.flac.decoder" || normalized.startsWith("omx.sec.") && "flac" in normalized
-    }
   }
 }

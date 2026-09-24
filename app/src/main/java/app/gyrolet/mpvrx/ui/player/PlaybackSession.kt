@@ -2703,7 +2703,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   private fun failAudioState(
     generation: Long,
-    @androidx.annotation.StringRes messageRes: Int = app.gyrolet.mpvrx.R.string.toast_playback_load_failed,
+    @androidx.annotation.StringRes messageRes: Int = app.gyrolet.mpvrx.R.string.audio_playback_failed,
     errorCode: Int? = null,
   ) {
     nativeLock.withLock {
