@@ -178,20 +178,28 @@ class WebDavClient(
 
   override fun isConnected(): Boolean = sardine != null
 
-  override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
+  override suspend fun listFiles(path: String, onSnapshot: (suspend (List<NetworkFile>) -> Unit)?): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
         val client = sardine ?: return@withContext Result.failure(IOException("Not connected"))
         val directory = NetworkPath.from(path)
         val directoryUrl = buildHttpUrl(directory.value, trailingSlash = true)
         val resources = client.list(directoryUrl.toString())
+        val partial = linkedMapOf<String, NetworkFile>()
+        val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher(onSnapshot) { partial.values.toList() }
 
         val files =
           resources
-            .mapNotNull { resource -> toImmediateChild(resource, directory, directoryUrl) }
+            .mapNotNull { resource ->
+              toImmediateChild(resource, directory, directoryUrl)?.also { entry ->
+                partial[entry.path] = entry
+                publisher.publishIfNeeded()
+              }
+            }
             // Some DAV servers emit the same href more than once with different propstat blocks.
             .distinctBy(NetworkFile::path)
 
+          publisher.publishIfNeeded(force = true)
         Result.success(files)
       } catch (cancellation: CancellationException) {
         throw cancellation

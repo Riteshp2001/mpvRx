@@ -415,12 +415,16 @@ fun JellyfinContent(
           }
 
           // Loading state (initial)
-          uiState.isLoading && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() && uiState.heroItems.isEmpty() -> {
+          uiState.isLoading && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() && uiState.heroItems.isEmpty() &&
+            uiState.resumeItems.isEmpty() && uiState.librarySections.isEmpty() && uiState.latestMovies.isEmpty() &&
+            uiState.latestShows.isEmpty() && uiState.latestMusic.isEmpty() && uiState.recommendations.isEmpty() -> {
             CircularProgressIndicator(modifier = Modifier.padding(top = topBarHeight))
           }
 
           // Error state
-          uiState.error != null && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() -> {
+          uiState.error != null && uiState.libraries.isEmpty() && uiState.currentItems.isEmpty() && uiState.heroItems.isEmpty() &&
+            uiState.resumeItems.isEmpty() && uiState.librarySections.isEmpty() && uiState.latestMovies.isEmpty() &&
+            uiState.latestShows.isEmpty() && uiState.latestMusic.isEmpty() && uiState.recommendations.isEmpty() -> {
             ErrorView(
               message = uiState.error ?: "An error occurred",
               onRetry = { viewModel.refresh() },

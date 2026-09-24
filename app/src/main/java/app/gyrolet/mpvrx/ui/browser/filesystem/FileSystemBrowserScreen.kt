@@ -129,11 +129,13 @@ import app.gyrolet.mpvrx.utils.media.OpenDocumentTreeContract
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
@@ -430,48 +432,38 @@ fun FileSystemBrowserScreen(path: String? = null) {
     }
   }
 
-  LaunchedEffect(searchQuery, isSearching, isAtRoot, items) {
+  val searchRoots = if (isAtRoot && breadcrumbs.isEmpty()) {
+    items.filterIsInstance<FileSystemItem.Folder>().map { it.path }
+  } else {
+    listOf(currentPath)
+  }
+  LaunchedEffect(searchQuery, isSearching, searchRoots) {
     if (isSearching && searchQuery.isNotBlank()) {
-      delay(250)
+      searchResults = emptyList()
       isSearchLoading = true
       try {
-        val results =
-          if (isAtRoot) {
-            items
-              .filterIsInstance<FileSystemItem.Folder>()
-              .flatMap { storageVolume ->
-                runCatching {
-                  Log.d("FileSystemBrowserScreen", "Searching in storage volume: ${storageVolume.path}")
-                  app.gyrolet.mpvrx.ui.browser.filesystem.searchRecursively(
-                    context,
-                    storageVolume.path,
-                    searchQuery,
-                  )
-                }.getOrElse { error ->
-                  Log.e("FileSystemBrowserScreen", "Error searching volume ${storageVolume.path}", error)
-                  emptyList()
-                }
-              }.distinctBy { item ->
-                when (item) {
-                  is FileSystemItem.VideoFile -> item.video.path
-                  is FileSystemItem.Folder -> item.path
-                }
-              }
-          } else {
-            Log.d("FileSystemBrowserScreen", "Searching in directory: $currentPath")
-            app.gyrolet.mpvrx.ui.browser.filesystem
-              .searchRecursively(context, currentPath, searchQuery)
-          }
-
-        searchResults = results
+        delay(250)
+        val results = mutableListOf<FileSystemItem>()
+        for (root in searchRoots) {
+          results += searchRecursively(context, root, searchQuery, onSnapshot = { partial ->
+            withContext(Dispatchers.Main.immediate) {
+              coroutineContext.ensureActive()
+              searchResults = (results + partial).distinctBy { it.path }
+            }
+          })
+        }
+        coroutineContext.ensureActive()
+        searchResults = results.distinctBy { it.path }
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e("FileSystemBrowserScreen", "Error during search", e)
-        searchResults = emptyList()
       } finally {
-        isSearchLoading = false
+        if (coroutineContext[kotlinx.coroutines.Job]?.isActive == true) isSearchLoading = false
       }
     } else {
       searchResults = emptyList()
+      isSearchLoading = false
     }
   }
 
@@ -1145,47 +1137,53 @@ suspend fun searchRecursively(
   context: Context,
   directoryPath: String,
   query: String,
-): List<FileSystemItem> {
+  onSnapshot: (suspend (List<FileSystemItem>) -> Unit)? = null,
+): List<FileSystemItem> = withContext(Dispatchers.IO) {
   coroutineContext.ensureActive()
-  val results = mutableListOf<FileSystemItem>()
+  val results = linkedMapOf<String, FileSystemItem>()
+  val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher(onSnapshot) { results.values.toList() }
+  suspend fun publishMatches(items: List<FileSystemItem>) {
+    for (item in items) {
+      if (item.name.contains(query, ignoreCase = true)) {
+        results[item.path] = item
+        publisher.publishIfNeeded()
+      }
+    }
+  }
 
   try {
     Log.d("FileSystemBrowserScreen", "Scanning directory: $directoryPath for query: $query")
     // Scan the current directory
     val items =
       app.gyrolet.mpvrx.repository.MediaFileRepository
-        .scanDirectory(context, directoryPath, showAllFileTypes = false)
-        .getOrNull() ?: emptyList()
+        .scanDirectory(context, directoryPath, showAllFileTypes = false,
+          onSnapshot = if (onSnapshot == null) null else ::publishMatches)
+        .getOrThrow()
 
     Log.d("FileSystemBrowserScreen", "Found ${items.size} items in $directoryPath")
 
-    // Filter items that match the search query (case-insensitive)
-    items.forEach { item ->
+    val completed = items.filter { it.name.contains(query, ignoreCase = true) }.toMutableList()
+    publishMatches(items)
+    publisher.publishIfNeeded(force = true)
+    for (item in items.filterIsInstance<FileSystemItem.Folder>()) {
       coroutineContext.ensureActive()
-      when (item) {
-        is FileSystemItem.VideoFile -> {
-          if (item.video.displayName.contains(query, ignoreCase = true)) {
-            Log.d("FileSystemBrowserScreen", "Found matching video: ${item.video.displayName}")
-            results.add(item)
-          }
-        }
-        is FileSystemItem.Folder -> {
-          if (item.name.contains(query, ignoreCase = true)) {
-            Log.d("FileSystemBrowserScreen", "Found matching folder: ${item.name}")
-            results.add(item)
-          }
-          val subResults = searchRecursively(context, item.path, query)
-          results.addAll(subResults)
-        }
-      }
+      val subResults = searchRecursively(context, item.path, query,
+        onSnapshot = if (onSnapshot == null) null else ::publishMatches)
+      completed += subResults
+      publishMatches(subResults)
     }
+    results.clear()
+    completed.forEach { results[it.path] = it }
+    publisher.publishIfNeeded(force = true)
 
     Log.d("FileSystemBrowserScreen", "Returning ${results.size} results from $directoryPath")
+  } catch (cancelled: kotlinx.coroutines.CancellationException) {
+    throw cancelled
   } catch (e: Exception) {
     Log.e("FileSystemBrowserScreen", "Error searching directory $directoryPath", e)
   }
 
-  return results
+  results.values.toList()
 }
 
 private fun fileSystemSelectionId(item: FileSystemItem): String =
@@ -1356,7 +1354,7 @@ private fun FileSystemBrowserContent(
     }
 
   when {
-    isLoading -> {
+    isLoading && items.isEmpty() -> {
       Box(
         modifier =
           modifier
@@ -1372,7 +1370,7 @@ private fun FileSystemBrowserContent(
       }
     }
 
-    error != null -> {
+    error != null && items.isEmpty() -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -1825,7 +1823,7 @@ private fun FileSystemSearchContent(
 
   Box(modifier = modifier.fillMaxSize()) {
     when {
-      isLoading -> {
+      isLoading && searchResults.isEmpty() -> {
         Box(
           modifier =
             Modifier

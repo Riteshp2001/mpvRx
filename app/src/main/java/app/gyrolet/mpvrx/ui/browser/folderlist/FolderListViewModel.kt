@@ -99,7 +99,9 @@ class FolderListViewModel(
 
   // Track the current scan job to prevent concurrent scans
   private var currentScanJob: Job? = null
+  private val scanGeneration = java.util.concurrent.atomic.AtomicLong()
   private var cacheWriteJob: Job? = null
+  private var hasCompleteFolderSnapshot = false
   private val folderContentRevision = MutableStateFlow(0L)
 
     companion object {
@@ -118,12 +120,13 @@ class FolderListViewModel(
   init {
     // Load cached folders instantly for immediate display
     val hasCachedData = loadCachedFolders()
+    hasCompleteFolderSnapshot = hasCachedData
 
     // If no cached data (first launch), scan immediately. Otherwise defer to not slow down app launch
     if (!hasCachedData) {
       loadVideoFolders()
     } else {
-      viewModelScope.launch(Dispatchers.IO) {
+      viewModelScope.launch {
         kotlinx.coroutines.delay(2000) // Wait 2 seconds before refreshing
         loadVideoFolders()
       }
@@ -131,7 +134,7 @@ class FolderListViewModel(
 
     // Refresh on media events and every preference that changes scan/index semantics. Settings UI
     // may emit both; collectLatest plus the debounce collapses them into one refresh.
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch {
       val scanPreferenceChanges =
         combine(
           foldersPreferences.includeNoMediaFolders.changes(),
@@ -183,7 +186,9 @@ class FolderListViewModel(
 
         // Pending deletions must not leak back into the next launch through the cache.
         val pendingDeletions = pendingFolderDeletionKeys.value
-        saveFoldersToCache(_allVideoFolders.value.filterNot { folderKey(it) in pendingDeletions })
+        if (hasCompleteFolderSnapshot && currentScanJob?.isActive != true) {
+          saveFoldersToCache(_allVideoFolders.value.filterNot { folderKey(it) in pendingDeletions })
+        }
       }
     }
 
@@ -223,10 +228,8 @@ class FolderListViewModel(
         if (folders.isNotEmpty()) {
           Log.d(TAG, "Loaded ${folders.size} folders from cache instantly")
           hasCachedData = true
-          viewModelScope.launch(Dispatchers.IO) {
-            _allVideoFolders.value = folders
-            _hasCompletedInitialLoad.value = true
-          }
+          _allVideoFolders.value = folders
+          _hasCompletedInitialLoad.value = true
         }
       } catch (e: Exception) {
         Log.e(TAG, "Error loading cached folders", e)
@@ -238,6 +241,7 @@ class FolderListViewModel(
 
   private fun saveFoldersToCache(folders: List<VideoFolder>) {
     cacheWriteJob?.cancel()
+    val cacheKey = currentFolderCacheKey()
     cacheWriteJob =
       viewModelScope.launch(Dispatchers.IO) {
         delay(750)
@@ -245,7 +249,8 @@ class FolderListViewModel(
           val prefs =
             getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
           val json = serializeFoldersToJson(folders)
-          prefs.edit().putString(currentFolderCacheKey(), json).apply()
+          ensureActive()
+          prefs.edit().putString(cacheKey, json).apply()
           Log.d(TAG, "Saved ${folders.size} folders to cache")
         } catch (e: Exception) {
           Log.e(TAG, "Error saving folders to cache", e)
@@ -391,7 +396,7 @@ class FolderListViewModel(
     Log.d(TAG, "Hard refreshing folder list")
 
     // Set loading state
-    _isLoading.value = true
+    _isLoading.value = _videoFolders.value.isEmpty()
 
     // Clear all caches to force fresh data from filesystem
     MediaFileRepository.clearCache()
@@ -433,12 +438,26 @@ class FolderListViewModel(
 
   /** Publishes MediaStore immediately, then merges indexed .nomedia folders in the background. */
   private fun loadVideoFolders(forceFileSystemCheck: Boolean = false) {
+    val generation = scanGeneration.incrementAndGet()
     currentScanJob?.cancel()
+    cacheWriteJob?.cancel()
+    hasCompleteFolderSnapshot = false
     folderContentRevision.update { it + 1 }
+    val previous = _allVideoFolders.value
+    val onSnapshot: suspend (List<VideoFolder>) -> Unit = { snapshot ->
+      kotlinx.coroutines.withContext(Dispatchers.Main.immediate) {
+        ensureActive()
+        if (generation == scanGeneration.get() && snapshot.isNotEmpty()) {
+          _allVideoFolders.value = mergeFolders(previous, snapshot)
+          _isLoading.value = false
+          _hasCompletedInitialLoad.value = true
+        }
+      }
+    }
 
     if (audioOnly) {
       currentScanJob =
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
           try {
             _isLoading.value = _allVideoFolders.value.isEmpty()
             _scanStatus.value = "Reading music library..."
@@ -446,6 +465,7 @@ class FolderListViewModel(
               MediaFileRepository.getAllAudioFolders(
                 context = getApplication(),
                 minimumAudioDurationSeconds = browserPreferences.minimumAudioDurationSeconds.get(),
+                onSnapshot = onSnapshot,
               )
             ensureActive()
             publishFinalFolders(folders)
@@ -458,7 +478,7 @@ class FolderListViewModel(
             Log.e(TAG, "Error loading audio folders", e)
             _hasCompletedInitialLoad.value = true
           } finally {
-            if (isActive) {
+            if (isActive && generation == scanGeneration.get()) {
               _isLoading.value = false
               _isEnriching.value = false
               _scanStatus.value = null
@@ -469,7 +489,7 @@ class FolderListViewModel(
     }
 
     currentScanJob =
-      viewModelScope.launch(Dispatchers.IO) {
+      viewModelScope.launch {
         try {
           val hasExistingData = _allVideoFolders.value.isNotEmpty()
           if (!hasExistingData) {
@@ -477,7 +497,7 @@ class FolderListViewModel(
             _scanStatus.value = "Reading media library..."
           }
 
-          val previousFolders = _allVideoFolders.value.associateBy(::folderKey)
+          val previousFolders = previous.associateBy(::folderKey)
           val mediaStoreFolders =
             MediaFileRepository.getAllVideoFoldersFast(
               context = getApplication(),
@@ -486,17 +506,18 @@ class FolderListViewModel(
               },
               forceFileSystemCheck = forceFileSystemCheck,
               includeAudioOverride = browserPreferences.includeAudioBrowser.get(),
+              onSnapshot = onSnapshot,
             )
           ensureActive()
           // This is the important latency boundary: never wait for a filesystem walk.
-          _allVideoFolders.value = mediaStoreFolders
+          _allVideoFolders.value = mergeFolders(previous, mediaStoreFolders)
           _isLoading.value = false
           _hasCompletedInitialLoad.value = true
 
           val indexedFolders = MediaFileRepository.getIndexedNoMediaFolders()
           ensureActive()
           var visibleFolders = mergeFolders(mediaStoreFolders, indexedFolders)
-          _allVideoFolders.value = visibleFolders
+          _allVideoFolders.value = mergeFolders(previous, visibleFolders)
           Log.d(TAG, "Published ${mediaStoreFolders.size} MediaStore and ${indexedFolders.size} indexed folders")
 
           if (foldersPreferences.includeNoMediaFolders.get()) {
@@ -513,7 +534,7 @@ class FolderListViewModel(
               ).collect { batch ->
                 ensureActive()
                 visibleFolders = mergeFolders(visibleFolders, batch)
-                _allVideoFolders.value = visibleFolders
+                _allVideoFolders.value = mergeFolders(previous, visibleFolders)
                 _scanStatus.value = "Found ${visibleFolders.size} folders"
               }
 
@@ -559,11 +580,17 @@ class FolderListViewModel(
               onProgress = { processed, total ->
                 _scanStatus.value = "Processing metadata $processed/$total"
               },
+              onSnapshot = { snapshot ->
+                kotlinx.coroutines.withContext(Dispatchers.Main.immediate) {
+                  ensureActive()
+                  if (generation == scanGeneration.get()) _allVideoFolders.value = snapshot
+                }
+              },
             )
 
           ensureActive()
           val enrichedByKey = enrichedFolders.associateBy(::folderKey)
-          _allVideoFolders.value = foldersForEnrichment.map { enrichedByKey[folderKey(it)] ?: it }
+          publishFinalFolders(foldersForEnrichment.map { enrichedByKey[folderKey(it)] ?: it })
         } catch (e: kotlinx.coroutines.CancellationException) {
           Log.d(TAG, "Scan cancelled (new scan started)")
           throw e
@@ -572,7 +599,7 @@ class FolderListViewModel(
           Log.e(TAG, "Error loading video folders", e)
           _hasCompletedInitialLoad.value = true
         } finally {
-          if (isActive) {
+          if (isActive && generation == scanGeneration.get()) {
             _isLoading.value = false
             _isEnriching.value = false
             _scanStatus.value = null
@@ -588,6 +615,7 @@ class FolderListViewModel(
       .lowercase(Locale.ROOT)
 
   private fun publishFinalFolders(folders: List<VideoFolder>) {
+    hasCompleteFolderSnapshot = true
     val incomingKeys = folders.mapTo(mutableSetOf(), ::folderKey)
     val confirmedDeletionKeys = completedFolderDeletionKeys.value - incomingKeys
     if (confirmedDeletionKeys.isNotEmpty()) {
@@ -595,6 +623,8 @@ class FolderListViewModel(
       completedFolderDeletionKeys.update { it - confirmedDeletionKeys }
     }
     _allVideoFolders.value = folders
+    val pending = pendingFolderDeletionKeys.value
+    saveFoldersToCache(folders.filterNot { folderKey(it) in pending })
   }
 
   private fun mergeFolders(vararg groups: List<VideoFolder>): List<VideoFolder> {

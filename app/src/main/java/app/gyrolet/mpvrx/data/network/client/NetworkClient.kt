@@ -35,7 +35,10 @@ interface NetworkClient {
   /**
    * List files and directories at the given path
    */
-  suspend fun listFiles(path: String): Result<List<NetworkFile>>
+  suspend fun listFiles(
+    path: String,
+    onSnapshot: (suspend (List<NetworkFile>) -> Unit)? = null,
+  ): Result<List<NetworkFile>>
 
   /**
    * Get input stream for a file

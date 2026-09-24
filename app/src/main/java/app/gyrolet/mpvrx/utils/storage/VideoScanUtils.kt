@@ -20,6 +20,7 @@ import android.provider.MediaStore
 import android.util.Log
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -51,10 +52,12 @@ object VideoScanUtils : KoinComponent {
     folderPath: String,
     options: MediaScanOptions = MediaScanOptions(),
     forceFileSystemCheck: Boolean = false,
+    onSnapshot: (suspend (List<Video>) -> Unit)? = null,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val normalizedFolderPath = normalizeStoragePath(folderPath) ?: return@withContext emptyList()
       val videosMap = mutableMapOf<String, Video>()
+      val publisher = ProgressiveResultsPublisher(onSnapshot) { videosMap.values.toList() }
       val noMediaPathFilter = NoMediaPathFilter(options)
       val folder = File(normalizedFolderPath)
 
@@ -63,10 +66,24 @@ object VideoScanUtils : KoinComponent {
       }
 
       // Try MediaStore first (fast)
-      scanVideosFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter)
-      if (options.includeAudio) {
-        scanAudioFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter, options)
+      var mediaStoreError: Exception? = null
+      try {
+        scanVideosFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter, publisher)
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        mediaStoreError = error
       }
+      if (options.includeAudio) {
+        try {
+          scanAudioFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter, options, publisher)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+          throw cancelled
+        } catch (error: Exception) {
+          mediaStoreError = error
+        }
+      }
+      publisher.publishIfNeeded(force = true)
 
       // MediaStore returns 0 duration for .ts/.mts/.m2ts — fix those entries now
       val zeroTsKeys =
@@ -87,6 +104,7 @@ object VideoScanUtils : KoinComponent {
                 duration = meta.durationMs,
                 durationFormatted = formatDuration(meta.durationMs),
               )
+            publisher.publishIfNeeded()
           }
         } catch (error: kotlinx.coroutines.CancellationException) {
           throw error
@@ -99,11 +117,14 @@ object VideoScanUtils : KoinComponent {
       if (
         folder.exists() &&
         folder.canRead() &&
-        shouldRunFilesystemVideoCheck(forceFileSystemCheck, videosMap.size)
+        (mediaStoreError != null || shouldRunFilesystemVideoCheck(forceFileSystemCheck, videosMap.size))
       ) {
-        scanVideosFromFileSystem(context, folder, videosMap, options, noMediaPathFilter)
+        scanVideosFromFileSystem(context, folder, videosMap, options, noMediaPathFilter, publisher)
+        mediaStoreError = null
       }
 
+      publisher.publishIfNeeded(force = true)
+      if (onSnapshot != null) mediaStoreError?.let { throw it }
       videosMap.values.sortedBy { it.displayName.lowercase(Locale.getDefault()) }
     }
 
@@ -115,6 +136,7 @@ object VideoScanUtils : KoinComponent {
     folderPath: String,
     videosMap: MutableMap<String, Video>,
     noMediaPathFilter: NoMediaPathFilter,
+    publisher: ProgressiveResultsPublisher<Video>,
   ) {
     val projection =
       arrayOf(
@@ -208,12 +230,14 @@ object VideoScanUtils : KoinComponent {
                 hasEmbeddedSubtitles = false,
                 subtitleCodec = "",
               )
+            publisher.publishIfNeeded()
           }
         }
     } catch (error: kotlinx.coroutines.CancellationException) {
       throw error
     } catch (e: Exception) {
       Log.e(TAG, "MediaStore video scan error", e)
+      throw e
     }
   }
 
@@ -223,6 +247,7 @@ object VideoScanUtils : KoinComponent {
     videosMap: MutableMap<String, Video>,
     noMediaPathFilter: NoMediaPathFilter,
     options: MediaScanOptions,
+    publisher: ProgressiveResultsPublisher<Video>,
   ) {
     val projection =
       arrayOf(
@@ -298,12 +323,14 @@ object VideoScanUtils : KoinComponent {
                 resolution = "--",
                 isAudio = true,
               )
+            publisher.publishIfNeeded()
           }
         }
     } catch (error: kotlinx.coroutines.CancellationException) {
       throw error
     } catch (e: Exception) {
       Log.e(TAG, "MediaStore audio scan error", e)
+      throw e
     }
   }
 
@@ -316,9 +343,10 @@ object VideoScanUtils : KoinComponent {
     videosMap: MutableMap<String, Video>,
     options: MediaScanOptions,
     noMediaPathFilter: NoMediaPathFilter,
+    publisher: ProgressiveResultsPublisher<Video>,
   ) {
     try {
-      val files = folder.listFiles() ?: return
+      val files = folder.listFiles() ?: throw java.io.IOException("Cannot read directory: ${folder.absolutePath}")
       val filesToProcess = mutableListOf<File>()
 
       for (file in files) {
@@ -333,68 +361,89 @@ object VideoScanUtils : KoinComponent {
         if (videosMap.containsKey(videoKey)) continue
 
         filesToProcess.add(file)
+        val isAudio = FileTypeUtils.isAudioFile(file)
+        if (!isAudio || options.includesAudioDuration(0L)) {
+          val size = file.length()
+          val modified = file.lastModified() / 1000
+          videosMap[videoKey] = Video(
+            id = path.hashCode().toLong(), title = file.nameWithoutExtension, displayName = file.name,
+            path = path, uri = Uri.fromFile(file), duration = 0L, durationFormatted = formatDuration(0L),
+            size = size, sizeFormatted = formatFileSize(size), dateModified = modified, dateAdded = modified,
+            mimeType = FileTypeUtils.getMimeTypeFromExtension(file.extension.lowercase()),
+            bucketId = normalizeStoragePath(folder.absolutePath) ?: folder.absolutePath,
+            bucketDisplayName = leafStorageName(folder.absolutePath),
+            width = 0, height = 0, fps = 0f, resolution = "--", isAudio = isAudio,
+          )
+          publisher.publishIfNeeded()
+        }
       }
 
       if (filesToProcess.isEmpty()) return
+      publisher.publishIfNeeded(force = true)
 
-      val metadataMap =
-        metadataCache.getOrExtractMetadataBatch(
-          filesToProcess.map { file ->
-            Triple(file, Uri.fromFile(file), file.name)
-          },
-        )
-
-      for (file in filesToProcess) {
+      for (batch in filesToProcess.chunked(32)) {
         currentCoroutineContext().ensureActive()
-        try {
-          val path = normalizeStoragePath(file.absolutePath) ?: continue
-          val videoKey = mediaPathKey(path) ?: path
-          val uri = Uri.fromFile(file)
-          val displayName = file.name
-          val title = file.nameWithoutExtension
-          val fileSize = file.length()
-          val dateModified = file.lastModified() / 1000
-          val cachedMetadata = metadataMap[path]
-          val isAudio = FileTypeUtils.isAudioFile(file)
-          val duration = cachedMetadata?.durationMs ?: 0L
-          if (isAudio && !options.includesAudioDuration(duration)) continue
-          val resolvedSize = cachedMetadata?.sizeBytes?.takeIf { it > 0 } ?: fileSize
-          val mimeType = FileTypeUtils.getMimeTypeFromExtension(file.extension.lowercase())
+        val metadataMap =
+          metadataCache.getOrExtractMetadataBatch(
+            batch.map { file ->
+              Triple(file, Uri.fromFile(file), file.name)
+            },
+          )
 
-          videosMap[videoKey] =
-            Video(
-              id = path.hashCode().toLong(),
-              title = title,
-              displayName = displayName,
-              path = path,
-              uri = uri,
-              duration = duration,
-              durationFormatted = formatDuration(duration),
-              size = resolvedSize,
-              sizeFormatted = formatFileSize(resolvedSize),
-              dateModified = dateModified,
-              dateAdded = dateModified,
-              mimeType = mimeType,
-              bucketId = normalizeStoragePath(folder.absolutePath) ?: folder.absolutePath,
-              bucketDisplayName = leafStorageName(folder.absolutePath),
-              width = cachedMetadata?.width ?: 0,
-              height = cachedMetadata?.height ?: 0,
-              fps = cachedMetadata?.fps ?: 0f,
-              resolution = formatResolution(cachedMetadata?.width ?: 0, cachedMetadata?.height ?: 0),
-              hasEmbeddedSubtitles = cachedMetadata?.hasEmbeddedSubtitles ?: false,
-              subtitleCodec = cachedMetadata?.subtitleCodec ?: "",
-              isAudio = isAudio,
-            )
-        } catch (error: kotlinx.coroutines.CancellationException) {
-          throw error
-        } catch (e: Exception) {
-          Log.w(TAG, "Error processing file: ${file.absolutePath}", e)
+        for (file in batch) {
+          currentCoroutineContext().ensureActive()
+          try {
+            val path = normalizeStoragePath(file.absolutePath) ?: continue
+            val videoKey = mediaPathKey(path) ?: path
+            val uri = Uri.fromFile(file)
+            val displayName = file.name
+            val title = file.nameWithoutExtension
+            val fileSize = file.length()
+            val dateModified = file.lastModified() / 1000
+            val cachedMetadata = metadataMap[path]
+            val isAudio = FileTypeUtils.isAudioFile(file)
+            val duration = cachedMetadata?.durationMs ?: 0L
+            if (isAudio && !options.includesAudioDuration(duration)) continue
+            val resolvedSize = cachedMetadata?.sizeBytes?.takeIf { it > 0 } ?: fileSize
+            val mimeType = FileTypeUtils.getMimeTypeFromExtension(file.extension.lowercase())
+
+            videosMap[videoKey] =
+              Video(
+                id = path.hashCode().toLong(),
+                title = title,
+                displayName = displayName,
+                path = path,
+                uri = uri,
+                duration = duration,
+                durationFormatted = formatDuration(duration),
+                size = resolvedSize,
+                sizeFormatted = formatFileSize(resolvedSize),
+                dateModified = dateModified,
+                dateAdded = dateModified,
+                mimeType = mimeType,
+                bucketId = normalizeStoragePath(folder.absolutePath) ?: folder.absolutePath,
+                bucketDisplayName = leafStorageName(folder.absolutePath),
+                width = cachedMetadata?.width ?: 0,
+                height = cachedMetadata?.height ?: 0,
+                fps = cachedMetadata?.fps ?: 0f,
+                resolution = formatResolution(cachedMetadata?.width ?: 0, cachedMetadata?.height ?: 0),
+                hasEmbeddedSubtitles = cachedMetadata?.hasEmbeddedSubtitles ?: false,
+                subtitleCodec = cachedMetadata?.subtitleCodec ?: "",
+                isAudio = isAudio,
+              )
+            publisher.publishIfNeeded()
+          } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+          } catch (e: Exception) {
+            Log.w(TAG, "Error processing file: ${file.absolutePath}", e)
+          }
         }
       }
     } catch (error: kotlinx.coroutines.CancellationException) {
       throw error
     } catch (e: Exception) {
       Log.e(TAG, "Filesystem video scan error", e)
+      throw e
     }
   }
 

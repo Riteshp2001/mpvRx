@@ -18,6 +18,11 @@ import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -62,6 +67,8 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   // Songs, Albums and Artists immediately without rescanning storage on every slider movement.
   private val _allSongs = MutableStateFlow<List<MusicSong>>(emptyList())
   private val filterMutex = Mutex()
+  private val scanGeneration = java.util.concurrent.atomic.AtomicLong()
+  private var scanJob: Job? = null
 
   private val _songs = MutableStateFlow<List<MusicSong>>(emptyList())
   val songs: StateFlow<List<MusicSong>> = _songs.asStateFlow()
@@ -192,17 +199,46 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   suspend fun refreshLibrary(context: Context) {
-    _isLoading.value = true
-    try {
-      app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.syncKnownAudiobooks(context, audiobookDao)
-      _allSongs.value = MusicLibraryScanner.scanSongs(context)
-      applyFilters()
-    } catch (e: CancellationException) {
-      throw e
-    } catch (e: Exception) {
-      e.printStackTrace()
-    } finally {
-      _isLoading.value = false
+    coroutineScope {
+      val requestJob = currentCoroutineContext()[Job]
+      val (generation, previous) = withContext(Dispatchers.Main.immediate) {
+        scanJob?.cancel()
+        scanJob = requestJob
+        _isLoading.value = _songs.value.isEmpty()
+        scanGeneration.incrementAndGet() to _allSongs.value
+      }
+      try {
+        app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.syncKnownAudiobooks(context, audiobookDao)
+        val songs = MusicLibraryScanner.scanSongs(context) { partial ->
+          withContext(Dispatchers.Main.immediate) {
+            ensureActive()
+            if (generation == scanGeneration.get() && partial.isNotEmpty()) {
+              val ids = partial.mapTo(HashSet()) { it.id }
+              _allSongs.value = partial + previous.filterNot { it.id in ids }
+              applyFilters()
+              if (_songs.value.isNotEmpty()) _isLoading.value = false
+            }
+          }
+        }
+        withContext(Dispatchers.Main.immediate) {
+          ensureActive()
+          if (generation == scanGeneration.get()) {
+            _allSongs.value = songs
+            applyFilters()
+          }
+        }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        e.printStackTrace()
+      } finally {
+        withContext(NonCancellable + Dispatchers.Main.immediate) {
+          if (generation == scanGeneration.get()) {
+            _isLoading.value = false
+            scanJob = null
+          }
+        }
+      }
     }
   }
 
@@ -231,13 +267,14 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
       Triple(visible, buildAlbums(visible), buildArtists(visible))
     }
 
+    if (_allSongs.value !== allSongs) return@withLock
     _songs.value = visibleSongs
     _albums.value = albums
     _artists.value = artists
 
     // Never leave the detail screen pointing at an album/artist that was completely filtered out.
-    _selectedAlbum.value = _selectedAlbum.value?.takeIf { selected -> _albums.value.any { it.id == selected.id } }
-    _selectedArtist.value = _selectedArtist.value?.takeIf { selected -> _artists.value.any { it.id == selected.id } }
+    _selectedAlbum.value = _selectedAlbum.value?.let { selected -> _albums.value.firstOrNull { it.id == selected.id } }
+    _selectedArtist.value = _selectedArtist.value?.let { selected -> _artists.value.firstOrNull { it.id == selected.id } }
   }
 
   private fun buildAlbums(songs: List<MusicSong>): List<MusicAlbum> =

@@ -43,6 +43,11 @@ import app.gyrolet.mpvrx.ui.browser.music.MusicViewMode
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -299,11 +304,40 @@ class JellyfinViewModel(
     loadDashboardJob =
       viewModelScope.launch {
         _uiState.update { it.copy(isLoading = true, error = null) }
+        val previous = _uiState.value
+        suspend fun publish(transform: (JellyfinUiState) -> JellyfinUiState) {
+          currentCoroutineContext().ensureActive()
+          _uiState.update { if (it.activeServer?.id == server.id) transform(it) else it }
+        }
+        fun isVideoMedia(item: JellyfinItem): Boolean {
+          if (item.isAudio || item.type == "Folder" || item.type == "MusicAlbum" || item.type == "Audio" || item.type == "MusicArtist" || item.type == "CollectionFolder") return false
+          if (item.isFolder && !item.isSeries && !item.isSeason && item.type != "Series" && item.type != "Season") return false
+          return true
+        }
 
-        val libsDeferred = async { jellyfinRepository.getLibraries(server) }
-        val resumeDeferred = async { jellyfinRepository.getResumeItems(server, limit = 16) }
-        val latestDeferred = async { jellyfinRepository.getLatestMedia(server, limit = 32) }
-        val suggestionsDeferred = async { jellyfinRepository.getSuggestions(server, limit = 36) }
+        val libsDeferred = async {
+          jellyfinRepository.getLibraries(server).onSuccess { libraries ->
+            publish { it.copy(libraries = sortJellyfinLibraries(libraries)) }
+          }
+        }
+        val resumeDeferred = async {
+          jellyfinRepository.getResumeItems(server, limit = 16).onSuccess { items ->
+            publish { it.copy(resumeItems = items.filter(::isVideoMedia)) }
+          }
+        }
+        val latestDeferred = async {
+          jellyfinRepository.getLatestMedia(server, limit = 32).onSuccess { items ->
+            val movies = items.filter { isVideoMedia(it) && it.type == "Movie" }
+            val shows = resolveShowsAsSeries(server, items.filter { isVideoMedia(it) && (it.type == "Series" || it.type == "Episode") })
+            publish { it.copy(latestMovies = movies, latestShows = shows) }
+          }
+        }
+        val suggestionsDeferred = async {
+          jellyfinRepository.getSuggestions(server, limit = 36).onSuccess { items ->
+            val recommendations = resolveShowsAsSeries(server, items.filter(::isVideoMedia)).distinctBy(::mediaDeduplicationKey)
+            publish { it.copy(recommendations = recommendations.take(36)) }
+          }
+        }
         val topRatedDeferred =
           async {
             jellyfinRepository.getItems(
@@ -312,7 +346,10 @@ class JellyfinViewModel(
               sortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.RATING,
               sortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.DESCENDING,
               limit = 36,
-            )
+            ).onSuccess { result ->
+              publish { state -> state.copy(recommendations =
+                (state.recommendations + result.items.filter(::isVideoMedia)).distinctBy(::mediaDeduplicationKey).take(36)) }
+            }
           }
         val musicDeferred =
           async {
@@ -322,7 +359,9 @@ class JellyfinViewModel(
               sortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.DATE_ADDED,
               sortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.DESCENDING,
               limit = 20,
-            )
+            ).onSuccess { result ->
+              publish { it.copy(latestMusic = result.items.distinctBy { item -> item.id }.take(16)) }
+            }
           }
         val heroDeferred =
           async {
@@ -332,32 +371,18 @@ class JellyfinViewModel(
               isPlayed = false,
               sortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.RANDOM,
               limit = 15,
-            )
+            ).onSuccess { result ->
+              val candidates = result.items.filter {
+                !it.isPlayed && isVideoMedia(it) && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank())
+              }
+              val hero = resolveShowsAsSeries(server, candidates).distinctBy(::mediaDeduplicationKey).take(15)
+              if (hero.isNotEmpty()) publish { it.copy(heroItems = hero) }
+            }
           }
 
         val libsResult = libsDeferred.await()
-        val resumeResult = resumeDeferred.await()
-        val latestResult = latestDeferred.await()
-        val suggestionsResult = suggestionsDeferred.await()
-        val topRatedResult = topRatedDeferred.await()
-        val musicResult = musicDeferred.await()
-        val heroResult = heroDeferred.await()
-
-        val libs = sortJellyfinLibraries(libsResult.getOrDefault(emptyList()))
-        val resumeRaw = resumeResult.getOrDefault(emptyList())
-        val latestRaw = latestResult.getOrDefault(emptyList())
-        val suggestionsRaw = suggestionsResult.getOrDefault(emptyList())
-        val topRatedRaw = topRatedResult.getOrNull()?.items ?: emptyList()
-        val musicRaw = musicResult.getOrNull()?.items ?: emptyList()
-
-        // Helper filter to exclude music and pure folders from general video home sections
-        fun isVideoMedia(item: JellyfinItem): Boolean {
-          if (item.isAudio || item.type == "Folder" || item.type == "MusicAlbum" || item.type == "Audio" || item.type == "MusicArtist" || item.type == "CollectionFolder") return false
-          if (item.isFolder && !item.isSeries && !item.isSeason && item.type != "Series" && item.type != "Season") return false
-          return true
-        }
-
-        val resume = resumeRaw.filter { isVideoMedia(it) }
+        currentCoroutineContext().ensureActive()
+        val libs = sortJellyfinLibraries(libsResult.getOrDefault(previous.libraries))
 
         // Fetch latest media for each non-music library concurrently
         val videoLibs = libs.filter { !isMusicLibrary(it) }
@@ -381,6 +406,10 @@ class JellyfinViewModel(
                 sortOrder = JellyfinSortOrder.DESCENDING,
                 limit = 16,
               )
+              currentCoroutineContext().ensureActive()
+              if (latestItemsResult.isFailure && fallbackItemsResult.isFailure) {
+                return@async previous.librarySections.firstOrNull { it.library.id == lib.id }
+              }
               rawItems = fallbackItemsResult.getOrNull()?.items.orEmpty().filter { isVideoMedia(it) }
             }
 
@@ -406,12 +435,30 @@ class JellyfinViewModel(
                 subtitle = subtitle,
                 items = processedItems,
                 isShows = isShows,
-              )
+              ).also { section ->
+                publish { state ->
+                  val sectionsById = (state.librarySections + section).associateBy { it.library.id }
+                  state.copy(librarySections = videoLibs.mapNotNull { sectionsById[it.id] })
+                }
+              }
             } else {
               null
             }
           }
         }
+        val resumeResult = resumeDeferred.await()
+        val latestResult = latestDeferred.await()
+        val suggestionsResult = suggestionsDeferred.await()
+        val topRatedResult = topRatedDeferred.await()
+        val musicResult = musicDeferred.await()
+        val heroResult = heroDeferred.await()
+
+        val resumeRaw = resumeResult.getOrDefault(previous.resumeItems)
+        val latestRaw = latestResult.getOrDefault(previous.latestMovies + previous.latestShows)
+        val suggestionsRaw = suggestionsResult.getOrDefault(previous.recommendations)
+        val topRatedRaw = topRatedResult.getOrNull()?.items.orEmpty()
+        val musicRaw = musicResult.getOrNull()?.items ?: previous.latestMusic
+        val resume = resumeRaw.filter(::isVideoMedia)
         val librarySections = librarySectionsDeferred.awaitAll().filterNotNull()
 
         val legacyLatestMovies = latestRaw.filter { isVideoMedia(it) && (it.type == "Movie" || it.collectionType?.equals("movies", ignoreCase = true) == true) }
@@ -444,7 +491,7 @@ class JellyfinViewModel(
         val fetchedHero =
           heroResult.getOrNull()?.items?.filter {
             !it.isPlayed && isVideoMedia(it) && (!it.backdropImageTag.isNullOrBlank() || !it.primaryImageTag.isNullOrBlank())
-          } ?: emptyList()
+          } ?: previous.heroItems
 
         val finalHero =
           if (fetchedHero.isNotEmpty()) {
@@ -461,7 +508,7 @@ class JellyfinViewModel(
               .take(15)
           }
 
-        _uiState.update {
+        publish {
           it.copy(
             libraries = libs,
             librarySections = librarySections,
@@ -608,8 +655,19 @@ class JellyfinViewModel(
     library: JellyfinLibraryView,
   ) {
     _uiState.update {
+      val changedLibrary = it.openLibrary?.id != library.id
+      val changedMusicLibrary = changedLibrary && library.isMusic
       it.copy(
         openLibrary = library,
+        currentItems = if (changedLibrary) emptyList() else it.currentItems,
+        musicTracks = if (changedMusicLibrary) emptyList() else it.musicTracks,
+        musicAlbums = if (changedMusicLibrary) emptyList() else it.musicAlbums,
+        musicArtists = if (changedMusicLibrary) emptyList() else it.musicArtists,
+        musicPlaylists = if (changedMusicLibrary) emptyList() else it.musicPlaylists,
+        musicJumpBackIn = if (changedMusicLibrary) emptyList() else it.musicJumpBackIn,
+        musicRecentlyPlayedAlbums = if (changedMusicLibrary) emptyList() else it.musicRecentlyPlayedAlbums,
+        musicArtistsToExplore = if (changedMusicLibrary) emptyList() else it.musicArtistsToExplore,
+        musicFavorites = if (changedMusicLibrary) emptyList() else it.musicFavorites,
         selectedLibraryId = library.id,
         selectedGenreFilter = null,
         availableGenres = emptyList(),
@@ -696,127 +754,88 @@ class JellyfinViewModel(
     musicLoadJob?.cancel()
     loadedMusicHomeLibraryId = null
     musicLoadJob = viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = false, isMusicLoading = true) }
-
-      val jumpBackDeferred = async {
-        val playedTracks = jellyfinRepository.getItems(
-          server = server,
-          parentId = library.id,
-          includeItemTypes = "Audio",
-          sortBy = JellyfinSortBy.DATE_PLAYED,
-          sortOrder = JellyfinSortOrder.DESCENDING,
-          limit = 30,
-        ).getOrNull()?.items.orEmpty()
-
-        val addedTracks = jellyfinRepository.getItems(
-          server = server,
-          parentId = library.id,
-          includeItemTypes = "Audio",
-          sortBy = JellyfinSortBy.DATE_ADDED,
-          sortOrder = JellyfinSortOrder.DESCENDING,
-          limit = 30,
-        ).getOrNull()?.items.orEmpty()
-
-        val randomTracks = jellyfinRepository.getItems(
-          server = server,
-          parentId = library.id,
-          includeItemTypes = "Audio",
-          sortBy = JellyfinSortBy.RANDOM,
-          limit = 30,
-        ).getOrNull()?.items.orEmpty()
-
-        val uniquePlayed = playedTracks.distinctBy { it.id }
-        val playedIds = uniquePlayed.map { it.id }.toSet()
-        val uniqueOthers = (addedTracks + randomTracks)
-          .distinctBy { it.id }
-          .filter { it.id !in playedIds }
-
-        (uniquePlayed + uniqueOthers).take(24)
+      _uiState.update { it.copy(isLoading = false, isMusicLoading = true, error = null) }
+      var completed = true
+      suspend fun publish(transform: (JellyfinUiState) -> JellyfinUiState) {
+        currentCoroutineContext().ensureActive()
+        _uiState.update { if (it.activeServer?.id == server.id) transform(it) else it }
       }
-
-      val recentlyPlayedAlbumsDeferred = async {
-        jellyfinRepository.getItems(
-          server = server,
-          parentId = library.id,
-          includeItemTypes = "MusicAlbum",
-          sortBy = JellyfinSortBy.DATE_ADDED,
-          sortOrder = JellyfinSortOrder.DESCENDING,
-          limit = 15,
-        ).getOrNull()?.items.orEmpty()
+      suspend fun <T> receive(result: Result<T>): T? {
+        currentCoroutineContext().ensureActive()
+        return result.onFailure { error ->
+          if (error is CancellationException) throw error
+          completed = false
+          publish { it.copy(error = error.message) }
+        }.getOrNull()
       }
-
-      val artistsToExploreDeferred = async {
-        val endpointArtists = jellyfinRepository.getArtists(
-          server = server,
-          parentId = library.id,
-          limit = 30,
-        ).getOrNull()?.items.orEmpty()
-
-        val itemArtists = jellyfinRepository.getItems(
-          server = server,
-          parentId = library.id,
-          includeItemTypes = "MusicArtist,Artist,AlbumArtist",
-          sortBy = JellyfinSortBy.RANDOM,
-          limit = 30,
-        ).getOrNull()?.items.orEmpty()
-
-        (endpointArtists + itemArtists)
-          .filter { it.name.isNotBlank() }
-          .distinctBy { if (it.id.isNotBlank()) it.id else it.name.lowercase().trim() }
-          .shuffled()
-          .take(15)
-      }
-
-      val favoritesDeferred = async {
-        jellyfinRepository.getItems(
-          server = server,
-          parentId = null,
-          includeItemTypes = "Audio",
-          isFavorite = true,
-          sortBy = JellyfinSortBy.NAME,
-          limit = 50,
-        ).getOrNull()?.items.orEmpty()
-      }
-
-      val playlistsDeferred = async {
-        val serverPlaylists = jellyfinRepository.getItems(
-          server = server,
-          parentId = null,
-          includeItemTypes = "Playlist",
-          sortBy = JellyfinSortBy.NAME,
-          limit = 500,
-        ).getOrNull()?.items.orEmpty()
-
-        val favoritesVirtualPlaylist = JellyfinItem(
-          id = "virtual_favorites_playlist",
-          name = "Favorites",
-          type = "Playlist",
-          overview = null,
-          isFolder = true,
-          isFavorite = true,
-          primaryImageTag = null,
-          albumPrimaryImageTag = null,
-        )
-
-        listOf(favoritesVirtualPlaylist) + serverPlaylists.filter { !it.name.equals("Favorites", ignoreCase = true) }
-      }
-
-      val jumpBackIn = jumpBackDeferred.await()
-      val recentAlbums = recentlyPlayedAlbumsDeferred.await()
-      val artistsToExplore = artistsToExploreDeferred.await()
-      val favorites = favoritesDeferred.await()
-      val playlists = playlistsDeferred.await()
-
-      loadedMusicHomeLibraryId = library.id
-      _uiState.update {
-        it.copy(
-          musicFavorites = favorites,
-          musicPlaylists = playlists,
-          musicJumpBackIn = jumpBackIn,
-          musicRecentlyPlayedAlbums = recentAlbums,
-          musicArtistsToExplore = artistsToExplore,
-          isMusicLoading = false,
-        )
+      try {
+        coroutineScope {
+          launch {
+            val tracks = linkedMapOf<String, JellyfinItem>()
+            val previous = _uiState.value.musicJumpBackIn
+            var allTracksLoaded = true
+            for (sortBy in listOf(JellyfinSortBy.DATE_PLAYED, JellyfinSortBy.DATE_ADDED, JellyfinSortBy.RANDOM)) {
+              val result = receive(jellyfinRepository.getItems(server, parentId = library.id,
+                includeItemTypes = "Audio", sortBy = sortBy, sortOrder = JellyfinSortOrder.DESCENDING, limit = 30))
+              if (result == null) {
+                allTracksLoaded = false
+                continue
+              }
+              result.items.forEach { tracks.putIfAbsent(it.id, it) }
+              val visible = (tracks.values.toList() + previous.filterNot { it.id in tracks }).take(24)
+              publish { it.copy(musicJumpBackIn = visible) }
+            }
+            if (allTracksLoaded) publish { it.copy(musicJumpBackIn = tracks.values.take(24)) }
+          }
+          launch {
+            val result = receive(jellyfinRepository.getItems(server, parentId = library.id,
+              includeItemTypes = "MusicAlbum", sortBy = JellyfinSortBy.DATE_ADDED,
+              sortOrder = JellyfinSortOrder.DESCENDING, limit = 15)) ?: return@launch
+            publish { it.copy(musicRecentlyPlayedAlbums = result.items) }
+          }
+          launch {
+            val endpointArtists = receive(jellyfinRepository.getArtists(server, parentId = library.id, limit = 30))
+            if (endpointArtists != null) publish { it.copy(musicArtistsToExplore = endpointArtists.items.take(15)) }
+            val itemArtists = receive(jellyfinRepository.getItems(server, parentId = library.id,
+              includeItemTypes = "MusicArtist,Artist,AlbumArtist", sortBy = JellyfinSortBy.RANDOM, limit = 30))
+            if (endpointArtists != null || itemArtists != null) {
+              val artists = (endpointArtists?.items.orEmpty() + itemArtists?.items.orEmpty())
+                .filter { it.name.isNotBlank() }
+                .distinctBy { it.id.ifBlank { it.name.lowercase().trim() } }
+                .shuffled().take(15)
+              publish { it.copy(musicArtistsToExplore = artists) }
+            }
+          }
+          launch {
+            val result = receive(jellyfinRepository.getItems(server, parentId = null,
+              includeItemTypes = "Audio", isFavorite = true, sortBy = JellyfinSortBy.NAME, limit = 50)) ?: return@launch
+            publish { it.copy(musicFavorites = result.items) }
+          }
+          launch {
+            val favorites = JellyfinItem(id = "virtual_favorites_playlist", name = "Favorites", type = "Playlist",
+              overview = null, isFolder = true, isFavorite = true, primaryImageTag = null, albumPrimaryImageTag = null)
+            val previous = _uiState.value.musicPlaylists
+            val playlists = linkedMapOf(favorites.id to favorites)
+            val seen = HashSet<String>()
+            var startIndex = 0
+            while (true) {
+              val result = receive(jellyfinRepository.getItems(server, parentId = null,
+                includeItemTypes = "Playlist", sortBy = JellyfinSortBy.NAME,
+                startIndex = startIndex, limit = 100)) ?: return@launch
+              val newItems = result.items.filter { seen.add(it.id) }
+              newItems.filterNot { it.name.equals("Favorites", true) }.forEach { playlists[it.id] = it }
+              startIndex += result.items.size
+              val finished = newItems.isEmpty() || startIndex >= result.totalRecordCount
+              val visible = playlists.values.toList() + if (finished) emptyList() else previous.filterNot { it.id in playlists }
+              publish { it.copy(musicPlaylists = visible) }
+              if (finished) break
+            }
+          }
+        }
+        currentCoroutineContext().ensureActive()
+        if (completed) loadedMusicHomeLibraryId = library.id
+      } finally {
+        if (currentCoroutineContext().isActive) publish { it.copy(isMusicLoading = false) }
       }
     }
   }
@@ -856,115 +875,104 @@ class JellyfinViewModel(
   ) {
     musicLoadJob?.cancel()
     musicLoadJob = viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, isMusicLoading = false) }
-      when (tab) {
-        JellyfinMusicTab.PLAYLISTS -> {
-          val serverPlaylists = jellyfinRepository.getItems(
-            server = server,
-            parentId = null,
-            includeItemTypes = "Playlist",
-            sortBy = JellyfinSortBy.NAME,
-            limit = 500,
-          ).getOrNull()?.items.orEmpty()
-
-          val favoriteTracks = jellyfinRepository.getItems(
-            server = server,
-            parentId = null,
-            includeItemTypes = "Audio",
-            isFavorite = true,
-            sortBy = JellyfinSortBy.NAME,
-            limit = 1,
-          ).getOrNull()?.items.orEmpty()
-
-          val favoritesVirtualPlaylist = JellyfinItem(
-            id = "virtual_favorites_playlist",
-            name = "Favorites",
-            type = "Playlist",
-            overview = null,
-            isFolder = true,
-            isFavorite = true,
-            primaryImageTag = null,
-            albumPrimaryImageTag = null,
-          )
-
-          val combinedPlaylists = listOf(favoritesVirtualPlaylist) + serverPlaylists.filter { !it.name.equals("Favorites", ignoreCase = true) }
-          _uiState.update { it.copy(musicPlaylists = combinedPlaylists, isLoading = false) }
+      _uiState.update { it.copy(isLoading = true, isMusicLoading = false, error = null) }
+      val previous = when (tab) {
+        JellyfinMusicTab.PLAYLISTS -> _uiState.value.musicPlaylists
+        JellyfinMusicTab.ARTISTS -> _uiState.value.musicArtists
+        JellyfinMusicTab.ALBUMS -> _uiState.value.musicAlbums
+        JellyfinMusicTab.TRACKS -> _uiState.value.musicTracks
+        JellyfinMusicTab.HOME -> emptyList()
+      }
+      val fetched = linkedMapOf<String, JellyfinItem>()
+      var allRequestsSucceeded = true
+      fun itemKey(item: JellyfinItem): String = item.id.ifBlank { item.name.lowercase().trim() }
+      suspend fun publish(transform: (JellyfinUiState) -> JellyfinUiState) {
+        currentCoroutineContext().ensureActive()
+        _uiState.update { state ->
+          if (state.activeServer?.id == server.id && state.musicActiveTab == tab) transform(state) else state
         }
-        JellyfinMusicTab.ARTISTS -> {
-          val libraryItemsArtists = jellyfinRepository.getItems(
-            server = server,
-            parentId = library.id,
-            includeItemTypes = "MusicArtist,Artist,AlbumArtist",
-            sortBy = JellyfinSortBy.NAME,
-            limit = 500,
-          ).getOrNull()?.items.orEmpty()
-
-          val rootItemsArtists = jellyfinRepository.getItems(
-            server = server,
-            parentId = null,
-            includeItemTypes = "MusicArtist,Artist,AlbumArtist",
-            sortBy = JellyfinSortBy.NAME,
-            limit = 500,
-          ).getOrNull()?.items.orEmpty()
-
-          val libraryArtistsEndpoint = jellyfinRepository.getArtists(
-            server = server,
-            parentId = library.id,
-            limit = 500,
-          ).getOrNull()?.items.orEmpty()
-
-          val rootArtistsEndpoint = jellyfinRepository.getArtists(
-            server = server,
-            parentId = null,
-            limit = 500,
-          ).getOrNull()?.items.orEmpty()
-
-          val libraryAlbumArtistsEndpoint = jellyfinRepository.getArtists(
-            server = server,
-            parentId = library.id,
-            limit = 500,
-            albumArtistsOnly = true,
-          ).getOrNull()?.items.orEmpty()
-
-          val rootAlbumArtistsEndpoint = jellyfinRepository.getArtists(
-            server = server,
-            parentId = null,
-            limit = 500,
-            albumArtistsOnly = true,
-          ).getOrNull()?.items.orEmpty()
-
-          val allFetched = libraryItemsArtists + rootItemsArtists + libraryArtistsEndpoint + rootArtistsEndpoint + libraryAlbumArtistsEndpoint + rootAlbumArtistsEndpoint
-
-          val combinedArtists = allFetched
-            .filter { it.name.isNotBlank() }
-            .distinctBy { if (it.id.isNotBlank()) it.id else it.name.lowercase().trim() }
-            .sortedBy { it.name.lowercase() }
-
-          _uiState.update { it.copy(musicArtists = combinedArtists, isLoading = false) }
+      }
+      suspend fun publishItems(complete: Boolean = false) {
+        val items = fetched.values.toList() + if (complete) emptyList() else previous.filterNot { itemKey(it) in fetched }
+        publish { state ->
+          when (tab) {
+            JellyfinMusicTab.PLAYLISTS -> state.copy(musicPlaylists = items)
+            JellyfinMusicTab.ARTISTS -> state.copy(musicArtists = items.sortedBy { it.name.lowercase() })
+            JellyfinMusicTab.ALBUMS -> state.copy(musicAlbums = items)
+            JellyfinMusicTab.TRACKS -> state.copy(musicTracks = items)
+            JellyfinMusicTab.HOME -> state
+          }
         }
-        JellyfinMusicTab.ALBUMS -> {
-          val result = jellyfinRepository.getItems(
-            server = server,
-            parentId = library.id,
-            includeItemTypes = "MusicAlbum",
-            sortBy = JellyfinSortBy.NAME,
-            limit = 500,
-          ).getOrNull()?.items.orEmpty()
-          _uiState.update { it.copy(musicAlbums = result, isLoading = false) }
+      }
+      suspend fun loadPages(fetch: suspend (Int) -> Result<app.gyrolet.mpvrx.domain.jellyfin.JellyfinQueryResult>) {
+        var startIndex = 0
+        val seen = HashSet<String>()
+        while (true) {
+          val page = fetch(startIndex).getOrElse { error ->
+            if (error is CancellationException) throw error
+            allRequestsSucceeded = false
+            publish { it.copy(error = error.message) }
+            return
+          }
+          currentCoroutineContext().ensureActive()
+          val newItems = page.items.filter { seen.add(itemKey(it)) }
+          if (newItems.isEmpty()) return
+          newItems.filter { it.name.isNotBlank() }
+            .filterNot { tab == JellyfinMusicTab.PLAYLISTS && it.name.equals("Favorites", true) }
+            .forEach { fetched[itemKey(it)] = it }
+          publishItems()
+          startIndex += page.items.size
+          if (startIndex >= page.totalRecordCount) return
         }
-        JellyfinMusicTab.TRACKS -> {
-          val result = jellyfinRepository.getItems(
-            server = server,
-            parentId = library.id,
-            includeItemTypes = "Audio",
-            sortBy = JellyfinSortBy.NAME,
-            limit = 500,
-          ).getOrNull()?.items.orEmpty()
-          _uiState.update { it.copy(musicTracks = result, isLoading = false) }
+      }
+      try {
+        when (tab) {
+          JellyfinMusicTab.PLAYLISTS -> {
+            val favorites = JellyfinItem(
+              id = "virtual_favorites_playlist",
+              name = "Favorites",
+              type = "Playlist",
+              overview = null,
+              isFolder = true,
+              isFavorite = true,
+              primaryImageTag = null,
+              albumPrimaryImageTag = null,
+            )
+            fetched[favorites.id] = favorites
+            publishItems()
+            loadPages { startIndex ->
+              jellyfinRepository.getItems(server, parentId = null, includeItemTypes = "Playlist",
+                sortBy = JellyfinSortBy.NAME, startIndex = startIndex, limit = 100)
+            }
+          }
+          JellyfinMusicTab.ARTISTS -> {
+            for (parentId in listOf(library.id, null)) {
+              loadPages { startIndex ->
+                jellyfinRepository.getItems(server, parentId = parentId, includeItemTypes = "MusicArtist,Artist,AlbumArtist",
+                  sortBy = JellyfinSortBy.NAME, startIndex = startIndex, limit = 100)
+              }
+              for (albumArtistsOnly in listOf(false, true)) {
+                loadPages { startIndex ->
+                  jellyfinRepository.getArtists(server, parentId = parentId, startIndex = startIndex,
+                    limit = 100, albumArtistsOnly = albumArtistsOnly)
+                }
+              }
+            }
+          }
+          JellyfinMusicTab.ALBUMS, JellyfinMusicTab.TRACKS -> loadPages { startIndex ->
+            jellyfinRepository.getItems(server, parentId = library.id,
+              includeItemTypes = if (tab == JellyfinMusicTab.ALBUMS) "MusicAlbum" else "Audio",
+              sortBy = JellyfinSortBy.NAME, startIndex = startIndex, limit = 100)
+          }
+          JellyfinMusicTab.HOME -> Unit
         }
-        JellyfinMusicTab.HOME -> {
-          _uiState.update { it.copy(isLoading = false) }
-        }
+        if (allRequestsSucceeded) publishItems(complete = true)
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        publish { it.copy(error = error.message) }
+      } finally {
+        if (currentCoroutineContext().isActive) publish { it.copy(isLoading = false) }
       }
     }
   }
@@ -1004,8 +1012,8 @@ class JellyfinViewModel(
         if (resetPagination) {
           _uiState.update {
             it.copy(
-              isLoading = true,
-              currentItems = emptyList(),
+              isLoading = it.currentItems.isEmpty(),
+              isLoadingMore = false,
               startIndex = 0,
               hasMore = false,
               error = null,
@@ -1029,6 +1037,7 @@ class JellyfinViewModel(
             startIndex = startIndex,
             limit = 100,
           ).onSuccess { queryResult ->
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             val combined = (currentList + queryResult.items).distinctBy { it.id }
             _uiState.update {
               it.copy(
@@ -1042,6 +1051,8 @@ class JellyfinViewModel(
               )
             }
           }.onFailure { err ->
+            if (err is kotlinx.coroutines.CancellationException) throw err
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             _uiState.update {
               it.copy(
                 isLoading = false,

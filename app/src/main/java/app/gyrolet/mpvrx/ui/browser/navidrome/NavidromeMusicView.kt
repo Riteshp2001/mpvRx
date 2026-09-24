@@ -96,7 +96,8 @@ fun NavidromeMusicView(
     Box(modifier = Modifier.fillMaxSize()) {
       when (tab) {
         NavidromeMusicTab.HOME -> {
-          if (uiState.isLoading && uiState.jumpBackIn.isEmpty() && uiState.playlists.isEmpty()) {
+          if (uiState.isLoading && uiState.jumpBackIn.isEmpty() && uiState.playlists.isEmpty() &&
+            uiState.recentlyAddedAlbums.isEmpty() && uiState.artistsToExplore.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
               CircularProgressIndicator()
             }

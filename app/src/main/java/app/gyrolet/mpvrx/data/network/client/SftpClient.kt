@@ -78,18 +78,27 @@ class SftpClient(
 
   override fun isConnected(): Boolean = session?.isConnected == true
 
-  override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
+  override suspend fun listFiles(path: String, onSnapshot: (suspend (List<NetworkFile>) -> Unit)?): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
         val activeSession = requireSession()
         val directory = NetworkPath.from(path)
         val files =
           withChannel(activeSession) { channel ->
-            channel
+            val partial = mutableListOf<NetworkFile>()
+            val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher(onSnapshot) { partial }
+            val files = channel
               .ls(remotePath(directory))
               .filterIsInstance<ChannelSftp.LsEntry>()
               .filter { it.filename != "." && it.filename != ".." }
-              .mapNotNull { entry -> toNetworkFile(channel, directory, entry) }
+              .mapNotNull { entry ->
+                toNetworkFile(channel, directory, entry)?.also { file ->
+                  partial += file
+                  publisher.publishIfNeeded()
+                }
+              }
+            publisher.publishIfNeeded(force = true)
+            files
           }
         Result.success(files)
       } catch (cancellation: CancellationException) {

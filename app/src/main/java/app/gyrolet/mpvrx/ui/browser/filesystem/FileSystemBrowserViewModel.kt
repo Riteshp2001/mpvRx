@@ -125,6 +125,7 @@ class FileSystemBrowserViewModel(
   // Track previous item count per path to detect if folder became empty
   private val itemCountByPath = mutableMapOf<String, Int>()
   private var directoryLoadJob: Job? = null
+  private var displayedDirectoryPath: String? = null
 
   companion object {
     private const val TAG = "FileSystemBrowserVM"
@@ -142,8 +143,8 @@ class FileSystemBrowserViewModel(
   init {
     // If no initial path was specified, check storage volumes and navigate accordingly
     if (initialPath == null) {
-      viewModelScope.launch(Dispatchers.IO) {
-        val roots = MediaFileRepository.getStorageRoots(getApplication())
+      viewModelScope.launch {
+        val roots = MediaFileRepository.getStorageRoots(getApplication(), includeCounts = false)
         if (roots.size == 1) {
           // Only one storage volume, navigate directly to it and set as home
           val singleRoot = roots.first()
@@ -167,7 +168,7 @@ class FileSystemBrowserViewModel(
 
     // Refresh on global media library changes
     // Similar to Fossify's media scan completion listener
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch {
       MediaLibraryEvents.changes.collectLatest {
         MediaFileRepository.invalidateTreeCache()
         loadCurrentDirectory()
@@ -432,7 +433,16 @@ class FileSystemBrowserViewModel(
     directoryLoadJob?.cancel()
     val path = _currentPath.value
     directoryLoadJob = viewModelScope.launch {
-      _isLoading.value = true
+      val previous = if (displayedDirectoryPath == path) _unsortedItems.value else emptyList()
+      if (displayedDirectoryPath != path) {
+        _unsortedItems.value = emptyList()
+        _items.value = emptyList()
+        _videoFilesWithPlayback.value = emptyMap()
+        _newVideoIds.value = emptySet()
+        _watchedVideoIds.value = emptySet()
+      }
+      displayedDirectoryPath = path
+      _isLoading.value = previous.isEmpty()
       _error.value = null
       // Don't reset the flag here - let navigation handle it
 
@@ -442,7 +452,19 @@ class FileSystemBrowserViewModel(
         if (path == STORAGE_ROOTS_MARKER) {
           Log.d(TAG, "Loading storage roots")
           _breadcrumbs.value = emptyList()
-          val roots = MediaFileRepository.getStorageRoots(getApplication(), forceFileSystemCheck)
+          val roots = MediaFileRepository.getStorageRoots(
+            getApplication(),
+            forceFileSystemCheck,
+            onSnapshot = { partial ->
+              withContext(Dispatchers.Main.immediate) {
+                ensureActive()
+                if (_currentPath.value == path && partial.isNotEmpty()) {
+                  _unsortedItems.value = partial
+                  _isLoading.value = false
+                }
+              }
+            },
+          )
           ensureActive()
           _unsortedItems.value = roots
           _videoFilesWithPlayback.value = emptyMap()
@@ -468,6 +490,16 @@ class FileSystemBrowserViewModel(
               path,
               showAllFileTypes = false,
               forceFileSystemCheck = forceFileSystemCheck,
+              onSnapshot = { partial ->
+                withContext(Dispatchers.Main.immediate) {
+                  ensureActive()
+                  if (_currentPath.value == path && partial.isNotEmpty()) {
+                    val paths = partial.mapTo(HashSet()) { it.path }
+                    _unsortedItems.value = partial + _unsortedItems.value.filterNot { it.path in paths }
+                    _isLoading.value = false
+                  }
+                }
+              },
             ).onSuccess { items ->
               ensureActive()
               // Get previous count for this path
@@ -486,6 +518,7 @@ class FileSystemBrowserViewModel(
               itemCountByPath[path] = items.size
 
               _unsortedItems.value = items
+              if (items.isNotEmpty()) _isLoading.value = false
 
               val folderCount = items.filterIsInstance<FileSystemItem.Folder>().size
               val videoCount = items.filterIsInstance<FileSystemItem.VideoFile>().size
@@ -508,6 +541,17 @@ class FileSystemBrowserViewModel(
                         videos = videos,
                         browserPreferences = browserPreferences,
                         metadataCache = metadataCache,
+                        onSnapshot = { partial ->
+                          withContext(Dispatchers.Main.immediate) {
+                            ensureActive()
+                            if (_currentPath.value == path) {
+                              val byPath = partial.associateBy { it.path }
+                              _unsortedItems.value = items.map { item ->
+                                if (item is FileSystemItem.VideoFile) item.copy(video = byPath[item.path] ?: item.video) else item
+                              }
+                            }
+                          }
+                        },
                       )
                     }
 
@@ -539,10 +583,6 @@ class FileSystemBrowserViewModel(
               if (error is CancellationException) throw error
               ensureActive()
               _error.value = error.message
-              _unsortedItems.value = emptyList()
-              _videoFilesWithPlayback.value = emptyMap()
-              _newVideoIds.value = emptySet()
-              _watchedVideoIds.value = emptySet()
               Log.e(TAG, "Error loading directory: $path", error)
             }
         }
@@ -551,10 +591,6 @@ class FileSystemBrowserViewModel(
       } catch (e: Exception) {
         ensureActive()
         _error.value = e.message
-        _unsortedItems.value = emptyList()
-        _videoFilesWithPlayback.value = emptyMap()
-        _newVideoIds.value = emptySet()
-        _watchedVideoIds.value = emptySet()
         Log.e(TAG, "Exception loading directory", e)
       } finally {
         if (isActive) _isLoading.value = false

@@ -32,6 +32,9 @@ import app.gyrolet.mpvrx.preferences.MusicSourceProvider
 import app.gyrolet.mpvrx.repository.NavidromeRepository
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,6 +92,11 @@ class NavidromeViewModel(
     )
   )
   val uiState: StateFlow<NavidromeUiState> = _uiState.asStateFlow()
+  private val loadGeneration = java.util.concurrent.atomic.AtomicLong()
+  private var loadJob: kotlinx.coroutines.Job? = null
+  private var loadedServer: NavidromeServer? = null
+  private var searchJob: kotlinx.coroutines.Job? = null
+  private var detailJob: Job? = null
 
   init {
     viewModelScope.launch {
@@ -132,6 +140,7 @@ class NavidromeViewModel(
   fun onSearchQueryChanged(query: String) {
     _uiState.update { it.copy(searchQuery = query) }
     if (query.isBlank()) {
+      searchJob?.cancel()
       _uiState.update { it.copy(searchResult = null) }
     } else {
       performSearch(query)
@@ -140,9 +149,13 @@ class NavidromeViewModel(
 
   private fun performSearch(query: String) {
     val server = _uiState.value.activeServer ?: return
-    viewModelScope.launch(Dispatchers.IO) {
+    searchJob?.cancel()
+    searchJob = viewModelScope.launch(Dispatchers.IO) {
       val result = navidromeRepository.search(server, query).getOrNull()
-      _uiState.update { it.copy(searchResult = result) }
+      kotlinx.coroutines.currentCoroutineContext().ensureActive()
+      _uiState.update {
+        if (it.activeServer?.id == server.id && it.searchQuery == query) it.copy(searchResult = result) else it
+      }
     }
   }
 
@@ -155,79 +168,132 @@ class NavidromeViewModel(
   }
 
   private fun loadAllData() {
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch {
       loadAllDataInternal()
     }
   }
 
-  private suspend fun loadAllDataInternal() {
-    val server = _uiState.value.activeServer ?: return
-    _uiState.update { it.copy(isLoading = true, error = null) }
+  private suspend fun loadAllDataInternal() = withContext(Dispatchers.Main.immediate) {
+    val server = _uiState.value.activeServer ?: return@withContext
+    loadJob?.cancel()
+    loadJob = currentCoroutineContext()[Job]
+    val generation = loadGeneration.incrementAndGet()
+    val changedServer = loadedServer?.id != server.id
+    loadedServer = server
+    if (changedServer) {
+      searchJob?.cancel()
+      detailJob?.cancel()
+    }
+    _uiState.update {
+      if (changedServer) it.copy(isLoading = true, error = null, tracks = emptyList(), albums = emptyList(),
+        artists = emptyList(), playlists = emptyList(), jumpBackIn = emptyList(), recentlyAddedAlbums = emptyList(),
+        artistsToExplore = emptyList(), searchResult = null, detailAlbum = null, detailArtist = null, detailPlaylist = null)
+      else it.copy(isLoading = true, error = null)
+    }
+    suspend fun publish(transform: (NavidromeUiState) -> NavidromeUiState) {
+      kotlinx.coroutines.currentCoroutineContext().ensureActive()
+      _uiState.update { state ->
+        if (generation == loadGeneration.get() && state.activeServer?.id == server.id) transform(state) else state
+      }
+    }
+    suspend fun failed(error: Throwable) {
+      if (error is kotlinx.coroutines.CancellationException) throw error
+      publish { it.copy(error = error.message) }
+    }
 
     try {
       coroutineScope {
-        val randomSongsDeferred = async { navidromeRepository.getRandomSongs(server, 50).getOrDefault(emptyList()) }
-        val playlistsDeferred = async { navidromeRepository.getPlaylists(server).getOrDefault(emptyList()) }
-        val starredDeferred = async { navidromeRepository.getStarred(server).getOrDefault(emptyList()).map { it.copy(isFavorite = true) } }
-        val recentAlbumsDeferred = async { navidromeRepository.getAlbums(server, type = "recent", size = 20).getOrDefault(emptyList()) }
-        val allAlbumsDeferred = async { navidromeRepository.getAlbums(server, type = "alphabeticalByName", size = 500).getOrDefault(emptyList()) }
-        val artistsDeferred = async { navidromeRepository.getArtists(server).getOrDefault(emptyList()) }
-
-        val rawRandomSongs = randomSongsDeferred.await()
-        val serverPlaylists = playlistsDeferred.await()
-        val starredSongs = starredDeferred.await()
-        val recentAlbums = recentAlbumsDeferred.await()
-        val allAlbums = allAlbumsDeferred.await()
-        val artists = artistsDeferred.await()
-
-        val starredSongIds = starredSongs.map { it.id }.toSet()
-        val randomSongs = rawRandomSongs.map { if (it.id in starredSongIds) it.copy(isFavorite = true) else it }
-
-        val favoritesVirtualPlaylist = NavidromePlaylist(
-          id = "virtual_favorites_playlist",
-          name = "Favorites",
-          songCount = starredSongs.size,
-          durationSeconds = starredSongs.sumOf { it.durationSeconds },
-          songs = starredSongs,
-        )
-        val combinedPlaylists = listOf(favoritesVirtualPlaylist) + serverPlaylists.filter { !it.name.equals("Favorites", ignoreCase = true) }
-
-        _uiState.update {
-          it.copy(
-            isLoading = false,
-            jumpBackIn = randomSongs.take(12),
-            tracks = randomSongs,
-            playlists = combinedPlaylists,
-            recentlyAddedAlbums = recentAlbums,
-            artistsToExplore = artists.shuffled().take(15),
-            albums = allAlbums,
-            artists = artists,
-          )
+        launch {
+          navidromeRepository.getRandomSongs(server, 50).onSuccess { songs ->
+            publish { state ->
+              val favoriteIds = state.playlists.firstOrNull { it.id == "virtual_favorites_playlist" }?.songs.orEmpty().mapTo(HashSet()) { it.id }
+              val tracks = songs.map { if (it.id in favoriteIds) it.copy(isFavorite = true) else it }
+              state.copy(tracks = tracks, jumpBackIn = tracks.take(12))
+            }
+          }.onFailure { failed(it) }
+        }
+        launch {
+          navidromeRepository.getPlaylists(server).onSuccess { playlists ->
+            publish { state -> state.copy(playlists =
+              state.playlists.filter { it.id == "virtual_favorites_playlist" } + playlists.filterNot { it.name.equals("Favorites", true) }) }
+          }.onFailure { failed(it) }
+        }
+        launch {
+          navidromeRepository.getStarred(server).onSuccess { songs ->
+            val starred = songs.map { it.copy(isFavorite = true) }
+            val favoriteIds = starred.mapTo(HashSet()) { it.id }
+            val favorites = NavidromePlaylist(id = "virtual_favorites_playlist", name = "Favorites", songCount = starred.size,
+              durationSeconds = starred.sumOf { it.durationSeconds }, songs = starred)
+            publish { state -> state.copy(
+              playlists = listOf(favorites) + state.playlists.filterNot { it.name.equals("Favorites", true) },
+              tracks = state.tracks.map { it.copy(isFavorite = it.id in favoriteIds) },
+              jumpBackIn = state.jumpBackIn.map { it.copy(isFavorite = it.id in favoriteIds) }) }
+          }.onFailure { failed(it) }
+        }
+        launch {
+          navidromeRepository.getAlbums(server, type = "recent", size = 20).onSuccess { albums ->
+            publish { it.copy(recentlyAddedAlbums = albums) }
+          }.onFailure { failed(it) }
+        }
+        launch {
+          val previous = _uiState.value.albums
+          val albums = linkedMapOf<String, NavidromeAlbum>()
+          var offset = 0
+          while (true) {
+            val page = navidromeRepository.getAlbums(server, type = "alphabeticalByName", size = 100, offset = offset)
+              .onFailure { failed(it) }.getOrNull() ?: break
+            val previousSize = albums.size
+            page.forEach { albums[it.id] = it }
+            val complete = page.size < 100 || albums.size == previousSize
+            val visible = albums.values.toList() + if (complete) emptyList() else previous.filterNot { it.id in albums }
+            publish { it.copy(albums = visible) }
+            if (complete) break
+            offset += page.size
+          }
+        }
+        launch {
+          navidromeRepository.getArtists(server).onSuccess { artists ->
+            publish { it.copy(artists = artists, artistsToExplore = artists.shuffled().take(15)) }
+          }.onFailure { failed(it) }
         }
       }
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+      throw cancelled
     } catch (e: Exception) {
-      _uiState.update { it.copy(isLoading = false, error = e.message) }
+      failed(e)
+    } finally {
+      if (generation == loadGeneration.get()) {
+        _uiState.update { it.copy(isLoading = false) }
+        loadJob = null
+      }
     }
   }
 
   fun openAlbumDetail(album: NavidromeAlbum) {
     val server = _uiState.value.activeServer ?: return
+    detailJob?.cancel()
     _uiState.update { it.copy(detailAlbum = album, detailArtist = null, detailPlaylist = null) }
-    viewModelScope.launch(Dispatchers.IO) {
+    detailJob = viewModelScope.launch {
       val fullAlbum = navidromeRepository.getAlbum(server, album.id).getOrNull()
+      currentCoroutineContext().ensureActive()
       if (fullAlbum != null) {
-        _uiState.update { it.copy(detailAlbum = fullAlbum) }
+        _uiState.update {
+          if (it.activeServer?.id == server.id && it.detailAlbum?.id == album.id) it.copy(detailAlbum = fullAlbum) else it
+        }
       }
     }
   }
 
   fun openArtistDetail(artist: NavidromeArtist) {
     val server = _uiState.value.activeServer ?: return
+    detailJob?.cancel()
     _uiState.update { it.copy(detailArtist = artist, detailAlbum = null, detailPlaylist = null) }
-    viewModelScope.launch(Dispatchers.IO) {
+    detailJob = viewModelScope.launch {
       val fullArtist = navidromeRepository.getArtist(server, artist.id).getOrNull()
+      currentCoroutineContext().ensureActive()
       if (fullArtist != null) {
         _uiState.update {
+          if (it.activeServer?.id != server.id || it.detailArtist?.id != artist.id) return@update it
           it.copy(
             detailArtist = fullArtist.copy(
               artistImageUrl = fullArtist.artistImageUrl ?: artist.artistImageUrl,
@@ -241,11 +307,14 @@ class NavidromeViewModel(
 
   fun openPlaylistDetail(playlist: NavidromePlaylist) {
     val server = _uiState.value.activeServer ?: return
+    detailJob?.cancel()
     if (playlist.id == "virtual_favorites_playlist" || playlist.id == "favorites") {
       _uiState.update { it.copy(detailPlaylist = playlist, detailAlbum = null, detailArtist = null) }
-      viewModelScope.launch(Dispatchers.IO) {
-        val starredSongs = navidromeRepository.getStarred(server).getOrDefault(emptyList()).map { it.copy(isFavorite = true) }
+      detailJob = viewModelScope.launch {
+        val starredSongs = navidromeRepository.getStarred(server).getOrNull()?.map { it.copy(isFavorite = true) } ?: return@launch
+        currentCoroutineContext().ensureActive()
         _uiState.update { current ->
+          if (current.activeServer?.id != server.id || current.detailPlaylist?.id != playlist.id) return@update current
           val updatedFav = playlist.copy(
             songCount = starredSongs.size,
             durationSeconds = starredSongs.sumOf { s -> s.durationSeconds },
@@ -260,15 +329,19 @@ class NavidromeViewModel(
       return
     }
     _uiState.update { it.copy(detailPlaylist = playlist, detailAlbum = null, detailArtist = null) }
-    viewModelScope.launch(Dispatchers.IO) {
+    detailJob = viewModelScope.launch {
       val fullPlaylist = navidromeRepository.getPlaylist(server, playlist.id).getOrNull()
+      currentCoroutineContext().ensureActive()
       if (fullPlaylist != null) {
-        _uiState.update { it.copy(detailPlaylist = fullPlaylist) }
+        _uiState.update {
+          if (it.activeServer?.id == server.id && it.detailPlaylist?.id == playlist.id) it.copy(detailPlaylist = fullPlaylist) else it
+        }
       }
     }
   }
 
   fun closeDetail() {
+    detailJob?.cancel()
     _uiState.update { it.copy(detailAlbum = null, detailArtist = null, detailPlaylist = null) }
   }
 

@@ -29,6 +29,7 @@ import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,7 +71,7 @@ class RecentlyPlayedViewModel(
           refreshRevision,
         ) { entities, playlists, revision ->
           Triple(entities, playlists, revision)
-        }.collect { (entities, playlists, revision) ->
+        }.collectLatest { (entities, playlists, revision) ->
           loadRecentVideosFromEntities(entities, playlists)
           completedRefreshRevision.value = revision
         }
@@ -88,6 +89,25 @@ class RecentlyPlayedViewModel(
   ) {
     try {
       val items = mutableListOf<RecentlyPlayedItem>()
+      val previous = _recentItems.value
+      val previousVideos = previous.filterIsInstance<RecentlyPlayedItem.VideoItem>().associateBy { it.video.path }
+      val pendingMetadata = mutableListOf<Int>()
+      var enumerationComplete = false
+      fun key(item: RecentlyPlayedItem): String = when (item) {
+        is RecentlyPlayedItem.VideoItem -> "video:${item.video.path}"
+        is RecentlyPlayedItem.PlaylistItem -> "playlist:${item.playlist.id}"
+      }
+      val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher<RecentlyPlayedItem>(
+        onSnapshot = { partial ->
+          if (partial.isNotEmpty()) {
+            val keys = partial.mapTo(HashSet(), ::key)
+            val retained = if (enumerationComplete) emptyList() else previous.filterNot { key(it) in keys }
+            _recentItems.value = (partial + retained).sortedByDescending { it.timestamp }
+            _isLoading.value = false
+          }
+        },
+        snapshot = { items },
+      )
 
       // Group videos by playlist and standalone videos
       val playlistMap = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
@@ -140,6 +160,7 @@ class RecentlyPlayedViewModel(
                 timestamp = playlistInfo.timestamp,
               ),
             )
+            publisher.publishIfNeeded()
           }
         }
       }
@@ -169,7 +190,7 @@ class RecentlyPlayedViewModel(
             // For local files, check if they exist
             val file = File(filePath)
             if (file.exists()) {
-              createVideoFromFilePath(filePath, file, entity?.videoTitle)
+              previousVideos[filePath]?.video ?: createVideoFromFilePath(filePath, file, entity?.videoTitle, loadMetadata = false)
             } else {
               recentlyPlayedRepository.deleteByFilePath(filePath)
               null
@@ -177,20 +198,28 @@ class RecentlyPlayedViewModel(
           }
 
         if (video != null) {
+          if (!isNetworkUri) pendingMetadata += items.size
           items.add(RecentlyPlayedItem.VideoItem(video, timestamp))
+          publisher.publishIfNeeded()
         }
       }
 
-      // Sort by timestamp
-      val sortedItems = items.sortedByDescending { it.timestamp }
-      _recentItems.value = sortedItems
+      enumerationComplete = true
+      _recentItems.value = items.sortedByDescending { it.timestamp }
+      if (items.isNotEmpty()) _isLoading.value = false
+      for (index in pendingMetadata) {
+        val item = items[index] as RecentlyPlayedItem.VideoItem
+        val enriched = createVideoFromFilePath(item.video.path, File(item.video.path)) ?: continue
+        items[index] = item.copy(video = enriched)
+        publisher.publishIfNeeded()
+      }
+      publisher.publishIfNeeded(force = true)
     } catch (cancellation: CancellationException) {
       throw cancellation
     } catch (e: Exception) {
       Log.e("RecentlyPlayedViewModel", "Error loading recent videos", e)
-      _recentItems.value = emptyList()
     } finally {
-      _isLoading.value = false
+      if (kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]?.isActive == true) _isLoading.value = false
     }
   }
 
@@ -198,6 +227,7 @@ class RecentlyPlayedViewModel(
     filePath: String,
     file: File,
     parsedVideoTitle: String? = null,
+    loadMetadata: Boolean = true,
   ): Video? =
     try {
       val context = getApplication<Application>()
@@ -209,7 +239,7 @@ class RecentlyPlayedViewModel(
 
       // Get metadata from cache or extract it
       val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
-      val metadata = metadataCache.getOrExtractMetadata(file, uri, displayName)
+      val metadata = if (loadMetadata) metadataCache.getOrExtractMetadata(file, uri, displayName) else null
 
       val duration = metadata?.durationMs ?: 0L
       val width = metadata?.width ?: 0
@@ -262,7 +292,7 @@ class RecentlyPlayedViewModel(
         path = filePath,
         uri = uri,
         duration = duration,
-        durationFormatted = formatDuration(duration),
+        durationFormatted = if (duration > 0L) formatDuration(duration) else "--",
         size = size,
         sizeFormatted = formatFileSize(size),
         dateModified = dateModified,
@@ -276,6 +306,8 @@ class RecentlyPlayedViewModel(
         resolution = if (isAudio) "--" else VideoScanUtils.formatResolution(width, height),
         isAudio = isAudio,
       )
+    } catch (cancelled: CancellationException) {
+      throw cancelled
     } catch (e: Exception) {
       Log.e("RecentlyPlayedViewModel", "Error creating video from path: $filePath", e)
       null
