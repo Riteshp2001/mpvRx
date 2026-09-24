@@ -62,7 +62,13 @@ internal class ExoAudioProcessor(
   }
 
   override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
-    if (inputAudioFormat == AudioProcessor.AudioFormat.NOT_SET) return
+    // Drop the previous stream's geometry first so a flush into an unconfigured state can never
+    // leave frame buffers sized for a different channel layout behind.
+    matrix = null
+    inputFrame = FloatArray(0)
+    outputFrame = FloatArray(0)
+    filters = emptyArray()
+    if (inputAudioFormat == AudioProcessor.AudioFormat.NOT_SET || outputAudioFormat == AudioProcessor.AudioFormat.NOT_SET) return
     sampleRate = inputAudioFormat.sampleRate
     val channels = inputAudioFormat.channelCount
     val targetChannels = outputAudioFormat.channelCount
@@ -82,11 +88,32 @@ internal class ExoAudioProcessor(
   }
 
   override fun queueInput(inputBuffer: ByteBuffer) {
+    val channels = inputFrame.size
+    val outputChannels = outputFrame.size
+    val bytesPerFrame = inputAudioFormat.bytesPerFrame
+    if (channels == 0 || outputChannels == 0 || bytesPerFrame <= 0) {
+      inputBuffer.position(inputBuffer.limit())
+      replaceOutputBuffer(0).flip()
+      return
+    }
     val current = settings
-    val processing = !bypass && !preserveSource && inputAudioFormat.channelCount <= 2
-    val output = replaceOutputBuffer(inputBuffer.remaining() / inputAudioFormat.bytesPerFrame * outputAudioFormat.bytesPerFrame)
-    if (!processing && inputAudioFormat.channelCount == outputAudioFormat.channelCount) {
+    val processing = !bypass && !preserveSource && channels <= 2
+    // Only whole frames are convertible; sizing the output from a truncated frame count is what
+    // keeps the copy below inside the buffer when upstream hands over a partial frame.
+    val frames = inputBuffer.remaining() / bytesPerFrame
+    val output = replaceOutputBuffer(frames * outputAudioFormat.bytesPerFrame)
+    val frameLimit = inputBuffer.position() + frames * bytesPerFrame
+    if (frames == 0) {
+      inputBuffer.position(inputBuffer.limit())
+      output.flip()
+      return
+    }
+    if (!processing && channels == outputChannels) {
+      val limit = inputBuffer.limit()
+      inputBuffer.limit(frameLimit)
       output.put(inputBuffer)
+      inputBuffer.limit(limit)
+      inputBuffer.position(limit)
       output.flip()
       return
     }
@@ -111,7 +138,7 @@ internal class ExoAudioProcessor(
     val targetGain = dbGain(boostDb - eqHeadroom.toDouble()) * extraGain.coerceIn(1f, 3f) * taggedGain
     val mixing = matrix
 
-    while (inputBuffer.remaining() >= inputAudioFormat.bytesPerFrame) {
+    repeat(frames) {
       for (channel in inputFrame.indices) {
         val sample = if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) inputBuffer.float else inputBuffer.short / 32768f
         inputFrame[channel] = if (sample.isFinite()) sample.coerceIn(-8f, 8f) else 0f
@@ -169,6 +196,7 @@ internal class ExoAudioProcessor(
         else output.putShort((result * 32767).toInt().toShort())
       }
     }
+    inputBuffer.position(inputBuffer.limit())
     output.flip()
   }
 

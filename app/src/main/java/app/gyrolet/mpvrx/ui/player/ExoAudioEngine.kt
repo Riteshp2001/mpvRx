@@ -389,6 +389,10 @@ internal class ExoAudioEngine(
       preserveSource = preserve
     }
     val resampler = ExoResampleProcessor(outputRateHz)
+    // Latched for the deck's lifetime: renderer capabilities are resolved once during track
+    // selection, so letting a live crossfade change flip them strands the sink on a configuration
+    // the selected renderer can no longer feed. A crossfade toggle applies from the next load.
+    val decodeToPcm = processing || crossfadeMs > 0
     val renderers = object : DefaultRenderersFactory(context) {
       override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): AudioSink {
         val sink = DefaultAudioSink.Builder(context)
@@ -398,14 +402,16 @@ internal class ExoAudioEngine(
           .build()
         return object : ForwardingAudioSink(sink) {
           override fun getFormatSupport(format: Format): Int =
-            if (!isProtected(format) && format.sampleMimeType != MimeTypes.AUDIO_RAW &&
-              (processing || crossfadeMs > 0)
-            ) AudioSink.SINK_FORMAT_UNSUPPORTED else super.getFormatSupport(format)
+            if (!isProtected(format) && format.sampleMimeType != MimeTypes.AUDIO_RAW && decodeToPcm) {
+              AudioSink.SINK_FORMAT_UNSUPPORTED
+            } else {
+              super.getFormatSupport(format)
+            }
 
           override fun supportsFormat(format: Format): Boolean = getFormatSupport(format) != AudioSink.SINK_FORMAT_UNSUPPORTED
 
           override fun getFormatOffloadSupport(format: Format): AudioOffloadSupport =
-            if (!isProtected(format) && (processing || crossfadeMs > 0)) AudioOffloadSupport.DEFAULT_UNSUPPORTED else super.getFormatOffloadSupport(format)
+            if (!isProtected(format) && decodeToPcm) AudioOffloadSupport.DEFAULT_UNSUPPORTED else super.getFormatOffloadSupport(format)
         }
       }
 
@@ -506,7 +512,11 @@ internal class ExoAudioEngine(
             silenceDeck(deck)
             return
           }
-          if (player.playbackState in setOf(Player.STATE_READY, Player.STATE_ENDED) && !player.currentTracks.isTypeSelected(C.TRACK_TYPE_AUDIO) &&
+          // Empty track groups mean the period has not been resolved yet, not that the container
+          // carries audio this build cannot decode.
+          if (player.playbackState in setOf(Player.STATE_READY, Player.STATE_ENDED) &&
+            player.currentTracks.groups.isNotEmpty() &&
+            !player.currentTracks.isTypeSelected(C.TRACK_TYPE_AUDIO) &&
             !player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_AUDIO)
           ) {
             if (!deck.endReported) {
@@ -523,7 +533,9 @@ internal class ExoAudioEngine(
             return
           }
           if (player.playbackState == Player.STATE_READY && deck.processedOutput != shouldProcess(deck)) {
-            rebuildPrimary()
+            // Releasing a player from inside its own listener dispatch tears down the instance that
+            // is still iterating listeners, so every rebuild leaves the callback first.
+            execute { if (!deck.disposed && deck === primary) rebuildPrimary() }
             return
           }
           if (preservesSource(deck) && player.playbackParameters != PlaybackParameters.DEFAULT) {
@@ -547,7 +559,7 @@ internal class ExoAudioEngine(
           }
           if (player.playbackState == Player.STATE_ENDED && !deck.endReported && !paused) {
             deck.endReported = true
-            if (!handoffStandby(0L)) onEnded(deck.generation)
+            execute { if (!deck.disposed && deck === primary && !handoffStandby(0L)) onEnded(deck.generation) }
           }
         }
       }
@@ -557,19 +569,24 @@ internal class ExoAudioEngine(
         if (deck === primary && (silenced || !isCurrentGeneration(deck.generation))) return
         (error as? ExoPlaybackException)?.rendererFormat?.let { deck.format = it }
         updateProcessing(deck)
-        when (deck) {
-          primary -> {
-            cancelTransitionNow()
-            deck.readyReported = false
-            publish()
-            onError(deck.generation, error, deck.player.currentPosition)
+        val positionMs = player.currentPosition
+        // Failure handling disposes decks, which must never happen while this dispatch is running.
+        execute {
+          if (deck.disposed) return@execute
+          when (deck) {
+            primary -> {
+              cancelTransitionNow()
+              deck.readyReported = false
+              publish()
+              onError(deck.generation, error, positionMs)
+            }
+            standby -> {
+              cancelTransitionNow()
+              nextRequested = true
+            }
+            outgoing -> cancelTransitionNow()
+            else -> Unit
           }
-          standby -> {
-            cancelTransitionNow()
-            nextRequested = true
-          }
-          outgoing -> cancelTransitionNow()
-          else -> Unit
         }
       }
     })

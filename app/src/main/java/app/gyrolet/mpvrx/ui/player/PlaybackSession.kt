@@ -1076,7 +1076,9 @@ object PlaybackSession : MPVLib.EventObserver {
   ): Boolean =
     nativeLock.withLock {
       val current = _state.value
-      if (!initialized || current.generation != expectedGeneration ||
+      // An audio-only session never creates the native core, so gate on session readiness rather
+      // than on mpv or a stalled ExoPlayer load can never reach a terminal UI state.
+      if (!isInitialized || current.generation != expectedGeneration ||
         current.phase !in setOf(PlaybackPhase.LOADING, PlaybackPhase.ERROR)
       ) {
         return@withLock false
@@ -1466,13 +1468,17 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   /** Atomically toggles pause so rapid UI/media-button taps cannot race separate reads and writes. */
-  fun togglePause(): Boolean? =
-    withCore(default = null) {
-      if (usingExoPlayer) {
+  fun togglePause(): Boolean? {
+    // The audio engine owns its own transport, so this must not be gated on a native mpv core that
+    // an audio-only session never creates.
+    if (usingExoPlayer) {
+      return nativeLock.withLock {
         val next = !_state.value.paused
         setPropertyBoolean("pause", next)
-        return@withCore next
+        next
       }
+    }
+    return withCore(default = null) {
       val currentPaused =
         if (_state.value.phase == PlaybackPhase.LOADING) {
           desiredPaused
@@ -1490,6 +1496,7 @@ object PlaybackSession : MPVLib.EventObserver {
       propBoolean.emit("pause", nextPaused)
       nextPaused
     }
+  }
 
   fun getPropertyString(property: String): String? =
     if (usingExoPlayer) AudioPropertyAdapter.text(_audioState.value, property)
@@ -2666,7 +2673,17 @@ object PlaybackSession : MPVLib.EventObserver {
       .firstOrNull()?.responseCode
     val retryable = when (error.errorCode) {
       androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
-      androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> true
+      androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+      androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_TIMEOUT,
+      // A codec or AudioTrack that another app or a route change took away comes back on a retry,
+      // and an unexpected renderer failure reports as unspecified rather than as its own code.
+      androidx.media3.common.PlaybackException.ERROR_CODE_UNSPECIFIED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
+      androidx.media3.common.PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED -> true
       androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ->
         responseCode in setOf(401, 403, 408, 410, 429) || responseCode != null && responseCode in 500..599
       else -> false
@@ -2695,16 +2712,16 @@ object PlaybackSession : MPVLib.EventObserver {
     }
     val atmosSource = _audioState.value.output.dolbyAtmosSource || item.mimeType == androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC
     if (atmosSource) {
-      failAudioState(generation, app.gyrolet.mpvrx.R.string.audio_atmos_unsupported, error.errorCode)
+      failAudioState(generation, app.gyrolet.mpvrx.R.string.audio_atmos_unsupported, error.errorCodeName)
     } else {
-      failAudioState(generation, errorCode = error.errorCode)
+      failAudioState(generation, errorCodeName = error.errorCodeName)
     }
   }
 
   private fun failAudioState(
     generation: Long,
     @androidx.annotation.StringRes messageRes: Int = app.gyrolet.mpvrx.R.string.audio_playback_failed,
-    errorCode: Int? = null,
+    errorCodeName: String? = null,
   ) {
     nativeLock.withLock {
       if (!isCurrentGeneration(generation)) return
@@ -2714,7 +2731,7 @@ object PlaybackSession : MPVLib.EventObserver {
       audioEngine?.setPaused(true)
       updateState { it.copy(phase = PlaybackPhase.ERROR, paused = true,
         error = applicationContext?.getString(messageRes)?.let { message ->
-          if (errorCode == null) message else "$message ($errorCode)"
+          if (errorCodeName == null) message else "$message ($errorCodeName)"
         }) }
     }
   }

@@ -72,6 +72,7 @@ internal object AudioStreamCache {
           }.createDataSource()
         object : DataSource {
           private val listeners = mutableListOf<TransferListener>()
+          private var cachedListenersAttached = false
           private var delegate: DataSource? = null
 
           override fun addTransferListener(transferListener: TransferListener) {
@@ -85,7 +86,14 @@ internal object AudioStreamCache {
               dataSpec.httpMethod != DataSpec.HTTP_METHOD_GET
             val selected = if (bypass) upstream.createDataSource() else cached
             delegate = selected
-            listeners.forEach(selected::addTransferListener)
+            // The cache-backed source outlives a single open; re-registering on every seek would
+            // duplicate each transfer callback and skew the bandwidth estimate it feeds.
+            if (selected !== cached) {
+              listeners.forEach(selected::addTransferListener)
+            } else if (!cachedListenersAttached) {
+              cachedListenersAttached = true
+              listeners.forEach(selected::addTransferListener)
+            }
             return selected.open(dataSpec)
           }
 

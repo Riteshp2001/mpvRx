@@ -43,15 +43,20 @@ internal class ExoResampleProcessor(private val targetSampleRateHz: Int) : BaseA
   }
 
   override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
+    // A flush into an inactive configuration must not leave the previous stream's kernel and ring
+    // buffers addressable; they are sized for that stream's channel count and tap count.
+    tapsPerPhase = 0
+    coefficients = FloatArray(0)
+    history = emptyArray()
+    historyIndex = 0
+    nextOutputTime = 0L
+    inputFrames = 0L
     if (inputAudioFormat == AudioProcessor.AudioFormat.NOT_SET || outputAudioFormat == AudioProcessor.AudioFormat.NOT_SET) return
     val divisor = gcd(inputAudioFormat.sampleRate, outputAudioFormat.sampleRate)
     upFactor = outputAudioFormat.sampleRate / divisor
     downFactor = inputAudioFormat.sampleRate / divisor
     designFilter(inputAudioFormat.sampleRate, outputAudioFormat.sampleRate)
     history = Array(inputAudioFormat.channelCount) { FloatArray(tapsPerPhase) }
-    historyIndex = 0
-    nextOutputTime = 0L
-    inputFrames = 0L
   }
 
   override fun onReset() {
@@ -61,14 +66,23 @@ internal class ExoResampleProcessor(private val targetSampleRateHz: Int) : BaseA
   }
 
   override fun queueInput(inputBuffer: ByteBuffer) {
-    val frames = inputBuffer.remaining() / inputAudioFormat.bytesPerFrame
+    val bytesPerFrame = inputAudioFormat.bytesPerFrame
+    if (tapsPerPhase == 0 || history.isEmpty() || bytesPerFrame <= 0) {
+      inputBuffer.position(inputBuffer.limit())
+      replaceOutputBuffer(0).flip()
+      return
+    }
+    val frames = inputBuffer.remaining() / bytesPerFrame
     val output = replaceOutputBuffer(maxOutputFrames(frames) * outputAudioFormat.bytesPerFrame)
     resample(inputBuffer, frames, output)
+    // A trailing sub-frame remainder would otherwise be handed back unchanged forever and stall
+    // the sink, which never retries with more data for the same buffer.
+    inputBuffer.position(inputBuffer.limit())
     output.flip()
   }
 
   override fun onQueueEndOfStream() {
-    if (tapsPerPhase == 0) return
+    if (tapsPerPhase == 0 || history.isEmpty()) return
     // Zero input equal to the filter delay pushes the last real samples through the kernel.
     val tailFrames = tapsPerPhase / 2 + 1
     val silence = ByteBuffer.allocate(tailFrames * inputAudioFormat.bytesPerFrame).order(ByteOrder.nativeOrder())
