@@ -12,6 +12,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.util.LruCache
+import app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -25,8 +26,13 @@ object MusicLibraryScanner {
   private val ALBUM_ART_BASE_URI = Uri.parse("content://media/external/audio/albumart")
   private val albumTagCache = LruCache<String, String>(4096)
 
-  suspend fun scanSongs(context: Context): List<MusicSong> = withContext(Dispatchers.IO) {
+  suspend fun scanSongs(
+    context: Context,
+    onSnapshot: (suspend (List<MusicSong>) -> Unit)? = null,
+  ): List<MusicSong> = withContext(Dispatchers.IO) {
     val songs = mutableListOf<MusicSong>()
+    val pendingAlbums = mutableListOf<Pair<Int, String?>>()
+    val publisher = ProgressiveResultsPublisher(onSnapshot) { songs }
     val projection = arrayOf(
       MediaStore.Audio.Media._ID,
       MediaStore.Audio.Media.TITLE,
@@ -92,7 +98,10 @@ object MusicLibraryScanner {
           val folderName = file?.parentFile?.name ?: relativePathCol.takeIf { it >= 0 }?.let { column ->
             cursor.getString(column)?.let { File(it).name }
           }
-          val album = resolveAlbumTag(context, contentUri, indexedAlbum, folderName, cursor.getLong(dateModifiedCol), size)
+          val album = indexedAlbum
+          if (indexedAlbum == null || folderName == null || indexedAlbum.equals(folderName, ignoreCase = true)) {
+            pendingAlbums += songs.size to folderName
+          }
           val albumId = if (album?.equals(indexedAlbum, ignoreCase = true) == true) cursor.getLong(albumIdCol) else 0L
           val dateAdded = cursor.getLong(dateAddedCol)
           val track = cursor.getInt(trackCol)
@@ -119,15 +128,33 @@ object MusicLibraryScanner {
               dateModified = cursor.getLong(dateModifiedCol),
             )
           )
+          publisher.publishIfNeeded()
         }
       }
     } catch (e: CancellationException) {
       throw e
     } catch (e: Exception) {
       Log.e(TAG, "Error scanning songs from MediaStore", e)
+      if (onSnapshot != null) throw e
     }
 
-    songs
+    publisher.publishIfNeeded(force = true)
+    for ((index, folderName) in pendingAlbums) {
+      currentCoroutineContext().ensureActive()
+      val song = songs[index]
+      val indexedAlbum = song.album.takeIf { song.hasAlbumTag }
+      val album = resolveAlbumTag(context, song.uri, indexedAlbum, folderName, song.dateModified, song.size)
+      val albumId = song.albumId.takeIf { album?.equals(indexedAlbum, ignoreCase = true) == true } ?: 0L
+      songs[index] = song.copy(
+        album = album ?: "Unknown Album",
+        albumId = albumId,
+        albumArtUri = song.albumArtUri.takeIf { albumId > 0 },
+        hasAlbumTag = album != null,
+      )
+      publisher.publishIfNeeded()
+    }
+    publisher.publishIfNeeded(force = true)
+    songs.toList()
   }
 
   private fun resolveAlbumTag(

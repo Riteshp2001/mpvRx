@@ -33,6 +33,9 @@ import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.mediaPathKey
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -146,6 +149,7 @@ object MediaFileRepository : KoinComponent {
     onProgress: ((Int) -> Unit)? = null,
     forceFileSystemCheck: Boolean = false,
     includeAudioOverride: Boolean? = null,
+    onSnapshot: (suspend (List<VideoFolder>) -> Unit)? = null,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
       val options = currentScanOptions(includeAudioOverride)
@@ -154,6 +158,7 @@ object MediaFileRepository : KoinComponent {
           context = context,
           options = options,
           forceFileSystemCheck = forceFileSystemCheck,
+          onSnapshot = onSnapshot,
         )
       folders.distinctBy { it.path.lowercase(Locale.ROOT) }
         .sortedBy { it.name.lowercase(Locale.getDefault()) }
@@ -170,9 +175,15 @@ object MediaFileRepository : KoinComponent {
   suspend fun getAllAudioFolders(
     context: Context,
     minimumAudioDurationSeconds: Int = 0,
+    onSnapshot: (suspend (List<VideoFolder>) -> Unit)? = null,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
       val aggregates = linkedMapOf<String, AudioFolderAggregate>()
+      val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher(onSnapshot) {
+        aggregates.values.map { folder ->
+          VideoFolder(folder.path, leafName(folder.path), folder.path, folder.count, folder.size, folder.duration, folder.lastModified)
+        }
+      }
       try {
         val projection =
           arrayOf(
@@ -194,6 +205,7 @@ object MediaFileRepository : KoinComponent {
             val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
             while (cursor.moveToNext()) {
+              currentCoroutineContext().ensureActive()
               val path = cursor.getString(dataColumn)
               if (path == null) continue
               val file = File(path)
@@ -209,11 +221,16 @@ object MediaFileRepository : KoinComponent {
               aggregate.duration += durationMs
               aggregate.lastModified = maxOf(aggregate.lastModified, cursor.getLong(dateColumn))
               aggregate.count += 1
+              publisher.publishIfNeeded()
             }
           }
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(TAG, "Error scanning for audio folders", e)
+        if (onSnapshot != null) throw e
       }
+      publisher.publishIfNeeded(force = true)
       aggregates.values
         .map { agg ->
           VideoFolder(
@@ -360,6 +377,7 @@ object MediaFileRepository : KoinComponent {
     bucketId: String,
     forceFileSystemCheck: Boolean = false,
     includeAudioOverride: Boolean? = null,
+    onSnapshot: (suspend (List<Video>) -> Unit)? = null,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       try {
@@ -375,9 +393,13 @@ object MediaFileRepository : KoinComponent {
           bucketId,
           currentScanOptions(includeAudioOverride),
           forceFileSystemCheck,
+          onSnapshot,
         )
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for bucket $bucketId", e)
+        if (onSnapshot != null) throw e
         emptyList()
       }
     }
@@ -390,22 +412,31 @@ object MediaFileRepository : KoinComponent {
     context: Context,
     bucketIds: Set<String>,
     includeAudioOverride: Boolean? = null,
+    onSnapshot: (suspend (List<Video>) -> Unit)? = null,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val result = linkedMapOf<String, Video>()
+      suspend fun publish(videos: List<Video>) {
+        for (media in videos) {
+          val key = mediaPathKey(media.path) ?: media.path
+          val existing = result[key]
+          if (existing == null || shouldReplaceMedia(existing, media)) result[key] = media
+        }
+        onSnapshot?.invoke(result.values.toList())
+      }
       for (id in bucketIds) {
-        runCatching {
-          getVideosInFolder(
+        try {
+          publish(getVideosInFolder(
             context,
             id,
             includeAudioOverride = includeAudioOverride,
-          ).forEach { media ->
-            val key = mediaPathKey(media.path) ?: media.path
-            val existing = result[key]
-            if (existing == null || shouldReplaceMedia(existing, media)) {
-              result[key] = media
-            }
-          }
+            onSnapshot = if (onSnapshot == null) null else ::publish,
+          ))
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+          throw cancelled
+        } catch (error: Exception) {
+          Log.w(TAG, "Unable to scan folder $id", error)
+          if (onSnapshot != null) throw error
         }
       }
       result.values.toList()
@@ -571,11 +602,27 @@ object MediaFileRepository : KoinComponent {
   suspend fun getAllVideos(
     context: Context,
     includeAudioOverride: Boolean? = null,
+    onSnapshot: (suspend (List<Video>) -> Unit)? = null,
   ): List<Video> =
     withContext(Dispatchers.IO) {
-      val folders = getAllVideoFolders(context, includeAudioOverride = includeAudioOverride)
-      val bucketIds = folders.map { it.bucketId }.toSet()
-      getVideosForBuckets(context, bucketIds, includeAudioOverride)
+      val videos = linkedMapOf<String, Video>()
+      val scanned = hashSetOf<String>()
+      suspend fun publish(partial: List<Video>) {
+        partial.forEach { videos[mediaPathKey(it.path) ?: it.path] = it }
+        onSnapshot?.invoke(videos.values.toList())
+      }
+      suspend fun scan(folders: List<VideoFolder>) {
+        for (folder in folders) {
+          if (!scanned.add(folder.bucketId.lowercase(Locale.ROOT))) continue
+          publish(getVideosInFolder(context, folder.bucketId, includeAudioOverride = includeAudioOverride,
+            onSnapshot = if (onSnapshot == null) null else ::publish))
+        }
+      }
+      val folders = getAllVideoFoldersFast(context, includeAudioOverride = includeAudioOverride,
+        onSnapshot = if (onSnapshot == null) null else ::scan)
+      scan(folders)
+      scan(FolderViewScanner.getIndexedNoMediaFolders(currentScanOptions(includeAudioOverride), database.directoryScanDao()))
+      videos.values.toList()
     }
 
   // =============================================================================
@@ -620,6 +667,7 @@ object MediaFileRepository : KoinComponent {
     showAllFileTypes: Boolean = false,
     useFastCount: Boolean = false,
     forceFileSystemCheck: Boolean = false,
+    onSnapshot: (suspend (List<FileSystemItem>) -> Unit)? = null,
   ): Result<List<FileSystemItem>> =
     withContext(Dispatchers.IO) {
       try {
@@ -643,6 +691,26 @@ object MediaFileRepository : KoinComponent {
         }
 
         val items = mutableListOf<FileSystemItem>()
+        if (onSnapshot != null) {
+          val initial = mutableListOf<FileSystemItem>()
+          val noMedia = app.gyrolet.mpvrx.utils.storage.NoMediaPathFilter(scanOptions)
+          val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher(onSnapshot) { initial }
+          for (file in directory.listFiles().orEmpty()) {
+            when {
+              file.isDirectory && !app.gyrolet.mpvrx.utils.storage.FileFilterUtils.shouldSkipFolder(file, scanOptions, noMedia) ->
+                initial += FileSystemItem.Folder(file.name, file.absolutePath, file.lastModified())
+              file.isFile && FileTypeUtils.isSupportedMediaFile(file, scanOptions) &&
+                !app.gyrolet.mpvrx.utils.storage.FileFilterUtils.shouldSkipFile(file, scanOptions, noMedia) &&
+                (!FileTypeUtils.isAudioFile(file) || scanOptions.includesAudioDuration(0L)) -> {
+                val video = createVideoFromFileWithMetadata(file, path, directory.name, metadata = null)
+                  .copy(isAudio = FileTypeUtils.isAudioFile(file))
+                initial += FileSystemItem.VideoFile(file.name, file.absolutePath, file.lastModified(), video)
+              }
+            }
+            publisher.publishIfNeeded()
+          }
+          if (initial.isNotEmpty()) publisher.publishIfNeeded(force = true)
+        }
 
         // Get folders using TreeViewScanner (instant from cache)
         val (showNewLabels, thresholdDays, playedMediaTitles, newLabelOverrides) = getTreeViewNewBadgeParams()
@@ -674,9 +742,15 @@ object MediaFileRepository : KoinComponent {
         }
 
         items.addAll(ZipArchiveMedia.archiveFoldersIn(directory, scanOptions.includeAudio))
+        if (items.isNotEmpty()) onSnapshot?.invoke(items.toList())
 
         // Get videos in current directory
-        val videos = VideoScanUtils.getVideosInFolder(context, path, scanOptions, forceFileSystemCheck)
+        val videos = VideoScanUtils.getVideosInFolder(context, path, scanOptions, forceFileSystemCheck,
+          onSnapshot = if (onSnapshot == null) null else { partial ->
+            onSnapshot(items + partial.map { video ->
+              FileSystemItem.VideoFile(video.displayName, video.path, video.dateModified * 1000L, video)
+            })
+          })
         videos.forEach { video ->
           items.add(
             FileSystemItem.VideoFile(
@@ -706,41 +780,24 @@ object MediaFileRepository : KoinComponent {
   suspend fun getStorageRoots(
     context: Context,
     forceFileSystemCheck: Boolean = false,
+    includeCounts: Boolean = true,
+    onSnapshot: (suspend (List<FileSystemItem.Folder>) -> Unit)? = null,
   ): List<FileSystemItem.Folder> =
     withContext(Dispatchers.IO) {
       val roots = mutableListOf<FileSystemItem.Folder>()
 
       try {
-        val (showNewLabels, thresholdDays, playedMediaTitles, newLabelOverrides) = getTreeViewNewBadgeParams()
-
         // Primary storage (internal)
         val primaryStorage = Environment.getExternalStorageDirectory()
         if (primaryStorage.exists() && primaryStorage.canRead()) {
           val primaryPath = primaryStorage.absolutePath
-
-          // Get recursive count for this storage root
-          val folderData =
-            TreeViewScanner.getFolderDataRecursive(
-              context,
-              primaryPath,
-              currentScanOptions(),
-              forceFileSystemCheck,
-              playedMediaTitles,
-              showNewLabels,
-              thresholdDays,
-              newLabelOverrides,
-            )
 
           roots.add(
             FileSystemItem.Folder(
               name = "Internal Storage",
               path = primaryPath,
               lastModified = primaryStorage.lastModified(),
-              videoCount = folderData?.videoCount ?: 0,
-              totalSize = folderData?.totalSize ?: 0L,
-              totalDuration = folderData?.totalDuration ?: 0L,
               hasSubfolders = true,
-              newCount = folderData?.newCount ?: 0,
             ),
           )
         }
@@ -754,39 +811,49 @@ object MediaFileRepository : KoinComponent {
             if (volumeDir.exists() && volumeDir.canRead()) {
               val volumeName = volume.getDescription(context)
 
-              // Get recursive count for this storage root
-              val folderData =
-                TreeViewScanner.getFolderDataRecursive(
-                  context,
-                  volumePath,
-                  currentScanOptions(),
-                  forceFileSystemCheck,
-                  playedMediaTitles,
-                  showNewLabels,
-                  thresholdDays,
-                  newLabelOverrides,
-                )
-
               roots.add(
                 FileSystemItem.Folder(
                   name = volumeName,
                   path = volumeDir.absolutePath,
                   lastModified = volumeDir.lastModified(),
-                  videoCount = folderData?.videoCount ?: 0,
-                  totalSize = folderData?.totalSize ?: 0L,
-                  totalDuration = folderData?.totalDuration ?: 0L,
                   hasSubfolders = true,
-                  newCount = folderData?.newCount ?: 0,
                 ),
               )
             }
           }
         }
+        onSnapshot?.invoke(roots.toList())
+        if (includeCounts) {
+          val (showNewLabels, thresholdDays, playedMediaTitles, newLabelOverrides) = getTreeViewNewBadgeParams()
+          for (index in roots.indices) {
+            currentCoroutineContext().ensureActive()
+            val root = roots[index]
+            val folderData = TreeViewScanner.getFolderDataRecursive(
+              context,
+              root.path,
+              currentScanOptions(),
+              forceFileSystemCheck,
+              playedMediaTitles,
+              showNewLabels,
+              thresholdDays,
+              newLabelOverrides,
+            )
+            roots[index] = root.copy(
+              videoCount = folderData?.videoCount ?: 0,
+              totalSize = folderData?.totalSize ?: 0L,
+              totalDuration = folderData?.totalDuration ?: 0L,
+              newCount = folderData?.newCount ?: 0,
+            )
+            onSnapshot?.invoke(roots.toList())
+          }
+        }
+      } catch (cancelled: CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(TAG, "Error getting storage roots", e)
       }
 
-      roots
+      roots.toList()
     }
 
   // =============================================================================

@@ -70,7 +70,7 @@ class FtpClient(
 
   override fun isConnected(): Boolean = ftpClient?.isConnected == true
 
-  override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
+  override suspend fun listFiles(path: String, onSnapshot: (suspend (List<NetworkFile>) -> Unit)?): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
         var client = ftpClient ?: return@withContext Result.failure(IOException("Not connected"))
@@ -83,6 +83,8 @@ class FtpClient(
         val directory = NetworkPath.from(path)
         val rawFiles = client.listFiles(remotePath(directory))
         ensurePositiveReply(client, "FTP directory listing failed")
+        val partial = mutableListOf<NetworkFile>()
+        val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher(onSnapshot) { partial }
         val files =
           rawFiles.mapNotNull { file ->
             val name = file.name.takeUnless { it == "." || it == ".." } ?: return@mapNotNull null
@@ -96,8 +98,12 @@ class FtpClient(
                 lastModified = file.timestamp?.timeInMillis ?: 0,
                 mimeType = if (!file.isDirectory) NetworkMimeTypes.forFileName(name) else null,
               )
-            }.getOrNull()
+            }.getOrNull()?.also { entry ->
+              partial += entry
+              publisher.publishIfNeeded()
+            }
           }
+        publisher.publishIfNeeded(force = true)
         Result.success(files)
       } catch (cancellation: CancellationException) {
         throw cancellation

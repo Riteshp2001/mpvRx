@@ -144,6 +144,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -264,22 +265,25 @@ object FolderListScreen : Screen {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
     var searchIndexJob by remember { mutableStateOf<Job?>(null) }
+    val currentSearchQuery by androidx.compose.runtime.rememberUpdatedState(effectiveSearchQuery)
     val foldersBlacklistedMessage = stringResource(app.gyrolet.mpvrx.R.string.pref_folders_blacklisted)
 
     LaunchedEffect(internalIsSearching) {
       if (internalIsSearching) focusRequester.requestFocus()
     }
 
-    // Rebuilds when folders change so incrementally discovered hidden folders become searchable;
-    // chained on the previous job because buildIndex resets the shared index maps.
     LaunchedEffect(effectiveIsSearching, videoFolders, audioOnly) {
-      if (audioOnly || !effectiveIsSearching) return@LaunchedEffect
       val previous = searchIndexJob
-      searchIndexJob =
-        coroutineScope.launch {
-          previous?.join()
-          buildSearchIndex(context, videoFolders, audioOnly)
+      previous?.cancel()
+      previous?.join()
+      if (audioOnly || !effectiveIsSearching) return@LaunchedEffect
+      searchIndexJob = launch {
+        buildSearchIndex(context, videoFolders, audioOnly) {
+          if (currentSearchQuery.isNotBlank()) {
+            searchResults = searchFoldersAndVideos(context, currentSearchQuery)
+          }
         }
+      }
     }
 
     // Search logic
@@ -303,6 +307,7 @@ object FolderListScreen : Screen {
                   totalDuration = folder.totalDuration,
                 )
               }
+              searchResults = matchingFolders
               val matchingAudioFiles = app.gyrolet.mpvrx.repository.MediaFileRepository
                 .searchAudio(context, effectiveSearchQuery)
                 .map { audio ->
@@ -315,14 +320,16 @@ object FolderListScreen : Screen {
                 }
               matchingFolders + matchingAudioFiles
             } else {
+              searchResults = searchFoldersAndVideos(context, effectiveSearchQuery)
               searchIndexJob?.join()
               searchFoldersAndVideos(context, effectiveSearchQuery)
             }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+          throw cancelled
         } catch (e: Exception) {
           Log.e("FolderListScreen", "Error during search", e)
-          searchResults = emptyList()
         } finally {
-          isSearchLoading = false
+          if (kotlinx.coroutines.currentCoroutineContext()[Job]?.isActive == true) isSearchLoading = false
         }
       } else {
         searchResults = emptyList()
@@ -913,7 +920,7 @@ object FolderListScreen : Screen {
               if (effectiveIsSearching) {
                 // Show search results
                 Box(modifier = Modifier.fillMaxSize()) {
-                  if (isSearchLoading) {
+                  if (isSearchLoading && searchResults.isEmpty()) {
                     // Loading state
                     Box(
                       modifier = Modifier.fillMaxSize(),
@@ -1861,18 +1868,42 @@ private suspend fun buildSearchIndex(
   context: Context,
   folders: List<VideoFolder>,
   audioOnly: Boolean,
+  onIndexed: suspend () -> Unit,
 ) {
-  val videosByFolder =
-    folders.associate { folder ->
-      folder.bucketId to
-        app.gyrolet.mpvrx.repository.MediaFileRepository
-          .getVideosInFolder(
-            context,
-            folder.bucketId,
-            includeAudioOverride = if (audioOnly) true else null,
-          )
+  val videosByFolder = mutableMapOf<String, List<Video>>()
+  var indexedVideoCount = 0
+  val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher<VideoFolder>(
+    onSnapshot = {
+      kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
+        kotlinx.coroutines.currentCoroutineContext()[Job]?.ensureActive()
+        SearchManager.engine.buildIndex(folders, videosByFolder)
+        indexedVideoCount = videosByFolder.values.sumOf { it.size }
+        onIndexed()
+      }
+    },
+    snapshot = { folders },
+  )
+  publisher.publishIfNeeded(force = true)
+  for (folder in folders) {
+    try {
+      videosByFolder[folder.bucketId] = app.gyrolet.mpvrx.repository.MediaFileRepository.getVideosInFolder(
+        context,
+        folder.bucketId,
+        includeAudioOverride = if (audioOnly) true else null,
+        onSnapshot = { partial ->
+          videosByFolder[folder.bucketId] = partial
+          val total = videosByFolder.values.sumOf { it.size }
+          publisher.publishIfNeeded(force = total > 0 && (indexedVideoCount == 0 || total >= indexedVideoCount + 128))
+        },
+      )
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (error: Exception) {
+      Log.w("FolderListScreen", "Unable to index folder ${folder.path}", error)
     }
-  SearchManager.engine.buildIndex(folders, videosByFolder)
+    publisher.publishIfNeeded()
+  }
+  publisher.publishIfNeeded(force = true)
 }
 
 private suspend fun searchFoldersAndVideos(

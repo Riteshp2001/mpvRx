@@ -207,7 +207,7 @@ class SmbClient(
 
   override fun isConnected(): Boolean = session != null && smbConnection != null
 
-  override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
+  override suspend fun listFiles(path: String, onSnapshot: (suspend (List<NetworkFile>) -> Unit)?): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
         val result =
@@ -229,7 +229,9 @@ class SmbClient(
                 throw IOException("SMB directory listing timed out")
               }
 
-            rawFiles.mapNotNull { fileInfo ->
+            val partial = mutableListOf<NetworkFile>()
+            val publisher = app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher(onSnapshot) { partial }
+            val files = rawFiles.mapNotNull { fileInfo ->
               val fileName = fileInfo.fileName
               if (fileName == "." || fileName == "..") return@mapNotNull null
               runCatching {
@@ -242,8 +244,13 @@ class SmbClient(
                   lastModified = fileInfo.lastWriteTime.toEpochMillis(),
                   mimeType = if (!isDirectory) NetworkMimeTypes.forFileName(fileName) else null,
                 )
-              }.getOrNull()
+              }.getOrNull()?.also { entry ->
+                partial += entry
+                publisher.publishIfNeeded()
+              }
             }
+            publisher.publishIfNeeded(force = true)
+            files
           }
         Result.success(result)
       } catch (cancellation: CancellationException) {

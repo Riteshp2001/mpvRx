@@ -945,7 +945,7 @@ private fun PlaylistVideoListContent(
   }
 
   when {
-    isLoading -> {
+    isLoading && videoItems.isEmpty() -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,

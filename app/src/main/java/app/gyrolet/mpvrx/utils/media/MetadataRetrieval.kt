@@ -20,6 +20,8 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -56,6 +58,7 @@ object MetadataRetrieval {
     videos: List<Video>,
     browserPreferences: BrowserPreferences,
     metadataCache: VideoMetadataCacheRepository,
+    onSnapshot: (suspend (List<Video>) -> Unit)? = null,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val metadataChipsEnabled = isVideoMetadataNeeded(browserPreferences)
@@ -92,19 +95,17 @@ object MetadataRetrieval {
 
       Log.d(TAG, "Enriching ${videosNeedingMetadata.size} videos with metadata")
 
-      val metadataMap =
-        extractMetadataByVideoPath(
-          context = context,
-          videos = videosNeedingMetadata,
-          metadataCache = metadataCache,
-          includeVideoCodec = browserPreferences.showCodecSupportIndicator.get(),
+      val enriched = videos.toMutableList()
+      val indexes = videos.mapIndexed { index, video -> video.path to index }.toMap()
+      for (batch in videosNeedingMetadata.chunked(32)) {
+        currentCoroutineContext().ensureActive()
+        val metadataMap = extractMetadataByVideoPath(
+          context, batch, metadataCache, browserPreferences.showCodecSupportIndicator.get(),
         )
-
-      // Update videos with metadata
-      videos.map { video ->
-        val metadata = metadataMap[video.path]
-        if (metadata != null) {
-          video.copy(
+        for (video in batch) {
+          val metadata = metadataMap[video.path] ?: continue
+          val index = indexes[video.path] ?: continue
+          enriched[index] = video.copy(
             duration = metadata.durationMs,
             durationFormatted = formatDuration(metadata.durationMs),
             width = metadata.width,
@@ -116,10 +117,11 @@ object MetadataRetrieval {
             videoCodec = metadata.videoCodec,
             videoCodecMimeType = metadata.videoCodecMimeType,
           )
-        } else {
-          video
         }
+        currentCoroutineContext().ensureActive()
+        onSnapshot?.invoke(enriched.toList())
       }
+      enriched.toList()
     }
 
   private suspend fun extractMetadataByVideoPath(
@@ -228,6 +230,8 @@ object MetadataRetrieval {
         val totalDuration = metadataMap.values.sumOf { it.durationMs }
 
         folder.copy(totalDuration = totalDuration)
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(TAG, "Error enriching folder metadata: ${folder.name}", e)
         folder
@@ -244,6 +248,7 @@ object MetadataRetrieval {
     browserPreferences: BrowserPreferences,
     metadataCache: VideoMetadataCacheRepository,
     onProgress: ((Int, Int) -> Unit)? = null,
+    onSnapshot: (suspend (List<VideoFolder>) -> Unit)? = null,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
       // If folder duration chip is disabled, return folders as-is
@@ -263,19 +268,19 @@ object MetadataRetrieval {
       var processed = 0
       val total = foldersNeedingMetadata.size
 
-      // Process each folder
-      val enrichedMap =
-        foldersNeedingMetadata.associate { folder ->
-          val enriched = enrichFolderIfNeeded(context, folder, browserPreferences, metadataCache)
-          processed++
-          onProgress?.invoke(processed, total)
-          folder.path to enriched
-        }
-
-      // Return updated list
-      folders.map { folder ->
-        enrichedMap[folder.path] ?: folder
+      val enriched = folders.toMutableList()
+      val indexes = folders.mapIndexed { index, folder -> folder.path to index }.toMap()
+      val publisher = ProgressiveResultsPublisher(onSnapshot) { enriched }
+      for (folder in foldersNeedingMetadata) {
+        currentCoroutineContext().ensureActive()
+        val updated = enrichFolderIfNeeded(context, folder, browserPreferences, metadataCache)
+        indexes[folder.path]?.let { enriched[it] = updated }
+        processed++
+        onProgress?.invoke(processed, total)
+        publisher.publishIfNeeded()
       }
+      publisher.publishIfNeeded(force = true)
+      enriched.toList()
     }
 
   // Helper: Video file extensions

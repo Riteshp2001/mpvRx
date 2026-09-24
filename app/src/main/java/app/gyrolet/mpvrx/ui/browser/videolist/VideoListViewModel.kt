@@ -29,6 +29,7 @@ import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -142,6 +143,8 @@ class VideoListViewModel(
 
   // Track previous video count to detect if folder became empty
   private var previousVideoCount = 0
+  private var loadJob: kotlinx.coroutines.Job? = null
+  private val loadGeneration = java.util.concurrent.atomic.AtomicLong()
   private var playbackIndexByIdentifier: Map<String, Int> = emptyMap()
 
   private val tag = "VideoListViewModel"
@@ -150,7 +153,7 @@ class VideoListViewModel(
     loadVideos()
 
     // Listen for global media library changes and refresh this list when they occur
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch {
       MediaLibraryEvents.changes.collectLatest {
         loadVideos()
       }
@@ -158,7 +161,7 @@ class VideoListViewModel(
 
     // Playback persistence emits this event whenever a position/watched state is saved. Re-read
     // the affected playback metadata so NEW/progress/watched UI updates without a hard refresh.
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch {
       PlaybackStateEvents.changes.collectLatest { mediaIdentifier ->
         if (_videos.value.isNotEmpty()) {
           updatePlaybackInfo(mediaIdentifier)
@@ -171,21 +174,42 @@ class VideoListViewModel(
     Log.d(tag, "Hard refreshing video list for bucket: $bucketId")
 
     // Set loading state
-    _isLoading.value = true
+    _isLoading.value = _videos.value.isEmpty()
 
     // Clear cache to force fresh data from filesystem
     MediaFileRepository.clearCache()
     FolderViewScanner.clearCache()
 
-    // Trigger media scan before loading to ensure MediaStore is up-to-date
-    if (!ZipArchiveMedia.isBrowserPath(bucketId)) triggerMediaScan()
-
     loadVideos(forceFileSystemCheck = true)
   }
 
   private fun loadVideos(forceFileSystemCheck: Boolean = false) {
-    viewModelScope.launch(Dispatchers.IO) {
+    val generation = loadGeneration.incrementAndGet()
+    loadJob?.cancel()
+    val previous = _videos.value
+    loadJob = viewModelScope.launch {
       try {
+        if (forceFileSystemCheck && !ZipArchiveMedia.isBrowserPath(bucketId)) {
+          kotlinx.coroutines.withContext(Dispatchers.IO) { triggerMediaScan() }
+        }
+        val onSnapshot: suspend (List<Video>) -> Unit = { snapshot ->
+          kotlinx.coroutines.withContext(Dispatchers.Main.immediate) {
+            ensureActive()
+            if (generation == loadGeneration.get()) {
+              val visible = if (includeAudio) snapshot.filter { it.isAudio } else snapshot
+              if (visible.isNotEmpty()) {
+                val paths = visible.mapTo(HashSet()) { it.path }
+                publishVideos(visible + previous.filterNot { it.path in paths })
+              }
+            }
+          }
+        }
+        val onMetadata: suspend (List<Video>) -> Unit = { snapshot ->
+          kotlinx.coroutines.withContext(Dispatchers.Main.immediate) {
+            ensureActive()
+            if (generation == loadGeneration.get()) publishVideos(snapshot)
+          }
+        }
         // First attempt to load videos (basic info from MediaStore)
         var videoList =
           MediaFileRepository.getVideosInFolder(
@@ -193,6 +217,7 @@ class VideoListViewModel(
             bucketId,
             forceFileSystemCheck = forceFileSystemCheck,
             includeAudioOverride = if (includeAudio) true else null,
+            onSnapshot = onSnapshot,
           )
         if (includeAudio) {
           videoList = videoList.filter { it.isAudio }
@@ -200,6 +225,8 @@ class VideoListViewModel(
 
         // ZIP entries need basic metadata even when optional metadata chips are disabled.
         val archiveFolder = ZipArchiveMedia.isBrowserPath(bucketId)
+        if (generation != loadGeneration.get()) return@launch
+        if (videoList.isNotEmpty()) publishVideos(videoList)
         if (archiveFolder || MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
           Log.d(tag, "Enriching ${videoList.size} videos with metadata")
           videoList =
@@ -208,6 +235,7 @@ class VideoListViewModel(
               videos = videoList,
               browserPreferences = browserPreferences,
               metadataCache = metadataCache,
+              onSnapshot = onMetadata,
             )
         } else {
           Log.d(tag, "Metadata extraction not required")
@@ -227,7 +255,7 @@ class VideoListViewModel(
 
         if (videoList.isEmpty() && !archiveFolder) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
-          triggerMediaScan()
+          kotlinx.coroutines.withContext(Dispatchers.IO) { triggerMediaScan() }
           delay(1000)
           var retryVideoList =
             MediaFileRepository.getVideosInFolder(
@@ -235,10 +263,13 @@ class VideoListViewModel(
               bucketId,
               forceFileSystemCheck = true,
               includeAudioOverride = if (includeAudio) true else null,
+              onSnapshot = onSnapshot,
             )
           if (includeAudio) {
             retryVideoList = retryVideoList.filter { it.isAudio }
           }
+          if (generation != loadGeneration.get()) return@launch
+          if (retryVideoList.isNotEmpty()) publishVideos(retryVideoList)
 
           // Enrich retry list if needed
           if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
@@ -248,6 +279,7 @@ class VideoListViewModel(
                 videos = retryVideoList,
                 browserPreferences = browserPreferences,
                 metadataCache = metadataCache,
+                onSnapshot = onMetadata,
               )
           }
 
@@ -259,20 +291,34 @@ class VideoListViewModel(
           }
           previousVideoCount = retryVideoList.size
 
-          _videos.value = retryVideoList
+          if (generation != loadGeneration.get()) return@launch
+          publishVideos(retryVideoList)
           loadPlaybackInfo(retryVideoList)
         } else {
-          _videos.value = videoList
+          if (generation != loadGeneration.get()) return@launch
+          publishVideos(videoList)
           loadPlaybackInfo(videoList)
         }
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(tag, "Error loading videos for bucket $bucketId", e)
-        _videos.value = emptyList()
-        _videosWithPlaybackInfo.value = emptyList()
       } finally {
-        _isLoading.value = false
+        if (generation == loadGeneration.get()) _isLoading.value = false
       }
     }
+  }
+
+  private fun publishVideos(videos: List<Video>) {
+    val previous = _videosWithPlaybackInfo.value.associateBy { it.video.path }
+    val now = System.currentTimeMillis()
+    _videos.value = videos
+    _videosWithPlaybackInfo.value = videos.map { video ->
+      previous[video.path]?.copy(video = video) ?: buildVideoWithPlaybackInfo(
+        video, null, now, appearancePreferences.unplayedOldVideoDays.get(), browserPreferences.watchedThreshold.get(),
+      ).copy(isOldAndUnplayed = false)
+    }
+    if (videos.isNotEmpty()) _isLoading.value = false
   }
 
   /**
@@ -284,6 +330,7 @@ class VideoListViewModel(
 
   private suspend fun loadPlaybackInfo(videos: List<Video>) {
     val playbackByIdentifier = playbackStateRepository.getAllPlaybackStates().associateBy { it.mediaTitle }
+    if (_videos.value != videos) return
     val watchedThreshold = browserPreferences.watchedThreshold.get()
     val newLabelDays = appearancePreferences.unplayedOldVideoDays.get()
     val now = System.currentTimeMillis()
@@ -303,7 +350,7 @@ class VideoListViewModel(
           watchedThreshold = watchedThreshold,
         )
       }
-    _videosWithPlaybackInfo.value = videosWithInfo
+    if (_videos.value == videos) _videosWithPlaybackInfo.value = videosWithInfo
   }
 
   private suspend fun updatePlaybackInfo(mediaIdentifier: String) {
@@ -330,6 +377,7 @@ class VideoListViewModel(
         watchedThreshold = browserPreferences.watchedThreshold.get(),
       )
     if (currentItems[index] == updatedItem) return
+    if (_videos.value != videos || _videosWithPlaybackInfo.value !== currentItems) return
 
     _videosWithPlaybackInfo.value =
       currentItems.toMutableList().apply {

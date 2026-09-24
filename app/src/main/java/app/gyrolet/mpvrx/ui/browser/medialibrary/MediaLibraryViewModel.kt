@@ -27,6 +27,7 @@ import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,17 +53,19 @@ class MediaLibraryViewModel(
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
   private var playbackIndexByIdentifier: Map<String, Int> = emptyMap()
+  private var loadJob: kotlinx.coroutines.Job? = null
+  private val loadGeneration = java.util.concurrent.atomic.AtomicLong()
 
   private val tag = "MediaLibraryViewModel"
 
   init {
     loadData()
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch {
       app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes.collectLatest {
         loadData()
       }
     }
-    viewModelScope.launch(Dispatchers.IO) {
+    viewModelScope.launch {
       PlaybackStateEvents.changes.collectLatest { mediaIdentifier ->
         if (_videos.value.isNotEmpty()) updatePlaybackInfo(mediaIdentifier)
       }
@@ -70,14 +73,28 @@ class MediaLibraryViewModel(
   }
 
   private fun loadData() {
-    viewModelScope.launch(Dispatchers.IO) {
+    val generation = loadGeneration.incrementAndGet()
+    loadJob?.cancel()
+    val previous = _videos.value
+    loadJob = viewModelScope.launch {
       try {
-        _isLoading.value = true
+        _isLoading.value = previous.isEmpty()
         var videoList =
           MediaFileRepository.getAllVideos(
             context = getApplication(),
             includeAudioOverride = true,
+            onSnapshot = { partial ->
+              kotlinx.coroutines.withContext(Dispatchers.Main.immediate) {
+                ensureActive()
+                if (generation == loadGeneration.get() && partial.isNotEmpty()) {
+                  val paths = partial.mapTo(HashSet()) { it.path }
+                  publishVideos(partial + previous.filterNot { it.path in paths })
+                }
+              }
+            },
           )
+        if (generation != loadGeneration.get()) return@launch
+        publishVideos(videoList)
 
         if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
           videoList =
@@ -86,15 +103,24 @@ class MediaLibraryViewModel(
               videos = videoList,
               browserPreferences = browserPreferences,
               metadataCache = metadataCache,
+              onSnapshot = { partial ->
+                kotlinx.coroutines.withContext(Dispatchers.Main.immediate) {
+                  ensureActive()
+                  if (generation == loadGeneration.get()) publishVideos(partial)
+                }
+              },
             )
         }
 
-        _videos.value = videoList
+        if (generation != loadGeneration.get()) return@launch
+        publishVideos(videoList)
         loadPlaybackInfo(videoList)
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(tag, "Error loading media library videos", e)
       } finally {
-        _isLoading.value = false
+        if (generation == loadGeneration.get()) _isLoading.value = false
       }
     }
   }
@@ -103,8 +129,18 @@ class MediaLibraryViewModel(
     loadData()
   }
 
+  private fun publishVideos(videos: List<Video>) {
+    val previous = _videosWithPlaybackInfo.value.associateBy { it.video.path }
+    _videos.value = videos
+    _videosWithPlaybackInfo.value = videos.map { video ->
+      previous[video.path]?.copy(video = video) ?: VideoWithPlaybackInfo(video)
+    }
+    if (videos.isNotEmpty()) _isLoading.value = false
+  }
+
   private suspend fun loadPlaybackInfo(videos: List<Video>) {
     val playbackStates = playbackStateRepository.getAllPlaybackStates()
+    if (_videos.value != videos) return
     val currentTime = System.currentTimeMillis()
     val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
     val watchedThreshold = browserPreferences.watchedThreshold.get()

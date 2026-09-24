@@ -34,13 +34,21 @@ import app.gyrolet.mpvrx.ui.player.extractLocalPath
 import app.gyrolet.mpvrx.ui.player.resolveUri
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
+import app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -87,6 +95,8 @@ class PlaylistDetailViewModel(
   // especially noticeable for very large playlists.
   private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+  private val refreshRevision = MutableStateFlow(0L)
+  private val completedRefreshRevision = MutableStateFlow(-1L)
 
   /**
    * Live per-connection status, read straight from [NetworkRepository] so the playlist's source
@@ -131,25 +141,29 @@ class PlaylistDetailViewModel(
         // Connections are part of the input: deleting or re-creating one must re-evaluate every
         // entry that references it instead of waiting for the playlist itself to be reloaded.
         networkRepository.observeAllConnectionsIncludingDeleted(),
-      ) { items, connections -> items to connections }
-        .collectLatest { (items, connections) ->
-        _isLoading.value = true
+        refreshRevision,
+      ) { items, connections, revision -> Triple(items, connections, revision) }
+        .collectLatest { (items, connections, revision) ->
+        _isLoading.value = _videoItems.value.isEmpty()
         try {
           if (items.isEmpty()) {
             _videoItems.value = emptyList()
           } else {
             // Check if this is an M3U playlist
-            val playlist = _playlist.value
+            val playlist = playlistRepository.observePlaylistById(playlistId).first()
             val isM3uPlaylist = playlist?.isM3uPlaylist == true
 
             if (isM3uPlaylist) {
+              buildM3UVideoItems(playlist, items, loadMetadata = false)
               val videoItems = buildM3UVideoItems(playlist, items)
 
+              currentCoroutineContext().ensureActive()
               Log.d(TAG, "Loaded ${videoItems.size} M3U playlist items")
               _videoItems.value = videoItems
             } else {
               val networkRefs = items.map { NetworkPlaybackUri.parse(it.filePath) }
               val connectionsById = connections.associateBy { it.id }
+              publishBasicPlaylistItems(items, connectionsById)
 
               // For regular playlists, use the existing logic with MediaFileRepository
               val fileObjects =
@@ -175,11 +189,18 @@ class PlaylistDetailViewModel(
                   .toSet()
 
               // Get all videos and audio files from those folders (uses cache)
-              val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
+              val allVideos = MediaFileRepository.getVideosForBuckets(
+                getApplication(),
+                bucketIds,
+                includeAudioOverride = true,
+                onSnapshot = ::publishScannedPlaylistVideos,
+              )
+              val videosByPath = allVideos.flatMap { listOf(it.path to it, it.uri.toString() to it) }.toMap()
 
               // Match videos by path, maintaining playlist order
               val videoItems =
                 items.mapIndexedNotNull { index, item ->
+                  currentCoroutineContext().ensureActive()
                   val networkRef = networkRefs[index]
                   if (networkRef != null) {
                     return@mapIndexedNotNull buildNetworkVideoItem(item, networkRef, connectionsById[networkRef.connectionId])
@@ -188,12 +209,7 @@ class PlaylistDetailViewModel(
                   val file = fileObjects.getOrNull(index) ?: File(item.filePath)
                   val fileExists = file.exists()
                   val isAudioFile = FileTypeUtils.isAudioFile(file)
-                  val matchedVideo =
-                    allVideos.find { video ->
-                      video.path == item.filePath ||
-                        video.path == file.absolutePath ||
-                        video.uri.toString() == item.filePath
-                    }
+                  val matchedVideo = videosByPath[item.filePath] ?: videosByPath[file.absolutePath]
                   val video = (matchedVideo?.let { if (isAudioFile && !it.isAudio) it.copy(isAudio = true) else it }) ?: run {
                     if (fileExists) {
                       MediaFileRepository.getVideosFromFiles(getApplication(), listOf(file)).firstOrNull()?.let {
@@ -241,20 +257,27 @@ class PlaylistDetailViewModel(
                   )
                 }
 
+              currentCoroutineContext().ensureActive()
               Log.d(TAG, "Loaded ${videoItems.size} items out of ${items.size} playlist items")
               _videoItems.value = videoItems
             }
           }
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (error: Exception) {
+          Log.e(TAG, "Error loading playlist videos", error)
         } finally {
-          _isLoading.value = false
+          if (currentCoroutineContext().isActive) {
+            _isLoading.value = false
+            completedRefreshRevision.value = revision
+          }
         }
       }
     }
   }
 
   override fun refresh() {
-    // Refresh is handled automatically through Flow observation
-    viewModelScope.launch(Dispatchers.IO) { refreshNow() }
+    refreshRevision.update { it + 1L }
   }
 
   /**
@@ -263,79 +286,80 @@ class PlaylistDetailViewModel(
    * This is useful for UI gestures like pull-to-refresh that need to know when refreshing is done.
    */
   suspend fun refreshNow() {
-    try {
-      _isLoading.value = true
-      // Trigger a refresh by reloading playlist items
-      val items = playlistRepository.getPlaylistItems(playlistId)
-      val playlist = _playlist.value
-      val isM3uPlaylist = playlist?.isM3uPlaylist == true
+    val revision = refreshRevision.updateAndGet { it + 1L }
+    completedRefreshRevision.first { it >= revision }
+  }
 
-      if (items.isNotEmpty()) {
-        if (isM3uPlaylist) {
-          _videoItems.value = buildM3UVideoItems(playlist, items)
-        } else {
-          // For regular playlists, use existing logic
-          val networkRefs = items.map { NetworkPlaybackUri.parse(it.filePath) }
-          val connectionsById = networkRepository.getAllConnectionsIncludingDeleted().associateBy { it.id }
-          val bucketIds =
-            items
-              .filterIndexed { index, _ -> networkRefs[index] == null }
-              .map { item ->
-                File(item.filePath).parent ?: ""
-              }.toSet()
-          val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
-          val videoItems =
-            items.mapIndexedNotNull { index, item ->
-              val networkRef = networkRefs[index]
-              if (networkRef != null) {
-                return@mapIndexedNotNull buildNetworkVideoItem(item, networkRef, connectionsById[networkRef.connectionId])
-              }
-
-              val file = File(item.filePath)
-              val fileExists = file.exists()
-              val isAudioFile = FileTypeUtils.isAudioFile(file)
-              val matchedVideo = allVideos.find { video -> video.path == item.filePath }
-              val video = matchedVideo ?: run {
-                Video(
-                  id = item.id.toLong(),
-                  title = item.fileName,
-                  displayName = item.fileName,
-                  path = item.filePath,
-                  uri = android.net.Uri.fromFile(file),
-                  duration = 0L,
-                  durationFormatted = "--",
-                  size = if (fileExists) file.length() else 0L,
-                  sizeFormatted = "--",
-                  dateModified = item.addedAt,
-                  dateAdded = item.addedAt,
-                  mimeType = if (isAudioFile) "audio/*" else "video/*",
-                  bucketId = "",
-                  bucketDisplayName = "",
-                  width = 0,
-                  height = 0,
-                  fps = 0f,
-                  resolution = "--",
-                  isAudio = isAudioFile,
-                )
-              }
-              val available = matchedVideo != null || isLocalEntryAvailable(item.filePath, fileExists)
-              PlaylistVideoItem(
-                playlistItem = item,
-                video = video,
-                sourcePath = file.parent,
-                isAvailable = available,
-                unavailableReasonRes = if (available) null else R.string.playlist_unavailable_file,
-              )
-            }
-          _videoItems.value = videoItems
+  private suspend fun publishBasicPlaylistItems(
+    items: List<PlaylistItemEntity>,
+    connections: Map<Long, NetworkConnection>,
+  ) {
+    val previous = _videoItems.value.associateBy { it.playlistItem.id }
+    val result = mutableListOf<PlaylistVideoItem>()
+    val publisher = ProgressiveResultsPublisher<PlaylistVideoItem>(
+      onSnapshot = { partial ->
+        if (partial.isNotEmpty()) {
+          val byId = partial.associateBy { it.playlistItem.id }
+          _videoItems.value = items.mapNotNull { byId[it.id] ?: previous[it.id] }
+          _isLoading.value = false
         }
-      } else {
-        _videoItems.value = emptyList()
+      },
+      snapshot = { result },
+    )
+    for (item in items) {
+      currentCoroutineContext().ensureActive()
+      val ref = NetworkPlaybackUri.parse(item.filePath)
+      val existing = previous[item.id]
+      result += when {
+        ref != null -> buildNetworkVideoItem(item, ref, connections[ref.connectionId])
+        else -> {
+          val uri = Uri.parse(item.filePath)
+          val file = File(if (uri.scheme == "file") uri.path.orEmpty() else item.filePath)
+          val exists = file.isFile
+          val audio = FileTypeUtils.isAudioFile(file)
+          val available = isLocalEntryAvailable(item.filePath, exists)
+          val size = if (exists) file.length() else item.fileSize ?: 0L
+          val video = existing?.takeIf { it.playlistItem.filePath == item.filePath }?.video ?: Video(
+            id = item.id.toLong(),
+            title = item.fileName,
+            displayName = item.fileName,
+            path = item.filePath,
+            uri = if (uri.scheme == null) Uri.fromFile(file) else uri,
+            duration = 0L,
+            durationFormatted = "--",
+            size = size,
+            sizeFormatted = MediaUtils.formatFileSize(size),
+            dateModified = item.addedAt,
+            dateAdded = item.addedAt,
+            mimeType = if (audio) "audio/*" else "video/*",
+            bucketId = file.parent.orEmpty(),
+            bucketDisplayName = file.parentFile?.name.orEmpty(),
+            width = 0,
+            height = 0,
+            fps = 0f,
+            resolution = "--",
+            isAudio = audio,
+          )
+          PlaylistVideoItem(
+            playlistItem = item,
+            video = video,
+            sourcePath = file.parent,
+            isAvailable = available,
+            unavailableReasonRes = if (available) null else R.string.playlist_unavailable_file,
+          )
+        }
       }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error refreshing playlist videos", e)
-    } finally {
-      _isLoading.value = false
+      publisher.publishIfNeeded()
+    }
+    publisher.publishIfNeeded(force = true)
+  }
+
+  private suspend fun publishScannedPlaylistVideos(videos: List<Video>) {
+    currentCoroutineContext().ensureActive()
+    val byPath = videos.flatMap { listOf(it.path to it, it.uri.toString() to it) }.toMap()
+    _videoItems.value = _videoItems.value.map { item ->
+      val video = byPath[item.video.path] ?: byPath[item.playlistItem.filePath]
+      if (video != null && !item.isNetwork) item.copy(video = video, isAvailable = true, unavailableReasonRes = null) else item
     }
   }
 
@@ -497,9 +521,21 @@ class PlaylistDetailViewModel(
   private suspend fun buildM3UVideoItems(
     playlist: PlaylistEntity?,
     items: List<PlaylistItemEntity>,
+    loadMetadata: Boolean = true,
   ): List<PlaylistVideoItem> =
     withContext(Dispatchers.IO) {
-      items.mapNotNull { item ->
+      val previous = _videoItems.value.associateBy { it.playlistItem.id }
+      val partialItems = mutableListOf<PlaylistVideoItem>()
+      val publisher = ProgressiveResultsPublisher<PlaylistVideoItem>(
+        onSnapshot = { partial ->
+          val byId = partial.associateBy { it.playlistItem.id }
+          _videoItems.value = items.mapNotNull { byId[it.id] ?: previous[it.id] }
+          if (partial.isNotEmpty()) _isLoading.value = false
+        },
+        snapshot = { partialItems },
+      )
+      val result = items.mapNotNull { item ->
+        currentCoroutineContext().ensureActive()
         try {
           val mediaReference = M3UParser.normalizeLocalMediaReference(item.filePath)
           val mediaUri = android.net.Uri.parse(mediaReference)
@@ -517,7 +553,7 @@ class PlaylistDetailViewModel(
               null
             }
 
-          if (localPath != null) {
+          if (loadMetadata && localPath != null) {
             val file = File(localPath)
             if (file.exists()) {
               val videos = MediaFileRepository.getVideosFromFiles(getApplication(), listOf(file))
@@ -537,7 +573,7 @@ class PlaylistDetailViewModel(
             }
 
           val video =
-            resolvedVideo ?: Video(
+            resolvedVideo ?: previous[item.id]?.takeIf { it.playlistItem.filePath == item.filePath }?.video ?: Video(
               id = item.id.toLong(),
               title = item.fileName,
               displayName = item.fileName,
@@ -549,19 +585,27 @@ class PlaylistDetailViewModel(
               sizeFormatted = "--",
               dateModified = item.addedAt,
               dateAdded = item.addedAt,
-              mimeType = "video/*",
+              mimeType = if (playlist?.isAudio == true) "audio/*" else "video/*",
               bucketId = "m3u_playlist_$playlistId",
               bucketDisplayName = playlist?.name ?: "M3U Playlist",
               width = 0,
               height = 0,
               fps = 0f,
               resolution = "--",
+              isAudio = playlist?.isAudio == true,
             )
-          PlaylistVideoItem(item, video)
+          PlaylistVideoItem(item, video).also {
+            partialItems += it
+            publisher.publishIfNeeded()
+          }
+        } catch (cancelled: CancellationException) {
+          throw cancelled
         } catch (e: Exception) {
           Log.w(TAG, "Failed to create video item for URL: ${item.filePath}", e)
           null
         }
       }
+      publisher.publishIfNeeded(force = true)
+      result
     }
 }

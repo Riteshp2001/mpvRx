@@ -39,6 +39,8 @@ import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.M3UPlaylistItem
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,13 +91,18 @@ class NetworkBrowserViewModel(
 
   private val _importedPlaylistId = MutableSharedFlow<Int>()
   val importedPlaylistId: SharedFlow<Int> = _importedPlaylistId.asSharedFlow()
+  private var loadJob: kotlinx.coroutines.Job? = null
+  private val loadGeneration = java.util.concurrent.atomic.AtomicLong()
 
   /**
    * Load files in the current directory
    */
   fun loadFiles() {
-    viewModelScope.launch {
-      _isLoading.value = true
+    val generation = loadGeneration.incrementAndGet()
+    loadJob?.cancel()
+    val previous = _files.value
+    loadJob = viewModelScope.launch {
+      _isLoading.value = _files.value.isEmpty()
       _error.value = null
 
       try {
@@ -105,8 +112,19 @@ class NetworkBrowserViewModel(
         _connection.value = connection
 
         repository
-          .listFiles(connection, currentPath)
+          .listFiles(connection, currentPath, onSnapshot = { partial ->
+            withContext(Dispatchers.Main.immediate) {
+              ensureActive()
+              if (generation == loadGeneration.get() && partial.isNotEmpty()) {
+                val paths = partial.mapTo(HashSet()) { it.path }
+                _files.value = partial + previous.filterNot { it.path in paths }
+                _isLoading.value = false
+              }
+            }
+          })
           .onSuccess { fileList ->
+            ensureActive()
+            if (generation != loadGeneration.get()) return@onSuccess
             _files.value =
               // A stable base order for consumers that do not re-sort. Display order is applied in
               // NetworkBrowserScreen and the playback queue re-sorts in
@@ -116,12 +134,17 @@ class NetworkBrowserViewModel(
                 compareBy<NetworkFile> { !it.isDirectory }.thenBy { it.name.lowercase() },
               )
           }.onFailure { e ->
+            if (e is CancellationException) throw e
+            ensureActive()
             _error.value = e.message ?: "Unknown error"
           }
+      } catch (cancelled: CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
+        ensureActive()
         _error.value = e.message ?: "Unknown error"
       } finally {
-        _isLoading.value = false
+        if (generation == loadGeneration.get()) _isLoading.value = false
       }
     }
   }
