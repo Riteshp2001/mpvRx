@@ -128,10 +128,6 @@ internal fun VideoSwipeSurface(
   colors: CardColors,
   content: @Composable ColumnScope.() -> Unit,
 ) {
-  if (!enabled || onAction == null || (leftAction == VideoSwipeAction.None && rightAction == VideoSwipeAction.None)) {
-    Card(modifier = modifier, shape = shape, colors = colors, content = content)
-    return
-  }
   val preferences = koinInject<BrowserPreferences>()
   val rightZonePercent by preferences.videoSwipeRightZonePercent.collectAsState()
   val leftZonePercent by preferences.videoSwipeLeftZonePercent.collectAsState()
@@ -155,7 +151,7 @@ internal fun VideoSwipeSurface(
   val currentRight by rememberUpdatedState(rightAction)
   val currentThreshold by rememberUpdatedState(threshold)
   val displayOffset by animateFloatAsState(
-    targetValue = if (dragging) dragOffset else 0f,
+    targetValue = if (canSwipe && dragging) dragOffset else 0f,
     animationSpec = if (dragging || reducedMotion) snap() else AppMotion.Spatial.ExpressiveFast,
     label = "videoSwipeOffset",
   )
@@ -190,6 +186,7 @@ internal fun VideoSwipeSurface(
   )
 
   Box(
+    propagateMinConstraints = true,
     modifier = modifier
       .onSizeChanged { rowWidth = it.width }
       .semantics { customActions = accessibilityActions }

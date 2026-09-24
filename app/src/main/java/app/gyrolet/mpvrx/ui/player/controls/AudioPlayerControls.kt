@@ -1324,6 +1324,32 @@ fun AudioPlayerControls(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
           )
+          if (playbackState.currentItem != null) {
+            Text(
+              text = stringResource(
+                R.string.audio_active_engine,
+                if (playbackState.engine == app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer) "ExoPlayer"
+                else stringResource(R.string.pref_audio_engine_mpv),
+              ),
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              textAlign = TextAlign.Center,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+          playbackState.error?.takeIf {
+            playbackState.phase == app.gyrolet.mpvrx.ui.player.PlaybackPhase.ERROR
+          }?.let { error ->
+            Text(
+              text = error,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.error,
+              textAlign = TextAlign.Center,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
           dolbyBadgeLabel?.let { label ->
             Row(
               modifier = Modifier.widthIn(max = 200.dp).heightIn(min = 20.dp).semantics(mergeDescendants = true) {},

@@ -167,7 +167,15 @@ internal class ExoAudioEngine(
       releaseDeck(previous)
       this.paused = pauseRequested()
       silenced = false
-      primary = runCatching { createDeck(source, generation, positionMs) }.getOrElse {
+      runCatching {
+        val deck = createDeck(source, generation, positionMs)
+        primary = deck
+        applyVolumes()
+        deck.player.playWhenReady = !paused
+        deck.player.prepare()
+      }.onFailure {
+        releaseDeck(primary)
+        primary = null
         source.close()
         onError(generation, PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED), positionMs)
         return@execute
@@ -199,12 +207,17 @@ internal class ExoAudioEngine(
           }
           return@execute
         }
-        standby = runCatching { createDeck(next.source, next.generation, 0L) }.getOrElse {
+        runCatching {
+          val deck = createDeck(next.source, next.generation, 0L)
+          standby = deck
+          deck.player.prepare()
+        }.onFailure {
+          releaseDeck(standby)
+          standby = null
           next.source.close()
           preparedNext = null
           return@execute
         }
-        standby?.player?.volume = 0f
       }
     }
   }
@@ -219,7 +232,7 @@ internal class ExoAudioEngine(
       primary?.endReported = false
       primary?.player?.seekTo(0)
     }
-    current?.let { it.player.playWhenReady = canPlay && it.readyReported }
+    current?.let { it.player.playWhenReady = canPlay }
     outgoing?.player?.playWhenReady = canPlay && current?.player?.playbackState == Player.STATE_READY
     if (!canPlay) standby?.player?.pause()
     lastTickMs = SystemClock.elapsedRealtime()
@@ -231,7 +244,7 @@ internal class ExoAudioEngine(
     primary?.let { deck ->
       deck.endReported = false
       deck.player.seekTo(positionMs.coerceAtLeast(0))
-      deck.player.playWhenReady = !paused && !silenced && isCurrentGeneration(deck.generation) && deck.readyReported
+      deck.player.playWhenReady = !paused && !silenced && isCurrentGeneration(deck.generation)
     }
     publish()
   }
@@ -607,7 +620,6 @@ internal class ExoAudioEngine(
 
     })
     player.setMediaSource(createMediaSource(source), positionMs.coerceAtLeast(0))
-    player.prepare()
     return deck
   }
 
@@ -977,14 +989,21 @@ internal class ExoAudioEngine(
     val position = current.player.currentPosition
     primary = null
     releaseDeck(current, closeSource = false)
-    primary = runCatching { createDeck(current.source, current.generation, position, current.format) }.getOrElse {
+    paused = pauseRequested()
+    runCatching {
+      val deck = createDeck(current.source, current.generation, position, current.format)
+        .apply { readyReported = current.readyReported }
+      primary = deck
+      applyVolumes()
+      deck.player.playWhenReady = !paused && !silenced && isCurrentGeneration(current.generation)
+      deck.player.prepare()
+    }.onFailure {
+      releaseDeck(primary)
+      primary = null
       current.source.close()
       onError(current.generation, PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED), position)
       return
-    }.apply { readyReported = current.readyReported }
-    paused = pauseRequested()
-    primary?.player?.playWhenReady = !paused && !silenced && isCurrentGeneration(current.generation) && current.readyReported
-    applyVolumes()
+    }
   }
 
   private fun updateOffload() {

@@ -2515,6 +2515,7 @@
   <string name="pref_audio_shared_playback_section">通用播放设置</string>
   <string name="pref_audio_engine_exo">ExoPlayer（默认）</string>
   <string name="pref_audio_engine_mpv">mpv</string>
+  <string name="audio_active_engine">播放引擎：%1$s</string>
   <string name="pref_audio_crossfade">交叉淡入淡出</string>
   <string name="pref_audio_crossfade_seconds">%1$d 秒</string>
   <string name="audio_output_engine">当前引擎</string>

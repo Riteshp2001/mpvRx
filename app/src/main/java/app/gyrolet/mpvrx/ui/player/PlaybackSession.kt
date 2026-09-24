@@ -2369,31 +2369,40 @@ object PlaybackSession : MPVLib.EventObserver {
             var transferred = false
             var source: AudioPlaybackSource? = null
             try {
-              releaseCompletion.await()
-              kotlinx.coroutines.withContext(Dispatchers.IO) { source = prepareAudioSource(item) }
-              if (item.audiobook != null) {
-                AudiobookPlayback.ensureStarted()
-                kotlinx.coroutines.withContext(Dispatchers.IO) { AudiobookPlayback.applyBookSettings(item, generation) }
-              }
-              nativeLock.withLock {
-                if (applicationContext != null && usingExoPlayer && isCurrentGeneration(generation) && _state.value.phase == PlaybackPhase.LOADING) {
-                  val latest = _audioState.value
-                  val engine = audioEngine ?: createAudioEngine().also { audioEngine = it }
-                  engine.setProcessing(audioProcessing)
-                  engine.setOutputSettings(AudioOutputSettings(
-                    audioPreferences.preferDolbyAtmos.get(), audioPreferences.spatialAudio.get(),
-                    audioPreferences.wifiMaxBitrate.get(), audioPreferences.mobileMaxBitrate.get(),
-                  ))
-                  engine.setOutputSampleRate(audioPreferences.outputSampleRate.get())
-                  engine.setSpeed(latest.speed, audioPreferences.audioPitchCorrection.get())
-                  engine.setVolume(latest.volume)
-                  engine.setDuckGain(if (audioDuckOwners.isEmpty()) 1f else 0.5f)
-                  engine.setMuted(latest.muted)
-                  engine.setLoop(null, null)
-                  engine.setCrossfade(audioPreferences.crossfadeDurationMs.get(), audioAutoplayAllowed() && audioTransitionBlocks.value.isEmpty())
-                  engine.load(checkNotNull(source), generation, position)
-                  transferred = true
+              val prepared = withTimeoutOrNull(30_000L) {
+                releaseCompletion.await()
+                kotlinx.coroutines.withContext(Dispatchers.IO) { source = prepareAudioSource(item) }
+                if (item.audiobook != null) {
+                  AudiobookPlayback.ensureStarted()
+                  kotlinx.coroutines.withContext(Dispatchers.IO) { AudiobookPlayback.applyBookSettings(item, generation) }
                 }
+                nativeLock.withLock {
+                  if (applicationContext != null && usingExoPlayer && isCurrentGeneration(generation) && _state.value.phase == PlaybackPhase.LOADING) {
+                    val latest = _audioState.value
+                    val engine = audioEngine ?: createAudioEngine().also { audioEngine = it }
+                    engine.setProcessing(audioProcessing)
+                    engine.setOutputSettings(AudioOutputSettings(
+                      audioPreferences.preferDolbyAtmos.get(), audioPreferences.spatialAudio.get(),
+                      audioPreferences.wifiMaxBitrate.get(), audioPreferences.mobileMaxBitrate.get(),
+                    ))
+                    engine.setOutputSampleRate(audioPreferences.outputSampleRate.get())
+                    engine.setSpeed(latest.speed, audioPreferences.audioPitchCorrection.get())
+                    engine.setVolume(latest.volume)
+                    engine.setDuckGain(if (audioDuckOwners.isEmpty()) 1f else 0.5f)
+                    engine.setMuted(latest.muted)
+                    engine.setLoop(null, null)
+                    engine.setCrossfade(audioPreferences.crossfadeDurationMs.get(), audioAutoplayAllowed() && audioTransitionBlocks.value.isEmpty())
+                    engine.load(checkNotNull(source), generation, position)
+                    transferred = true
+                  }
+                }
+                _state.first { it.generation != generation || it.phase != PlaybackPhase.LOADING }
+                true
+              }
+              if (prepared == null && usingExoPlayer && isCurrentGeneration(generation) && _state.value.phase == PlaybackPhase.LOADING) {
+                audioFailed(generation, androidx.media3.common.PlaybackException(
+                  "Audio preparation timed out", null, androidx.media3.common.PlaybackException.ERROR_CODE_TIMEOUT,
+                ), position)
               }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
               throw cancelled
@@ -2651,6 +2660,7 @@ object PlaybackSession : MPVLib.EventObserver {
     if (!usingExoPlayer || !isCurrentGeneration(generation)) return
     val item = _state.value.currentItem ?: return
     if (audioRetryJob?.isActive == true) return
+    Log.e(TAG, "ExoPlayer failure: ${error.errorCodeName}, cause=${error.cause?.javaClass?.simpleName}")
     val responseCode = generateSequence<Throwable>(error) { it.cause }
       .filterIsInstance<androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException>()
       .firstOrNull()?.responseCode
@@ -2685,13 +2695,17 @@ object PlaybackSession : MPVLib.EventObserver {
     }
     val atmosSource = _audioState.value.output.dolbyAtmosSource || item.mimeType == androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC
     if (atmosSource) {
-      failAudioState(generation, app.gyrolet.mpvrx.R.string.audio_atmos_unsupported)
+      failAudioState(generation, app.gyrolet.mpvrx.R.string.audio_atmos_unsupported, error.errorCode)
     } else {
-      failAudioState(generation)
+      failAudioState(generation, errorCode = error.errorCode)
     }
   }
 
-  private fun failAudioState(generation: Long, @androidx.annotation.StringRes messageRes: Int = app.gyrolet.mpvrx.R.string.toast_playback_load_failed) {
+  private fun failAudioState(
+    generation: Long,
+    @androidx.annotation.StringRes messageRes: Int = app.gyrolet.mpvrx.R.string.toast_playback_load_failed,
+    errorCode: Int? = null,
+  ) {
     nativeLock.withLock {
       if (!isCurrentGeneration(generation)) return
       audioRetryJob?.cancel()
@@ -2699,7 +2713,9 @@ object PlaybackSession : MPVLib.EventObserver {
       desiredPaused = true
       audioEngine?.setPaused(true)
       updateState { it.copy(phase = PlaybackPhase.ERROR, paused = true,
-        error = applicationContext?.getString(messageRes)) }
+        error = applicationContext?.getString(messageRes)?.let { message ->
+          if (errorCode == null) message else "$message ($errorCode)"
+        }) }
     }
   }
 

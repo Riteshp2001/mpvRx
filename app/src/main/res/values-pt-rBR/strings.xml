@@ -2516,6 +2516,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_audio_shared_playback_section">Reprodução compartilhada</string>
   <string name="pref_audio_engine_exo">ExoPlayer (padrão)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
+  <string name="audio_active_engine">Mecanismo: %1$s</string>
   <string name="pref_audio_crossfade">Transição cruzada</string>
   <string name="pref_audio_crossfade_seconds">%1$d segundos</string>
   <string name="audio_output_engine">Mecanismo ativo</string>
