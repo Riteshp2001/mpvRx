@@ -2502,6 +2502,11 @@
   <string name="pref_background_playback_per_video_summary">バックグラウンド再生の選択を動画ごとに保存します。他の動画では有効にするまでオフのままです。</string>
   <string name="jellyfin_technical_details">技術情報</string>
   <string name="pref_audio_engine">音楽再生エンジン</string>
+  <string name="pref_audio_video_engine">動画再生エンジン</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer: 再生</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer: 音声出力</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer: ストリーミング</string>
+  <string name="pref_audio_shared_playback_section">共通の再生設定</string>
   <string name="pref_audio_engine_exo">ExoPlayer（既定）</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">クロスフェード</string>

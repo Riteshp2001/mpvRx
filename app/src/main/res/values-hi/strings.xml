@@ -2413,6 +2413,11 @@
   <string name="pref_background_playback_per_video_summary">हर वीडियो के लिए बैकग्राउंड प्लेबैक की पसंद अलग सहेजें। दूसरे वीडियो के लिए यह चालू किए जाने तक बंद रहेगा।</string>
   <string name="jellyfin_technical_details">तकनीकी विवरण</string>
   <string name="pref_audio_engine">संगीत प्लेबैक इंजन</string>
+  <string name="pref_audio_video_engine">वीडियो प्लेबैक इंजन</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer: प्लेबैक</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer: ध्वनि आउटपुट</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer: स्ट्रीमिंग</string>
+  <string name="pref_audio_shared_playback_section">साझा प्लेबैक सेटिंग्स</string>
   <string name="pref_audio_engine_exo">ExoPlayer (डिफ़ॉल्ट)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">क्रॉसफ़ेड</string>

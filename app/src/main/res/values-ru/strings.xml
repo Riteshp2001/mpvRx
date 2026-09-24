@@ -2523,6 +2523,11 @@
   <string name="pref_background_playback_per_video_summary">Сохранять выбор фонового воспроизведения отдельно для каждого видео. Для остальных видео оно выключено, пока вы его не включите.</string>
   <string name="jellyfin_technical_details">Технические сведения</string>
   <string name="pref_audio_engine">Движок воспроизведения музыки</string>
+  <string name="pref_audio_video_engine">Движок воспроизведения видео</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer: Воспроизведение</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer: Вывод звука</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer: Потоковое аудио</string>
+  <string name="pref_audio_shared_playback_section">Общие настройки воспроизведения</string>
   <string name="pref_audio_engine_exo">ExoPlayer (по умолчанию)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">Перекрёстное затухание</string>

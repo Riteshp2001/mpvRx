@@ -341,7 +341,9 @@ object PlaybackSession : MPVLib.EventObserver {
           destroyLocked()
         }
 
-        val retainedAudio = _state.value.takeIf { usingExoPlayer && audioEngine != null }
+        val retainedAudio = _state.value.takeIf {
+          usingExoPlayer && (audioEngine != null || it.phase == PlaybackPhase.LOADING)
+        }
         applicationContext = context.applicationContext
         nativeCoreReady = false
         observedProperties.clear()

@@ -2508,6 +2508,11 @@
   <string name="pref_background_playback_per_video_summary">分别保存每个视频的后台播放选择。其他视频的后台播放在单独启用前保持关闭。</string>
   <string name="jellyfin_technical_details">技术详情</string>
   <string name="pref_audio_engine">音乐播放引擎</string>
+  <string name="pref_audio_video_engine">视频播放引擎</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer：播放</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer：音频输出</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer：流媒体</string>
+  <string name="pref_audio_shared_playback_section">通用播放设置</string>
   <string name="pref_audio_engine_exo">ExoPlayer（默认）</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">交叉淡入淡出</string>

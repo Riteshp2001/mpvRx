@@ -152,9 +152,8 @@ object AudioPreferencesScreen : Screen {
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_audio_engine))
             PreferenceCard {
-              val engine by preferences.audioEngine.collectAsState()
               ListPreference(
-                value = engine,
+                value = selectedEngine,
                 onValueChange = preferences.audioEngine::set,
                 values = AudioEngineKind.entries,
                 valueToText = { AnnotatedString(resources.getString(if (it == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv)) },
@@ -162,9 +161,27 @@ object AudioPreferencesScreen : Screen {
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_engine),
               )
               PreferenceDivider()
+              me.zhanghai.compose.preference.Preference(
+                title = { Text(stringResource(R.string.pref_audio_video_engine)) },
+                summary = { Text(stringResource(R.string.pref_audio_engine_mpv), color = MaterialTheme.colorScheme.outline) },
+              )
+              val session by PlaybackSession.state.collectAsState()
+              if (session.currentItem != null) {
+                val activeEngine = if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
+                PreferenceDivider()
+                me.zhanghai.compose.preference.Preference(
+                  title = { Text(stringResource(R.string.audio_output_engine)) },
+                  summary = { Text(stringResource(activeEngine), color = MaterialTheme.colorScheme.outline) },
+                )
+              }
+            }
+          }
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_audio_exo_playback_section))
+            PreferenceCard {
               val duration by preferences.crossfadeDurationMs.collectAsState()
               var seconds by remember(duration) { mutableFloatStateOf((duration / 1000f).coerceIn(0f, 12f)) }
-              Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+              Column(modifier = Modifier.settingsSearchTarget(R.string.pref_audio_crossfade).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(stringResource(R.string.pref_audio_crossfade), style = MaterialTheme.typography.bodyLarge)
                 Text(
                   if (seconds < 1f) stringResource(R.string.audio_gapless)
@@ -175,13 +192,25 @@ object AudioPreferencesScreen : Screen {
                   value = seconds,
                   onValueChange = { seconds = it },
                   onValueChangeFinished = { preferences.crossfadeDurationMs.set(seconds.roundToInt() * 1000) },
-                  enabled = engine == AudioEngineKind.ExoPlayer,
+                  enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                   valueRange = 0f..12f,
                   steps = 11,
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_crossfade),
                 )
               }
               PreferenceDivider()
+              val skipSilence by preferences.skipSilence.collectAsState()
+              SwitchPreference(
+                value = skipSilence,
+                onValueChange = preferences.skipSilence::set,
+                enabled = selectedEngine == AudioEngineKind.ExoPlayer,
+                title = { Text(stringResource(R.string.pref_audio_skip_silence)) },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_skip_silence),
+              )
+            }
+          }
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_audio_exo_output_section))
+            PreferenceCard {
               val outputRate by preferences.outputSampleRate.collectAsState()
               val outputRateText: (AudioOutputSampleRate) -> String = { mode ->
                 when (mode) {
@@ -194,22 +223,13 @@ object AudioPreferencesScreen : Screen {
                 value = outputRate,
                 onValueChange = preferences.outputSampleRate::set,
                 values = AudioOutputSampleRate.entries,
-                enabled = engine == AudioEngineKind.ExoPlayer,
+                enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                 valueToText = { AnnotatedString(outputRateText(it)) },
                 title = { Text(stringResource(R.string.pref_audio_output_sample_rate)) },
                 summary = {
                   Text(outputRateText(outputRate), color = MaterialTheme.colorScheme.outline)
                 },
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_output_sample_rate),
-              )
-              PreferenceDivider()
-              val skipSilence by preferences.skipSilence.collectAsState()
-              SwitchPreference(
-                value = skipSilence,
-                onValueChange = preferences.skipSilence::set,
-                enabled = engine == AudioEngineKind.ExoPlayer,
-                title = { Text(stringResource(R.string.pref_audio_skip_silence)) },
-                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_skip_silence),
               )
               PreferenceDivider()
               val replayGain by preferences.replayGain.collectAsState()
@@ -220,7 +240,7 @@ object AudioPreferencesScreen : Screen {
                   if (mode != ReplayGainMode.Off) preferences.volumeNormalization.set(false)
                 },
                 values = ReplayGainMode.entries,
-                enabled = engine == AudioEngineKind.ExoPlayer,
+                enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                 valueToText = { mode -> AnnotatedString(resources.getString(when (mode) {
                   ReplayGainMode.Off -> R.string.generic_disabled
                   ReplayGainMode.Track -> R.string.audio_replay_gain_track
@@ -235,7 +255,7 @@ object AudioPreferencesScreen : Screen {
                 SwitchPreference(
                   value = preferAtmos,
                   onValueChange = preferences.preferDolbyAtmos::set,
-                  enabled = engine == AudioEngineKind.ExoPlayer,
+                  enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                   title = { Text(stringResource(R.string.pref_audio_dolby_atmos)) },
                   modifier = Modifier.settingsSearchTarget(R.string.pref_audio_dolby_atmos),
                 )
@@ -249,7 +269,7 @@ object AudioPreferencesScreen : Screen {
                 SwitchPreference(
                   value = spatial,
                   onValueChange = preferences.spatialAudio::set,
-                  enabled = engine == AudioEngineKind.ExoPlayer,
+                  enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                   title = { Text(stringResource(R.string.pref_audio_spatial)) },
                   modifier = Modifier.settingsSearchTarget(R.string.pref_audio_spatial),
                 )
@@ -261,7 +281,11 @@ object AudioPreferencesScreen : Screen {
                   },
                 )
               }
-              PreferenceDivider()
+            }
+          }
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_audio_exo_streaming_section))
+            PreferenceCard {
               val wifiQuality by preferences.wifiMaxBitrate.collectAsState()
               val mobileQuality by preferences.mobileMaxBitrate.collectAsState()
               val qualityOptions = listOf(0, 64_000, 128_000, 192_000, 256_000, 320_000)
@@ -272,7 +296,7 @@ object AudioPreferencesScreen : Screen {
               ListPreference(
                 value = wifiQuality, values = qualityOptions, valueToText = qualityLabel,
                 onValueChange = preferences.wifiMaxBitrate::set,
-                enabled = engine == AudioEngineKind.ExoPlayer,
+                enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                 title = { Text(stringResource(R.string.pref_audio_wifi_quality)) },
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_wifi_quality),
               )
@@ -280,7 +304,7 @@ object AudioPreferencesScreen : Screen {
               ListPreference(
                 value = mobileQuality, values = qualityOptions, valueToText = qualityLabel,
                 onValueChange = preferences.mobileMaxBitrate::set,
-                enabled = engine == AudioEngineKind.ExoPlayer,
+                enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                 title = { Text(stringResource(R.string.pref_audio_mobile_quality)) },
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_mobile_quality),
               )
@@ -289,19 +313,10 @@ object AudioPreferencesScreen : Screen {
               SwitchPreference(
                 value = cacheStreams,
                 onValueChange = preferences.streamingCacheEnabled::set,
-                enabled = engine == AudioEngineKind.ExoPlayer,
+                enabled = selectedEngine == AudioEngineKind.ExoPlayer,
                 title = { Text(stringResource(R.string.pref_audio_stream_cache)) },
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_stream_cache),
               )
-              val session by PlaybackSession.state.collectAsState()
-              if (session.currentItem != null) {
-                val activeEngine = if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
-                Text(
-                  stringResource(R.string.audio_output_engine) + ": " + stringResource(activeEngine),
-                  style = MaterialTheme.typography.bodyMedium,
-                  modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-              }
             }
           }
           item {
@@ -570,7 +585,7 @@ object AudioPreferencesScreen : Screen {
           }
 
           item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_playback))
+            PreferenceSectionHeader(title = stringResource(R.string.pref_audio_shared_playback_section))
           }
 
           item {

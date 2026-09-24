@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="audio_widget_background">#24262A</color>
+    <color name="audio_widget_foreground">#F8FAFC</color>
+    <color name="audio_widget_secondary">#CBD0D8</color>
+    <color name="audio_widget_scrim">#FF15171B</color>
+    <color name="audio_widget_scrim_middle">#EB15171B</color>
+    <color name="audio_widget_scrim_clear">#0015171B</color>
+    <color name="audio_widget_pressed">#30FFFFFF</color>
+</resources>

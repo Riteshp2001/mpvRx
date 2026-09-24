@@ -2509,6 +2509,11 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_background_playback_per_video_summary">Hintergrundwiedergabe für jedes Video separat speichern. Für andere Videos bleibt sie ausgeschaltet, bis sie aktiviert wird.</string>
   <string name="jellyfin_technical_details">Technische Details</string>
   <string name="pref_audio_engine">Wiedergabe-Engine für Musik</string>
+  <string name="pref_audio_video_engine">Wiedergabe-Engine für Videos</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer: Wiedergabe</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer: Audioausgabe</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer: Streaming</string>
+  <string name="pref_audio_shared_playback_section">Gemeinsame Wiedergabeeinstellungen</string>
   <string name="pref_audio_engine_exo">ExoPlayer (Standard)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">Überblenden</string>

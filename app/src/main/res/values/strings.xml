@@ -2552,6 +2552,11 @@
   <string name="pref_background_playback_per_video_summary">Save a separate background playback choice for each video. Other videos stay off until enabled.</string>
   <string name="jellyfin_technical_details">Technical details</string>
   <string name="pref_audio_engine">Music playback engine</string>
+  <string name="pref_audio_video_engine">Video playback engine</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer: Playback</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer: Sound output</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer: Streaming</string>
+  <string name="pref_audio_shared_playback_section">Shared playback</string>
   <string name="pref_audio_engine_exo">ExoPlayer (default)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">Crossfade</string>

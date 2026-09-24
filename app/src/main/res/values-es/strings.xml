@@ -2509,6 +2509,11 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_background_playback_per_video_summary">Guardar la reproducción en segundo plano por separado para cada vídeo. En los demás vídeos seguirá desactivada hasta que la actives.</string>
   <string name="jellyfin_technical_details">Detalles técnicos</string>
   <string name="pref_audio_engine">Motor de reproducción de música</string>
+  <string name="pref_audio_video_engine">Motor de reproducción de vídeo</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer: Reproducción</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer: Salida de audio</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer: Streaming</string>
+  <string name="pref_audio_shared_playback_section">Reproducción compartida</string>
   <string name="pref_audio_engine_exo">ExoPlayer (predeterminado)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">Fundido cruzado</string>

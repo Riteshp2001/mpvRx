@@ -2535,6 +2535,11 @@
   <string name="pref_background_playback_per_video_summary">احفظ اختيار التشغيل في الخلفية لكل فيديو على حدة. يظل معطلًا للفيديوهات الأخرى حتى تفعيله لها.</string>
   <string name="jellyfin_technical_details">التفاصيل التقنية</string>
   <string name="pref_audio_engine">محرك تشغيل الموسيقى</string>
+  <string name="pref_audio_video_engine">محرك تشغيل الفيديو</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer: التشغيل</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer: إخراج الصوت</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer: البث</string>
+  <string name="pref_audio_shared_playback_section">إعدادات التشغيل المشتركة</string>
   <string name="pref_audio_engine_exo">ExoPlayer (الافتراضي)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">تداخل تدريجي بين المقاطع</string>

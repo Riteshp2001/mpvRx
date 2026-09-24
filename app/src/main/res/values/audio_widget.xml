@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="audio_widget_background">#E8ECF0</color>
+    <color name="audio_widget_foreground">#171A1F</color>
+    <color name="audio_widget_secondary">#4D535C</color>
+    <color name="audio_widget_scrim">#FFF5F7FA</color>
+    <color name="audio_widget_scrim_middle">#EBF5F7FA</color>
+    <color name="audio_widget_scrim_clear">#00F5F7FA</color>
+    <color name="audio_widget_pressed">#24171A1F</color>
+    <dimen name="audio_widget_band_compact">88dp</dimen>
+    <dimen name="audio_widget_band_wide">64dp</dimen>
+</resources>

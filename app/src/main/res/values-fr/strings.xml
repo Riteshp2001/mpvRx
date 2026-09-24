@@ -2509,6 +2509,11 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_background_playback_per_video_summary">Enregistrer séparément la lecture en arrière-plan pour chaque vidéo. Elle reste désactivée pour les autres vidéos tant qu\'elle n\'est pas activée.</string>
   <string name="jellyfin_technical_details">Détails techniques</string>
   <string name="pref_audio_engine">Moteur de lecture musicale</string>
+  <string name="pref_audio_video_engine">Moteur de lecture vidéo</string>
+  <string name="pref_audio_exo_playback_section">ExoPlayer : Lecture</string>
+  <string name="pref_audio_exo_output_section">ExoPlayer : Sortie audio</string>
+  <string name="pref_audio_exo_streaming_section">ExoPlayer : Streaming</string>
+  <string name="pref_audio_shared_playback_section">Lecture commune</string>
   <string name="pref_audio_engine_exo">ExoPlayer (par défaut)</string>
   <string name="pref_audio_engine_mpv">mpv</string>
   <string name="pref_audio_crossfade">Fondu enchaîné</string>

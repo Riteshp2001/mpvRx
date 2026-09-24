@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/audio_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/audio_widget_background"
+    android:clipToOutline="true">
+
+    <ImageView
+        android:id="@+id/audio_widget_artwork"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitXY" />
+
+    <ImageView
+        android:id="@+id/audio_widget_placeholder"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="32dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_launcher_monochrome"
+        android:tint="@color/audio_widget_secondary" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/audio_widget_scrim"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/audio_widget_band_wide"
+        android:layout_gravity="bottom"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="4dp">
+
+        <LinearLayout
+            android:id="@+id/audio_widget_metadata"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingEnd="8dp">
+
+            <TextView
+                android:id="@+id/audio_widget_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/gflex_variable"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="@string/audio_widget_empty"
+                android:textColor="@color/audio_widget_foreground"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/audio_widget_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/gflex_variable"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:textColor="@color/audio_widget_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/audio_widget_previous"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/audio_widget_control_background"
+            android:contentDescription="@string/pref_gesture_media_previous"
+            android:padding="12dp"
+            android:src="@drawable/audio_widget_previous"
+            android:tint="@color/audio_widget_foreground" />
+
+        <ImageButton
+            android:id="@+id/audio_widget_play"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/audio_widget_control_background"
+            android:contentDescription="@string/ui_play"
+            android:padding="10dp"
+            android:src="@drawable/audio_widget_play"
+            android:tint="@color/audio_widget_foreground" />
+
+        <ImageButton
+            android:id="@+id/audio_widget_next"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/audio_widget_control_background"
+            android:contentDescription="@string/pref_gesture_media_next"
+            android:padding="12dp"
+            android:src="@drawable/audio_widget_next"
+            android:tint="@color/audio_widget_foreground" />
+    </LinearLayout>
+</FrameLayout>

@@ -248,7 +248,7 @@ class MediaPlaybackService :
   private val torrentStreamingEngine: TorrentStreamingEngine by inject()
   private val audioLibrary by lazy { AudioMediaLibrary(this) }
   private var audioLibraryLoadJob: Job? = null
-  private var widgetState: Pair<String?, Boolean>? = null
+  private var widgetState: Pair<PlaybackItem?, Boolean>? = null
 
   private var mediaIdentifier = ""
   private var mediaTitle = ""
@@ -445,11 +445,6 @@ class MediaPlaybackService :
         if (audio.title != null) mediaTitle = audio.title
         if (audio.artist != null) mediaArtist = audio.artist
         paused = audio.paused
-        val currentWidgetState = audio.item?.stableId to audio.paused
-        if (widgetState != currentWidgetState) {
-          widgetState = currentWidgetState
-          AudioPlayerWidget.requestUpdate(this@MediaPlaybackService)
-        }
         currentPositionSeconds = audio.positionMs / 1000.0
         mediaDurationSeconds = audio.durationMs / 1000.0
         playbackSpeed = audio.speed
@@ -1082,6 +1077,7 @@ class MediaPlaybackService :
   private fun syncQueueState(queueState: PlaybackQueueState) {
     if (!::mediaSession.isInitialized) return
     publishMediaSessionQueue(queueState)
+    AudioPlayerWidget.requestUpdate(this)
     // Repeat mode remains a player/queue feature, but is intentionally not published through
     // MediaSession so the Media notification cannot expose Repeat / Repeat One / Repeat All.
     mediaSession.setShuffleMode(
@@ -1384,12 +1380,18 @@ class MediaPlaybackService :
       }
       mediaSession.setMetadata(metadataBuilder.build())
       mediaSession.setSessionActivity(buildContentIntent())
+      AudioPlayerWidget.requestUpdate(this)
     } catch (e: Exception) {
       Log.e(TAG, "Error updating MediaSession metadata", e)
     }
   }
 
   private fun updateMediaSessionPlaybackState() {
+    val currentWidgetState = PlaybackSession.state.value.currentItem to paused
+    if (widgetState != currentWidgetState) {
+      widgetState = currentWidgetState
+      AudioPlayerWidget.requestUpdate(this)
+    }
     try {
       val duration = sanitizedDurationMs()
       var actions =
