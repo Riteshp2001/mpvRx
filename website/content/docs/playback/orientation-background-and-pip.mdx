@@ -22,9 +22,24 @@ Per-video orientation memory can restore a media-specific choice the next time t
 
 ## Unified background playback
 
-Background playback keeps the active queue alive when you return to browser screens or leave the foreground. Audio and video share one persistent playback session, so changing tabs should not create a second queue.
+Background playback keeps the active queue alive when you return to browser
+screens or leave the foreground. Audio and video share one app-scoped playback
+session, but have separate background-playback settings. Enable the audio
+background setting for music; the video setting controls video handoffs.
+
+On the experimental ExoPlayer branch, audio remains with the selected audio
+engine while the full player, mini-player and notification control that same
+queue. Leaving the player does not itself request an mpv fallback or create a
+second player session. Audio-focus interruptions can pause or duck playback;
+headphone-unplug handling pauses it.
 
 Android may require notification permission for transport controls. Aggressive vendor battery optimization can still stop long-running background work; exempt mpvRx only when the device actually interrupts playback.
+
+Keeping a live service is different from recovering after process death. The
+experimental branch's saved ExoPlayer queue can be reopened explicitly through
+Android Auto or the music widget when history retention is enabled. It is not
+automatic playback after a reboot or a guarantee that Android will keep the
+service alive. See [Audio and music](/docs/playback/audio-and-music#playlists-and-saved-queue).
 
 ## Picture-in-picture
 
@@ -43,4 +58,11 @@ Back navigation may return to the browser with a mini-player instead of stopping
 
 ## Notifications
 
-Media notifications expose transport and close actions for the active session. Android 13 and newer require notification permission. Notification style and chapter progress options depend on Android version and the selected player settings.
+Media notifications expose transport and close actions for the active session.
+On Android 13 and newer, grant notification permission for the app's notification
+features; system media controls can have different visibility rules. Notification
+style and chapter progress options depend on Android version and player settings.
+
+The experimental branch's music widget and Android Auto controls send transport
+actions to this same service. They do not independently load another engine, and
+cannot bypass media-access permissions or source authentication.

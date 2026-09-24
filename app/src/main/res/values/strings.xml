@@ -1,4 +1,24 @@
 <resources>
+  <string name="audio_badge_dolby_atmos">Dolby Atmos</string>
+  <string name="audio_badge_dolby_audio">Dolby Audio</string>
+  <string name="pref_audio_skip_silence">Skip silence</string>
+  <string name="pref_audio_replay_gain">ReplayGain</string>
+  <string name="audio_replay_gain_track">Track gain</string>
+  <string name="audio_replay_gain_album">Album gain</string>
+  <string name="pref_audio_dolby_atmos">Prefer Dolby Atmos</string>
+  <string name="pref_audio_spatial">Spatial audio</string>
+  <string name="pref_audio_wifi_quality">Unmetered audio quality</string>
+  <string name="pref_audio_mobile_quality">Metered audio quality</string>
+  <string name="audio_quality_unlimited">Original quality</string>
+  <string name="audio_quality_kbps">%1$d kbps</string>
+  <string name="pref_audio_stream_cache">Cache streamed audio</string>
+  <string name="audio_system_sound_settings">Android sound settings</string>
+  <string name="audio_spatial_system_disabled">Disabled in Android settings</string>
+  <string name="audio_gapless">Gapless</string>
+  <string name="audio_queue_resume">Resume queue</string>
+  <string name="audio_queue_label">Play queue</string>
+  <string name="audio_widget_name">mpvRx music</string>
+  <string name="audio_widget_empty">No music selected</string>
   <string name="app_name" translatable="false">mpvRx</string>
   <string name="generic_reset">Reset</string>
   <string name="generic_share">Share</string>
@@ -2542,8 +2562,6 @@
   <string name="audio_output_processing">16-bit PCM</string>
   <string name="audio_output_float">Floating-point PCM</string>
   <string name="audio_output_encoded">Encoded audio</string>
-  <string name="audio_fallback_config">mpv (configuration)</string>
-  <string name="audio_fallback_format">mpv (compatibility)</string>
   <string name="audio_native_controls">Requires mpv</string>
   <string name="audio_atmos_unsupported">Dolby Atmos unavailable</string>
   <string name="audio_atmos_source">Dolby Atmos source (E-AC-3 JOC)</string>

@@ -1,5 +1,25 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="audio_badge_dolby_atmos">Dolby Atmos</string>
+  <string name="audio_badge_dolby_audio">Dolby Audio</string>
+  <string name="pref_audio_skip_silence">無音をスキップ</string>
+  <string name="pref_audio_replay_gain">ReplayGain</string>
+  <string name="audio_replay_gain_track">トラックゲイン</string>
+  <string name="audio_replay_gain_album">アルバムゲイン</string>
+  <string name="pref_audio_dolby_atmos">Dolby Atmosを優先</string>
+  <string name="pref_audio_spatial">空間オーディオ</string>
+  <string name="pref_audio_wifi_quality">従量制でない接続の音質</string>
+  <string name="pref_audio_mobile_quality">従量制接続の音質</string>
+  <string name="audio_quality_unlimited">元の音質</string>
+  <string name="audio_quality_kbps">%1$d kbps</string>
+  <string name="pref_audio_stream_cache">ストリーミング音声をキャッシュ</string>
+  <string name="audio_system_sound_settings">Androidのサウンド設定</string>
+  <string name="audio_spatial_system_disabled">Android設定で無効</string>
+  <string name="audio_gapless">ギャップレス</string>
+  <string name="audio_queue_resume">キューを再開</string>
+  <string name="audio_queue_label">再生キュー</string>
+  <string name="audio_widget_name">mpvRxミュージック</string>
+  <string name="audio_widget_empty">音楽が選択されていません</string>
   <string name="generic_reset">リセット</string>
   <string name="generic_share">共有</string>
   <string name="generic_confirm">確認</string>
@@ -2492,8 +2512,6 @@
   <string name="audio_output_processing">16 ビット PCM</string>
   <string name="audio_output_float">浮動小数点 PCM</string>
   <string name="audio_output_encoded">符号化音声</string>
-  <string name="audio_fallback_config">mpv（設定）</string>
-  <string name="audio_fallback_format">mpv（互換性）</string>
   <string name="audio_native_controls">mpv が必要</string>
   <string name="audio_atmos_unsupported">Dolby Atmos は利用不可</string>
   <string name="audio_atmos_source">Dolby Atmos ソース（E-AC-3 JOC）</string>

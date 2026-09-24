@@ -15,7 +15,21 @@ Use **Open URL** for a receiver-accessible media URL such as an MP4 file or HLS 
 
 ## Supported online sources
 
-The yt-dlp bridge can resolve supported websites and exposes independent preferences for codec, resolution, frame rate, HDR, container, and audio bitrate. Site changes can temporarily break extraction until the bundled tooling is updated.
+The yt-dlp bridge resolves supported websites. Download and mpv video workflows
+expose preferences for codec, resolution, frame rate, HDR, container and audio
+bitrate. Site changes can temporarily break extraction until the tooling is
+updated.
+
+On the experimental ExoPlayer branch, eligible audio uses separate metered and
+unmetered bitrate preferences in **Settings > Audio**. Webpage sources can be
+resolved to a fresh audio URL on load, preload or retry; declared direct streams
+and internal network proxies do not need webpage extraction. This still depends
+on source support, valid authentication and an available format. Failed audio
+does not automatically switch to mpv.
+
+See [Audio streaming quality](/docs/playback/audio-and-music#streaming-quality-and-cache)
+for recovery and cache behavior. These audio limits do not replace the download
+format selector or video-quality settings.
 
 See [Downloads and online quality](/docs/library-and-streaming/downloads-and-online-quality)
 for destination selection, active/completed queues, and quality-filter guidance.

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/audio_widget_name"
+    android:initialLayout="@layout/audio_player_widget"
+    android:minWidth="248dp"
+    android:minHeight="128dp"
+    android:minResizeWidth="224dp"
+    android:minResizeHeight="128dp"
+    android:resizeMode="horizontal"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

@@ -1,4 +1,24 @@
 <resources>
+  <string name="audio_badge_dolby_atmos">डॉल्बी एटमॉस</string>
+  <string name="audio_badge_dolby_audio">डॉल्बी ऑडियो</string>
+  <string name="pref_audio_skip_silence">खामोशी छोड़ें</string>
+  <string name="pref_audio_replay_gain">ReplayGain</string>
+  <string name="audio_replay_gain_track">ट्रैक गेन</string>
+  <string name="audio_replay_gain_album">एल्बम गेन</string>
+  <string name="pref_audio_dolby_atmos">Dolby Atmos को प्राथमिकता दें</string>
+  <string name="pref_audio_spatial">स्थानिक ऑडियो</string>
+  <string name="pref_audio_wifi_quality">असीमित डेटा पर ऑडियो गुणवत्ता</string>
+  <string name="pref_audio_mobile_quality">सीमित डेटा पर ऑडियो गुणवत्ता</string>
+  <string name="audio_quality_unlimited">मूल गुणवत्ता</string>
+  <string name="audio_quality_kbps">%1$d kbps</string>
+  <string name="pref_audio_stream_cache">स्ट्रीम किए गए ऑडियो को कैश करें</string>
+  <string name="audio_system_sound_settings">Android ध्वनि सेटिंग्स</string>
+  <string name="audio_spatial_system_disabled">Android सेटिंग्स में बंद है</string>
+  <string name="audio_gapless">बिना अंतराल</string>
+  <string name="audio_queue_resume">प्लेबैक कतार फिर शुरू करें</string>
+  <string name="audio_queue_label">प्लेबैक कतार</string>
+  <string name="audio_widget_name">mpvRx संगीत</string>
+  <string name="audio_widget_empty">कोई संगीत नहीं चुना गया</string>
   <string name="app_name">mpvRx</string>
   <string name="generic_reset">रीसेट करें</string>
   <string name="generic_share">शेयर करें</string>
@@ -2403,8 +2423,6 @@
   <string name="audio_output_processing">16-बिट PCM</string>
   <string name="audio_output_float">फ़्लोटिंग-पॉइंट PCM</string>
   <string name="audio_output_encoded">एन्कोडेड ऑडियो</string>
-  <string name="audio_fallback_config">mpv (कॉन्फ़िगरेशन)</string>
-  <string name="audio_fallback_format">mpv (अनुकूलता)</string>
   <string name="audio_native_controls">mpv आवश्यक</string>
   <string name="audio_atmos_unsupported">Dolby Atmos अनुपलब्ध</string>
   <string name="audio_atmos_source">Dolby Atmos स्रोत (E-AC-3 JOC)</string>

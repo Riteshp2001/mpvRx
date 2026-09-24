@@ -1,5 +1,25 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="audio_badge_dolby_atmos">Dolby Atmos</string>
+  <string name="audio_badge_dolby_audio">Audio Dolby</string>
+  <string name="pref_audio_skip_silence">Ignorer les silences</string>
+  <string name="pref_audio_replay_gain">ReplayGain</string>
+  <string name="audio_replay_gain_track">Gain par piste</string>
+  <string name="audio_replay_gain_album">Gain par album</string>
+  <string name="pref_audio_dolby_atmos">Préférer Dolby Atmos</string>
+  <string name="pref_audio_spatial">Audio spatial</string>
+  <string name="pref_audio_wifi_quality">Qualité audio sans limite de données</string>
+  <string name="pref_audio_mobile_quality">Qualité audio avec limite de données</string>
+  <string name="audio_quality_unlimited">Qualité originale</string>
+  <string name="audio_quality_kbps">%1$d kbit/s</string>
+  <string name="pref_audio_stream_cache">Mettre le flux audio en cache</string>
+  <string name="audio_system_sound_settings">Paramètres audio Android</string>
+  <string name="audio_spatial_system_disabled">Désactivé dans les paramètres Android</string>
+  <string name="audio_gapless">Sans interruption</string>
+  <string name="audio_queue_resume">Reprendre la file</string>
+  <string name="audio_queue_label">File de lecture</string>
+  <string name="audio_widget_name">Musique mpvRx</string>
+  <string name="audio_widget_empty">Aucune musique sélectionnée</string>
   <string name="generic_reset">Réinitialiser</string>
   <string name="generic_share">Partager</string>
   <string name="generic_confirm">Confirmer</string>
@@ -2499,8 +2519,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="audio_output_processing">PCM 16 bits</string>
   <string name="audio_output_float">PCM à virgule flottante</string>
   <string name="audio_output_encoded">Audio encodé</string>
-  <string name="audio_fallback_config">mpv (configuration)</string>
-  <string name="audio_fallback_format">mpv (compatibilité)</string>
   <string name="audio_native_controls">Nécessite mpv</string>
   <string name="audio_atmos_unsupported">Dolby Atmos indisponible</string>
   <string name="audio_atmos_source">Source Dolby Atmos (E-AC-3 JOC)</string>

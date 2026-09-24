@@ -228,6 +228,7 @@ class YtdlpDownloadEngine(
     val errorOutput = ArrayDeque<String>()
     var destination: String? = null
     var printedOutput: String? = null
+    var audioMetadata: String? = null
 
     val result =
       withContext(Dispatchers.IO) {
@@ -238,6 +239,9 @@ class YtdlpDownloadEngine(
           if (cancelRequested) process.destroyForcibly()
           BufferedReader(InputStreamReader(process.inputStream)).useLines { lines ->
             lines.forEach { line ->
+              if (line.startsWith(AUDIO_METADATA_PREFIX) && line.length <= 65_536) {
+                audioMetadata = line.removePrefix(AUDIO_METADATA_PREFIX)
+              }
               parseDestination(line)?.let { path ->
                 destination = path
                 resolveJobOutput(job, path)?.let { file -> observedArtifacts += file.absolutePath }
@@ -250,7 +254,7 @@ class YtdlpDownloadEngine(
               if (progress != null) {
                 updateJob(id) { it.copy(progressPercent = progress.first, detail = progress.second) }
                 currentJob(id)?.let(onJobUpdate)
-              } else if (line.isNotBlank()) {
+              } else if (line.isNotBlank() && !line.startsWith(AUDIO_METADATA_PREFIX)) {
                 errorOutput.addLast(line.take(2_048))
                 if (errorOutput.size > 8) errorOutput.removeFirst()
               }
@@ -262,7 +266,6 @@ class YtdlpDownloadEngine(
       }
 
     activeProcess = null
-    activeJobId = -1
 
     result
       .onSuccess { exitCode ->
@@ -298,7 +301,15 @@ class YtdlpDownloadEngine(
                     ?: throw IllegalStateException("yt-dlp finished without a playable output file")
                 }
               }
-            resolvedResult.onSuccess { resolved ->
+            resolvedResult.onSuccess finalize@{ resolved ->
+              if (!cancelRequested && !job.mergeSeparateStreams && audioMetadata != null) {
+                embedAudioMetadata(resolved, checkNotNull(audioMetadata), temporaryDirectory)
+              }
+              if (cancelRequested || currentJob(id) == null) {
+                updateJob(id) { it.copy(state = JobState.CANCELLED, detail = "", outputFile = resolved.absolutePath) }
+                cleanupWorkingDirectory(id)
+                return@finalize
+              }
               val artifacts = sourceArtifacts + resolved.absolutePath
               cleanupIntermediateArtifacts(job, artifacts, resolved)
               cleanupWorkingDirectory(id)
@@ -345,6 +356,7 @@ class YtdlpDownloadEngine(
           )
         }
       }
+    activeJobId = -1
     currentJob(id)?.let(onJobUpdate)
   }
 
@@ -377,6 +389,8 @@ class YtdlpDownloadEngine(
       add("temp:$temporaryDirectory")
       add("--print")
       add("after_move:$FINAL_OUTPUT_PREFIX%(filepath)s")
+      add("--print")
+      add("after_move:$AUDIO_METADATA_PREFIX%(.{title,track,artist,uploader,album,album_artist,release_year,track_number,thumbnail})j")
       add("--format")
       add(formatSelector ?: DEFAULT_SINGLE_FILE_FORMAT)
       add("-o")
@@ -423,6 +437,36 @@ class YtdlpDownloadEngine(
     }
 
   private fun startProcess(command: List<String>): Process = YtdlpManager.startPythonProcess(command, context)
+
+  private suspend fun embedAudioMetadata(file: File, metadata: String, directory: File) = withContext(Dispatchers.IO) {
+    if (file.extension.lowercase() !in setOf("mp3", "m4a", "flac", "ogg", "opus") ||
+      !File(YtdlpManager.getYtdlDir(context), "mutagen.zip").isFile
+    ) return@withContext
+    val metadataFile = File(directory, "audio-metadata.json")
+    val temporaryFile = File(file.parentFile, ".${file.name}.mpvrx-tags")
+    var process: Process? = null
+    try {
+      metadataFile.writeText(metadata, Charsets.UTF_8)
+      val taggingProcess = startProcess(listOf(YtdlpManager.getExecutablePath(context),
+        File(YtdlpManager.getYtdlDir(context), "tag_audio.py").absolutePath,
+        file.absolutePath, metadataFile.absolutePath, temporaryFile.absolutePath))
+      process = taggingProcess
+      activeProcess = taggingProcess
+      if (cancelRequested) taggingProcess.destroyForcibly()
+      val completed = runInterruptible { taggingProcess.waitFor(60, java.util.concurrent.TimeUnit.SECONDS) }
+      if (!completed || taggingProcess.exitValue() != 0) Log.w(TAG, "Audio metadata could not be embedded; original download retained")
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Exception) {
+      Log.w(TAG, "Audio metadata could not be embedded; original download retained")
+    } finally {
+      process?.let { if (it.isAlive) it.destroyForcibly() }
+      runCatching { process?.inputStream?.close() }
+      activeProcess = null
+      temporaryFile.delete()
+      metadataFile.delete()
+    }
+  }
 
   private fun findNewestOutput(job: Job): String? {
     return File(job.directory)
@@ -523,6 +567,7 @@ class YtdlpDownloadEngine(
     private const val TAG = "YtdlpDownloadEngine"
     private const val WORK_DIRECTORY = "ytdlp_downloads"
     private const val FINAL_OUTPUT_PREFIX = "MPVRX_FINAL_OUTPUT="
+    private const val AUDIO_METADATA_PREFIX = "MPVRX_AUDIO_METADATA="
     private const val DEFAULT_SINGLE_FILE_FORMAT = "best/bestvideo/bestaudio"
 
     // Example: "[download]  42.3% of ~ 123.45MiB at 2.34MiB/s ETA 01:23"

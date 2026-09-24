@@ -42,6 +42,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.media.MediaBrowserServiceCompat
+import androidx.media.MediaSessionManager
 import androidx.media.session.MediaButtonReceiver
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
@@ -111,6 +112,9 @@ class MediaPlaybackService :
     const val ACTION_NOTIFICATION_MEDIA_FAVORITE = "app.gyrolet.mpvrx.action.NOTIFICATION_MEDIA_FAVORITE"
     const val ACTION_NOTIFICATION_CLOSE = "app.gyrolet.mpvrx.action.NOTIFICATION_CLOSE"
     const val ACTION_NOTIFICATION_STOP = "app.gyrolet.mpvrx.action.NOTIFICATION_STOP"
+    const val ACTION_PLAY_AUDIO_LIBRARY = "app.gyrolet.mpvrx.action.PLAY_AUDIO_LIBRARY"
+    const val EXTRA_AUDIO_MEDIA_ID = "audio_media_id"
+    const val EXTRA_AUDIO_PLAY_WHEN_READY = "audio_play_when_ready"
     const val EXTRA_EXTERNAL_DISPLAY_ACTIVE = "external_display_active"
 
     @Volatile
@@ -242,6 +246,9 @@ class MediaPlaybackService :
   private val playlistRepository: PlaylistRepository by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val torrentStreamingEngine: TorrentStreamingEngine by inject()
+  private val audioLibrary by lazy { AudioMediaLibrary(this) }
+  private var audioLibraryLoadJob: Job? = null
+  private var widgetState: Pair<String?, Boolean>? = null
 
   private var mediaIdentifier = ""
   private var mediaTitle = ""
@@ -438,6 +445,16 @@ class MediaPlaybackService :
         if (audio.title != null) mediaTitle = audio.title
         if (audio.artist != null) mediaArtist = audio.artist
         paused = audio.paused
+        val currentWidgetState = audio.item?.stableId to audio.paused
+        if (widgetState != currentWidgetState) {
+          widgetState = currentWidgetState
+          AudioPlayerWidget.requestUpdate(this@MediaPlaybackService)
+        }
+        currentPositionSeconds = audio.positionMs / 1000.0
+        mediaDurationSeconds = audio.durationMs / 1000.0
+        playbackSpeed = audio.speed
+        if (audio.ready && !activityForeground) PlaybackSession.markBackground()
+        updateMediaSessionPlaybackState()
         val currentChapters = audio.chapters.map { ChapterNode(title = it.title, time = it.positionMs / 1000f) }
         if (chapters != currentChapters) setChapters(currentChapters)
         if (metadataChanged) {
@@ -507,7 +524,28 @@ class MediaPlaybackService :
       return START_NOT_STICKY
     }
 
-    if (!PlaybackSession.isInitialized) {
+    if (intent?.action == ACTION_PLAY_AUDIO_LIBRARY) {
+      startAudioLibraryPlayback(
+        intent.getStringExtra(EXTRA_AUDIO_MEDIA_ID) ?: AudioMediaLibrary.RESUME,
+        intent.getBooleanExtra(EXTRA_AUDIO_PLAY_WHEN_READY, true),
+      )
+      return START_NOT_STICKY
+    }
+
+    if (!PlaybackSession.isInitialized || PlaybackSession.state.value.currentItem == null) {
+      val key = intent?.getParcelableExtra<android.view.KeyEvent>(Intent.EXTRA_KEY_EVENT)
+      val resumeRequested = intent?.action in setOf(ACTION_NOTIFICATION_PLAY_PAUSE, ACTION_NOTIFICATION_NEXT, ACTION_NOTIFICATION_PREVIOUS) ||
+        intent?.action == Intent.ACTION_MEDIA_BUTTON && key?.action == android.view.KeyEvent.ACTION_DOWN &&
+        key.keyCode in setOf(android.view.KeyEvent.KEYCODE_MEDIA_PLAY, android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+          android.view.KeyEvent.KEYCODE_HEADSETHOOK)
+      if (resumeRequested) {
+        startAudioLibraryPlayback(AudioMediaLibrary.RESUME, true, when (intent?.action) {
+          ACTION_NOTIFICATION_NEXT -> 1
+          ACTION_NOTIFICATION_PREVIOUS -> -1
+          else -> 0
+        })
+        return START_NOT_STICKY
+      }
       Log.w(TAG, "Ignoring playback service start without a live playback session")
       stopForegroundNotification()
       stopSelf(startId)
@@ -652,13 +690,97 @@ class MediaPlaybackService :
     clientPackageName: String,
     clientUid: Int,
     rootHints: android.os.Bundle?,
-  ) = BrowserRoot("root_id", null)
+  ): BrowserRoot? {
+    if (packageManager.getPackagesForUid(clientUid)?.contains(clientPackageName) != true) return null
+    val trusted = clientUid == applicationInfo.uid || MediaSessionManager.getSessionManager(this)
+      .isTrustedForMediaControl(MediaSessionManager.RemoteUserInfo(clientPackageName, -1, clientUid))
+    return if (trusted) BrowserRoot(AudioMediaLibrary.ROOT, null) else null
+  }
 
   override fun onLoadChildren(
     parentId: String,
     result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
   ) {
-    result.sendResult(mutableListOf())
+    result.detach()
+    serviceScope.launch {
+      try {
+        result.sendResult(audioLibrary.children(parentId).toMutableList())
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+      } catch (_: Exception) {
+        result.sendResult(mutableListOf())
+      }
+    }
+  }
+
+  override fun onSearch(query: String, extras: android.os.Bundle?, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+    result.detach()
+    serviceScope.launch {
+      try {
+        result.sendResult(audioLibrary.search(query).toMutableList())
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+      } catch (_: Exception) {
+        result.sendResult(mutableListOf())
+      }
+    }
+  }
+
+  private fun requestAudioLibraryPlayback(mediaId: String, playWhenReady: Boolean = true) {
+    runCatching {
+      ContextCompat.startForegroundService(this, Intent(this, MediaPlaybackService::class.java)
+        .setAction(ACTION_PLAY_AUDIO_LIBRARY).putExtra(EXTRA_AUDIO_MEDIA_ID, mediaId)
+        .putExtra(EXTRA_AUDIO_PLAY_WHEN_READY, playWhenReady))
+    }.onFailure { Log.w(TAG, "Unable to start audio playback service", it) }
+  }
+
+  private fun startAudioLibraryPlayback(mediaId: String, playWhenReady: Boolean, direction: Int = 0) {
+    setupMediaSession()
+    startPlaybackObservers()
+    audioLibraryLoadJob?.cancel()
+    val expectedGeneration = PlaybackSession.state.value.generation
+    audioLibraryLoadJob = serviceScope.launch {
+      try {
+        val saved = audioLibrary.selection(mediaId)
+        val selectedQueue = saved?.queue?.let { queue -> when {
+          direction > 0 -> PlaybackQueueReducer.next(queue) ?: queue
+          direction < 0 -> PlaybackQueueReducer.previous(queue) ?: queue
+          else -> queue
+        } }
+        val requested = if (saved != null && selectedQueue != null) {
+          saved.copy(queue = selectedQueue, positionMs = if (selectedQueue.currentIndex == saved.queue.currentIndex) saved.positionMs else 0L)
+        } else null
+        if (requested == null || !notificationsEnabled() ||
+          !PlaybackSession.startAudioQueue(this@MediaPlaybackService, requested, false, expectedGeneration)
+        ) {
+          if (PlaybackSession.state.value.currentItem == null) {
+            stopForegroundNotification()
+            stopSelf()
+          }
+          return@launch
+        }
+        usesAudioBackgroundPlayback = true
+        notificationIsAudio = true
+        PlaybackSession.state.value.currentItem?.let(::applySessionItem)
+        val hasFocus = takeAudioOwnership()
+        PlaybackSession.setPropertyBoolean("pause", !playWhenReady || !hasFocus)
+        updateMediaSessionMetadata()
+        updateMediaSessionPlaybackState()
+        startForegroundNotification()
+        syncMediaSessionVisibility()
+      } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        Log.w(TAG, "Unable to restore audio playback", error)
+        mediaSession.setPlaybackState(PlaybackStateCompat.Builder()
+          .setState(PlaybackStateCompat.STATE_ERROR, 0L, 0f)
+          .setErrorMessage(getString(R.string.toast_playback_load_failed)).build())
+        if (PlaybackSession.state.value.currentItem == null) {
+          stopForegroundNotification()
+          stopSelf()
+        }
+      }
+    }
   }
 
   fun setMediaInfo(
@@ -1051,10 +1173,13 @@ class MediaPlaybackService :
 
   private fun stopPlaybackAndService(force: Boolean = false) {
     if (!force && !canHandleTransportAction()) return
+    audioLibraryLoadJob?.cancel()
+    audioLibraryLoadJob = null
     handingBackToActivity = false
     schedulePlaybackStateSave(force = true)
     torrentStreamingEngine.stopStream()
     PlaybackSession.stop(clearQueue = true)
+    AudioPlayerWidget.requestUpdate(this)
     paused = true
     mediaSession.setPlaybackState(
       PlaybackStateCompat
@@ -1121,8 +1246,29 @@ class MediaPlaybackService :
           object : MediaSessionCompat.Callback() {
             override fun onPlay() {
               if (!canHandleTransportAction()) return
+              if (PlaybackSession.state.value.currentItem == null || PlaybackSession.state.value.phase == PlaybackPhase.ERROR) {
+                requestAudioLibraryPlayback(AudioMediaLibrary.RESUME)
+                return
+              }
               Log.d(TAG, "onPlay called")
               handleMediaPlayAction(shouldPlay = true)
+            }
+
+            override fun onPlayFromMediaId(mediaId: String, extras: android.os.Bundle?) {
+              if (canHandleTransportAction()) requestAudioLibraryPlayback(mediaId)
+            }
+
+            override fun onPrepareFromMediaId(mediaId: String, extras: android.os.Bundle?) {
+              if (canHandleTransportAction()) requestAudioLibraryPlayback(mediaId, playWhenReady = false)
+            }
+
+            override fun onPlayFromSearch(query: String?, extras: android.os.Bundle?) {
+              if (!canHandleTransportAction()) return
+              serviceScope.launch {
+                val mediaId = if (query.isNullOrBlank()) AudioMediaLibrary.RESUME
+                  else runCatching { audioLibrary.search(query).firstOrNull()?.mediaId }.getOrNull()
+                mediaId?.let { requestAudioLibraryPlayback(it) }
+              }
             }
 
             override fun onPause() {

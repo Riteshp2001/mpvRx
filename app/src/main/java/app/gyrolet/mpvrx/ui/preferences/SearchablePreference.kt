@@ -956,6 +956,21 @@ object SearchablePreferences {
       )
 
       // Audio preferences
+      addSearchEntries(
+        category = "Audio",
+        screen = AudioPreferencesScreen,
+        anchorItemIndex = 0,
+        SearchEntrySpec(R.string.pref_audio_engine, listOf("exoplayer", "mpv", "audio", "engine")),
+        SearchEntrySpec(R.string.pref_audio_crossfade, listOf("crossfade", "gapless", "transition", "music")),
+        SearchEntrySpec(R.string.pref_audio_output_sample_rate, listOf("sample", "rate", "resampling", "audio")),
+        SearchEntrySpec(R.string.pref_audio_skip_silence, listOf("silence", "skip", "podcast", "audiobook")),
+        SearchEntrySpec(R.string.pref_audio_replay_gain, listOf("replaygain", "gain", "album", "normalization")),
+        SearchEntrySpec(R.string.pref_audio_dolby_atmos, listOf("dolby", "atmos", "surround")),
+        SearchEntrySpec(R.string.pref_audio_spatial, listOf("spatial", "headphones", "surround")),
+        SearchEntrySpec(R.string.pref_audio_wifi_quality, listOf("wifi", "bitrate", "quality", "unmetered")),
+        SearchEntrySpec(R.string.pref_audio_mobile_quality, listOf("mobile", "cellular", "bitrate", "metered")),
+        SearchEntrySpec(R.string.pref_audio_stream_cache, listOf("cache", "streaming", "audio")),
+      )
       add(
         SearchablePreference(
           titleRes = R.string.pref_audio,

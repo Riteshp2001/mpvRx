@@ -15,6 +15,27 @@ The player queue controls next/previous navigation, repeat, shuffle, and the pla
 
 Use **Play Next** for a temporary insertion after the current item and **Add to Queue** for the end of an audio queue.
 
+### Saved ExoPlayer queue
+
+The experimental ExoPlayer branch can save an eligible audio queue independently
+of named playlists. The snapshot includes the ordered items, shuffle order,
+current item, position, speed, volume and pause state. It is written to private,
+non-backed-up app storage when **Recently Played** retention is enabled.
+
+To resume after process recreation, keep ExoPlayer selected as the audio engine
+and use **Resume queue** in Android Auto or Play on the **mpvRx music** widget.
+Resuming is an explicit action, not automatic playback when the app opens. Files
+must still exist, content permissions must remain valid, and remote sources must
+still be reachable and authorized.
+
+Disabling Recently Played retention clears this snapshot. It does not delete
+media or named playlists. A saved queue does not cache or download its media,
+and saved position alone does not imply a complete queue can be reopened.
+
+See [Audio and music](/docs/playback/audio-and-music#playlists-and-saved-queue)
+for engine restrictions and [Privacy and permissions](/docs/reference/privacy-and-permissions#saved-audio-queues-and-cache)
+for the data stored with the queue.
+
 ## M3U and M3U8 playlists
 
 mpvRx can create a saved M3U playlist from:
@@ -26,7 +47,11 @@ mpvRx can create a saved M3U playlist from:
 Extended M3U metadata can provide channel names, groups, and logos. Saved channel lists support category filters and stream favorites.
 
 :::note
-A remote `.m3u8` can also be an HLS media manifest rather than a channel list. mpvRx uses the source context and playback policy to decide whether to expand it in-app or let mpv/yt-dlp handle it as a stream.
+A remote `.m3u8` can also be an HLS media manifest rather than a channel list.
+mpvRx uses source context and playback policy to decide whether to expand it
+in-app or pass it to the selected playback engine. ExoPlayer handles eligible
+audio HLS streams directly; video continues to use mpv. Supported webpage links
+can require yt-dlp extraction first.
 :::
 
 ## Recently played and resume state

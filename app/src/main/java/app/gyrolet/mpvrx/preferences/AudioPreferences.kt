@@ -24,6 +24,13 @@ class AudioPreferences(
   val audioEngine = preferenceStore.getEnum("audio_playback_engine", AudioEngineKind.ExoPlayer)
   val crossfadeDurationMs = preferenceStore.getInt("audio_crossfade_duration_ms", 5_000)
   val outputSampleRate = preferenceStore.getEnum("audio_output_sample_rate", AudioOutputSampleRate.Auto)
+  val skipSilence = preferenceStore.getBoolean("audio_skip_silence", false)
+  val replayGain = preferenceStore.getEnum("audio_replay_gain", ReplayGainMode.Off)
+  val preferDolbyAtmos = preferenceStore.getBoolean("audio_prefer_dolby_atmos", true)
+  val spatialAudio = preferenceStore.getBoolean("audio_spatialization", true)
+  val wifiMaxBitrate = preferenceStore.getInt("audio_wifi_max_bitrate", 0)
+  val mobileMaxBitrate = preferenceStore.getInt("audio_mobile_max_bitrate", 256_000)
+  val streamingCacheEnabled = preferenceStore.getBoolean("audio_streaming_cache", true)
   val preferredLanguages = preferenceStore.getString("audio_preferred_languages")
   val defaultAudioDelay = preferenceStore.getInt("audio_delay_default")
   val pickerPath = preferenceStore.getString("audio_picker_path")
@@ -105,6 +112,12 @@ class AudioPreferences(
     if (legacyScreenLockPlayback.get()) backgroundPlayback.set(true)
     if (legacyScreenLockPlayback.isSet()) legacyScreenLockPlayback.delete()
   }
+}
+
+enum class ReplayGainMode {
+  Off,
+  Track,
+  Album,
 }
 
 enum class BackgroundPlaybackBehavior(

@@ -6,6 +6,9 @@ import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.Spatializer
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -27,6 +30,7 @@ import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.FormatHolder
@@ -42,6 +46,7 @@ import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.extractor.metadata.Chapter
 import androidx.media3.extractor.metadata.vorbis.VorbisComment
@@ -50,8 +55,10 @@ import app.gyrolet.mpvrx.utils.media.ExoAudioProcessor
 import app.gyrolet.mpvrx.utils.media.ExoResampleProcessor
 import app.gyrolet.mpvrx.preferences.AudioOutputSampleRate
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.ReplayGainMode
 import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import kotlin.math.pow
 
 @UnstableApi
 internal class ExoAudioEngine(
@@ -62,19 +69,24 @@ internal class ExoAudioEngine(
   private val onSnapshot: (AudioEngineSnapshot) -> Unit,
   private val onReady: (Long) -> Unit,
   private val onEnded: (Long) -> Unit,
-  private val onError: (Long, Int, Long) -> Unit,
+  private val onError: (Long, PlaybackException, Long) -> Unit,
   private val onPrepareNext: (Long) -> Unit,
   private val onHandoff: (PreparedAudioNext, AudioEngineSnapshot) -> Long?,
 ) : AudioPlaybackEngine {
   private val context = context.applicationContext
   private val handler = Handler(Looper.getMainLooper())
   private val audioManager = checkNotNull(context.getSystemService(AudioManager::class.java))
-  private val attributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
+  private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
+  private val attributes: AudioAttributes
+    get() = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+      .setSpatializationBehavior(if (outputSettings.spatialAudio) C.SPATIALIZATION_BEHAVIOR_AUTO else C.SPATIALIZATION_BEHAVIOR_NEVER)
+      .build()
   private var primary: Deck? = null
   private var standby: Deck? = null
   private var outgoing: Deck? = null
   private var preparedNext: PreparedAudioNext? = null
-  private var settings = AudioProcessingSettings()
+  @Volatile private var settings = AudioProcessingSettings()
+  private var outputSettings = AudioOutputSettings()
   private var volume = 100f
   private var duckGain = 1f
   private var headroom = 1f
@@ -92,13 +104,14 @@ internal class ExoAudioEngine(
   private var fadeDurationMs = 0L
   private var fadeElapsedMs = 0L
   private var lastTickMs = 0L
+  private var lastPublishedSnapshot: AudioEngineSnapshot? = null
   @Volatile private var released = false
   private var cleanupComplete = false
   private var spatialListener: Spatializer.OnSpatializerStateChangedListener? = null
 
   private class Deck(
     val player: ExoPlayer,
-    val source: AudioPlaybackSource,
+    var source: AudioPlaybackSource,
     val processor: ExoAudioProcessor,
     var generation: Long,
     val processedOutput: Boolean,
@@ -110,6 +123,7 @@ internal class ExoAudioEngine(
     var format: Format? = null
     var output = AudioOutputInfo()
     var channelMask = 0
+    var replayGainDb: Float? = null
   }
 
   private val deviceCallback = object : AudioDeviceCallback() {
@@ -117,16 +131,22 @@ internal class ExoAudioEngine(
     override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = routeChanged()
   }
 
+  private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+    override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) = updateNetworkQuality()
+    override fun onLost(network: Network) = updateNetworkQuality()
+  }
+
   private val ticker = object : Runnable {
     override fun run() {
       if (released) return
       tick()
-      if (!released) handler.postDelayed(this, if (outgoing != null) 30L else 200L)
+      if (!released) handler.postDelayed(this, if (outgoing != null || standby?.player?.playWhenReady == true) 20L else 100L)
     }
   }
 
   init {
     audioManager.registerAudioDeviceCallback(deviceCallback, handler)
+    runCatching { connectivityManager?.registerDefaultNetworkCallback(networkCallback) }
     if (Build.VERSION.SDK_INT >= 32) registerSpatialListener()
     handler.post(ticker)
   }
@@ -149,7 +169,7 @@ internal class ExoAudioEngine(
       silenced = false
       primary = runCatching { createDeck(source, generation, positionMs) }.getOrElse {
         source.close()
-        onError(generation, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED, positionMs)
+        onError(generation, PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED), positionMs)
         return@execute
       }
       nextRequested = false
@@ -169,10 +189,16 @@ internal class ExoAudioEngine(
       ) {
         next.source.close()
       } else {
-        val previous = standby
-        standby = null
-        releaseDeck(previous)
+        cancelTransitionNow()
+        nextRequested = true
         preparedNext = next
+        if (!crossfadeEligible(current)) {
+          runCatching { current.player.addMediaSource(createMediaSource(next.source)) }.onFailure {
+            preparedNext = null
+            next.source.close()
+          }
+          return@execute
+        }
         standby = runCatching { createDeck(next.source, next.generation, 0L) }.getOrElse {
           next.source.close()
           preparedNext = null
@@ -195,6 +221,7 @@ internal class ExoAudioEngine(
     }
     current?.let { it.player.playWhenReady = canPlay && it.readyReported }
     outgoing?.player?.playWhenReady = canPlay && current?.player?.playbackState == Player.STATE_READY
+    if (!canPlay) standby?.player?.pause()
     lastTickMs = SystemClock.elapsedRealtime()
     publish()
   }
@@ -260,11 +287,14 @@ internal class ExoAudioEngine(
   }
 
   override fun setProcessing(settings: AudioProcessingSettings) = execute {
+    if (this.settings == settings) return@execute
     val channelChanged = this.settings.channelMix != settings.channelMix
     this.settings = settings.copy(bandGains = settings.bandGains.toList())
     cancelTransitionNow()
     if (channelChanged) rebuildPrimary() else ensureProcessingOutput()
     primary?.let(::updateProcessing)
+    primary?.let(::updateReplayGain)
+    primary?.let { it.player.skipSilenceEnabled = settings.skipSilence && !preservesSource(it) }
     updateOffload()
     publish()
   }
@@ -274,6 +304,18 @@ internal class ExoAudioEngine(
     outputRateMode = mode
     cancelTransitionNow()
     ensureProcessingOutput()
+    publish()
+  }
+
+  override fun setOutputSettings(settings: AudioOutputSettings) = execute {
+    if (outputSettings == settings) return@execute
+    outputSettings = settings
+    cancelTransitionNow()
+    primary?.let { deck ->
+      deck.player.setAudioAttributes(attributes, false)
+      applyTrackPreferences(deck)
+      updateProcessing(deck)
+    }
     publish()
   }
 
@@ -300,6 +342,7 @@ internal class ExoAudioEngine(
         if (!cleanupComplete) {
           handler.removeCallbacks(ticker)
           val decks = listOfNotNull(primary, standby, outgoing).distinct()
+          val queuedSource = preparedNext?.source?.takeIf { standby == null }
           primary = null
           standby = null
           outgoing = null
@@ -308,7 +351,9 @@ internal class ExoAudioEngine(
           silenced = true
           decks.forEach(::silenceDeck)
           decks.forEach { releaseDeck(it) }
+          queuedSource?.close()
           runCatching { audioManager.unregisterAudioDeviceCallback(deviceCallback) }
+          runCatching { connectivityManager?.unregisterNetworkCallback(networkCallback) }
           if (Build.VERSION.SDK_INT >= 32) {
             spatialListener?.let { listener -> runCatching { audioManager.spatializer.removeOnSpatializerStateChangedListener(listener) } }
           }
@@ -364,6 +409,7 @@ internal class ExoAudioEngine(
           enableDecoderFallback, eventHandler, eventListener, audioSink) {
           override fun onInputFormatChanged(formatHolder: FormatHolder): DecoderReuseEvaluation? {
             processor.preserveSource = isProtected(formatHolder.format)
+            processor.replayGain = replayGainFor(formatHolder.format).second
             return super.onInputFormatChanged(formatHolder)
           }
         })
@@ -376,27 +422,16 @@ internal class ExoAudioEngine(
         val decoders = selector.getDecoderInfos(mimeType, requiresSecureDecoder, requiresTunnelingDecoder)
         if (floatFlac) decoders.filterNot { isUnsafeFloatFlacDecoder(it.name) } else decoders
       }
-    val origin = source.uri.toHttpUrlOrNull()
-    val scopedClient = if (origin == null || source.item.headers.isEmpty()) httpClient else httpClient.newBuilder()
-      .addNetworkInterceptor { chain ->
-        val request = chain.request()
-        val sameOrigin = request.url.host == origin.host && request.url.port == origin.port && request.url.scheme == origin.scheme
-        val safeRequest = if (sameOrigin) request else request.newBuilder().apply {
-          source.item.headers.keys.filterNot { it.lowercase() in CROSS_ORIGIN_HEADERS }.forEach(::removeHeader)
-        }.build()
-        chain.proceed(safeRequest)
-      }.build()
-    val dataSource = DefaultDataSource.Factory(
-      context,
-      OkHttpDataSource.Factory(scopedClient).setDefaultRequestProperties(source.item.headers),
-    )
     val selector = DefaultTrackSelector(context).apply {
       setParameters(buildUponParameters().setAllowInvalidateSelectionsOnRendererCapabilitiesChange(true))
     }
     val player = ExoPlayer.Builder(context, renderers)
       .setLooper(Looper.getMainLooper())
       .setTrackSelector(selector)
-      .setMediaSourceFactory(DefaultMediaSourceFactory(context).setDataSourceFactory(dataSource))
+      .setLoadControl(DefaultLoadControl.Builder()
+        .setBufferDurationsMs(15_000, 45_000, 1_500, 3_000)
+        .setBackBuffer(10_000, true)
+        .build())
       .setAudioAttributes(attributes, false)
       .setHandleAudioBecomingNoisy(false)
       .setWakeMode(C.WAKE_MODE_LOCAL)
@@ -420,19 +455,41 @@ internal class ExoAudioEngine(
     formatHint: Format?,
   ): Deck {
     val deck = Deck(player, source, processor, generation, processing, outputRateHz).apply { format = formatHint }
-    val languages = org.koin.java.KoinJavaComponent.get<AudioPreferences>(AudioPreferences::class.java)
-      .preferredLanguages.get().split(',').map(String::trim).filter(String::isNotEmpty)
-    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-      .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
-      .setTrackTypeDisabled(C.TRACK_TYPE_IMAGE, true)
-      .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-      .setPreferredAudioLanguages(*languages.toTypedArray())
-      .setPreferredAudioMimeTypes(MimeTypes.AUDIO_E_AC3_JOC, MimeTypes.AUDIO_TRUEHD)
-      .setAudioOffloadPreferences(offloadPreferences(deck))
-      .build()
+    applyTrackPreferences(deck)
     player.playbackParameters = if (isProtected(formatHint)) PlaybackParameters.DEFAULT else playbackParameters()
+    player.skipSilenceEnabled = settings.skipSilence && !isProtected(formatHint)
     player.volume = 0f
     player.addListener(object : Player.Listener {
+      override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        val request = preparedNext ?: return
+        if (released || deck.disposed || deck !== primary || standby != null ||
+          player.currentMediaItemIndex != 1 || mediaItem?.mediaId != request.source.item.stableId
+        ) return
+        val previous = lastPublishedSnapshot?.takeIf { it.generation == deck.generation } ?: snapshot(deck)
+        val nextGeneration = onHandoff(request, previous.copy(positionMs = previous.durationMs, ended = true))
+        if (nextGeneration == null) {
+          player.pause()
+          player.seekTo(0, previous.positionMs.coerceAtLeast(0))
+          cancelTransitionNow()
+          return
+        }
+        val oldSource = deck.source
+        deck.source = request.source
+        deck.generation = nextGeneration
+        deck.readyReported = false
+        deck.endReported = false
+        deck.format = player.audioFormat
+        deck.replayGainDb = replayGainFor(deck.format).first
+        preparedNext = null
+        nextRequested = false
+        oldSource.close()
+        handler.post {
+          if (!released && !deck.disposed && deck === primary && player.currentMediaItemIndex == 1) {
+            player.removeMediaItem(0)
+          }
+        }
+      }
+
       override fun onEvents(player: Player, events: Player.Events) {
         if (released || deck.disposed || deck !== primary && deck !== standby && deck !== outgoing) return
         deck.format = deck.player.audioFormat ?: deck.format
@@ -454,7 +511,7 @@ internal class ExoAudioEngine(
                 updateProcessing(deck)
               }
               publish()
-              onError(deck.generation, PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED, player.currentPosition)
+              onError(deck.generation, PlaybackException("Unsupported audio format", null, PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED), player.currentPosition)
             }
             return
           }
@@ -465,6 +522,8 @@ internal class ExoAudioEngine(
           if (preservesSource(deck) && player.playbackParameters != PlaybackParameters.DEFAULT) {
             player.playbackParameters = PlaybackParameters.DEFAULT
           }
+          val skipSilence = settings.skipSilence && !preservesSource(deck)
+          if (deck.player.skipSilenceEnabled != skipSilence) deck.player.skipSilenceEnabled = skipSilence
           val offload = offloadPreferences(deck)
           if (player.trackSelectionParameters.audioOffloadPreferences != offload) {
             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setAudioOffloadPreferences(offload).build()
@@ -481,7 +540,7 @@ internal class ExoAudioEngine(
           }
           if (player.playbackState == Player.STATE_ENDED && !deck.endReported && !paused) {
             deck.endReported = true
-            onEnded(deck.generation)
+            if (!handoffStandby(0L)) onEnded(deck.generation)
           }
         }
       }
@@ -494,8 +553,9 @@ internal class ExoAudioEngine(
         when (deck) {
           primary -> {
             cancelTransitionNow()
+            deck.readyReported = false
             publish()
-            onError(deck.generation, error.errorCode, deck.player.currentPosition)
+            onError(deck.generation, error, deck.player.currentPosition)
           }
           standby -> {
             cancelTransitionNow()
@@ -510,6 +570,7 @@ internal class ExoAudioEngine(
       override fun onAudioInputFormatChanged(eventTime: AnalyticsListener.EventTime, format: Format, decoderReuseEvaluation: DecoderReuseEvaluation?) {
         if (released || deck.disposed) return
         deck.format = format
+        updateReplayGain(deck)
         updateProcessing(deck)
         if (deck === primary) publish()
       }
@@ -545,15 +606,35 @@ internal class ExoAudioEngine(
       }
 
     })
+    player.setMediaSource(createMediaSource(source), positionMs.coerceAtLeast(0))
+    player.prepare()
+    return deck
+  }
+
+  private fun createMediaSource(source: AudioPlaybackSource): MediaSource {
+    val origin = source.uri.toHttpUrlOrNull()
+    val scopedClient = if (origin == null || source.item.headers.isEmpty()) httpClient else httpClient.newBuilder()
+      .addNetworkInterceptor { chain ->
+        val request = chain.request()
+        val sameOrigin = request.url.host == origin.host && request.url.port == origin.port && request.url.scheme == origin.scheme
+        val safeRequest = if (sameOrigin) request else request.newBuilder().apply {
+          source.item.headers.keys.filterNot { it.lowercase(java.util.Locale.ROOT) in CROSS_ORIGIN_HEADERS }.forEach(::removeHeader)
+        }.build()
+        chain.proceed(safeRequest)
+      }.build()
+    val dataSource = DefaultDataSource.Factory(
+      context,
+      OkHttpDataSource.Factory(scopedClient).setDefaultRequestProperties(source.item.headers),
+    )
     val item = MediaItem.Builder()
       .setMediaId(source.item.stableId)
       .setUri(source.uri)
-      .setMimeType(source.item.mimeType?.takeUnless { '*' in it })
+      .setMimeType(source.mimeType?.takeUnless { '*' in it })
       .setMediaMetadata(MediaMetadata.Builder().setTitle(source.item.title).setArtist(source.item.artist).build())
       .build()
-    player.setMediaItem(item, positionMs.coerceAtLeast(0))
-    player.prepare()
-    return deck
+    return DefaultMediaSourceFactory(context)
+      .setDataSourceFactory(AudioStreamCache.factory(context, dataSource, source))
+      .createMediaSource(item)
   }
 
   private fun tick() {
@@ -572,57 +653,77 @@ internal class ExoAudioEngine(
     lastTickMs = now
     val tail = outgoing
     if (tail != null) {
-      if (!paused && current.player.playbackState == Player.STATE_READY) {
+      if (!paused && current.player.playbackState == Player.STATE_READY && tail.player.playbackState == Player.STATE_READY) {
         current.player.playWhenReady = true
         tail.player.playWhenReady = true
-        if (current.player.isPlaying) fadeElapsedMs += delta
+        if (current.player.isPlaying && tail.player.isPlaying) fadeElapsedMs += delta
       } else {
+        current.player.pause()
         tail.player.pause()
       }
       if (fadeElapsedMs >= fadeDurationMs || tail.player.playbackState == Player.STATE_ENDED) {
         outgoing = null
         releaseDeck(tail)
         nextRequested = false
+        current.player.playWhenReady = !paused && !silenced && isCurrentGeneration(current.generation)
       }
       applyVolumes()
-    } else if (!paused && current.player.isPlaying && transitionsAllowed && crossfadeEligible(current)) {
+    } else if (!paused && current.player.isPlaying && transitionsAllowed && canPrepareNext(current)) {
       val remaining = ((current.player.duration - current.player.currentPosition) / speed).toLong()
       if (!nextRequested && remaining in 1..maxOf(15_000L, crossfadeMs * 3L)) {
         nextRequested = true
         onPrepareNext(current.generation)
       }
       val next = standby
-      val request = preparedNext
-      if (next != null && request != null && next.player.playbackState == Player.STATE_READY && crossfadeEligible(next)) {
+      if (next != null && next.player.playbackState == Player.STATE_READY && crossfadeEligible(next)) {
         val overlap = AudioPlaybackPolicy.overlapDurationMs(
           crossfadeMs,
           (current.player.duration / speed).toLong(),
           (next.player.duration / speed).toLong(),
         )
         if (overlap > 0 && remaining in 1..overlap) {
-          val nextGeneration = onHandoff(request, snapshot(current))
-          if (nextGeneration == null) {
-            cancelTransitionNow()
-          } else {
-            outgoing = current
-            primary = next
-            standby = null
-            preparedNext = null
-            next.generation = nextGeneration
-            next.readyReported = true
-            fadeDurationMs = remaining
-            fadeElapsedMs = 0L
-            applyVolumes()
-            next.player.play()
-            publish()
-            onReady(nextGeneration)
-          }
+          next.player.play()
+          if (next.player.isPlaying) handoffStandby(remaining)
         }
       }
     }
     applyVolumes()
     publish()
   }
+
+  private fun handoffStandby(overlapMs: Long): Boolean {
+    val current = primary ?: return false
+    val next = standby ?: return false
+    val request = preparedNext ?: return false
+    if (paused || silenced || next.player.playbackState != Player.STATE_READY) return false
+    val nextGeneration = onHandoff(request, snapshot(current)) ?: run {
+      cancelTransitionNow()
+      return false
+    }
+    primary = next
+    standby = null
+    preparedNext = null
+    next.generation = nextGeneration
+    next.readyReported = true
+    next.endReported = false
+    fadeDurationMs = overlapMs
+    fadeElapsedMs = 0L
+    lastTickMs = SystemClock.elapsedRealtime()
+    if (overlapMs > 0L) outgoing = current else {
+      releaseDeck(current)
+      nextRequested = false
+    }
+    applyVolumes()
+    next.player.play()
+    publish()
+    onReady(nextGeneration)
+    return true
+  }
+
+  private fun canPrepareNext(deck: Deck): Boolean =
+    loopStartMs == null && deck.source.item.audiobook == null && deck.player.duration > 0 &&
+      deck.player.isCurrentMediaItemSeekable && !deck.player.isCurrentMediaItemLive &&
+      deck.player.currentTracks.isTypeSelected(C.TRACK_TYPE_AUDIO)
 
   private fun crossfadeEligible(deck: Deck): Boolean =
     (deck.format?.channelCount ?: 0) in 1..2 && loopStartMs == null && deck.player.currentTracks.isTypeSelected(C.TRACK_TYPE_AUDIO) &&
@@ -631,7 +732,7 @@ internal class ExoAudioEngine(
         audiobook = deck.source.item.audiobook != null,
         seekable = deck.player.isCurrentMediaItemSeekable && !deck.player.isCurrentMediaItemLive,
         durationMs = deck.player.duration,
-        spatialOrDirect = isProtected(deck.format) ||
+        spatialOrDirect = isProtected(deck.format) || deck.output.spatializationEligible ||
           deck.output.outputEncoding != 0 && !Util.isEncodingLinearPcm(deck.output.outputEncoding),
         autoplay = transitionsAllowed,
         repeatOne = false,
@@ -641,7 +742,7 @@ internal class ExoAudioEngine(
 
   private fun updateProcessing(deck: Deck) {
     val format = deck.format
-    val spatial = if (Build.VERSION.SDK_INT >= 32 && deck.output.outputSampleRate > 0) spatialState(deck)
+    val spatial = if (Build.VERSION.SDK_INT >= 32) spatialState(deck)
       else Triple(false, false, deck.output.spatializationEligible)
     val bypass = isProtected(format) || format?.channelCount?.let { it > 2 } == true
     deck.processor.settings = settings
@@ -653,12 +754,73 @@ internal class ExoAudioEngine(
       sourceChannels = format?.channelCount?.coerceAtLeast(0) ?: 0,
       sourceBitrate = format?.bitrate?.coerceAtLeast(0) ?: 0,
       dolbyAtmosSource = format?.sampleMimeType == MimeTypes.AUDIO_E_AC3_JOC,
+      dolbyAtmosSupported = supportsDolbyAtmos(context),
       spatializationAvailable = spatial.first,
       spatializationEnabled = spatial.second,
       spatializationEligible = spatial.third,
       processingBypassed = bypass,
       processingActive = !bypass && needsPcmProcessing(format),
     )
+  }
+
+  private fun updateReplayGain(deck: Deck) {
+    val (gainDb, gain) = replayGainFor(deck.format)
+    deck.replayGainDb = gainDb
+    deck.processor.replayGain = gain
+  }
+
+  private fun replayGainFor(format: Format?): Pair<Float?, Float> {
+    if (settings.replayGain == ReplayGainMode.Off || isProtected(format)) return null to 1f
+    val metadata = format?.metadata ?: return null to 1f
+    val tags = mutableMapOf<String, String>()
+    for (index in 0 until metadata.length()) {
+      when (val entry = metadata[index]) {
+        is VorbisComment -> tags[entry.key.lowercase(java.util.Locale.ROOT)] = entry.value
+        is TextInformationFrame -> if (entry.id == "TXXX" && !entry.description.isNullOrBlank()) {
+          tags[entry.description!!.lowercase(java.util.Locale.ROOT)] = entry.values.firstOrNull().orEmpty()
+        }
+      }
+    }
+    val prefix = if (settings.replayGain == ReplayGainMode.Album && tags.containsKey("replaygain_album_gain")) "album" else "track"
+    val gainDb = tags["replaygain_${prefix}_gain"]?.trim()?.substringBefore(' ')?.toFloatOrNull()
+      ?.takeIf { it.isFinite() }?.coerceIn(-30f, 20f) ?: return null to 1f
+    val gain = 10.0.pow(gainDb / 20.0).toFloat()
+    val peak = tags["replaygain_${prefix}_peak"]?.trim()?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0f }
+    return gainDb to if (peak != null) minOf(gain, 1f / peak) else gain
+  }
+
+  private fun applyTrackPreferences(deck: Deck) {
+    val languages = org.koin.java.KoinJavaComponent.get<AudioPreferences>(AudioPreferences::class.java)
+      .preferredLanguages.get().split(',').map(String::trim).filter(String::isNotEmpty)
+    val formats = if (outputSettings.preferDolbyAtmos && supportsDolbyAtmos(context)) {
+      arrayOf(MimeTypes.AUDIO_E_AC3_JOC, MimeTypes.AUDIO_TRUEHD)
+    } else {
+      arrayOf(MimeTypes.AUDIO_FLAC, MimeTypes.AUDIO_OPUS, MimeTypes.AUDIO_AAC, MimeTypes.AUDIO_MPEG)
+    }
+    deck.player.trackSelectionParameters = deck.player.trackSelectionParameters.buildUpon()
+      .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+      .setTrackTypeDisabled(C.TRACK_TYPE_IMAGE, true)
+      .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+      .setPreferredAudioLanguages(*languages.toTypedArray())
+      .setPreferredAudioMimeTypes(*formats)
+      .setMaxAudioBitrate(maxAudioBitrate())
+      .setAudioOffloadPreferences(offloadPreferences(deck))
+      .build()
+  }
+
+  private fun maxAudioBitrate(): Int {
+    val metered = runCatching { connectivityManager?.isActiveNetworkMetered != false }.getOrDefault(true)
+    return (if (metered) outputSettings.mobileMaxBitrate else outputSettings.wifiMaxBitrate)
+      .takeIf { it > 0 } ?: Int.MAX_VALUE
+  }
+
+  private fun updateNetworkQuality() = execute {
+    val bitrate = maxAudioBitrate()
+    listOfNotNull(primary, standby).forEach { deck ->
+      if (deck.player.trackSelectionParameters.maxAudioBitrate != bitrate) {
+        deck.player.trackSelectionParameters = deck.player.trackSelectionParameters.buildUpon().setMaxAudioBitrate(bitrate).build()
+      }
+    }
   }
 
   private fun applyVolumes() {
@@ -740,18 +902,25 @@ internal class ExoAudioEngine(
       output = deck.output,
       crossfading = outgoing != null,
       crossfadeAvailable = transitionsAllowed && crossfadeEligible(deck),
+      skipSilenceEnabled = player.skipSilenceEnabled && !preservesSource(deck),
+      replayGainDb = deck.replayGainDb,
       loopStartMs = loopStartMs,
       loopEndMs = loopEndMs,
     )
   }
 
   private fun publish() {
-    if (!released) primary?.let { onSnapshot(snapshot(it)) }
+    if (!released) primary?.let { deck ->
+      val snapshot = snapshot(deck)
+      lastPublishedSnapshot = snapshot
+      onSnapshot(snapshot)
+    }
   }
 
   private fun cancelTransitionNow() {
     val pending = standby
     val tail = outgoing
+    val queuedSource = preparedNext?.source?.takeIf { pending == null }
     standby = null
     outgoing = null
     preparedNext = null
@@ -759,6 +928,14 @@ internal class ExoAudioEngine(
     nextRequested = false
     releaseDeck(pending)
     releaseDeck(tail)
+    if (queuedSource != null) {
+      primary?.player?.let { player ->
+        if (player.mediaItemCount > 1 && player.currentMediaItemIndex == 0) {
+          player.removeMediaItems(1, player.mediaItemCount)
+        }
+      }
+      queuedSource.close()
+    }
     applyVolumes()
   }
 
@@ -802,7 +979,7 @@ internal class ExoAudioEngine(
     releaseDeck(current, closeSource = false)
     primary = runCatching { createDeck(current.source, current.generation, position, current.format) }.getOrElse {
       current.source.close()
-      onError(current.generation, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED, position)
+      onError(current.generation, PlaybackException("Audio initialization failed", it, PlaybackException.ERROR_CODE_DECODER_INIT_FAILED), position)
       return
     }.apply { readyReported = current.readyReported }
     paused = pauseRequested()
@@ -844,7 +1021,10 @@ internal class ExoAudioEngine(
 
   private fun routeChanged() = execute {
     cancelTransitionNow()
-    primary?.let(::updateProcessing)
+    primary?.let { deck ->
+      applyTrackPreferences(deck)
+      updateProcessing(deck)
+    }
     ensureProcessingOutput()
     publish()
   }
@@ -853,7 +1033,8 @@ internal class ExoAudioEngine(
   private fun spatialState(deck: Deck): Triple<Boolean, Boolean, Boolean> = runCatching {
     val spatializer = audioManager.spatializer
     val output = deck.output
-    val eligible = spatializer.isAvailable && spatializer.isEnabled && output.outputSampleRate > 0 && deck.channelMask != 0 &&
+    val eligible = outputSettings.spatialAudio && spatializer.isAvailable && spatializer.isEnabled &&
+      output.outputSampleRate > 0 && deck.channelMask != 0 &&
       spatializer.canBeSpatialized(
         android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA)
           .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC).build(),
@@ -884,10 +1065,11 @@ internal class ExoAudioEngine(
     private val CROSS_ORIGIN_HEADERS = setOf("user-agent", "accept", "accept-encoding", "accept-language", "range", "icy-metadata")
 
     private val jocDecoderNames: List<String> by lazy { decoderNames(MimeTypes.AUDIO_E_AC3_JOC) }
-    private val eac3DecoderNames: List<String> by lazy { decoderNames(MimeTypes.AUDIO_E_AC3) }
 
-    /** Whether any platform decoder can decode E-AC-3 JOC, including plain E-AC-3 core decoders. */
-    fun hasDolbyDecoder(): Boolean = jocDecoderNames.isNotEmpty() || eac3DecoderNames.isNotEmpty()
+    fun supportsDolbyAtmos(context: Context): Boolean = jocDecoderNames.isNotEmpty() || runCatching {
+      context.getSystemService(AudioManager::class.java)?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        ?.any { AudioFormat.ENCODING_E_AC3_JOC in it.encodings } == true
+    }.getOrDefault(false)
 
     fun isJocDecoder(name: String?): Boolean = name != null && name in jocDecoderNames
 

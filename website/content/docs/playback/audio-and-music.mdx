@@ -1,49 +1,186 @@
 ---
 title: Audio and music
-description: Use audio tracks, background playback, the music library, lyrics, playlists, and visualizers.
+description: Choose an audio engine, configure gapless playback and crossfade, use supported spatial output, and manage music queues, widgets, and Android Auto.
 ---
 
 mpvRx includes an audio-focused library and now-playing experience in addition to video playback.
 
-## Audio playback
+:::note
+The ExoPlayer features described below are part of the `experimental/exoplayer-audio`
+branch. They may not be present in your installed stable release. Device-dependent
+output support is not guaranteed by the presence of a setting.
+:::
 
-Use the track selector to choose embedded audio streams. Audio delay can correct a fixed synchronization offset. Pitch correction and a configurable volume-boost ceiling are available for playback-speed and quiet-source workflows.
+## Audio engines
+
+Open **Settings > Audio > Audio engine** to choose the engine for audio-only
+items. Open or reload a track after changing the choice. Video playback continues
+to use mpv.
+
+| Engine | Behavior |
+| --- | --- |
+| ExoPlayer | Uses Android Media3 for audio, with the processing, transition and streaming controls below. |
+| mpv | Uses native mpv playback and its supported audio configuration, filters and scripts. |
+
+ExoPlayer never automatically switches to mpv because a decoder fails or because
+`mpv.conf` contains audio filters. Native `af` filters do not apply to ExoPlayer.
+For a source that requires native decoding or scripts, choose mpv explicitly and
+reopen it. Audio-delay and external-audio-track controls remain mpv-specific.
+
+Use the player's **Audio** sheet to select embedded tracks and reach its available
+output controls and equalizer. Audio properties identify the active engine and
+the source, decoder and output formats.
+
+### Gapless and crossfade
+
+Set **Crossfade** in Audio settings or the player's Audio sheet:
+
+- **0 seconds (Gapless):** queues the prepared next item on the same ExoPlayer
+  timeline, without overlapping the tracks.
+- **1-12 seconds:** blends eligible tracks using an equal-power fade. Short tracks
+  can use a shorter overlap than the configured duration.
+
+Automatic transitions require a next item and permission to advance the queue:
+enable **Autoplay next audio**, or use repeat-all. Repeat-one, an A-B loop, Cast or
+Syncplay can prevent a prepared transition. Crossfade is not used for audiobooks,
+live/non-seekable streams, multichannel/protected output or active spatialization.
+
+Pause suspends both sides of a fade. If a player buffers, the fade waits rather
+than advancing its volume envelope without audible playback. Seeking, changing
+the queue or changing relevant output settings cancels obsolete preparation.
+Gapless playback still depends on the source, decoder and next item being ready;
+a failed preload can require normal sequential loading.
+
+### Processing and output rate
+
+| Control | Behavior |
+| --- | --- |
+| Equalizer and boost | Five-band EQ and digital gain for compatible PCM output. |
+| Skip silence | Uses Media3 to skip silent passages. It is off by default and unavailable on protected or multichannel output. |
+| ReplayGain: Track | Uses the embedded track-gain tag and peak information when available. |
+| ReplayGain: Album | Uses album gain when present, otherwise track gain. Files without usable tags receive no tag-based gain. |
+| Volume normalization | Adjusts loudness dynamically instead of reading ReplayGain tags. Selecting ReplayGain disables this setting; enabling normalization disables ReplayGain. |
+| Dynamic range compression | Reduces the difference between loud and quiet passages on compatible PCM output. |
+| Output sample rate | Auto, device rate, 44.1 kHz, 48 kHz or 96 kHz for compatible PCM playback. |
+
+PCM processing and crossfade can require hardware offload to be disabled.
+Protected or multichannel output bypasses incompatible processing instead of
+silently downmixing the source. Disabled controls reflect that output restriction,
+not a missing preference.
 
 :::warning
-Volume above 100% applies digital gain and may clip. Lower the boost when distortion appears.
+Volume above 100% applies digital gain. Peak protection is not a reason to use
+unlimited boost: reduce gain if you hear distortion or pumping.
 :::
+
+### Streaming quality and cache
+
+**Unmetered audio quality** and **Metered audio quality** set separate bitrate
+ceilings. Android's metered-network classification determines which applies;
+Wi-Fi can also be metered. **Original quality** removes the configured ceiling.
+These settings choose among available representations, not arbitrary transcoding
+rates. A single-format stream may have no lower-bitrate alternative.
+
+**Cache streamed audio** stores a bounded amount of streamed media in private
+app cache storage. Adaptive manifests are fetched fresh, and cache errors allow
+network reads to continue. Cached bytes may be evicted and do not guarantee
+complete offline playback. Use [Downloads](/docs/library-and-streaming/downloads-and-online-quality)
+for files you need to keep.
+
+Transient network failures receive bounded retries. Seekable sources resume from
+the last known position; live or non-seekable sources restart instead of resuming
+an old timestamp.
+Supported webpage sources use the existing yt-dlp runtime to resolve a fresh
+audio URL on load or retry. Authentication errors, unavailable formats and
+unsupported sites can still fail without switching engines.
+
+## Dolby Atmos and spatial audio
+
+### Dolby Atmos
+
+For a loaded Dolby track, the player shows the double-D icon immediately below
+**Now Playing**. Confirmed E-AC-3 JOC metadata displays **Dolby Atmos**; other
+detected Dolby codecs display **Dolby Audio**. The indicator identifies the
+current source format, remains visible while that track is paused, and is not
+enabled merely by turning on the Atmos preference. It does not certify the
+device's rendering path.
+
+**Prefer Dolby Atmos** is available when Android reports a Dolby Digital Plus
+JOC decoder or a connected output advertising E-AC-3 JOC. The player's Audio sheet
+shows the corresponding toggle when that capability is reported.
+
+This is a track preference, not a stereo-to-Atmos effect or a device-wide Dolby
+switch. It can prefer an available Atmos representation but cannot add one to a
+source. A compatible decoder alone is not proof that the output route renders
+the full Atmos mix.
+
+Check Audio properties for the actual path: JOC passthrough, decoded JOC,
+E-AC-3 core-only output, or unverified rendering. Devices that decode only the
+E-AC-3 core should not be treated as verified Atmos output.
+
+### Android spatial audio
+
+**Spatial audio** opts mpvRx into Android's Spatializer on supported Android 12L
+(API 32) and newer devices. Availability also depends on the current output route,
+headphones, system settings and source format.
+
+If the current route supports spatialization but Android has disabled it, tapping
+the player's spatial-audio control opens Android sound settings. The app cannot
+force the system switch on. It also does not synthesize an Atmos mix from stereo.
 
 ## Music library
 
-The Music tab can use local storage, Jellyfin, or Navidrome as its source. Local browsing includes:
+The Music source selector offers local storage, Jellyfin, Navidrome and
+audiobooks. Local music includes songs, albums, artists, playlists and folders,
+with artwork-aware layouts, search, sorting, favorites, folder exclusions and
+a minimum-track-duration filter.
 
-- Songs, albums, artists, and playlists
-- Artwork-aware grid and list layouts
-- Search and sorting
-- Folder exclusions and a minimum-track-duration filter
-- Favorites and shuffled playback
+Changing source replaces the browsed catalog; it does not merge remote and local
+albums. If a server is unavailable, switch back to Local rather than deleting
+its configuration. See [Jellyfin and Navidrome](/docs/library-and-streaming/jellyfin-and-navidrome).
 
-The dedicated now-playing view combines artwork, metadata, transport controls, and the up-next queue.
+### Playlists and saved queue
 
-### Switch the source
+**Play Next** inserts after the current item; **Add to Queue** appends. You can
+also save the queue as a named playlist. Favorites remain synchronized with the
+active music notification.
 
-Choose the active source from Music settings. Local uses Android media and
-filesystem indexing; Jellyfin and Navidrome use their saved server account.
-Changing source replaces the browsed catalog but does not merge remote and local
-albums into one library.
+Eligible ExoPlayer sessions save the queue, shuffle order, current item, position,
+speed, volume and pause state atomically in private, non-backed-up storage when
+**Recently Played** history retention is enabled. A saved queue is a playback
+snapshot, not a download or a named playlist.
 
-If a remote source is unavailable, switch back to Local rather than deleting
-the server. See [Jellyfin and Navidrome](/docs/library-and-streaming/jellyfin-and-navidrome)
-for connection behavior.
+**Resume queue** in Android Auto and Play on the music widget can reopen that
+snapshot after process recreation while ExoPlayer is selected. This is an explicit
+resume action, not automatic playback at app launch. Missing files, revoked file
+permissions, expired credentials and unavailable sources still require attention.
+Disabling history retention clears the saved queue. See
+[Playlists, queues, and history](/docs/library-and-streaming/playlists-and-history).
 
-### Playlists, favorites, and queue
+## Android Auto and widget
 
-Create local audio playlists, add selected tracks, or save the current queue as
-a named playlist. Favorites are represented by a stable audio playlist and stay
-in sync with the active music notification.
+Android Auto and authorized media-browser clients can browse local songs, audio
+playlists, recents, downloaded audio and the current/saved queue. Long track lists
+are paged; voice search looks for local songs by title or artist. This is not a
+full Jellyfin or Navidrome discovery interface.
 
-The up-next queue supports normal or shuffled playback. **Play Next** inserts
-after the active track; **Add to Queue** appends. See [Playlists, queues, and history](/docs/library-and-streaming/playlists-and-history).
+Add **mpvRx music** from the Android launcher's widget picker. It resizes
+horizontally and provides artwork, title/artist, previous, Play/Pause and next.
+Tapping the metadata opens mpvRx. Transport actions use the existing playback
+service rather than a second player.
+
+Media-access permissions, service/notification settings and Android background
+restrictions still apply. The widget cannot play a saved queue when no eligible
+snapshot exists or history retention is disabled.
+
+## Download metadata
+
+Completed yt-dlp audio downloads can embed title, artist, album and artwork using
+the optional Mutagen dependency installed with the yt-dlp runtime. Supported
+containers include MP3, M4A, FLAC and Ogg/Opus. Artwork must be available in a
+supported format. Tagging uses a temporary copy and never requires transcoding
+the audio. Unsupported containers and tagging failures leave the downloaded file
+intact. See [Downloads and online quality](/docs/library-and-streaming/downloads-and-online-quality).
 
 ## Lyrics
 
@@ -59,10 +196,20 @@ original source available for comparison.
 
 Blob, Galaxy, Cuboid, and Particle modes are available, along with an optional audio-reactive seekbar. They are presentation choices, not audio processors, and do not change the decoded signal.
 
+With ExoPlayer, visualization uses an eligible audio-session capture path. It can
+be unavailable during offloaded or protected output; recording permission and
+device support also affect capture.
+
 Galaxy and Particle emphasize many moving elements; Cuboid emphasizes geometry;
 Blob uses a continuous organic surface. All use additional rendering resources,
 so disable them when battery life, PiP, or thermal headroom is the priority.
 
 ## Background playback
 
-Unified background playback keeps audio or video active while you return to browser screens. Android may require notification permission for media controls and may restrict background behavior under aggressive battery optimization.
+Audio and video share the app's playback session but have separate background
+playback settings. Enable audio background playback when you want music to
+continue after leaving the player. Notification re-entry and mini-player controls
+operate on the same live queue, without starting another engine.
+
+See [Orientation, background playback, and PiP](/docs/playback/orientation-background-and-pip)
+for handoff behavior and Android permission considerations.

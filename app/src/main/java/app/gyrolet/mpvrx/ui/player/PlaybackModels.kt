@@ -12,10 +12,12 @@ package app.gyrolet.mpvrx.ui.player
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import kotlinx.serialization.Serializable
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Locale
 
+@Serializable
 enum class RepeatMode {
   OFF,
   ONE,
@@ -34,6 +36,7 @@ enum class PlaybackPhase {
 }
 
 /** Metadata needed to reopen a saved network item without putting credentials in a URI. */
+@Serializable
 data class NetworkPlaybackSource(
   val connectionId: Long,
   val relativePath: String,
@@ -43,6 +46,7 @@ data class NetworkPlaybackSource(
  * One self-contained queue item. Keeping these values together prevents URI/title/network path
  * lists from drifting out of alignment when a queue is moved or played in the background.
  */
+@Serializable
 data class PlaybackItem(
   val stableId: String,
   val originalUri: String,
@@ -123,6 +127,7 @@ internal fun PlaybackItem.declaredMediaKind(): DeclaredPlaybackMediaKind {
   return DeclaredPlaybackMediaKind.UNKNOWN
 }
 
+@Serializable
 data class AudiobookPlaybackInfo(val bookId: Long, val trackId: Long)
 
 internal fun PlaybackItem.isDefinitelyAudioOnly(): Boolean =
@@ -141,6 +146,7 @@ internal fun PlaybackItem.videoSelection(): PlaybackVideoSelection =
     -> PlaybackVideoSelection.IMMEDIATE
   }
 
+@Serializable
 data class PlaybackQueueState(
   val items: List<PlaybackItem> = emptyList(),
   val currentIndex: Int = -1,

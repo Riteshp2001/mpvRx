@@ -1,6 +1,6 @@
 ---
 title: Downloads and online quality
-description: Choose a download folder, manage direct and yt-dlp jobs, and configure online format preferences.
+description: Manage downloads and embedded audio tags, distinguish streaming cache from offline files, and choose source quality settings.
 ---
 
 mpvRx separates direct-file downloads from extractor-backed downloads while presenting both in one Downloads screen.
@@ -24,9 +24,27 @@ The Downloads screen separates active and completed direct downloads, plus activ
 
 Android 13 and newer require notification permission for visible progress notifications. The download itself can still depend on foreground-service and vendor background restrictions.
 
+## Streaming audio versus downloads
+
+On the experimental ExoPlayer branch, **Settings > Audio** provides separate
+**Metered audio quality** and **Unmetered audio quality** limits. They affect
+streaming audio representation selection; they are not the download format
+selector described below. A metered Wi-Fi network uses the metered limit, and
+**Original quality** removes that limit rather than transcoding a source.
+
+**Cache streamed audio** is also separate from Downloads. It stores a bounded,
+evictable amount of audio in private cache storage. It may contain only part of a
+track; adaptive manifests are kept fresh rather than treated as permanent files.
+Turning caching on does not guarantee offline playback or create a completed
+download. Use Downloads for media you need to retain.
+
+See [Audio and music](/docs/playback/audio-and-music#streaming-quality-and-cache)
+for engine selection, buffering and retry behavior.
+
 ## Online quality controls
 
-Extractor-backed playback and downloads can filter formats by:
+Download format selection and mpv's extractor-backed video playback can filter
+formats by:
 
 - Video codec
 - Maximum or preferred resolution
@@ -45,12 +63,30 @@ A strict combination can eliminate every available format. Start with Automatic,
 | Audio-focused download | Prefer audio-only and set the needed bitrate |
 | Small file | Lower resolution before forcing an unusually low bitrate |
 
+## Embedded audio metadata
+
+The experimental branch can tag completed yt-dlp audio downloads with source
+metadata: title, artist, album, album artist, year and track number when supplied,
+plus supported JPEG/PNG artwork. MP3, M4A, FLAC and Ogg/Opus are supported; this
+is not an editor for arbitrary existing files or every download container.
+
+Tagging uses Mutagen, an optional dependency installed with the yt-dlp runtime.
+It writes to a temporary copy and replaces the completed file only after a
+successful save. It does not re-encode the audio. Allow space for that temporary
+copy, especially for large lossless files.
+
+A tagging failure does not turn a successful download into a failed transfer.
+Unsupported containers, unavailable artwork, an unavailable metadata dependency
+or insufficient temporary space can leave the original file and its existing
+tags unchanged. Artwork retrieval can make a separate network request.
+
 ## Failures and recovery
 
 - **No format found:** clear codec/container/HDR filters.
 - **Extraction broke recently:** the website may have changed; update mpvRx and retry.
 - **Download stops in background:** review notification and battery restrictions.
 - **File cannot be opened:** confirm completion, extension, and storage permission.
+- **Audio has no new tags or artwork:** verify the container is supported, source metadata exists and the optional tagging dependency was installed. The download may still be complete.
 - **Authenticated URL fails:** do not post the URL publicly; reproduce with a non-private source if possible.
 
 :::warning

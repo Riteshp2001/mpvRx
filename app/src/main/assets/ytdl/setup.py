@@ -1,4 +1,4 @@
-import sys, os, urllib.request, subprocess
+import sys, os, urllib.request, subprocess, hashlib, json
 
 # Argument 1: Native Library Directory (passed from Java)
 native_lib_dir = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -41,6 +41,22 @@ except Exception as e:
         pass
     print("Download failed: " + str(e))
     sys.exit(1)
+
+try:
+    with urllib.request.urlopen("https://pypi.org/pypi/mutagen/1.47.0/json", timeout=20) as response:
+        package = json.load(response)
+    wheel = next(artifact for artifact in package["urls"] if artifact["filename"].endswith("py3-none-any.whl"))
+    with urllib.request.urlopen(wheel["url"], timeout=30) as response:
+        archive = response.read(8 * 1024 * 1024 + 1)
+    if len(archive) > 8 * 1024 * 1024 or hashlib.sha256(archive).hexdigest() != wheel["digests"]["sha256"]:
+        raise IOError("Invalid metadata library checksum")
+    with open("mutagen.zip.download", "wb") as output:
+        output.write(archive)
+    os.replace("mutagen.zip.download", "mutagen.zip")
+except Exception:
+    print("Audio metadata library unavailable; downloads will retain their existing tags.")
+    if os.path.exists("mutagen.zip.download"):
+        os.unlink("mutagen.zip.download")
 
 # Ensure executable bit is NOT set on the data directory script 
 # to avoid SELinux denials on Android 10+. 

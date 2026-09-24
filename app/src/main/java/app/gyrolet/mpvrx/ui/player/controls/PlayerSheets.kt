@@ -106,9 +106,15 @@ fun PlayerSheets(
   val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
   val qualityDownloadAction = rememberQualityDownloadAction(viewModel)
   val advancedPreferences = koinInject<AdvancedPreferences>()
+  val playbackSession by app.gyrolet.mpvrx.ui.player.PlaybackSession.state.collectAsState()
   val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
   val configOwnedOptions =
-    remember(storedConfigOverrides) { MpvConfigOverride.resolveOptionNames(storedConfigOverrides) }
+    remember(storedConfigOverrides, playbackSession.engine) {
+      val options = MpvConfigOverride.resolveOptionNames(storedConfigOverrides)
+      if (playbackSession.engine == app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer) {
+        options - setOf("af", "speed", "audio-pitch-correction", "audio-channels", "volume", "volume-max")
+      } else options
+    }
   val fullyOwnedOptions =
     when (sheetShown) {
       Sheets.Decoders -> MpvConfigControlledFeatures.HARDWARE_DECODER
@@ -681,7 +687,7 @@ fun PlayerSheets(
     Sheets.AudioProperties -> {
       val session by app.gyrolet.mpvrx.ui.player.PlaybackSession.state.composeCollectAsState()
       val audio by app.gyrolet.mpvrx.ui.player.PlaybackSession.audioState.composeCollectAsState()
-      val properties = remember(session.engine, session.audioFallback, session.generation, audio.output, audio.title, audio.crossfadeAvailable) {
+      val properties = remember(session.engine, session.generation, audio.output, audio.title, audio.crossfadeAvailable) {
         viewModel.getAudioPropertiesData()
       }
       app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertiesSheet(

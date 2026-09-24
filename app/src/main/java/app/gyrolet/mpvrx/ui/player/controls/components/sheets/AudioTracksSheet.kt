@@ -32,12 +32,17 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Slider
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.ReplayGainMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.compose.runtime.collectAsState
 import app.gyrolet.mpvrx.ui.player.AudioEngineKind
@@ -52,6 +58,7 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
@@ -60,6 +67,7 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlinx.collections.immutable.ImmutableList
 import org.koin.compose.koinInject
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -77,6 +85,7 @@ fun AudioTracksSheet(
   audioEffectsEnabled: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
+  val context = LocalContext.current
   val audioPreferences = koinInject<AudioPreferences>()
   val audioChannels by audioPreferences.audioChannels.collectAsState()
   val session by PlaybackSession.state.collectAsState()
@@ -106,7 +115,7 @@ fun AudioTracksSheet(
               Spacer(modifier = Modifier.weight(1f))
               if (onOpenEqualizerSheet != null) {
                 PlayerSheetAction(icon = Icons.RoundedFilled.Equalizer, label = stringResource(R.string.btn_label_equalizer),
-                  onClick = onOpenEqualizerSheet, enabled = equalizerControlEnabled && processingAvailable)
+                  onClick = onOpenEqualizerSheet, enabled = processingAvailable)
               }
             }
           } else AddTrackRow(
@@ -129,6 +138,82 @@ fun AudioTracksSheet(
               )
             },
           )
+        }
+        if (exoPlayer) {
+          item(key = "exo_output_controls") {
+            val preferAtmos by audioPreferences.preferDolbyAtmos.collectAsState()
+            val spatial by audioPreferences.spatialAudio.collectAsState()
+            val skipSilence by audioPreferences.skipSilence.collectAsState()
+            val replayGain by audioPreferences.replayGain.collectAsState()
+            val crossfade by audioPreferences.crossfadeDurationMs.collectAsState()
+            var fadeSeconds by remember(crossfade) { mutableFloatStateOf((crossfade / 1000f).coerceIn(0f, 12f)) }
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+              FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (audio.output.dolbyAtmosSupported) {
+                  FilterChip(
+                    selected = preferAtmos,
+                    onClick = { audioPreferences.preferDolbyAtmos.set(!preferAtmos) },
+                    label = { Text(stringResource(R.string.pref_audio_dolby_atmos)) },
+                    leadingIcon = { Icon(Icons.RoundedFilled.AutoAwesome, contentDescription = null) },
+                  )
+                }
+                if (audio.output.spatializationAvailable) {
+                  FilterChip(
+                    selected = spatial && audio.output.spatializationEnabled,
+                    onClick = {
+                      if (!audio.output.spatializationEnabled) {
+                        runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)) }
+                      } else audioPreferences.spatialAudio.set(!spatial)
+                    },
+                    label = { Text(stringResource(R.string.pref_audio_spatial)) },
+                    leadingIcon = { Icon(Icons.RoundedFilled.Headset, contentDescription = null) },
+                  )
+                }
+              }
+              if (audio.output.spatializationAvailable && !audio.output.spatializationEnabled) {
+                Text(stringResource(R.string.audio_spatial_system_disabled), style = MaterialTheme.typography.bodySmall)
+              }
+              Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                  .toggleable(skipSilence, enabled = processingAvailable, role = Role.Switch,
+                    onValueChange = audioPreferences.skipSilence::set),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(stringResource(R.string.pref_audio_skip_silence), modifier = Modifier.weight(1f))
+                Switch(skipSilence, onCheckedChange = null, enabled = processingAvailable)
+              }
+              Text(stringResource(R.string.pref_audio_replay_gain), style = MaterialTheme.typography.titleSmall)
+              FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ReplayGainMode.entries.forEach { mode ->
+                  FilterChip(
+                    selected = replayGain == mode,
+                    enabled = processingAvailable,
+                    onClick = {
+                      audioPreferences.replayGain.set(mode)
+                      if (mode != ReplayGainMode.Off) audioPreferences.volumeNormalization.set(false)
+                    },
+                    label = { Text(stringResource(when (mode) {
+                      ReplayGainMode.Off -> R.string.generic_disabled
+                      ReplayGainMode.Track -> R.string.audio_replay_gain_track
+                      ReplayGainMode.Album -> R.string.audio_replay_gain_album
+                    })) },
+                  )
+                }
+              }
+              Text(stringResource(R.string.pref_audio_crossfade), style = MaterialTheme.typography.titleSmall)
+              Text(if (fadeSeconds < 1f) stringResource(R.string.audio_gapless)
+                else stringResource(R.string.pref_audio_crossfade_seconds, fadeSeconds.roundToInt()),
+                style = MaterialTheme.typography.bodySmall)
+              Slider(
+                value = fadeSeconds,
+                onValueChange = { fadeSeconds = it },
+                onValueChangeFinished = { audioPreferences.crossfadeDurationMs.set(fadeSeconds.roundToInt() * 1000) },
+                valueRange = 0f..12f, steps = 11,
+                enabled = processingAvailable && session.currentItem?.audiobook == null,
+              )
+            }
+          }
         }
         if (embeddedTracks.isNotEmpty()) {
           item(key = "embedded_audio_tracks_header") {
@@ -173,7 +258,7 @@ fun AudioTracksSheet(
               AudioChannels.entries.forEach {
                 FilterChip(
                   selected = audioChannels == it,
-                  enabled = processingAvailable && if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
+                  enabled = processingAvailable && (exoPlayer || if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled),
                   onClick = {
                     audioPreferences.audioChannels.set(it)
                     if (it == AudioChannels.ReverseStereo) {
@@ -194,19 +279,22 @@ fun AudioTracksSheet(
             PlayerSheetSectionHeader(stringResource(R.string.pref_audio_effects))
             Row(
               modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                .toggleable(value = volumeNormalization, enabled = audioEffectsEnabled && processingAvailable, role = Role.Switch,
-                  onValueChange = audioPreferences.volumeNormalization::set)
+                .toggleable(value = volumeNormalization, enabled = (exoPlayer || audioEffectsEnabled) && processingAvailable, role = Role.Switch,
+                  onValueChange = { enabled ->
+                    audioPreferences.volumeNormalization.set(enabled)
+                    if (enabled && exoPlayer) audioPreferences.replayGain.set(ReplayGainMode.Off)
+                  })
                 .padding(horizontal = 20.dp, vertical = 8.dp),
               horizontalArrangement = Arrangement.spacedBy(16.dp),
               verticalAlignment = Alignment.CenterVertically,
             ) {
               Text(stringResource(R.string.pref_audio_volume_normalization_title), modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge)
-              Switch(checked = volumeNormalization, onCheckedChange = null, enabled = audioEffectsEnabled && processingAvailable)
+              Switch(checked = volumeNormalization, onCheckedChange = null, enabled = (exoPlayer || audioEffectsEnabled) && processingAvailable)
             }
             Row(
               modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                .toggleable(value = drcEnabled, enabled = audioEffectsEnabled && processingAvailable, role = Role.Switch,
+                .toggleable(value = drcEnabled, enabled = (exoPlayer || audioEffectsEnabled) && processingAvailable, role = Role.Switch,
                   onValueChange = audioPreferences.drcEnabled::set)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
               horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -214,7 +302,7 @@ fun AudioTracksSheet(
             ) {
               Text(stringResource(R.string.pref_audio_drc_title), modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge)
-              Switch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled && processingAvailable)
+              Switch(checked = drcEnabled, onCheckedChange = null, enabled = (exoPlayer || audioEffectsEnabled) && processingAvailable)
             }
           }
         }

@@ -36,6 +36,7 @@ The groups below organize the existing credits by project type; they are not an 
 | Gramophone | [FoedusProgramme/Gramophone](https://github.com/FoedusProgramme/Gramophone) |
 | AFinity | [MakD/AFinity](https://github.com/MakD/AFinity) |
 | Chora | [CraftWorksMC/Chora](https://github.com/CraftWorksMC/Chora) |
+| BitChord | [kushagrasinghx/BitChord](https://github.com/kushagrasinghx/BitChord) |
 
 ### Video processing & streaming
 

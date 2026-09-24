@@ -1,5 +1,25 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="audio_badge_dolby_atmos">دولبي أتموس</string>
+  <string name="audio_badge_dolby_audio">صوت دولبي</string>
+  <string name="pref_audio_skip_silence">تخطي الصمت</string>
+  <string name="pref_audio_replay_gain">ReplayGain</string>
+  <string name="audio_replay_gain_track">مستوى المقطع</string>
+  <string name="audio_replay_gain_album">مستوى الألبوم</string>
+  <string name="pref_audio_dolby_atmos">تفضيل Dolby Atmos</string>
+  <string name="pref_audio_spatial">الصوت المكاني</string>
+  <string name="pref_audio_wifi_quality">جودة الصوت للاتصالات غير المحدودة</string>
+  <string name="pref_audio_mobile_quality">جودة الصوت للاتصالات المحدودة</string>
+  <string name="audio_quality_unlimited">الجودة الأصلية</string>
+  <string name="audio_quality_kbps">%1$d كيلوبت/ث</string>
+  <string name="pref_audio_stream_cache">تخزين الصوت المتدفق مؤقتًا</string>
+  <string name="audio_system_sound_settings">إعدادات صوت Android</string>
+  <string name="audio_spatial_system_disabled">معطل في إعدادات Android</string>
+  <string name="audio_gapless">بدون فواصل</string>
+  <string name="audio_queue_resume">استئناف قائمة التشغيل</string>
+  <string name="audio_queue_label">قائمة انتظار التشغيل</string>
+  <string name="audio_widget_name">موسيقى mpvRx</string>
+  <string name="audio_widget_empty">لم يتم تحديد موسيقى</string>
   <string name="generic_reset">إعادة تعيين</string>
   <string name="generic_share">مشاركة</string>
   <string name="generic_confirm">تأكيد</string>
@@ -2525,8 +2545,6 @@
   <string name="audio_output_processing">PCM ‏16 بت</string>
   <string name="audio_output_float">PCM بفاصلة عائمة</string>
   <string name="audio_output_encoded">صوت مرمّز</string>
-  <string name="audio_fallback_config">mpv (إعداد)</string>
-  <string name="audio_fallback_format">mpv (توافق)</string>
   <string name="audio_native_controls">يتطلب mpv</string>
   <string name="audio_atmos_unsupported">Dolby Atmos غير متاح</string>
   <string name="audio_atmos_source">مصدر Dolby Atmos ‏(E-AC-3 JOC)</string>

@@ -10,6 +10,7 @@ mpvRx is open source and does not ship ads or analytics trackers. Features that 
 | Permission or capability | Why it is used |
 | --- | --- |
 | Internet | Network streams, metadata, subtitle search, servers, casting support, updates, and configured AI providers. |
+| Network state | On the experimental audio branch, distinguish metered and unmetered connections for ExoPlayer quality limits. This does not require a separate runtime prompt. |
 | Video and audio access | Build and browse the local media library on current Android versions. |
 | Legacy/external storage access | File browsing and file operations on Android versions and storage layouts that require broader access. |
 | Modify audio settings | Playback volume and audio routing behavior. |
@@ -29,11 +30,43 @@ Permissions are requested by feature and Android version. Denying an optional pe
 - Jellyfin, Navidrome, Subsonic, network shares, and AI providers use credentials you explicitly configure.
 - Google Cast exposes local media through a temporary tokenized LAN endpoint while casting.
 - Online subtitle, metadata, lyrics, yt-dlp, update, and AI features contact external services.
+- Experimental audio tagging can obtain its optional Mutagen dependency from PyPI and fetch source artwork separately. Playback extraction continues to use the configured yt-dlp runtime and cookies.
 - Torrent use exposes normal peer-to-peer network activity to the swarm and network provider.
 
 :::warning
 Never publish passwords, API keys, access tokens, authenticated stream URLs, private server addresses, or media you do not have permission to share.
 :::
+
+## Saved audio queues and cache
+
+On the experimental ExoPlayer branch, eligible queues are saved only while
+**Recently Played** retention is enabled. The snapshot can include titles, media
+locations, network references and request headers needed to reopen sources, along
+with queue order, position, speed, volume and pause state. It is stored privately
+inside the app and excluded from Android backup; this is not a separate encrypted
+vault. Disabling retention clears the saved queue.
+
+The optional streaming cache is a different store. It contains bounded,
+evictable media bytes and is not a permanent download. Cache identities account
+for the media/source and request context so authenticated media is not identified
+solely by a public URL. Disabling history retention does not imply that cached
+audio or downloaded media has been deleted.
+
+The music widget can display live or retained track metadata on the home screen.
+Android Auto and other authorized media-browser clients can see the audio catalog
+exposed by the playback service. Access to a catalog or widget does not grant
+access to unsupported sources or bypass storage permissions.
+
+## Audio output controls
+
+Dolby Atmos preference does not enable a hidden system Dolby effect or convert
+stereo into Atmos. Spatial audio uses the public Android Spatializer capabilities
+of the current device and output route. The app can opt into spatialization and
+open system sound settings, but cannot force the system Spatializer on.
+
+Visualizer capture can require recording permission and an eligible audio
+session. Offloaded or protected output can make capture unavailable even when
+permission has been granted. See [Audio and music](/docs/playback/audio-and-music).
 
 ## Secure folder
 

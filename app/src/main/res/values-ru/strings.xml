@@ -1,5 +1,25 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
+  <string name="audio_badge_dolby_atmos">Dolby Atmos</string>
+  <string name="audio_badge_dolby_audio">Dolby Audio</string>
+  <string name="pref_audio_skip_silence">Пропускать тишину</string>
+  <string name="pref_audio_replay_gain">ReplayGain</string>
+  <string name="audio_replay_gain_track">Усиление трека</string>
+  <string name="audio_replay_gain_album">Усиление альбома</string>
+  <string name="pref_audio_dolby_atmos">Предпочитать Dolby Atmos</string>
+  <string name="pref_audio_spatial">Пространственный звук</string>
+  <string name="pref_audio_wifi_quality">Качество звука в безлимитной сети</string>
+  <string name="pref_audio_mobile_quality">Качество звука в лимитной сети</string>
+  <string name="audio_quality_unlimited">Исходное качество</string>
+  <string name="audio_quality_kbps">%1$d кбит/с</string>
+  <string name="pref_audio_stream_cache">Кэшировать потоковое аудио</string>
+  <string name="audio_system_sound_settings">Настройки звука Android</string>
+  <string name="audio_spatial_system_disabled">Отключено в настройках Android</string>
+  <string name="audio_gapless">Без пауз</string>
+  <string name="audio_queue_resume">Продолжить очередь</string>
+  <string name="audio_queue_label">Очередь воспроизведения</string>
+  <string name="audio_widget_name">Музыка mpvRx</string>
+  <string name="audio_widget_empty">Музыка не выбрана</string>
   <string name="generic_reset">Сбросить</string>
   <string name="generic_share">Поделиться</string>
   <string name="generic_confirm">Подтвердить</string>
@@ -2513,8 +2533,6 @@
   <string name="audio_output_processing">16-битный PCM</string>
   <string name="audio_output_float">PCM с плавающей точкой</string>
   <string name="audio_output_encoded">Кодированный звук</string>
-  <string name="audio_fallback_config">mpv (конфигурация)</string>
-  <string name="audio_fallback_format">mpv (совместимость)</string>
   <string name="audio_native_controls">Требуется mpv</string>
   <string name="audio_atmos_unsupported">Dolby Atmos недоступен</string>
   <string name="audio_atmos_source">Источник Dolby Atmos (E-AC-3 JOC)</string>

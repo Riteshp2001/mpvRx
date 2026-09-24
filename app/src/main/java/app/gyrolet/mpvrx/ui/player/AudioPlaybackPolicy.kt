@@ -16,9 +16,8 @@ internal object AudioPlaybackPolicy {
   fun engine(
     preferred: AudioEngineKind,
     audioOnly: Boolean,
-    requiresNativePlayback: Boolean = false,
   ): AudioEngineKind =
-    if (audioOnly && !requiresNativePlayback) preferred else AudioEngineKind.Mpv
+    if (audioOnly) preferred else AudioEngineKind.Mpv
 
   fun canCrossfade(
     audioOnly: Boolean,

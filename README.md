@@ -476,7 +476,7 @@ Thank you to the player projects, music apps, libraries, and individual contribu
 | Explore the credits | Includes |
 |---|---|
 | [Playback & player projects](CITATION.md#playback--player-projects) | mpv-android, mpvExtended, mpvKt, MpvRex, Next Player |
-| [Music & media apps](CITATION.md#music--media-apps) | PixelPlayer, Gramophone, AFinity, Chora |
+| [Music & media apps](CITATION.md#music--media-apps) | PixelPlayer, BitChord, Gramophone, AFinity, Chora |
 | [Video processing & streaming](CITATION.md#video-processing--streaming) | hdr-toys, anacrolix/torrent |
 
 > Special thanks to [SunnyVishnu3](https://github.com/SunnyVishnu3) for the `yt-dlp` native integration and SDK 29+ bypass logic.

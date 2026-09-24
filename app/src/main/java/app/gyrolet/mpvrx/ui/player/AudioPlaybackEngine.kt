@@ -1,6 +1,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import app.gyrolet.mpvrx.preferences.AudioOutputSampleRate
+import app.gyrolet.mpvrx.preferences.ReplayGainMode
 import java.util.concurrent.atomic.AtomicBoolean
 
 data class AudioEngineTrack(
@@ -19,6 +20,7 @@ data class AudioOutputInfo(
   val sourceChannels: Int = 0,
   val sourceBitrate: Int = 0,
   val dolbyAtmosSource: Boolean = false,
+  val dolbyAtmosSupported: Boolean = false,
   val decoderName: String? = null,
   val decoderSupportsAtmos: Boolean = false,
   val outputSampleRate: Int = 0,
@@ -57,6 +59,8 @@ data class AudioEngineSnapshot(
   val output: AudioOutputInfo = AudioOutputInfo(),
   val crossfading: Boolean = false,
   val crossfadeAvailable: Boolean = false,
+  val skipSilenceEnabled: Boolean = false,
+  val replayGainDb: Float? = null,
   val loopStartMs: Long? = null,
   val loopEndMs: Long? = null,
   val error: String? = null,
@@ -76,14 +80,25 @@ data class AudioProcessingSettings(
   val normalize: Boolean = false,
   val compress: Boolean = false,
   val channelMix: AudioChannelMix = AudioChannelMix.Auto,
+  val skipSilence: Boolean = false,
+  val replayGain: ReplayGainMode = ReplayGainMode.Off,
 ) {
   val needsProcessing: Boolean
-    get() = equalizerEnabled || normalize || compress || channelMix != AudioChannelMix.Auto
+    get() = equalizerEnabled || normalize || compress || channelMix != AudioChannelMix.Auto ||
+      skipSilence || replayGain != ReplayGainMode.Off
 }
+
+internal data class AudioOutputSettings(
+  val preferDolbyAtmos: Boolean = true,
+  val spatialAudio: Boolean = true,
+  val wifiMaxBitrate: Int = 0,
+  val mobileMaxBitrate: Int = 256_000,
+)
 
 internal class AudioPlaybackSource(
   val item: PlaybackItem,
   val uri: String,
+  val mimeType: String? = item.mimeType,
   private val cleanup: () -> Unit = {},
 ) : AutoCloseable {
   private val closed = AtomicBoolean()
@@ -113,6 +128,7 @@ internal interface AudioPlaybackEngine {
   fun setSpeed(speed: Float, preservePitch: Boolean)
   fun selectTrack(id: Int)
   fun setProcessing(settings: AudioProcessingSettings)
+  fun setOutputSettings(settings: AudioOutputSettings)
   fun setOutputSampleRate(mode: AudioOutputSampleRate)
   fun setCrossfade(durationMs: Int, allowed: Boolean)
   fun setLoop(startMs: Long?, endMs: Long?)

@@ -5,6 +5,7 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.util.UnstableApi
+import app.gyrolet.mpvrx.preferences.ReplayGainMode
 import app.gyrolet.mpvrx.ui.player.AudioChannelMix
 import app.gyrolet.mpvrx.ui.player.AudioProcessingSettings
 import java.nio.ByteBuffer
@@ -27,6 +28,7 @@ internal class ExoAudioProcessor(
   @Volatile var bypass = true
   @Volatile var preserveSource = false
   @Volatile var extraGain = 1f
+  @Volatile var replayGain = 1f
   private var matrix: ChannelMixingMatrix? = null
   private var inputFrame = FloatArray(0)
   private var outputFrame = FloatArray(0)
@@ -105,7 +107,8 @@ internal class ExoAudioProcessor(
     val normalizationRelease = smoothing(3.0)
     val eqHeadroom = if (current.equalizerEnabled) current.bandGains.maxOrNull()?.coerceAtLeast(0) ?: 0 else 0
     val boostDb = if (current.equalizerEnabled) current.boostDb.coerceIn(0, 10) else 0
-    val targetGain = dbGain(boostDb - eqHeadroom.toDouble()) * extraGain.coerceIn(1f, 3f)
+    val taggedGain = replayGain.takeIf { it.isFinite() }?.coerceIn(0.03f, 10f) ?: 1f
+    val targetGain = dbGain(boostDb - eqHeadroom.toDouble()) * extraGain.coerceIn(1f, 3f) * taggedGain
     val mixing = matrix
 
     while (inputBuffer.remaining() >= inputAudioFormat.bytesPerFrame) {
@@ -131,7 +134,9 @@ internal class ExoAudioProcessor(
       outputFrame.forEach { power += it * it }
       rmsSquared += rmsStep * (power / outputFrame.size - rmsSquared)
       val rms = sqrt(rmsSquared.coerceAtLeast(0.0))
-      val desiredNormalization = if (processing && current.normalize && rms > 0.00316) (0.1259 / rms).coerceIn(0.25, 2.0) else 1.0
+      val desiredNormalization = if (processing && current.normalize && current.replayGain == ReplayGainMode.Off && rms > 0.00316) {
+        (0.1259 / rms).coerceIn(0.25, 2.0)
+      } else 1.0
       normalizationGain += (if (desiredNormalization < normalizationGain) normalizationAttack else normalizationRelease) *
         (desiredNormalization - normalizationGain)
       outputGain += gainStep * (targetGain - outputGain)

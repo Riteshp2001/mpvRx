@@ -1552,11 +1552,7 @@ class PlayerViewModel : ViewModel(),
 
     return buildList {
       val session = PlaybackSession.state.value
-      val engineLabel = when (session.audioFallback) {
-        AudioEngineFallback.NativeConfiguration -> R.string.audio_fallback_config
-        AudioEngineFallback.FormatCompatibility -> R.string.audio_fallback_format
-        null -> if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
-      }
+      val engineLabel = if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
       add(app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
         appContext.getString(R.string.audio_output_engine), appContext.getString(engineLabel)))
       if (session.engine == AudioEngineKind.ExoPlayer) {

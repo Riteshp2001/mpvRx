@@ -85,11 +85,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import app.gyrolet.mpvrx.ui.browser.music.MusicTab
 import app.gyrolet.mpvrx.ui.player.AudioEngineKind
-import app.gyrolet.mpvrx.ui.player.AudioEngineFallback
+import app.gyrolet.mpvrx.ui.player.ExoAudioEngine
+import app.gyrolet.mpvrx.preferences.ReplayGainMode
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 @Serializable
 object AudioPreferencesScreen : Screen {
+  @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -97,7 +99,11 @@ object AudioPreferencesScreen : Screen {
     val resources = LocalResources.current
     val backstack = LocalBackStack.current
     val preferences = koinInject<AudioPreferences>()
-    val configOwnedOptions = currentMpvConfigOverrideOptions()
+    val selectedEngine by preferences.audioEngine.collectAsState()
+    val storedConfigOwnedOptions = currentMpvConfigOverrideOptions()
+    val configOwnedOptions = if (selectedEngine == AudioEngineKind.ExoPlayer) emptySet() else storedConfigOwnedOptions
+    val audioOutput by PlaybackSession.audioState.collectAsState()
+    val atmosSupported = audioOutput.output.dolbyAtmosSupported || remember(context) { ExoAudioEngine.supportsDolbyAtmos(context) }
     val browserPreferences = koinInject<BrowserPreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
     val notificationPermissionLauncher =
@@ -161,7 +167,7 @@ object AudioPreferencesScreen : Screen {
               Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(stringResource(R.string.pref_audio_crossfade), style = MaterialTheme.typography.bodyLarge)
                 Text(
-                  if (seconds < 1f) stringResource(R.string.generic_disabled)
+                  if (seconds < 1f) stringResource(R.string.audio_gapless)
                   else stringResource(R.string.pref_audio_crossfade_seconds, seconds.roundToInt()),
                   color = MaterialTheme.colorScheme.outline,
                 )
@@ -196,13 +202,100 @@ object AudioPreferencesScreen : Screen {
                 },
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_output_sample_rate),
               )
+              PreferenceDivider()
+              val skipSilence by preferences.skipSilence.collectAsState()
+              SwitchPreference(
+                value = skipSilence,
+                onValueChange = preferences.skipSilence::set,
+                enabled = engine == AudioEngineKind.ExoPlayer,
+                title = { Text(stringResource(R.string.pref_audio_skip_silence)) },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_skip_silence),
+              )
+              PreferenceDivider()
+              val replayGain by preferences.replayGain.collectAsState()
+              ListPreference(
+                value = replayGain,
+                onValueChange = { mode ->
+                  preferences.replayGain.set(mode)
+                  if (mode != ReplayGainMode.Off) preferences.volumeNormalization.set(false)
+                },
+                values = ReplayGainMode.entries,
+                enabled = engine == AudioEngineKind.ExoPlayer,
+                valueToText = { mode -> AnnotatedString(resources.getString(when (mode) {
+                  ReplayGainMode.Off -> R.string.generic_disabled
+                  ReplayGainMode.Track -> R.string.audio_replay_gain_track
+                  ReplayGainMode.Album -> R.string.audio_replay_gain_album
+                })) },
+                title = { Text(stringResource(R.string.pref_audio_replay_gain)) },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_replay_gain),
+              )
+              if (atmosSupported) {
+                PreferenceDivider()
+                val preferAtmos by preferences.preferDolbyAtmos.collectAsState()
+                SwitchPreference(
+                  value = preferAtmos,
+                  onValueChange = preferences.preferDolbyAtmos::set,
+                  enabled = engine == AudioEngineKind.ExoPlayer,
+                  title = { Text(stringResource(R.string.pref_audio_dolby_atmos)) },
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_dolby_atmos),
+                )
+              }
+              if (android.os.Build.VERSION.SDK_INT >= 32 &&
+                context.getSystemService(android.media.AudioManager::class.java)?.spatializer?.immersiveAudioLevel
+                  ?.let { it != android.media.Spatializer.SPATIALIZER_IMMERSIVE_LEVEL_NONE } == true
+              ) {
+                PreferenceDivider()
+                val spatial by preferences.spatialAudio.collectAsState()
+                SwitchPreference(
+                  value = spatial,
+                  onValueChange = preferences.spatialAudio::set,
+                  enabled = engine == AudioEngineKind.ExoPlayer,
+                  title = { Text(stringResource(R.string.pref_audio_spatial)) },
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_spatial),
+                )
+                me.zhanghai.compose.preference.Preference(
+                  title = { Text(stringResource(R.string.audio_system_sound_settings)) },
+                  onClick = {
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)
+                    runCatching { context.startActivity(intent) }
+                  },
+                )
+              }
+              PreferenceDivider()
+              val wifiQuality by preferences.wifiMaxBitrate.collectAsState()
+              val mobileQuality by preferences.mobileMaxBitrate.collectAsState()
+              val qualityOptions = listOf(0, 64_000, 128_000, 192_000, 256_000, 320_000)
+              val qualityLabel: @Composable (Int) -> AnnotatedString = { bitrate ->
+                AnnotatedString(if (bitrate == 0) resources.getString(R.string.audio_quality_unlimited)
+                else resources.getString(R.string.audio_quality_kbps, bitrate / 1000))
+              }
+              ListPreference(
+                value = wifiQuality, values = qualityOptions, valueToText = qualityLabel,
+                onValueChange = preferences.wifiMaxBitrate::set,
+                enabled = engine == AudioEngineKind.ExoPlayer,
+                title = { Text(stringResource(R.string.pref_audio_wifi_quality)) },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_wifi_quality),
+              )
+              PreferenceDivider()
+              ListPreference(
+                value = mobileQuality, values = qualityOptions, valueToText = qualityLabel,
+                onValueChange = preferences.mobileMaxBitrate::set,
+                enabled = engine == AudioEngineKind.ExoPlayer,
+                title = { Text(stringResource(R.string.pref_audio_mobile_quality)) },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_mobile_quality),
+              )
+              PreferenceDivider()
+              val cacheStreams by preferences.streamingCacheEnabled.collectAsState()
+              SwitchPreference(
+                value = cacheStreams,
+                onValueChange = preferences.streamingCacheEnabled::set,
+                enabled = engine == AudioEngineKind.ExoPlayer,
+                title = { Text(stringResource(R.string.pref_audio_stream_cache)) },
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_stream_cache),
+              )
               val session by PlaybackSession.state.collectAsState()
               if (session.currentItem != null) {
-                val activeEngine = when (session.audioFallback) {
-                  AudioEngineFallback.NativeConfiguration -> R.string.audio_fallback_config
-                  AudioEngineFallback.FormatCompatibility -> R.string.audio_fallback_format
-                  null -> if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
-                }
+                val activeEngine = if (session.engine == AudioEngineKind.ExoPlayer) R.string.pref_audio_engine_exo else R.string.pref_audio_engine_mpv
                 Text(
                   stringResource(R.string.audio_output_engine) + ": " + stringResource(activeEngine),
                   style = MaterialTheme.typography.bodyMedium,
@@ -543,7 +636,10 @@ object AudioPreferencesScreen : Screen {
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_volume_normalization_title),
                 value = volumeNormalization,
                 enabled = "af" !in configOwnedOptions,
-                onValueChange = { preferences.volumeNormalization.set(it) },
+                onValueChange = { enabled ->
+                  preferences.volumeNormalization.set(enabled)
+                  if (enabled && selectedEngine == AudioEngineKind.ExoPlayer) preferences.replayGain.set(ReplayGainMode.Off)
+                },
                 title = { Text(stringResource(R.string.pref_audio_volume_normalization_title)) },
                 summary = {
                   Text(

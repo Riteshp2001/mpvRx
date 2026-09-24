@@ -5,6 +5,21 @@ description: Edit mpv.conf and input.conf safely, use profiles, and recover from
 
 mpvRx exposes mpv's configuration model without requiring every user to manage text files. The built-in editor supports `mpv.conf` and `input.conf` with syntax highlighting.
 
+## Audio engine scope
+
+These files configure the mpv engine. On `experimental/exoplayer-audio`, choosing
+ExoPlayer for audio does not apply native `af` filters or execute mpv scripts in
+that engine. Configure ExoPlayer's EQ, ReplayGain, skip silence, output rate and
+transitions in **Settings > Audio** instead.
+
+An mpv audio-filter setting does not automatically switch ExoPlayer playback to
+mpv, and an ExoPlayer decoder error does not trigger a native fallback. To use a
+format, filter or script that needs mpv, explicitly select mpv as the audio engine
+and reopen the media. Video continues to use mpv and its configuration.
+
+See [Audio and music](/docs/playback/audio-and-music#audio-engines) for the engine
+controls and experimental-feature availability.
+
 :::warning
 Desktop mpv configuration snippets are not automatically appropriate for Android. GPU APIs, decoder names, paths, scripts, and performance assumptions differ.
 :::

@@ -69,6 +69,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -152,6 +153,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -644,12 +646,13 @@ fun AudioPlayerControls(
   onOpenPanel: (Panels) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val speedConfigOwned = isMpvOptionOwnedByConfig("speed")
-  val audioFiltersConfigOwned = isMpvOptionOwnedByConfig("af")
+  val playbackState by PlaybackSession.state.collectAsStateWithLifecycle()
+  val audioEngineState by PlaybackSession.audioState.collectAsStateWithLifecycle()
+  val speedConfigOwned = isMpvOptionOwnedByConfig("speed") && playbackState.engine != app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer
+  val audioFiltersConfigOwned = isMpvOptionOwnedByConfig("af") && playbackState.engine != app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
-  val playbackState by PlaybackSession.state.collectAsStateWithLifecycle()
   val queueState by PlaybackSession.queue.collectAsStateWithLifecycle()
   val currentItem = playbackState.currentItem ?: queueState.currentItem
   val activeBook by app.gyrolet.mpvrx.ui.player.AudiobookPlayback.book.collectAsStateWithLifecycle()
@@ -693,6 +696,35 @@ fun AudioPlayerControls(
       ?: mediaPath
 
   val audioCodec by PlaybackSession.propString["audio-codec-name"].collectAsState()
+  val selectedAudioTrack by PlaybackSession.propInt["aid"].collectAsState()
+  val nativeAudioCodecTokens = remember(audioCodec) {
+    audioCodec.orEmpty().lowercase(java.util.Locale.ROOT)
+      .replace("e-ac-3", "eac3").replace("e-ac3", "eac3").replace("eac-3", "eac3")
+      .replace("ac-3", "ac3").replace("ac-4", "ac4")
+      .split(Regex("[^a-z0-9]+"))
+  }
+  val dolbyBadgeLabel = when {
+    playbackState.phase !in setOf(
+      app.gyrolet.mpvrx.ui.player.PlaybackPhase.READY,
+      app.gyrolet.mpvrx.ui.player.PlaybackPhase.BACKGROUND,
+    ) || currentItem == null -> null
+    playbackState.engine == app.gyrolet.mpvrx.ui.player.AudioEngineKind.ExoPlayer -> {
+      val currentAudio = audioEngineState.takeIf {
+        it.ready && it.generation == playbackState.generation && it.item?.stableId == currentItem.stableId &&
+          it.tracks.any { track -> track.selected }
+      }
+      when {
+        currentAudio == null -> null
+        currentAudio.output.dolbyAtmosSource || currentAudio.output.sourceMimeType == "audio/eac3-joc" -> R.string.audio_badge_dolby_atmos
+        currentAudio.output.sourceMimeType in setOf("audio/ac3", "audio/eac3", "audio/true-hd", "audio/ac4") -> R.string.audio_badge_dolby_audio
+        else -> null
+      }
+    }
+    (selectedAudioTrack ?: -1) <= 0 -> null
+    "eac3" in nativeAudioCodecTokens && "joc" in nativeAudioCodecTokens -> R.string.audio_badge_dolby_atmos
+    nativeAudioCodecTokens.any { it in setOf("ac3", "eac3", "truehd", "ac4", "dolby") } -> R.string.audio_badge_dolby_audio
+    else -> null
+  }
   val sampleRate by PlaybackSession.propInt["audio-params/samplerate"].collectAsState()
   val audioFormat by PlaybackSession.propString["audio-params/format"].collectAsState()
   val bitsPerSample by PlaybackSession.propString["metadata/by-key/BITS_PER_SAMPLE"].collectAsState()
@@ -1257,7 +1289,7 @@ fun AudioPlayerControls(
         .padding(top = if (edgeToEdgeVisualizer) 0.dp else 6.dp, bottom = 12.dp),
   ) {
     val headerBar = @Composable {
-      Box(modifier = Modifier.fillMaxWidth()) {
+      Box(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
         ReactiveIconButton(
           onClick = {
             if (isLyricsFullscreen) {
@@ -1278,13 +1310,45 @@ fun AudioPlayerControls(
           )
         }
 
-        Text(
-          text = stringResource(R.string.ui_now_playing),
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          letterSpacing = 2.sp,
-          modifier = Modifier.align(Alignment.Center),
-        )
+        Column(
+          modifier = Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = 56.dp, vertical = 6.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+          Text(
+            text = stringResource(R.string.ui_now_playing),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            letterSpacing = 0.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
+          dolbyBadgeLabel?.let { label ->
+            Row(
+              modifier = Modifier.widthIn(max = 200.dp).heightIn(min = 20.dp).semantics(mergeDescendants = true) {},
+              horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Icon(
+                painter = painterResource(R.drawable.ic_dolby_atmos),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(width = 17.dp, height = 12.dp),
+              )
+              Text(
+                text = stringResource(label),
+                modifier = Modifier.weight(1f, fill = false),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+          }
+        }
 
         Row(
           modifier = Modifier.align(Alignment.CenterEnd),
