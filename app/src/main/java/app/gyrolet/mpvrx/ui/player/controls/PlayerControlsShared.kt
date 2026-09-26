@@ -1262,7 +1262,73 @@ fun RenderPlayerButton(
       }
     }
 
+    PlayerButton.FRAME_GENERATION -> {
+      val isFrameGenEnabled by viewModel.isFrameGenEnabled.collectAsState()
+      val frameGenSupported by viewModel.frameGenSupported.collectAsState()
+      @OptIn(ExperimentalFoundationApi::class)
+      Surface(
+        shape = CircleShape,
+        color =
+          if (hideBackground) {
+            Color.Transparent
+          } else {
+            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f)
+          },
+        contentColor =
+          if (isFrameGenEnabled) {
+            MaterialTheme.colorScheme.primary
+          } else {
+            if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+          },
+        border =
+          if (hideBackground) {
+            null
+          } else {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+          },
+        modifier =
+          Modifier
+            .size(buttonSize)
+            .clip(CircleShape)
+            .combinedClickable(
+              enabled = frameGenSupported,
+              interactionSource = remember { MutableInteractionSource() },
+              indication = ripple(bounded = true),
+              onClick = {
+                clickEvent()
+                viewModel.toggleFrameGen()
+              },
+              onLongClick = {
+                clickEvent()
+                onOpenSheet(Sheets.FrameGenConfig)
+              },
+            ),
+      ) {
+        Box(contentAlignment = Alignment.Center) {
+          AppSymbolIcon(
+            imageVector = Icons.RoundedFilled.AutoAwesome,
+            contentDescription =
+              androidx.compose.ui.res.stringResource(
+                app.gyrolet.mpvrx.R.string.btn_label_frame_generation,
+              ),
+            tint =
+              if (!frameGenSupported) {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+              } else if (isFrameGenEnabled) {
+                MaterialTheme.colorScheme.primary
+              } else if (hideBackground) {
+                controlColor
+              } else {
+                MaterialTheme.colorScheme.onSurface
+              },
+            modifier = Modifier.size(24.dp),
+          )
+        }
+      }
+    }
+
     PlayerButton.TIME_NETWORK -> {
+
       val clockFormat by playerPreferences.clockFormat.collectAsState()
       val stat by rememberTimeAndNetworkStat(clockFormat)
       val toggleTimeAndNetwork = {

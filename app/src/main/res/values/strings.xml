@@ -1377,7 +1377,32 @@
   <string name="btn_label_time_network">Time + Network</string>
   <string name="btn_label_equalizer">Equalizer</string>
   <string name="btn_label_scopes">Scopes</string>
+  <string name="btn_label_frame_generation">Frame Generation</string>
+  <!-- Frame Generation (LSFG) -->
+  <string name="frame_gen_on">Frame Generation On</string>
+  <string name="frame_gen_off">Frame Generation Off</string>
+  <string name="frame_gen_sheet_title">Frame Generation</string>
+  <string name="frame_gen_description">Generates extra frames between real frames using optical-flow Vulkan shaders from the Lossless Scaling library. Requires the Lossless.dll library to be installed.</string>
+  <string name="frame_gen_multiplier_label">Multiplier</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">Frame generation is not supported on this device. A Vulkan-capable GPU is required.</string>
+  <string name="frame_gen_library_not_installed">Lossless Scaling library not installed</string>
+  <string name="frame_gen_library_installed">Lossless Scaling library installed ✓</string>
+  <string name="frame_gen_install_library">Install Library</string>
+  <string name="frame_gen_install_description">Select the Lossless.dll file from your Lossless Scaling installation</string>
+  <string name="frame_gen_replace_library">Replace Library</string>
+  <string name="frame_gen_remove_library">Remove Library</string>
+  <string name="frame_gen_remove_confirmation">Remove the installed Lossless Scaling library? Frame generation will be disabled.</string>
+  <string name="frame_gen_installing">Installing library…</string>
+  <string name="frame_gen_install_success">Library installed successfully</string>
+  <string name="frame_gen_install_failed">Library installation failed</string>
+  <string name="frame_gen_locked">Cannot change while playback is active</string>
+  <string name="frame_gen_locked_description">Stop playback before installing or removing the library</string>
+  <string name="frame_gen_remove_unavailable">No library installed</string>
   <string name="btn_label_none">None</string>
+
   <string name="scopes_title">Scopes</string>
   <string name="scopes_expand">Expand scopes</string>
   <string name="scopes_resize">Resize scopes</string>

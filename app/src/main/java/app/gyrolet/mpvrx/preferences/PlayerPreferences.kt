@@ -169,6 +169,11 @@ class PlayerPreferences(
   // Post-Processing
   val isPostProcessingEnabled = preferenceStore.getBoolean("pp_enabled", false)
   val postProcessingPreset = preferenceStore.getEnum("pp_preset", PostProcessingPreset.None)
+
+  // Frame Generation (LSFG)
+  val isFrameGenEnabled = preferenceStore.getBoolean("frame_gen_enabled", false)
+  val frameGenMultiplier = preferenceStore.getInt("frame_gen_multiplier", 2)
+
   // NaturalColors
   val ppNaturalLuma = preferenceStore.getFloat("pp_natural_luma", 1.2f)
   val ppNaturalChroma = preferenceStore.getFloat("pp_natural_chroma", 1.2f)
