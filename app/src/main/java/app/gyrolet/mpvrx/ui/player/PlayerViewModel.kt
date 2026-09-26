@@ -2139,7 +2139,12 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   private val _frameGenMultiplier = MutableStateFlow(playerPreferences.frameGenMultiplier.get())
   val frameGenMultiplier: StateFlow<Int> = _frameGenMultiplier.asStateFlow()
 
-  private val _frameGenSupported = MutableStateFlow(false)
+  private val _frameGenSupported = MutableStateFlow(LosslessScalingHelper.checkGpuSupport()).also { supported ->
+    // Re-arm native layer on startup if pref is already enabled and library is installed
+    if (supported.value && playerPreferences.isFrameGenEnabled.get() && LosslessScalingHelper.installed.value) {
+      runCatching { FrameGenNative.setFrameGenEnabled(true, playerPreferences.frameGenMultiplier.get()) }
+    }
+  }
   val frameGenSupported: StateFlow<Boolean> = _frameGenSupported.asStateFlow()
 
   private val _postProcessingPreset = MutableStateFlow(playerPreferences.postProcessingPreset.get())
@@ -7753,6 +7758,10 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     if (_isFrameGenEnabled.value && (!supported || !installed)) {
       _isFrameGenEnabled.value = false
       playerPreferences.isFrameGenEnabled.set(false)
+      runCatching { FrameGenNative.setFrameGenEnabled(false, 2) }
+    } else if (supported && installed && _isFrameGenEnabled.value) {
+      // Re-arm native if supported and pref is on (e.g. called after renderer init)
+      runCatching { FrameGenNative.setFrameGenEnabled(true, _frameGenMultiplier.value) }
     }
   }
 
