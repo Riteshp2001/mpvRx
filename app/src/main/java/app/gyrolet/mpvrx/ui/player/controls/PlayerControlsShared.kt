@@ -1306,7 +1306,7 @@ fun RenderPlayerButton(
       ) {
         Box(contentAlignment = Alignment.Center) {
           AppSymbolIcon(
-            imageVector = Icons.RoundedFilled.AutoAwesome,
+            imageVector = Icons.RoundedFilled.FrameGen,
             contentDescription =
               androidx.compose.ui.res.stringResource(
                 app.gyrolet.mpvrx.R.string.btn_label_frame_generation,

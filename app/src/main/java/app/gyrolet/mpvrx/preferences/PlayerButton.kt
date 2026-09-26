@@ -53,7 +53,7 @@ enum class PlayerButton(
   TIME_NETWORK(Icons.RoundedFilled.AccessTime),
   EQUALIZER(Icons.RoundedFilled.Equalizer),
   SCOPES(Icons.RoundedFilled.Mystery),
-  FRAME_GENERATION(Icons.RoundedFilled.AutoAwesome),
+  FRAME_GENERATION(Icons.RoundedFilled.FrameGen),
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 

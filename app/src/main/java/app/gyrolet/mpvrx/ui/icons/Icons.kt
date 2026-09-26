@@ -135,6 +135,7 @@ object Icons {
     val FormatItalic by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_italic) }
     val FormatSize by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Format_size) }
     val FrameInspect by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Frame_inspect) }
+    val FrameGen by lazy(LazyThreadSafetyMode.NONE) { AppIcon(FrameGenVector) }
     val Gesture by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Gesture) }
     val Gradient by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Gradient) }
     val Grain by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Grain) }
@@ -378,6 +379,7 @@ object Icons {
     val FormatItalic get() = Shared.FormatItalic
     val FormatSize get() = Shared.FormatSize
     val FrameInspect get() = Shared.FrameInspect
+    val FrameGen get() = Shared.FrameGen
     val Gesture get() = Shared.Gesture
     val Gradient get() = Shared.Gradient
     val Grain get() = Shared.Grain
@@ -734,6 +736,134 @@ private val PostProcessingVector: ImageVector by lazy(LazyThreadSafetyMode.NONE)
       lineTo(21.1f, 2.4f)
       lineTo(20.0f, 2.0f)
       lineTo(21.1f, 1.6f)
+      close()
+    }
+  }.build()
+}
+
+/**
+ * Frame Generation icon: Sequential video frames with an interpolated frame
+ * and AI acceleration sparkle, representing Lossless Scaling Frame Generation (LSFG).
+ * Hand-crafted 24×24 Material-style vector.
+ */
+private val FrameGenVector: ImageVector by lazy(LazyThreadSafetyMode.NONE) {
+  ImageVector.Builder(
+    name = "FrameGen",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+  ).apply {
+    // 1. Back / Input Frame (top-left strip)
+    path(
+      fill = SolidColor(Color.Black),
+      fillAlpha = 1.0f,
+      stroke = null,
+      strokeAlpha = 1.0f,
+      strokeLineWidth = 1.0f,
+      pathFillType = PathFillType.NonZero,
+    ) {
+      moveTo(3.0f, 5.0f)
+      curveTo(3.0f, 3.9f, 3.9f, 3.0f, 5.0f, 3.0f)
+      lineTo(13.0f, 3.0f)
+      curveTo(14.1f, 3.0f, 15.0f, 3.9f, 15.0f, 5.0f)
+      lineTo(15.0f, 6.5f)
+      lineTo(13.0f, 6.5f)
+      lineTo(13.0f, 5.0f)
+      lineTo(5.0f, 5.0f)
+      lineTo(5.0f, 13.0f)
+      lineTo(6.5f, 13.0f)
+      lineTo(6.5f, 15.0f)
+      lineTo(5.0f, 15.0f)
+      curveTo(3.9f, 15.0f, 3.0f, 14.1f, 3.0f, 13.0f)
+      close()
+    }
+    // 2. Middle / Intermediate Interpolated Frame
+    path(
+      fill = SolidColor(Color.Black),
+      fillAlpha = 0.85f,
+      stroke = null,
+      strokeAlpha = 1.0f,
+      strokeLineWidth = 1.0f,
+      pathFillType = PathFillType.NonZero,
+    ) {
+      moveTo(6.5f, 8.5f)
+      curveTo(6.5f, 7.4f, 7.4f, 6.5f, 8.5f, 6.5f)
+      lineTo(16.5f, 6.5f)
+      curveTo(17.6f, 6.5f, 18.5f, 7.4f, 18.5f, 8.5f)
+      lineTo(18.5f, 10.0f)
+      lineTo(16.5f, 10.0f)
+      lineTo(16.5f, 8.5f)
+      lineTo(8.5f, 8.5f)
+      lineTo(8.5f, 16.5f)
+      lineTo(10.0f, 16.5f)
+      lineTo(10.0f, 18.5f)
+      lineTo(8.5f, 18.5f)
+      curveTo(7.4f, 18.5f, 6.5f, 17.6f, 6.5f, 16.5f)
+      close()
+    }
+    // 3. Foreground / Main Output Frame with punched play indicator
+    path(
+      fill = SolidColor(Color.Black),
+      fillAlpha = 1.0f,
+      stroke = null,
+      strokeAlpha = 1.0f,
+      strokeLineWidth = 1.0f,
+      pathFillType = PathFillType.EvenOdd,
+    ) {
+      // Main rounded rect frame: (10.0, 10.0) to (22.0, 21.0)
+      moveTo(12.0f, 10.0f)
+      lineTo(20.0f, 10.0f)
+      curveTo(21.1f, 10.0f, 22.0f, 10.9f, 22.0f, 12.0f)
+      lineTo(22.0f, 19.0f)
+      curveTo(22.0f, 20.1f, 21.1f, 21.0f, 20.0f, 21.0f)
+      lineTo(12.0f, 21.0f)
+      curveTo(10.9f, 21.0f, 10.0f, 20.1f, 10.0f, 19.0f)
+      lineTo(10.0f, 12.0f)
+      curveTo(10.0f, 10.9f, 10.9f, 10.0f, 12.0f, 10.0f)
+      close()
+      // Play triangle cutout inside
+      moveTo(14.5f, 13.0f)
+      lineTo(18.5f, 15.5f)
+      lineTo(14.5f, 18.0f)
+      close()
+    }
+    // 4. Large LSFG 4-point AI Generation Sparkle (top right)
+    path(
+      fill = SolidColor(Color.Black),
+      fillAlpha = 1.0f,
+      stroke = null,
+      strokeAlpha = 1.0f,
+      strokeLineWidth = 1.0f,
+      pathFillType = PathFillType.NonZero,
+    ) {
+      moveTo(20.0f, 1.0f)
+      lineTo(20.7f, 3.3f)
+      lineTo(23.0f, 4.0f)
+      lineTo(20.7f, 4.7f)
+      lineTo(20.0f, 7.0f)
+      lineTo(19.3f, 4.7f)
+      lineTo(17.0f, 4.0f)
+      lineTo(19.3f, 3.3f)
+      close()
+    }
+    // 5. Small secondary sparkle
+    path(
+      fill = SolidColor(Color.Black),
+      fillAlpha = 1.0f,
+      stroke = null,
+      strokeAlpha = 1.0f,
+      strokeLineWidth = 1.0f,
+      pathFillType = PathFillType.NonZero,
+    ) {
+      moveTo(16.0f, 0.5f)
+      lineTo(16.3f, 1.2f)
+      lineTo(17.0f, 1.5f)
+      lineTo(16.3f, 1.8f)
+      lineTo(16.0f, 2.5f)
+      lineTo(15.7f, 1.8f)
+      lineTo(15.0f, 1.5f)
+      lineTo(15.7f, 1.2f)
       close()
     }
   }.build()
