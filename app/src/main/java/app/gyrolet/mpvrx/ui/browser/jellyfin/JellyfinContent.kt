@@ -150,6 +150,7 @@ fun JellyfinContent(
   val quickPlayFabDirect by appearancePreferences.quickPlayFabDirect.collectAsState()
 
   val allDownloads by viewModel.downloads.collectAsState()
+  val activeSnapshot by viewModel.activeSnapshot.collectAsState(initial = null)
   val downloadedItemIds =
     remember(allDownloads) {
       allDownloads.filter { it.isPlayable }.mapNotNull { it.entity.jellyfinItemId }.toSet()
@@ -157,6 +158,49 @@ fun JellyfinContent(
   val activeDownloadItemIds =
     remember(allDownloads) {
       allDownloads.filter { it.isActive }.mapNotNull { it.entity.jellyfinItemId }.toSet()
+    }
+  val downloadProgressMap =
+    remember(allDownloads, activeSnapshot) {
+      val map = mutableMapOf<String, Float>()
+      for (dl in allDownloads) {
+        val itemId = dl.entity.jellyfinItemId ?: continue
+        if (dl.isActive) {
+          val progress = if (activeSnapshot?.id == dl.id && (activeSnapshot?.totalBytes ?: 0L) > 0L) {
+            (activeSnapshot?.progress ?: 0) / 100f
+          } else {
+            (dl.entity.progress / 100f).coerceIn(0f, 1f)
+          }
+          map[itemId] = progress
+        }
+      }
+      map
+    }
+
+  val detailItem = uiState.detailItem
+  val seriesDownloads =
+    remember(allDownloads, detailItem) {
+      if (detailItem?.isSeries == true) {
+        allDownloads.filter {
+          (it.entity.jellyfinItemId == detailItem.id || it.entity.jellyfinSeriesName == detailItem.name) &&
+            (it.isActive || it.isCompleted)
+        }
+      } else emptyList()
+    }
+  val isSeriesDownloading = remember(seriesDownloads) { seriesDownloads.any { it.isActive } }
+  val seriesProgress =
+    remember(seriesDownloads, activeSnapshot) {
+      if (seriesDownloads.isEmpty()) 0f
+      else {
+        val total = seriesDownloads.sumOf { dl ->
+          if (dl.isCompleted) 1.0
+          else if (activeSnapshot?.id == dl.id && (activeSnapshot?.totalBytes ?: 0L) > 0L) {
+            ((activeSnapshot?.progress ?: 0) / 100.0)
+          } else {
+            (dl.entity.progress / 100.0)
+          }
+        }
+        (total / seriesDownloads.size).toFloat().coerceIn(0f, 1f)
+      }
     }
 
   var isAddDialogOpen by remember { mutableStateOf(false) }
@@ -733,7 +777,9 @@ fun JellyfinContent(
                                 item.id in activeDownloadItemIds -> EpisodeDownloadState.ACTIVE
                                 else -> EpisodeDownloadState.NOT_DOWNLOADED
                               },
+                            downloadProgress = downloadProgressMap[item.id],
                             onDownload = { viewModel.downloadItem(item) },
+                            onCancelDownload = { viewModel.cancelDownload(item.id) },
                           )
                         } else {
                           JellyfinListItemCard(
@@ -1282,10 +1328,14 @@ fun JellyfinContent(
         }
       },
       onDownload = { itemToDownload -> viewModel.downloadItem(itemToDownload) },
+      onCancelDownload = { itemToCancel -> viewModel.cancelDownload(itemToCancel.id) },
       onDownloadSeason = { viewModel.downloadSelectedSeason() },
       onDownloadSeries = { viewModel.downloadWholeSeries() },
       downloadedItemIds = downloadedItemIds,
       activeDownloadItemIds = activeDownloadItemIds,
+      downloadProgressMap = downloadProgressMap,
+      seriesProgress = seriesProgress,
+      isSeriesDownloading = isSeriesDownloading,
     )
 
     JellyfinPersonSheet(

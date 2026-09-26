@@ -131,10 +131,14 @@ fun JellyfinDetailSheet(
   onPersonClick: ((JellyfinPerson) -> Unit)? = null,
   onDeleteItem: ((JellyfinItem) -> Unit)? = null,
   onDownload: ((JellyfinItem) -> Unit)? = null,
+  onCancelDownload: ((JellyfinItem) -> Unit)? = null,
   onDownloadSeason: (() -> Unit)? = null,
   onDownloadSeries: (() -> Unit)? = null,
   downloadedItemIds: Set<String> = emptySet(),
   activeDownloadItemIds: Set<String> = emptySet(),
+  downloadProgressMap: Map<String, Float> = emptyMap(),
+  seriesProgress: Float = 0f,
+  isSeriesDownloading: Boolean = false,
   sheetState: SheetState =
     rememberBottomSheetState(
       initialValue = SheetValue.Hidden,
@@ -745,13 +749,15 @@ fun JellyfinDetailSheet(
           if (onDownload != null && (item.type == "Movie" || item.isSeries)) {
             var isDownloadMenuOpen by remember { mutableStateOf(false) }
             val isItemDownloaded = item.id in downloadedItemIds
-            val isItemDownloading = item.id in activeDownloadItemIds
+            val isItemDownloading = if (item.isSeries) isSeriesDownloading else item.id in activeDownloadItemIds
+            val currentProgress = if (item.isSeries) seriesProgress else (downloadProgressMap[item.id] ?: 0f)
             Box {
               FilledTonalIconButton(
                 onClick = {
                   when {
                     item.isSeries -> isDownloadMenuOpen = true
-                    isItemDownloaded || isItemDownloading -> {}
+                    isItemDownloading -> onCancelDownload?.invoke(item)
+                    isItemDownloaded -> {}
                     else -> onDownload(item)
                   }
                 },
@@ -760,7 +766,11 @@ fun JellyfinDetailSheet(
               ) {
                 when {
                   isItemDownloading ->
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    HotstarDownloadProgressCircle(
+                      progress = currentProgress,
+                      modifier = Modifier.size(24.dp),
+                      strokeWidth = 2.5.dp,
+                    )
                   isItemDownloaded ->
                     Icon(
                       imageVector = Icons.RoundedFilled.CheckCircle,
@@ -1219,7 +1229,9 @@ fun JellyfinDetailSheet(
                         episode.id in activeDownloadItemIds -> EpisodeDownloadState.ACTIVE
                         else -> EpisodeDownloadState.NOT_DOWNLOADED
                       },
+                    downloadProgress = downloadProgressMap[episode.id],
                     onDownload = { onDownload?.invoke(episode) },
+                    onCancelDownload = { onCancelDownload?.invoke(episode) },
                   )
                 }
               }

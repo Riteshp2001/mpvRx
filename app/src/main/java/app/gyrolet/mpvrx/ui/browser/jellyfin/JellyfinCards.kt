@@ -10,10 +10,17 @@
 package app.gyrolet.mpvrx.ui.browser.jellyfin
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,8 +80,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -84,6 +95,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
@@ -1485,7 +1497,9 @@ fun JellyfinEpisodeCard(
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
   downloadState: EpisodeDownloadState? = null,
+  downloadProgress: Float? = null,
   onDownload: (() -> Unit)? = null,
+  onCancelDownload: (() -> Unit)? = null,
 ) {
   val imageUrl =
     remember(server.serverUrl, item.id, item.primaryImageTag, server.accessToken) {
@@ -1649,11 +1663,15 @@ fun JellyfinEpisodeCard(
             )
           }
         EpisodeDownloadState.ACTIVE ->
-          Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+          IconButton(onClick = { onCancelDownload?.invoke() }) {
+            HotstarDownloadProgressCircle(
+              progress = downloadProgress ?: 0f,
+              modifier = Modifier.size(22.dp),
+              strokeWidth = 2.5.dp,
+            )
           }
         EpisodeDownloadState.DOWNLOADED ->
-          Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+          IconButton(onClick = {}) {
             Icon(
               imageVector = Icons.RoundedFilled.CheckCircle,
               contentDescription = stringResource(R.string.downloads_downloaded),
@@ -1672,6 +1690,95 @@ fun JellyfinEpisodeCard(
           modifier = Modifier.size(26.dp),
         )
       }
+    }
+  }
+}
+
+/**
+ * Hotstar-style clockwise circular download progress indicator.
+ * Displays a subtle background track ring, a clockwise sweeping progress arc starting at 12 o'clock (-90°),
+ * and a rounded stop square in the center.
+ */
+@Composable
+fun HotstarDownloadProgressCircle(
+  progress: Float,
+  modifier: Modifier = Modifier,
+  strokeWidth: Dp = 2.5.dp,
+  trackColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+  progressColor: Color = MaterialTheme.colorScheme.primary,
+  showStopSquare: Boolean = true,
+) {
+  val animatedProgress by animateFloatAsState(
+    targetValue = progress.coerceIn(0f, 1f),
+    animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+    label = "download_progress",
+  )
+
+  val infiniteTransition = rememberInfiniteTransition(label = "indeterminate_spin")
+  val indeterminateRotation by infiniteTransition.animateFloat(
+    initialValue = 0f,
+    targetValue = 360f,
+    animationSpec = infiniteRepeatable(
+      animation = tween(1200, easing = LinearEasing),
+      repeatMode = RepeatMode.Restart,
+    ),
+    label = "spin_angle",
+  )
+
+  Box(
+    modifier = modifier,
+    contentAlignment = Alignment.Center,
+  ) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+      val diameter = size.minDimension
+      val strokePx = strokeWidth.toPx()
+      val arcSize = Size(diameter - strokePx, diameter - strokePx)
+      val topLeft = Offset(strokePx / 2f, strokePx / 2f)
+
+      // 1. Subtle background track
+      drawArc(
+        color = trackColor,
+        startAngle = 0f,
+        sweepAngle = 360f,
+        useCenter = false,
+        topLeft = topLeft,
+        size = arcSize,
+        style = Stroke(width = strokePx, cap = StrokeCap.Round),
+      )
+
+      // 2. Clockwise progress fill starting at 12 o'clock (-90 degrees)
+      if (progress > 0f) {
+        val sweepAngle = (animatedProgress * 360f).coerceIn(4f, 360f)
+        drawArc(
+          color = progressColor,
+          startAngle = -90f,
+          sweepAngle = sweepAngle,
+          useCenter = false,
+          topLeft = topLeft,
+          size = arcSize,
+          style = Stroke(width = strokePx, cap = StrokeCap.Round),
+        )
+      } else {
+        // Queued / initial state: smoothly spinning arc
+        drawArc(
+          color = progressColor,
+          startAngle = -90f + indeterminateRotation,
+          sweepAngle = 70f,
+          useCenter = false,
+          topLeft = topLeft,
+          size = arcSize,
+          style = Stroke(width = strokePx, cap = StrokeCap.Round),
+        )
+      }
+    }
+
+    if (showStopSquare) {
+      val centerSquareSize = (strokeWidth * 2.4f).coerceAtLeast(6.dp).coerceAtMost(8.dp)
+      Box(
+        modifier = Modifier
+          .size(centerSquareSize)
+          .background(progressColor, shape = RoundedCornerShape(1.5.dp)),
+      )
     }
   }
 }

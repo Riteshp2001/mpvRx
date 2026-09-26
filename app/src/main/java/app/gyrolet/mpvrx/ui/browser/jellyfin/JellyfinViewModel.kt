@@ -1429,6 +1429,18 @@ class JellyfinViewModel(
   /** Engine download list, exposed for per-item badges and indicators. */
   val downloads get() = downloadManager.downloads
 
+  /** Live snapshot of the currently transferring item (progress and speed). */
+  val activeSnapshot get() = downloadManager.activeSnapshot
+
+  fun cancelDownload(itemId: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val dl = downloadManager.downloads.value.firstOrNull { it.entity.jellyfinItemId == itemId && it.isActive }
+      if (dl != null) {
+        downloadManager.remove(dl, deleteFile = true)
+      }
+    }
+  }
+
   fun downloadItem(item: JellyfinItem) {
     val server = _uiState.value.activeServer ?: return
     viewModelScope.launch(Dispatchers.IO) {
