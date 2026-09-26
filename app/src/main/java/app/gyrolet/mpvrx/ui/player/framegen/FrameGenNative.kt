@@ -71,6 +71,14 @@ object FrameGenNative {
     external fun removeLosslessDll(): Boolean
 
     /**
+     * Initializes internal storage root directory so native paths resolve to
+     * `<filesDir>/lossless/Lossless.dll`.
+     *
+     * Native: `void Java_app_gyrolet_mpvrx_ui_player_framegen_FrameGenNative_initStorageRoot`
+     */
+    external fun initStorageRoot(path: String)
+
+    /**
      * Enables or disables real-time frame generation during playback.
      * The native layer stores this flag and the mpv present hook reads it
      * each frame to decide whether to run the LSFG compute pass.
@@ -82,10 +90,29 @@ object FrameGenNative {
      */
     external fun setFrameGenEnabled(enabled: Boolean, multiplier: Int)
 
+    /**
+     * Returns the GPU model name from Vulkan physical device properties (e.g. Adreno 730).
+     */
+    external fun getGpuModel(): String
+
+    /**
+     * Returns the GPU Vulkan driver version.
+     */
+    external fun getVulkanDriverVersion(): String
+
+    /**
+     * Returns the supported Vulkan API version (e.g. 1.3.268).
+     */
+    external fun getVulkanApiVersion(): String
+
+    /**
+     * Returns true if GPU hardware supports Vulkan float16 + memory model required for LSFG.
+     */
+    external fun isGpuHardwareSupported(): Boolean
+
     init {
-        // The native symbols live in libmpv.so (shipped with mpvlibAndroid AAR).
-        // Wrap in runCatching so the APK runs on devices without the updated AAR;
-        // the UI will show the "not supported" state gracefully.
+        runCatching { System.loadLibrary("framegen") }
+        runCatching { System.loadLibrary("player") }
         runCatching { System.loadLibrary("mpv") }
     }
 }

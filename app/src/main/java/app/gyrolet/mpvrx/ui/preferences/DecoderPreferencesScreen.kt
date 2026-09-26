@@ -517,16 +517,28 @@ object DecoderPreferencesScreen : Screen {
               if (uri == null) return@rememberLauncherForActivityResult
               installing = true
               scope.launch {
-                val result = LosslessScalingHelper.install(context.contentResolver, uri)
-                installing = false
-                showResultDialog = when (result) {
-                  LosslessScalingHelper.RESULT_OK -> context.getString(R.string.frame_gen_install_success)
-                  LosslessScalingHelper.RESULT_NOT_PE -> "Selected file is not a valid PE / DLL library."
-                  LosslessScalingHelper.RESULT_MISSING_SHADERS -> "Missing required LSFG compute shaders in DLL."
-                  LosslessScalingHelper.RESULT_TRANSLATION_FAILED -> "Failed to translate DXBC to SPIR-V shaders."
-                  else -> context.getString(R.string.frame_gen_install_failed)
+                try {
+                  val result = LosslessScalingHelper.install(context, uri)
+                  installing = false
+                  showResultDialog = when (result) {
+                    LosslessScalingHelper.RESULT_OK -> context.getString(R.string.frame_gen_install_success)
+                    LosslessScalingHelper.RESULT_NOT_PE -> "Selected file is not a valid Windows PE (.dll) file."
+                    LosslessScalingHelper.RESULT_MISSING_SHADERS -> "Missing required LSFG compute shaders in DLL (RC_DATA entries 304, 305, 329-351)."
+                    LosslessScalingHelper.RESULT_TRANSLATION_FAILED -> "Failed to translate or cache SPIR-V compute shaders."
+                    LosslessScalingHelper.RESULT_UNREADABLE -> "Unable to read the selected file."
+                    else -> "Installation failed (Error code: $result). Check logcat for details."
+                  }
+                } catch (e: Throwable) {
+                  installing = false
+                  showResultDialog = "Installation error: ${e.message ?: "Unknown error"}"
                 }
               }
+            }
+
+            val vulkanEnabled by preferences.useVulkan.collectAsState()
+            val gpuNextEnabled by preferences.gpuNext.collectAsState()
+            val compat = remember(vulkanEnabled, gpuNextEnabled) {
+              LosslessScalingHelper.getCompatibility(context, preferences)
             }
 
             PreferenceCard {
@@ -612,6 +624,77 @@ object DecoderPreferencesScreen : Screen {
                   onClick = { showRemoveDialog = true },
                 )
               }
+
+              // 5. Hardware Compatibility & Render Mode Notice
+              PreferenceDivider()
+              Preference(
+                title = {
+                  Text(
+                    "Compatibility & Render Mode",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                  )
+                },
+                summary = {
+                  Column(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                  ) {
+                    Text(
+                      text = "• GPU: ${compat.gpuModel} (${compat.apiVersion})",
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                      text = if (compat.isHardwareSupported) {
+                        "• Hardware: Compatible (Vulkan 1.1+, 16-bit Float, Vulkan Memory Model ✓)"
+                      } else {
+                        "• Hardware: Unsupported (Device lacks Vulkan 1.1+ float16/memory model ✗)"
+                      },
+                      style = MaterialTheme.typography.bodySmall,
+                      color = if (compat.isHardwareSupported) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                      fontWeight = if (compat.isHardwareSupported) FontWeight.Medium else FontWeight.Bold,
+                    )
+                    Text(
+                      text = "• Required Mode: vo=gpu-next & gpu-api=vulkan (OpenGL is unsupported)",
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                      text = when {
+                        compat.isRenderBackendReady && gpuNextEnabled -> {
+                          "• Active Mode: vo=gpu-next / gpu-api=vulkan (Confirmed Ready ✓)"
+                        }
+                        compat.isRenderBackendReady -> {
+                          "• Active Mode: vo=gpu / gpu-api=vulkan (Vulkan ready; vo=gpu-next recommended for smoother pacing)"
+                        }
+                        else -> {
+                          "• Active Mode: vo=${compat.activeVo} / gpu-api=opengl (Incompatible ✗ - Vulkan required)"
+                        }
+                      },
+                      style = MaterialTheme.typography.bodySmall,
+                      color = if (compat.isRenderBackendReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                      fontWeight = FontWeight.SemiBold,
+                    )
+
+                    if (!vulkanEnabled || !gpuNextEnabled) {
+                      TextButton(
+                        onClick = {
+                          preferences.useVulkan.set(true)
+                          preferences.gpuNext.set(true)
+                        },
+                        modifier = Modifier.padding(top = 4.dp),
+                      ) {
+                        Text(
+                          text = if (!vulkanEnabled) "Switch to Vulkan & vo=gpu-next" else "Switch to vo=gpu-next",
+                          color = MaterialTheme.colorScheme.primary,
+                          fontWeight = FontWeight.Bold,
+                        )
+                      }
+                    }
+                  }
+                },
+              )
             }
 
             if (showRemoveDialog) {

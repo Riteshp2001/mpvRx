@@ -299,7 +299,7 @@ dependencies {
 
   "standardImplementation"(variantOf(libs.mpvlib.standard) { artifactType("aar") })
   "noVulkanImplementation"(variantOf(libs.mpvlib.no.vulkan) { artifactType("aar") })
-  "fongmiImplementation"(variantOf(libs.mpvlib.fongmi) { artifactType("aar") })
+  "fongmiImplementation"(files("libs/mpvlib-fongmi.aar"))
 
   // Network protocol libraries
   implementation(libs.smbj)

@@ -112,7 +112,7 @@ fun FrameGenSheet(
         if (uri == null) return@rememberLauncherForActivityResult
         installing = true
         scope.launch {
-            LosslessScalingHelper.install(context.contentResolver, uri)
+            LosslessScalingHelper.install(context, uri)
             installing = false
         }
     }
