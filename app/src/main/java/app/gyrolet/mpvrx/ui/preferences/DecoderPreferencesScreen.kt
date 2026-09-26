@@ -64,8 +64,16 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState as composeCollectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
+import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
@@ -75,6 +83,7 @@ object DecoderPreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val preferences = koinInject<DecoderPreferences>()
+    val playerPreferences = koinInject<PlayerPreferences>()
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
     val configOwnedOptions =
@@ -483,6 +492,165 @@ object DecoderPreferencesScreen : Screen {
                   }
                 }
               }
+            }
+          }
+
+          // ── Frame Generation (LSFG) ──────────────────────────────────
+          item {
+            PreferenceSectionHeader(
+              title = stringResource(R.string.frame_gen_sheet_title),
+            )
+          }
+
+          item {
+            val installed by LosslessScalingHelper.installed.composeCollectAsState()
+            val statusText by LosslessScalingHelper.statusText.composeCollectAsState()
+            val isSupported = isDeviceVulkanSupported
+            val scope = rememberCoroutineScope()
+            var installing by remember { mutableStateOf(false) }
+            var showRemoveDialog by remember { mutableStateOf(false) }
+            var showResultDialog by remember { mutableStateOf<String?>(null) }
+
+            val dllPicker = rememberLauncherForActivityResult(
+              ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+              if (uri == null) return@rememberLauncherForActivityResult
+              installing = true
+              scope.launch {
+                val result = LosslessScalingHelper.install(context.contentResolver, uri)
+                installing = false
+                showResultDialog = when (result) {
+                  LosslessScalingHelper.RESULT_OK -> context.getString(R.string.frame_gen_install_success)
+                  LosslessScalingHelper.RESULT_NOT_PE -> "Selected file is not a valid PE / DLL library."
+                  LosslessScalingHelper.RESULT_MISSING_SHADERS -> "Missing required LSFG compute shaders in DLL."
+                  LosslessScalingHelper.RESULT_TRANSLATION_FAILED -> "Failed to translate DXBC to SPIR-V shaders."
+                  else -> context.getString(R.string.frame_gen_install_failed)
+                }
+              }
+            }
+
+            PreferenceCard {
+              // 1. Enable Toggle
+              val isFrameGenEnabled by playerPreferences.isFrameGenEnabled.collectAsState()
+              SwitchPreference(
+                value = isFrameGenEnabled && installed && isSupported,
+                enabled = isSupported && installed && !installing,
+                onValueChange = { playerPreferences.isFrameGenEnabled.set(it) },
+                title = { Text(stringResource(R.string.btn_label_frame_generation)) },
+                summary = {
+                  Text(
+                    when {
+                      !isSupported -> stringResource(R.string.frame_gen_not_supported)
+                      !installed -> stringResource(R.string.frame_gen_library_not_installed)
+                      else -> stringResource(R.string.frame_gen_description)
+                    },
+                    color = if (!isSupported || !installed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              // 2. Multiplier (2x, 3x, 4x)
+              val multiplier by playerPreferences.frameGenMultiplier.collectAsState()
+              val multipliers = listOf(2, 3, 4)
+              ListPreference(
+                value = multiplier,
+                onValueChange = { playerPreferences.frameGenMultiplier.set(it) },
+                values = multipliers,
+                valueToText = { AnnotatedString("${it}×") },
+                enabled = installed && isSupported,
+                title = { Text(stringResource(R.string.frame_gen_multiplier_label)) },
+                summary = {
+                  Text(
+                    "${multiplier}×",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              // 3. Install / Replace Library
+              Preference(
+                title = {
+                  Text(
+                    if (installing) stringResource(R.string.frame_gen_installing)
+                    else if (installed) stringResource(R.string.frame_gen_replace_library)
+                    else stringResource(R.string.frame_gen_install_library)
+                  )
+                },
+                summary = {
+                  Text(
+                    if (statusText.isNotEmpty()) statusText
+                    else if (installed) stringResource(R.string.frame_gen_library_installed)
+                    else stringResource(R.string.frame_gen_install_description),
+                    color = if (installed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                  )
+                },
+                enabled = !installing,
+                onClick = { dllPicker.launch(arrayOf("*/*")) },
+              )
+
+              // 4. Remove Library (only if installed)
+              if (installed) {
+                PreferenceDivider()
+                Preference(
+                  title = {
+                    Text(
+                      stringResource(R.string.frame_gen_remove_library),
+                      color = MaterialTheme.colorScheme.error,
+                    )
+                  },
+                  summary = {
+                    Text(
+                      "Remove Lossless.dll and clear cached shaders",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  enabled = !installing,
+                  onClick = { showRemoveDialog = true },
+                )
+              }
+            }
+
+            if (showRemoveDialog) {
+              AlertDialog(
+                onDismissRequest = { showRemoveDialog = false },
+                title = { Text(stringResource(R.string.frame_gen_remove_library)) },
+                text = { Text(stringResource(R.string.frame_gen_remove_confirmation)) },
+                confirmButton = {
+                  TextButton(
+                    onClick = {
+                      showRemoveDialog = false
+                      scope.launch {
+                        LosslessScalingHelper.remove()
+                        playerPreferences.isFrameGenEnabled.set(false)
+                      }
+                    },
+                  ) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                  }
+                },
+                dismissButton = {
+                  TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                  }
+                },
+              )
+            }
+
+            if (showResultDialog != null) {
+              AlertDialog(
+                onDismissRequest = { showResultDialog = null },
+                title = { Text(stringResource(R.string.frame_gen_sheet_title)) },
+                text = { Text(showResultDialog!!) },
+                confirmButton = {
+                  TextButton(onClick = { showResultDialog = null }) {
+                    Text(stringResource(android.R.string.ok))
+                  }
+                },
+              )
             }
           }
         }

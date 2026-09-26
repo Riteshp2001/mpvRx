@@ -1296,7 +1296,11 @@ fun RenderPlayerButton(
               indication = ripple(bounded = true),
               onClick = {
                 clickEvent()
-                viewModel.toggleFrameGen()
+                if (!app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper.installed.value) {
+                  onOpenSheet(Sheets.FrameGenConfig)
+                } else {
+                  viewModel.toggleFrameGen()
+                }
               },
               onLongClick = {
                 clickEvent()
