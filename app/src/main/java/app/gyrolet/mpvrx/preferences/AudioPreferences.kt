@@ -58,6 +58,7 @@ class AudioPreferences(
   val lyricsAutoTranslate = preferenceStore.getBoolean("lyrics_auto_translate", false)
   val lyricsTargetLanguage = preferenceStore.getString("lyrics_target_language", "en")
   val lyricsTranslationDisplayMode = preferenceStore.getEnum("lyrics_translation_display_mode", LyricsTranslationDisplayMode.DualLine)
+  val paxsenixApiKey = preferenceStore.getString("paxsenix_api_key", "")
 
   fun getVideoBackgroundPlayback(mediaId: String?): Boolean =
     resolveVideoBackgroundPlayback(backgroundPlaybackBehavior.get(), backgroundPlayback.get(), videoBackgroundPlaybackIds.get(), mediaId)

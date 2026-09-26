@@ -1204,7 +1204,13 @@ fun AudioPlayerControls(
       )
     }
   val edgeToEdgeVisualizer = showVisualizer && (!showInPlaceLyrics || isTabletLandscape)
-  val controlsSidePadding = if (edgeToEdgeVisualizer) 16.dp else 0.dp
+  // In-place lyrics run flush against the screen edges, so the root padding moves onto
+  // the header and the footer instead of boxing the lyrics in.
+  val flushInPlaceLyrics = showInPlaceLyrics && isPortrait
+  val controlsSidePadding = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 16.dp else 0.dp
+  // The header keeps the side and top padding the root gives up while the lyrics are flush.
+  val headerContentPadding =
+    if (flushInPlaceLyrics) Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp) else Modifier
   Box(
     modifier =
       modifier
@@ -1247,8 +1253,8 @@ fun AudioPlayerControls(
             WindowInsets.safeDrawing
           },
         )
-        .padding(horizontal = if (edgeToEdgeVisualizer) 0.dp else 16.dp)
-        .padding(top = if (edgeToEdgeVisualizer) 0.dp else 6.dp, bottom = 12.dp),
+        .padding(horizontal = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 16.dp)
+        .padding(top = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp, bottom = 12.dp),
   ) {
     val headerBar = @Composable {
       Box(modifier = Modifier.fillMaxWidth()) {
@@ -1385,6 +1391,7 @@ fun AudioPlayerControls(
         if (showInPlaceLyrics && !isTabletLandscape) {
           app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
             viewModel = viewModel,
+            onOpenProviderSheet = { onOpenSheet(Sheets.LyricsProvider) },
             modifier = Modifier.fillMaxSize(),
             isLyricsFullscreen = isLyricsFullscreen,
             onTap = resetInactivityTimer,
@@ -2430,9 +2437,12 @@ fun AudioPlayerControls(
             exit = fadeOut(animationSpec = tween(300)) +
               androidx.compose.animation.shrinkVertically(animationSpec = tween(300)),
           ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+              modifier = Modifier.fillMaxWidth().then(headerContentPadding),
+              horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
               headerBar()
-              Spacer(modifier = Modifier.height(16.dp))
+              if (!showInPlaceLyrics) Spacer(modifier = Modifier.height(16.dp))
             }
           }
 
@@ -2544,6 +2554,7 @@ fun AudioPlayerControls(
             playlist = filteredPlaylist,
             selectedTab = tabletDualPaneTab,
             onTabSelected = { tabletDualPaneTab = it },
+            onOpenSheet = onOpenSheet,
           )
         }
       }
@@ -2630,6 +2641,7 @@ private fun DualPaneSidePanel(
   playlist: List<PlaylistItem>,
   selectedTab: Int = 0,
   onTabSelected: (Int) -> Unit = {},
+  onOpenSheet: (Sheets) -> Unit = {},
 ) {
   val playbackState by PlaybackSession.state.collectAsStateWithLifecycle()
   val isAudiobook = playbackState.currentItem?.audiobook != null
@@ -2680,6 +2692,7 @@ private fun DualPaneSidePanel(
       } else {
         app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
           viewModel = viewModel,
+          onOpenProviderSheet = { onOpenSheet(Sheets.LyricsProvider) },
           showTitleHeader = false,
         )
       }

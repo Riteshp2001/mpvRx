@@ -699,7 +699,7 @@ private fun RecentItemsContent(
   val manualGridColumnsEnabled by viewPreferences.manualGridColumnsEnabled.collectAsState()
   val videoGridColumnsPortrait by viewPreferences.gridColumnsPortrait.collectAsState()
   val videoGridColumnsLandscape by viewPreferences.gridColumnsLandscape.collectAsState()
-  val musicCoverArtSize by viewPreferences.audioCoverArtSize.collectAsState()
+  val musicCoverArtSize by browserPreferences.musicCoverArtSize.collectAsState()
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
   val screenWidthDp = (availableWidthDp ?: configuration.screenWidthDp).dp

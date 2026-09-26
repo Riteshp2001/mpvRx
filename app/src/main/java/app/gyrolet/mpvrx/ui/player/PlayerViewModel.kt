@@ -1034,6 +1034,16 @@ class PlayerViewModel : ViewModel(),
     val activeLineIndex: Int = -1,
     val selectedSource: app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType = app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.EMBEDDED,
     val availableSources: List<app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType> = emptyList(),
+    /** Which provider the current online lyrics actually came from. */
+    val onlineProvider: app.gyrolet.mpvrx.domain.lyrics.LyricsProvider? = null,
+    /** What the picker is set to, or null for the automatic lookup. */
+    val preferredProvider: app.gyrolet.mpvrx.domain.lyrics.LyricsProvider? = null,
+    /** Every provider that has answered for this track, for the source sheet. */
+    val fetchedProviders: Set<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider> = emptySet(),
+    /** Providers asked for this track that came back empty. */
+    val missingProviders: Set<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider> = emptySet(),
+    /** Whether this item may be looked up online at all (false for audiobooks). */
+    val onlineEnabled: Boolean = false,
     val syncOffsetMs: Int = 0,
     val errorMessage: String? = null,
   )
@@ -1096,6 +1106,8 @@ class PlayerViewModel : ViewModel(),
     val artist: String,
     val durationSeconds: Int,
     val allowOnline: Boolean,
+    val album: String?,
+    val isrc: String?,
   )
 
   private var lyricsLoadJob: Job? = null
@@ -1136,13 +1148,18 @@ class PlayerViewModel : ViewModel(),
   private fun currentLyricsPath(): String? = PlaybackSession.state.value.currentItem?.originalUri?.takeIf(String::isNotBlank)
     ?: PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename")
 
-  fun loadLyricsForCurrentTrack(forceRefresh: Boolean = false) {
+  fun loadLyricsForCurrentTrack(
+    forceRefresh: Boolean = false,
+    titleOverride: String? = null,
+  ) {
     val allowOnline = PlaybackSession.state.value.currentItem?.audiobook == null
     val path = currentLyricsPath() ?: return
     if (path.isBlank()) return
+    if (forceRefresh) lyricsRepository.invalidate(path, allowOnline)
     val generation = PlaybackSession.state.value.generation
 
-    val title = currentMediaTitle.takeIf { it.isNotBlank() }
+    val title = titleOverride
+      ?: currentMediaTitle.takeIf { it.isNotBlank() }
       ?: PlaybackSession.getPropertyString("metadata/by-key/Title")
       ?: PlaybackSession.getPropertyString("media-title")
       ?: ""
@@ -1153,14 +1170,22 @@ class PlayerViewModel : ViewModel(),
       ?: ""
 
     val duration = PlaybackSession.getPropertyInt("duration") ?: 0
-    val request = LyricsLoadRequest(path, title, artist, duration, allowOnline)
+    val album = PlaybackSession.getPropertyString("metadata/by-key/Album")
+      ?: PlaybackSession.getPropertyString("metadata/by-key/album")
+    val isrc = PlaybackSession.getPropertyString("metadata/by-key/isrc")
+    val request = LyricsLoadRequest(path, title, artist, duration, allowOnline, album, isrc)
     if (
       !forceRefresh && lastLyricsLoadRequest?.path == path && lastLyricsLoadRequest?.allowOnline == allowOnline &&
       (lyricsLoadJob?.isActive == true || request == lastLyricsLoadRequest)
     ) return
     lastLyricsLoadRequest = request
 
-    lyricsUiState.value = lyricsUiState.value.copy(isLoading = true, errorMessage = null, syncOffsetMs = 0)
+    lyricsUiState.value = lyricsUiState.value.copy(
+      isLoading = true,
+      errorMessage = null,
+      syncOffsetMs = 0,
+      onlineEnabled = allowOnline,
+    )
 
     // Cancel any in-flight lyrics load/translate for the previous track, otherwise a slow
     // fetch for the old song can resolve after the new song's fetch and overwrite it with
@@ -1176,6 +1201,8 @@ class PlayerViewModel : ViewModel(),
         durationSeconds = duration,
         forceRefresh = forceRefresh,
         allowOnline = allowOnline,
+        album = album,
+        isrc = isrc,
       )
 
       // The track may have changed again while this fetch was in-flight; only apply the
@@ -1202,6 +1229,10 @@ class PlayerViewModel : ViewModel(),
         activeLineIndex = activeIndex,
         selectedSource = result.selectedSource,
         availableSources = result.availableSources,
+        onlineProvider = result.onlineProvider,
+        preferredProvider = result.preferredOnlineProvider,
+        fetchedProviders = result.onlineByProvider.keys,
+        onlineEnabled = allowOnline,
         syncOffsetMs = 0,
       )
 
@@ -1211,6 +1242,34 @@ class PlayerViewModel : ViewModel(),
         translateLyrics(defaultTargetLang)
       }
     }
+  }
+
+  /**
+   * The "Search Online" action behind an empty panel.
+   *
+   * The automatic load can come back empty because the query mpv publishes for
+   * the track had not landed yet, and that empty answer sits in the cache. This
+   * drops the cached answer and searches again, using the file name when the
+   * metadata is still missing, so the first tap always asks the providers.
+   */
+  fun searchLyricsOnline() {
+    val path = currentLyricsPath() ?: return
+    loadLyricsForCurrentTrack(forceRefresh = true, titleOverride = trackSearchTitle(path))
+  }
+
+  /** What to search for when mpv has not published a title for [mediaPath] yet. */
+  private fun trackSearchTitle(mediaPath: String): String {
+    val fromMetadata =
+      currentMediaTitle.takeIf { it.isNotBlank() }
+        ?: PlaybackSession.getPropertyString("metadata/by-key/Title")
+        ?: PlaybackSession.getPropertyString("media-title")
+    if (!fromMetadata.isNullOrBlank()) return fromMetadata
+    return mediaPath
+      .substringAfterLast('/')
+      .substringBefore('?')
+      .substringBeforeLast('.')
+      .replace(Regex("""[._]+"""), " ")
+      .trim()
   }
 
   fun switchLyricsSource(sourceType: app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType) {
@@ -1237,12 +1296,23 @@ class PlayerViewModel : ViewModel(),
           ?: PlaybackSession.getPropertyString("metadata/by-key/album_artist")
           ?: ""
         val duration = PlaybackSession.getPropertyInt("duration") ?: 0
+        val album = PlaybackSession.getPropertyString("metadata/by-key/Album")
+          ?: PlaybackSession.getPropertyString("metadata/by-key/album")
 
-        val online = lyricsRepository.fetchOnlineLyrics(title, artist, duration)
+        val fetched = lyricsRepository.fetchOnlineLyrics(
+          rawTitle = title,
+          rawArtist = artist,
+          durationSeconds = duration,
+          provider = lyricsRepository.preferredProvider,
+          album = album,
+          mediaPath = path,
+        )
 
         val stillCurrentPath = currentLyricsPath()
         if (stillCurrentPath != path) return@launch
 
+        val updated = lyricsRepository.mergeOnline(path, fetched, allowOnline)
+        val online = updated?.onlineLyrics ?: fetched.lyrics
         val updatedSources = (current.availableSources + app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE).distinct()
         val activeLyrics = online ?: current.embeddedLyrics
         val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
@@ -1260,6 +1330,9 @@ class PlayerViewModel : ViewModel(),
           originalLyrics = activeLyrics,
           selectedSource = if (online != null) app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE else current.selectedSource,
           availableSources = updatedSources,
+          onlineProvider = updated?.onlineProvider ?: fetched.provider,
+          preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
+          fetchedProviders = (updated?.onlineByProvider ?: fetched.byProvider).keys,
           activeLineIndex = activeIndex,
         )
 
@@ -1286,6 +1359,7 @@ class PlayerViewModel : ViewModel(),
         isTranslationActive = false,
         selectedSource = updatedResult.selectedSource,
         activeLineIndex = activeIndex,
+        fetchedProviders = updatedResult.onlineByProvider.keys,
       )
 
       if (autoTranslate && hasSynced) {
@@ -1293,6 +1367,122 @@ class PlayerViewModel : ViewModel(),
       }
     }
   }
+
+  /**
+   * Moves the online half of the panel onto [provider], or back onto the
+   * automatic lookup when it is null.
+   *
+   * An answer already fetched for this track is reused; only a source the
+   * track has not been asked yet costs a request, and a source that misses
+   * falls through to the automatic lookup rather than blanking the panel.
+   */
+  fun switchLyricsProvider(provider: app.gyrolet.mpvrx.domain.lyrics.LyricsProvider?) {
+    val allowOnline = PlaybackSession.state.value.currentItem?.audiobook == null
+    if (!allowOnline) return
+    val path = currentLyricsPath() ?: return
+    if (path.isBlank()) return
+    val generation = PlaybackSession.state.value.generation
+
+    val current = lyricsUiState.value
+    val autoTranslate = audioPreferences.lyricsAutoTranslate.get()
+    val defaultTargetLang = audioPreferences.lyricsTargetLanguage.get().ifBlank { "en" }
+
+    val cached = lyricsRepository.switchProvider(path, provider, allowOnline)
+    if (cached != null && cached.onlineLyrics != null) {
+      val activeLyrics = cached.onlineLyrics
+      lyricsUiState.value = current.copy(
+        lyrics = activeLyrics,
+        originalLyrics = activeLyrics,
+        onlineLyrics = activeLyrics,
+        isTranslationActive = false,
+        selectedSource = app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE,
+        onlineProvider = cached.onlineProvider,
+        preferredProvider = cached.preferredOnlineProvider,
+        fetchedProviders = cached.onlineByProvider.keys,
+        activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
+        availableSources = (current.availableSources + app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE)
+          .distinct(),
+        errorMessage = null,
+      )
+      if (autoTranslate && activeLyrics?.synced?.isNotEmpty() == true) translateLyrics(defaultTargetLang)
+      return
+    }
+
+    lyricsUiState.value = current.copy(isLoading = true, errorMessage = null, preferredProvider = provider)
+    lyricsLoadJob?.cancel()
+    lyricsTranslateJob?.cancel()
+    lyricsLoadJob = viewModelScope.launch(Dispatchers.IO) {
+      val title = currentMediaTitle.takeIf { it.isNotBlank() }
+        ?: PlaybackSession.getPropertyString("metadata/by-key/Title")
+        ?: PlaybackSession.getPropertyString("media-title")
+        ?: ""
+      val artist = PlaybackSession.getPropertyString("metadata/by-key/Artist")
+        ?: PlaybackSession.getPropertyString("metadata/by-key/ARTIST")
+        ?: PlaybackSession.getPropertyString("metadata/by-key/album_artist")
+        ?: ""
+      val duration = PlaybackSession.getPropertyInt("duration") ?: 0
+      val album = PlaybackSession.getPropertyString("metadata/by-key/Album")
+        ?: PlaybackSession.getPropertyString("metadata/by-key/album")
+
+      val fetched = lyricsRepository.fetchOnlineLyrics(
+        rawTitle = title,
+        rawArtist = artist,
+        durationSeconds = duration,
+        provider = provider,
+        album = album,
+        mediaPath = path,
+      )
+
+      if (!PlaybackSession.isCurrentGeneration(generation) || currentLyricsPath() != path) return@launch
+
+      val updated = lyricsRepository.mergeOnline(path, fetched, allowOnline)
+      val online = updated?.onlineLyrics ?: fetched.lyrics
+      val activeLyrics = online ?: current.embeddedLyrics
+      val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
+      val answered = (updated?.onlineByProvider ?: fetched.byProvider).keys
+      val missed = if (provider != null && provider !in answered) setOf(provider) else emptySet()
+      val missing = (current.missingProviders - answered) + missed
+
+      lyricsUiState.value = current.copy(
+        isLoading = false,
+        isTranslationActive = false,
+        onlineLyrics = online,
+        lyrics = activeLyrics,
+        originalLyrics = activeLyrics,
+        selectedSource = if (online == null) {
+          current.selectedSource
+        } else {
+          app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE
+        },
+        availableSources = if (online == null) {
+          current.availableSources
+        } else {
+          (current.availableSources + app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE).distinct()
+        },
+        onlineProvider = updated?.onlineProvider ?: fetched.provider,
+        preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
+        fetchedProviders = answered,
+        missingProviders = missing,
+        activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
+        errorMessage = if (online == null && provider != null) {
+          appContext.getString(R.string.lyrics_provider_not_found, provider.label)
+        } else {
+          null
+        },
+      )
+
+      if (autoTranslate && hasSynced) translateLyrics(defaultTargetLang)
+    }
+  }
+
+  private fun currentActiveLineIndex(
+    lyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics?,
+    offsetMs: Int,
+  ): Int = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+    syncedLines = lyrics?.synced,
+    positionMs = (precisePosition.value * 1000).toLong(),
+    offsetMs = offsetMs,
+  )
 
   fun adjustLyricsSyncOffset(deltaMs: Int) {
     val newOffset = lyricsUiState.value.syncOffsetMs + deltaMs
@@ -1654,6 +1844,13 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     )
 
   val sheetShown = MutableStateFlow(Sheets.None)
+
+  /**
+   * Which sheet opened [Sheets.LyricsProvider], so dismissing it can go back to
+   * that sheet instead of closing the panel outright. [Sheets.None] means the
+   * picker was opened from the in-place lyrics, where there is nothing to go back to.
+   */
+  var lyricsProviderSheetOrigin = Sheets.None
   private val _bookmarkDraft = MutableStateFlow<app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity?>(null)
   val bookmarkDraft = _bookmarkDraft.asStateFlow()
 

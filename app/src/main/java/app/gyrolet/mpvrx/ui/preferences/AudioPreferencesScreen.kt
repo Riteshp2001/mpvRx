@@ -649,6 +649,33 @@ object AudioPreferencesScreen : Screen {
                   )
                 },
               )
+
+              PreferenceDivider()
+              val paxsenixApiKey by preferences.paxsenixApiKey.collectAsState()
+              TextFieldPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_paxsenix_api_key),
+                value = paxsenixApiKey,
+                onValueChange = { preferences.paxsenixApiKey.set(it) },
+                textToValue = { it.trim() },
+                title = { Text(stringResource(R.string.pref_paxsenix_api_key)) },
+                summary = {
+                  Text(
+                    text = paxsenixApiKey.ifBlank { stringResource(R.string.pref_paxsenix_api_key_summary) },
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                textField = { value, onValueChange, _ ->
+                  Column {
+                    Text(stringResource(R.string.pref_paxsenix_api_key_dialog_desc))
+                    TextField(
+                      value = value,
+                      onValueChange = onValueChange,
+                      modifier = Modifier.fillMaxWidth(),
+                      singleLine = true,
+                    )
+                  }
+                },
+              )
             }
           }
         }

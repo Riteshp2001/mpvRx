@@ -113,6 +113,7 @@ import kotlin.math.roundToLong
 @Composable
 fun LyricsView(
   viewModel: PlayerViewModel,
+  onOpenProviderSheet: () -> Unit,
   modifier: Modifier = Modifier,
   showTitleHeader: Boolean = false,
   isLyricsFullscreen: Boolean = false,
@@ -269,6 +270,24 @@ fun LyricsView(
             )
           }
         }
+      }
+
+      // Which online database is being read, and the menu to ask another one.
+      if (state.onlineEnabled && (hasEmbedded || state.onlineLyrics != null || state.isLoading)) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          LyricsProviderPicker(
+            preferredProvider = state.preferredProvider,
+            onlineProvider = state.onlineProvider,
+            onOpenSheet = onOpenProviderSheet,
+          )
+        }
+      }
+
+      if (hasEmbedded || (state.onlineEnabled && state.onlineLyrics != null)) {
         Spacer(modifier = Modifier.height(14.dp))
       }
 
@@ -533,8 +552,18 @@ fun LyricsView(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
               Spacer(modifier = Modifier.height(8.dp))
-              TextButton(onClick = { viewModel.loadLyricsForCurrentTrack(forceRefresh = true) }) {
-                Text(if (isAudiobook) stringResource(R.string.audiobook_retry) else "Search Online", fontWeight = FontWeight.Bold)
+              TextButton(
+                onClick = {
+                  if (isAudiobook) {
+                    viewModel.loadLyricsForCurrentTrack(forceRefresh = true)
+                  } else {
+                    viewModel.searchLyricsOnline()
+                  }
+                },
+              ) {
+                val searchLabel =
+                  if (isAudiobook) R.string.audiobook_retry else R.string.lyrics_search_online
+                Text(text = stringResource(searchLabel), fontWeight = FontWeight.Bold)
               }
             }
           }

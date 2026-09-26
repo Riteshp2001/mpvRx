@@ -152,6 +152,7 @@ enum class Sheets {
   AudioProperties,
   VisualizerStyle,
   Lyrics,
+  LyricsProvider,
   Scopes,
   PostProcessingConfig,
   BookmarkEditor,
