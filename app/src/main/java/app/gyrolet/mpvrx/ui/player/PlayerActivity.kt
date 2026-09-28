@@ -4322,6 +4322,12 @@ class PlayerActivity :
         eofAdvanceJob = null
         isAdvancingAtEof = false
         isReady = true
+        // The FILE_LOADED event is the authoritative point where the player becomes visible.
+        // Re-assert the screen-on flag here so the display cannot enter the system dim/timeout
+        // cycle if the initial pause-state callback arrived before the window was ready.
+        if (!viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && viewModel.paused != true) {
+          updateKeepScreenOn(isPaused = false)
+        }
         if (playWhenFileLoaded) {
           playWhenFileLoaded = false
         }
