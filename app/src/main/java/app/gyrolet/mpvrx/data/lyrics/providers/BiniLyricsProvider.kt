@@ -32,6 +32,15 @@ internal object BiniLyricsProvider : LyricsProviderClient {
     return fetchDocument(hit)
   }
 
+  /**
+   * The ISRC of whatever recording this query matches, without fetching words.
+   *
+   * Exposed so a lookup can name the recording once, up front, and hand that
+   * name to every provider that accepts one.
+   */
+  internal suspend fun identifyIsrc(query: LyricsFetchQuery): String? =
+    identify(query)?.isrc?.takeIf { it.isNotBlank() }
+
   /** Which recording this is, without fetching its words. */
   private suspend fun identify(query: LyricsFetchQuery): Hit? {
     val isrc = query.isrc?.takeIf { it.isNotBlank() }

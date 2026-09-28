@@ -8,6 +8,7 @@ import android.content.Context
 import android.util.Log
 import android.util.LruCache
 import app.gyrolet.mpvrx.data.lyrics.LrcLibApiService
+import app.gyrolet.mpvrx.data.lyrics.providers.BiniLyricsProvider
 import app.gyrolet.mpvrx.data.lyrics.providers.LyricsFetchQuery
 import app.gyrolet.mpvrx.data.lyrics.providers.LyricsProviderRegistry
 import app.gyrolet.mpvrx.data.lyrics.providers.PaxSenixApi
@@ -23,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Lyrics for one track, plus which of its sources they came from. */
 data class LyricsResult(
@@ -97,6 +99,18 @@ class LyricsRepository(
     /** How many title/artist guesses a lookup hands the providers. */
     private const val MAX_REFS = 8
 
+    /**
+     * Longest the lookup will wait to find out which recording this is.
+     *
+     * Short on purpose. Knowing the recording makes every match better, but
+     * not knowing it only leaves the lookup where it was before, and an empty
+     * panel because one host is slow is the worse failure.
+     */
+    private const val IDENTIFY_TIMEOUT_MS = 2_500L
+
+    /** How many recordings to keep in hand. */
+    private const val REMEMBERED_RECORDINGS = 100
+
     /** The video behind a playing path, when the path is a YouTube URL at all. */
     fun videoIdFrom(path: String?): String? =
       path
@@ -123,6 +137,14 @@ class LyricsRepository(
   )
 
   private val cache = LruCache<CacheKey, LyricsResult>(64)
+
+  /**
+   * The recording behind a track, once something has worked it out.
+   *
+   * In memory only: this is a shortcut, not a store, and losing it costs one
+   * fuzzy match — which is what every lookup did before any of this.
+   */
+  private val isrcs = LruCache<String, String>(REMEMBERED_RECORDINGS)
 
   private fun cleanTitle(title: String): String =
     title
@@ -354,16 +376,49 @@ class LyricsRepository(
 
       PaxSenixApi.setApiKey(audioPreferences.paxsenixApiKey.get())
 
+      val resolved = withRecording(query)
+
       if (provider != null) {
-        val found = registry.fetch(provider, query)
+        val found = registry.fetch(provider, resolved)
         if (found != null && found.isValid()) {
           return@withContext OnlineLyricsResult(provider, found, false, mapOf(provider to found))
         }
         Log.d(TAG, "${provider.label} had nothing; falling back to the automatic lookup")
       }
 
-      raceProviders(query)
+      raceProviders(resolved)
     }
+
+  /**
+   * Names the recording before anybody is asked for words.
+   *
+   * A title is ambiguous where it matters: a single and its album cut share a
+   * name, an artist and very nearly a length, and routinely differ in the
+   * words. An ISRC settles it, and BiniLyrics is the one source here that
+   * hands them out, so one short search up front gives every ISRC-capable
+   * provider a name instead of a description. Capped and remembered, so a
+   * slow host costs the match rather than the panel, and a track asked about
+   * twice pays for it once.
+   */
+  private suspend fun withRecording(query: LyricsFetchQuery): LyricsFetchQuery {
+    if (!query.isrc.isNullOrBlank()) return query
+    val key = recordingKey(query) ?: return query
+    isrcs.get(key)?.let { return query.copy(isrc = it) }
+    val found =
+      withTimeoutOrNull(IDENTIFY_TIMEOUT_MS) {
+        runCatching { BiniLyricsProvider.identifyIsrc(query) }
+          .getOrElse { error -> if (error is CancellationException) throw error else null }
+      } ?: return query
+    isrcs.put(key, found)
+    return query.copy(isrc = found)
+  }
+
+  private fun recordingKey(query: LyricsFetchQuery): String? {
+    query.videoId?.takeIf { it.isNotBlank() }?.let { return it }
+    val ref = query.primary
+    if (ref.title.isBlank()) return null
+    return "${ref.title}|${ref.artist}|${query.durationMs / 1000}"
+  }
 
   /**
    * Every provider asked at once, answers taken in priority order.
