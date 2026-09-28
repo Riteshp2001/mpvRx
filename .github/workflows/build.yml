@@ -26,15 +26,23 @@ jobs:
           - id: standard
             name: Standard
             gradle: Standard
+            dir: standard
+            abis: universal arm64-v8a armeabi-v7a x86 x86_64
           - id: fongmi
             name: FongMi
             gradle: Fongmi
+            dir: fongmi
+            abis: universal
           - id: no_vulkan
             name: No Vulkan
             gradle: NoVulkan
+            dir: noVulkan
+            abis: universal
     env:
       DISTRIBUTION: ${{ matrix.distribution.id }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
+      APK_DIR: ${{ matrix.distribution.dir }}
+      APK_ABIS: ${{ matrix.distribution.abis }}
 
     steps:
       - name: Checkout repository
@@ -71,75 +79,69 @@ jobs:
 
       - name: Sign APKs when signing secrets are available
         shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
           test -x "$apksigner"
 
-          if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" ]]; then
+          if [[ -z "$SIGNING_KEYSTORE" ]]; then
             echo "SIGNING_KEYSTORE is unavailable (expected for untrusted fork PRs); keeping CI APKs unsigned."
             exit 0
           fi
 
-          if [[ -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
+          if [[ -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
             echo "SIGNING_KEYSTORE exists but one or more required signing secrets are missing."
             exit 1
           fi
 
-          printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
           trap 'rm -f release.keystore' EXIT
 
+          # AGP only appends "-unsigned" when the variant has no signing config, so accept
+          # either name and always re-sign with the release key.
           sign_apk() {
-            local unsigned="$1"
-            local signed="$2"
+            local dir="$1"
+            local base="$2"
             local label="$3"
-            if [[ ! -f "$unsigned" ]]; then
-              echo "Missing expected $label APK: $unsigned"
+            local signed="$dir/$base.apk"
+            local unsigned="$dir/$base-unsigned.apk"
+            local source=""
+
+            if [[ -f "$unsigned" ]]; then
+              source="$unsigned"
+            elif [[ -f "$signed" ]]; then
+              source="$signed"
+            else
+              echo "Missing expected $label APK: $unsigned (or $signed)"
               find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
 
+            local staged="$dir/$base-signing.apk"
+            rm -f "$staged"
             "$apksigner" sign \
               --ks release.keystore \
-              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
-              --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
-              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --out "$signed" \
-              "$unsigned"
-            "$apksigner" verify --verbose "$signed"
+              --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --out "$staged" \
+              "$source"
+            "$apksigner" verify --verbose "$staged"
             rm -f "$unsigned"
+            mv -f "$staged" "$signed"
           }
 
-          case "$DISTRIBUTION" in
-            standard)
-              release_dir="app/build/outputs/apk/standard/release"
-              test -d "$release_dir"
-              architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-              for abi in "${architectures[@]}"; do
-                sign_apk \
-                  "$release_dir/app-standard-${abi}-release-unsigned.apk" \
-                  "$release_dir/app-standard-${abi}-release.apk" \
-                  "standard $abi release"
-              done
-              ;;
-            fongmi)
-              release_dir="app/build/outputs/apk/fongmi/release"
-              test -d "$release_dir"
-              sign_apk \
-                "$release_dir/app-fongmi-universal-release-unsigned.apk" \
-                "$release_dir/app-fongmi-universal-release.apk" \
-                "fongmi universal release"
-              ;;
-            no_vulkan)
-              release_dir="app/build/outputs/apk/noVulkan/release"
-              test -d "$release_dir"
-              sign_apk \
-                "$release_dir/app-noVulkan-universal-release-unsigned.apk" \
-                "$release_dir/app-noVulkan-universal-release.apk" \
-                "non-Vulkan universal release"
-              ;;
-          esac
+          out_dir="app/build/outputs/apk/${APK_DIR}/release"
+          test -d "$out_dir"
+          for abi in $APK_ABIS; do
+            sign_apk "$out_dir" "app-${APK_DIR}-${abi}-release" "${APK_DIR} ${abi} release"
+          done
 
       - name: Verify expected flavor outputs
         shell: bash

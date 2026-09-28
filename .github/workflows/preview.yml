@@ -15,12 +15,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-preview:
-    name: Build preview APKs
+  check:
+    name: Resolve preview build decision
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
     outputs:
       should_build: ${{ steps.activity.outputs.should_build }}
+      source_fingerprint: ${{ steps.activity.outputs.source_fingerprint }}
+      selected_flavor: ${{ steps.activity.outputs.selected_flavor }}
+      website_visible: ${{ steps.activity.outputs.website_visible }}
+      publication_mode: ${{ steps.activity.outputs.publication_mode }}
+      commit_count: ${{ steps.metadata.outputs.commit_count }}
+      source_sha: ${{ steps.metadata.outputs.source_sha }}
+      published_at: ${{ steps.metadata.outputs.published_at }}
 
     steps:
       - name: Checkout preview source
@@ -81,41 +88,70 @@ jobs:
             publication_mode=automatic
           fi
 
-          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
-          echo "SOURCE_FINGERPRINT=$source_fingerprint" >> "$GITHUB_ENV"
-          echo "SELECTED_FLAVOR=$selected_flavor" >> "$GITHUB_ENV"
-          echo "WEBSITE_VISIBLE=$website_visible" >> "$GITHUB_ENV"
-          echo "PUBLICATION_MODE=$publication_mode" >> "$GITHUB_ENV"
+          {
+            echo "should_build=$should_build"
+            echo "source_fingerprint=$source_fingerprint"
+            echo "selected_flavor=$selected_flavor"
+            echo "website_visible=$website_visible"
+            echo "publication_mode=$publication_mode"
+          } >> "$GITHUB_OUTPUT"
           echo "Preview decision: $should_build ($reason)"
 
       - name: Set build metadata
         id: metadata
         if: steps.activity.outputs.should_build == 'true'
         shell: bash
-        env:
-          SOURCE_RUN_ID: ${{ github.run_id }}
-          SOURCE_RUN_NUMBER: ${{ github.run_number }}
-          SOURCE_RUN_URL: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
-          SOURCE_BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          commit_count="$(git rev-list --count HEAD)"
-          source_sha="$(git rev-parse HEAD)"
-          short_sha="$(git rev-parse --short HEAD)"
-          published_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          {
+            echo "commit_count=$(git rev-list --count HEAD)"
+            echo "source_sha=$(git rev-parse HEAD)"
+            echo "published_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
 
-          echo "COMMIT_COUNT=$commit_count" >> "$GITHUB_ENV"
-          echo "commit_count=$commit_count" >> "$GITHUB_OUTPUT"
-          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
-          echo "SHORT_SHA=$short_sha" >> "$GITHUB_ENV"
-          echo "PUBLISHED_AT=$published_at" >> "$GITHUB_ENV"
-          echo "SOURCE_RUN_ID=$SOURCE_RUN_ID" >> "$GITHUB_ENV"
-          echo "SOURCE_RUN_NUMBER=$SOURCE_RUN_NUMBER" >> "$GITHUB_ENV"
-          echo "SOURCE_RUN_URL=$SOURCE_RUN_URL" >> "$GITHUB_ENV"
-          echo "SOURCE_BRANCH=$SOURCE_BRANCH" >> "$GITHUB_ENV"
+  build:
+    name: Build ${{ matrix.distribution.name }} preview APKs
+    needs: check
+    if: needs.check.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution:
+          - id: standard
+            name: Standard
+            gradle: Standard
+            dir: standard
+            abis: universal arm64-v8a armeabi-v7a x86 x86_64
+            asset: ''
+          - id: fongmi
+            name: FongMi
+            gradle: Fongmi
+            dir: fongmi
+            abis: universal
+            asset: fongmi
+          - id: no_vulkan
+            name: No Vulkan
+            gradle: NoVulkan
+            dir: noVulkan
+            abis: universal
+            asset: no-vulkan
+    env:
+      COMMIT_COUNT: ${{ needs.check.outputs.commit_count }}
+      GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
+      APK_DIR: ${{ matrix.distribution.dir }}
+      APK_ABIS: ${{ matrix.distribution.abis }}
+      ASSET_NAME: ${{ matrix.distribution.asset }}
+
+    steps:
+      - name: Checkout preview source
+        uses: actions/checkout@v7
+        with:
+          # BuildConfig.GIT_COUNT and the preview version code rely on the real repository history.
+          fetch-depth: 0
 
       - name: Set up JDK 17
-        if: steps.activity.outputs.should_build == 'true'
         uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -123,22 +159,15 @@ jobs:
           cache: gradle
 
       - name: Make Gradle wrapper executable
-        if: steps.activity.outputs.should_build == 'true'
         run: chmod +x ./gradlew
 
-      - name: Build selected preview APKs
-        if: steps.activity.outputs.should_build == 'true'
+      - name: Build preview APKs
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew assembleStandardPreview --stacktrace --no-daemon --max-workers=2
-          if [[ "$SELECTED_FLAVOR" == "all" ]]; then
-            ./gradlew assembleFongmiPreview --stacktrace --no-daemon --max-workers=2
-            ./gradlew assembleNoVulkanPreview --stacktrace --no-daemon --max-workers=2
-          fi
+          ./gradlew "assemble${GRADLE_FLAVOR}Preview" --stacktrace --no-daemon --max-workers=2
 
-      - name: Sign and verify preview APKs
-        if: steps.activity.outputs.should_build == 'true'
+      - name: Sign and stage preview APKs
         shell: bash
         env:
           SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
@@ -192,31 +221,60 @@ jobs:
             mv -f "$staged" "$signed"
           }
 
-          preview_dir="app/build/outputs/apk/standard/preview"
-          test -d "$preview_dir"
-          architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-          for abi in "${architectures[@]}"; do
-            sign_apk "$preview_dir" "app-standard-${abi}-preview" "standard $abi preview"
+          out_dir="app/build/outputs/apk/${APK_DIR}/preview"
+          test -d "$out_dir"
+          mkdir -p downloads
+
+          for abi in $APK_ABIS; do
+            base="app-${APK_DIR}-${abi}-preview"
+            sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} preview"
+            cp "$out_dir/$base.apk" "downloads/mpvRx-preview-r${COMMIT_COUNT}-${ASSET_NAME:-$abi}.apk"
           done
 
-          if [[ "$SELECTED_FLAVOR" == "all" ]]; then
-            flavor_dir="app/build/outputs/apk/fongmi/preview"
-            test -d "$flavor_dir"
-            sign_apk "$flavor_dir" "app-fongmi-universal-preview" "fongmi universal preview"
+      - name: Upload preview APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-apks-${{ matrix.distribution.id }}
+          path: downloads/*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-            flavor_dir="app/build/outputs/apk/noVulkan/preview"
-            test -d "$flavor_dir"
-            sign_apk "$flavor_dir" "app-noVulkan-universal-preview" "non-Vulkan universal preview"
-          fi
+  publish:
+    name: Stage preview download page
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMMIT_COUNT: ${{ needs.check.outputs.commit_count }}
+      SOURCE_SHA: ${{ needs.check.outputs.source_sha }}
+      PUBLISHED_AT: ${{ needs.check.outputs.published_at }}
+      SOURCE_FINGERPRINT: ${{ needs.check.outputs.source_fingerprint }}
+      SELECTED_FLAVOR: ${{ needs.check.outputs.selected_flavor }}
+      WEBSITE_VISIBLE: ${{ needs.check.outputs.website_visible }}
+      PUBLICATION_MODE: ${{ needs.check.outputs.publication_mode }}
+      SOURCE_RUN_ID: ${{ github.run_id }}
+      SOURCE_RUN_NUMBER: ${{ github.run_number }}
+      SOURCE_RUN_URL: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+      SOURCE_BRANCH: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout preview source
+        uses: actions/checkout@v7
+
+      - name: Download preview APKs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: preview-apks-*
+          merge-multiple: true
+          path: site/downloads
 
       - name: Stage GitHub Pages preview site
-        if: steps.activity.outputs.should_build == 'true'
         env:
           SITE_BASE_URL: https://riteshp2001.github.io/mpvRx
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf site
           mkdir -p site/downloads
           cp fastlane/metadata/android/preview-site/index.html site/index.html
           cp fastlane/metadata/android/en-US/images/icon.png site/icon.png
@@ -227,7 +285,6 @@ jobs:
           import hashlib
           import json
           import os
-          import shutil
           from pathlib import Path
 
           site_dir = Path("site")
@@ -244,37 +301,30 @@ jobs:
           website_visible = os.environ["WEBSITE_VISIBLE"].lower() == "true"
           publication_mode = os.environ["PUBLICATION_MODE"]
 
-          builds = [
-              ("standard", "universal", "universal"),
-              ("standard", "arm64-v8a", "arm64-v8a"),
-              ("standard", "armeabi-v7a", "armeabi-v7a"),
-              ("standard", "x86", "x86"),
-              ("standard", "x86_64", "x86_64"),
+          public_names = [
+              "universal",
+              "arm64-v8a",
+              "armeabi-v7a",
+              "x86",
+              "x86_64",
+              "fongmi",
+              "no-vulkan",
           ]
-          if selected_flavor == "all":
-              builds.extend([
-                  ("fongmi", "universal", "fongmi"),
-                  ("noVulkan", "universal", "no-vulkan"),
-              ])
           assets = []
 
-          for flavor, output, public_name in builds:
-              source_dir = Path("app/build/outputs/apk") / flavor / "preview"
-              source = source_dir / f"app-{flavor}-{output}-preview.apk"
-              if not source.is_file():
-                  raise SystemExit(f"Missing signed APK for {public_name}: {source}")
-
+          for public_name in public_names:
               name = f"mpvRx-preview-r{commit_count}-{public_name}.apk"
-              destination = downloads_dir / name
-              shutil.copy2(source, destination)
+              apk = downloads_dir / name
+              if not apk.is_file():
+                  raise SystemExit(f"Missing signed APK for {public_name}: {apk}")
 
               assets.append({
                   "abi": public_name,
                   "browser_download_url": f"{base_url}/downloads/{name}",
                   "name": name,
-                  "size": destination.stat().st_size,
+                  "size": apk.stat().st_size,
                   "content_type": "application/vnd.android.package-archive",
-                  "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+                  "sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
               })
 
           manifest = {
@@ -310,32 +360,26 @@ jobs:
           python3 -m json.tool site/latest.json >/dev/null
           find site -maxdepth 2 -type f -printf '%p %k KB\n' | sort
 
-      - name: Upload preview APKs as Actions artifact
-        if: steps.activity.outputs.should_build == 'true'
+      - name: Upload preview manifest as Actions artifact
         uses: actions/upload-artifact@v7
         with:
-          name: mpvRx-preview-r${{ steps.metadata.outputs.commit_count }}
-          path: |
-            site/downloads/*.apk
-            site/latest.json
+          name: mpvRx-preview-r${{ needs.check.outputs.commit_count }}-manifest
+          path: site/latest.json
           if-no-files-found: error
           retention-days: 14
-          compression-level: 0
 
       - name: Configure GitHub Pages
-        if: steps.activity.outputs.should_build == 'true'
         uses: actions/configure-pages@v6
 
       - name: Upload GitHub Pages artifact
-        if: steps.activity.outputs.should_build == 'true'
         uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
   deploy-preview:
     name: Publish preview download page
-    needs: build-preview
-    if: needs.build-preview.outputs.should_build == 'true'
+    needs: [check, publish]
+    if: needs.check.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
