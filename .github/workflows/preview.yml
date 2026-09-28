@@ -221,6 +221,7 @@ jobs:
             rm -f "$staged"
             "$apksigner" sign \
               --ks release.keystore \
+              --ks-type JKS \
               --ks-key-alias "$SIGNING_KEY_ALIAS" \
               --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
               --key-pass "pass:$KEY_PASSWORD" \
