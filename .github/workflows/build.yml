@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
@@ -66,11 +69,59 @@ jobs:
           test -f "$apk"
           "$apksigner" verify --verbose "$apk"
 
-      - name: Upload universal APK
+      - name: Build universal release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew assembleStandardRelease -PuniversalOnly=true --stacktrace --no-daemon --max-workers=2
+
+      - name: Sign release APK with generated certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          test -x "$apksigner"
+          keytool -genkeypair -noprompt \
+            -keystore release.keystore \
+            -storetype JKS \
+            -alias mpvrx-release \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass mpvrx-ci \
+            -keypass mpvrx-ci \
+            -dname "CN=mpvRx Release,O=mpvRx,C=US"
+          trap 'rm -f release.keystore' EXIT
+          out_dir="app/build/outputs/apk/standard/release"
+          source="$out_dir/app-standard-universal-release-unsigned.apk"
+          signed="$out_dir/app-standard-universal-release-signed.apk"
+          if [[ ! -f "$source" ]]; then
+            source="$out_dir/app-standard-universal-release.apk"
+          fi
+          test -f "$source"
+          "$apksigner" sign \
+            --ks release.keystore \
+            --ks-type JKS \
+            --ks-key-alias mpvrx-release \
+            --ks-pass pass:mpvrx-ci \
+            --key-pass pass:mpvrx-ci \
+            --out "$signed" "$source"
+          "$apksigner" verify --verbose "$signed"
+
+      - name: Upload universal debug APK
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-universal-debug-${{ steps.metadata.outputs.short_sha }}
           path: app/build/outputs/apk/standard/debug/app-standard-debug*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload universal release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-universal-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/release/app-standard-universal-release-signed.apk
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
