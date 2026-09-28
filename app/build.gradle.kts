@@ -121,6 +121,8 @@ android {
 
   buildTypes {
     named("release") {
+      // Keep the release APK directly installable in CI by using AGP's debug signing config.
+      signingConfig = signingConfigs.getByName("debug")
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
       isMinifyEnabled = true
       isShrinkResources = true
