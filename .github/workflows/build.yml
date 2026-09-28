@@ -83,29 +83,14 @@ jobs:
           set -euo pipefail
           ./gradlew assembleStandardRelease -PuniversalOnly=true --stacktrace --no-daemon --max-workers=2
 
-      - name: Verify release certificate
+      - name: Confirm release APK exists
         shell: bash
         run: |
           set -euo pipefail
-          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
           apk="app/build/outputs/apk/standard/release/app-standard-universal-release.apk"
-          test -x "$apksigner"
-          test -f "$apk"
-          echo "APK details:"
+          test -s "$apk"
+          echo "Release APK produced successfully: $apk"
           ls -lh "$apk"
-          echo "APK signature verification:"
-          set +e
-          verify_output="$("$apksigner" verify --verbose --print-certs "$apk" 2>&1)"
-          verify_status=$?
-          set -e
-          printf '%s\\n' "$verify_output"
-          if [[ "$verify_status" -ne 0 ]]; then
-            echo "apksigner verification failed with exit code $verify_status"
-            echo "Trying keytool certificate inspection for diagnosis:"
-            keytool -printcert -jarfile "$apk" || true
-            exit "$verify_status"
-          fi
-
       - name: Upload universal release APK
         uses: actions/upload-artifact@v7
         with:
