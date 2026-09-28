@@ -96,26 +96,6 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Preflight release signing
-        shell: bash
-        run: |
-          set -euo pipefail
-          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
-          test -x "$apksigner"
-          command -v openssl >/dev/null
-          openssl version
-          rm -f release-key.pem release-key.pk8 release-cert.pem
-          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out release-key.pem
-          openssl pkcs8 -topk8 -nocrypt -in release-key.pem -outform DER -out release-key.pk8
-          openssl req -x509 -new -key release-key.pem -sha256 -days 10000 \
-            -out release-cert.pem \
-            -subj "/CN=mpvRx Release/O=mpvRx/C=US"
-          openssl pkey -in release-key.pem -check -noout
-          openssl x509 -in release-cert.pem -noout -subject -dates -fingerprint -sha256
-          test -s release-key.pk8
-          test -s release-cert.pem
-          trap 'rm -f release-key.pem release-key.pk8 release-cert.pem' EXIT
-
       - name: Build debug APKs
         shell: bash
         run: |
@@ -163,21 +143,10 @@ jobs:
               source="$signed"
             else
               echo "Missing expected $label APK: $unsigned (or $signed)"
-              find app/build/outputs/apk -type f -name '*.apk' -print || true
-              exit 1
-            fi
-
-            local staged="$dir/$base-signing.apk"
-            rm -f "$staged"
-            "$apksigner" sign \
-              --key release-key.pk8 \
-              --cert release-cert.pem \
-              --out "$staged" \
-              "$source"
-            "$apksigner" verify --verbose --print-certs "$staged"
-            rm -f "$unsigned"
-            mv -f "$staged" "$signed"
-          }
+              find app/build/outputs/apk -type f -name '*.apk'      - name: Verify and stage release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
 
           out_dir="app/build/outputs/apk/${APK_DIR}/release"
           test -d "$out_dir"
@@ -185,43 +154,18 @@ jobs:
 
           for abi in $APK_ABIS; do
             base="app-${APK_DIR}-${abi}-release"
-            sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} release"
-            cp "$out_dir/$base.apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
+            apk="$out_dir/$base.apk"
+
+            if [[ ! -f "$apk" ]]; then
+              echo "Missing expected $APK_DIR $abi release APK: $apk"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$apk"
+            cp "$apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
           done
-      - name: Upload release assets
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-assets-${{ matrix.distribution.id }}
-          path: release-assets/*.apk
-          if-no-files-found: error
-          retention-days: 7
-          compression-level: 0
-
-  publish:
-    name: Publish GitHub release
-    needs: [prepare, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Download release assets
-        uses: actions/download-artifact@v7
-        with:
-          pattern: release-assets-*
-          merge-multiple: true
-          path: release-assets
-
-      - name: Verify assets and compute checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          : > checksums.txt
-          variants=(universal arm64-v8a armeabi-v7a x86 x86_64 fongmi no-vulkan)
+)
           for variant in "${variants[@]}"; do
             asset="release-assets/mpvRx-${variant}-${VERSION_TAG}.apk"
             if [[ ! -f "$asset" ]]; then
