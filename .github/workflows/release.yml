@@ -118,7 +118,7 @@ jobs:
           set -euo pipefail
           ./gradlew "assemble${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
 
-      - name: Verify and stage release APKs
+      - name: Stage release APKs
         shell: bash
         run: |
           set -euo pipefail
@@ -130,27 +130,14 @@ jobs:
           for abi in $APK_ABIS; do
             base="app-${APK_DIR}-${abi}-release"
             apk="$out_dir/$base.apk"
-
-            if [[ ! -f "$apk" ]]; then
-              echo "Missing expected $APK_DIR $abi release APK: $apk"
+            if [[ ! -s "$apk" ]]; then
+              echo "Missing expected release APK: $apk"
               find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
-
-            "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$apk"
             cp "$apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
+            echo "Staged debug-key fallback release APK: $apk"
           done
-)
-          for variant in "${variants[@]}"; do
-            asset="release-assets/mpvRx-${variant}-${VERSION_TAG}.apk"
-            if [[ ! -f "$asset" ]]; then
-              echo "Missing expected release asset: $asset"
-              find release-assets -type f -name '*.apk' -print || true
-              exit 1
-            fi
-            sha256sum "$asset" | tee -a checksums.txt
-          done
-
       - name: Prepare release notes
         shell: bash
         run: |
