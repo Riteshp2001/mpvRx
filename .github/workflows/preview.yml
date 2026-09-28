@@ -140,64 +140,73 @@ jobs:
       - name: Sign and verify preview APKs
         if: steps.activity.outputs.should_build == 'true'
         shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
-          if [[ -z "${{ secrets.SIGNING_KEYSTORE }}" || -z "${{ secrets.SIGNING_KEY_ALIAS }}" || -z "${{ secrets.SIGNING_STORE_PASSWORD }}" || -z "${{ secrets.KEY_PASSWORD }}" ]]; then
+          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
             echo "Required signing secrets are missing; refusing to publish unsigned preview APKs."
             exit 1
           fi
 
           test -x "$apksigner"
-          printf '%s' "${{ secrets.SIGNING_KEYSTORE }}" | base64 --decode > release.keystore
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
           trap 'rm -f release.keystore' EXIT
 
+          # AGP only appends "-unsigned" when the variant has no signing config, so accept
+          # either name and always re-sign with the release key.
           sign_apk() {
-            local unsigned="$1"
-            local signed="$2"
+            local dir="$1"
+            local base="$2"
             local label="$3"
-            if [[ ! -f "$unsigned" ]]; then
-              echo "Missing expected $label APK: $unsigned"
+            local signed="$dir/$base.apk"
+            local unsigned="$dir/$base-unsigned.apk"
+            local source=""
+
+            if [[ -f "$unsigned" ]]; then
+              source="$unsigned"
+            elif [[ -f "$signed" ]]; then
+              source="$signed"
+            else
+              echo "Missing expected $label APK: $unsigned (or $signed)"
               find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
 
+            local staged="$dir/$base-signing.apk"
+            rm -f "$staged"
             "$apksigner" sign \
               --ks release.keystore \
-              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
-              --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
-              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --out "$signed" \
-              "$unsigned"
-            "$apksigner" verify --verbose "$signed"
+              --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --out "$staged" \
+              "$source"
+            "$apksigner" verify --verbose "$staged"
             rm -f "$unsigned"
+            mv -f "$staged" "$signed"
           }
 
           preview_dir="app/build/outputs/apk/standard/preview"
           test -d "$preview_dir"
           architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
           for abi in "${architectures[@]}"; do
-            sign_apk \
-              "$preview_dir/app-standard-${abi}-preview-unsigned.apk" \
-              "$preview_dir/app-standard-${abi}-preview.apk" \
-              "standard $abi preview"
+            sign_apk "$preview_dir" "app-standard-${abi}-preview" "standard $abi preview"
           done
 
           if [[ "$SELECTED_FLAVOR" == "all" ]]; then
             flavor_dir="app/build/outputs/apk/fongmi/preview"
             test -d "$flavor_dir"
-            sign_apk \
-              "$flavor_dir/app-fongmi-universal-preview-unsigned.apk" \
-              "$flavor_dir/app-fongmi-universal-preview.apk" \
-              "fongmi universal preview"
+            sign_apk "$flavor_dir" "app-fongmi-universal-preview" "fongmi universal preview"
 
             flavor_dir="app/build/outputs/apk/noVulkan/preview"
             test -d "$flavor_dir"
-            sign_apk \
-              "$flavor_dir/app-noVulkan-universal-preview-unsigned.apk" \
-              "$flavor_dir/app-noVulkan-universal-preview.apk" \
-              "non-Vulkan universal preview"
+            sign_apk "$flavor_dir" "app-noVulkan-universal-preview" "non-Vulkan universal preview"
           fi
 
       - name: Stage GitHub Pages preview site
