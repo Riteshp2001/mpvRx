@@ -103,14 +103,17 @@ jobs:
           echo "Release APK produced successfully: $apk"
           echo "path=$apk" >> "$GITHUB_OUTPUT"
 
+      - name: Report release APK checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum "${{ steps.release_apk.outputs.path }}"
+
       - name: Upload universal release APK
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-universal-release-${{ steps.metadata.outputs.short_sha }}
           path: ${{ steps.release_apk.outputs.path }}
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
