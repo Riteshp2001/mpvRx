@@ -96,38 +96,14 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build release APKs
+      - name: Preflight release signing
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew "assemble${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
-
-      - name: Build debug APKs
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Debug variants use AGP's standard debug certificate and need no secrets.
-          ./gradlew "assemble${GRADLE_FLAVOR}Debug" --stacktrace --no-daemon --max-workers=2
-
-      - name: Upload debug APKs
-        uses: actions/upload-artifact@v7
-        with:
-          name: debug-assets-${{ matrix.distribution.id }}
-          path: app/build/outputs/apk/${{ matrix.distribution.dir }}/debug/*.apk
-          if-no-files-found: error
-          retention-days: 7
-          compression-level: 0
-
-      - name: Sign and stage release APKs
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # Generate the release signing identity before APK compilation so signing-tool
-          # failures happen before the expensive release build.
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
           test -x "$apksigner"
           command -v openssl >/dev/null
+          openssl version
           rm -f release-key.pem release-key.pk8 release-cert.pem
           openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out release-key.pem
           openssl pkcs8 -topk8 -nocrypt -in release-key.pem -outform DER -out release-key.pk8
@@ -140,8 +116,39 @@ jobs:
           test -s release-cert.pem
           trap 'rm -f release-key.pem release-key.pk8 release-cert.pem' EXIT
 
+      - name: Build debug APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Debug variants are automatically signed by AGP with the standard debug key.
+          ./gradlew "assemble${GRADLE_FLAVOR}Debug" --stacktrace --no-daemon --max-workers=2
+
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: debug-assets-${{ matrix.distribution.id }}
+          path: app/build/outputs/apk/${{ matrix.distribution.dir }}/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Build release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew "assemble${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
+
+      - name: Sign and stage release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          test -x "$apksigner"
+          test -s release-key.pk8
+          test -s release-cert.pem
+
           # AGP only appends "-unsigned" when the variant has no signing config, so accept
-          # either name and always re-sign with the release key.
+          # either name and always re-sign with the generated CI certificate.
           sign_apk() {
             local dir="$1"
             local base="$2"
@@ -163,14 +170,11 @@ jobs:
             local staged="$dir/$base-signing.apk"
             rm -f "$staged"
             "$apksigner" sign \
-              --ks release.keystore \
-              --ks-type PKCS12 \
-              --ks-key-alias "$signing_alias" \
-              --ks-pass "pass:$signing_password" \
-              --key-pass "pass:$signing_password" \
+              --key release-key.pk8 \
+              --cert release-cert.pem \
               --out "$staged" \
               "$source"
-            "$apksigner" verify --verbose "$staged"
+            "$apksigner" verify --verbose --print-certs "$staged"
             rm -f "$unsigned"
             mv -f "$staged" "$signed"
           }
@@ -184,7 +188,6 @@ jobs:
             sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} release"
             cp "$out_dir/$base.apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
           done
-
       - name: Upload release assets
         uses: actions/upload-artifact@v7
         with:
