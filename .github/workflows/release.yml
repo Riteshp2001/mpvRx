@@ -132,7 +132,7 @@ jobs:
           signing_password=mpvrx-ci
           keytool -genkeypair -noprompt \
             -keystore release.keystore \
-            -storetype JKS \
+            -storetype PKCS12 \
             -alias "$signing_alias" \
             -keyalg RSA \
             -keysize 2048 \
@@ -166,7 +166,7 @@ jobs:
             rm -f "$staged"
             "$apksigner" sign \
               --ks release.keystore \
-              --ks-type JKS \
+              --ks-type PKCS12 \
               --ks-key-alias "$signing_alias" \
               --ks-pass "pass:$signing_password" \
               --key-pass "pass:$signing_password" \
