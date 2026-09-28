@@ -83,7 +83,7 @@ jobs:
           test -x "$apksigner"
           keytool -genkeypair -noprompt \
             -keystore release.keystore \
-            -storetype JKS \
+            -storetype PKCS12 \
             -alias mpvrx-release \
             -keyalg RSA \
             -keysize 2048 \
@@ -101,7 +101,7 @@ jobs:
           test -f "$source"
           "$apksigner" sign \
             --ks release.keystore \
-            --ks-type JKS \
+            --ks-type PKCS12 \
             --ks-key-alias mpvrx-release \
             --ks-pass pass:mpvrx-ci \
             --key-pass pass:mpvrx-ci \
