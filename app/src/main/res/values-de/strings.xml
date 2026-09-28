@@ -16,6 +16,9 @@
   <string name="pref_appearance_darkmode_dark">Dunkel</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED-Schwarzmodus</string>
   <string name="pref_appearance_amoled_mode_summary">Für dunkle Designs einen vollständig schwarzen Hintergrund verwenden</string>
+  <string name="pref_appearance_liquid_glass_title">Flüssigglas</string>
+  <string name="pref_appearance_liquid_glass_summary">Transluzente, lichtbrechende Oberflächen für Miniplayer und Navigation verwenden</string>
+  <string name="pref_appearance_liquid_glass_summary_unavailable">Verfügbar ab Android 12</string>
   <string name="pref_appearance_system_font_title">Systemschrift verwenden</string>
   <string name="pref_appearance_system_font_summary">In mpvRx die Android-Systemschrift anstelle von Google Sans Flex verwenden</string>
   <string name="pref_appearance_ui_scale_title">App-Oberflächenskalierung</string>
@@ -403,6 +406,7 @@ Weiter: NEXT</string>
   <string name="player_sheets_sub_color_alpha">Alpha</string>
   <string name="player_sheets_sub_override_ass">ASS/SSA-Untertitel überschreiben</string>
   <string name="player_sheets_sub_override_ass_subtitle">Formatierung von ASS/SSA-Untertiteln zwangsweise überschreiben</string>
+  <string name="cover_art_size">Größe des Albumcovers</string>
   <string name="player_sheets_sub_force_rtl">RTL-Richtung erzwingen</string>
   <string name="player_sheets_sub_force_rtl_summary">Rechts-nach-links-Layout für arabische, hebräische und andere RTL-Untertitel verwenden</string>
   <string name="player_sheets_sub_primary_scale">Skalierung primärer Untertitel</string>

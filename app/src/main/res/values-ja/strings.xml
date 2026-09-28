@@ -16,6 +16,9 @@
   <string name="pref_appearance_darkmode_dark">ダーク</string>
   <string name="pref_appearance_amoled_mode_title">AMOLEDブラックモード</string>
   <string name="pref_appearance_amoled_mode_summary">ダークテーマで完全な黒の背景を使用します</string>
+  <string name="pref_appearance_liquid_glass_title">リキッドガラス</string>
+  <string name="pref_appearance_liquid_glass_summary">ミニプレーヤーとナビゲーションに半透明の屈折サーフェスを使用します</string>
+  <string name="pref_appearance_liquid_glass_summary_unavailable">Android 12 以降で利用できます</string>
   <string name="pref_appearance_system_font_title">システムフォントを使用</string>
   <string name="pref_appearance_system_font_summary">Google Sans Flexの代わりにAndroidのシステム書体をmpvRx全体で使用します</string>
   <string name="pref_appearance_ui_scale_title">アプリUIの拡大率</string>
@@ -403,6 +406,7 @@
   <string name="player_sheets_sub_color_alpha">アルファ</string>
   <string name="player_sheets_sub_override_ass">ASS/SSA字幕を上書き</string>
   <string name="player_sheets_sub_override_ass_subtitle">ASS/SSA字幕の書式を強制的に上書きします</string>
+  <string name="cover_art_size">カバーアートのサイズ</string>
   <string name="player_sheets_sub_force_rtl">右から左の方向を強制</string>
   <string name="player_sheets_sub_force_rtl_summary">アラビア語、ヘブライ語などのRTL字幕に右から左の配置を使用します</string>
   <string name="player_sheets_sub_primary_scale">プライマリ字幕の拡大率</string>

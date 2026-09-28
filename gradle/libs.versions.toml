@@ -54,6 +54,7 @@ libtorrent4j = "2.1.0-39"
 libarchiveAndroid = "1.1.6"
 ktlint = "14.2.0"
 telephoto = "0.19.0"
+backdrop = "2.0.1"
 
 [libraries]
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
@@ -138,6 +139,7 @@ libtorrent4j-android-x86 = { module = "org.libtorrent4j:libtorrent4j-android-x86
 libtorrent4j-android-x8664 = { module = "org.libtorrent4j:libtorrent4j-android-x86_64", version.ref = "libtorrent4j" }
 libarchive-android = { module = "me.zhanghai.android.libarchive:library", version.ref = "libarchiveAndroid" }
 telephoto-zoomable = { module = "me.saket.telephoto:zoomable", version.ref = "telephoto" }
+backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
 
 [bundles]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel"]

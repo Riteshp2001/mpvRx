@@ -27,6 +27,9 @@
   <string name="pref_appearance_darkmode_dark">Dark</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED Black Mode</string>
   <string name="pref_appearance_amoled_mode_summary">Use pure black background for dark themes</string>
+  <string name="pref_appearance_liquid_glass_title">Liquid glass</string>
+  <string name="pref_appearance_liquid_glass_summary">Use translucent, refractive surfaces for the mini player and navigation</string>
+  <string name="pref_appearance_liquid_glass_summary_unavailable">Available on Android 12 and above</string>
   <string name="pref_appearance_system_font_title">Use system font</string>
   <string name="pref_appearance_system_font_summary">Use the Android system typeface across mpvRx instead of Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">App UI scale</string>
@@ -500,6 +503,7 @@
   <string name="player_sheets_sub_color_alpha">Alpha</string>
   <string name="player_sheets_sub_override_ass">Override ASS/SSA subtitles</string>
   <string name="player_sheets_sub_override_ass_subtitle">Force override ASS/SSA subtitle formatting</string>
+  <string name="cover_art_size">Cover Art Size</string>
   <string name="player_sheets_sub_force_rtl">Force RTL direction</string>
   <string name="player_sheets_sub_force_rtl_summary">Use right-to-left layout for Arabic, Hebrew, and other RTL subtitle scripts</string>
   <string name="player_sheets_sub_scale_by_window">Scale by window</string>

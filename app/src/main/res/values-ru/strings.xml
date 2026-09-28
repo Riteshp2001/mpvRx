@@ -16,6 +16,9 @@
   <string name="pref_appearance_darkmode_dark">Тёмная</string>
   <string name="pref_appearance_amoled_mode_title">Чёрный режим AMOLED</string>
   <string name="pref_appearance_amoled_mode_summary">Использовать полностью чёрный фон для тёмных тем</string>
+  <string name="pref_appearance_liquid_glass_title">Жидкое стекло</string>
+  <string name="pref_appearance_liquid_glass_summary">Использовать полупрозрачные поверхности с эффектом преломления для мини-плеера и навигации</string>
+  <string name="pref_appearance_liquid_glass_summary_unavailable">Доступно на Android 12 и новее</string>
   <string name="pref_appearance_system_font_title">Использовать системный шрифт</string>
   <string name="pref_appearance_system_font_summary">Использовать системный шрифт Android во всём mpvRx вместо Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">Масштаб интерфейса приложения</string>
@@ -403,6 +406,7 @@
   <string name="player_sheets_sub_color_alpha">Альфа</string>
   <string name="player_sheets_sub_override_ass">Переопределять субтитры ASS/SSA</string>
   <string name="player_sheets_sub_override_ass_subtitle">Принудительно переопределять форматирование субтитров ASS/SSA</string>
+  <string name="cover_art_size">Размер обложки</string>
   <string name="player_sheets_sub_force_rtl">Принудительное направление справа налево</string>
   <string name="player_sheets_sub_force_rtl_summary">Использовать направление справа налево для арабских, ивритских и других RTL-субтитров</string>
   <string name="player_sheets_sub_primary_scale">Масштаб основных субтитров</string>

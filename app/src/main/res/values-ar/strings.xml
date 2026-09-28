@@ -16,6 +16,9 @@
   <string name="pref_appearance_darkmode_dark">داكن</string>
   <string name="pref_appearance_amoled_mode_title">وضع الأسود AMOLED</string>
   <string name="pref_appearance_amoled_mode_summary">استخدام خلفية سوداء خالصة للسمات الداكنة</string>
+  <string name="pref_appearance_liquid_glass_title">زجاج سائل</string>
+  <string name="pref_appearance_liquid_glass_summary">استخدام أسطح شفافة ذات تأثير انكساري للمشغّل المصغّر والتنقّل</string>
+  <string name="pref_appearance_liquid_glass_summary_unavailable">متاح على Android 12 والإصدارات الأحدث</string>
   <string name="pref_appearance_system_font_title">استخدام خط النظام</string>
   <string name="pref_appearance_system_font_summary">استخدام محرف نظام Android في mpvRx بدلًا من Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">مقياس واجهة التطبيق</string>
@@ -403,6 +406,7 @@
   <string name="player_sheets_sub_color_alpha">ألفا</string>
   <string name="player_sheets_sub_override_ass">تجاوز ترجمة ASS/SSA</string>
   <string name="player_sheets_sub_override_ass_subtitle">فرض تجاوز تنسيق ترجمة ASS/SSA</string>
+  <string name="cover_art_size">حجم غلاف الألبوم</string>
   <string name="player_sheets_sub_force_rtl">فرض الاتجاه من اليمين إلى اليسار</string>
   <string name="player_sheets_sub_force_rtl_summary">استخدام تخطيط من اليمين إلى اليسار للترجمات العربية والعبرية وغيرها</string>
   <string name="player_sheets_sub_primary_scale">مقياس الترجمة الأساسية</string>

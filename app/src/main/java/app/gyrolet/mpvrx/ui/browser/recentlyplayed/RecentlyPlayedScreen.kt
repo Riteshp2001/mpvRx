@@ -571,6 +571,7 @@ object RecentlyPlayedScreen : Screen {
       RecentSortDialog(
         isOpen = showSortDialog,
         onDismiss = { showSortDialog = false },
+        isAudioTab = recentlyPlayedFilter == MediaLibraryType.Audio,
         availableWidthDp = contentWidthDp,
       )
 
@@ -699,7 +700,7 @@ private fun RecentItemsContent(
   val manualGridColumnsEnabled by viewPreferences.manualGridColumnsEnabled.collectAsState()
   val videoGridColumnsPortrait by viewPreferences.gridColumnsPortrait.collectAsState()
   val videoGridColumnsLandscape by viewPreferences.gridColumnsLandscape.collectAsState()
-  val musicCoverArtSize by browserPreferences.musicCoverArtSize.collectAsState()
+  val audioCoverArtSize by viewPreferences.audioCoverArtSize.collectAsState()
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
   val screenWidthDp = (availableWidthDp ?: configuration.screenWidthDp).dp
@@ -725,7 +726,7 @@ private fun RecentItemsContent(
         (screenWidthDp - contentHorizontalPadding * 2 - itemSpacing * (computedVideoColumns - 1)) / computedVideoColumns
       (cellWidth - 8.dp).coerceAtLeast(1.dp)
     } else if (isAudioTab) {
-      musicCoverArtSize.dp
+      audioCoverArtSize.dp
     } else {
       160.dp
     }
@@ -1008,8 +1009,8 @@ private fun RecentItemsContent(
                     swipeActions.video.takeUnless { selectionManager.isInSelectionMode || isInSelectionMode },
                   isWatched = swipePlaybackInfo[item.video.path]?.isWatched == true,
                   isOldAndUnplayed = swipePlaybackInfo[item.video.path]?.isOldAndUnplayed == true,
-                  thumbnailWidthPx = if (isAudioTab) with(density) { musicCoverArtSize.dp.roundToPx() } else null,
-                  thumbnailHeightPx = if (isAudioTab) with(density) { musicCoverArtSize.dp.roundToPx() } else null,
+                  thumbnailWidthPx = if (isAudioTab) with(density) { audioCoverArtSize.dp.roundToPx() } else null,
+                  thumbnailHeightPx = if (isAudioTab) with(density) { audioCoverArtSize.dp.roundToPx() } else null,
                   showSubtitleIndicator = showSubtitleIndicator,
                   uiConfig = videoCardUiConfig,
                 )

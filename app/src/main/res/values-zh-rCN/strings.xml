@@ -16,6 +16,9 @@
   <string name="pref_appearance_darkmode_dark">深色</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED 纯黑模式</string>
   <string name="pref_appearance_amoled_mode_summary">为深色主题使用纯黑背景</string>
+  <string name="pref_appearance_liquid_glass_title">液态玻璃</string>
+  <string name="pref_appearance_liquid_glass_summary">为迷你播放器和导航使用半透明折射效果</string>
+  <string name="pref_appearance_liquid_glass_summary_unavailable">仅适用于 Android 12 及更高版本</string>
   <string name="pref_appearance_system_font_title">使用系统字体</string>
   <string name="pref_appearance_system_font_summary">在整个 mpvRx 中使用 Android 系统字体，而不是 Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">应用界面缩放</string>
@@ -403,6 +406,7 @@
   <string name="player_sheets_sub_color_alpha">透明度</string>
   <string name="player_sheets_sub_override_ass">覆盖 ASS/SSA 字幕</string>
   <string name="player_sheets_sub_override_ass_subtitle">强制覆盖 ASS/SSA 字幕格式</string>
+  <string name="cover_art_size">封面尺寸</string>
   <string name="player_sheets_sub_force_rtl">强制从右到左方向</string>
   <string name="player_sheets_sub_force_rtl_summary">为阿拉伯语、希伯来语及其他 RTL 字幕使用从右到左布局</string>
   <string name="player_sheets_sub_primary_scale">主字幕缩放</string>

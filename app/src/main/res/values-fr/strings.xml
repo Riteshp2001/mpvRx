@@ -16,6 +16,9 @@
   <string name="pref_appearance_darkmode_dark">Sombre</string>
   <string name="pref_appearance_amoled_mode_title">Mode noir AMOLED</string>
   <string name="pref_appearance_amoled_mode_summary">Utiliser un arrière-plan noir pur pour les thèmes sombres</string>
+  <string name="pref_appearance_liquid_glass_title">Verre liquide</string>
+  <string name="pref_appearance_liquid_glass_summary">Utiliser des surfaces translucides et réfractives pour le mini-lecteur et la navigation</string>
+  <string name="pref_appearance_liquid_glass_summary_unavailable">Disponible sous Android 12 et versions ultérieures</string>
   <string name="pref_appearance_system_font_title">Utiliser la police système</string>
   <string name="pref_appearance_system_font_summary">Utiliser la police système Android dans mpvRx à la place de Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">Échelle de l’interface de l’application</string>
@@ -403,6 +406,7 @@ Suivant : NEXT</string>
   <string name="player_sheets_sub_color_alpha">Alpha</string>
   <string name="player_sheets_sub_override_ass">Remplacer les sous-titres ASS/SSA</string>
   <string name="player_sheets_sub_override_ass_subtitle">Forcer le remplacement de la mise en forme ASS/SSA</string>
+  <string name="cover_art_size">Taille de la pochette</string>
   <string name="player_sheets_sub_force_rtl">Forcer la direction de droite à gauche</string>
   <string name="player_sheets_sub_force_rtl_summary">Utiliser une disposition de droite à gauche pour les sous-titres arabes, hébreux et autres RTL</string>
   <string name="player_sheets_sub_primary_scale">Échelle des sous-titres principaux</string>

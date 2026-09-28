@@ -23,7 +23,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -49,7 +48,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -93,6 +91,11 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.presentation.components.ProvideLiquidGlassBackdrop
+import app.gyrolet.mpvrx.presentation.components.LiquidGlassStyle
+import app.gyrolet.mpvrx.presentation.components.LiquidGlassSurface
+import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
+import app.gyrolet.mpvrx.presentation.components.rememberLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
@@ -182,6 +185,7 @@ object MainScreen : Screen {
     val showNetworkTab by appearancePreferences.showNetworkTab.collectAsState()
     val showJellyfinTab by appearancePreferences.showJellyfinTab.collectAsState()
     val showSnapshotTab by appearancePreferences.showSnapshotTab.collectAsState()
+    val liquidGlassEnabled by appearancePreferences.liquidGlassEnabled.collectAsState()
     val hideNavigationBar = NavigationBarState.shouldHideNavigationBar
     val isPermissionDenied = NavigationBarState.isPermissionDenied
     val isDualPaneFolderSelected = NavigationBarState.isDualPaneFolderSelected
@@ -342,6 +346,7 @@ object MainScreen : Screen {
             context.applicationContext as android.app.Application,
           ),
       )
+    val navigationBackdrop = rememberLiquidGlassBackdrop()
 
     // Scaffold with bottom navigation bar
     Scaffold(
@@ -350,11 +355,18 @@ object MainScreen : Screen {
     ) { paddingValues ->
       Box(modifier = Modifier.fillMaxSize()) {
         if (visibleTabs.isEmpty()) {
-          CompositionLocalProvider(
-            LocalNavigationBarHeight provides contentBottomPadding,
-            LocalMainNavigationBar provides mainNavBar,
+          Box(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .captureLiquidGlassBackdrop(navigationBackdrop, liquidGlassEnabled),
           ) {
-            FolderListScreen.Content()
+            CompositionLocalProvider(
+              LocalNavigationBarHeight provides contentBottomPadding,
+              LocalMainNavigationBar provides mainNavBar,
+            ) {
+              FolderListScreen.Content()
+            }
           }
         } else {
           CompositionLocalProvider(
@@ -363,7 +375,11 @@ object MainScreen : Screen {
           ) {
             NavigationPager(
               state = pagerState,
-              modifier = Modifier.fillMaxSize().clipToBounds(),
+              modifier =
+                Modifier
+                  .fillMaxSize()
+                  .clipToBounds()
+                  .captureLiquidGlassBackdrop(navigationBackdrop, liquidGlassEnabled),
               key = { page -> visibleTabs[page].name },
               beyondViewportPageCount = 1,
               userScrollEnabled = !isPermissionDenied,
@@ -567,63 +583,68 @@ object MainScreen : Screen {
         }
 
         // Animated bottom navigation bar with slide animations
-        AnimatedVisibility(
-          visible = !hideNavigationBar && navigationTabs.isNotEmpty() && !isPermissionDenied,
-          enter = if (navStyle == NavigationAnimStyle.None) EnterTransition.None else
-            slideInVertically(
-              animationSpec = tween(duration, easing = FastOutSlowInEasing),
-              initialOffsetY = { fullHeight -> fullHeight * 2 },
-            ) + fadeIn(tween(duration)),
-          exit = if (navStyle == NavigationAnimStyle.None) ExitTransition.None else
-            slideOutVertically(
-              animationSpec = tween(duration, easing = FastOutSlowInEasing),
-              targetOffsetY = { fullHeight -> fullHeight * 2 },
-            ) + fadeOut(tween(duration)),
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .align(Alignment.BottomStart)
-              .navigationBarsPadding()
-              .padding(bottom = 12.dp),
+        ProvideLiquidGlassBackdrop(
+          backdrop = navigationBackdrop,
+          enabled = liquidGlassEnabled,
         ) {
-          BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val containerWidth = maxWidth
-            val density = LocalDensity.current
-            val centerFraction = animateFloatAsState(
-              targetValue = when {
-                isDualPaneFolderSelected && selectedTab == MainTab.HOME -> 0.2f
-                isMiniPlayerVisible && (isLandscape || isTablet) -> 0f
-                else -> 0.5f
-              },
-              animationSpec = if (navStyle == NavigationAnimStyle.None) snap() else tween(duration, easing = FastOutSlowInEasing),
-              label = "pill_alignment",
-            )
-
-            ExpressivePillNavigationBar(
-              visibleTabs = navigationTabs,
-              selectedTab = selectedTab,
-              onTabSelected = onTabSelected,
-              pagerState = pagerState,
-              modifier = Modifier
-                .layout { measurable, constraints ->
-                  val margin = 16.dp.roundToPx()
-                  val placeable = measurable.measure(
-                    constraints.copy(minWidth = 0, maxWidth = (constraints.maxWidth - margin * 2).coerceAtLeast(0)),
-                  )
-                  layout(constraints.maxWidth, placeable.height) {
-                    // Place using the actual width, avoiding springs chasing animated measurements.
-                    val start = (constraints.maxWidth * centerFraction.value - placeable.width / 2f)
-                      .roundToInt().coerceAtLeast(margin)
-                    placeable.placeRelative(start, 0)
-                  }
-                }
-                .onGloballyPositioned { coords ->
-                  val width = with(density) { coords.size.width.toDp() }
-                  NavigationBarState.navbarWidth = width
-                  NavigationBarState.navbarLeftOffset =
-                    (containerWidth * centerFraction.value - width / 2).coerceAtLeast(16.dp)
+          AnimatedVisibility(
+            visible = !hideNavigationBar && navigationTabs.isNotEmpty() && !isPermissionDenied,
+            enter = if (navStyle == NavigationAnimStyle.None) EnterTransition.None else
+              slideInVertically(
+                animationSpec = tween(duration, easing = FastOutSlowInEasing),
+                initialOffsetY = { fullHeight -> fullHeight * 2 },
+              ) + fadeIn(tween(duration)),
+            exit = if (navStyle == NavigationAnimStyle.None) ExitTransition.None else
+              slideOutVertically(
+                animationSpec = tween(duration, easing = FastOutSlowInEasing),
+                targetOffsetY = { fullHeight -> fullHeight * 2 },
+              ) + fadeOut(tween(duration)),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart)
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp),
+          ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+              val containerWidth = maxWidth
+              val density = LocalDensity.current
+              val centerFraction = animateFloatAsState(
+                targetValue = when {
+                  isDualPaneFolderSelected && selectedTab == MainTab.HOME -> 0.2f
+                  isMiniPlayerVisible && (isLandscape || isTablet) -> 0f
+                  else -> 0.5f
                 },
-            )
+                animationSpec = if (navStyle == NavigationAnimStyle.None) snap() else tween(duration, easing = FastOutSlowInEasing),
+                label = "pill_alignment",
+              )
+
+              ExpressivePillNavigationBar(
+                visibleTabs = navigationTabs,
+                selectedTab = selectedTab,
+                onTabSelected = onTabSelected,
+                pagerState = pagerState,
+                modifier = Modifier
+                  .layout { measurable, constraints ->
+                    val margin = 16.dp.roundToPx()
+                    val placeable = measurable.measure(
+                      constraints.copy(minWidth = 0, maxWidth = (constraints.maxWidth - margin * 2).coerceAtLeast(0)),
+                    )
+                    layout(constraints.maxWidth, placeable.height) {
+                      // Place using the actual width, avoiding springs chasing animated measurements.
+                      val start = (constraints.maxWidth * centerFraction.value - placeable.width / 2f)
+                        .roundToInt().coerceAtLeast(margin)
+                      placeable.placeRelative(start, 0)
+                    }
+                  }
+                  .onGloballyPositioned { coords ->
+                    val width = with(density) { coords.size.width.toDp() }
+                    NavigationBarState.navbarWidth = width
+                    NavigationBarState.navbarLeftOffset =
+                      (containerWidth * centerFraction.value - width / 2).coerceAtLeast(16.dp)
+                  },
+              )
+            }
           }
         }
       }
@@ -685,17 +706,12 @@ internal fun ExpressivePillNavigationBar(
   val indicatorLeft = androidx.compose.ui.unit.lerp(tabOffsets[pageFloor], tabOffsets[pageCeil], pageFraction)
   val indicatorWidth = androidx.compose.ui.unit.lerp(tabWidths[pageFloor], tabWidths[pageCeil], pageFraction)
 
-  Surface(
+  LiquidGlassSurface(
     modifier = modifier,
     shape = CircleShape,
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    tonalElevation = 6.dp,
-    shadowElevation = 8.dp,
-    border =
-      BorderStroke(
-        width = 1.dp,
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
-      ),
+    style = LiquidGlassStyle.Navigation,
+    glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.32f),
+    fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
   ) {
     Box(
       modifier =

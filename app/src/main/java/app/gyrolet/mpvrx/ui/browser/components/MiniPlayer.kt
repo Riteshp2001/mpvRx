@@ -48,7 +48,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -81,6 +80,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
+import app.gyrolet.mpvrx.presentation.components.LiquidGlassStyle
+import app.gyrolet.mpvrx.presentation.components.LiquidGlassSurface
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
@@ -259,7 +260,7 @@ private fun MiniPlayerContent(
     }
   }
 
-  Surface(
+  LiquidGlassSurface(
     modifier = Modifier
       .offset { IntOffset(offsetX.roundToInt(), 0) }
       .pointerInput(Unit) {
@@ -287,11 +288,11 @@ private fun MiniPlayerContent(
           },
         )
       }
-      .clip(RoundedCornerShape(20.dp))
       .clickable { launchPlayer() },
-    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-    tonalElevation = 8.dp,
-    shadowElevation = 10.dp,
+    shape = RoundedCornerShape(20.dp),
+    style = LiquidGlassStyle.MiniPlayer,
+    glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.30f),
+    fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
   ) {
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
 

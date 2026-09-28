@@ -14,7 +14,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -32,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -47,6 +45,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.presentation.components.LiquidGlassStyle
+import app.gyrolet.mpvrx.presentation.components.LiquidGlassSurface
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
@@ -72,11 +72,10 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
       ?: rawMediaTitle?.takeIf { it.isNotBlank() }
       ?: "Audio Track"
 
-  Surface(
+  LiquidGlassSurface(
     modifier =
       modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(24.dp))
         .clickable {
           val intent =
             Intent(context, PlayerActivity::class.java).apply {
@@ -89,10 +88,10 @@ fun AudioMiniPlayer(modifier: Modifier = Modifier) {
             }
           context.startActivity(intent)
         },
-    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
-    tonalElevation = 6.dp,
-    shadowElevation = 8.dp,
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+      shape = RoundedCornerShape(24.dp),
+      style = LiquidGlassStyle.MiniPlayer,
+      glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.30f),
+      fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
   ) {
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
 

@@ -191,6 +191,7 @@ fun PlaylistSortDialog(
 fun RecentSortDialog(
   isOpen: Boolean,
   onDismiss: () -> Unit,
+  isAudioTab: Boolean,
   availableWidthDp: Int? = null,
 ) {
   if (!isOpen) return
@@ -206,6 +207,7 @@ fun RecentSortDialog(
   val showCount by viewPreferences.showItemCount.collectAsState()
   val centerTitles by viewPreferences.centerGridTitles.collectAsState()
   val manualGrid by viewPreferences.manualGridColumnsEnabled.collectAsState()
+  val audioCoverArtSize by viewPreferences.audioCoverArtSize.collectAsState()
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val landscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
   val columnsPreference = if (landscape) viewPreferences.gridColumnsLandscape else viewPreferences.gridColumnsPortrait
@@ -290,17 +292,29 @@ fun RecentSortDialog(
         },
       )
     } else null,
-    videoGridColumnSelector = if (layoutMode == MediaLayoutMode.GRID && manualGrid && maxColumns > 1) {
-      GridColumnSelector(
-        label = stringResource(
-          if (landscape) R.string.playlist_columns_landscape else R.string.playlist_columns_portrait,
-        ),
-        currentValue = columns,
-        onValueChange = columnsPreference::set,
-        valueRange = 1f..maxColumns.toFloat(),
-        steps = maxColumns - 2,
-      )
-    } else null,
+    videoGridColumnSelector =
+      when {
+        isAudioTab && layoutMode == MediaLayoutMode.LIST ->
+          GridColumnSelector(
+            label = stringResource(R.string.cover_art_size),
+            currentValue = audioCoverArtSize,
+            onValueChange = viewPreferences.audioCoverArtSize::set,
+            valueRange = 56f..126f,
+            steps = 40,
+            unitSuffix = "dp",
+          )
+        layoutMode == MediaLayoutMode.GRID && manualGrid && maxColumns > 1 ->
+          GridColumnSelector(
+            label = stringResource(
+              if (landscape) R.string.playlist_columns_landscape else R.string.playlist_columns_portrait,
+            ),
+            currentValue = columns,
+            onValueChange = columnsPreference::set,
+            valueRange = 1f..maxColumns.toFloat(),
+            steps = maxColumns - 2,
+          )
+        else -> null
+      },
   )
 }
 
