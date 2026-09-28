@@ -67,6 +67,8 @@ struct GpuDeviceInfo {
 
 [[nodiscard]] GpuDeviceInfo QueryGpuDeviceInfo();
 
+void SetGpuDeviceInfo(const std::string& name, const std::string& api, const std::string& driver, bool supported);
+
 [[nodiscard]] bool GetFrameGenerationSupport();
 
 void SetFrameGenEnabled(bool enabled, int multiplier);

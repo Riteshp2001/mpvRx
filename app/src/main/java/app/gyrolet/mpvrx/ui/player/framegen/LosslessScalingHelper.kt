@@ -11,9 +11,12 @@ package app.gyrolet.mpvrx.ui.player.framegen
 
 import android.content.ContentResolver
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
+import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -62,19 +65,28 @@ object LosslessScalingHelper {
     /** Human-readable status string for display in the UI. */
     val statusText: StateFlow<String> = _statusText.asStateFlow()
 
+    private inline fun <T> safeNative(default: T, block: () -> T): T {
+        return try {
+            block()
+        } catch (t: Throwable) {
+            Log.w(TAG, "Native call failed: ${t.message}")
+            default
+        }
+    }
+
     // ── Storage Initialization ──────────────────────────────────────────────
 
     fun initStorage(context: Context) {
-        runCatching {
+        try {
             FrameGenNative.initStorageRoot(context.filesDir.absolutePath)
-        }.onFailure { e ->
-            Log.w(TAG, "FrameGenNative.initStorageRoot failed: ${e.message}")
+        } catch (t: Throwable) {
+            Log.w(TAG, "FrameGenNative.initStorageRoot failed: ${t.message}")
         }
     }
 
     fun getDestinationFile(context: Context): File {
         initStorage(context)
-        val path = runCatching { FrameGenNative.getLosslessDllPath() }.getOrNull()
+        val path = safeNative<String?>(null) { FrameGenNative.getLosslessDllPath() }
         return if (!path.isNullOrBlank() && File(path).isAbsolute) {
             File(path)
         } else {
@@ -101,15 +113,110 @@ object LosslessScalingHelper {
             get() = isHardwareSupported && isRenderBackendReady
     }
 
-    fun getCompatibility(context: Context, decoderPreferences: DecoderPreferences): GpuCompatibility {
+    @Volatile private var cachedGpuModel: String? = null
+    @Volatile private var cachedApiVersion: String? = null
+    @Volatile private var cachedDriverVersion: String? = null
+    @Volatile private var cachedHwSupported: Boolean? = null
+
+    private fun queryGpuProperties(context: Context): GpuPropertySnapshot {
+        val m = cachedGpuModel
+        val a = cachedApiVersion
+        val d = cachedDriverVersion
+        val h = cachedHwSupported
+        if (m != null && a != null && d != null && h != null) {
+            return GpuPropertySnapshot(m, a, d, h)
+        }
         initStorage(context)
-        val model = runCatching { FrameGenNative.getGpuModel() }.getOrDefault("Unknown GPU")
-        val api = runCatching { FrameGenNative.getVulkanApiVersion() }.getOrDefault("1.1.0")
-        val driver = runCatching { FrameGenNative.getVulkanDriverVersion() }.getOrDefault("")
-        val hwOk = runCatching { FrameGenNative.isGpuHardwareSupported() }.getOrElse {
-            runCatching { FrameGenNative.supportsFrameGeneration() }.getOrDefault(false)
+
+        // 1. Hardware Vulkan support check from Android package manager (0ms, non-blocking)
+        val hwOk = VulkanCapabilities.isDeviceSupported(context)
+
+        // 2. Vulkan API version from Android package manager feature flags
+        var api = "1.3.0"
+        try {
+            val pm = context.packageManager
+            val features = pm.systemAvailableFeatures
+            val vulkanVersionFeature = features.firstOrNull {
+                it.name == PackageManager.FEATURE_VULKAN_HARDWARE_VERSION
+            }
+            if (vulkanVersionFeature != null) {
+                val ver = vulkanVersionFeature.version
+                val major = (ver shr 22) and 0x3FF
+                val minor = (ver shr 12) and 0x3FF
+                val patch = ver and 0xFFF
+                api = "$major.$minor.$patch"
+            }
+        } catch (_: Throwable) {}
+
+        // 3. GPU Model query safely via EGL offscreen context or Build fallback (never loads libvulkan.so)
+        val eglModel = queryEglRenderer()
+        val socModel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.SOC_MODEL else null
+        val model = when {
+            !eglModel.isNullOrBlank() -> eglModel
+            !socModel.isNullOrBlank() -> socModel
+            Build.HARDWARE.isNotBlank() && Build.HARDWARE != "unknown" -> Build.HARDWARE
+            else -> "Vulkan Compatible GPU"
+        }
+        val driver = ""
+
+        cachedGpuModel = model
+        cachedApiVersion = api
+        cachedDriverVersion = driver
+        cachedHwSupported = hwOk
+
+        safeNative(Unit) {
+            FrameGenNative.setGpuDeviceInfo(model, api, driver, hwOk)
         }
 
+        return GpuPropertySnapshot(model, api, driver, hwOk)
+    }
+
+    private fun queryEglRenderer(): String? {
+        return try {
+            val dpy = android.opengl.EGL14.eglGetDisplay(android.opengl.EGL14.EGL_DEFAULT_DISPLAY)
+            if (dpy == android.opengl.EGL14.EGL_NO_DISPLAY) return null
+            val vers = IntArray(2)
+            if (!android.opengl.EGL14.eglInitialize(dpy, vers, 0, vers, 1)) return null
+            val confAttr = intArrayOf(
+                android.opengl.EGL14.EGL_RENDERABLE_TYPE, android.opengl.EGL14.EGL_OPENGL_ES2_BIT,
+                android.opengl.EGL14.EGL_NONE
+            )
+            val confs = arrayOfNulls<android.opengl.EGLConfig>(1)
+            val numConf = IntArray(1)
+            android.opengl.EGL14.eglChooseConfig(dpy, confAttr, 0, confs, 0, 1, numConf, 0)
+            val config = confs[0] ?: return null
+            val ctxAttr = intArrayOf(
+                android.opengl.EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                android.opengl.EGL14.EGL_NONE
+            )
+            val ctx = android.opengl.EGL14.eglCreateContext(dpy, config, android.opengl.EGL14.EGL_NO_CONTEXT, ctxAttr, 0)
+            val pbAttr = intArrayOf(
+                android.opengl.EGL14.EGL_WIDTH, 1,
+                android.opengl.EGL14.EGL_HEIGHT, 1,
+                android.opengl.EGL14.EGL_NONE
+            )
+            val surf = android.opengl.EGL14.eglCreatePbufferSurface(dpy, config, pbAttr, 0)
+            android.opengl.EGL14.eglMakeCurrent(dpy, surf, surf, ctx)
+            val renderer = android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_RENDERER)
+            android.opengl.EGL14.eglMakeCurrent(dpy, android.opengl.EGL14.EGL_NO_SURFACE, android.opengl.EGL14.EGL_NO_SURFACE, android.opengl.EGL14.EGL_NO_CONTEXT)
+            android.opengl.EGL14.eglDestroySurface(dpy, surf)
+            android.opengl.EGL14.eglDestroyContext(dpy, ctx)
+            android.opengl.EGL14.eglTerminate(dpy)
+            renderer?.takeIf { it.isNotBlank() }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private data class GpuPropertySnapshot(
+        val model: String,
+        val api: String,
+        val driver: String,
+        val hwOk: Boolean,
+    )
+
+    fun getCompatibility(context: Context, decoderPreferences: DecoderPreferences): GpuCompatibility {
+        val (model, api, driver, hwOk) = queryGpuProperties(context)
         val vulkanPref = decoderPreferences.useVulkan.get()
         val gpuNextPref = decoderPreferences.gpuNext.get()
 
@@ -117,8 +224,8 @@ object LosslessScalingHelper {
         val gpuApi = if (vulkanPref) "vulkan" else "opengl"
 
         return GpuCompatibility(
-            gpuModel = if (model.isBlank() || model == "N/A") "Vulkan Compatible GPU" else model,
-            apiVersion = if (api.isBlank()) "Vulkan 1.1+" else api,
+            gpuModel = model,
+            apiVersion = api,
             driverVersion = driver,
             isHardwareSupported = hwOk,
             isVulkanEnabled = vulkanPref,
@@ -129,16 +236,10 @@ object LosslessScalingHelper {
     }
 
     fun getCompatibility(context: Context): GpuCompatibility {
-        initStorage(context)
-        val model = runCatching { FrameGenNative.getGpuModel() }.getOrDefault("Unknown GPU")
-        val api = runCatching { FrameGenNative.getVulkanApiVersion() }.getOrDefault("1.1.0")
-        val driver = runCatching { FrameGenNative.getVulkanDriverVersion() }.getOrDefault("")
-        val hwOk = runCatching { FrameGenNative.isGpuHardwareSupported() }.getOrElse {
-            runCatching { FrameGenNative.supportsFrameGeneration() }.getOrDefault(false)
-        }
+        val (model, api, driver, hwOk) = queryGpuProperties(context)
         return GpuCompatibility(
-            gpuModel = if (model.isBlank() || model == "N/A") "Vulkan Compatible GPU" else model,
-            apiVersion = if (api.isBlank()) "Vulkan 1.1+" else api,
+            gpuModel = model,
+            apiVersion = api,
             driverVersion = driver,
             isHardwareSupported = hwOk,
             isVulkanEnabled = true,
@@ -155,7 +256,11 @@ object LosslessScalingHelper {
         val cached = _gpuSupported.value
         if (cached != null) return cached
 
-        val result = runCatching { FrameGenNative.supportsFrameGeneration() }.getOrElse { false }
+        val result = if (context != null) {
+            VulkanCapabilities.isDeviceSupported(context)
+        } else {
+            safeNative(true) { FrameGenNative.supportsFrameGeneration() }
+        }
         _gpuSupported.value = result
         return result
     }
@@ -166,7 +271,7 @@ object LosslessScalingHelper {
         if (context != null) {
             initStorage(context)
         }
-        var ok = runCatching { FrameGenNative.validateLosslessDll() == RESULT_OK }.getOrDefault(false)
+        var ok = safeNative(false) { FrameGenNative.validateLosslessDll() == RESULT_OK }
 
         if (!ok && context != null) {
             val destination = getDestinationFile(context)

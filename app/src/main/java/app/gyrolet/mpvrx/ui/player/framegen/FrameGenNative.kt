@@ -110,9 +110,14 @@ object FrameGenNative {
      */
     external fun isGpuHardwareSupported(): Boolean
 
+    /**
+     * Updates native GPU device info cached values.
+     */
+    external fun setGpuDeviceInfo(name: String, apiVersion: String, driverVersion: String, isSupported: Boolean)
+
     init {
-        runCatching { System.loadLibrary("framegen") }
-        runCatching { System.loadLibrary("player") }
-        runCatching { System.loadLibrary("mpv") }
+        try { System.loadLibrary("mpv") } catch (t: Throwable) {}
+        try { System.loadLibrary("player") } catch (t: Throwable) {}
+        try { System.loadLibrary("framegen") } catch (t: Throwable) {}
     }
 }

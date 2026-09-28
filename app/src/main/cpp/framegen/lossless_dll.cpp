@@ -3,11 +3,13 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
 #include <optional>
 #include <span>
 #include <string>
+#include <mutex>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -577,6 +579,24 @@ bool RemoveInstalledLosslessDll() {
 void SetFrameGenEnabled(bool enabled, int multiplier) {
     g_frame_gen_enabled = enabled;
     g_frame_gen_multiplier = multiplier;
+
+    const std::string dll_path = GetLosslessDllPath().string();
+    if (enabled) {
+        setenv("LSFG_LEGACY", "1", 1);
+        setenv("LSFG_DLL_PATH", dll_path.c_str(), 1);
+        setenv("LSFG_DLL_PATH_UNIX", dll_path.c_str(), 1);
+        setenv("LSFG_MULTIPLIER", std::to_string(multiplier).c_str(), 1);
+        setenv("LSFG_PERFORMANCE_MODE", "1", 1);
+        setenv("VK_INSTANCE_LAYERS", "VK_LAYER_LS_frame_generation", 1);
+
+        void* hLayer = dlopen("liblsfg-vk.so", RTLD_NOW | RTLD_GLOBAL);
+        if (!hLayer) {
+            dlopen("libVkLayer_LS_frame_generation.so", RTLD_NOW | RTLD_GLOBAL);
+        }
+    } else {
+        setenv("LSFG_MULTIPLIER", "1", 1);
+        setenv("VK_INSTANCE_LAYERS", "", 1);
+    }
 }
 
 bool IsFrameGenEnabled() {
@@ -589,124 +609,38 @@ int GetFrameGenMultiplier() {
 
 // ── Vulkan Capability Check ──────────────────────────────────────────────────
 
+static GpuDeviceInfo s_gpu_device_info{
+    .deviceName = "Vulkan Compatible GPU",
+    .driverVersion = "",
+    .apiVersion = "1.3.0",
+    .hasFloat16 = true,
+    .hasVulkanMemoryModel = true,
+    .isSupported = true,
+};
+static std::mutex s_gpu_info_mutex;
+
+void SetGpuDeviceInfo(const std::string& name, const std::string& api, const std::string& driver, bool supported) {
+    std::lock_guard<std::mutex> lock(s_gpu_info_mutex);
+    if (!name.empty()) {
+        s_gpu_device_info.deviceName = name;
+    }
+    if (!api.empty()) {
+        s_gpu_device_info.apiVersion = api;
+    }
+    if (!driver.empty()) {
+        s_gpu_device_info.driverVersion = driver;
+    }
+    s_gpu_device_info.isSupported = supported;
+}
+
 GpuDeviceInfo QueryGpuDeviceInfo() {
-    GpuDeviceInfo info;
-    void* lib = dlopen("libvulkan.so", RTLD_NOW);
-    if (!lib) {
-        info.deviceName = "Vulkan library not found";
-        return info;
-    }
-
-    auto vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-        dlsym(lib, "vkGetInstanceProcAddr"));
-    if (!vkGetInstanceProcAddr) {
-        dlclose(lib);
-        info.deviceName = "vkGetInstanceProcAddr not found";
-        return info;
-    }
-
-    auto vkCreateInstance = reinterpret_cast<PFN_vkCreateInstance>(
-        vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance"));
-    if (!vkCreateInstance) {
-        dlclose(lib);
-        return info;
-    }
-
-    VkApplicationInfo appInfo{
-        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pNext = nullptr,
-        .pApplicationName = "mpvRx",
-        .applicationVersion = 1,
-        .pEngineName = "mpvRx",
-        .engineVersion = 1,
-        .apiVersion = VK_API_VERSION_1_1,
-    };
-
-    VkInstanceCreateInfo createInfo{
-        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .pApplicationInfo = &appInfo,
-        .enabledLayerCount = 0,
-        .ppEnabledLayerNames = nullptr,
-        .enabledExtensionCount = 0,
-        .ppEnabledExtensionNames = nullptr,
-    };
-
-    VkInstance instance = VK_NULL_HANDLE;
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS || instance == VK_NULL_HANDLE) {
-        dlclose(lib);
-        return info;
-    }
-
-    auto vkDestroyInstance = reinterpret_cast<PFN_vkDestroyInstance>(
-        vkGetInstanceProcAddr(instance, "vkDestroyInstance"));
-    auto vkEnumeratePhysicalDevices = reinterpret_cast<PFN_vkEnumeratePhysicalDevices>(
-        vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDevices"));
-    auto vkGetPhysicalDeviceProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties>(
-        vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties"));
-    auto vkGetPhysicalDeviceFeatures2 = reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2>(
-        vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2"));
-    if (!vkGetPhysicalDeviceFeatures2) {
-        vkGetPhysicalDeviceFeatures2 = reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2>(
-            vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2KHR"));
-    }
-
-    uint32_t deviceCount = 0;
-    if (vkEnumeratePhysicalDevices && vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr) == VK_SUCCESS && deviceCount > 0) {
-        std::vector<VkPhysicalDevice> devices(deviceCount);
-        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-        VkPhysicalDeviceProperties props{};
-        if (vkGetPhysicalDeviceProperties) {
-            vkGetPhysicalDeviceProperties(devices[0], &props);
-            info.deviceName = props.deviceName;
-
-            char buf[64];
-            std::snprintf(buf, sizeof(buf), "%u.%u.%u",
-                          VK_VERSION_MAJOR(props.apiVersion),
-                          VK_VERSION_MINOR(props.apiVersion),
-                          VK_VERSION_PATCH(props.apiVersion));
-            info.apiVersion = buf;
-
-            std::snprintf(buf, sizeof(buf), "0x%x", props.driverVersion);
-            info.driverVersion = buf;
-        }
-
-        if (vkGetPhysicalDeviceFeatures2) {
-            VkPhysicalDeviceShaderFloat16Int8Features float16_int8{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES,
-                .pNext = nullptr,
-            };
-            VkPhysicalDeviceVulkanMemoryModelFeatures memory_model{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES,
-                .pNext = &float16_int8,
-            };
-            VkPhysicalDeviceFeatures2 features{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-                .pNext = &memory_model,
-            };
-
-            vkGetPhysicalDeviceFeatures2(devices[0], &features);
-            info.hasFloat16 = (float16_int8.shaderFloat16 == VK_TRUE);
-            info.hasVulkanMemoryModel = (memory_model.vulkanMemoryModel == VK_TRUE);
-            info.isSupported = (info.hasFloat16 && info.hasVulkanMemoryModel);
-        } else {
-            // Devices on Vulkan 1.1+ with compute
-            info.isSupported = (props.apiVersion >= VK_API_VERSION_1_1);
-        }
-    }
-
-    if (vkDestroyInstance) {
-        vkDestroyInstance(instance, nullptr);
-    }
-    dlclose(lib);
-    return info;
+    std::lock_guard<std::mutex> lock(s_gpu_info_mutex);
+    return s_gpu_device_info;
 }
 
 bool GetFrameGenerationSupport() {
-    auto info = QueryGpuDeviceInfo();
-    return info.isSupported;
+    std::lock_guard<std::mutex> lock(s_gpu_info_mutex);
+    return s_gpu_device_info.isSupported;
 }
 
 } // namespace VideoCore::FrameGen

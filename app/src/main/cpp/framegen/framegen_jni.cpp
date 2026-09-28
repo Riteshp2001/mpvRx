@@ -86,4 +86,17 @@ Java_app_gyrolet_mpvrx_ui_player_framegen_FrameGenNative_isGpuHardwareSupported(
     return static_cast<jboolean>(info.isSupported);
 }
 
+JNIEXPORT void JNICALL
+Java_app_gyrolet_mpvrx_ui_player_framegen_FrameGenNative_setGpuDeviceInfo(
+    JNIEnv* env, jclass, jstring name, jstring api, jstring driver, jboolean supported) {
+    const char* c_name = name ? env->GetStringUTFChars(name, nullptr) : nullptr;
+    const char* c_api = api ? env->GetStringUTFChars(api, nullptr) : nullptr;
+    const char* c_driver = driver ? env->GetStringUTFChars(driver, nullptr) : nullptr;
+    SetGpuDeviceInfo(c_name ? c_name : "", c_api ? c_api : "", c_driver ? c_driver : "", supported == JNI_TRUE);
+    if (c_name) env->ReleaseStringUTFChars(name, c_name);
+    if (c_api) env->ReleaseStringUTFChars(api, c_api);
+    if (c_driver) env->ReleaseStringUTFChars(driver, c_driver);
 }
+
+}
+
