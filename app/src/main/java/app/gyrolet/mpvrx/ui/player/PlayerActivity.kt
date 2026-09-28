@@ -1497,6 +1497,13 @@ class PlayerActivity :
       return
     }
 
+    // Re-assert the keep-screen-on flag whenever the player regains focus. Some Android/Samsung
+    // window transitions can clear or temporarily override window flags while the video remains
+    // active; playback should not start dimming just because the controls have auto-hidden.
+    if (isReady && !viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && viewModel.paused != true) {
+      updateKeepScreenOn(isPaused = false)
+    }
+
     if (shouldAutoHideSystemBars()) {
       scheduleSystemBarsAutoHide(delayMs = 250L)
     }
