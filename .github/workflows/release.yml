@@ -122,25 +122,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          # Generate the release signing identity before APK compilation so signing-tool
+          # failures happen before the expensive release build.
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
           test -x "$apksigner"
-
-          # Releases are intentionally self-contained: no signing secret is required.
-          # Generate a valid, reproducible CI certificate for this workflow run instead
-          # of attempting to decode an absent or malformed keystore secret.
-          signing_alias=mpvrx-release
-          signing_password=mpvrx-ci
-          keytool -genkeypair -noprompt \
-            -keystore release.keystore \
-            -storetype PKCS12 \
-            -alias "$signing_alias" \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass "$signing_password" \
-            -keypass "$signing_password" \
-            -dname "CN=mpvRx Release,O=mpvRx,C=US"
-          trap 'rm -f release.keystore' EXIT
+          command -v openssl >/dev/null
+          rm -f release-key.pem release-key.pk8 release-cert.pem
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out release-key.pem
+          openssl pkcs8 -topk8 -nocrypt -in release-key.pem -outform DER -out release-key.pk8
+          openssl req -x509 -new -key release-key.pem -sha256 -days 10000 \
+            -out release-cert.pem \
+            -subj "/CN=mpvRx Release/O=mpvRx/C=US"
+          openssl pkey -in release-key.pem -check -noout
+          openssl x509 -in release-cert.pem -noout -subject -dates -fingerprint -sha256
+          test -s release-key.pk8
+          test -s release-cert.pem
+          trap 'rm -f release-key.pem release-key.pk8 release-cert.pem' EXIT
 
           # AGP only appends "-unsigned" when the variant has no signing config, so accept
           # either name and always re-sign with the release key.
