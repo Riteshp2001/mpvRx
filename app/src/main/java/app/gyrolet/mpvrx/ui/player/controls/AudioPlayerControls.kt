@@ -1391,7 +1391,6 @@ fun AudioPlayerControls(
         if (showInPlaceLyrics && !isTabletLandscape) {
           app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
             viewModel = viewModel,
-            onOpenProviderSheet = { onOpenSheet(Sheets.LyricsProvider) },
             modifier = Modifier.fillMaxSize(),
             isLyricsFullscreen = isLyricsFullscreen,
             onTap = resetInactivityTimer,
@@ -1838,6 +1837,19 @@ fun AudioPlayerControls(
           }
         }
       }
+    }
+
+    val lyricsSourceLineView = @Composable {
+      val lyricsState by viewModel.lyricsUiState.collectAsState()
+      app.gyrolet.mpvrx.ui.player.controls.components.LyricsSourceLine(
+        preferredProvider = lyricsState.preferredProvider,
+        onlineProvider = lyricsState.onlineProvider,
+        isLoading = lyricsState.isLoading,
+        onOpenSheet = {
+          onOpenSheet(Sheets.LyricsProvider)
+          resetInactivityTimer()
+        },
+      )
     }
 
     val currentLyricStripView = @Composable {
@@ -2465,7 +2477,9 @@ fun AudioPlayerControls(
               currentLyricStripView()
               Spacer(modifier = Modifier.height(4.dp))
             } else {
-              Spacer(modifier = Modifier.height(10.dp))
+              Spacer(modifier = Modifier.height(6.dp))
+              lyricsSourceLineView()
+              Spacer(modifier = Modifier.height(4.dp))
             }
             seekbarView()
             Spacer(modifier = Modifier.height(28.dp))
@@ -2523,7 +2537,9 @@ fun AudioPlayerControls(
               currentLyricStripView()
               Spacer(modifier = Modifier.height(4.dp))
             } else {
-              Spacer(modifier = Modifier.height(8.dp))
+              Spacer(modifier = Modifier.height(4.dp))
+              lyricsSourceLineView()
+              Spacer(modifier = Modifier.height(4.dp))
             }
             seekbarView()
             Spacer(modifier = Modifier.height(14.dp))
@@ -2554,7 +2570,6 @@ fun AudioPlayerControls(
             playlist = filteredPlaylist,
             selectedTab = tabletDualPaneTab,
             onTabSelected = { tabletDualPaneTab = it },
-            onOpenSheet = onOpenSheet,
           )
         }
       }
@@ -2641,7 +2656,6 @@ private fun DualPaneSidePanel(
   playlist: List<PlaylistItem>,
   selectedTab: Int = 0,
   onTabSelected: (Int) -> Unit = {},
-  onOpenSheet: (Sheets) -> Unit = {},
 ) {
   val playbackState by PlaybackSession.state.collectAsStateWithLifecycle()
   val isAudiobook = playbackState.currentItem?.audiobook != null
@@ -2692,7 +2706,6 @@ private fun DualPaneSidePanel(
       } else {
         app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
           viewModel = viewModel,
-          onOpenProviderSheet = { onOpenSheet(Sheets.LyricsProvider) },
           showTitleHeader = false,
         )
       }

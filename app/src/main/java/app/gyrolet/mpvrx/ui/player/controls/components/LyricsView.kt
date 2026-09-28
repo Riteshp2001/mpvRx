@@ -113,7 +113,6 @@ import kotlin.math.roundToLong
 @Composable
 fun LyricsView(
   viewModel: PlayerViewModel,
-  onOpenProviderSheet: () -> Unit,
   modifier: Modifier = Modifier,
   showTitleHeader: Boolean = false,
   isLyricsFullscreen: Boolean = false,
@@ -269,21 +268,6 @@ fun LyricsView(
               color = MaterialTheme.colorScheme.primary,
             )
           }
-        }
-      }
-
-      // Which online database is being read, and the menu to ask another one.
-      if (state.onlineEnabled && (hasEmbedded || state.onlineLyrics != null || state.isLoading)) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          LyricsProviderPicker(
-            preferredProvider = state.preferredProvider,
-            onlineProvider = state.onlineProvider,
-            onOpenSheet = onOpenProviderSheet,
-          )
         }
       }
 
