@@ -119,28 +119,6 @@ android {
     }
   }
 
-  signingConfigs {
-    create("release") {
-      // Signing config populated from CI secrets at build time.
-      // When SIGNING_KEYSTORE is present in CI, this config is wired in via the
-      // signReleaseBody hook below. Locally, leave these unset to build unsigned.
-      val keystorePath = project.findProperty("signingKeystorePath")?.toString()
-      val keystoreAlias = project.findProperty("signingKeyAlias")?.toString()
-      val storePassword = project.findProperty("storePassword")?.toString()
-      val keyPassword = project.findProperty("keyPassword")?.toString()
-
-      if (!keystorePath.isNullOrBlank() && java.io.File(keystorePath).exists()) {
-        enableV1Signing = true
-        enableV2Signing = true
-        enableV3Signing = true
-        storeFile = java.io.File(keystorePath)
-        storePassword = storePassword
-        keyAlias = keystoreAlias
-        keyPassword = keyPassword
-      }
-    }
-  }
-
   buildTypes {
     named("release") {
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
@@ -150,7 +128,6 @@ android {
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
       )
-      signingConfig = signingConfigs.getByName("release")
       ndk {
         debugSymbolLevel = "none"
       }
