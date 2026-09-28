@@ -86,6 +86,14 @@ jobs:
           test -f "$apk"
           "$apksigner" verify --verbose "$apk"
 
+      - name: Upload universal debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-universal-debug-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/debug/app-standard-debug*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
       - name: Build universal release APK
         shell: bash
         run: |
@@ -113,14 +121,6 @@ jobs:
             --out "$signed" "$source"
           "$apksigner" verify --verbose --print-certs "$signed"
 
-      - name: Upload universal debug APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-standard-universal-debug-${{ steps.metadata.outputs.short_sha }}
-          path: app/build/outputs/apk/standard/debug/app-standard-debug*.apk
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
 
       - name: Upload universal release APK
         uses: actions/upload-artifact@v7
