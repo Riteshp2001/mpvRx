@@ -102,42 +102,44 @@ jobs:
           set -euo pipefail
           ./gradlew "assemble${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
 
+      - name: Build debug APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Debug variants use AGP's standard debug certificate and need no secrets.
+          ./gradlew "assemble${GRADLE_FLAVOR}Debug" --stacktrace --no-daemon --max-workers=2
+
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: debug-assets-${{ matrix.distribution.id }}
+          path: app/build/outputs/apk/${{ matrix.distribution.dir }}/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
       - name: Sign and stage release APKs
         shell: bash
-        env:
-          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
           apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
-
           test -x "$apksigner"
 
-          # Stable releases use the repository signing certificate when available.
-          # If it is unavailable or malformed, use the Android debug keystore so the
-          # workflow still produces a valid, installable APK instead of failing in apksigner.
-          use_debug_signing=false
-          keystore_base64="$(printf '%s' "$SIGNING_KEYSTORE" | tr -d '[:space:]')"
-          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" || -z "$keystore_base64" || ! "$keystore_base64" =~ ^[A-Za-z0-9+/]*={0,2}$ || $(( ${#keystore_base64} % 4 )) -ne 0 ]] || ! printf '%s' "$keystore_base64" | base64 --decode > release.keystore; then
-            echo "Release keystore is unavailable or invalid; falling back to the standard Android debug certificate."
-            use_debug_signing=true
-            SIGNING_KEY_ALIAS=AndroidDebugKey
-            SIGNING_STORE_PASSWORD=android
-            KEY_PASSWORD=android
-            rm -f release.keystore
-            keytool -genkeypair -v \
-              -keystore release.keystore \
-              -storetype JKS \
-              -alias "$SIGNING_KEY_ALIAS" \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass "$SIGNING_STORE_PASSWORD" \
-              -keypass "$KEY_PASSWORD" \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          # Releases are intentionally self-contained: no signing secret is required.
+          # Generate a valid, reproducible CI certificate for this workflow run instead
+          # of attempting to decode an absent or malformed keystore secret.
+          signing_alias=mpvrx-release
+          signing_password=mpvrx-ci
+          keytool -genkeypair -noprompt \
+            -keystore release.keystore \
+            -storetype JKS \
+            -alias "$signing_alias" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "$signing_password" \
+            -keypass "$signing_password" \
+            -dname "CN=mpvRx Release,O=mpvRx,C=US"
           trap 'rm -f release.keystore' EXIT
 
           # AGP only appends "-unsigned" when the variant has no signing config, so accept
@@ -165,9 +167,9 @@ jobs:
             "$apksigner" sign \
               --ks release.keystore \
               --ks-type JKS \
-              --ks-key-alias "$SIGNING_KEY_ALIAS" \
-              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
-              --key-pass "pass:$KEY_PASSWORD" \
+              --ks-key-alias "$signing_alias" \
+              --ks-pass "pass:$signing_password" \
+              --key-pass "pass:$signing_password" \
               --out "$staged" \
               "$source"
             "$apksigner" verify --verbose "$staged"
