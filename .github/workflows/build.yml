@@ -82,28 +82,6 @@ jobs:
           set -euo pipefail
           ./gradlew assembleStandardRelease -PuniversalOnly=true --stacktrace --no-daemon --max-workers=2
 
-      - name: Sign release APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
-          test -x "$apksigner"
-          test -s release-key.pk8
-          test -s release-cert.pem
-          out_dir="app/build/outputs/apk/standard/release"
-          source="$out_dir/app-standard-universal-release-unsigned.apk"
-          signed="$out_dir/app-standard-universal-release-signed.apk"
-          if [[ ! -f "$source" ]]; then
-            source="$out_dir/app-standard-universal-release.apk"
-          fi
-          test -f "$source"
-          "$apksigner" sign \
-            --key release-key.pk8 \
-            --cert release-cert.pem \
-            --out "$signed" "$source"
-          "$apksigner" verify --verbose --print-certs "$signed"
-
-
       - name: Verify release certificate
         shell: bash
         run: |
