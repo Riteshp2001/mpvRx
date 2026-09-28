@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - v0/fix-android-signing
   pull_request:
     branches:
       - master
