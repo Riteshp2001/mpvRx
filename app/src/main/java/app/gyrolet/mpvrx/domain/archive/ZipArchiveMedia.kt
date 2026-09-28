@@ -79,22 +79,129 @@ object ZipArchiveMedia {
   ): String? =
     withContext(Dispatchers.IO) {
       try {
-        val localFile =
+        val directFile =
           when (uri.scheme?.lowercase(Locale.ROOT)) {
             "file" -> uri.path?.let(::File)
-            "content" -> runCatching { uri.resolveLocalPath(context) }.getOrNull()?.let(::File)
+            "content" -> {
+              runCatching { uri.resolveLocalPath(context) }
+                .getOrNull()
+                ?.let(::File)
+                ?.takeIf { file -> isZipFile(file) && isReadableZipArchive(file) }
+                ?: resolveMediaStorePath(context, uri)
+                ?: resolveExternalStoragePath(uri)
+            }
             else -> null
           }
 
-        localFile
+        directFile
           ?.takeIf { file -> isZipFile(file) && isReadableZipArchive(file) }
           ?.absolutePath
+          ?: materializeArchiveForPlayback(context, uri)
       } catch (cancelled: CancellationException) {
         throw cancelled
       } catch (_: Exception) {
         null
       }
     }
+
+  /**
+   * Resolves common MediaStore/DocumentsProvider URIs to their real path. SAF intentionally
+   * exposes content URIs rather than filesystem paths, so this is only a best-effort optimization.
+   */
+  @Suppress("DEPRECATION")
+  private fun resolveMediaStorePath(
+    context: Context,
+    uri: Uri,
+  ): File? =
+    runCatching {
+      context.contentResolver.query(
+        uri,
+        arrayOf(MediaStore.MediaColumns.DATA),
+        null,
+        null,
+        null,
+      )?.use { cursor ->
+        val index = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+        if (index >= 0 && cursor.moveToFirst()) cursor.getString(index)?.let(::File) else null
+      }
+    }.getOrNull()
+
+  private fun resolveExternalStoragePath(uri: Uri): File? {
+    val authority = uri.authority?.lowercase(Locale.ROOT) ?: return null
+    if (!authority.contains("externalstorage")) return null
+
+    val documentId =
+      runCatching { android.provider.DocumentsContract.getDocumentId(uri) }.getOrNull() ?: return null
+    val separator = documentId.indexOf(':')
+    if (separator <= 0) return null
+
+    val volume = documentId.substring(0, separator)
+    val relativePath = Uri.decode(documentId.substring(separator + 1))
+    if (!volume.equals("primary", ignoreCase = true) || relativePath.isBlank()) return null
+
+    return File(android.os.Environment.getExternalStorageDirectory(), relativePath)
+  }
+
+  /**
+   * Some document providers expose only a content:// stream. Keep the ZIP container compressed
+   * and copy only that container into app-private storage; no ZIP entry is extracted.
+   */
+  private fun materializeArchiveForPlayback(
+    context: Context,
+    uri: Uri,
+  ): String? {
+    if (!uri.scheme.equals("content", ignoreCase = true)) return null
+
+    val displayName =
+      runCatching {
+        context.contentResolver.query(
+          uri,
+          arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+          null,
+          null,
+          null,
+        )?.use { cursor ->
+          val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+          if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+        }
+      }.getOrNull()
+        ?.takeIf { it.endsWith(".zip", ignoreCase = true) }
+        ?: "archive.zip"
+
+    val archiveDirectory = File(context.filesDir, "archives").apply { mkdirs() }
+    val safeName = displayName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    val stableName = "${uri.toString().hashCode().toUInt().toString(16)}_$safeName"
+    val destination = File(archiveDirectory, stableName)
+
+    if (destination.isFile && destination.length() > 0L && isReadableZipArchive(destination)) {
+      return destination.absolutePath
+    }
+
+    val temp = File(archiveDirectory, "$stableName.part")
+    return try {
+      context.contentResolver.openInputStream(uri)?.use { input ->
+        temp.outputStream().use { output -> input.copyTo(output) }
+      } ?: return null
+
+      if (!temp.renameTo(destination)) {
+        temp.copyTo(destination, overwrite = true)
+        temp.delete()
+      }
+
+      destination
+        .takeIf { isZipFile(it) && isReadableZipArchive(it) }
+        ?.absolutePath
+        ?.also { path ->
+          android.util.Log.d("ZipArchiveMedia", "Materialized ZIP container for SAF playback: $path")
+        }
+    } catch (cancelled: CancellationException) {
+      temp.delete()
+      throw cancelled
+    } catch (_: Exception) {
+      temp.delete()
+      null
+    }
+  }
 
   /** Reads (and caches) the playable contents of an archive without extracting any entry. */
   private fun inspectArchive(
