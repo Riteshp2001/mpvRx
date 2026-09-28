@@ -3,13 +3,13 @@
   "layer": {
     "name": "VK_LAYER_LS_frame_generation",
     "type": "GLOBAL",
-    "api_version": "1.4.313",
-    "library_path": "liblsfg-vk.so",
+    "api_version": "1.3.0",
+    "library_path": "libVkLayer_LS_frame_generation.so",
     "implementation_version": "1",
     "description": "Lossless Scaling frame generation layer",
     "functions": {
-      "vkGetInstanceProcAddr": "layer_vkGetInstanceProcAddr",
-      "vkGetDeviceProcAddr": "layer_vkGetDeviceProcAddr"
+      "vkGetInstanceProcAddr": "vkGetInstanceProcAddr",
+      "vkGetDeviceProcAddr": "vkGetDeviceProcAddr"
     },
     "disable_environment": {
       "DISABLE_LSFG": "1"

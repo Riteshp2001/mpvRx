@@ -589,13 +589,32 @@ void SetFrameGenEnabled(bool enabled, int multiplier) {
         setenv("LSFG_PERFORMANCE_MODE", "1", 1);
         setenv("VK_INSTANCE_LAYERS", "VK_LAYER_LS_frame_generation", 1);
 
-        void* hLayer = dlopen("liblsfg-vk.so", RTLD_NOW | RTLD_GLOBAL);
+        void* hLayer = dlopen("libVkLayer_LS_frame_generation.so", RTLD_NOW | RTLD_GLOBAL);
         if (!hLayer) {
-            dlopen("libVkLayer_LS_frame_generation.so", RTLD_NOW | RTLD_GLOBAL);
+            hLayer = dlopen("liblsfg-vk.so", RTLD_NOW | RTLD_GLOBAL);
+        }
+        if (hLayer) {
+            using PfnSetConfig = void(*)(bool, int, const char*);
+            auto setConfig = reinterpret_cast<PfnSetConfig>(dlsym(hLayer, "lsfg_set_config"));
+            if (setConfig) {
+                setConfig(true, multiplier, dll_path.c_str());
+            }
         }
     } else {
         setenv("LSFG_MULTIPLIER", "1", 1);
         setenv("VK_INSTANCE_LAYERS", "", 1);
+
+        void* hLayer = dlopen("libVkLayer_LS_frame_generation.so", RTLD_NOLOAD);
+        if (!hLayer) {
+            hLayer = dlopen("liblsfg-vk.so", RTLD_NOLOAD);
+        }
+        if (hLayer) {
+            using PfnSetConfig = void(*)(bool, int, const char*);
+            auto setConfig = reinterpret_cast<PfnSetConfig>(dlsym(hLayer, "lsfg_set_config"));
+            if (setConfig) {
+                setConfig(false, 1, dll_path.c_str());
+            }
+        }
     }
 }
 
