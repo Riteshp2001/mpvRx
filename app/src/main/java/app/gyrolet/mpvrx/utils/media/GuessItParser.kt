@@ -3,6 +3,8 @@ package app.gyrolet.mpvrx.utils.media
 import android.content.Context
 import android.util.AtomicFile
 import android.util.Log
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +25,7 @@ internal object GuessItParser {
   private const val MAX_OUTPUT_CHARS = 65_536
   private val assetMutex = Mutex()
   private var assetsPrepared = false
+  private var preparedPackVersion: Long? = null
 
   suspend fun parse(context: Context, fileName: String): ParsedMediaInfo? =
     withContext(Dispatchers.IO) {
@@ -42,11 +45,15 @@ internal object GuessItParser {
 
   private suspend fun prepareAssets(context: Context): File =
     assetMutex.withLock {
+      val packVersion = OptionalRuntimePackManager.versionCode(context, OptionalRuntimePack.Online)
+        ?: throw IOException("Online runtime pack is not installed")
+      val runtimeContext = YtdlpManager.runtimeAssetContext(context)
+        ?: throw IOException("Online runtime pack is not installed")
       val directory = File(context.filesDir, "guessit")
       val script = File(directory, "parse_filename.py")
-      if (assetsPrepared) return@withLock script
+      if (assetsPrepared && preparedPackVersion == packVersion) return@withLock script
       if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Cannot prepare filename parser assets")
-      val assetNames = context.assets.list("guessit").orEmpty()
+      val assetNames = runtimeContext.assets.list("guessit").orEmpty()
       if ("parse_filename.py" !in assetNames || "packages.json" !in assetNames) {
         throw IOException("Bundled filename parser is missing")
       }
@@ -54,7 +61,7 @@ internal object GuessItParser {
         val target = AtomicFile(File(directory, name))
         val output = target.startWrite()
         try {
-          context.assets.open("guessit/$name").use { input ->
+          runtimeContext.assets.open("guessit/$name").use { input ->
             if (input.copyTo(output) == 0L) throw IOException("Empty filename parser asset: $name")
           }
           target.finishWrite(output)
@@ -64,6 +71,7 @@ internal object GuessItParser {
         }
       }
       assetsPrepared = true
+      preparedPackVersion = packVersion
       script
     }
 

@@ -10,7 +10,10 @@
 package app.gyrolet.mpvrx.domain.hdr
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.util.Log
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import java.io.File
 import java.io.FileOutputStream
 
@@ -44,20 +47,31 @@ class HdrToysManager(
   private val shaderRuntime: MpvShaderRuntime,
 ) {
   private var initialized = false
+  private var initializedPackVersion: Long? = null
 
   @Synchronized
   fun initialize(): Boolean {
-    if (initialized && requiredShadersExist()) return true
+    val packVersion = OptionalRuntimePackManager.versionCode(context, OptionalRuntimePack.Visual)
+    val runtimeAssets =
+      OptionalRuntimePackManager.packContext(context, OptionalRuntimePack.Visual)?.assets
+        ?: run {
+          initialized = false
+          initializedPackVersion = null
+          return false
+        }
+    if (initialized && initializedPackVersion == packVersion && requiredShadersExist()) return true
 
     return runCatching {
       val destination = File(context.filesDir, TARGET_DIR)
       destination.mkdirs()
-      copyAssetDirectory(ASSET_DIR, destination)
+      copyAssetDirectory(runtimeAssets, ASSET_DIR, destination)
       val ready = requiredShadersExist()
       initialized = ready
+      initializedPackVersion = packVersion.takeIf { ready }
       ready
     }.onFailure { error ->
       initialized = false
+      initializedPackVersion = null
       Log.w(TAG, "Failed to initialize hdr-toys shaders", error)
     }.getOrDefault(false)
   }
@@ -110,29 +124,31 @@ class HdrToysManager(
     }
 
   private fun copyAssetDirectory(
+    assets: AssetManager,
     assetPath: String,
     destination: File,
   ) {
-    val children = context.assets.list(assetPath).orEmpty()
+    val children = assets.list(assetPath).orEmpty()
     destination.mkdirs()
     children.forEach { child ->
       val childAssetPath = "$assetPath/$child"
       val childDestination = File(destination, child)
-      val nestedChildren = context.assets.list(childAssetPath).orEmpty()
+      val nestedChildren = assets.list(childAssetPath).orEmpty()
       if (nestedChildren.isEmpty() && child.endsWith(".glsl")) {
-        copyAssetFile(childAssetPath, childDestination)
+        copyAssetFile(assets, childAssetPath, childDestination)
       } else {
-        copyAssetDirectory(childAssetPath, childDestination)
+        copyAssetDirectory(assets, childAssetPath, childDestination)
       }
     }
   }
 
   private fun copyAssetFile(
+    assets: AssetManager,
     assetPath: String,
     destination: File,
   ) {
     destination.parentFile?.mkdirs()
-    context.assets.open(assetPath).use { input ->
+    assets.open(assetPath).use { input ->
       FileOutputStream(destination).use { output ->
         input.copyTo(output)
       }

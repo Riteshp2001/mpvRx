@@ -47,6 +47,7 @@ jobs:
           source_fingerprint="$(
             git ls-files -s -- \
               app \
+              runtimes \
               build.gradle.kts \
               settings.gradle.kts \
               gradle.properties \
@@ -165,7 +166,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew "assemble${GRADLE_FLAVOR}Preview" --stacktrace --no-daemon --max-workers=2
+          tasks=("assemble${GRADLE_FLAVOR}Preview")
+          if [[ "$APK_DIR" == "standard" ]]; then
+            tasks+=(":runtimes:online:assembleRelease" ":runtimes:torrent:assembleRelease" ":runtimes:visual:assembleRelease")
+          fi
+          ./gradlew "${tasks[@]}" \
+            -PruntimePackVersionCode="$(date +%s)" \
+            -PruntimePackVersionName="preview-r$COMMIT_COUNT" \
+            -PruntimePackBaseUrl="https://riteshp2001.github.io/mpvRx/downloads" \
+            --stacktrace --no-daemon --max-workers=2
 
       - name: Sign and stage preview APKs
         shell: bash
@@ -230,6 +239,34 @@ jobs:
             sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} preview"
             cp "$out_dir/$base.apk" "downloads/mpvRx-preview-r${COMMIT_COUNT}-${ASSET_NAME:-$abi}.apk"
           done
+
+          if [[ "$APK_DIR" == "standard" ]]; then
+            sign_runtime_pack() {
+              local module="$1"
+              local abi="$2"
+              local output="$3"
+              local source
+              source="$(find "runtimes/$module/build/outputs/apk/release" -type f -name "*${abi:+-${abi}}-release*.apk" | head -n 1)"
+              if [[ -z "$source" || ! -f "$source" ]]; then
+                echo "Missing $module runtime APK for ${abi:-all architectures}"
+                exit 1
+              fi
+              "$apksigner" sign \
+                --ks release.keystore \
+                --ks-key-alias "$SIGNING_KEY_ALIAS" \
+                --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+                --key-pass "pass:$KEY_PASSWORD" \
+                --out "downloads/$output" \
+                "$source"
+              "$apksigner" verify --verbose "downloads/$output"
+            }
+
+            for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+              sign_runtime_pack online "$abi" "mpvRx-online-runtime-$abi.apk"
+              sign_runtime_pack torrent "$abi" "mpvRx-torrent-runtime-$abi.apk"
+            done
+            sign_runtime_pack visual "" "mpvRx-visual-runtime.apk"
+          fi
 
       - name: Upload preview APKs
         uses: actions/upload-artifact@v7
@@ -326,6 +363,24 @@ jobs:
                   "content_type": "application/vnd.android.package-archive",
                   "sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
               })
+
+              runtime_names = [
+                *(f"mpvRx-online-runtime-{abi}.apk" for abi in ("arm64-v8a", "armeabi-v7a", "x86", "x86_64")),
+                *(f"mpvRx-torrent-runtime-{abi}.apk" for abi in ("arm64-v8a", "armeabi-v7a", "x86", "x86_64")),
+                "mpvRx-visual-runtime.apk",
+              ]
+              for name in runtime_names:
+                apk = downloads_dir / name
+                if not apk.is_file():
+                  raise SystemExit(f"Missing signed runtime APK: {apk}")
+                assets.append({
+                  "abi": "runtime",
+                  "browser_download_url": f"{base_url}/downloads/{name}",
+                  "name": name,
+                  "size": apk.stat().st_size,
+                  "content_type": "application/vnd.android.package-archive",
+                  "sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
+                })
 
           manifest = {
               "tag_name": f"preview-r{commit_count}",

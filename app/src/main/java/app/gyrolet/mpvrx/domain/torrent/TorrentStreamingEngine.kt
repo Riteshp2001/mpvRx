@@ -5,6 +5,8 @@
 package app.gyrolet.mpvrx.domain.torrent
 
 import android.content.Context
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import android.net.Uri
 import android.util.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
@@ -310,6 +312,7 @@ class TorrentStreamingEngine(
     requestedFileIndex: Int?,
     startGeneration: Long,
   ): PreparedSession {
+    ensureTorrentRuntime()
     val source = sourceValue.trim()
     if (source.isEmpty()) throw streamError("Torrent source is empty.")
     if (hasV2OnlyMagnet(source)) {
@@ -383,6 +386,21 @@ class TorrentStreamingEngine(
       if (generation.get() == startGeneration) _state.value = TorrentStreamingState.Error(safe.message.orEmpty())
       throw safe
     }
+  }
+
+  private suspend fun ensureTorrentRuntime() {
+    val library =
+      OptionalRuntimePackManager.materializeNativeLibrary(
+        appContext,
+        OptionalRuntimePack.Torrent,
+        "libtorrent4j.so",
+      )
+    if (library == null) {
+      OptionalRuntimePackManager.downloadAndRequestInstall(appContext, OptionalRuntimePack.Torrent)
+      throw streamError(appContext.getString(app.gyrolet.mpvrx.R.string.runtime_pack_torrent_required))
+    }
+    runCatching { System.loadLibrary("c++_shared") }
+    System.setProperty("libtorrent4j.jni.path", library.absolutePath)
   }
 
   /** Lifecycle-safe and non-blocking. Native shutdown and cache deletion run on the engine IO scope. */

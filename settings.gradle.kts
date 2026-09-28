@@ -53,3 +53,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "mpvRx"
 include(":app")
+include(":runtimes:online")
+include(":runtimes:torrent")
+include(":runtimes:visual")

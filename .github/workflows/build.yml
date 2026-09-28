@@ -75,7 +75,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew "assemble${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
+          tasks=("assemble${GRADLE_FLAVOR}Release")
+          if [[ "$DISTRIBUTION" == "standard" ]]; then
+            tasks+=(":runtimes:online:assembleRelease" ":runtimes:torrent:assembleRelease" ":runtimes:visual:assembleRelease")
+          fi
+          ./gradlew "${tasks[@]}" \
+            -PruntimePackVersionCode="$(date +%s)" \
+            -PruntimePackVersionName="ci-$SHORT_SHA" \
+            -PruntimePackBaseUrl="https://example.invalid/mpvrx-runtime-packs" \
+            --stacktrace --no-daemon --max-workers=2
 
       - name: Sign APKs when signing secrets are available
         shell: bash
@@ -157,6 +165,19 @@ jobs:
                   exit 1
                 fi
               done
+              for runtime in online torrent; do
+                runtime_dir="runtimes/$runtime/build/outputs/apk/release"
+                for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+                  if ! compgen -G "$runtime_dir/*-${abi}-release*.apk" >/dev/null; then
+                    echo "No $runtime runtime APK found for $abi"
+                    exit 1
+                  fi
+                done
+              done
+              if ! compgen -G "runtimes/visual/build/outputs/apk/release/*-release*.apk" >/dev/null; then
+                echo "No visual runtime APK found"
+                exit 1
+              fi
               ;;
             fongmi)
               release_dir="app/build/outputs/apk/fongmi/release"

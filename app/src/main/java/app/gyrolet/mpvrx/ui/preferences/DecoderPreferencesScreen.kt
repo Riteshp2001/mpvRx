@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,11 +56,14 @@ import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Debanding
 import app.gyrolet.mpvrx.ui.player.MPVProfile
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.RuntimePackPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -89,6 +93,9 @@ object DecoderPreferencesScreen : Screen {
     val yuv420ConfigOwned = "vf" in configOwnedOptions
     val backstack = LocalBackStack.current
     val context = LocalContext.current
+    val visualRuntimeInstalled by
+      remember { OptionalRuntimePackManager.observeInstalled(context, OptionalRuntimePack.Visual) }
+        .collectAsState(initial = OptionalRuntimePackManager.isInstalled(context, OptionalRuntimePack.Visual))
     val isDeviceVulkanSupported = remember { VulkanCapabilities.isDeviceSupported(context) }
     val isVulkanSupported = BuildConfig.MPV_SUPPORTS_VULKAN && isDeviceVulkanSupported
     var showGpuNextWarning by remember { mutableStateOf(false) }
@@ -321,11 +328,19 @@ object DecoderPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              RuntimePackPreference(
+                pack = OptionalRuntimePack.Visual,
+                titleRes = R.string.runtime_pack_visual_title,
+                summaryRes = R.string.runtime_pack_visual_summary,
+              )
+
+              PreferenceDivider()
+
               val enableAnime4K by preferences.enableAnime4K.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_anime4k_title),
-                value = enableAnime4K,
-                enabled = !shadersConfigOwned,
+                value = enableAnime4K && visualRuntimeInstalled,
+                enabled = !shadersConfigOwned && visualRuntimeInstalled,
                 onValueChange = { enabled ->
                   preferences.enableAnime4K.set(enabled)
                   if (enabled && !useVulkan) {
@@ -359,7 +374,7 @@ object DecoderPreferencesScreen : Screen {
                 },
               )
 
-              if (enableAnime4K && !shadersConfigOwned) {
+              if (enableAnime4K && visualRuntimeInstalled && !shadersConfigOwned) {
                 val rotationState by animateFloatAsState(
                   targetValue = if (anime4kExpanded) 180f else 0f,
                   label = "anime4k_chevron_rotation",

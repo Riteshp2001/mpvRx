@@ -87,7 +87,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew "assemble${GRADLE_FLAVOR}Preview" --stacktrace --no-daemon --max-workers=2
+          tasks=("assemble${GRADLE_FLAVOR}Preview")
+          if [[ "$APK_DIR" == "standard" ]]; then
+            tasks+=(":runtimes:online:assembleRelease" ":runtimes:torrent:assembleRelease" ":runtimes:visual:assembleRelease")
+          fi
+          ./gradlew "${tasks[@]}" \
+            -PruntimePackVersionCode="$(date +%s)" \
+            -PruntimePackVersionName="$VERSION_TAG" \
+            -PruntimePackBaseUrl="https://github.com/Riteshp2001/mpvRx/releases/download/$VERSION_TAG" \
+            --stacktrace --no-daemon --max-workers=2
 
       - name: Sign and stage preview APKs
         shell: bash
@@ -153,6 +161,34 @@ jobs:
             cp "$out_dir/$base.apk" "preview/mpvRx-preview-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
           done
 
+          if [[ "$APK_DIR" == "standard" ]]; then
+            sign_runtime_pack() {
+              local module="$1"
+              local abi="$2"
+              local output="$3"
+              local source
+              source="$(find "runtimes/$module/build/outputs/apk/release" -type f -name "*${abi:+-${abi}}-release*.apk" | head -n 1)"
+              if [[ -z "$source" || ! -f "$source" ]]; then
+                echo "Missing $module runtime APK for ${abi:-all architectures}"
+                exit 1
+              fi
+              "$apksigner" sign \
+                --ks release.keystore \
+                --ks-key-alias "$SIGNING_KEY_ALIAS" \
+                --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+                --key-pass "pass:$KEY_PASSWORD" \
+                --out "preview/$output" \
+                "$source"
+              "$apksigner" verify --verbose "preview/$output"
+            }
+
+            for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+              sign_runtime_pack online "$abi" "mpvRx-online-runtime-$abi.apk"
+              sign_runtime_pack torrent "$abi" "mpvRx-torrent-runtime-$abi.apk"
+            done
+            sign_runtime_pack visual "" "mpvRx-visual-runtime.apk"
+          fi
+
       - name: Upload pre-release assets
         uses: actions/upload-artifact@v7
         with:
@@ -196,6 +232,16 @@ jobs:
             fi
             sha256sum "$asset" | tee -a checksums.txt
           done
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            for runtime in online torrent; do
+              asset="preview/mpvRx-${runtime}-runtime-${abi}.apk"
+              test -f "$asset" || { echo "Missing expected runtime pack: $asset"; exit 1; }
+              sha256sum "$asset" | tee -a checksums.txt
+            done
+          done
+          visual_asset="preview/mpvRx-visual-runtime.apk"
+          test -f "$visual_asset" || { echo "Missing expected runtime pack: $visual_asset"; exit 1; }
+          sha256sum "$visual_asset" | tee -a checksums.txt
 
       - name: Prepare pre-release notes
         shell: bash

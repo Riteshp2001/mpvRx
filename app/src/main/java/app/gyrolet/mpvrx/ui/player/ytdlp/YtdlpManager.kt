@@ -10,12 +10,15 @@
 package app.gyrolet.mpvrx.ui.player.ytdlp
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.net.Uri
 import android.system.Os
 import android.util.Log
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MediaUtils
@@ -66,6 +69,9 @@ object YtdlpManager {
 
   @Volatile
   private var runtimeAssetsPrepared = false
+
+  @Volatile
+  private var preparedRuntimePackVersion: Long? = null
 
   private val installationInfoScript =
     """
@@ -188,6 +194,9 @@ object YtdlpManager {
       if (!isPotentialPlaylistUrl(source)) {
         return@withContext Result.failure(IllegalArgumentException("The URL does not identify a playlist"))
       }
+      if (!ensureOnlinePackForUserAction(context, onLog)) {
+        return@withContext Result.failure(IllegalStateException("Online runtime installation is required"))
+      }
 
       try {
         installMutex.withLock {
@@ -244,8 +253,11 @@ object YtdlpManager {
                 add(file.absolutePath)
               }
 
-              File(context.applicationInfo.nativeLibraryDir, "libqjs.so")
-                .takeIf(File::isFile)
+              OptionalRuntimePackManager.nativeLibrary(
+                context,
+                OptionalRuntimePack.Online,
+                "libqjs.so",
+              )
                 ?.let { quickJs ->
                   add("--js-runtimes")
                   add("quickjs:${quickJs.absolutePath}")
@@ -353,11 +365,13 @@ object YtdlpManager {
     val uri = Uri.parse(source)
     val isWebSource = uri.scheme.equals("http", true) || uri.scheme.equals("https", true)
     if (!isWebSource) return true
+    if (!requiresYtdlp(source)) return true
+    if (!ensureOnlinePackForUserAction(context, onLog)) return false
 
     return withContext(Dispatchers.IO) {
       installMutex.withLock {
         if (!prepareRuntimeAssets(context, onLog)) return@withLock false
-        if (!requiresYtdlp(source) || isPlaybackRuntimeReady(context)) return@withLock true
+        if (isPlaybackRuntimeReady(context)) return@withLock true
 
         onLog("Preparing the current yt-dlp web playback runtime.\n")
         installYtdlp(context, onLog)
@@ -371,12 +385,28 @@ object YtdlpManager {
     onLog: (String) -> Unit = {},
   ): Boolean =
     withContext(Dispatchers.IO) {
+      if (!ensureOnlinePackForUserAction(context, onLog)) return@withContext false
       installMutex.withLock {
         if (!prepareRuntimeAssets(context, onLog)) return@withLock false
         if (isPlaybackRuntimeReady(context)) return@withLock true
         installYtdlp(context, onLog)
       }
     }
+
+  private suspend fun ensureOnlinePackForUserAction(
+    context: Context,
+    onLog: (String) -> Unit,
+  ): Boolean {
+    if (OptionalRuntimePackManager.isInstalled(context, OptionalRuntimePack.Online)) return true
+    onLog("${context.getString(app.gyrolet.mpvrx.R.string.runtime_pack_downloading, 0)}\n")
+    val result = OptionalRuntimePackManager.downloadAndRequestInstall(context, OptionalRuntimePack.Online)
+    if (result.isFailure) {
+      onLog("${context.getString(app.gyrolet.mpvrx.R.string.runtime_pack_install_failed)}\n")
+    } else {
+      onLog("${context.getString(app.gyrolet.mpvrx.R.string.runtime_pack_online_required)}\n")
+    }
+    return false
+  }
 
   suspend fun copyAssets(context: Context) =
     withContext(Dispatchers.IO) {
@@ -394,6 +424,11 @@ object YtdlpManager {
 
   private fun copyRuntimeAssets(context: Context, onLog: (String) -> Unit = {}): Boolean {
     val ytdlDir = getYtdlDir(context)
+    val runtimeContext = OptionalRuntimePackManager.packContext(context, OptionalRuntimePack.Online)
+    if (runtimeContext == null) {
+      onLog("${context.getString(app.gyrolet.mpvrx.R.string.runtime_pack_online_required)}\n")
+      return false
+    }
 
     // Clean up old potentially problematic scripts from multiple possible locations
     listOf("youtube-dl", "youtube-dl.sh").forEach { name ->
@@ -402,30 +437,28 @@ object YtdlpManager {
     }
 
     // Files to copy from assets/ytdl/ to filesDir/ytdl/
-    val ytdlFiles = arrayOf("setup.py", "python313.zip")
-    var copied = true
-    for (name in ytdlFiles) {
-      copied = copyAssetFile(context, "ytdl/$name", File(ytdlDir, name), onLog) && copied
-    }
+    var copied = copyAssetFile(context.assets, "ytdl/setup.py", File(ytdlDir, "setup.py"), onLog)
+    copied =
+      copyAssetFile(runtimeContext.assets, "ytdl/python313.zip", File(ytdlDir, "python313.zip"), onLog) && copied
 
     // cacert.pem goes to filesDir/
-    copied = copyAssetFile(context, "cacert.pem", File(context.filesDir, "cacert.pem"), onLog) && copied
+    copied = copyAssetFile(context.assets, "cacert.pem", File(context.filesDir, "cacert.pem"), onLog) && copied
 
-    copyAssetFile(context, "ytdl/wrapper", File(ytdlDir, "wrapper"), onLog)
+    copyAssetFile(context.assets, "ytdl/wrapper", File(ytdlDir, "wrapper"), onLog)
     // Set executable permission on wrapper (just in case it's used)
     File(ytdlDir, "wrapper").setExecutable(true)
     return copied
   }
 
   private fun copyAssetFile(
-    context: Context,
+    assets: AssetManager,
     assetPath: String,
     outFile: File,
     onLog: (String) -> Unit,
   ): Boolean {
     val temporaryFile = File(outFile.parentFile, "${outFile.name}.tmp")
     return try {
-      context.assets.open(assetPath).use { input ->
+      assets.open(assetPath).use { input ->
         FileOutputStream(temporaryFile).use { output ->
           if (input.copyTo(output) == 0L) throw IOException("Bundled asset is empty: $assetPath")
           output.fd.sync()
@@ -449,11 +482,16 @@ object YtdlpManager {
     subtitlesPreferences: SubtitlesPreferences,
   ) {
     val nativeLibDir = context.applicationInfo.nativeLibraryDir
+    val runtimeNativeLibDir = onlineRuntimeNativeDirectory(context)
     val ytdlBinaryPath = File(nativeLibDir, "libytdl.so").absolutePath
     val ytdlDir = getYtdlDir(context).absolutePath
     val ytDlpScriptPath = File(ytdlDir, "yt-dlp").absolutePath
-    val pythonPath = File(nativeLibDir, "libpython.so").absolutePath
-    val quickJsPath = File(nativeLibDir, "libqjs.so").absolutePath
+    val pythonPath =
+      OptionalRuntimePackManager
+        .materializeNativeLibrary(context, OptionalRuntimePack.Online, "libpython.so")
+        ?.absolutePath
+        .orEmpty()
+    val quickJsPath = runtimeNativeLibDir?.resolve("libqjs.so")?.absolutePath.orEmpty()
 
     // Set environment variables for the subprocesses started by libmpv
     try {
@@ -462,17 +500,18 @@ object YtdlpManager {
       Os.setenv("PYTHONHOME", ytdlDir, true)
       // Include both the zip and the directory itself in PYTHONPATH
       // Also include nativeLibDir for potential .so modules
-      Os.setenv("PYTHONPATH", "$ytdlDir/python313.zip:$ytdlDir:$nativeLibDir", true)
+      Os.setenv("PYTHONPATH", "$ytdlDir/python313.zip:$ytdlDir:${runtimeNativeLibDir?.absolutePath.orEmpty()}", true)
       Os.setenv("SSL_CERT_FILE", File(context.filesDir, "cacert.pem").absolutePath, true)
 
       // Add nativeLibDir to PATH so scripts can find our bridge if they search PATH
       val currentPath = runCatching { Os.getenv("PATH") }.getOrNull()
-      val newPath = if (currentPath.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentPath"
+      val executableDirectories = listOfNotNull(runtimeNativeLibDir?.absolutePath, nativeLibDir).joinToString(":")
+      val newPath = if (currentPath.isNullOrBlank()) executableDirectories else "$executableDirectories:$currentPath"
       Os.setenv("PATH", newPath, true)
 
       // Set LD_LIBRARY_PATH for the subprocess to find libpython.so's dependencies
       val currentLd = runCatching { Os.getenv("LD_LIBRARY_PATH") }.getOrNull()
-      val newLd = if (currentLd.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentLd"
+      val newLd = if (currentLd.isNullOrBlank()) executableDirectories else "$executableDirectories:$currentLd"
       Os.setenv("LD_LIBRARY_PATH", newLd, true)
 
       Log.d(TAG, "Environment variables set for ytdl bridge")
@@ -485,7 +524,7 @@ object YtdlpManager {
     if (!ytDlpFile.exists()) {
       Log.w(TAG, "yt-dlp not found in ${ytDlpFile.absolutePath}. Subprocess will fail until installed.")
     }
-    if (!File(quickJsPath).exists()) {
+    if (quickJsPath.isBlank() || !File(quickJsPath).exists()) {
       Log.w(TAG, "QuickJS runtime not found at $quickJsPath. Full YouTube extraction may be unavailable.")
     }
 
@@ -496,7 +535,7 @@ object YtdlpManager {
           storedSettings.cookiesFile.ifBlank {
             AndroidCookieJar.playbackCookieFile(context).absolutePath
           },
-        javascriptRuntime = "quickjs:$quickJsPath",
+        javascriptRuntime = quickJsPath.takeIf(String::isNotBlank)?.let { "quickjs:$it" }.orEmpty(),
       )
     val resolvedOptions = YtdlpOptionsBuilder.build(settings)
     val ua = ytdlPreferences.customUserAgent.get().ifBlank { YtdlpOptionsBuilder.DEFAULT_USER_AGENT }
@@ -656,8 +695,16 @@ object YtdlpManager {
     context: Context,
     onLog: (String) -> Unit,
   ): Boolean {
-    if (!runtimeAssetsPrepared) {
+    val packVersion = OptionalRuntimePackManager.versionCode(context, OptionalRuntimePack.Online)
+    if (packVersion == null) {
+      runtimeAssetsPrepared = false
+      preparedRuntimePackVersion = null
+      onLog("${context.getString(app.gyrolet.mpvrx.R.string.runtime_pack_online_required)}\n")
+      return false
+    }
+    if (!runtimeAssetsPrepared || preparedRuntimePackVersion != packVersion) {
       runtimeAssetsPrepared = copyRuntimeAssets(context, onLog)
+      if (runtimeAssetsPrepared) preparedRuntimePackVersion = packVersion
     }
     if (!runtimeAssetsPrepared) onLog("Failed to prepare the bundled yt-dlp runtime assets.\n")
     return runtimeAssetsPrepared
@@ -736,7 +783,10 @@ object YtdlpManager {
       .takeIf { value -> value.isNotEmpty() && !value.equals("null", ignoreCase = true) }
 
   private fun isPlaybackRuntimeReady(context: Context): Boolean =
-    isInstalled(context) &&
+    OptionalRuntimePackManager.isInstalled(context, OptionalRuntimePack.Online) &&
+      OptionalRuntimePackManager.nativeLibrary(context, OptionalRuntimePack.Online, "libpython.so") != null &&
+      OptionalRuntimePackManager.nativeLibrary(context, OptionalRuntimePack.Online, "libqjs.so") != null &&
+      isInstalled(context) &&
       File(getYtdlDir(context), PLAYBACK_RUNTIME_VERSION_FILE).readTextOrNull() == PLAYBACK_RUNTIME_VERSION
 
   private fun markPlaybackRuntimeReady(context: Context) {
@@ -841,17 +891,31 @@ object YtdlpManager {
     val env = processBuilder.environment()
     val ytdlDir = getYtdlDir(context).absolutePath
     val nativeLibDir = context.applicationInfo.nativeLibraryDir
+    val runtimeNativeLibDir = checkNotNull(onlineRuntimeNativeDirectory(context)) {
+      "The mpvRx online runtime pack is not installed"
+    }
 
     // Clear YTDL_SCRIPT so the bridge doesn't try to wrap yt-dlp during setup/update.
     env.remove("YTDL_SCRIPT")
-    env["YTDL_PYTHON"] = File(nativeLibDir, "libpython.so").absolutePath
+    val pythonLibrary = checkNotNull(
+      OptionalRuntimePackManager.materializeNativeLibrary(context, OptionalRuntimePack.Online, "libpython.so"),
+    ) { "The mpvRx online runtime pack is incomplete" }
+    env["YTDL_PYTHON"] = pythonLibrary.absolutePath
     env["PYTHONHOME"] = ytdlDir
-    env["PYTHONPATH"] = "$ytdlDir/python313.zip:$ytdlDir:$nativeLibDir"
+    env["PYTHONPATH"] = "$ytdlDir/python313.zip:$ytdlDir:$runtimeNativeLibDir"
     env["HOME"] = context.filesDir.absolutePath
     env["XDG_CACHE_HOME"] = context.cacheDir.absolutePath
     env["TMPDIR"] = context.cacheDir.absolutePath
     env["SSL_CERT_FILE"] = File(context.filesDir, "cacert.pem").absolutePath
-    env["LD_LIBRARY_PATH"] = nativeLibDir
+    env["LD_LIBRARY_PATH"] = "${runtimeNativeLibDir.absolutePath}:$nativeLibDir"
     return processBuilder.start()
   }
+
+  internal fun runtimeAssetContext(context: Context): Context? =
+    OptionalRuntimePackManager.packContext(context, OptionalRuntimePack.Online)
+
+  private fun onlineRuntimeNativeDirectory(context: Context): File? =
+    OptionalRuntimePackManager
+      .nativeLibrary(context, OptionalRuntimePack.Online, "libpython.so")
+      ?.parentFile
 }

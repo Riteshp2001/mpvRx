@@ -26,6 +26,8 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlPlaylistMode
@@ -33,6 +35,7 @@ import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallationStatus
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpReleaseChannel
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.RuntimePackPreference
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
@@ -64,6 +67,9 @@ object YtdlpSettingsScreen : Screen {
     val writeSubs by ytdlPreferences.writeSubs.collectAsState()
     val writeAutoSubs by ytdlPreferences.writeAutoSubs.collectAsState()
     val installationInfo by YtdlpManager.installationInfo.collectAsState()
+    val onlineRuntimeInstalled by
+      remember { OptionalRuntimePackManager.observeInstalled(context, OptionalRuntimePack.Online) }
+        .collectAsState(initial = OptionalRuntimePackManager.isInstalled(context, OptionalRuntimePack.Online))
 
     LaunchedEffect(Unit) {
       YtdlpManager.refreshInstallationInfo(context)
@@ -137,6 +143,14 @@ object YtdlpSettingsScreen : Screen {
               .padding(bottom = 32.dp),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
+          PreferenceCard {
+            RuntimePackPreference(
+              pack = OptionalRuntimePack.Online,
+              titleRes = R.string.runtime_pack_online_title,
+              summaryRes = R.string.runtime_pack_online_summary,
+            )
+          }
+
           YtdlpInstallationStatus(
             info = installationInfo,
             isRunning = isRunning,
@@ -175,7 +189,7 @@ object YtdlpSettingsScreen : Screen {
                     }
                   }
                 },
-                enabled = !isRunning,
+                enabled = !isRunning && onlineRuntimeInstalled,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
               ) {
@@ -188,7 +202,7 @@ object YtdlpSettingsScreen : Screen {
                 onClick = {
                   runOperation { onLog -> YtdlpManager.runUpdateToNightly(context, onLog) }
                 },
-                enabled = !isRunning && isInstalled,
+                enabled = !isRunning && isInstalled && onlineRuntimeInstalled,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),

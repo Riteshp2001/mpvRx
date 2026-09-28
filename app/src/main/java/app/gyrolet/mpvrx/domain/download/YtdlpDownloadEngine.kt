@@ -14,6 +14,8 @@ import android.net.Uri
 import android.util.Log
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import kotlinx.coroutines.CancellationException
@@ -410,8 +412,11 @@ class YtdlpDownloadEngine(
         add(file.absolutePath)
       }
 
-      File(context.applicationInfo.nativeLibraryDir, "libqjs.so")
-        .takeIf(File::isFile)
+      OptionalRuntimePackManager.nativeLibrary(
+        context,
+        OptionalRuntimePack.Online,
+        "libqjs.so",
+      )
         ?.let { quickJs ->
           add("--js-runtimes")
           add("quickjs:${quickJs.absolutePath}")

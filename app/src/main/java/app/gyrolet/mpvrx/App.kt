@@ -34,6 +34,7 @@ import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.CrashReportStore
 import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.repository.NetworkRepository
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import app.gyrolet.mpvrx.ui.player.MediaPlayerWidget
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackPerformanceTrace
@@ -124,6 +125,7 @@ class App :
     CrashReportStore.install(this)
 
     configureDebugStrictMode()
+    OptionalRuntimePackManager.prepareInstalledNativeRuntimes(this)
 
     // Initialize Koin
     startKoin {

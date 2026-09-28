@@ -20,7 +20,14 @@ val activeAbis =
     listOf("arm64-v8a", "armeabi-v7a") + x86Abis
   }
 val universalOnlyDistributions = setOf("noVulkan", "fongmi")
-  val releaseVersionCode = 261
+val releaseVersionName = "2.6.0"
+val runtimePackBaseUrl =
+  project.findProperty("runtimePackBaseUrl")?.toString()
+    ?: "https://github.com/Riteshp2001/mpvRx/releases/download/v$releaseVersionName"
+val runtimePackVersionName =
+  project.findProperty("runtimePackVersionName")?.toString()
+    ?: "v$releaseVersionName"
+val releaseVersionCode = 261
 val versionCodeBandSize = 10_000
 val stableVersionCode = releaseVersionCode * versionCodeBandSize + (versionCodeBandSize - 1)
 val previewVersionCode =
@@ -48,7 +55,7 @@ android {
     // Stable occupies the top of its version band. Preview uses the next band's commit-count
     // offset, so Stable -> Preview -> newer Preview -> next Stable is always an Android upgrade.
     versionCode = stableVersionCode
-    versionName = "2.6.0"
+    versionName = releaseVersionName
 
     vectorDrawables {
       useSupportLibrary = true
@@ -56,6 +63,8 @@ android {
 
     buildConfigField("String", "GIT_SHA", "\"${getCommitSha()}\"")
     buildConfigField("int", "GIT_COUNT", getCommitCount())
+    buildConfigField("String", "RUNTIME_PACK_BASE_URL", "\"$runtimePackBaseUrl\"")
+    buildConfigField("String", "RUNTIME_PACK_VERSION_NAME", "\"$runtimePackVersionName\"")
 
     externalNativeBuild {
       cmake {
@@ -318,14 +327,8 @@ dependencies {
   implementation(libs.telephoto.zoomable)
   implementation(libs.backdrop)
 
-  // libtorrent4j's Java API plus the native library for every enabled APK ABI.
+  // Java API stays in the base; ABI-native libraries are delivered by runtimes/torrent.
   implementation(libs.libtorrent4j)
-  implementation(libs.libtorrent4j.android.arm64)
-  implementation(libs.libtorrent4j.android.arm)
-  if (enableX86) {
-    implementation(libs.libtorrent4j.android.x86)
-    implementation(libs.libtorrent4j.android.x8664)
-  }
 }
 
 // ---------------- Git helpers ----------------

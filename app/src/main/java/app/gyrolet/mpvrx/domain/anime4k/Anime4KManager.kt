@@ -10,6 +10,9 @@
 package app.gyrolet.mpvrx.domain.anime4k
 
 import android.content.Context
+import android.content.res.AssetManager
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePack
+import app.gyrolet.mpvrx.runtime.OptionalRuntimePackManager
 import java.io.File
 
 /**
@@ -67,6 +70,7 @@ class Anime4KManager(
 
   private var shaderDir: File? = null
   private var isInitialized = false
+  private var initializedPackVersion: Long? = null
 
   @Volatile
   private var enableDarken: Boolean = true
@@ -91,8 +95,17 @@ class Anime4KManager(
    * Initialize: copy shaders from assets to internal storage
    * This must be called and complete successfully before using getShaderChain()
    */
+  @Synchronized
   fun initialize(): Boolean {
-    if (isInitialized) {
+    val packVersion = OptionalRuntimePackManager.versionCode(context, OptionalRuntimePack.Visual)
+    val runtimeAssets =
+      OptionalRuntimePackManager.packContext(context, OptionalRuntimePack.Visual)?.assets
+        ?: run {
+          isInitialized = false
+          initializedPackVersion = null
+          return false
+        }
+    if (isInitialized && initializedPackVersion == packVersion) {
       return true
     }
 
@@ -109,13 +122,13 @@ class Anime4KManager(
       // List and copy all shader files from assets.
       // If any required file is missing/invalid, force-copy it.
       val shaderFiles =
-        context.assets
+        runtimeAssets
           .list(Anime4KShaderCatalog.ASSET_DIRECTORY)
           ?.filter { it.endsWith(".glsl") }
           .orEmpty()
       for (fileName in shaderFiles) {
         val forceCopy = fileName in Anime4KShaderCatalog.requiredFileSet
-        if (!copyShaderFromAssets(fileName, forceCopy = forceCopy)) {
+        if (!copyShaderFromAssets(runtimeAssets, fileName, forceCopy = forceCopy)) {
           return false
         }
       }
@@ -132,14 +145,17 @@ class Anime4KManager(
       removeLegacyFlatShaderCopies()
 
       isInitialized = true
+      initializedPackVersion = packVersion
       true
     } catch (e: Exception) {
       isInitialized = false
+      initializedPackVersion = null
       false
     }
   }
 
   private fun copyShaderFromAssets(
+    assets: AssetManager,
     fileName: String,
     forceCopy: Boolean = false,
   ): Boolean {
@@ -153,7 +169,7 @@ class Anime4KManager(
     try {
       // Read the original shader source code from assets
       val originalContent =
-        context.assets.open("${Anime4KShaderCatalog.ASSET_DIRECTORY}/$fileName").use { input ->
+        assets.open("${Anime4KShaderCatalog.ASSET_DIRECTORY}/$fileName").use { input ->
           input.bufferedReader().use { it.readText() }
         }
 
