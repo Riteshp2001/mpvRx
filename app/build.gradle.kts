@@ -12,6 +12,9 @@ val localProperties =
 
 val targetAbiProp = project.findProperty("targetAbi")?.toString() ?: localProperties.getProperty("targetAbi")
 val enableX86 = project.findProperty("enableX86") != "false"
+// CI builds a single universal APK: ABI splits are turned off and every ABI is packed into one
+// APK instead of emitting per-ABI splits plus a universal one.
+val universalOnly = project.findProperty("universalOnly") == "true"
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 val activeAbis =
   if (!targetAbiProp.isNullOrBlank()) {
@@ -109,7 +112,7 @@ android {
 
   splits {
     abi {
-      isEnable = true
+      isEnable = !universalOnly
       reset()
       include(*activeAbis.toTypedArray())
       isUniversalApk = activeAbis.size > 1

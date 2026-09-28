@@ -107,6 +107,8 @@ import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
+import app.gyrolet.mpvrx.ui.browser.components.ZipImportProgress
+import app.gyrolet.mpvrx.ui.browser.components.ZipImportProgressDialog
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
@@ -144,6 +146,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -244,6 +247,9 @@ object FolderListScreen : Screen {
     val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
     val operationType = remember { mutableStateOf<CopyPasteOps.OperationType?>(null) }
     val progressDialogOpen = rememberSaveable { mutableStateOf(false) }
+    val zipImportState = remember { MutableStateFlow<ZipImportProgress?>(null) }
+    val zipImport by zipImportState.collectAsState()
+    var zipImportJob by remember { mutableStateOf<Job?>(null) }
     var renameDialogOpen by rememberSaveable { mutableStateOf(false) }
     val operationProgress by CopyPasteOps.operationProgress.collectAsState()
 
@@ -350,37 +356,72 @@ object FolderListScreen : Screen {
         }
       }
 
-    // ZIP picker
+    // ZIP picker — registers the archive read-only in place; nothing is copied or extracted.
     val zipPicker =
       rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
       ) { uri ->
-        uri?.let {
-          runCatching {
-            context.contentResolver.takePersistableUriPermission(
-              it,
-              Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
-          }
+        uri ?: return@rememberLauncherForActivityResult
+        runCatching {
+          context.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+          )
+        }
+        val includeAudio = audioOnly || browserPreferences.includeAudioBrowser.get()
+        zipImportJob?.cancel()
+        zipImportJob =
           coroutineScope.launch {
-            val resolvedPath = ZipArchiveMedia.resolveZipPath(context, it)
-            if (resolvedPath != null && File(resolvedPath).canRead()) {
-              val archiveFile = File(resolvedPath)
-              val bucketId = ZipArchiveMedia.browserPath(archiveFile.absolutePath)
-              if (isDualPaneActive) {
-                selectedFolderBucketId = bucketId
-                selectedFolderName = archiveFile.name
-              } else {
-                backstack.navigateTo(
-                  app.gyrolet.mpvrx.ui.browser.videolist
-                    .VideoListScreen(bucketId, archiveFile.name, isAudio = audioOnly),
-                )
+            zipImportState.value = ZipImportProgress(label = "Adding archive", progress = -1f)
+            val resolvedPath =
+              try {
+                ZipArchiveMedia.resolveZipPath(context, uri)
+              } catch (cancelled: CancellationException) {
+                throw cancelled
+              } catch (_: Exception) {
+                null
               }
-            } else {
+            if (resolvedPath == null) {
+              zipImportState.value = null
               Toast.makeText(context, context.getString(R.string.ui_cannot_open_zip), Toast.LENGTH_SHORT).show()
+              return@launch
+            }
+            val archiveFile = File(resolvedPath)
+            val folder =
+              try {
+                ZipArchiveMedia.registerArchive(resolvedPath, includeAudio) { scanned, total ->
+                  zipImportState.value =
+                    ZipImportProgress(
+                      label = "Scanning archive",
+                      detail = archiveFile.name,
+                      progress = if (total > 0) scanned.toFloat() / total.toFloat() else -1f,
+                    )
+                }
+              } catch (cancelled: CancellationException) {
+                throw cancelled
+              } catch (_: Exception) {
+                null
+              }
+            zipImportState.value = null
+            if (folder == null) {
+              Toast.makeText(context, context.getString(R.string.ui_cannot_open_zip), Toast.LENGTH_SHORT).show()
+              return@launch
+            }
+            // Persist the absolute path so the archive folder survives restarts.
+            browserPreferences.archiveFolders.set(
+              browserPreferences.archiveFolders.get() + archiveFile.absolutePath,
+            )
+            viewModel.refresh()
+            if (isDualPaneActive) {
+              selectedFolderBucketId = folder.bucketId
+              selectedFolderName = folder.name
+            } else {
+              backstack.navigateTo(
+                app.gyrolet.mpvrx.ui.browser.videolist
+                  .VideoListScreen(folder.bucketId, folder.name, isAudio = audioOnly),
+              )
             }
           }
-        }
       }
 
     // Sorting and filtering
@@ -403,6 +444,19 @@ object FolderListScreen : Screen {
       // regular video browser). The regular (video) browser keeps its existing preference-driven behavior.
       val includeAudio = audioOnly || browserPreferences.includeAudioBrowser.get()
       for (folder in folders) {
+        // Archive folders are read-only references: removing one unregisters it and never
+        // touches the ZIP on storage.
+        if (ZipArchiveMedia.isBrowserPath(folder.path)) {
+          val archivePath = ZipArchiveMedia.parseBrowserPath(folder.path)?.archivePath
+          if (archivePath != null) {
+            browserPreferences.archiveFolders.set(browserPreferences.archiveFolders.get() - archivePath)
+            deleted++
+          } else {
+            failed++
+            failedFolders += folder
+          }
+          continue
+        }
         var folderFailed = false
         try {
           if (deleteAll) {
@@ -1173,6 +1227,18 @@ object FolderListScreen : Screen {
         }
       },
     )
+
+    zipImport?.let { zipProgress ->
+      ZipImportProgressDialog(
+        isOpen = true,
+        progress = zipProgress,
+        onCancel = {
+          zipImportJob?.cancel()
+          zipImportJob = null
+          zipImportState.value = null
+        },
+      )
+    }
 
     if (operationType.value != null) {
       FileOperationProgressDialog(
