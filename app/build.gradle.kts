@@ -120,6 +120,7 @@ android {
   }
 
   buildTypes {
+    // CI signing: release uses the AGP debug signing configuration for an installable test build.
     named("release") {
       // Keep the release APK directly installable in CI by using AGP's debug signing config.
       signingConfig = signingConfigs.getByName("debug")
