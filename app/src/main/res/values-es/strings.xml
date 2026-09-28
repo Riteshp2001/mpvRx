@@ -16,9 +16,8 @@
   <string name="pref_appearance_darkmode_dark">Oscuro</string>
   <string name="pref_appearance_amoled_mode_title">Modo negro AMOLED</string>
   <string name="pref_appearance_amoled_mode_summary">Usar un fondo negro puro en los temas oscuros</string>
-  <string name="pref_appearance_liquid_glass_title">Vidrio líquido</string>
-  <string name="pref_appearance_liquid_glass_summary">Usar superficies translúcidas y refractivas para el minirreproductor y la navegación</string>
-  <string name="pref_appearance_liquid_glass_summary_unavailable">Disponible en Android 12 y versiones posteriores</string>
+  <string name="pref_appearance_frozen_surfaces_title">Superficies congeladas</string>
+  <string name="pref_appearance_frozen_surfaces_summary">Desenfocar el contenido detrás del minirreproductor y la navegación con un tinte helado del tema</string>
   <string name="pref_appearance_system_font_title">Usar la fuente del sistema</string>
   <string name="pref_appearance_system_font_summary">Usar la tipografía del sistema Android en todo mpvRx en lugar de Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">Escala de la interfaz de la aplicación</string>

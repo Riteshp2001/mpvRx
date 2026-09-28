@@ -16,9 +16,8 @@
   <string name="pref_appearance_darkmode_dark">Sombre</string>
   <string name="pref_appearance_amoled_mode_title">Mode noir AMOLED</string>
   <string name="pref_appearance_amoled_mode_summary">Utiliser un arrière-plan noir pur pour les thèmes sombres</string>
-  <string name="pref_appearance_liquid_glass_title">Verre liquide</string>
-  <string name="pref_appearance_liquid_glass_summary">Utiliser des surfaces translucides et réfractives pour le mini-lecteur et la navigation</string>
-  <string name="pref_appearance_liquid_glass_summary_unavailable">Disponible sous Android 12 et versions ultérieures</string>
+  <string name="pref_appearance_frozen_surfaces_title">Surfaces givrées</string>
+  <string name="pref_appearance_frozen_surfaces_summary">Flouter le contenu derrière le mini-lecteur et la navigation avec une teinte givrée assortie au thème</string>
   <string name="pref_appearance_system_font_title">Utiliser la police système</string>
   <string name="pref_appearance_system_font_summary">Utiliser la police système Android dans mpvRx à la place de Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">Échelle de l’interface de l’application</string>

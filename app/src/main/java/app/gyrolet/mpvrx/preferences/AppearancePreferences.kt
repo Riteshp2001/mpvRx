@@ -64,7 +64,7 @@ class AppearancePreferences(
   val customWallpaperAlpha = preferenceStore.getFloat("custom_wallpaper_alpha", 1f)
   val customWallpaperUseColors = preferenceStore.getBoolean("custom_wallpaper_use_colors", false)
   val amoledMode = preferenceStore.getBoolean("amoled_mode", false)
-  val liquidGlassEnabled = preferenceStore.getBoolean("liquid_glass_enabled", true)
+  val frozenSurfacesEnabled = preferenceStore.getBoolean("liquid_glass_enabled", true)
   val useSystemFont = preferenceStore.getBoolean("use_system_font", false)
   val appUiScale = preferenceStore.getFloat("app_ui_scale", 1f)
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)

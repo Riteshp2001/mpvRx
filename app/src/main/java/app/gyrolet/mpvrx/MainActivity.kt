@@ -57,9 +57,9 @@ import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.presentation.components.ProvideLiquidGlassBackdrop
-import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
-import app.gyrolet.mpvrx.presentation.components.rememberLiquidGlassBackdrop
+import app.gyrolet.mpvrx.presentation.components.ProvideFrozenBackdrop
+import app.gyrolet.mpvrx.presentation.components.captureFrozenBackdrop
+import app.gyrolet.mpvrx.presentation.components.rememberFrozenBackdrop
 import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.browser.components.MiniPlayer
@@ -550,7 +550,7 @@ class MainActivity : AppCompatActivity() {
     val updateState by (updateViewModel?.updateState ?: fallbackUpdateState).collectAsState()
     val isDownloading by (updateViewModel?.isDownloading ?: fallbackIsDownloading).collectAsState()
     val downloadProgress by (updateViewModel?.downloadProgress ?: fallbackDownloadProgress).collectAsState()
-    val liquidGlassEnabled by appearancePreferences.liquidGlassEnabled.collectAsState()
+    val frozenSurfacesEnabled by appearancePreferences.frozenSurfacesEnabled.collectAsState()
 
     // Provide both LocalBackStack and the LazyList/Grid states to all screens
     CompositionLocalProvider(
@@ -565,21 +565,26 @@ class MainActivity : AppCompatActivity() {
       }
 
       if (hasNavEntries) {
-        val miniPlayerBackdrop = rememberLiquidGlassBackdrop()
+        val miniPlayerBackdrop = rememberFrozenBackdrop()
         Box(modifier = Modifier.fillMaxSize()) {
-          ScreenNavDisplay(
-            modifier =
-              Modifier
-                .fillMaxSize()
-                .captureLiquidGlassBackdrop(miniPlayerBackdrop, liquidGlassEnabled),
-            backStack = typedBackstack,
-            opaqueBackground = typedBackstack.any { it == app.gyrolet.mpvrx.ui.preferences.PreferencesScreen },
-            onBack = {
-              if (typedBackstack.size <= 1 || !typedBackstack.popSafely()) {
-                this@MainActivity.finish()
-              }
-            },
-          )
+          ProvideFrozenBackdrop(
+            backdrop = miniPlayerBackdrop,
+            enabled = frozenSurfacesEnabled,
+          ) {
+            ScreenNavDisplay(
+              modifier =
+                Modifier
+                  .fillMaxSize()
+                  .captureFrozenBackdrop(miniPlayerBackdrop, frozenSurfacesEnabled),
+              backStack = typedBackstack,
+              opaqueBackground = typedBackstack.any { it == app.gyrolet.mpvrx.ui.preferences.PreferencesScreen },
+              onBack = {
+                if (typedBackstack.size <= 1 || !typedBackstack.popSafely()) {
+                  this@MainActivity.finish()
+                }
+              },
+            )
+          }
 
           val miniPlayerConfig = LocalConfiguration.current
           val isPortrait = miniPlayerConfig.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -644,9 +649,9 @@ class MainActivity : AppCompatActivity() {
               }
             }
 
-          ProvideLiquidGlassBackdrop(
+          ProvideFrozenBackdrop(
             backdrop = miniPlayerBackdrop,
-            enabled = liquidGlassEnabled,
+            enabled = frozenSurfacesEnabled,
           ) {
             MiniPlayer(modifier = miniPlayerModifier)
           }

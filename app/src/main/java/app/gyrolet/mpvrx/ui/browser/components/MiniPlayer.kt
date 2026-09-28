@@ -81,8 +81,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
-import app.gyrolet.mpvrx.presentation.components.LiquidGlassStyle
-import app.gyrolet.mpvrx.presentation.components.LiquidGlassSurface
+import app.gyrolet.mpvrx.presentation.components.FrozenSurface
+import app.gyrolet.mpvrx.presentation.components.FrozenSurfaceStyle
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
@@ -260,10 +260,12 @@ private fun MiniPlayerContent(
       )
     }
   }
+  val miniPlayerShape = RoundedCornerShape(20.dp)
 
-  LiquidGlassSurface(
+  FrozenSurface(
     modifier = Modifier
       .offset { IntOffset(offsetX.roundToInt(), 0) }
+      .clip(miniPlayerShape)
       .pointerInput(Unit) {
         detectHorizontalDragGestures(
           onDragEnd = {
@@ -290,9 +292,9 @@ private fun MiniPlayerContent(
         )
       }
       .clickable { launchPlayer() },
-    shape = RoundedCornerShape(20.dp),
-    style = LiquidGlassStyle.MiniPlayer,
-    glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.30f),
+    shape = miniPlayerShape,
+    style = FrozenSurfaceStyle.MiniPlayer,
+    tintColor = MaterialTheme.colorScheme.primary,
     fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
   ) {
     val progressColor = MaterialTheme.colorScheme.primary

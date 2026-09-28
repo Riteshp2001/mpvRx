@@ -91,9 +91,9 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_appearance_liquid_glass_title,
-          summaryRes = R.string.pref_appearance_liquid_glass_summary,
-          keywords = listOf("liquid glass", "glass", "blur", "translucent", "mini player", "navigation"),
+          titleRes = R.string.pref_appearance_frozen_surfaces_title,
+          summaryRes = R.string.pref_appearance_frozen_surfaces_summary,
+          keywords = listOf("frozen", "frosted", "blur", "tint", "mini player", "navigation"),
           category = "Appearance",
           screen = AppearancePreferencesScreen,
         ),

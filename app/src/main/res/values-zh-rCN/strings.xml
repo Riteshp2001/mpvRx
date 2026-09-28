@@ -16,9 +16,8 @@
   <string name="pref_appearance_darkmode_dark">深色</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED 纯黑模式</string>
   <string name="pref_appearance_amoled_mode_summary">为深色主题使用纯黑背景</string>
-  <string name="pref_appearance_liquid_glass_title">液态玻璃</string>
-  <string name="pref_appearance_liquid_glass_summary">为迷你播放器和导航使用半透明折射效果</string>
-  <string name="pref_appearance_liquid_glass_summary_unavailable">仅适用于 Android 12 及更高版本</string>
+  <string name="pref_appearance_frozen_surfaces_title">冰霜表面</string>
+  <string name="pref_appearance_frozen_surfaces_summary">使用主题色冰霜效果模糊迷你播放器和导航栏后的内容</string>
   <string name="pref_appearance_system_font_title">使用系统字体</string>
   <string name="pref_appearance_system_font_summary">在整个 mpvRx 中使用 Android 系统字体，而不是 Google Sans Flex</string>
   <string name="pref_appearance_ui_scale_title">应用界面缩放</string>

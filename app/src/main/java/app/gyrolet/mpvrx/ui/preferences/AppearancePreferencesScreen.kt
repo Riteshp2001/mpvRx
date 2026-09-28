@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.preferences
 
 import android.app.Activity
-import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
@@ -100,7 +99,6 @@ object AppearancePreferencesScreen : Screen {
     val scope = rememberCoroutineScope()
     val systemDarkTheme = isSystemInDarkTheme()
     val themeTransition = LocalThemeTransitionState.current
-    val liquidGlassSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     val darkMode by preferences.darkMode.collectAsState()
     val appTheme by preferences.appTheme.collectAsState()
@@ -301,7 +299,7 @@ object AppearancePreferencesScreen : Screen {
                   PreferenceDivider()
 
                   val amoledMode by preferences.amoledMode.collectAsState()
-                  val liquidGlassEnabled by preferences.liquidGlassEnabled.collectAsState()
+                  val frozenSurfacesEnabled by preferences.frozenSurfacesEnabled.collectAsState()
                   ThemePicker(
                     currentTheme = appTheme,
                     customThemes = pickerThemes,
@@ -379,26 +377,18 @@ object AppearancePreferencesScreen : Screen {
                   PreferenceDivider()
 
                   SwitchPreference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_liquid_glass_title),
-                    value = liquidGlassEnabled && liquidGlassSupported,
-                    onValueChange = preferences.liquidGlassEnabled::set,
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_frozen_surfaces_title),
+                    value = frozenSurfacesEnabled,
+                    onValueChange = preferences.frozenSurfacesEnabled::set,
                     title = {
-                      Text(text = stringResource(R.string.pref_appearance_liquid_glass_title))
+                      Text(text = stringResource(R.string.pref_appearance_frozen_surfaces_title))
                     },
                     summary = {
                       Text(
-                        text =
-                          stringResource(
-                            if (liquidGlassSupported) {
-                              R.string.pref_appearance_liquid_glass_summary
-                            } else {
-                              R.string.pref_appearance_liquid_glass_summary_unavailable
-                            },
-                          ),
+                        text = stringResource(R.string.pref_appearance_frozen_surfaces_summary),
                         color = MaterialTheme.colorScheme.outline,
                       )
                     },
-                    enabled = liquidGlassSupported,
                   )
 
                   PreferenceDivider()

@@ -16,9 +16,8 @@
   <string name="pref_appearance_darkmode_dark">Dunkel</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED-Schwarzmodus</string>
   <string name="pref_appearance_amoled_mode_summary">Für dunkle Designs einen vollständig schwarzen Hintergrund verwenden</string>
-  <string name="pref_appearance_liquid_glass_title">Flüssigglas</string>
-  <string name="pref_appearance_liquid_glass_summary">Transluzente, lichtbrechende Oberflächen für Miniplayer und Navigation verwenden</string>
-  <string name="pref_appearance_liquid_glass_summary_unavailable">Verfügbar ab Android 12</string>
+  <string name="pref_appearance_frozen_surfaces_title">Gefrorene Oberflächen</string>
+  <string name="pref_appearance_frozen_surfaces_summary">Inhalte hinter Miniplayer und Navigation mit einer thematisch getönten Frostoptik weichzeichnen</string>
   <string name="pref_appearance_system_font_title">Systemschrift verwenden</string>
   <string name="pref_appearance_system_font_summary">In mpvRx die Android-Systemschrift anstelle von Google Sans Flex verwenden</string>
   <string name="pref_appearance_ui_scale_title">App-Oberflächenskalierung</string>

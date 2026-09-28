@@ -91,11 +91,8 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.presentation.components.ProvideLiquidGlassBackdrop
-import app.gyrolet.mpvrx.presentation.components.LiquidGlassStyle
-import app.gyrolet.mpvrx.presentation.components.LiquidGlassSurface
-import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
-import app.gyrolet.mpvrx.presentation.components.rememberLiquidGlassBackdrop
+import app.gyrolet.mpvrx.presentation.components.FrozenSurface
+import app.gyrolet.mpvrx.presentation.components.FrozenSurfaceStyle
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.browser.folderlist.FolderListScreen
@@ -185,7 +182,6 @@ object MainScreen : Screen {
     val showNetworkTab by appearancePreferences.showNetworkTab.collectAsState()
     val showJellyfinTab by appearancePreferences.showJellyfinTab.collectAsState()
     val showSnapshotTab by appearancePreferences.showSnapshotTab.collectAsState()
-    val liquidGlassEnabled by appearancePreferences.liquidGlassEnabled.collectAsState()
     val hideNavigationBar = NavigationBarState.shouldHideNavigationBar
     val isPermissionDenied = NavigationBarState.isPermissionDenied
     val isDualPaneFolderSelected = NavigationBarState.isDualPaneFolderSelected
@@ -346,8 +342,6 @@ object MainScreen : Screen {
             context.applicationContext as android.app.Application,
           ),
       )
-    val navigationBackdrop = rememberLiquidGlassBackdrop()
-
     // Scaffold with bottom navigation bar
     Scaffold(
       modifier = Modifier.fillMaxSize(),
@@ -356,10 +350,7 @@ object MainScreen : Screen {
       Box(modifier = Modifier.fillMaxSize()) {
         if (visibleTabs.isEmpty()) {
           Box(
-            modifier =
-              Modifier
-                .fillMaxSize()
-                .captureLiquidGlassBackdrop(navigationBackdrop, liquidGlassEnabled),
+            modifier = Modifier.fillMaxSize(),
           ) {
             CompositionLocalProvider(
               LocalNavigationBarHeight provides contentBottomPadding,
@@ -378,8 +369,7 @@ object MainScreen : Screen {
               modifier =
                 Modifier
                   .fillMaxSize()
-                  .clipToBounds()
-                  .captureLiquidGlassBackdrop(navigationBackdrop, liquidGlassEnabled),
+                  .clipToBounds(),
               key = { page -> visibleTabs[page].name },
               beyondViewportPageCount = 1,
               userScrollEnabled = !isPermissionDenied,
@@ -583,11 +573,7 @@ object MainScreen : Screen {
         }
 
         // Animated bottom navigation bar with slide animations
-        ProvideLiquidGlassBackdrop(
-          backdrop = navigationBackdrop,
-          enabled = liquidGlassEnabled,
-        ) {
-          AnimatedVisibility(
+        AnimatedVisibility(
             visible = !hideNavigationBar && navigationTabs.isNotEmpty() && !isPermissionDenied,
             enter = if (navStyle == NavigationAnimStyle.None) EnterTransition.None else
               slideInVertically(
@@ -645,7 +631,6 @@ object MainScreen : Screen {
                   },
               )
             }
-          }
         }
       }
     }
@@ -706,11 +691,11 @@ internal fun ExpressivePillNavigationBar(
   val indicatorLeft = androidx.compose.ui.unit.lerp(tabOffsets[pageFloor], tabOffsets[pageCeil], pageFraction)
   val indicatorWidth = androidx.compose.ui.unit.lerp(tabWidths[pageFloor], tabWidths[pageCeil], pageFraction)
 
-  LiquidGlassSurface(
+  FrozenSurface(
     modifier = modifier,
     shape = CircleShape,
-    style = LiquidGlassStyle.Navigation,
-    glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.32f),
+    style = FrozenSurfaceStyle.Navigation,
+    tintColor = MaterialTheme.colorScheme.primary,
     fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
   ) {
     Box(

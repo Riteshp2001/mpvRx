@@ -16,9 +16,8 @@
   <string name="pref_appearance_darkmode_dark">डार्क</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED ब्लैक मोड</string>
   <string name="pref_appearance_amoled_mode_summary">डार्क थीम के लिए शुद्ध काला बैकग्राउंड इस्तेमाल करें</string>
-  <string name="pref_appearance_liquid_glass_title">लिक्विड ग्लास</string>
-  <string name="pref_appearance_liquid_glass_summary">मिनी प्लेयर और नेविगेशन के लिए पारदर्शी, अपवर्तक सतहों का उपयोग करें</string>
-  <string name="pref_appearance_liquid_glass_summary_unavailable">Android 12 और उसके बाद के संस्करणों पर उपलब्ध</string>
+  <string name="pref_appearance_frozen_surfaces_title">फ्रॉस्टेड सतहें</string>
+  <string name="pref_appearance_frozen_surfaces_summary">थीम के रंग वाली फ्रॉस्टेड टिंट से मिनी प्लेयर और नेविगेशन के पीछे की सामग्री धुंधली करें</string>
   <string name="pref_appearance_system_font_title">सिस्टम फॉन्ट इस्तेमाल करें</string>
   <string name="pref_appearance_system_font_summary">Google Sans Flex की जगह mpvRx में Android सिस्टम टाइपफेस इस्तेमाल करें</string>
   <string name="pref_appearance_ui_scale_title">ऐप UI स्केल</string>

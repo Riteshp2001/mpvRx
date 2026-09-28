@@ -316,7 +316,7 @@ dependencies {
   implementation(libs.reorderable)
   implementation(libs.androidx.biometric)
   implementation(libs.telephoto.zoomable)
-  implementation(libs.backdrop)
+  implementation(libs.haze)
 
   // libtorrent4j's Java API plus the native library for every enabled APK ABI.
   implementation(libs.libtorrent4j)
