@@ -14,14 +14,22 @@
         android:scaleType="fitXY" />
 
     <ImageView
-        android:id="@+id/media_widget_placeholder"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
+        android:id="@+id/media_widget_placeholder_halo"
+        android:layout_width="104dp"
+        android:layout_height="104dp"
         android:layout_gravity="center"
         android:layout_marginBottom="32dp"
         android:contentDescription="@null"
-        android:src="@drawable/media_widget_music"
-        android:tint="@color/media_widget_secondary_light" />
+        android:src="@drawable/media_widget_placeholder_halo" />
+
+    <ImageView
+        android:id="@+id/media_widget_placeholder"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="32dp"
+        android:contentDescription="@null"
+        android:src="@mipmap/ic_launcher" />
 
     <ImageView
         android:id="@+id/media_widget_scrim"

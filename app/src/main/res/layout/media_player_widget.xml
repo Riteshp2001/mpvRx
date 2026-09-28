@@ -14,14 +14,21 @@
         android:scaleType="fitXY" />
 
     <ImageView
+        android:id="@+id/media_widget_placeholder_halo"
+        android:layout_width="76dp"
+        android:layout_height="76dp"
+        android:layout_gravity="center_horizontal|top"
+        android:contentDescription="@null"
+        android:src="@drawable/media_widget_placeholder_halo" />
+
+    <ImageView
         android:id="@+id/media_widget_placeholder"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="center_horizontal|top"
         android:layout_marginTop="14dp"
         android:contentDescription="@null"
-        android:src="@drawable/media_widget_music"
-        android:tint="@color/media_widget_secondary_light" />
+        android:src="@mipmap/ic_launcher" />
 
     <ImageView
         android:id="@+id/media_widget_scrim"

@@ -19,19 +19,44 @@ jobs:
     timeout-minutes: 5
     outputs:
       version_tag: ${{ steps.tag.outputs.version_tag }}
+      release_version_name: ${{ steps.tag.outputs.release_version_name }}
+      release_version_code: ${{ steps.tag.outputs.release_version_code }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
       - name: Resolve release tag
         id: tag
         shell: bash
         run: |
           set -euo pipefail
           version_tag="${GITHUB_REF#refs/tags/}"
-          if [[ ! "$version_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]; then
-            echo "Invalid tagged preview version: $version_tag"
+          release_version="$(./gradlew -q printReleaseVersion --no-daemon | tail -n 1)"
+          read -r release_version_name release_version_code <<< "$release_version"
+          if [[ ! "$release_version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$release_version_code" =~ ^[0-9]+$ ]]; then
+            echo "Invalid release version from build.gradle.kts: $release_version"
+            exit 1
+          fi
+
+          preview_number="${version_tag#v${release_version_name}-preview.}"
+          if [[ ! "$preview_number" =~ ^[0-9]+$ || "$version_tag" != "v${release_version_name}-preview.${preview_number}" ]]; then
+            echo "Pre-release tag $version_tag does not match build.gradle.kts version v${release_version_name}-preview.N"
             exit 1
           fi
           echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
+          echo "release_version_name=$release_version_name" >> "$GITHUB_OUTPUT"
+          echo "release_version_code=$release_version_code" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.distribution.name }} preview APKs
@@ -62,6 +87,7 @@ jobs:
             asset: no-vulkan
     env:
       VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
+      RELEASE_VERSION_NAME: ${{ needs.prepare.outputs.release_version_name }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
       APK_DIR: ${{ matrix.distribution.dir }}
       APK_ABIS: ${{ matrix.distribution.abis }}
@@ -87,6 +113,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          preview_version_suffix="${VERSION_TAG#v${RELEASE_VERSION_NAME}}"
           tasks=("assemble${GRADLE_FLAVOR}Preview")
           if [[ "$APK_DIR" == "standard" ]]; then
             tasks+=(":runtimes:online:assembleRelease" ":runtimes:torrent:assembleRelease" ":runtimes:visual:assembleRelease")
@@ -95,6 +122,7 @@ jobs:
             -PruntimePackVersionCode="$(date +%s)" \
             -PruntimePackVersionName="$VERSION_TAG" \
             -PruntimePackBaseUrl="https://github.com/Riteshp2001/mpvRx/releases/download/$VERSION_TAG" \
+            -PpreviewVersionNameSuffix="$preview_version_suffix" \
             --stacktrace --no-daemon --max-workers=2
 
       - name: Sign and stage preview APKs
@@ -287,5 +315,8 @@ jobs:
             preview/mpvRx-preview-x86_64-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-fongmi-${{ env.VERSION_TAG }}.apk
             preview/mpvRx-preview-no-vulkan-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-online-runtime-*.apk
+            preview/mpvRx-torrent-runtime-*.apk
+            preview/mpvRx-visual-runtime.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

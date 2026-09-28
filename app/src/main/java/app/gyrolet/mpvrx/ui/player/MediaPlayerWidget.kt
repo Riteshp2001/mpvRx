@@ -218,19 +218,15 @@ class MediaPlayerWidget : AppWidgetProvider() {
           "setBackgroundResource",
           if (palette.dark) R.drawable.media_widget_scrim_dark else R.drawable.media_widget_scrim_light,
         )
-        views.setImageViewResource(
-          R.id.media_widget_placeholder,
-          when {
-            item == null -> R.drawable.ic_launcher_monochrome
-            item.isDefinitelyAudioOnly() -> R.drawable.media_widget_music
-            else -> R.drawable.media_widget_video
-          },
-        )
-        views.setInt(R.id.media_widget_placeholder, "setColorFilter", palette.accent)
+        views.setImageViewResource(R.id.media_widget_placeholder, R.mipmap.ic_launcher)
+        views.setInt(R.id.media_widget_placeholder_halo, "setColorFilter", palette.accent)
+        views.setInt(R.id.media_widget_placeholder_halo, "setImageAlpha", if (item == null) 220 else 150)
         val artwork = item?.artworkUri?.let { artworkCache.get(ArtworkKey(it, size)) }
+        val showPlaceholder = artwork == null
         views.setImageViewBitmap(R.id.media_widget_artwork, artwork ?: themeBackgrounds.getValue(size))
         views.setViewVisibility(R.id.media_widget_artwork, View.VISIBLE)
-        views.setViewVisibility(R.id.media_widget_placeholder, if (artwork == null) View.VISIBLE else View.GONE)
+        views.setViewVisibility(R.id.media_widget_placeholder_halo, if (showPlaceholder) View.VISIBLE else View.GONE)
+        views.setViewVisibility(R.id.media_widget_placeholder, if (showPlaceholder) View.VISIBLE else View.GONE)
 
         listOf(
           R.id.media_widget_previous to MediaPlaybackService.ACTION_NOTIFICATION_PREVIOUS,

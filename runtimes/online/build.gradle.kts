@@ -4,8 +4,10 @@ plugins {
 
 val targetAbiProp = project.findProperty("targetAbi")?.toString()
 val enableX86 = project.findProperty("enableX86") != "false"
-val runtimePackVersionCode = project.findProperty("runtimePackVersionCode")?.toString()?.toIntOrNull() ?: 1
-val runtimePackVersionName = project.findProperty("runtimePackVersionName")?.toString() ?: "dev"
+val releaseVersionCode = rootProject.extra["releaseVersionCode"] as Int
+val releaseVersionName = rootProject.extra["releaseVersionName"] as String
+val runtimePackVersionCode = project.findProperty("runtimePackVersionCode")?.toString()?.toIntOrNull() ?: releaseVersionCode
+val runtimePackVersionName = project.findProperty("runtimePackVersionName")?.toString() ?: "v$releaseVersionName"
 val activeAbis =
   targetAbiProp
     ?.takeIf(String::isNotBlank)

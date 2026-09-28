@@ -20,19 +20,22 @@ val activeAbis =
     listOf("arm64-v8a", "armeabi-v7a") + x86Abis
   }
 val universalOnlyDistributions = setOf("noVulkan", "fongmi")
-val releaseVersionName = "2.6.0"
+val releaseVersionName = rootProject.extra["releaseVersionName"] as String
 val runtimePackBaseUrl =
   project.findProperty("runtimePackBaseUrl")?.toString()
     ?: "https://github.com/Riteshp2001/mpvRx/releases/download/v$releaseVersionName"
 val runtimePackVersionName =
   project.findProperty("runtimePackVersionName")?.toString()
     ?: "v$releaseVersionName"
-val releaseVersionCode = 261
+val releaseVersionCode = rootProject.extra["releaseVersionCode"] as Int
 val versionCodeBandSize = 10_000
 val stableVersionCode = releaseVersionCode * versionCodeBandSize + (versionCodeBandSize - 1)
 val previewVersionCode =
-  (releaseVersionCode + 1) * versionCodeBandSize +
+  releaseVersionCode * versionCodeBandSize +
     (getCommitCount().toIntOrNull() ?: 1).coerceIn(1, versionCodeBandSize - 2)
+val previewVersionNameSuffix =
+  project.findProperty("previewVersionNameSuffix")?.toString()
+    ?: "-preview.r${getCommitCount()}"
 
 plugins {
   alias(libs.plugins.android.application)
@@ -52,8 +55,8 @@ android {
     applicationId = "app.gyrolet.mpvrx"
     minSdk = 26
     targetSdk = 36
-    // Stable occupies the top of its version band. Preview uses the next band's commit-count
-    // offset, so Stable -> Preview -> newer Preview -> next Stable is always an Android upgrade.
+    // Preview builds use commit-count offsets within the current release band. Stable occupies
+    // the top, so Preview -> newer Preview -> Stable is always an Android upgrade.
     versionCode = stableVersionCode
     versionName = releaseVersionName
 
@@ -142,10 +145,9 @@ android {
     create("preview") {
       initWith(getByName("release"))
       signingConfig = signingConfigs.getByName("debug")
-      applicationIdSuffix = ".preview"
       resValue("string", "app_name", "mpvRx-Preview")
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "true")
-      versionNameSuffix = "-beta.r${getCommitCount()}"
+      versionNameSuffix = previewVersionNameSuffix
     }
 
     named("debug") {

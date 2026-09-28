@@ -71,6 +71,19 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Read release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_version="$(./gradlew -q printReleaseVersion --no-daemon | tail -n 1)"
+          read -r app_version_name app_version_code <<< "$release_version"
+          if [[ ! "$app_version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$app_version_code" =~ ^[0-9]+$ ]]; then
+            echo "Invalid release version from build.gradle.kts: $release_version"
+            exit 1
+          fi
+          echo "APP_VERSION_NAME=$app_version_name" >> "$GITHUB_ENV"
+          echo "APP_VERSION_CODE=$app_version_code" >> "$GITHUB_ENV"
+
       - name: Build release APKs
         shell: bash
         run: |
@@ -81,7 +94,7 @@ jobs:
           fi
           ./gradlew "${tasks[@]}" \
             -PruntimePackVersionCode="$(date +%s)" \
-            -PruntimePackVersionName="ci-$SHORT_SHA" \
+            -PruntimePackVersionName="v${APP_VERSION_NAME}-ci.${SHORT_SHA}" \
             -PruntimePackBaseUrl="https://example.invalid/mpvrx-runtime-packs" \
             --stacktrace --no-daemon --max-workers=2
 

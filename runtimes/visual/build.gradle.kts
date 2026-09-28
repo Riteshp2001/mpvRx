@@ -2,8 +2,10 @@ plugins {
   alias(libs.plugins.android.application)
 }
 
-val runtimePackVersionCode = project.findProperty("runtimePackVersionCode")?.toString()?.toIntOrNull() ?: 1
-val runtimePackVersionName = project.findProperty("runtimePackVersionName")?.toString() ?: "dev"
+val releaseVersionCode = rootProject.extra["releaseVersionCode"] as Int
+val releaseVersionName = rootProject.extra["releaseVersionName"] as String
+val runtimePackVersionCode = project.findProperty("runtimePackVersionCode")?.toString()?.toIntOrNull() ?: releaseVersionCode
+val runtimePackVersionName = project.findProperty("runtimePackVersionName")?.toString() ?: "v$releaseVersionName"
 
 android {
   namespace = "app.gyrolet.mpvrx.runtime.visual"

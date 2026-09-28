@@ -28,6 +28,8 @@ jobs:
       commit_count: ${{ steps.metadata.outputs.commit_count }}
       source_sha: ${{ steps.metadata.outputs.source_sha }}
       published_at: ${{ steps.metadata.outputs.published_at }}
+      release_version_name: ${{ steps.metadata.outputs.release_version_name }}
+      release_version_code: ${{ steps.metadata.outputs.release_version_code }}
 
     steps:
       - name: Checkout preview source
@@ -98,16 +100,36 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Preview decision: $should_build ($reason)"
 
+      - name: Set up JDK 17
+        if: steps.activity.outputs.should_build == 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        if: steps.activity.outputs.should_build == 'true'
+        run: chmod +x ./gradlew
+
       - name: Set build metadata
         id: metadata
         if: steps.activity.outputs.should_build == 'true'
         shell: bash
         run: |
           set -euo pipefail
+          release_version="$(./gradlew -q printReleaseVersion --no-daemon | tail -n 1)"
+          read -r release_version_name release_version_code <<< "$release_version"
+          if [[ ! "$release_version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$release_version_code" =~ ^[0-9]+$ ]]; then
+            echo "Invalid release version from build.gradle.kts: $release_version"
+            exit 1
+          fi
           {
             echo "commit_count=$(git rev-list --count HEAD)"
             echo "source_sha=$(git rev-parse HEAD)"
             echo "published_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "release_version_name=$release_version_name"
+            echo "release_version_code=$release_version_code"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -140,6 +162,7 @@ jobs:
             asset: no-vulkan
     env:
       COMMIT_COUNT: ${{ needs.check.outputs.commit_count }}
+      RELEASE_VERSION_NAME: ${{ needs.check.outputs.release_version_name }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
       APK_DIR: ${{ matrix.distribution.dir }}
       APK_ABIS: ${{ matrix.distribution.abis }}
@@ -172,7 +195,7 @@ jobs:
           fi
           ./gradlew "${tasks[@]}" \
             -PruntimePackVersionCode="$(date +%s)" \
-            -PruntimePackVersionName="preview-r$COMMIT_COUNT" \
+            -PruntimePackVersionName="v${RELEASE_VERSION_NAME}-preview.r${COMMIT_COUNT}" \
             -PruntimePackBaseUrl="https://riteshp2001.github.io/mpvRx/downloads" \
             --stacktrace --no-daemon --max-workers=2
 
@@ -237,7 +260,7 @@ jobs:
           for abi in $APK_ABIS; do
             base="app-${APK_DIR}-${abi}-preview"
             sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} preview"
-            cp "$out_dir/$base.apk" "downloads/mpvRx-preview-r${COMMIT_COUNT}-${ASSET_NAME:-$abi}.apk"
+            cp "$out_dir/$base.apk" "downloads/mpvRx-v${RELEASE_VERSION_NAME}-preview.r${COMMIT_COUNT}-${ASSET_NAME:-$abi}.apk"
           done
 
           if [[ "$APK_DIR" == "standard" ]]; then
@@ -284,6 +307,8 @@ jobs:
     timeout-minutes: 20
     env:
       COMMIT_COUNT: ${{ needs.check.outputs.commit_count }}
+      RELEASE_VERSION_NAME: ${{ needs.check.outputs.release_version_name }}
+      RELEASE_VERSION_CODE: ${{ needs.check.outputs.release_version_code }}
       SOURCE_SHA: ${{ needs.check.outputs.source_sha }}
       PUBLISHED_AT: ${{ needs.check.outputs.published_at }}
       SOURCE_FINGERPRINT: ${{ needs.check.outputs.source_fingerprint }}
@@ -328,6 +353,8 @@ jobs:
           downloads_dir = site_dir / "downloads"
           base_url = os.environ["SITE_BASE_URL"].rstrip("/")
           commit_count = int(os.environ["COMMIT_COUNT"])
+          release_version_name = os.environ["RELEASE_VERSION_NAME"]
+          release_version_code = int(os.environ["RELEASE_VERSION_CODE"])
           source_sha = os.environ["SOURCE_SHA"]
           published_at = os.environ["PUBLISHED_AT"]
           run_id = int(os.environ["SOURCE_RUN_ID"])
@@ -350,7 +377,7 @@ jobs:
           assets = []
 
           for public_name in public_names:
-              name = f"mpvRx-preview-r{commit_count}-{public_name}.apk"
+              name = f"mpvRx-v{release_version_name}-preview.r{commit_count}-{public_name}.apk"
               apk = downloads_dir / name
               if not apk.is_file():
                   raise SystemExit(f"Missing signed APK for {public_name}: {apk}")
@@ -383,8 +410,8 @@ jobs:
                 })
 
           manifest = {
-              "tag_name": f"preview-r{commit_count}",
-              "name": f"mpvRx Preview r{commit_count}",
+              "tag_name": f"v{release_version_name}-preview.r{commit_count}",
+              "name": f"mpvRx {release_version_name} Preview r{commit_count}",
               "body": (
                   f"{publication_mode.title()} preview from workflow run #{run_number}. "
                   f"Source commit: {source_sha[:7]}."
@@ -392,6 +419,8 @@ jobs:
               "published_at": published_at,
               "assets": assets,
               "channel": "preview",
+              "version_name": release_version_name,
+              "version_code": release_version_code,
               "commit_sha": source_sha,
               "commit_count": commit_count,
               "source_fingerprint": source_fingerprint,
@@ -418,7 +447,7 @@ jobs:
       - name: Upload preview manifest as Actions artifact
         uses: actions/upload-artifact@v7
         with:
-          name: mpvRx-preview-r${{ needs.check.outputs.commit_count }}-manifest
+          name: mpvRx-v${{ needs.check.outputs.release_version_name }}-preview.r${{ needs.check.outputs.commit_count }}-manifest
           path: site/latest.json
           if-no-files-found: error
           retention-days: 14
