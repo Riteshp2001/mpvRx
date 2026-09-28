@@ -218,9 +218,11 @@ class MediaPlayerWidget : AppWidgetProvider() {
           "setBackgroundResource",
           if (palette.dark) R.drawable.media_widget_scrim_dark else R.drawable.media_widget_scrim_light,
         )
-        views.setImageViewResource(R.id.media_widget_placeholder, R.mipmap.ic_launcher)
+        views.setImageViewResource(R.id.media_widget_placeholder_halo, haloDrawable(palette.dark, size.wide))
         views.setInt(R.id.media_widget_placeholder_halo, "setColorFilter", palette.accent)
         views.setInt(R.id.media_widget_placeholder_halo, "setImageAlpha", if (item == null) 220 else 150)
+        views.setImageViewResource(R.id.media_widget_placeholder, R.drawable.media_widget_music_note)
+        views.setInt(R.id.media_widget_placeholder, "setColorFilter", palette.foreground)
         val artwork = item?.artworkUri?.let { artworkCache.get(ArtworkKey(it, size)) }
         val showPlaceholder = artwork == null
         views.setImageViewBitmap(R.id.media_widget_artwork, artwork ?: themeBackgrounds.getValue(size))
@@ -348,6 +350,13 @@ class MediaPlayerWidget : AppWidgetProvider() {
         secondary = colors.onSurfaceVariant.toArgb(),
         accent = colors.primary.toArgb(),
       )
+    }
+
+    private fun haloDrawable(dark: Boolean, wide: Boolean): Int = when {
+      wide && dark -> R.drawable.media_widget_placeholder_halo_wide_dark
+      wide -> R.drawable.media_widget_placeholder_halo_wide_light
+      dark -> R.drawable.media_widget_placeholder_halo_dark
+      else -> R.drawable.media_widget_placeholder_halo_light
     }
 
     private fun measure(context: Context, widthDp: Int, heightDp: Int): WidgetSize {

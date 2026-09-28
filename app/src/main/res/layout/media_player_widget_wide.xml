@@ -15,12 +15,12 @@
 
     <ImageView
         android:id="@+id/media_widget_placeholder_halo"
-        android:layout_width="104dp"
-        android:layout_height="104dp"
+        android:layout_width="88dp"
+        android:layout_height="88dp"
         android:layout_gravity="center"
         android:layout_marginBottom="32dp"
         android:contentDescription="@null"
-        android:src="@drawable/media_widget_placeholder_halo" />
+        android:src="@drawable/media_widget_placeholder_halo_wide_light" />
 
     <ImageView
         android:id="@+id/media_widget_placeholder"
@@ -29,7 +29,8 @@
         android:layout_gravity="center"
         android:layout_marginBottom="32dp"
         android:contentDescription="@null"
-        android:src="@mipmap/ic_launcher" />
+        android:src="@drawable/media_widget_music_note"
+        android:tint="@color/media_widget_foreground_light" />
 
     <ImageView
         android:id="@+id/media_widget_scrim"

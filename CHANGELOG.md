@@ -2,7 +2,7 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
-## Hellyeah !!! Version -> 2.7.0 - Snapshots, Rich Lyrics, Smarter Browsing, and Optional Runtimes
+## 2.7.0 - Snapshots, Rich Lyrics, Smarter Browsing, and Optional Runtimes
 
 ### Highlights
 
@@ -11,7 +11,7 @@ These notes are written in plain English and focus on what changed for real use.
 - Regular playlists can mix local and network media, while local M3U and M3U8 playlists can be discovered and refreshed automatically across supported storage locations.
 - Lyrics gained sixteen online providers, ISRC-aware matching, provider search, stronger synchronized-result selection, and a compact active-line presentation below album art.
 - Right-to-left lyrics, optional forced left-to-right subtitle rendering, and independently adjustable secondary subtitles improve multilingual playback.
-- The responsive home-screen widget provides artwork, metadata, and transport controls; idle or missing-art states now show the centered mpvRx icon with a theme-colored circular halo.
+- The responsive home-screen widget provides artwork, metadata, and transport controls; idle or missing-art states now show the centered music note logo inside a theme-colored circular halo that switches with the widget's light or dark theme.
 - Wallpaper presets, a realistic home preview, wallpaper-derived theme colors, app-wide UI scaling, and Liquid Glass surfaces expand appearance customization.
 - Player behavior is more predictable across rotation, Surface replacement, PiP, background playback, seeking, Android TV, and compact or landscape layouts.
 - Python/QuickJS online tools, torrent libraries, Anime4K, and HDR shaders now ship as secure optional runtime packs, reducing the base app payload.
