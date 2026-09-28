@@ -105,6 +105,8 @@ import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
+import app.gyrolet.mpvrx.ui.browser.components.ZipImportProgress
+import app.gyrolet.mpvrx.ui.browser.components.ZipImportProgressDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileOperationProgressDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileSystemSortDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
@@ -129,8 +131,11 @@ import app.gyrolet.mpvrx.utils.media.OpenDocumentTreeContract
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -240,6 +245,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val operationType = remember { mutableStateOf<CopyPasteOps.OperationType?>(null) }
   val progressDialogOpen = rememberSaveable { mutableStateOf(false) }
   val operationProgress by CopyPasteOps.operationProgress.collectAsState()
+  val zipImportState = remember { MutableStateFlow<ZipImportProgress?>(null) }
+  val zipImport by zipImportState.collectAsState()
+  var zipImportJob by remember { mutableStateOf<Job?>(null) }
 
   // Bottom bar visibility state
   var showFloatingBottomBar by remember { mutableStateOf(false) }
@@ -366,33 +374,72 @@ fun FileSystemBrowserScreen(path: String? = null) {
       }
     }
 
-  // ZIP picker
+  // ZIP picker — registers the archive read-only in place; nothing is copied or extracted.
   val zipPicker =
     rememberLauncherForActivityResult(
       contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
-      uri?.let {
-        runCatching {
-          context.contentResolver.takePersistableUriPermission(
-            it,
-            Intent.FLAG_GRANT_READ_URI_PERMISSION,
-          )
-        }
+      uri ?: return@rememberLauncherForActivityResult
+      runCatching {
+        context.contentResolver.takePersistableUriPermission(
+          uri,
+          Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        )
+      }
+      val includeAudio = browserPreferences.includeAudioBrowser.get()
+      zipImportJob?.cancel()
+      zipImportJob =
         coroutineScope.launch {
-          val resolvedPath = ZipArchiveMedia.resolveZipPath(context, it)
-          if (resolvedPath != null && File(resolvedPath).canRead()) {
-            val archiveFile = File(resolvedPath)
-            val bucketId = ZipArchiveMedia.browserPath(archiveFile.absolutePath)
-            backstack.navigateTo(FileSystemDirectoryScreen(bucketId))
-          } else {
+          zipImportState.value = ZipImportProgress(label = "Adding archive", progress = -1f)
+          val resolvedPath =
+            try {
+              ZipArchiveMedia.resolveZipPath(context, uri)
+            } catch (cancelled: CancellationException) {
+              throw cancelled
+            } catch (_: Exception) {
+              null
+            }
+          if (resolvedPath == null) {
+            zipImportState.value = null
             android.widget.Toast.makeText(
               context,
               context.getString(app.gyrolet.mpvrx.R.string.ui_cannot_open_zip),
               android.widget.Toast.LENGTH_SHORT,
             ).show()
+            return@launch
           }
+          val archiveFile = File(resolvedPath)
+          val folder =
+            try {
+              ZipArchiveMedia.registerArchive(resolvedPath, includeAudio) { scanned, total ->
+                zipImportState.value =
+                  ZipImportProgress(
+                    label = "Scanning archive",
+                    detail = archiveFile.name,
+                    progress = if (total > 0) scanned.toFloat() / total.toFloat() else -1f,
+                  )
+              }
+            } catch (cancelled: CancellationException) {
+              throw cancelled
+            } catch (_: Exception) {
+              null
+            }
+          zipImportState.value = null
+          if (folder == null) {
+            android.widget.Toast.makeText(
+              context,
+              context.getString(app.gyrolet.mpvrx.R.string.ui_cannot_open_zip),
+              android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            return@launch
+          }
+          // Persist the absolute path so the archive folder survives restarts.
+          browserPreferences.archiveFolders.set(
+            browserPreferences.archiveFolders.get() + archiveFile.absolutePath,
+          )
+          viewModel.refresh()
+          backstack.navigateTo(FileSystemDirectoryScreen(folder.bucketId))
         }
-      }
     }
 
   // Tree picker for Play Store-safe copy/move destinations
@@ -1099,6 +1146,18 @@ fun FileSystemBrowserScreen(path: String? = null) {
         }
       },
     )
+
+    zipImport?.let { zipProgress ->
+      ZipImportProgressDialog(
+        isOpen = true,
+        progress = zipProgress,
+        onCancel = {
+          zipImportJob?.cancel()
+          zipImportJob = null
+          zipImportState.value = null
+        },
+      )
+    }
 
     // File Operation Progress Dialog
     if (operationType.value != null) {
