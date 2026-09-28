@@ -19,7 +19,6 @@ import androidx.compose.animation.core.AnimationVector
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.TwoWayConverter
 import androidx.compose.animation.core.VectorizedFiniteAnimationSpec
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -87,8 +86,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import app.gyrolet.mpvrx.preferences.PlayerPreferences
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
@@ -101,7 +98,6 @@ import app.gyrolet.mpvrx.ui.theme.MotionPolicy
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 @SuppressLint("ConfigurationScreenWidthHeight")
@@ -124,10 +120,12 @@ fun PlayerSheet(
   // its rows instead of being trapped behind the (hidden) first-layer player controls. Ported from
   // mpvEx-TV; rememberTvInitialFocusRequester retries across the entrance animation and is TV-gated.
   val sheetInitialFocus = rememberTvInitialFocusRequester()
-  val dimBackground by koinInject<PlayerPreferences>().reduceMotion.collectAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
+  // Reduced motion shortens the sheet's travel. It does not remove the scrim,
+  // which is what makes the sheet modal rather than a panel floating over a
+  // still-live screen.
   val currentSheetSpec by rememberUpdatedState<FiniteAnimationSpec<Float>>(
-    if (reducedMotion) snap() else AppMotion.Spatial.Expressive,
+    if (reducedMotion) AppMotion.ReducedAlpha else AppMotion.Spatial.Expressive,
   )
   val sheetAnimationSpec = remember {
     object : FiniteAnimationSpec<Float> {
@@ -144,7 +142,7 @@ fun PlayerSheet(
     customMaxHeight ?: when {
       isImeVisible -> LocalConfiguration.current.screenHeightDp.dp
       LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT ->
-        LocalConfiguration.current.screenHeightDp.dp * .90f
+        LocalConfiguration.current.screenHeightDp.dp * .85f
       else -> LocalConfiguration.current.screenHeightDp.dp
     }
 
@@ -178,9 +176,7 @@ fun PlayerSheet(
     }
   val swipeProgress = if (height > 0) (-scaledSwipeOffset / height).coerceIn(0f, 1f) else 0f
   val targetAlpha =
-    if (!dimBackground) {
-      0f
-    } else if (isSwipeActive) {
+    if (isSwipeActive) {
       if (anchoredDraggableState.anchors.size > 0) 0.5f * swipeProgress else 0f
     } else if (anchoredDraggableState.targetValue == 0) {
       0.5f
@@ -189,7 +185,7 @@ fun PlayerSheet(
     }
   val alpha by animateFloatAsState(
     targetAlpha,
-    animationSpec = if (reducedMotion) snap() else AppMotion.Effect.Alpha,
+    animationSpec = if (reducedMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha,
     label = "alpha",
   )
 
@@ -337,10 +333,10 @@ fun PlayerSheet(
 
 @Composable
 fun PlayerSheetDragHandle() {
-  Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+  Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), contentAlignment = Alignment.Center) {
     Box(
-      Modifier.size(width = 32.dp, height = 4.dp)
-        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
+      Modifier.size(width = 34.dp, height = 4.dp)
+        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(2.dp)),
     )
   }
 }

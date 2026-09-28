@@ -1,6 +1,8 @@
 <resources>
   <string name="app_name" translatable="false">mpvRx</string>
   <string name="generic_reset">Reset</string>
+  <string name="generic_search">Search</string>
+  <string name="generic_clear">Clear</string>
   <string name="generic_share">Share</string>
   <string name="generic_confirm">Confirm</string>
   <string name="generic_cancel">Cancel</string>
@@ -2123,6 +2125,8 @@
   <string name="lyrics_by">Lyrics by %1$s</string>
   <string name="lyrics_provider_not_found">No lyrics from %1$s for this track</string>
   <string name="lyrics_provider_sheet_title">Lyrics source</string>
+  <string name="lyrics_provider_search_hint">Search sources</string>
+  <string name="lyrics_provider_search_empty">No sources found</string>
   <string name="lyrics_provider_status_current">Currently showing</string>
   <string name="lyrics_provider_status_found">Found</string>
   <string name="lyrics_provider_status_missing">Nothing found</string>

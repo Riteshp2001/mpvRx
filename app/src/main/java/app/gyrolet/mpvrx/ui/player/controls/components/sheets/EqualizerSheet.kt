@@ -58,15 +58,12 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.preferences.PlayerPreferences
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetDragHandle
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetHeader
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
-import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 enum class EqualizerPreset(
@@ -125,7 +122,6 @@ fun EqualizerSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val dimBackground by koinInject<PlayerPreferences>().reduceMotion.collectAsState()
   val initialFocusRequester =
     rememberTvInitialFocusRequester(requestKey = state.isEnabled)
   val sheetState =
@@ -138,7 +134,7 @@ fun EqualizerSheet(
     onDismissRequest = onDismissRequest,
     sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surface,
-    scrimColor = if (dimBackground) BottomSheetDefaults.ScrimColor else Color.Transparent,
+    scrimColor = BottomSheetDefaults.ScrimColor,
     sheetMaxWidth = 640.dp,
     dragHandle = { PlayerSheetDragHandle() },
     modifier = modifier.tvFocusGroup(),
