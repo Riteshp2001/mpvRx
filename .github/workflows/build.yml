@@ -83,19 +83,34 @@ jobs:
           set -euo pipefail
           ./gradlew assembleStandardRelease -PuniversalOnly=true --stacktrace --no-daemon --max-workers=2
 
-      - name: Confirm release APK exists
+      - name: Locate release APK
+        id: release_apk
         shell: bash
         run: |
           set -euo pipefail
-          apk="app/build/outputs/apk/standard/release/app-standard-universal-release.apk"
-          test -s "$apk"
+          out_dir="app/build/outputs/apk/standard/release"
+          test -d "$out_dir"
+
+          echo "Release APKs produced by Gradle:"
+          find "$out_dir" -maxdepth 1 -type f -name '*.apk' -print -exec ls -lh {} \;
+
+          apk="$(find "$out_dir" -maxdepth 1 -type f -name '*.apk' -print | head -n 1)"
+          if [[ -z "$apk" || ! -s "$apk" ]]; then
+            echo "No release APK was produced."
+            exit 1
+          fi
+
           echo "Release APK produced successfully: $apk"
-          ls -lh "$apk"
+          echo "path=$apk" >> "$GITHUB_OUTPUT"
+
       - name: Upload universal release APK
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-universal-release-${{ steps.metadata.outputs.short_sha }}
-          path: app/build/outputs/apk/standard/release/app-standard-universal-release.apk
+          path: ${{ steps.release_apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
