@@ -91,7 +91,20 @@ jobs:
           apk="app/build/outputs/apk/standard/release/app-standard-universal-release.apk"
           test -x "$apksigner"
           test -f "$apk"
-          "$apksigner" verify --verbose --print-certs "$apk"
+          echo "APK details:"
+          ls -lh "$apk"
+          echo "APK signature verification:"
+          set +e
+          verify_output="$("$apksigner" verify --verbose --print-certs "$apk" 2>&1)"
+          verify_status=$?
+          set -e
+          printf '%s\\n' "$verify_output"
+          if [[ "$verify_status" -ne 0 ]]; then
+            echo "apksigner verification failed with exit code $verify_status"
+            echo "Trying keytool certificate inspection for diagnosis:"
+            keytool -printcert -jarfile "$apk" || true
+            exit "$verify_status"
+          fi
 
       - name: Upload universal release APK
         uses: actions/upload-artifact@v7
