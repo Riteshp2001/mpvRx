@@ -184,7 +184,17 @@ jobs:
           fi
 
           test -x "$apksigner"
-          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
+          # GitHub secrets may contain wrapped base64 or Windows line endings. Normalize
+          # only whitespace, then fail with a useful message for a pasted binary/raw value.
+          keystore_base64="$(printf '%s' "$SIGNING_KEYSTORE" | tr -d '[:space:]')"
+          if [[ -z "$keystore_base64" || ! "$keystore_base64" =~ ^[A-Za-z0-9+/]*={0,2}$ || $(( ${#keystore_base64} % 4 )) -ne 0 ]]; then
+            echo "SIGNING_KEYSTORE must be the complete base64 output of the .jks/.keystore file (not the binary file or a file path)."
+            exit 1
+          fi
+          if ! printf '%s' "$keystore_base64" | base64 --decode > release.keystore; then
+            echo "SIGNING_KEYSTORE is not valid base64. Re-encode the keystore and replace the GitHub secret."
+            exit 1
+          fi
           trap 'rm -f release.keystore' EXIT
 
           # AGP only appends "-unsigned" when the variant has no signing config, so accept
