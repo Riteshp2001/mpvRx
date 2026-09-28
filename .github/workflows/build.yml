@@ -51,24 +51,6 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Preflight release signing
-        shell: bash
-        run: |
-          set -euo pipefail
-          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
-          test -x "$apksigner"
-          command -v openssl >/dev/null
-          openssl version
-          rm -f release-key.pem release-key.pk8 release-cert.pem
-          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out release-key.pem
-          openssl pkcs8 -topk8 -nocrypt -in release-key.pem -outform DER -out release-key.pk8
-          openssl req -x509 -new -key release-key.pem -sha256 -days 10000             -out release-cert.pem             -subj "/CN=mpvRx Release/O=mpvRx/C=US"
-          openssl pkey -in release-key.pem -check -noout
-          openssl x509 -in release-cert.pem -noout -subject -dates -fingerprint -sha256
-          test -s release-key.pk8
-          test -s release-cert.pem
-          trap 'rm -f release-key.pem release-key.pk8 release-cert.pem' EXIT
-
       - name: Build universal debug APK
         shell: bash
         run: |
@@ -122,11 +104,21 @@ jobs:
           "$apksigner" verify --verbose --print-certs "$signed"
 
 
+      - name: Verify release certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          apk="app/build/outputs/apk/standard/release/app-standard-universal-release.apk"
+          test -x "$apksigner"
+          test -f "$apk"
+          "$apksigner" verify --verbose --print-certs "$apk"
+
       - name: Upload universal release APK
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-universal-release-${{ steps.metadata.outputs.short_sha }}
-          path: app/build/outputs/apk/standard/release/app-standard-universal-release-signed.apk
+          path: app/build/outputs/apk/standard/release/app-standard-universal-release.apk
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
