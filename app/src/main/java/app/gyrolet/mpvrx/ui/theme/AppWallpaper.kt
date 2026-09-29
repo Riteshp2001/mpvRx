@@ -94,6 +94,7 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
     }
   }
   val wallpaperActive = wallpaper != null
+  val isLightTheme = MaterialTheme.colorScheme.background.luminance() >= 0.5f
   val wallpaperLuminance =
     produceState(initialValue = 0.4f, wallpaper) {
       value = if (wallpaper == null) 0.4f else withContext(Dispatchers.Default) { wallpaper.estimateLuminance() }
