@@ -23,6 +23,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -97,16 +99,7 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
         modifier = Modifier.fillMaxSize(),
       )
       Box(
-        modifier =
-          Modifier
-            .fillMaxSize()
-            .background(
-              if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
-                Color.Black.copy(alpha = 0.18f)
-              } else {
-                Color.White.copy(alpha = 0.30f)
-              },
-            ),
+        modifier = Modifier.fillMaxSize().background(rememberWallpaperScrimColor(bitmap)),
       )
     }
     CompositionLocalProvider(LocalAppWallpaperActive provides wallpaperActive) {
@@ -169,6 +162,86 @@ fun WallpaperImage(
 
 private const val MAX_WALLPAPER_BLUR_DP = 40f
 
+/**
+ * Scrim laid over the wallpaper so text stays readable. It is tinted with the theme background
+ * (not flat white/black, which looked milky/grey) and its strength follows how bright the
+ * wallpaper actually is: dark wallpapers get a stronger wash in light mode, bright wallpapers a
+ * stronger dim in dark mode.
+ */
+fun wallpaperScrimColor(
+  background: Color,
+  wallpaperLuminance: Float,
+): Color {
+  val lum = wallpaperLuminance.coerceIn(0f, 1f)
+  return if (background.luminance() < 0.5f) {
+    Color.Black.copy(alpha = 0.16f + 0.30f * lum)
+  } else {
+    lerp(background, Color.White, 0.35f).copy(alpha = 0.34f + 0.36f * (1f - lum))
+  }
+}
+
+@Composable
+fun rememberWallpaperScrimColor(bitmap: Bitmap?): Color {
+  val background = MaterialTheme.colorScheme.background
+  val luminance =
+    produceState(initialValue = 0.4f, bitmap) {
+      value =
+        if (bitmap == null) {
+          0.4f
+        } else {
+          withContext(Dispatchers.Default) { bitmap.estimateLuminance() }
+        }
+    }.value
+  return remember(background, luminance) { wallpaperScrimColor(background, luminance) }
+}
+
+private fun Bitmap.estimateLuminance(): Float =
+  runCatching {
+    if (isRecycled) return@runCatching 0.4f
+    val small = Bitmap.createScaledBitmap(this, 16, 16, true)
+    val pixels = IntArray(16 * 16)
+    small.getPixels(pixels, 0, 16, 0, 0, 16, 16)
+    if (small !== this) small.recycle()
+    var sum = 0f
+    for (px in pixels) {
+      val r = ((px shr 16) and 0xFF) / 255f
+      val g = ((px shr 8) and 0xFF) / 255f
+      val b = (px and 0xFF) / 255f
+      sum += 0.2126f * r + 0.7152f * g + 0.0722f * b
+    }
+    sum / pixels.size
+  }.getOrDefault(0.4f)
+
+/**
+ * Real window size in portrait orientation, so code-drawn presets are rendered at the device's
+ * own aspect ratio and fill it top to bottom with no cropping. Capped for memory.
+ */
+private fun presetTargetSize(context: android.content.Context): Pair<Int, Int> {
+  val (rawW, rawH) =
+    runCatching {
+      val wm = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+      if (android.os.Build.VERSION.SDK_INT >= 30) {
+        val b = wm.maximumWindowMetrics.bounds
+        b.width() to b.height()
+      } else {
+        val m = android.util.DisplayMetrics()
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(m)
+        m.widthPixels to m.heightPixels
+      }
+    }.getOrElse {
+      val m = context.resources.displayMetrics
+      m.widthPixels to m.heightPixels
+    }
+  val w = minOf(rawW, rawH).coerceAtLeast(1)
+  val h = maxOf(rawW, rawH).coerceAtLeast(1)
+  val scale = minOf(1f, PRESET_MAX_WIDTH_PX / w.toFloat(), PRESET_MAX_HEIGHT_PX / h.toFloat())
+  return (w * scale).toInt().coerceAtLeast(2) to (h * scale).toInt().coerceAtLeast(2)
+}
+
+private const val PRESET_MAX_WIDTH_PX = 1080f
+private const val PRESET_MAX_HEIGHT_PX = 2600f
+
 suspend fun saveWallpaperCopy(
   context: android.content.Context,
   sourceUri: String,
@@ -200,7 +273,10 @@ fun loadWallpaperBitmap(
   wallpaperUri: String,
 ): Bitmap? =
   runCatching {
-    WallpaperPreset.fromUri(wallpaperUri)?.let { return@runCatching createWallpaperPresetBitmap(it) }
+    WallpaperPreset.fromUri(wallpaperUri)?.let {
+      val (presetW, presetH) = presetTargetSize(context)
+      return@runCatching createWallpaperPresetBitmap(it, presetW, presetH)
+    }
     val uri = Uri.parse(wallpaperUri)
     if (uri.scheme.equals("file", ignoreCase = true)) {
       val file = uri.path?.let { java.io.File(it) }?.takeIf { it.isFile && it.canRead() } ?: return@runCatching null

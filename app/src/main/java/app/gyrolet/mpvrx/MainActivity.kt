@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -498,8 +497,9 @@ class MainActivity : AppCompatActivity() {
 
     val synchronizedBarStyle =
       SystemBarStyle.auto(
-        lightScrim = Color(0xFFF7F5F8).toArgb(),
-        darkScrim = Color(0xFF161217).toArgb(),
+        // Fully transparent so the wallpaper is visible behind the status/navigation bars.
+        lightScrim = android.graphics.Color.TRANSPARENT,
+        darkScrim = android.graphics.Color.TRANSPARENT,
       ) { isDarkMode }
     enableEdgeToEdge(
       statusBarStyle = synchronizedBarStyle,
@@ -507,6 +507,16 @@ class MainActivity : AppCompatActivity() {
     )
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       window.isNavigationBarContrastEnforced = false
+    }
+    if (Build.VERSION.SDK_INT >= 35) {
+      window.isStatusBarContrastEnforced = false
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      // Draw into camera-cutout areas too, so the wallpaper covers the whole screen.
+      window.attributes =
+        window.attributes.apply {
+          layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
     }
     appliedEdgeToEdgeDarkMode = isDarkMode
   }

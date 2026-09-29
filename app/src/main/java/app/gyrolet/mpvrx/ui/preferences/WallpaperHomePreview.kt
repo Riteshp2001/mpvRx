@@ -40,8 +40,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -61,6 +59,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.LocalAppWallpaperActive
 import app.gyrolet.mpvrx.ui.theme.WallpaperImage
 import app.gyrolet.mpvrx.ui.theme.WallpaperScaleMode
+import app.gyrolet.mpvrx.ui.theme.rememberWallpaperScrimColor
 import app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
 import org.koin.compose.koinInject
@@ -131,9 +130,7 @@ internal fun WallpaperHomePreviewDialog(
             modifier =
               Modifier
                 .fillMaxSize()
-                .background(
-                  if (colors.background.luminance() < 0.5f) Color.Black.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.30f),
-                ),
+                .background(rememberWallpaperScrimColor(bitmap)),
           )
         }
 
