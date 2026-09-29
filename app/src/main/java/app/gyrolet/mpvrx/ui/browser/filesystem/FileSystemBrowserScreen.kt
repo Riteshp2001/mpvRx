@@ -98,7 +98,9 @@ import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
+import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
+import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
@@ -472,7 +474,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
 
   // Main content
   Box(modifier = Modifier.fillMaxSize()) {
+    val bottomBarBackdrop = rememberBrowserBottomBarBackdrop()
     Scaffold(
+      modifier = Modifier.captureLiquidGlassBackdrop(bottomBarBackdrop),
       containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
       topBar = {
         if (isSearching) {
@@ -869,6 +873,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
       modifier = Modifier.align(Alignment.BottomCenter),
     ) {
       BrowserBottomBar(
+        backdrop = bottomBarBackdrop,
         isSelectionMode = selectionManager.isInSelectionMode,
         onCopyClick = {
           operationType.value = CopyPasteOps.OperationType.Copy

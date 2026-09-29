@@ -86,7 +86,9 @@ import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
+import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
+import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
@@ -480,6 +482,7 @@ data class VideoListScreen(
         }
       },
     ) { padding ->
+      val bottomBarBackdrop = rememberBrowserBottomBarBackdrop()
       val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
 
       Box(modifier = Modifier.fillMaxSize()) {
@@ -507,7 +510,7 @@ data class VideoListScreen(
           },
           onVideoLongClick = { video -> if (!archiveFolder) selectionManager.handleLongClick(video) },
           isFabVisible = isFabVisible,
-          modifier = Modifier.padding(padding),
+          modifier = Modifier.padding(padding).captureLiquidGlassBackdrop(bottomBarBackdrop),
           showFloatingBottomBar = showFloatingBottomBar,
           mediaLayoutMode = mediaLayoutMode,
           isAudio = isAudio,
@@ -519,6 +522,7 @@ data class VideoListScreen(
         // Play Store gating is intentionally bypassed here.
         if (showFloatingBottomBar) {
           BrowserBottomBar(
+            backdrop = bottomBarBackdrop,
             isSelectionMode = selectionManager.isInSelectionMode,
             onCopyClick = {
               operationType.value = CopyPasteOps.OperationType.Copy

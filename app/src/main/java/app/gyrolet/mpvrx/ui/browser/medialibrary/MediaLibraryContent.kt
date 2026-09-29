@@ -87,7 +87,9 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
+import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
+import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
@@ -605,6 +607,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
         }
       },
     ) { padding ->
+    val bottomBarBackdrop = rememberBrowserBottomBarBackdrop()
     val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
     val videosWereDeletedOrMoved = false
 
@@ -613,7 +616,8 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
         modifier =
           Modifier
             .fillMaxSize()
-            .padding(padding),
+            .padding(padding)
+            .captureLiquidGlassBackdrop(bottomBarBackdrop),
       ) {
         if (includeAudioBrowser && !forceAudio) {
           SingleChoiceSegmentedButtonRow(
@@ -711,6 +715,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
         modifier = Modifier.align(Alignment.BottomCenter),
       ) {
         BrowserBottomBar(
+          backdrop = bottomBarBackdrop,
           isSelectionMode = selectionManager.isInSelectionMode,
           onCopyClick = {
             operationType.value = CopyPasteOps.OperationType.Copy

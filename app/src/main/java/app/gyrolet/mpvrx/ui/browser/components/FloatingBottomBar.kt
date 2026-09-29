@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,11 +40,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.presentation.components.LiquidGlassSurface
+import app.gyrolet.mpvrx.presentation.components.rememberLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import org.koin.compose.koinInject
+
+@Composable
+internal fun rememberBrowserBottomBarBackdrop(): LayerBackdrop? {
+  val preferences = koinInject<AppearancePreferences>()
+  val enabled by preferences.liquidGlassEnabled.collectAsState()
+  return rememberLiquidGlassBackdrop().takeIf { enabled }
+}
 
 private data class BarLayoutParams(
   val buttonSize: androidx.compose.ui.unit.Dp,
@@ -78,6 +90,7 @@ fun BrowserBottomBar(
   showRename: Boolean = true,
   showDelete: Boolean = true,
   showAddToPlaylist: Boolean = true,
+  backdrop: LayerBackdrop? = null,
 ) {
   val configuration = LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
@@ -247,7 +260,7 @@ fun BrowserBottomBar(
           }
         }
 
-      Surface(
+      LiquidGlassSurface(
         modifier =
           Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
@@ -257,9 +270,9 @@ fun BrowserBottomBar(
               vertical = layoutParams.surfacePaddingVertical,
             ),
         shape = RoundedCornerShape(percent = 100),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 0.dp,
-        shadowElevation = 12.dp,
+        glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.32f),
+        fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        backdrop = backdrop,
       ) {
         Row(
           modifier =

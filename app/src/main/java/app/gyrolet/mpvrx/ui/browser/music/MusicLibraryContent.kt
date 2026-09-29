@@ -135,7 +135,9 @@ import app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.cards.PlaylistCard
+import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
+import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.QueueInsertion
 import app.gyrolet.mpvrx.ui.browser.components.addVideosToPlaybackQueue
@@ -700,6 +702,7 @@ fun MusicLibraryContent(
       }
     },
   ) { innerPadding ->
+    val bottomBarBackdrop = rememberBrowserBottomBarBackdrop()
     Box(
       modifier = Modifier
         .fillMaxSize()
@@ -721,7 +724,7 @@ fun MusicLibraryContent(
           NavigationPager(
             state = pagerState,
             key = { page -> visibleTabs[page].name },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().captureLiquidGlassBackdrop(bottomBarBackdrop),
             beyondViewportPageCount = 1,
             allowNestedSwipes = true,
           ) { page ->
@@ -1208,6 +1211,7 @@ fun MusicLibraryContent(
         }
 
         BrowserBottomBar(
+          backdrop = bottomBarBackdrop,
           isSelectionMode = activeSelectionManager.isInSelectionMode,
           onCopyClick = { },
           onMoveClick = { },

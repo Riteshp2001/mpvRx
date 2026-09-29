@@ -106,7 +106,9 @@ import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
+import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
+import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
@@ -853,11 +855,12 @@ object FolderListScreen : Screen {
           }
         },
       ) { padding ->
+        val bottomBarBackdrop = rememberBrowserBottomBarBackdrop()
         Box(modifier = Modifier.padding(padding)) {
           if (isPermissionSetupCompleted && permissionState.status == PermissionStatus.Granted) {
               if (effectiveIsSearching) {
                 // Show search results
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxSize().captureLiquidGlassBackdrop(bottomBarBackdrop)) {
                   if (isSearchLoading) {
                     // Loading state
                     Box(
@@ -905,6 +908,7 @@ object FolderListScreen : Screen {
                 }
               } else {
                 FolderListContent(
+                  modifier = Modifier.captureLiquidGlassBackdrop(bottomBarBackdrop),
                   folders = filteredFolders,
                   foldersWithNewCount = foldersWithNewCount,
                   pinnedFolderPaths = pinnedFolderPaths,
@@ -968,6 +972,7 @@ object FolderListScreen : Screen {
           }
 
           BrowserBottomBar(
+            backdrop = bottomBarBackdrop,
             isSelectionMode = selectionManager.isInSelectionMode,
             onCopyClick = {
               operationType.value = CopyPasteOps.OperationType.Copy
@@ -1276,6 +1281,7 @@ private fun FolderListContent(
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
   audioOnly: Boolean = false,
+  modifier: Modifier = Modifier,
 ) {
   val swipeScope = rememberCoroutineScope()
   val swipeActions = rememberVideoSwipeActions(audioOnly = audioOnly) { swipeScope.launch { onRefresh() } }
@@ -1298,7 +1304,7 @@ private fun FolderListContent(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     listState = listState,
-    modifier = Modifier.fillMaxSize(),
+    modifier = modifier.fillMaxSize(),
   ) {
     if (showLoading || showEmpty) {
       Box(

@@ -37,10 +37,10 @@ private val LocalLiquidGlassBackdrop = staticCompositionLocalOf<LayerBackdrop?> 
 fun rememberLiquidGlassBackdrop(): LayerBackdrop = rememberLayerBackdrop()
 
 fun Modifier.captureLiquidGlassBackdrop(
-  backdrop: LayerBackdrop,
+  backdrop: LayerBackdrop?,
   enabled: Boolean = true,
 ): Modifier =
-  if (enabled && isRenderEffectSupported()) layerBackdrop(backdrop) else this
+  if (enabled && backdrop != null && isRenderEffectSupported()) layerBackdrop(backdrop) else this
 
 @Composable
 fun ProvideLiquidGlassBackdrop(
@@ -68,9 +68,9 @@ fun LiquidGlassSurface(
   glassColor: Color,
   fallbackColor: Color,
   contentColor: Color = MaterialTheme.colorScheme.onSurface,
+  backdrop: LayerBackdrop? = LocalLiquidGlassBackdrop.current,
   content: @Composable BoxScope.() -> Unit,
 ) {
-  val backdrop = LocalLiquidGlassBackdrop.current
   val reducedMotion = AppMotion.shouldReduceMotion()
   val blurRadius = if (style == LiquidGlassStyle.MiniPlayer) 12.dp else 8.dp
   val refractionHeight = if (style == LiquidGlassStyle.MiniPlayer) 14.dp else 12.dp

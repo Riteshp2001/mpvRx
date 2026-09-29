@@ -1373,6 +1373,8 @@ fun AudioPlayerControls(
         pathOrUri = prevItem?.let { it.path.ifBlank { it.uri.toString() } },
         artworkUri = prevItem?.tvgLogo,
       )
+    val swipeNextCoverBitmap by androidx.compose.runtime.rememberUpdatedState(nextCoverBitmap ?: albumArtBitmap)
+    val swipePrevCoverBitmap by androidx.compose.runtime.rememberUpdatedState(prevCoverBitmap ?: albumArtBitmap)
 
     @OptIn(ExperimentalFoundationApi::class)
     val centerVisualizerView = @Composable { visualizerModifier: Modifier ->
@@ -1451,7 +1453,7 @@ fun AudioPlayerControls(
               modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(if (isTabletPortrait) 0.52f else if (isPortrait) 0.88f else 1f)
-                .pointerInput(showVisualizer, containerWidthPx, isAudiobook) {
+                .pointerInput(viewModel, mediaPath, showVisualizer, containerWidthPx, isAudiobook) {
                   if (showVisualizer || isAudiobook || containerWidthPx <= 0f) return@pointerInput
                   detectHorizontalDragGestures(
                     onDragStart = {
@@ -1467,7 +1469,7 @@ fun AudioPlayerControls(
                             targetValue = -stride,
                             animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
                           )
-                          activeCoverOverride = nextCoverBitmap ?: albumArtBitmap
+                          activeCoverOverride = swipeNextCoverBitmap
                           animatableOffsetX.snapTo(0f)
                           if (viewModel.hasPlaylistSupport()) {
                             viewModel.playNext()
@@ -1480,7 +1482,7 @@ fun AudioPlayerControls(
                             targetValue = stride,
                             animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
                           )
-                          activeCoverOverride = prevCoverBitmap ?: albumArtBitmap
+                          activeCoverOverride = swipePrevCoverBitmap
                           animatableOffsetX.snapTo(0f)
                           if (viewModel.hasPlaylistSupport()) {
                             viewModel.playPrevious()
