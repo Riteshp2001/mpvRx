@@ -200,7 +200,21 @@ class VideoListViewModel(
 
         // ZIP entries need basic metadata even when optional metadata chips are disabled.
         val archiveFolder = ZipArchiveMedia.isBrowserPath(bucketId)
-        if (archiveFolder || MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
+        if (archiveFolder) {
+          // Reading an entry's runtime means streaming the entry out of the archive, so publish the
+          // folder immediately and let the details land with the publish at the end of this method
+          // instead of holding the whole list behind the first pass.
+          _videos.value = videoList
+          loadPlaybackInfo(videoList)
+          Log.d(tag, "Enriching ${videoList.size} archive entries with metadata")
+          videoList =
+            MetadataRetrieval.enrichVideosIfNeeded(
+              context = getApplication(),
+              videos = videoList,
+              browserPreferences = browserPreferences,
+              metadataCache = metadataCache,
+            )
+        } else if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
           Log.d(tag, "Enriching ${videoList.size} videos with metadata")
           videoList =
             MetadataRetrieval.enrichVideosIfNeeded(

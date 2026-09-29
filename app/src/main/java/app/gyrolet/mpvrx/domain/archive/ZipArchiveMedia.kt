@@ -10,7 +10,9 @@
 package app.gyrolet.mpvrx.domain.archive
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.system.Os
 import android.text.format.Formatter
@@ -37,10 +39,37 @@ object ZipArchiveMedia {
   private const val BROWSER_AUTHORITY = "local"
   private const val PLAYBACK_SCHEME = "archive"
   private const val MAX_ENTRIES = 100_000
+  private const val MAX_CACHED_ENTRY_METADATA = 512
 
   data class Location(
     val archivePath: String,
     val directory: String,
+  ) {
+    /**
+     * The entry path when this location was parsed from a playback URI: `parsePlaybackLocation()`
+     * reuses [directory] for it, and [archivePath] for the archive.
+     */
+    val entryPath: String get() = directory
+  }
+
+  /** Duration and geometry of one archive entry, read out of the archive without extracting it. */
+  data class EntryMetadata(
+    val durationMs: Long,
+    val width: Int,
+    val height: Int,
+    val fps: Float,
+  )
+
+  /**
+   * Cache identity for an archive entry.
+   *
+   * The entry has no file on disk to key by, so [key] is the playback URI, and the archive's own
+   * size and modification time invalidate the entry when the archive is replaced.
+   */
+  data class EntryCacheStamp(
+    val key: String,
+    val archiveSize: Long,
+    val archiveModifiedSeconds: Long,
   )
 
   private data class FolderStats(
@@ -63,6 +92,9 @@ object ZipArchiveMedia {
   )
 
   private val statsCache = ConcurrentHashMap<StatsKey, ArchiveStats>()
+
+  /** Memoizes entry metadata for the session, so a folder is only ever read once per entry. */
+  private val entryMetadataCache = ConcurrentHashMap<String, EntryMetadata>()
 
   fun isZipFile(file: File): Boolean = file.isFile && file.extension.equals("zip", ignoreCase = true)
 
@@ -109,6 +141,99 @@ object ZipArchiveMedia {
       }
     }
     return candidates.firstOrNull { file -> file.isAbsolute && isZipFile(file) && isReadableZipArchive(file) }
+  }
+
+  /**
+   * Runs [block] against a retriever whose data source streams the archive entry straight out of
+   * the ZIP, so metadata and frames can be read without materializing the entry anywhere.
+   *
+   * Returns null when the entry cannot be opened or read.
+   */
+  internal suspend fun <T> withEntryRetriever(
+    uri: Uri,
+    block: (MediaMetadataRetriever) -> T,
+  ): T? =
+    withContext(Dispatchers.IO) {
+      val location = parsePlaybackLocation(uri.toString()) ?: return@withContext null
+      val archive = File(location.archivePath)
+      if (!isZipFile(archive) || !archive.canRead()) return@withContext null
+
+      val source =
+        runCatching { ZipEntryMediaDataSource(archive, location.entryPath) }.getOrNull()
+          ?: return@withContext null
+      val retriever = MediaMetadataRetriever()
+      try {
+        retriever.setDataSource(source)
+        runCatching { block(retriever) }.getOrNull()
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (_: Exception) {
+        null
+      } finally {
+        runCatching {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) retriever.close() else retriever.release()
+        }
+        source.close()
+      }
+    }
+
+  /** Cache identity for [uri], or null when it is not an archive entry. */
+  fun entryCacheStamp(uri: Uri): EntryCacheStamp? =
+    parsePlaybackLocation(uri.toString())?.let { location ->
+      val archive = File(location.archivePath)
+      EntryCacheStamp(
+        key = uri.toString(),
+        archiveSize = archive.length(),
+        archiveModifiedSeconds = archive.lastModified() / 1000L,
+      )
+    }
+
+  /**
+   * Reads an entry's duration, resolution and frame rate by streaming it out of the archive.
+   *
+   * Nothing is written to disk, but a pass costs roughly one read of the entry, so results are
+   * memoized for the session (and persisted by the callers' metadata cache).
+   */
+  suspend fun entryMetadata(
+    stamp: EntryCacheStamp,
+    uri: Uri,
+  ): EntryMetadata? {
+    val cacheKey = "${stamp.archiveModifiedSeconds}\u0000${stamp.archiveSize}\u0000${stamp.key}"
+    entryMetadataCache[cacheKey]?.let { cached -> return cached }
+
+    val metadata =
+      withEntryRetriever(uri) { retriever ->
+        EntryMetadata(
+          durationMs =
+            retriever
+              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+              ?.toLongOrNull()
+              ?.coerceAtLeast(0L)
+              ?: 0L,
+          width =
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0,
+          height =
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0,
+          fps =
+            retriever
+              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+              ?.toFloatOrNull()
+              ?: 0f,
+        )
+      }
+
+    if (metadata != null && metadata.durationMs > 0L) rememberEntryMetadata(cacheKey, metadata)
+    return metadata
+  }
+
+  private fun rememberEntryMetadata(
+    cacheKey: String,
+    metadata: EntryMetadata,
+  ) {
+    if (entryMetadataCache.size >= MAX_CACHED_ENTRY_METADATA) {
+      entryMetadataCache.keys.firstOrNull()?.let { oldest -> entryMetadataCache.remove(oldest) }
+    }
+    entryMetadataCache[cacheKey] = metadata
   }
 
   /**
@@ -489,6 +614,19 @@ object ZipArchiveMedia {
       isAudio = isAudio,
     )
     return FileSystemItem.VideoFile(displayName, uri.toString(), modifiedMillis, video)
+  }
+
+  /** Finds an entry by the normalized path used in playback URIs. */
+  internal fun findEntry(
+    archive: ZipFile,
+    entryPath: String,
+  ): ZipEntry? {
+    val entries = archive.entries()
+    while (entries.hasMoreElements()) {
+      val entry = entries.nextElement()
+      if (normalizedEntryName(entry) == entryPath) return entry
+    }
+    return null
   }
 
   private fun normalizedEntryName(entry: ZipEntry): String? {

@@ -117,6 +117,55 @@ class VideoMetadataCacheRepository(
     }
 
   /**
+   * Returns cached metadata for one entry inside a ZIP archive, or reads it out of the archive.
+   *
+   * Archive entries have no file on disk to key by, so [entryKey] is the entry's playback URI and
+   * the archive's own size and modification time invalidate the row when the archive is replaced.
+   * [extractor] streams the entry through a media data source: the archive is never copied and no
+   * entry is ever written to disk, so this is the only cost of asking for an entry's runtime.
+   */
+  suspend fun getOrExtractArchiveMetadata(
+    entryKey: String,
+    archiveSize: Long,
+    archiveDateModifiedSeconds: Long,
+    extractor: suspend () -> MediaInfoOps.VideoMetadata?,
+  ): MediaInfoOps.VideoMetadata? =
+    withContext(Dispatchers.IO) {
+      val cached = dao.getMetadata(entryKey, archiveDateModifiedSeconds, archiveSize)
+      if (cached != null) {
+        Log.d(TAG, "Cache hit for archive entry $entryKey")
+        return@withContext MediaInfoOps.VideoMetadata(
+          sizeBytes = cached.size,
+          durationMs = cached.duration,
+          width = cached.width,
+          height = cached.height,
+          fps = cached.fps,
+          hasEmbeddedSubtitles = cached.hasEmbeddedSubtitles,
+          subtitleCodec = cached.subtitleCodec,
+        )
+      }
+
+      Log.d(TAG, "Cache miss for archive entry $entryKey, reading it from the archive")
+      val extracted = runCatching { extractor() }.getOrNull() ?: return@withContext null
+
+      dao.insertMetadata(
+        VideoMetadataEntity(
+          path = entryKey,
+          size = archiveSize,
+          dateModified = archiveDateModifiedSeconds,
+          duration = extracted.durationMs,
+          width = extracted.width,
+          height = extracted.height,
+          fps = extracted.fps,
+          hasEmbeddedSubtitles = extracted.hasEmbeddedSubtitles,
+          subtitleCodec = extracted.subtitleCodec,
+          lastScanned = System.currentTimeMillis(),
+        ),
+      )
+      extracted
+    }
+
+  /**
    * OPTIMIZED: Batch get metadata from cache or extract using MediaInfo
    * Processes multiple files with batch cache lookup and parallel extraction
    * Returns map of paths to metadata (much faster than individual calls)
