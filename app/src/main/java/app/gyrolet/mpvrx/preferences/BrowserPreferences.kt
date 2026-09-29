@@ -170,6 +170,9 @@ class BrowserPreferences(
   // Maximum single-child folder levels skipped in one Tree View navigation step.
   val treeFlattenDepth = preferenceStore.getEnum("tree_flatten_depth", TreeFlattenDepth.Unlimited)
   val includeAudioBrowser = preferenceStore.getBoolean("include_audio_browser", false)
+
+  // Read-only ZIP archives the user added, kept in place on storage (absolute paths).
+  val archiveFolders = preferenceStore.getStringSet("archive_folders", emptySet())
   val includeImagesInBrowser = preferenceStore.getBoolean("include_images_in_browser", false)
   val minimumAudioDurationSeconds = preferenceStore.getInt("minimum_audio_duration_seconds", 0)
   val mediaLibraryType = preferenceStore.getEnum("media_library_type", MediaLibraryType.Video)

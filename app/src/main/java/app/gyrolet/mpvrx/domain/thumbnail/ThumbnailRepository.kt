@@ -538,12 +538,10 @@ class ThumbnailRepository(
   ): Bitmap? {
     val mode = browserPreferences.thumbnailMode.get()
     val dimension = maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize())
-    val archiveEntry = ZipArchiveMedia.isPlaybackUri(video.uri.toString())
 
-    if (archiveEntry && (video.isAudio || mode == ThumbnailMode.EmbeddedThumbnail)) {
-      materializeArchiveVideo(video)?.let { extractedVideo ->
-        return generateLocalThumbnail(extractedVideo, widthPx, heightPx)
-      }
+    // Archive entries are streamed out of the ZIP, so a thumbnail only ever writes the bitmap.
+    if (ZipArchiveMedia.isPlaybackUri(video.uri.toString())) {
+      return generateArchiveThumbnail(video, widthPx, heightPx)
     }
 
     if (video.isAudio || mode == ThumbnailMode.Smart || mode == ThumbnailMode.EmbeddedThumbnail) {
@@ -555,24 +553,53 @@ class ThumbnailRepository(
       return scaleBitmap(it, widthPx, heightPx)
     }
 
-    if (archiveEntry) {
-      materializeArchiveVideo(video)?.let { extractedVideo ->
-        return generateLocalThumbnail(extractedVideo, widthPx, heightPx)
-      }
-    }
-
     return extractLocalVideoFrame(video, widthPx, heightPx)
   }
 
-  private suspend fun materializeArchiveVideo(video: Video): Video? =
-    ZipArchiveMedia.materializeEntry(context, video.uri)?.let { extractedFile ->
-      video.copy(
-        path = extractedFile.absolutePath,
-        uri = Uri.fromFile(extractedFile),
-        size = extractedFile.length(),
-        dateModified = extractedFile.lastModified() / 1000L,
-      )
+  /**
+   * Thumbnails an archive entry by reading it straight out of the ZIP instead of extracting it:
+   * an embedded cover wins where the thumbnail mode asks for one, otherwise a single frame is
+   * decoded. Nothing but the scaled bitmap reaches storage, and the thumbnail cache keeps the
+   * repeat cost at zero.
+   */
+  private suspend fun generateArchiveThumbnail(
+    video: Video,
+    widthPx: Int,
+    heightPx: Int,
+  ): Bitmap? =
+    ZipArchiveMedia.withEntryRetriever(video.uri) { retriever ->
+      val mode = browserPreferences.thumbnailMode.get()
+      val wantsArtwork =
+        video.isAudio || mode == ThumbnailMode.Smart || mode == ThumbnailMode.EmbeddedThumbnail
+      val bitmap =
+        (if (wantsArtwork) EmbeddedArtworkResolver.decodeRetrieverArtwork(retriever) else null)
+          ?: frameFromArchiveEntry(retriever, video, mode)
+      bitmap?.let { decoded -> scaleBitmap(decoded, widthPx, heightPx) }
     }
+
+  private fun frameFromArchiveEntry(
+    retriever: MediaMetadataRetriever,
+    video: Video,
+    mode: ThumbnailMode,
+  ): Bitmap? {
+    val durationMs =
+      video.duration.takeIf { it > 0L }
+        ?: retriever
+          .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+          ?.toLongOrNull()
+          ?.coerceAtLeast(0L)
+        ?: 0L
+    val durationSeconds = durationMs / 1000.0
+    val position =
+      when (mode) {
+        ThumbnailMode.FirstFrame, ThumbnailMode.EmbeddedThumbnail -> 0.0
+        ThumbnailMode.FrameAtPosition ->
+          durationSeconds * (browserPreferences.thumbnailFramePosition.get() / 100.0).coerceIn(0.0, 1.0)
+        ThumbnailMode.Smart -> durationSeconds * 0.33
+      }
+    val timeUs = (position * 1_000_000.0).toLong().coerceAtLeast(0L)
+    return retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+  }
 
   private fun generateEmbeddedArtwork(video: Video): Bitmap? =
     runCatching {
