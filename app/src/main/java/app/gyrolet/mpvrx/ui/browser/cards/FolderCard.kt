@@ -63,6 +63,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.theme.onWallpaper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -305,7 +306,7 @@ fun FolderCard(
               when {
                 isActive -> MaterialTheme.colorScheme.primary
                 isRecentlyPlayed -> MaterialTheme.colorScheme.tertiary
-                else -> MaterialTheme.colorScheme.onSurface
+                else -> MaterialTheme.colorScheme.onSurface.onWallpaper()
               },
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
@@ -329,7 +330,7 @@ fun FolderCard(
                 folder.videoCount,
               ),
               style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              color = MaterialTheme.colorScheme.onSurfaceVariant.onWallpaper(),
             )
           }
           if (customChipContent != null) {
@@ -422,7 +423,7 @@ fun FolderCard(
                 when {
                   isActive -> MaterialTheme.colorScheme.primary
                   isRecentlyPlayed -> MaterialTheme.colorScheme.tertiary
-                  else -> MaterialTheme.colorScheme.onSurface
+                  else -> MaterialTheme.colorScheme.onSurface.onWallpaper()
                 },
               maxLines = maxLines,
               overflow = TextOverflow.Ellipsis,
@@ -431,7 +432,7 @@ fun FolderCard(
               Text(
                 parentPath,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.onWallpaper(),
                 maxLines = maxLines,
                 overflow = TextOverflow.Ellipsis,
               )

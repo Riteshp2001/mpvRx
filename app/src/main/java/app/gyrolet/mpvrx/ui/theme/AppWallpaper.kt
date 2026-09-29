@@ -45,6 +45,17 @@ import org.koin.compose.koinInject
 
 val LocalAppWallpaperActive = compositionLocalOf { false }
 
+/** True when the light theme is showing a dark wallpaper, so text placed directly on it must be light. */
+val LocalLightTextOnWallpaper = compositionLocalOf { false }
+
+/** Use for text/icons drawn directly on the wallpaper (not inside cards, chips or bars). */
+@Composable
+@androidx.compose.runtime.ReadOnlyComposable
+fun Color.onWallpaper(): Color =
+  if (LocalLightTextOnWallpaper.current) lerp(this, Color.White, 0.9f).copy(alpha = this.alpha) else this
+
+private const val LIGHT_TEXT_LUMINANCE_THRESHOLD = 0.55f
+
 enum class WallpaperScaleMode {
   Fit,
   Fill,
@@ -83,6 +94,12 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
     }
   }
   val wallpaperActive = wallpaper != null
+  val wallpaperLuminance =
+    produceState(initialValue = 0.4f, wallpaper) {
+      value = if (wallpaper == null) 0.4f else withContext(Dispatchers.Default) { wallpaper.estimateLuminance() }
+    }.value
+  // Light theme + dark wallpaper: show the wallpaper untouched and turn text drawn on it light.
+  val lightTextOnWallpaper = wallpaperActive && isLightTheme && wallpaperLuminance < LIGHT_TEXT_LUMINANCE_THRESHOLD
 
   Box(
     modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
@@ -102,7 +119,10 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
         modifier = Modifier.fillMaxSize().background(rememberWallpaperScrimColor(bitmap)),
       )
     }
-    CompositionLocalProvider(LocalAppWallpaperActive provides wallpaperActive) {
+    CompositionLocalProvider(
+      LocalAppWallpaperActive provides wallpaperActive,
+      LocalLightTextOnWallpaper provides lightTextOnWallpaper,
+    ) {
       content()
     }
   }
@@ -176,7 +196,13 @@ fun wallpaperScrimColor(
   return if (background.luminance() < 0.5f) {
     Color.Black.copy(alpha = 0.16f + 0.30f * lum)
   } else {
-    lerp(background, Color.White, 0.35f).copy(alpha = 0.34f + 0.36f * (1f - lum))
+    if (lum < LIGHT_TEXT_LUMINANCE_THRESHOLD) {
+      // Dark wallpaper in light theme: keep it as it really is (no milky wash); text turns light instead.
+      Color.Transparent
+    } else {
+      // Bright wallpaper: only a gentle wash so dark text stays readable.
+      lerp(background, Color.White, 0.35f).copy(alpha = 0.10f + 0.20f * lum)
+    }
   }
 }
 
@@ -316,3 +342,15 @@ private const val WALLPAPER_DATA_PREFIX = "data:image/png;base64,"
 private const val MAX_WALLPAPER_ENCODED_LENGTH = 40 * 1024 * 1024
 private const val MAX_WALLPAPER_DIMENSION_PX = 2560
 private const val WALLPAPER_RECYCLE_DELAY_MS = 120L
+
+/** Same rule the host uses; lets the settings preview match the real screen. */
+@Composable
+fun rememberLightTextOnWallpaper(bitmap: Bitmap?): Boolean {
+  val isLightTheme = MaterialTheme.colorScheme.background.luminance() >= 0.5f
+  val luminance =
+    produceState(initialValue = 0.4f, bitmap) {
+      value =
+        if (bitmap == null || bitmap.isRecycled) 0.4f else withContext(Dispatchers.Default) { bitmap.estimateLuminance() }
+    }.value
+  return bitmap != null && isLightTheme && luminance < LIGHT_TEXT_LUMINANCE_THRESHOLD
+}

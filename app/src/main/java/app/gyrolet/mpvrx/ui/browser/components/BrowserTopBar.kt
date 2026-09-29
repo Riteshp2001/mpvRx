@@ -74,6 +74,7 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import app.gyrolet.mpvrx.ui.theme.LocalThemeTransitionState
 import app.gyrolet.mpvrx.ui.theme.LocalAppWallpaperActive
+import app.gyrolet.mpvrx.ui.theme.onWallpaper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -266,6 +267,9 @@ private fun NormalTopBar(
           } else {
             MaterialTheme.colorScheme.surfaceContainer
           },
+        titleContentColor = MaterialTheme.colorScheme.onSurface.onWallpaper(),
+        navigationIconContentColor = MaterialTheme.colorScheme.onSurface.onWallpaper(),
+        actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant.onWallpaper(),
       ),
     title = {
       val betaBadgeSuffix =
@@ -343,7 +347,7 @@ private fun NormalTopBar(
               MaterialTheme.typography.headlineMedium
             },
           fontWeight = FontWeight.ExtraBold,
-          color = MaterialTheme.colorScheme.primary,
+          color = MaterialTheme.colorScheme.primary.onWallpaper(),
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
           modifier = titleModifier,
@@ -363,7 +367,7 @@ private fun NormalTopBar(
             Icons.RoundedFilled.ArrowBack,
             contentDescription = stringResource(R.string.back),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -382,7 +386,7 @@ private fun NormalTopBar(
                 app.gyrolet.mpvrx.R.string.seerr_discover,
               ),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -398,7 +402,7 @@ private fun NormalTopBar(
                 app.gyrolet.mpvrx.R.string.settings_search_title,
               ),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -412,7 +416,7 @@ private fun NormalTopBar(
             Icons.RoundedFilled.SortByAlpha,
             contentDescription = stringResource(R.string.sort),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -428,7 +432,7 @@ private fun NormalTopBar(
               androidx.compose.ui.res
                 .stringResource(app.gyrolet.mpvrx.R.string.ui_settings),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -479,6 +483,9 @@ private fun SelectionTopBar(
           } else {
             MaterialTheme.colorScheme.surfaceContainer
           },
+        titleContentColor = MaterialTheme.colorScheme.onSurface.onWallpaper(),
+        navigationIconContentColor = MaterialTheme.colorScheme.onSurface.onWallpaper(),
+        actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant.onWallpaper(),
       ),
     title = {
       Row(
@@ -513,7 +520,7 @@ private fun SelectionTopBar(
             Text(
               stringResource(R.string.selected_items, count, totalCount),
               style = MaterialTheme.typography.titleMedium,
-              color = MaterialTheme.colorScheme.primary,
+              color = MaterialTheme.colorScheme.primary.onWallpaper(),
               maxLines = 1,
               overflow = TextOverflow.Ellipsis,
             )
@@ -523,7 +530,7 @@ private fun SelectionTopBar(
           Icons.RoundedFilled.ArrowDropDown,
           contentDescription = stringResource(R.string.selection_options),
           modifier = Modifier.size(24.dp),
-          tint = MaterialTheme.colorScheme.primary,
+          tint = MaterialTheme.colorScheme.primary.onWallpaper(),
         )
 
         DropdownMenu(
@@ -572,7 +579,7 @@ private fun SelectionTopBar(
           Icons.RoundedFilled.Close,
           contentDescription = stringResource(R.string.generic_cancel),
           modifier = Modifier.size(28.dp),
-          tint = MaterialTheme.colorScheme.secondary,
+          tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
         )
       }
     },
@@ -587,7 +594,7 @@ private fun SelectionTopBar(
             Icons.RoundedFilled.Restore,
             contentDescription = stringResource(R.string.secure_folder_restore),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -603,7 +610,7 @@ private fun SelectionTopBar(
               androidx.compose.ui.res
                 .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
             modifier = Modifier.size(28.dp),
-            tint = MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.primary.onWallpaper(),
           )
         }
       }
@@ -660,7 +667,7 @@ private fun SelectionTopBar(
             Icons.RoundedFilled.Share,
             contentDescription = stringResource(R.string.generic_share),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -676,7 +683,7 @@ private fun SelectionTopBar(
             Icons.RoundedFilled.Lock,
             contentDescription = stringResource(R.string.secure_folder_move_to),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }
@@ -691,7 +698,7 @@ private fun SelectionTopBar(
             Icons.RoundedFilled.Block,
             contentDescription = stringResource(R.string.pref_folders_blacklist),
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.secondary.onWallpaper(),
           )
         }
       }

@@ -57,6 +57,8 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.LocalAppWallpaperActive
+import app.gyrolet.mpvrx.ui.theme.LocalLightTextOnWallpaper
+import app.gyrolet.mpvrx.ui.theme.rememberLightTextOnWallpaper
 import app.gyrolet.mpvrx.ui.theme.WallpaperImage
 import app.gyrolet.mpvrx.ui.theme.WallpaperScaleMode
 import app.gyrolet.mpvrx.ui.theme.rememberWallpaperScrimColor
@@ -112,7 +114,11 @@ internal fun WallpaperHomePreviewDialog(
     properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
   ) {
     val colors = MaterialTheme.colorScheme
-    CompositionLocalProvider(LocalAppWallpaperActive provides (bitmap != null)) {
+    val lightTextOnWallpaper = rememberLightTextOnWallpaper(bitmap)
+    CompositionLocalProvider(
+      LocalAppWallpaperActive provides (bitmap != null),
+      LocalLightTextOnWallpaper provides lightTextOnWallpaper,
+    ) {
       Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         if (bitmap != null) {
           WallpaperImage(
