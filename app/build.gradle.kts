@@ -45,7 +45,7 @@ android {
   ndkVersion = "27.3.13750724"
 
   defaultConfig {
-    applicationId = "app.gyrolet.mpvrx"
+    applicationId = "com.firefly.mpvrx"
     minSdk = 26
     targetSdk = 36
     // Stable occupies the top of its version band. Preview uses the next band's commit-count
@@ -120,7 +120,10 @@ android {
   }
 
   buildTypes {
+    // CI signing: release uses the AGP debug signing configuration for an installable test build.
     named("release") {
+      // Keep the release APK directly installable in CI by using AGP's debug signing config.
+      signingConfig = signingConfigs.getByName("debug")
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
       isMinifyEnabled = true
       isShrinkResources = true

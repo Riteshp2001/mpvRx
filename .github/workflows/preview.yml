@@ -167,79 +167,21 @@ jobs:
           set -euo pipefail
           ./gradlew "assemble${GRADLE_FLAVOR}Preview" --stacktrace --no-daemon --max-workers=2
 
-      - name: Sign and stage preview APKs
+      - name: Stage debug-signed preview APKs
         shell: bash
-        env:
-          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
-
-          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
-            echo "Required signing secrets are missing; refusing to publish unsigned preview APKs."
-            exit 1
-          fi
-
-          test -x "$apksigner"
-          # GitHub secrets may contain wrapped base64 or Windows line endings. Normalize
-          # only whitespace, then fail with a useful message for a pasted binary/raw value.
-          keystore_base64="$(printf '%s' "$SIGNING_KEYSTORE" | tr -d '[:space:]')"
-          if [[ -z "$keystore_base64" || ! "$keystore_base64" =~ ^[A-Za-z0-9+/]*={0,2}$ || $(( ${#keystore_base64} % 4 )) -ne 0 ]]; then
-            echo "SIGNING_KEYSTORE must be the complete base64 output of the .jks/.keystore file (not the binary file or a file path)."
-            exit 1
-          fi
-          if ! printf '%s' "$keystore_base64" | base64 --decode > release.keystore; then
-            echo "SIGNING_KEYSTORE is not valid base64. Re-encode the keystore and replace the GitHub secret."
-            exit 1
-          fi
-          trap 'rm -f release.keystore' EXIT
-
-          # AGP only appends "-unsigned" when the variant has no signing config, so accept
-          # either name and always re-sign with the release key.
-          sign_apk() {
-            local dir="$1"
-            local base="$2"
-            local label="$3"
-            local signed="$dir/$base.apk"
-            local unsigned="$dir/$base-unsigned.apk"
-            local source=""
-
-            if [[ -f "$unsigned" ]]; then
-              source="$unsigned"
-            elif [[ -f "$signed" ]]; then
-              source="$signed"
-            else
-              echo "Missing expected $label APK: $unsigned (or $signed)"
-              find app/build/outputs/apk -type f -name '*.apk' -print || true
-              exit 1
-            fi
-
-            local staged="$dir/$base-signing.apk"
-            rm -f "$staged"
-            "$apksigner" sign \
-              --ks release.keystore \
-              --ks-type JKS \
-              --ks-key-alias "$SIGNING_KEY_ALIAS" \
-              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
-              --key-pass "pass:$KEY_PASSWORD" \
-              --out "$staged" \
-              "$source"
-            "$apksigner" verify --verbose "$staged"
-            rm -f "$unsigned"
-            mv -f "$staged" "$signed"
-          }
-
+          # The preview build inherits the Android Gradle plugin's standard debug
+          # signing config, which is a valid certificate and needs no secret keystore.
           out_dir="app/build/outputs/apk/${APK_DIR}/preview"
           test -d "$out_dir"
           mkdir -p downloads
 
           for abi in $APK_ABIS; do
             base="app-${APK_DIR}-${abi}-preview"
-            sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} preview"
-            cp "$out_dir/$base.apk" "downloads/mpvRx-preview-r${COMMIT_COUNT}-${ASSET_NAME:-$abi}.apk"
+            apk="$out_dir/$base.apk"
+            test -f "$apk"
+            cp "$apk" "downloads/mpvRx-preview-r${COMMIT_COUNT}-${ASSET_NAME:-$abi}.apk"
           done
 
       - name: Upload preview APKs

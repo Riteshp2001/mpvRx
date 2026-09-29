@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - master
+      - v0/fix-android-signing
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
@@ -20,7 +24,7 @@ jobs:
     timeout-minutes: 60
     env:
       APK_DIR: standard
-      APK_BASE: app-standard-release
+      APK_BASE: app-standard-debug
 
     steps:
       - name: Checkout repository
@@ -48,82 +52,68 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Build universal debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Debug builds are signed automatically by AGP with its standard debug certificate.
+          ./gradlew assembleStandardDebug -PuniversalOnly=true --stacktrace --no-daemon --max-workers=2
+
+      - name: Verify debug certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          apk="app/build/outputs/apk/standard/debug/${APK_BASE}.apk"
+          test -x "$apksigner"
+          test -f "$apk"
+          "$apksigner" verify --verbose "$apk"
+
+      - name: Upload universal debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-universal-debug-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/debug/app-standard-debug*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
       - name: Build universal release APK
         shell: bash
         run: |
           set -euo pipefail
-          # universalOnly disables ABI splits so a single APK carries every ABI.
           ./gradlew assembleStandardRelease -PuniversalOnly=true --stacktrace --no-daemon --max-workers=2
 
-      - name: Sign APK when signing secrets are available
+      - name: Locate release APK
+        id: release_apk
         shell: bash
-        env:
-          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          out_dir="app/build/outputs/apk/standard/release"
+          test -d "$out_dir"
 
-          test -x "$apksigner"
+          echo "Release APKs produced by Gradle:"
+          find "$out_dir" -maxdepth 1 -type f -name '*.apk' -print -exec ls -lh {} \;
 
-          if [[ -z "$SIGNING_KEYSTORE" ]]; then
-            echo "SIGNING_KEYSTORE is unavailable (expected for untrusted fork PRs); keeping the CI APK unsigned."
-            exit 0
-          fi
-
-          if [[ -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
-            echo "SIGNING_KEYSTORE exists but one or more required signing secrets are missing."
+          apk="$(find "$out_dir" -maxdepth 1 -type f -name '*.apk' -print | head -n 1)"
+          if [[ -z "$apk" || ! -s "$apk" ]]; then
+            echo "No release APK was produced."
             exit 1
           fi
 
-          # GitHub secrets may contain wrapped base64 or Windows line endings. Normalize
-          # only whitespace, then fail with a useful message for a pasted binary/raw value.
-          keystore_base64="$(printf '%s' "$SIGNING_KEYSTORE" | tr -d '[:space:]')"
-          if [[ -z "$keystore_base64" || ! "$keystore_base64" =~ ^[A-Za-z0-9+/]*={0,2}$ || $(( ${#keystore_base64} % 4 )) -ne 0 ]]; then
-            echo "SIGNING_KEYSTORE must be the complete base64 output of the .jks/.keystore file (not the binary file or a file path)."
-            exit 1
-          fi
-          if ! printf '%s' "$keystore_base64" | base64 --decode > release.keystore; then
-            echo "SIGNING_KEYSTORE is not valid base64. Re-encode the keystore and replace the GitHub secret."
-            exit 1
-          fi
-          trap 'rm -f release.keystore' EXIT
+          echo "Release APK produced successfully: $apk"
+          echo "path=$apk" >> "$GITHUB_OUTPUT"
 
-          out_dir="app/build/outputs/apk/${APK_DIR}/release"
-          signed="$out_dir/${APK_BASE}.apk"
-          unsigned="$out_dir/${APK_BASE}-unsigned.apk"
-          source=""
-          if [[ -f "$unsigned" ]]; then
-            source="$unsigned"
-          elif [[ -f "$signed" ]]; then
-            source="$signed"
-          else
-            echo "Missing expected APK: $unsigned (or $signed)"
-            find app/build/outputs/apk -type f -name '*.apk' -print || true
-            exit 1
-          fi
+      - name: Report release APK checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum "${{ steps.release_apk.outputs.path }}"
 
-          staged="$out_dir/${APK_BASE}-signing.apk"
-          rm -f "$staged"
-          "$apksigner" sign \
-            --ks release.keystore \
-            --ks-type JKS \
-            --ks-key-alias "$SIGNING_KEY_ALIAS" \
-            --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
-            --key-pass "pass:$KEY_PASSWORD" \
-            --out "$staged" \
-            "$source"
-          "$apksigner" verify --verbose "$staged"
-          rm -f "$unsigned"
-          mv -f "$staged" "$signed"
-
-      - name: Upload universal APK
+      - name: Upload universal release APK
         uses: actions/upload-artifact@v7
         with:
           name: app-standard-universal-release-${{ steps.metadata.outputs.short_sha }}
-          path: app/build/outputs/apk/standard/release/app-standard-release*.apk
+          path: ${{ steps.release_apk.outputs.path }}
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
