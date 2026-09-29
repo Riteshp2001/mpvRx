@@ -68,7 +68,9 @@ object MetadataRetrieval {
 
       // Filter videos that need metadata extraction
       // MediaStore provides width, height, duration but NOT FPS or subtitle info
-      // So we need to extract metadata if FPS or subtitle info is missing
+      // So we need to extract metadata if FPS or subtitle info is missing. Archive entries are
+      // skipped on purpose: reading their metadata would extract the whole episode to cache, and
+      // archives are kept read-only in place.
       val videosNeedingMetadata =
         videos.filter { video ->
           if (ZipArchiveMedia.isPlaybackUri(video.uri.toString())) return@filter false

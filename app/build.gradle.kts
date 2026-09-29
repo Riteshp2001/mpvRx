@@ -12,6 +12,9 @@ val localProperties =
 
 val targetAbiProp = project.findProperty("targetAbi")?.toString() ?: localProperties.getProperty("targetAbi")
 val enableX86 = project.findProperty("enableX86") != "false"
+// CI builds a single universal APK: ABI splits are turned off and every ABI is packed into one
+// APK instead of emitting per-ABI splits plus a universal one.
+val universalOnly = project.findProperty("universalOnly") == "true"
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 val activeAbis =
   if (!targetAbiProp.isNullOrBlank()) {
@@ -42,7 +45,7 @@ android {
   ndkVersion = "27.3.13750724"
 
   defaultConfig {
-    applicationId = "app.gyrolet.mpvrx"
+    applicationId = "com.firefly.mpvrx"
     minSdk = 26
     targetSdk = 36
     // Stable occupies the top of its version band. Preview uses the next band's commit-count
@@ -109,7 +112,7 @@ android {
 
   splits {
     abi {
-      isEnable = true
+      isEnable = !universalOnly
       reset()
       include(*activeAbis.toTypedArray())
       isUniversalApk = activeAbis.size > 1
@@ -117,7 +120,10 @@ android {
   }
 
   buildTypes {
+    // CI signing: release uses the AGP debug signing configuration for an installable test build.
     named("release") {
+      // Keep the release APK directly installable in CI by using AGP's debug signing config.
+      signingConfig = signingConfigs.getByName("debug")
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
       isMinifyEnabled = true
       isShrinkResources = true

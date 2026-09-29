@@ -96,65 +96,32 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Build debug APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Debug variants are automatically signed by AGP with the standard debug key.
+          ./gradlew "assemble${GRADLE_FLAVOR}Debug" --stacktrace --no-daemon --max-workers=2
+
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: debug-assets-${{ matrix.distribution.id }}
+          path: app/build/outputs/apk/${{ matrix.distribution.dir }}/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
       - name: Build release APKs
         shell: bash
         run: |
           set -euo pipefail
           ./gradlew "assemble${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
 
-      - name: Sign and stage release APKs
+      - name: Stage release APKs
         shell: bash
-        env:
-          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
-
-          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
-            echo "Stable releases require all signing secrets."
-            exit 1
-          fi
-          test -x "$apksigner"
-
-          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
-          trap 'rm -f release.keystore' EXIT
-
-          # AGP only appends "-unsigned" when the variant has no signing config, so accept
-          # either name and always re-sign with the release key.
-          sign_apk() {
-            local dir="$1"
-            local base="$2"
-            local label="$3"
-            local signed="$dir/$base.apk"
-            local unsigned="$dir/$base-unsigned.apk"
-            local source=""
-
-            if [[ -f "$unsigned" ]]; then
-              source="$unsigned"
-            elif [[ -f "$signed" ]]; then
-              source="$signed"
-            else
-              echo "Missing expected $label APK: $unsigned (or $signed)"
-              find app/build/outputs/apk -type f -name '*.apk' -print || true
-              exit 1
-            fi
-
-            local staged="$dir/$base-signing.apk"
-            rm -f "$staged"
-            "$apksigner" sign \
-              --ks release.keystore \
-              --ks-key-alias "$SIGNING_KEY_ALIAS" \
-              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
-              --key-pass "pass:$KEY_PASSWORD" \
-              --out "$staged" \
-              "$source"
-            "$apksigner" verify --verbose "$staged"
-            rm -f "$unsigned"
-            mv -f "$staged" "$signed"
-          }
 
           out_dir="app/build/outputs/apk/${APK_DIR}/release"
           test -d "$out_dir"
@@ -162,54 +129,15 @@ jobs:
 
           for abi in $APK_ABIS; do
             base="app-${APK_DIR}-${abi}-release"
-            sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} release"
-            cp "$out_dir/$base.apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
-          done
-
-      - name: Upload release assets
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-assets-${{ matrix.distribution.id }}
-          path: release-assets/*.apk
-          if-no-files-found: error
-          retention-days: 7
-          compression-level: 0
-
-  publish:
-    name: Publish GitHub release
-    needs: [prepare, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Download release assets
-        uses: actions/download-artifact@v7
-        with:
-          pattern: release-assets-*
-          merge-multiple: true
-          path: release-assets
-
-      - name: Verify assets and compute checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          : > checksums.txt
-          variants=(universal arm64-v8a armeabi-v7a x86 x86_64 fongmi no-vulkan)
-          for variant in "${variants[@]}"; do
-            asset="release-assets/mpvRx-${variant}-${VERSION_TAG}.apk"
-            if [[ ! -f "$asset" ]]; then
-              echo "Missing expected release asset: $asset"
-              find release-assets -type f -name '*.apk' -print || true
+            apk="$out_dir/$base.apk"
+            if [[ ! -s "$apk" ]]; then
+              echo "Missing expected release APK: $apk"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
               exit 1
             fi
-            sha256sum "$asset" | tee -a checksums.txt
+            cp "$apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
+            echo "Staged debug-key fallback release APK: $apk"
           done
-
       - name: Prepare release notes
         shell: bash
         run: |

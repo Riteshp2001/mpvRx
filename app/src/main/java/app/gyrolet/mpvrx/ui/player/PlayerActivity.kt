@@ -529,7 +529,7 @@ class PlayerActivity :
         if (!ownsPlaybackSession()) return
         if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
           viewModel.pause()
-          window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+          updateKeepScreenOn(isPaused = true)
         }
       }
     }
@@ -1497,6 +1497,13 @@ class PlayerActivity :
       return
     }
 
+    // Re-assert the keep-screen-on flag whenever the player regains focus. Some Android/Samsung
+    // window transitions can clear or temporarily override window flags while the video remains
+    // active; playback should not start dimming just because the controls have auto-hidden.
+    if (isReady && !viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && viewModel.paused != true) {
+      updateKeepScreenOn(isPaused = false)
+    }
+
     if (shouldAutoHideSystemBars()) {
       scheduleSystemBarsAutoHide(delayMs = 250L)
     }
@@ -2102,6 +2109,9 @@ class PlayerActivity :
     val shouldKeepScreenOn =
       externalDisplayManager?.isActive != true &&
         (!isPaused || playerPreferences.keepScreenOnWhenPaused.get())
+    // Keep both the Activity window and the player root awake. The view-level flag helps SurfaceView-backed playback on OEM builds during fullscreen and system-bar transitions.
+    binding.root.keepScreenOn = shouldKeepScreenOn
+    binding.player.keepScreenOn = shouldKeepScreenOn
     if (shouldKeepScreenOn) {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     } else {
@@ -2113,6 +2123,8 @@ class PlayerActivity :
     player.surfaceBindingEnabled = !active
     binding.externalDisplayOverlay.visibility = if (active) View.VISIBLE else View.GONE
     if (active) {
+      binding.root.keepScreenOn = false
+      binding.player.keepScreenOn = false
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
       if (!MediaPlaybackService.activityForeground && isReady && !isBackgroundPlaybackSessionActive) {
         if (startBackgroundPlayback(allowUserPrompt = false) == BackgroundPlaybackStartResult.Started) {
@@ -2293,6 +2305,8 @@ class PlayerActivity :
     // Clear flags first for immediate effect
     window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    binding.root.keepScreenOn = false
+    binding.player.keepScreenOn = false
 
     // Set cutout mode before showing bars for smoother transition
     setLayoutInDisplayCutoutModeIfSupported(shortEdges = false)
@@ -4315,6 +4329,12 @@ class PlayerActivity :
         eofAdvanceJob = null
         isAdvancingAtEof = false
         isReady = true
+        // The FILE_LOADED event is the authoritative point where the player becomes visible.
+        // Re-assert the screen-on flag here so the display cannot enter the system dim/timeout
+        // cycle if the initial pause-state callback arrived before the window was ready.
+        if (!viewModel.isAudioOnly.value && !isCurrentMediaKnownAudio() && viewModel.paused != true) {
+          updateKeepScreenOn(isPaused = false)
+        }
         if (playWhenFileLoaded) {
           playWhenFileLoaded = false
         }
