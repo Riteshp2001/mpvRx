@@ -2497,6 +2497,7 @@
   <string name="playlist_layout">Вид</string>
   <string name="playlist_view_list">Список</string>
   <string name="playlist_view_grid">Сетка</string>
+  <string name="playlist_view_mosaic">Мозаика</string>
   <string name="playlist_full_names">Полные имена</string>
   <string name="playlist_stream_details">Сведения о потоке</string>
   <string name="playlist_center_titles">Заголовки по центру</string>

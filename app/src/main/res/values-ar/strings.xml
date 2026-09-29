@@ -2509,6 +2509,7 @@
   <string name="playlist_layout">التخطيط</string>
   <string name="playlist_view_list">قائمة</string>
   <string name="playlist_view_grid">شبكة</string>
+  <string name="playlist_view_mosaic">فسيفساء</string>
   <string name="playlist_full_names">الأسماء الكاملة</string>
   <string name="playlist_stream_details">تفاصيل البث</string>
   <string name="playlist_center_titles">توسيط العناوين</string>

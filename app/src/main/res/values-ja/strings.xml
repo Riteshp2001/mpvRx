@@ -2476,6 +2476,7 @@
   <string name="playlist_layout">レイアウト</string>
   <string name="playlist_view_list">リスト</string>
   <string name="playlist_view_grid">グリッド</string>
+  <string name="playlist_view_mosaic">モザイク</string>
   <string name="playlist_full_names">名前をすべて表示</string>
   <string name="playlist_stream_details">ストリームの詳細</string>
   <string name="playlist_center_titles">タイトルを中央揃え</string>

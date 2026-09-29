@@ -40,6 +40,18 @@ interface FrameCaptureDao {
     folderId: Long?,
   )
 
+  /**
+   * Fills in the image size of a row written before the mosaic layout existed. Only ever called for
+   * a row that has none, so it cannot overwrite a size recorded at capture time. A size of `0 × 0`
+   * means the image could not be read at all — see `ImageDimensions.UNREADABLE`.
+   */
+  @Query("UPDATE frame_captures SET imageWidth = :width, imageHeight = :height WHERE id = :id")
+  suspend fun updateImageSize(
+    id: Long,
+    width: Int,
+    height: Int,
+  )
+
   @Query("DELETE FROM frame_captures WHERE folderId = :folderId")
   suspend fun deleteByFolder(folderId: Long)
 }

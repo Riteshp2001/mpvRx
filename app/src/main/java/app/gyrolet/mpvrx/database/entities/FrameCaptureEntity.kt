@@ -25,6 +25,12 @@ import androidx.room.PrimaryKey
  * carries no foreign key: adding one to an existing table would force a full table rebuild in the
  * migration, and the only writer is the frame capture repository, which deletes a folder and its rows
  * in one transaction. A dangling id is tolerated — readers treat an unknown folder as the root.
+ *
+ * [imageWidth] and [imageHeight] are the captured image's own pixel size, which is what the mosaic
+ * layout tiles by. They are nullable because every row written before the mosaic existed has none;
+ * those are filled in the first time the folder is browsed as a mosaic. A row whose image turned out
+ * to be unreadable records `0 × 0` instead of staying null, which marks the question as answered so
+ * the backfill does not reopen the dead file on every later visit.
  */
 @Entity(
   tableName = "frame_captures",
@@ -40,4 +46,6 @@ data class FrameCaptureEntity(
   val positionMs: Long,
   val capturedAt: Long = System.currentTimeMillis(),
   val folderId: Long? = null,
+  val imageWidth: Int? = null,
+  val imageHeight: Int? = null,
 )

@@ -954,6 +954,19 @@ val MIGRATION_29_30 =
     }
   }
 
+/**
+ * The mosaic layout tiles frames by their own aspect ratio, so a capture row now remembers the size
+ * of the image it points at. Nullable: rows written before this migration have none and are filled
+ * in on first browse.
+ */
+val MIGRATION_30_31 =
+  object : Migration(30, 31) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL("ALTER TABLE `frame_captures` ADD COLUMN `imageWidth` INTEGER")
+      db.execSQL("ALTER TABLE `frame_captures` ADD COLUMN `imageHeight` INTEGER")
+    }
+  }
+
 val MIGRATION_24_25 =
   object : Migration(24, 25) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -1022,6 +1035,7 @@ val DatabaseModule =
           MIGRATION_27_28,
           MIGRATION_28_29,
           MIGRATION_29_30,
+          MIGRATION_30_31,
         ).build()
     }
 

@@ -2483,6 +2483,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="playlist_layout">Diseño</string>
   <string name="playlist_view_list">Lista</string>
   <string name="playlist_view_grid">Cuadrícula</string>
+  <string name="playlist_view_mosaic">Mosaico</string>
   <string name="playlist_full_names">Nombres completos</string>
   <string name="playlist_stream_details">Detalles de la transmisión</string>
   <string name="playlist_center_titles">Centrar títulos</string>

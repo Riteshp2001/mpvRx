@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -518,10 +519,10 @@ private fun SnapshotLibraryContent(
         item(key = "snapshotsHeader") { SectionHeader(snapshotsLabel, Modifier.padding(bottom = 4.dp)) }
       }
       items(captures, key = { "capture_${it.id}" }) { capture ->
-        LaunchedEffect(capture.id) { onLoadThumbnail(capture) }
+        val thumbnail = rememberSnapshotThumbnail(capture, thumbnails, onLoadThumbnail)
         SnapshotListItem(
           capture = capture,
-          thumbnail = thumbnails[capture.id],
+          thumbnail = thumbnail,
           isSelected = isCaptureSelected(capture.id),
           onClick = { onCaptureClick(capture) },
           onLongClick = { onCaptureLongClick(capture) },
@@ -588,13 +589,14 @@ private fun SnapshotLibraryContent(
       }
 
       items(captures, key = { "capture_${it.id}" }) { capture ->
-        LaunchedEffect(capture.id) { onLoadThumbnail(capture) }
+        val thumbnail = rememberSnapshotThumbnail(capture, thumbnails, onLoadThumbnail)
         SnapshotGridItem(
           capture = capture,
-          thumbnail = thumbnails[capture.id],
+          thumbnail = thumbnail,
           isSelected = isCaptureSelected(capture.id),
           onClick = { onCaptureClick(capture) },
           onLongClick = { onCaptureLongClick(capture) },
+          modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         )
       }
     }

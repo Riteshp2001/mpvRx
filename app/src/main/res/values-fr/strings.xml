@@ -2483,6 +2483,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="playlist_layout">Disposition</string>
   <string name="playlist_view_list">Liste</string>
   <string name="playlist_view_grid">Grille</string>
+  <string name="playlist_view_mosaic">Mosaïque</string>
   <string name="playlist_full_names">Noms complets</string>
   <string name="playlist_stream_details">Détails du flux</string>
   <string name="playlist_center_titles">Centrer les titres</string>

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -105,6 +106,120 @@ internal fun snapshotGridColumns(
   }
 
 /**
+ * The shape a mosaic cell falls back to while its frame's size is still being read — square, which
+ * is what the plain grid shows, so an unsettled tile still looks like it belongs on the page.
+ */
+internal const val SNAPSHOT_MOSAIC_FALLBACK_RATIO = 1f
+
+/**
+ * The frame's own width-to-height ratio. Snapshots recorded before the mosaic layout existed carry
+ * no size until the backfill reads one, and a file that has since been deleted never will.
+ */
+internal val FrameCapture.mosaicAspectRatio: Float
+  get() {
+    val width = imageWidth ?: return SNAPSHOT_MOSAIC_FALLBACK_RATIO
+    val height = imageHeight ?: return SNAPSHOT_MOSAIC_FALLBACK_RATIO
+    if (width <= 0 || height <= 0) return SNAPSHOT_MOSAIC_FALLBACK_RATIO
+    return width.toFloat() / height.toFloat()
+  }
+
+/**
+ * One line of the mosaic: the frames on it, the height they share, and whether they reach the right
+ * edge.
+ */
+internal data class MosaicRow(
+  val captures: List<FrameCapture>,
+  val height: Dp,
+  /** False only for a short final line, which keeps its natural height rather than being stretched. */
+  val fillsWidth: Boolean,
+)
+
+/**
+ * Splits frames into justified rows — the photo-wall arrangement, and the reason this is not a
+ * column grid with spans.
+ *
+ * A line keeps taking frames until their combined width at the target height reaches
+ * [availableWidth], and is then rescaled to the one height at which every frame on it meets the
+ * right edge. Nothing is cropped: a frame's own ratio still sets its width, so it is the *line* that
+ * gives, not the picture.
+ *
+ * That is what a span-based grid cannot do. There, a line's height is the tallest tile on it, so a
+ * wide frame — short by nature — leaves a gap under itself beside a portrait one; and a wide frame
+ * that will not fit in the columns left over starts a new line, leaving the old one short of the
+ * edge. Both artefacts disappear once height is derived from the line instead of the line from its
+ * tallest tile.
+ *
+ * Only the final line can normally end short, because there is nothing left to add to it. It keeps
+ * the target height rather than being stretched, so one leftover frame looks like any other tile.
+ *
+ * [maxRowHeightScale] bounds how much taller than the target a line may become. A line is only ever
+ * justified below the target in practice — it stopped taking frames the moment it reached the width —
+ * so the bound only bites on frames whose stored size is nonsense (a truncated file can report a
+ * 1×60000 header): without it, a line of those would justify to a height taller than the screen, and
+ * once the gaps alone exceeded the width, to a negative one.
+ */
+internal fun mosaicRows(
+  captures: List<FrameCapture>,
+  columns: Int,
+  availableWidth: Dp,
+  spacing: Dp,
+  maxRowHeightScale: Float = 1.5f,
+): List<MosaicRow> {
+  if (captures.isEmpty() || columns <= 0) return emptyList()
+  // Aim for `columns` frames per line: the average frame is square, so one line's worth of frames is
+  // `columns` frames wide and `availableWidth / columns` tall.
+  val targetHeight = availableWidth / columns
+  val cap = targetHeight * maxRowHeightScale
+  val width = availableWidth.value
+  val gap = spacing.value
+
+  val rows = mutableListOf<MosaicRow>()
+  var start = 0
+  while (start < captures.size) {
+    var end = start
+    var ratioSum = 0f
+    while (end < captures.size) {
+      ratioSum += captures[end].mosaicAspectRatio
+      end++
+      if (ratioSum * targetHeight.value + gap * (end - start - 1) >= width) break
+    }
+
+    val line = captures.subList(start, end).toList()
+    val slack = availableWidth - spacing * (line.size - 1)
+    val justified = if (slack > 0.dp) slack / ratioSum else null
+    if (justified != null && justified <= cap) {
+      rows += MosaicRow(line, justified, fillsWidth = true)
+    } else {
+      rows += MosaicRow(line, targetHeight, fillsWidth = false)
+    }
+    start = end
+  }
+  return rows
+}
+
+/**
+ * The decoded thumbnail for [capture], asking for it if the store does not have it.
+ *
+ * Asking again when the bitmap is *gone* is the whole point. The store caps itself by bytes and drops
+ * the least recently used entry, so a tile that is still on screen can lose its bitmap under it while
+ * the user scrolls. An effect keyed on the capture id alone never runs a second time, which would
+ * leave that tile showing its placeholder until it scrolled out of the list and back in.
+ *
+ * Every snapshot list, grid and mosaic cell goes through here for that reason — one of them loading
+ * its own way is one of them getting this wrong.
+ */
+@Composable
+internal fun rememberSnapshotThumbnail(
+  capture: FrameCapture,
+  thumbnails: Map<Long, Bitmap>,
+  onLoad: (FrameCapture) -> Unit,
+): Bitmap? {
+  val thumbnail = thumbnails[capture.id]
+  LaunchedEffect(capture.id, thumbnail != null) { onLoad(capture) }
+  return thumbnail
+}
+
+/**
  * Tap behaviour shared by both snapshot screens: toggle the row while a selection is active, open the
  * full-screen viewer otherwise. Returns the selection unchanged when it opened the viewer.
  */
@@ -127,7 +242,7 @@ internal fun snapshotItemClick(
 }
 
 /**
- * The square snapshot cell.
+ * The snapshot cell: a frame filling its tile.
  *
  * No caption: a photo grid reads as photos, and the title and timestamp are what the list layout and
  * the full-screen viewer are for.
@@ -135,6 +250,10 @@ internal fun snapshotItemClick(
  * No rounded corners either — the grid is the pictures, and rounding every tile turns a photo wall
  * into a row of cards. This is a deliberate exception to the app's card-radius tokens; the folder
  * cards and list rows around it do follow them.
+ *
+ * The caller sizes it through [modifier], because the two layouts size a tile very differently: the
+ * square grid gives it a whole cell, while a mosaic line hands it a share of the line's width
+ * proportional to the frame's own ratio. Everything else about the tile is the same either way.
  */
 @Composable
 fun SnapshotGridItem(
@@ -143,14 +262,13 @@ fun SnapshotGridItem(
   isSelected: Boolean,
   onClick: () -> Unit,
   onLongClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   val selectionTint = animatedSelectionColor(isSelected)
 
   Box(
     modifier =
-      Modifier
-        .fillMaxWidth()
-        .aspectRatio(1f)
+      modifier
         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
         .tvFocusHighlight(AppShapeScale.none, focusedScale = 1.03f)
         .semantics { selected = isSelected }
@@ -161,6 +279,8 @@ fun SnapshotGridItem(
       Image(
         bitmap = thumbnail.asImageBitmap(),
         contentDescription = null,
+        // A mosaic line draws each frame at its own ratio, so this crops nothing there; the square
+        // grid is where it does the work.
         contentScale = ContentScale.Crop,
         modifier = Modifier.matchParentSize(),
       )

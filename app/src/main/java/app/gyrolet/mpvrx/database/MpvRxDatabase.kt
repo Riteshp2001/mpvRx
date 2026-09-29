@@ -72,7 +72,7 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
     FrameCaptureEntity::class,
     SnapshotFolderEntity::class,
   ],
-  version = 30,
+  version = 31,
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class, NetworkStreamEntryTypeConverter::class)

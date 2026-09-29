@@ -28,7 +28,24 @@ data class FrameCapture(
   val capturedAt: Long,
   /** The folder this snapshot was filed into, or null for the root of the snapshot library. */
   val folderId: Long? = null,
+  /**
+   * The captured image's own pixel size. Null for a row written before the mosaic layout existed;
+   * the mosaic falls back to a square tile for those until the backfill reads the real size.
+   *
+   * A row whose image can no longer be read holds 0 × 0 rather than null — see
+   * [ImageDimensions.UNREADABLE]. Readers treat any non-positive size as unknown either way.
+   */
+  val imageWidth: Int? = null,
+  val imageHeight: Int? = null,
 ) {
+  /**
+   * Whether this snapshot's image size has been settled, including where the answer was "cannot be
+   * read". The mosaic's backfill only reads rows that are still open, so this is what keeps a
+   * snapshot whose gallery file was deleted from being probed again on every visit.
+   */
+  val hasResolvedImageSize: Boolean
+    get() = imageWidth != null && imageHeight != null
+
   /** Position formatted as `H:MM:SS` (or `M:SS` under an hour) for the grid caption. */
   val formattedPosition: String
     get() = formatPosition(positionMs)

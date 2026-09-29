@@ -19,8 +19,14 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import app.gyrolet.mpvrx.domain.framecapture.FolderWriteResult
 import app.gyrolet.mpvrx.domain.framecapture.FrameCapture
 import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepository
+import app.gyrolet.mpvrx.domain.framecapture.ImageDimensions
 import app.gyrolet.mpvrx.domain.framecapture.SnapshotFolder
+import app.gyrolet.mpvrx.domain.framecapture.SnapshotImageLoader
 import app.gyrolet.mpvrx.domain.framecapture.SnapshotThumbnailStore
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,6 +34,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+
+/** Header reads in flight at once while the size backfill runs. */
+private const val IMAGE_SIZE_BACKFILL_CONCURRENCY = 16
 
 /** One folder's contents, plus the folder list the move dialog needs as targets. */
 data class SnapshotFolderContent(
@@ -43,8 +52,17 @@ class SnapshotViewModel(
 
   private val repository: FrameCaptureRepository by inject()
 
+  // The folder page is the one that can show a mosaic, and a mosaic cell is twice as wide as a grid
+  // cell — so this store samples for the widest thing it will ever draw.
   private val thumbnails =
-    SnapshotThumbnailStore(context = application, scope = viewModelScope)
+    SnapshotThumbnailStore(
+      context = application,
+      scope = viewModelScope,
+      targetMaxPx = SnapshotImageLoader.MOSAIC_THUMBNAIL_MAX_PX,
+    )
+
+  /** Guards the size backfill: it is a one-shot per folder, not per recomposition. */
+  private val imageSizeBackfillStarted = AtomicBoolean(false)
 
   val content: StateFlow<SnapshotFolderContent> =
     combine(repository.observeFolders(), repository.observeAll()) { folders, captures ->
@@ -66,6 +84,45 @@ class SnapshotViewModel(
   val thumbnailCache: StateFlow<Map<Long, Bitmap>> = thumbnails.thumbnails
 
   fun loadThumbnail(capture: FrameCapture) = thumbnails.load(capture)
+
+  /**
+   * Reads the image size of the snapshots recorded before the mosaic existed, so the mosaic can tile
+   * them by their real shape.
+   *
+   * Deferred until someone actually opens the folder as a mosaic rather than run on every folder
+   * open: the sizes are only ever read here, and the read is a header pass over every file in the
+   * folder. Every size lands in one write, because each write invalidates the capture query — which
+   * means a whole-folder re-query, re-sort and re-layout — and thirty small writes would cost thirty
+   * of those to save a fraction of a second of settling.
+   */
+  fun backfillImageSizes(captures: List<FrameCapture>) {
+    val unresolved = captures.filterNot { it.hasResolvedImageSize }
+    if (unresolved.isEmpty() || !imageSizeBackfillStarted.compareAndSet(false, true)) return
+    viewModelScope.launch {
+      val context = getApplication<Application>()
+      val sizes =
+        unresolved
+          .chunked(IMAGE_SIZE_BACKFILL_CONCURRENCY)
+          .flatMap { chunk ->
+            chunk
+              .map { capture ->
+                async(Dispatchers.IO) {
+                  capture.id to
+                    SnapshotImageLoader.readDimensions(
+                      context = context,
+                      imageUri = capture.imageUri,
+                      imagePath = capture.imagePath,
+                    )
+                }
+              }
+              .awaitAll()
+          }
+          // A snapshot whose gallery file has since been deleted is stamped unreadable rather than
+          // left blank, so this is the last time anything tries to open it.
+          .associate { (id, size) -> id to (size ?: ImageDimensions.UNREADABLE) }
+      repository.recordImageSizes(sizes)
+    }
+  }
 
   fun delete(ids: Collection<Long>) {
     if (ids.isEmpty()) return

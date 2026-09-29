@@ -73,6 +73,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.framecapture.FolderWriteResult
 import app.gyrolet.mpvrx.domain.framecapture.FrameCapture
 import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepository
+import app.gyrolet.mpvrx.domain.framecapture.SnapshotImageLoader
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.framecapture.SnapshotFolderRow
@@ -151,6 +152,16 @@ fun FrameNavigationSheet(
           .onSuccess { saved ->
             val positionSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0
             val videoUri = PlaybackSession.persistableSourceUri()
+            // Read from the file rather than from mpv: the saved PNG is what the mosaic tiles by,
+            // and mpv's own width/height is the decoder's frame, before any rotation.
+            val dimensions =
+              withContext(Dispatchers.IO) {
+                SnapshotImageLoader.readDimensions(
+                  context = context,
+                  imageUri = saved.uri?.toString(),
+                  imagePath = saved.file?.absolutePath,
+                )
+              }
             val written =
               runCatching {
                 withContext(Dispatchers.IO) {
@@ -168,6 +179,8 @@ fun FrameNavigationSheet(
                       positionMs = (positionSeconds * 1000.0).toLong().coerceAtLeast(0L),
                       capturedAt = System.currentTimeMillis(),
                       folderId = targetFolderId,
+                      imageWidth = dimensions?.width,
+                      imageHeight = dimensions?.height,
                     ),
                   )
                 }

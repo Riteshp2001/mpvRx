@@ -177,55 +177,59 @@ fun SortDialog(
           if (layoutModeSelector != null) {
             HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
             DialogSectionTitle(text = layoutModeSelector.label)
+            // A page with three layouts owns its own selection, so the third option decides whether
+            // the middle one is the one showing; with only two the flag still describes both.
+            val thirdSelected = layoutModeSelector.thirdOption?.isSelected == true
+            val isFirstSelected = layoutModeSelector.isFirstOptionSelected && !thirdSelected
+            val options =
+              buildList {
+                add(
+                  ViewModeOption(
+                    label = layoutModeSelector.firstOptionLabel,
+                    icon = layoutModeSelector.firstOptionIcon,
+                    isSelected = isFirstSelected,
+                    onClick = { layoutModeSelector.onViewModeChange(true) },
+                  ),
+                )
+                add(
+                  ViewModeOption(
+                    label = layoutModeSelector.secondOptionLabel,
+                    icon = layoutModeSelector.secondOptionIcon,
+                    isSelected = !layoutModeSelector.isFirstOptionSelected && !thirdSelected,
+                    onClick = { layoutModeSelector.onViewModeChange(false) },
+                  ),
+                )
+                layoutModeSelector.thirdOption?.let(::add)
+              }
             SingleChoiceSegmentedButtonRow(
               modifier = Modifier.fillMaxWidth(),
             ) {
-              val isFirstSelected = layoutModeSelector.isFirstOptionSelected
-              SegmentedButton(
-                selected = isFirstSelected,
-                onClick = {
-                  if (enableLayoutModeOptions && !isFirstSelected) {
-                    layoutModeSelector.onViewModeChange(true)
-                    haptics.selection(true)
-                  }
-                },
-                enabled = enableLayoutModeOptions,
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                colors = themedSegmentedButtonColors(),
-                icon = {
-                  Icon(
-                    imageVector = layoutModeSelector.firstOptionIcon,
-                    contentDescription = layoutModeSelector.firstOptionLabel,
-                    modifier = Modifier.size(16.dp),
-                  )
-                },
-              ) {
-                Text(text = layoutModeSelector.firstOptionLabel)
-              }
-              SegmentedButton(
-                selected = !isFirstSelected,
-                onClick = {
-                  if (enableLayoutModeOptions && isFirstSelected) {
-                    layoutModeSelector.onViewModeChange(false)
-                    haptics.selection(true)
-                  }
-                },
-                enabled = enableLayoutModeOptions,
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                colors = themedSegmentedButtonColors(),
-                icon = {
-                  Icon(
-                    imageVector = layoutModeSelector.secondOptionIcon,
-                    contentDescription = layoutModeSelector.secondOptionLabel,
-                    modifier = Modifier.size(16.dp),
-                  )
-                },
-              ) {
-                Text(text = layoutModeSelector.secondOptionLabel)
+              options.forEachIndexed { index, option ->
+                SegmentedButton(
+                  selected = option.isSelected,
+                  onClick = {
+                    if (enableLayoutModeOptions && !option.isSelected) {
+                      option.onClick()
+                      haptics.selection(true)
+                    }
+                  },
+                  enabled = enableLayoutModeOptions,
+                  shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                  colors = themedSegmentedButtonColors(),
+                  icon = {
+                    Icon(
+                      imageVector = option.icon,
+                      contentDescription = option.label,
+                      modifier = Modifier.size(16.dp),
+                    )
+                  },
+                ) {
+                  Text(text = option.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
               }
             }
             val showSeparateLayout = layoutModeSelector.checkboxLabel != null && layoutModeSelector.onCheckboxChange != null
-            val showManualGrid = manualGridToggle != null && !layoutModeSelector.isFirstOptionSelected
+            val showManualGrid = manualGridToggle != null && !isFirstSelected
             if (showSeparateLayout || showManualGrid) {
               Spacer(modifier = Modifier.height(4.dp))
               Row(
@@ -669,6 +673,11 @@ data class ViewModeSelector(
   val checkboxLabel: String? = null,
   val isCheckboxChecked: Boolean = false,
   val onCheckboxChange: ((Boolean) -> Unit)? = null,
+  /**
+   * A third choice, for pages that have one — the snapshots' mosaic. When it is present it owns the
+   * selection state: the caller passes [isFirstOptionSelected] = false and marks this one selected.
+   */
+  val thirdOption: ViewModeOption? = null,
 )
 
 data class GridColumnSelector(

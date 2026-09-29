@@ -90,6 +90,14 @@ class FrameCaptureRepositoryImpl(
   override suspend fun record(capture: FrameCapture): Long =
     withContext(Dispatchers.IO) { dao.insert(capture.toEntity()) }
 
+  override suspend fun recordImageSizes(sizes: Map<Long, ImageDimensions>) =
+    withContext(Dispatchers.IO) {
+      if (sizes.isEmpty()) return@withContext
+      database.withTransaction {
+        sizes.forEach { (id, size) -> dao.updateImageSize(id, size.width, size.height) }
+      }
+    }
+
   override suspend fun delete(id: Long) =
     withContext(Dispatchers.IO) { dao.delete(id) }
 
@@ -194,6 +202,8 @@ private fun FrameCaptureEntity.toDomain(): FrameCapture =
     positionMs = positionMs,
     capturedAt = capturedAt,
     folderId = folderId,
+    imageWidth = imageWidth,
+    imageHeight = imageHeight,
   )
 
 private fun FrameCapture.toEntity(): FrameCaptureEntity =
@@ -207,6 +217,8 @@ private fun FrameCapture.toEntity(): FrameCaptureEntity =
     positionMs = positionMs,
     capturedAt = if (capturedAt > 0L) capturedAt else System.currentTimeMillis(),
     folderId = folderId,
+    imageWidth = imageWidth,
+    imageHeight = imageHeight,
   )
 
 private fun SnapshotFolderEntity.toDomain(): SnapshotFolder =

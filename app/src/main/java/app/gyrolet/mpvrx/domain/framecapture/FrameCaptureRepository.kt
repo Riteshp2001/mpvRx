@@ -67,6 +67,16 @@ interface FrameCaptureRepository {
 
   suspend fun record(capture: FrameCapture): Long
 
+  /**
+   * Stores the size of each snapshot's image, for rows that predate the mosaic layout. Rows recorded
+   * from a fresh capture already carry it, and a row whose image cannot be read is stored as
+   * [ImageDimensions.UNREADABLE] so it is not asked for again.
+   *
+   * Batched into one transaction so a folder's worth of backfill invalidates the capture query once
+   * rather than once per row.
+   */
+  suspend fun recordImageSizes(sizes: Map<Long, ImageDimensions>)
+
   suspend fun delete(id: Long)
 
   /** Removes several records at once; the grid's multi-select deletes in one pass. */

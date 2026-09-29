@@ -2482,6 +2482,7 @@
   <string name="playlist_layout">布局</string>
   <string name="playlist_view_list">列表</string>
   <string name="playlist_view_grid">网格</string>
+  <string name="playlist_view_mosaic">马赛克</string>
   <string name="playlist_full_names">完整名称</string>
   <string name="playlist_stream_details">流详情</string>
   <string name="playlist_center_titles">标题居中</string>

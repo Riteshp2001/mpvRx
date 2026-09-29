@@ -23,6 +23,7 @@ import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.dialogs.GridColumnSelector
 import app.gyrolet.mpvrx.ui.browser.dialogs.SortDialog
+import app.gyrolet.mpvrx.ui.browser.dialogs.ViewModeOption
 import app.gyrolet.mpvrx.ui.browser.dialogs.ViewModeSelector
 import app.gyrolet.mpvrx.ui.browser.dialogs.VisibilityToggle
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -71,10 +72,23 @@ fun SnapshotSortDialog(
       onViewModeChange = { isList ->
         viewPreferences.layoutMode.set(if (isList) MediaLayoutMode.LIST else MediaLayoutMode.GRID)
       },
+      // Mosaic is about frames inside a folder, so the library page's own layout selector — the
+      // folders and the loose snapshots — stays a two-way switch.
+      thirdOption =
+        if (forFolders) {
+          null
+        } else {
+          ViewModeOption(
+            label = stringResource(R.string.playlist_view_mosaic),
+            icon = Icons.RoundedFilled.ViewQuilt,
+            isSelected = layoutMode == MediaLayoutMode.MOSAIC,
+            onClick = { viewPreferences.layoutMode.set(MediaLayoutMode.MOSAIC) },
+          )
+        },
     )
 
   val manualGridToggle =
-    if (layoutMode == MediaLayoutMode.GRID) {
+    if (layoutMode != MediaLayoutMode.LIST) {
       VisibilityToggle(
         label = stringResource(R.string.playlist_manual_grid),
         checked = manualGrid,
@@ -88,7 +102,7 @@ fun SnapshotSortDialog(
     }
 
   val columnSelector =
-    if (layoutMode == MediaLayoutMode.GRID && manualGrid && maxColumns > 1) {
+    if (layoutMode != MediaLayoutMode.LIST && manualGrid && maxColumns > 1) {
       GridColumnSelector(
         label =
           stringResource(

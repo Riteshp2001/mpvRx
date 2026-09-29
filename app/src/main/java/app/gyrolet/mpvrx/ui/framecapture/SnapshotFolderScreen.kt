@@ -15,9 +15,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -301,10 +306,10 @@ data class SnapshotFolderScreen(val folderId: Long) : Screen {
               verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
               items(displayItems, key = { it.id }) { capture ->
-                LaunchedEffect(capture.id) { viewModel.loadThumbnail(capture) }
+                val thumbnail = rememberSnapshotThumbnail(capture, thumbnails, viewModel::loadThumbnail)
                 SnapshotListItem(
                   capture = capture,
-                  thumbnail = thumbnails[capture.id],
+                  thumbnail = thumbnail,
                   isSelected = selection.isSelected(capture.id),
                   onClick = { selection = snapshotItemClick(selection, displayItems, capture, backStack) },
                   onLongClick = {
@@ -316,6 +321,71 @@ data class SnapshotFolderScreen(val folderId: Long) : Screen {
                       }
                   },
                 )
+              }
+            }
+
+          layoutMode == MediaLayoutMode.MOSAIC ->
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+              // The mosaic justifies its own lines, so the column count is not a column count here —
+              // it is how many frames a line aims for before it is scaled flush with the edge.
+              val lineWidth = maxWidth - SNAPSHOT_GRID_SPACING * 2
+              val columns = snapshotGridColumns(lineWidth, manualColumns)
+              val rows =
+                remember(displayItems, columns, lineWidth) {
+                  mosaicRows(displayItems, columns, lineWidth, SNAPSHOT_GRID_SPACING)
+                }
+
+              // Snapshots recorded before the mosaic existed carry no size to tile by. Reading them
+              // waits until here rather than running on every folder open: it is a header pass over
+              // every file in the folder, and nothing but this layout wants the answer.
+              LaunchedEffect(content.snapshots) { viewModel.backfillImageSizes(content.snapshots) }
+
+              LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                  PaddingValues(
+                    start = SNAPSHOT_GRID_SPACING,
+                    end = SNAPSHOT_GRID_SPACING,
+                    top = SNAPSHOT_GRID_SPACING,
+                    bottom = bottomInset + SNAPSHOT_GRID_SPACING,
+                  ),
+                verticalArrangement = Arrangement.spacedBy(SNAPSHOT_GRID_SPACING),
+              ) {
+                // Keyed off the line's first frame, which is the one frame of a line guaranteed to
+                // stay put when the rest of the line is filled in by the size backfill.
+                items(rows, key = { it.captures.first().id }) { row ->
+                  Row(
+                    modifier = Modifier.fillMaxWidth().height(row.height),
+                    horizontalArrangement = Arrangement.spacedBy(SNAPSHOT_GRID_SPACING),
+                  ) {
+                    row.captures.forEach { capture ->
+                      val thumbnail = rememberSnapshotThumbnail(capture, thumbnails, viewModel::loadThumbnail)
+                      SnapshotGridItem(
+                        capture = capture,
+                        thumbnail = thumbnail,
+                        isSelected = selection.isSelected(capture.id),
+                        onClick = { selection = snapshotItemClick(selection, displayItems, capture, backStack) },
+                        onLongClick = {
+                          selection =
+                            if (selection.isInSelectionMode) {
+                              selection.selectRange(capture.id, displayIds)
+                            } else {
+                              selection.toggle(capture.id)
+                            }
+                        },
+                        // A justified line shares its width out by ratio, which lands each frame at
+                        // exactly its own shape. A short final line is laid out at its natural widths
+                        // instead, and simply ends before the edge.
+                        modifier =
+                          if (row.fillsWidth) {
+                            Modifier.weight(capture.mosaicAspectRatio).fillMaxHeight()
+                          } else {
+                            Modifier.width(row.height * capture.mosaicAspectRatio).fillMaxHeight()
+                          },
+                      )
+                    }
+                  }
+                }
               }
             }
 
@@ -339,10 +409,10 @@ data class SnapshotFolderScreen(val folderId: Long) : Screen {
                 verticalArrangement = Arrangement.spacedBy(SNAPSHOT_GRID_SPACING),
               ) {
                 items(displayItems, key = { it.id }) { capture ->
-                  LaunchedEffect(capture.id) { viewModel.loadThumbnail(capture) }
+                  val thumbnail = rememberSnapshotThumbnail(capture, thumbnails, viewModel::loadThumbnail)
                   SnapshotGridItem(
                     capture = capture,
-                    thumbnail = thumbnails[capture.id],
+                    thumbnail = thumbnail,
                     isSelected = selection.isSelected(capture.id),
                     onClick = { selection = snapshotItemClick(selection, displayItems, capture, backStack) },
                     onLongClick = {
@@ -353,6 +423,7 @@ data class SnapshotFolderScreen(val folderId: Long) : Screen {
                           selection.toggle(capture.id)
                         }
                     },
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                   )
                 }
               }

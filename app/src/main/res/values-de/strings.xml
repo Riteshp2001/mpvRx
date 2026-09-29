@@ -2483,6 +2483,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="playlist_layout">Layout</string>
   <string name="playlist_view_list">Liste</string>
   <string name="playlist_view_grid">Raster</string>
+  <string name="playlist_view_mosaic">Mosaik</string>
   <string name="playlist_full_names">Vollständige Namen</string>
   <string name="playlist_stream_details">Streamdetails</string>
   <string name="playlist_center_titles">Titel zentrieren</string>

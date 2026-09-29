@@ -2387,6 +2387,7 @@
   <string name="playlist_layout">लेआउट</string>
   <string name="playlist_view_list">सूची</string>
   <string name="playlist_view_grid">ग्रिड</string>
+  <string name="playlist_view_mosaic">मोज़ेक</string>
   <string name="playlist_full_names">पूरे नाम</string>
   <string name="playlist_stream_details">स्ट्रीम विवरण</string>
   <string name="playlist_center_titles">शीर्षक बीच में रखें</string>

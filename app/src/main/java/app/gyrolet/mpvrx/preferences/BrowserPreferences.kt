@@ -414,6 +414,12 @@ enum class TreeFlattenDepth(
 enum class MediaLayoutMode {
   LIST,
   GRID,
+
+  /**
+   * Photo-wall layout: every image keeps its own aspect ratio and a wide frame spans two columns.
+   * Only the snapshots' item view offers it — the enum is shared, the choices are not.
+   */
+  MOSAIC,
   ;
 
   val displayName: String
@@ -421,6 +427,7 @@ enum class MediaLayoutMode {
       when (this) {
         LIST -> "List"
         GRID -> "Grid"
+        MOSAIC -> "Mosaic"
       }
 }
 

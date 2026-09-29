@@ -2630,6 +2630,7 @@
   <string name="playlist_layout">Layout</string>
   <string name="playlist_view_list">List</string>
   <string name="playlist_view_grid">Grid</string>
+  <string name="playlist_view_mosaic">Mosaic</string>
   <string name="playlist_full_names">Full names</string>
   <string name="playlist_stream_details">Stream details</string>
   <string name="playlist_center_titles">Center titles</string>

@@ -1135,10 +1135,12 @@ internal fun VideoListContent(
           val columns =
             when (mediaLayoutMode) {
               MediaLayoutMode.LIST -> 1
-              MediaLayoutMode.GRID -> videoGridColumns
+              MediaLayoutMode.GRID,
+              MediaLayoutMode.MOSAIC,
+              -> videoGridColumns
             }
 
-          if (mediaLayoutMode == MediaLayoutMode.GRID) {
+          if (mediaLayoutMode != MediaLayoutMode.LIST) {
             Box(
               modifier =
                 Modifier
