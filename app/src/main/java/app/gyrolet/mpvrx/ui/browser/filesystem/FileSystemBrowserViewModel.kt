@@ -453,7 +453,7 @@ class FileSystemBrowserViewModel(
           // Update breadcrumbs for real paths
           // Similar to Fossify's Breadcrumbs.setBreadcrumb()
           _breadcrumbs.value = if (ZipArchiveMedia.isBrowserPath(path)) {
-            ZipArchiveMedia.breadcrumbs(path)
+            ZipArchiveMedia.breadcrumbs(getApplication(), path)
           } else {
             MediaFileRepository.getPathComponents(path)
           }
@@ -462,13 +462,19 @@ class FileSystemBrowserViewModel(
           // Get hidden files preference
           // Scan directory - equivalent to Fossify's getRegularItemsOf()
           // Always show only videos (showAllFileTypes = false)
-          MediaFileRepository
-            .scanDirectory(
-              getApplication(),
-              path,
-              showAllFileTypes = false,
-              forceFileSystemCheck = forceFileSystemCheck,
-            ).onSuccess { items ->
+          val scanResult =
+            if (ZipArchiveMedia.isBrowserPath(path)) {
+              ZipArchiveMedia.scan(getApplication(), path, includeAudio = false)
+            } else {
+              MediaFileRepository.scanDirectory(
+                getApplication(),
+                path,
+                showAllFileTypes = false,
+                forceFileSystemCheck = forceFileSystemCheck,
+              )
+            }
+          scanResult
+            .onSuccess { items ->
               ensureActive()
               // Get previous count for this path
               val previousCount = itemCountByPath[path] ?: 0

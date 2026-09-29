@@ -302,9 +302,10 @@ object ZipArchiveMedia {
     }
   }
 
-  fun breadcrumbs(value: String): List<PathComponent> {
+  fun breadcrumbs(context: Context, value: String): List<PathComponent> {
     val location = parseBrowserPath(value) ?: return emptyList()
-    val archiveName = File(location.archivePath).name
+    val archiveFile = File(location.archivePath)
+    val archiveName = archiveDisplayName(context, Uri.parse(location.archivePath), archiveFile.takeIf(File::isAbsolute))
     return buildList {
       add(PathComponent(archiveName, browserPath(location.archivePath)))
       var directory = ""
