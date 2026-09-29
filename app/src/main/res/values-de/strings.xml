@@ -2574,4 +2574,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="oss_six_description">Python-Kompatibilitätshilfen für den Dateinamenparser.</string>
   <string name="oss_anime4k_description">Echtzeit-Upscaling- und Restaurierungs-Shader für animierte Videos.</string>
   <string name="oss_hdr_toys_description">Shader für HDR-Tonemapping, Farbraumabbildung und Übertragungsfunktionen.</string>
+  <string name="frame_gen_heat_warning">Die Frame-Generierung kann die Gerätetemperatur und den Akkuverbrauch deutlich erhöhen.</string>
+  <string name="frame_gen_library_title">Bibliothek</string>
+  <string name="frame_gen_library_hint">Hole Lossless.dll aus deiner Lossless-Scaling-Installation (Steam - Lokale Dateien).</string>
 </resources>

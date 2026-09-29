@@ -2574,4 +2574,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="oss_six_description">Outils de compatibilité Python inclus avec l’analyseur.</string>
   <string name="oss_anime4k_description">Shaders d’agrandissement et de restauration en temps réel pour les vidéos animées.</string>
   <string name="oss_hdr_toys_description">Shaders de tone mapping HDR, de gamut mapping et de fonctions de transfert.</string>
+  <string name="frame_gen_heat_warning">La génération d’images peut augmenter fortement la température de l’appareil et la consommation de batterie.</string>
+  <string name="frame_gen_library_title">Bibliothèque</string>
+  <string name="frame_gen_library_hint">Récupérez Lossless.dll depuis votre installation de Lossless Scaling (Steam - Fichiers locaux).</string>
 </resources>

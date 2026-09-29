@@ -17,6 +17,7 @@ import android.os.Build
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.annotation.StringRes
+import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -719,22 +720,29 @@ private fun collectSystemStats(context: Context): List<Pair<String, String>> {
   // CPU cores
   val cores = Runtime.getRuntime().availableProcessors()
 
-  return listOf(
+  // GPU & Frame Generation compatibility
+  val compat = LosslessScalingHelper.getCompatibility(context)
+  val installed = LosslessScalingHelper.installed.value
+
+  return listOfNotNull(
     "Manufacturer" to Build.MANUFACTURER.replaceFirstChar { it.uppercase() },
     "Device" to "${Build.MODEL} (${Build.DEVICE})",
     "Android" to "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
     "CPU ABI" to abis,
     "CPU Cores" to "$cores cores",
     "RAM" to ramStr,
-    "OpenGL ES" to glesVersion,
-    "mpv Renderer Build" to
-      if (BuildConfig.MPV_SUPPORTS_VULKAN) {
-        "OpenGL + Vulkan"
-      } else {
-        "OpenGL only (non-Vulkan)"
-      },
+    "GPU" to (if (compat.gpuModel.isNotBlank() && compat.gpuModel != "Unknown GPU") compat.gpuModel else Build.HARDWARE.ifBlank { "Unknown" }),
     "Vulkan" to vulkanStr,
-    "GPU Renderer" to (Build.HARDWARE.ifBlank { "Unknown" }),
+    "OpenGL ES" to glesVersion,
+    if (BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+      "Frame Generation" to if (compat.isHardwareSupported) {
+        if (installed) "Supported ✓ (Library installed)" else "Supported ✓ (Library not installed)"
+      } else {
+        "Unsupported ✗"
+      }
+    } else {
+      null
+    },
     "Board" to Build.BOARD,
     "Kernel" to System.getProperty("os.version", "Unknown"),
   )

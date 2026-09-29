@@ -2600,4 +2600,7 @@
   <string name="oss_six_description">أدوات توافق Python المضمّنة مع محلل أسماء الملفات.</string>
   <string name="oss_anime4k_description">مظللات ترقية واستعادة فورية للفيديو المتحرك.</string>
   <string name="oss_hdr_toys_description">مظللات تعيين درجات HDR والنطاق اللوني ودوال النقل.</string>
+  <string name="frame_gen_heat_warning">قد يؤدي توليد الإطارات إلى زيادة ملحوظة في حرارة الجهاز واستهلاك البطارية.</string>
+  <string name="frame_gen_library_title">المكتبة</string>
+  <string name="frame_gen_library_hint">احصل على Lossless.dll من تثبيت Lossless Scaling لديك (Steam - الملفات المحلية).</string>
 </resources>

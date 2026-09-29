@@ -2588,4 +2588,7 @@
   <string name="oss_six_description">Средства совместимости Python, включённые в анализатор имён.</string>
   <string name="oss_anime4k_description">Шейдеры повышения разрешения и восстановления анимационного видео в реальном времени.</string>
   <string name="oss_hdr_toys_description">Шейдеры тонального и цветового отображения HDR и передаточных функций.</string>
+  <string name="frame_gen_heat_warning">Генерация кадров может существенно повысить температуру устройства и расход заряда.</string>
+  <string name="frame_gen_library_title">Библиотека</string>
+  <string name="frame_gen_library_hint">Получите Lossless.dll из установленного Lossless Scaling (Steam - Локальные файлы).</string>
 </resources>

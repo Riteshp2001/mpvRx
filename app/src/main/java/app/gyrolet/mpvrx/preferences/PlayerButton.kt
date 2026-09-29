@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.preferences
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -53,6 +54,7 @@ enum class PlayerButton(
   TIME_NETWORK(Icons.RoundedFilled.AccessTime),
   EQUALIZER(Icons.RoundedFilled.Equalizer),
   SCOPES(Icons.RoundedFilled.Mystery),
+  FRAME_GENERATION(Icons.RoundedFilled.FrameGen),
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 
@@ -64,7 +66,8 @@ val allPlayerButtons =
   PlayerButton.values().filter {
     it != PlayerButton.NONE &&
       it != PlayerButton.BACK_ARROW &&
-      it != PlayerButton.VIDEO_TITLE
+      it != PlayerButton.VIDEO_TITLE &&
+      (it != PlayerButton.FRAME_GENERATION || BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN)
   }
 
 /**
@@ -104,5 +107,6 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.TIME_NETWORK -> stringResource(R.string.btn_label_time_network)
     PlayerButton.EQUALIZER -> stringResource(R.string.btn_label_equalizer)
     PlayerButton.SCOPES -> stringResource(R.string.btn_label_scopes)
+    PlayerButton.FRAME_GENERATION -> stringResource(R.string.btn_label_frame_generation)
     PlayerButton.NONE -> stringResource(R.string.btn_label_none)
   }

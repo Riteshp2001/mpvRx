@@ -2478,4 +2478,7 @@
   <string name="oss_six_description">फ़ाइल नाम पार्सर के साथ शामिल Python संगतता सहायक।</string>
   <string name="oss_anime4k_description">एनिमेटेड वीडियो के लिए रियल-टाइम अपस्केलिंग और पुनर्स्थापन शेडर।</string>
   <string name="oss_hdr_toys_description">HDR टोन मैपिंग, गैमट मैपिंग और ट्रांसफ़र फ़ंक्शन शेडर।</string>
+  <string name="frame_gen_heat_warning">फ्रेम जनरेशन से डिवाइस का तापमान और बैटरी खपत काफी बढ़ सकती है।</string>
+  <string name="frame_gen_library_title">लाइब्रेरी</string>
+  <string name="frame_gen_library_hint">अपने Lossless Scaling इंस्टॉलेशन से Lossless.dll प्राप्त करें (Steam - Local Files)।</string>
 </resources>

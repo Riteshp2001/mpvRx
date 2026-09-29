@@ -64,8 +64,16 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState as composeCollectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
+import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
@@ -75,6 +83,7 @@ object DecoderPreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val preferences = koinInject<DecoderPreferences>()
+    val playerPreferences = koinInject<PlayerPreferences>()
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
     val configOwnedOptions =
@@ -483,6 +492,256 @@ object DecoderPreferencesScreen : Screen {
                   }
                 }
               }
+            }
+          }
+
+          // ── Frame Generation (LSFG) ──────────────────────────────────
+          item {
+            if (BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+              PreferenceSectionHeader(
+                title = stringResource(R.string.frame_gen_sheet_title),
+              )
+            }
+          }
+
+          item {
+            if (!BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) return@item
+            val installed by LosslessScalingHelper.installed.composeCollectAsState()
+            val statusText by LosslessScalingHelper.statusText.composeCollectAsState()
+            val isSupported =
+              isDeviceVulkanSupported && preferences.useVulkan.get() && preferences.gpuNext.get()
+            val scope = rememberCoroutineScope()
+            var installing by remember { mutableStateOf(false) }
+            var showRemoveDialog by remember { mutableStateOf(false) }
+            var showResultDialog by remember { mutableStateOf<String?>(null) }
+
+            val dllPicker = rememberLauncherForActivityResult(
+              ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+              if (uri == null) return@rememberLauncherForActivityResult
+              installing = true
+              scope.launch {
+                try {
+                  val result = LosslessScalingHelper.install(context, uri)
+                  installing = false
+                  showResultDialog = when (result) {
+                    LosslessScalingHelper.RESULT_OK -> context.getString(R.string.frame_gen_install_success)
+                    LosslessScalingHelper.RESULT_NOT_PE -> "Selected file is not a valid Windows PE (.dll) file."
+                    LosslessScalingHelper.RESULT_MISSING_SHADERS -> "Missing required LSFG compute shaders in DLL (RC_DATA entries 304, 305, 329-351)."
+                    LosslessScalingHelper.RESULT_TRANSLATION_FAILED -> "Failed to translate or cache SPIR-V compute shaders."
+                    LosslessScalingHelper.RESULT_UNREADABLE -> "Unable to read the selected file."
+                    else -> "Installation failed (Error code: $result). Check logcat for details."
+                  }
+                } catch (e: Throwable) {
+                  installing = false
+                  showResultDialog = "Installation error: ${e.message ?: "Unknown error"}"
+                }
+              }
+            }
+
+            val vulkanEnabled by preferences.useVulkan.collectAsState()
+            val gpuNextEnabled by preferences.gpuNext.collectAsState()
+            val compat = remember(vulkanEnabled, gpuNextEnabled) {
+              LosslessScalingHelper.getCompatibility(context, preferences)
+            }
+
+            PreferenceCard {
+              // 1. Enable Toggle
+              val isFrameGenEnabled by playerPreferences.isFrameGenEnabled.collectAsState()
+              SwitchPreference(
+                value = isFrameGenEnabled && installed && isSupported,
+                enabled = isSupported && installed && !installing,
+                onValueChange = { playerPreferences.isFrameGenEnabled.set(it) },
+                title = { Text(stringResource(R.string.btn_label_frame_generation)) },
+                summary = {
+                  Text(
+                    when {
+                      !isSupported -> stringResource(R.string.frame_gen_not_supported)
+                      !installed -> stringResource(R.string.frame_gen_library_not_installed)
+                      else -> stringResource(R.string.frame_gen_description)
+                    },
+                    color = if (!isSupported || !installed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                  )
+                  Text(
+                    stringResource(R.string.frame_gen_heat_warning),
+                    color = MaterialTheme.colorScheme.error,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              // 2. Multiplier (2x, 3x, 4x)
+              val multiplier by playerPreferences.frameGenMultiplier.collectAsState()
+              val multipliers = listOf(2, 3, 4)
+              ListPreference(
+                value = multiplier,
+                onValueChange = { playerPreferences.frameGenMultiplier.set(it) },
+                values = multipliers,
+                valueToText = { AnnotatedString("${it}×") },
+                enabled = installed && isSupported,
+                title = { Text(stringResource(R.string.frame_gen_multiplier_label)) },
+                summary = {
+                  Text(
+                    "${multiplier}×",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              // 3. Install / Replace Library
+              Preference(
+                title = {
+                  Text(
+                    if (installing) stringResource(R.string.frame_gen_installing)
+                    else if (installed) stringResource(R.string.frame_gen_replace_library)
+                    else stringResource(R.string.frame_gen_install_library)
+                  )
+                },
+                summary = {
+                  Text(
+                    if (statusText.isNotEmpty()) statusText
+                    else if (installed) stringResource(R.string.frame_gen_library_installed)
+                    else stringResource(R.string.frame_gen_install_description),
+                    color = if (installed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                  )
+                },
+                enabled = !installing,
+                onClick = { dllPicker.launch(arrayOf("*/*")) },
+              )
+
+              // 4. Remove Library (only if installed)
+              if (installed) {
+                PreferenceDivider()
+                Preference(
+                  title = {
+                    Text(
+                      stringResource(R.string.frame_gen_remove_library),
+                      color = MaterialTheme.colorScheme.error,
+                    )
+                  },
+                  summary = {
+                    Text(
+                      "Remove Lossless.dll and clear cached shaders",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  enabled = !installing,
+                  onClick = { showRemoveDialog = true },
+                )
+              }
+
+              // 5. Hardware Compatibility & Render Mode Notice
+              PreferenceDivider()
+              Preference(
+                title = {
+                  Text(
+                    "Compatibility & Render Mode",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                  )
+                },
+                summary = {
+                  Column(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                  ) {
+                    Text(
+                      text = "• GPU: ${compat.gpuModel} (${compat.apiVersion})",
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                      text = if (compat.isHardwareSupported) {
+                        "• Hardware: Compatible (Vulkan 1.1+, 16-bit Float, Vulkan Memory Model ✓)"
+                      } else {
+                        "• Hardware: Unsupported (Device lacks Vulkan 1.1+ float16/memory model ✗)"
+                      },
+                      style = MaterialTheme.typography.bodySmall,
+                      color = if (compat.isHardwareSupported) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                      fontWeight = if (compat.isHardwareSupported) FontWeight.Medium else FontWeight.Bold,
+                    )
+                    Text(
+                      text = "• Required Mode: vo=gpu-next & gpu-api=vulkan (OpenGL is unsupported)",
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                      text = when {
+                        compat.isRenderBackendReady && gpuNextEnabled -> {
+                          "• Active Mode: vo=gpu-next / gpu-api=vulkan (Confirmed Ready ✓)"
+                        }
+                        compat.isRenderBackendReady -> {
+                          "• Active Mode: vo=gpu / gpu-api=vulkan (Vulkan ready; vo=gpu-next recommended for smoother pacing)"
+                        }
+                        else -> {
+                          "• Active Mode: vo=${compat.activeVo} / gpu-api=opengl (Incompatible ✗ - Vulkan required)"
+                        }
+                      },
+                      style = MaterialTheme.typography.bodySmall,
+                      color = if (compat.isRenderBackendReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                      fontWeight = FontWeight.SemiBold,
+                    )
+
+                    if (!vulkanEnabled || !gpuNextEnabled) {
+                      TextButton(
+                        onClick = {
+                          preferences.useVulkan.set(true)
+                          preferences.gpuNext.set(true)
+                        },
+                        modifier = Modifier.padding(top = 4.dp),
+                      ) {
+                        Text(
+                          text = if (!vulkanEnabled) "Switch to Vulkan & vo=gpu-next" else "Switch to vo=gpu-next",
+                          color = MaterialTheme.colorScheme.primary,
+                          fontWeight = FontWeight.Bold,
+                        )
+                      }
+                    }
+                  }
+                },
+              )
+            }
+
+            if (showRemoveDialog) {
+              AlertDialog(
+                onDismissRequest = { showRemoveDialog = false },
+                title = { Text(stringResource(R.string.frame_gen_remove_library)) },
+                text = { Text(stringResource(R.string.frame_gen_remove_confirmation)) },
+                confirmButton = {
+                  TextButton(
+                    onClick = {
+                      showRemoveDialog = false
+                      scope.launch {
+                        LosslessScalingHelper.remove()
+                        playerPreferences.isFrameGenEnabled.set(false)
+                      }
+                    },
+                  ) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                  }
+                },
+                dismissButton = {
+                  TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                  }
+                },
+              )
+            }
+
+            if (showResultDialog != null) {
+              AlertDialog(
+                onDismissRequest = { showResultDialog = null },
+                title = { Text(stringResource(R.string.frame_gen_sheet_title)) },
+                text = { Text(showResultDialog!!) },
+                confirmButton = {
+                  TextButton(onClick = { showResultDialog = null }) {
+                    Text(stringResource(android.R.string.ok))
+                  }
+                },
+              )
             }
           }
         }

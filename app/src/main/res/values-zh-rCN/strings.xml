@@ -2573,4 +2573,7 @@
   <string name="oss_six_description">随文件名解析器提供的 Python 兼容性辅助库。</string>
   <string name="oss_anime4k_description">用于动画视频的实时放大和修复着色器。</string>
   <string name="oss_hdr_toys_description">HDR 色调映射、色域映射和传递函数着色器。</string>
+  <string name="frame_gen_heat_warning">帧生成可能会显著提高设备温度并增加电池消耗。</string>
+  <string name="frame_gen_library_title">库</string>
+  <string name="frame_gen_library_hint">请从 Lossless Scaling 安装目录获取 Lossless.dll（Steam - 本地文件）。</string>
 </resources>

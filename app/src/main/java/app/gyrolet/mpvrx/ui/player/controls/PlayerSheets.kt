@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.download.AppDownloadManager
 import app.gyrolet.mpvrx.domain.download.DownloadLocations
@@ -41,6 +42,7 @@ import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.player.controls.components.MpvConfigOwnedSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AmbientSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PostProcessingSheet
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.FrameGenSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AspectRatioSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioTracksSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.ChaptersSheet
@@ -661,6 +663,22 @@ fun PlayerSheets(
         viewModel = viewModel,
         onDismissRequest = onDismissRequest,
       )
+    }
+
+    Sheets.FrameGenConfig -> {
+      if (BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+        val isFrameGenEnabled by viewModel.isFrameGenEnabled.composeCollectAsState()
+        val frameGenMultiplier by viewModel.frameGenMultiplier.composeCollectAsState()
+        val frameGenSupported by viewModel.frameGenSupported.composeCollectAsState()
+        FrameGenSheet(
+          isEnabled = isFrameGenEnabled,
+          isSupported = frameGenSupported,
+          multiplier = frameGenMultiplier,
+          onToggle = { viewModel.toggleFrameGen() },
+          onMultiplierChange = { viewModel.setFrameGenMultiplier(it) },
+          onDismissRequest = onDismissRequest,
+        )
+      }
     }
 
     Sheets.Equalizer -> {

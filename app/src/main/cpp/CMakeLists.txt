@@ -59,3 +59,28 @@ target_compile_definitions(qjs_runtime PRIVATE _GNU_SOURCE QUICKJS_NG_BUILD)
 target_compile_options(qjs_runtime PRIVATE -funsigned-char)
 target_link_libraries(qjs_runtime dl m)
 mpvrx_optimize_native_target(qjs_runtime)
+
+option(MPVRX_ENABLE_FRAMEGEN "Build the Fongmi-only Frame Generation JNI bridge" OFF)
+
+if(MPVRX_ENABLE_FRAMEGEN)
+    # Frame Generation (LSFG) shader cache and library manager. This depends on Fongmi's
+    # MediaCodec-Vulkan renderer and must not be linked into other distributions.
+    set(FRAMEGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/framegen")
+    add_library(
+        framegen
+        SHARED
+        "${FRAMEGEN_DIR}/cityhash.cpp"
+        "${FRAMEGEN_DIR}/lsfg_translate.cpp"
+        "${FRAMEGEN_DIR}/lossless_dll.cpp"
+        "${FRAMEGEN_DIR}/framegen_jni.cpp"
+    )
+    set_target_properties(
+        framegen
+        PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+    )
+    target_include_directories(framegen PRIVATE "${FRAMEGEN_DIR}")
+    target_link_libraries(framegen dl)
+    mpvrx_optimize_native_target(framegen)
+endif()

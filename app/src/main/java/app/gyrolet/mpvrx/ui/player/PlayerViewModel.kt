@@ -144,6 +144,8 @@ import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.random.Random
 import kotlin.reflect.KProperty
+import app.gyrolet.mpvrx.ui.player.framegen.FrameGenNative
+import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
 
 enum class AutoCropState {
   IDLE,
@@ -2130,6 +2132,21 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   private val _isPostProcessingEnabled = MutableStateFlow(playerPreferences.isPostProcessingEnabled.get())
   val isPostProcessingEnabled: StateFlow<Boolean> = _isPostProcessingEnabled.asStateFlow()
 
+  // ==================== Frame Generation (LSFG) ============================
+  private val _isFrameGenEnabled = MutableStateFlow(playerPreferences.isFrameGenEnabled.get())
+  val isFrameGenEnabled: StateFlow<Boolean> = _isFrameGenEnabled.asStateFlow()
+
+  private val _frameGenMultiplier = MutableStateFlow(playerPreferences.frameGenMultiplier.get())
+  val frameGenMultiplier: StateFlow<Int> = _frameGenMultiplier.asStateFlow()
+
+  private val _frameGenSupported = MutableStateFlow(isFrameGenerationReady()).also { supported ->
+    // Re-arm native layer on startup if pref is already enabled and library is installed
+    if (supported.value && playerPreferences.isFrameGenEnabled.get() && LosslessScalingHelper.installed.value) {
+      runCatching { FrameGenNative.setFrameGenEnabled(true, playerPreferences.frameGenMultiplier.get()) }
+    }
+  }
+  val frameGenSupported: StateFlow<Boolean> = _frameGenSupported.asStateFlow()
+
   private val _postProcessingPreset = MutableStateFlow(playerPreferences.postProcessingPreset.get())
   val postProcessingPreset: StateFlow<PostProcessingPreset> = _postProcessingPreset.asStateFlow()
 
@@ -2194,12 +2211,14 @@ val isBrightnessSliderShown = MutableStateFlow(false)
       decoderPreferences.gpuNext.changes().collect { enabled ->
         _isGpuNextEnabled.value = enabled
         reconcileHdrModeWithRenderer()
+        checkFrameGenSupport()
       }
     }
     viewModelScope.launch {
       decoderPreferences.useVulkan.changes().collect { enabled ->
         _isVulkanEnabled.value = enabled
         reconcileHdrModeWithRenderer()
+        checkFrameGenSupport()
       }
     }
     syncplayManager.playbackStateProvider = { currentSyncplayPlaybackState() }
@@ -7719,10 +7738,76 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     _isAmbientLifecycleActive.value = false
     runCatching { disableAmbientShader() }
     runCatching { clearPostProcessingShaders() }
+    // Disable frame gen on teardown so the native layer stops the compute pass.
+    if (LosslessScalingHelper.isAvailableInCurrentBuild) {
+      runCatching { FrameGenNative.setFrameGenEnabled(false, 2) }
+    }
 
     super.onCleared()
   }
+
+  // ==================== Frame Generation (LSFG) ============================
+
+  /**
+   * Queries GPU support once and caches the result in [frameGenSupported].
+   * Call this after the Vulkan render context is initialised (e.g. on first play).
+   */
+  fun checkFrameGenSupport() {
+    val supported = isFrameGenerationReady()
+    _frameGenSupported.value = supported
+    // Also sync install state
+    LosslessScalingHelper.refreshStatus()
+    val installed = LosslessScalingHelper.installed.value
+    // If GPU doesn't support it or library gone, ensure it's toggled off
+    if (_isFrameGenEnabled.value && (!supported || !installed)) {
+      _isFrameGenEnabled.value = false
+      playerPreferences.isFrameGenEnabled.set(false)
+      runCatching { FrameGenNative.setFrameGenEnabled(false, 2) }
+    } else if (supported && installed && _isFrameGenEnabled.value) {
+      // Re-arm native if supported and pref is on (e.g. called after renderer init)
+      runCatching { FrameGenNative.setFrameGenEnabled(true, _frameGenMultiplier.value) }
+    }
+  }
+
+  /**
+   * Toggles LSFG frame generation on/off.
+   * Mirrors [togglePostProcessing] / [toggleAmbientMode] patterns.
+   */
+  fun toggleFrameGen() {
+    if (!_frameGenSupported.value) {
+      if (_isFrameGenEnabled.value) {
+        _isFrameGenEnabled.value = false
+        playerPreferences.isFrameGenEnabled.set(false)
+      }
+      return
+    }
+    val newState = !_isFrameGenEnabled.value
+    _isFrameGenEnabled.value = newState
+    playerPreferences.isFrameGenEnabled.set(newState)
+    val mult = _frameGenMultiplier.value
+    runCatching { FrameGenNative.setFrameGenEnabled(newState, mult) }
+    playerUpdate.value = PlayerUpdates.ShowText(
+      appContext.getString(if (newState) R.string.frame_gen_on else R.string.frame_gen_off)
+    )
+  }
+
+  /**
+   * Changes the frame generation multiplier (2×, 3×, or 4×).
+   * The new value is applied immediately if frame gen is active.
+   */
+  fun setFrameGenMultiplier(multiplier: Int) {
+    val clamped = multiplier.coerceIn(2, 4)
+    _frameGenMultiplier.value = clamped
+    playerPreferences.frameGenMultiplier.set(clamped)
+    if (_isFrameGenEnabled.value && _frameGenSupported.value) {
+      runCatching { FrameGenNative.setFrameGenEnabled(true, clamped) }
+    }
+  }
+
+  private fun isFrameGenerationReady(): Boolean =
+    LosslessScalingHelper.isReadyForFrameGeneration(decoderPreferences)
 }
+
 
 // Extension functions
 fun Float.normalize(

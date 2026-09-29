@@ -44,8 +44,7 @@ seeker = "2.0.1"
 markdownRenderer = "0.45.0"
 kotlinTest = "2.4.20"
 mediainfo = "v1.0.0-fix"
-mpvlib = "1.0.10"
-mpvlibFongmi = "1.0.9"
+mpvlib = "1.1.0"
 googleCast = "22.3.1"
 androidxBiometric = "1.4.0-alpha07"
 leakcanary = "2.14"
@@ -91,7 +90,7 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 mediainfo-lib = { module = "com.github.marlboro-advance:mediainfoAndroid", version.ref = "mediainfo" }
 mpvlib-standard = { module = "app.gyrolet.mpvlib:mpvlib", version.ref = "mpvlib" }
 mpvlib-no-vulkan = { module = "app.gyrolet.mpvlib:mpvlib-no-vulkan", version.ref = "mpvlib" }
-mpvlib-fongmi = { module = "app.gyrolet.mpvlib:mpvlib-fongmi", version.ref = "mpvlibFongmi" }
+mpvlib-fongmi = { module = "app.gyrolet.mpvlib:mpvlib-fongmi", version.ref = "mpvlib" }
 
 google-material = { module = "com.google.android.material:material", version.ref = "googleMaterial" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }

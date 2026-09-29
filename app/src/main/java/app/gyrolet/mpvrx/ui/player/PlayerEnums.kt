@@ -158,6 +158,7 @@ enum class Sheets {
   BookmarkEditor,
   AudiobookRewind,
   AudiobookSleepTimer,
+  FrameGenConfig,
 }
 
 enum class Panels {

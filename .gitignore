@@ -113,6 +113,7 @@ serviceAccount.json
 # F-Droid / Playstore variants
 # =========================
 /app/standard/
+/app/fongmi/
 /app/fdroid/
 /app/playstore/
 

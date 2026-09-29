@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -173,6 +172,7 @@ fun PlaylistCard(
       } == true
     val typeBadge =
       when {
+        playlist.isZipPlaylist -> stringResource(R.string.playlist_zip_read_only)
         playlist.isXtreamPlaylist -> stringResource(R.string.playlist_xtream_badge)
         isOnlinePlaylist -> stringResource(R.string.playlist_online_badge)
         playlist.isM3uPlaylist -> stringResource(R.string.playlist_m3u_badge)

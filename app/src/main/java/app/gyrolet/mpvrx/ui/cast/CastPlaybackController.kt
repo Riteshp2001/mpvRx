@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -197,6 +198,7 @@ class CastPlaybackController(
     released = true
     stopPositionPolling()
     volumeDebounceJob?.cancel()
+    scope.cancel() // cancel all coroutines so they don't hold references after destroy
     val context = castContext
     castContext = null
     remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
@@ -206,6 +208,8 @@ class CastPlaybackController(
     if (context?.sessionManager?.currentCastSession?.isConnected != true) {
       CastMediaServer.stop()
     }
+    // Clear static instance so it doesn't pin this controller (and its activity) in memory
+    if (instance === this) instance = null
   }
 
   fun play() {

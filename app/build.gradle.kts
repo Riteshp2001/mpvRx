@@ -99,6 +99,18 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "true")
+      externalNativeBuild {
+        cmake {
+          arguments += "-DMPVRX_ENABLE_FRAMEGEN=ON"
+        }
+      }
+    }
+  }
+
+  sourceSets {
+    getByName("fongmi") {
+      assets.directories.add("src/fongmi/assets")
+      jniLibs.directories.add("src/fongmi/jniLibs")
     }
   }
 

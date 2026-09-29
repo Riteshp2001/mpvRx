@@ -2567,4 +2567,7 @@
   <string name="oss_six_description">ファイル名パーサーに同梱された Python 互換ヘルパー。</string>
   <string name="oss_anime4k_description">アニメ動画向けのリアルタイム高解像度化・復元シェーダー。</string>
   <string name="oss_hdr_toys_description">HDR トーンマッピング、色域マッピング、伝達関数シェーダー。</string>
+  <string name="frame_gen_heat_warning">フレーム生成はデバイスの温度とバッテリー消費を大幅に増加させることがあります。</string>
+  <string name="frame_gen_library_title">ライブラリ</string>
+  <string name="frame_gen_library_hint">Lossless Scaling のインストール先から Lossless.dll を取得してください（Steam - ローカルファイル）。</string>
 </resources>
