@@ -101,6 +101,7 @@ fun PlaylistCard(
     if (!showThumbnails) return@produceState
     if (thumbnail != null) return@produceState
     val item = firstItem ?: return@produceState
+    if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.isPlaybackUri(item.filePath)) return@produceState
     value = withContext(Dispatchers.IO) {
       try {
         EmbeddedArtworkResolver.decodeArtworkUri(context, item.tvgLogo) ?: if (item.licenseType.isNullOrBlank()) {
@@ -169,6 +170,7 @@ fun PlaylistCard(
       } == true
     val typeBadge =
       when {
+        playlist.isZipPlaylist -> stringResource(R.string.playlist_zip_read_only)
         playlist.isXtreamPlaylist -> stringResource(R.string.playlist_xtream_badge)
         isOnlinePlaylist -> stringResource(R.string.playlist_online_badge)
         playlist.isM3uPlaylist -> stringResource(R.string.playlist_m3u_badge)
@@ -230,6 +232,7 @@ fun PlaylistCard(
     customIcon =
       when {
         isFavorites -> Icons.RoundedFilled.Bookmarks
+        playlist.isZipPlaylist -> Icons.RoundedFilled.FolderZip
         playlist.isXtreamPlaylist -> Icons.RoundedFilled.Tv
         else -> Icons.RoundedFilled.PlaylistPlay
       },

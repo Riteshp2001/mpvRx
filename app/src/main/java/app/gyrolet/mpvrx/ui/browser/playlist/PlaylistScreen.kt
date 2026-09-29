@@ -96,6 +96,11 @@ object PlaylistScreen : Screen {
         factory = PlaylistViewModel.factory(context.applicationContext as android.app.Application),
       )
 
+    androidx.lifecycle.compose.LifecycleResumeEffect(viewModel) {
+      viewModel.refresh()
+      onPauseOrDispose { }
+    }
+
     val playlistsWithCount by viewModel.playlistsWithCount.collectAsState()
     val playlistSortType by browserPreferences.playlistSortType.collectAsState()
     val playlistSortOrder by browserPreferences.playlistSortOrder.collectAsState()
@@ -359,6 +364,7 @@ object PlaylistScreen : Screen {
       onDismiss = { showPlaylistActionSheet = false },
       onCreatePlaylist = viewModel::createPlaylist,
       onCreateM3UPlaylistFromFile = viewModel::createM3UPlaylistFromFile,
+      onCreateZipPlaylist = viewModel::createZipPlaylist,
       onCreateM3UPlaylist = viewModel::createM3UPlaylist,
       onCreateXtreamPlaylist = viewModel::createXtreamPlaylist,
       context = context,

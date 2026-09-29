@@ -907,28 +907,6 @@ object FolderListScreen : Screen {
               FloatingActionButtonMenuItem(
                 onClick = {
                   isFabExpanded.value = false
-                  zipPicker.launch(
-                    arrayOf(
-                      "application/zip",
-                      "application/x-zip-compressed",
-                      "application/x-zip",
-                      "application/octet-stream",
-                    ),
-                  )
-                },
-                icon = { Icon(Icons.RoundedFilled.FolderZip, contentDescription = null) },
-                text = {
-                  Text(
-                    text =
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_open_zip_folder),
-                  )
-                },
-              )
-
-              FloatingActionButtonMenuItem(
-                onClick = {
-                  isFabExpanded.value = false
                   coroutineScope.launch {
                     val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
                     val lastPlayed = recentlyPlayedVideos.firstOrNull()

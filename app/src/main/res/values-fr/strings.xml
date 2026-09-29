@@ -1312,8 +1312,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_toggle_menu">Afficher/masquer le menu</string>
   <string name="ui_quick_play">Lecture rapide</string>
   <string name="ui_open_file">Ouvrir un fichier</string>
-  <string name="ui_open_zip_folder">Ouvrir un dossier ZIP</string>
-  <string name="ui_cannot_open_zip">Impossible d\'ouvrir l\'archive ZIP</string>
   <string name="ui_open_link">Ouvrir un lien</string>
   <string name="ui_search_folders_and_videos">Rechercher des dossiers et des vidéos...</string>
   <string name="ui_pinned">Épinglé</string>
@@ -2557,4 +2555,23 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
 
   <string name="snapshot_search_folder_placeholder">Rechercher dossiers et captures</string>
   <string name="snapshot_folder_count">%1$d captures</string>
+  <string name="playlist_add_zip">Ajouter une archive ZIP</string>
+  <string name="playlist_zip_import_success">Playlist ZIP enregistrée</string>
+  <string name="playlist_zip_import_failed">Impossible d’ajouter l’archive ZIP. Sélectionnez un ZIP lisible, indexable et contenant des fichiers audio ou vidéo.</string>
+  <string name="playlist_zip_read_only">ZIP (lecture seule)</string>
+  <string name="oss_haze_description">Flou progressif pour les surfaces de navigation translucides.</string>
+  <string name="oss_backdrop_description">Flou et réfraction Compose pour les surfaces Liquid Glass.</string>
+  <string name="oss_telephoto_description">Gestes de zoom et de déplacement pour la visionneuse d’images.</string>
+  <string name="oss_androidx_lifecycle_description">État sensible au cycle de vie et prise en charge des ViewModel pour Compose.</string>
+  <string name="oss_anitomy_description">Analyse les noms de fichiers multimédias en titres et informations d’épisodes.</string>
+  <string name="oss_leakcanary_description">Détecte les fuites de mémoire dans les versions de débogage.</string>
+  <string name="oss_python_description">Environnement Python intégré pour l’extraction en ligne et l’analyse des noms.</string>
+  <string name="oss_ytdlp_description">Extracteur multimédia en ligne pour les liens pris en charge.</string>
+  <string name="oss_guessit_description">Extrait des informations multimédias structurées des noms de fichiers.</string>
+  <string name="oss_rebulk_description">Moteur de règles utilisé par GuessIt pour reconnaître les noms.</string>
+  <string name="oss_babelfish_description">Conversion des codes de langue et de pays utilisée par GuessIt.</string>
+  <string name="oss_python_dateutil_description">Utilitaires d’analyse de date et d’heure utilisés par GuessIt.</string>
+  <string name="oss_six_description">Outils de compatibilité Python inclus avec l’analyseur.</string>
+  <string name="oss_anime4k_description">Shaders d’agrandissement et de restauration en temps réel pour les vidéos animées.</string>
+  <string name="oss_hdr_toys_description">Shaders de tone mapping HDR, de gamut mapping et de fonctions de transfert.</string>
 </resources>

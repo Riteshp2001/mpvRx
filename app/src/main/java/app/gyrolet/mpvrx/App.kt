@@ -451,6 +451,10 @@ class App :
     applicationScope.launch(Dispatchers.IO) {
       try {
         delay(POST_START_MAINTENANCE_DELAY_MS)
+        app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.clearLegacyCache(
+          this@App,
+          PlaybackSession.state.value.currentItem?.originalUri,
+        )
         val imageRepository: NetworkImageRepository = getKoin().get()
         imageRepository.evictStaleImageCaches()
         Log.d(TAG, "Network image cache cleanup completed")

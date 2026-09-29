@@ -71,7 +71,7 @@ object MetadataRetrieval {
       // So we need to extract metadata if FPS or subtitle info is missing
       val videosNeedingMetadata =
         videos.filter { video ->
-          val needsArchiveMetadata = ZipArchiveMedia.isPlaybackUri(video.uri.toString())
+          if (ZipArchiveMedia.isPlaybackUri(video.uri.toString())) return@filter false
           val needsVideoCodec = browserPreferences.showCodecSupportIndicator.get() && !video.isAudio
           val needsResolution =
             browserPreferences.showResolutionChip.get() && !video.isAudio &&
@@ -81,8 +81,7 @@ object MetadataRetrieval {
           val needsSubtitleInfo =
             browserPreferences.showSubtitleIndicator.get() && !video.isAudio && video.subtitleCodec.isEmpty()
 
-          needsArchiveMetadata ||
-            needsResolution ||
+          needsResolution ||
             needsFramerate ||
             needsSubtitleInfo ||
             (needsVideoCodec && video.videoCodec.isBlank())
@@ -96,7 +95,6 @@ object MetadataRetrieval {
 
       val metadataMap =
         extractMetadataByVideoPath(
-          context = context,
           videos = videosNeedingMetadata,
           metadataCache = metadataCache,
           includeVideoCodec = browserPreferences.showCodecSupportIndicator.get(),
@@ -125,7 +123,6 @@ object MetadataRetrieval {
     }
 
   private suspend fun extractMetadataByVideoPath(
-    context: Context,
     videos: List<Video>,
     metadataCache: VideoMetadataCacheRepository,
     includeVideoCodec: Boolean,
