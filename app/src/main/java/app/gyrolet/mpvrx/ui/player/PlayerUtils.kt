@@ -29,6 +29,9 @@ import java.io.File
 private object StoragePaths {
   const val PRIMARY_PREFIX = "primary:"
   const val RAW_PREFIX = "raw:"
+
+  // MediaStore-backed document IDs, handed out by the Downloads provider for downloaded files.
+  const val MEDIA_STORE_PREFIX = "msf:"
   const val PRIMARY_STORAGE = "/storage/emulated/0"
   const val EXTERNAL_STORAGE = "/storage"
   const val MEDIA_RW = "/mnt/media_rw"
@@ -150,6 +153,8 @@ private fun Uri.tryMediaStoreQuery(context: Context): String? =
  * - "primary:DCIM/video.mp4" → /storage/emulated/0/DCIM/video.mp4
  * - "raw:/storage/1234-5678/Movies/file.mp4" → /storage/1234-5678/Movies/file.mp4
  * - "1234-5678:Movies/video.mp4" → External SD card path
+ * - "msf:12345" → MediaStore row 12345 (the Downloads provider's form), see
+ *   [tryMediaStoreDocumentPath]
  */
 private fun Uri.tryDocumentUriParsing(context: Context): String? {
   if (!DocumentsContract.isDocumentUri(context, this)) return null
@@ -165,6 +170,9 @@ private fun Uri.tryDocumentUriParsing(context: Context): String? {
       docId.startsWith(StoragePaths.RAW_PREFIX) -> {
         tryRawPath(docId)
       }
+      docId.startsWith(StoragePaths.MEDIA_STORE_PREFIX) -> {
+        tryMediaStoreDocumentPath(context, docId)
+      }
 
       docId.contains(":") -> {
         tryExternalStoragePaths(docId)
@@ -176,6 +184,41 @@ private fun Uri.tryDocumentUriParsing(context: Context): String? {
     Log.d(TAG, "Document URI parsing failed: ${e.message}")
   }.getOrNull()
 }
+
+/**
+ * Handles the Downloads provider's MediaStore-backed document IDs ("msf:12345").
+ *
+ * Unlike "primary:"/"raw:", the ID carries no path: it is a `MediaStore.Files` row, so the real
+ * location is read from that row's `_data` column. Without this, files opened from the Downloads
+ * picker root resolved to null and looked unreadable to the browser and the archive reader.
+ */
+private fun tryMediaStoreDocumentPath(
+  context: Context,
+  docId: String,
+): String? =
+  runCatching {
+    val rowId = docId.substringAfter(StoragePaths.MEDIA_STORE_PREFIX)
+    if (rowId.isEmpty() || !rowId.all { character -> character.isDigit() }) return null
+
+    context.contentResolver
+      .query(
+        MediaStore.Files.getContentUri("external"),
+        arrayOf(MediaStore.MediaColumns.DATA),
+        "${MediaStore.MediaColumns._ID} = ?",
+        arrayOf(rowId),
+        null,
+      )
+      ?.use { cursor ->
+        val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+        if (columnIndex == -1 || !cursor.moveToFirst()) {
+          null
+        } else {
+          cursor.getString(columnIndex)?.takeIf { path -> path.isNotBlank() && File(path).canRead() }
+        }
+      }
+  }.onFailure { e ->
+    Log.d(TAG, "MediaStore document lookup failed: ${e.message}")
+  }.getOrNull()
 
 private fun tryPrimaryStoragePath(docId: String): String? {
   val path = docId.substringAfter(StoragePaths.PRIMARY_PREFIX)

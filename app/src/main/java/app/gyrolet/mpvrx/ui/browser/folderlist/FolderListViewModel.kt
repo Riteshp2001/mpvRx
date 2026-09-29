@@ -14,6 +14,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
@@ -138,7 +139,8 @@ class FolderListViewModel(
           foldersPreferences.hiddenFolderMarkerNames.changes(),
           browserPreferences.includeAudioBrowser.changes(),
           browserPreferences.minimumAudioDurationSeconds.changes(),
-        ) { _, _, _, _ -> Unit }
+          browserPreferences.archiveFolders.changes(),
+        ) { _, _, _, _, _ -> Unit }
           .drop(1)
 
       merge(MediaLibraryEvents.changes, scanPreferenceChanges).collectLatest {
@@ -488,16 +490,28 @@ class FolderListViewModel(
               includeAudioOverride = browserPreferences.includeAudioBrowser.get(),
             )
           ensureActive()
+          // Read-only ZIP archives the user added are merged in from preferences so they stay
+          // browsable without copying the archive anywhere.
+          val archiveFolders =
+            ZipArchiveMedia.persistedFolders(
+              browserPreferences.archiveFolders.get(),
+              includeAudio = audioOnly || browserPreferences.includeAudioBrowser.get(),
+            )
+          val baseFolders = mediaStoreFolders + archiveFolders
           // This is the important latency boundary: never wait for a filesystem walk.
-          _allVideoFolders.value = mediaStoreFolders
+          _allVideoFolders.value = baseFolders
           _isLoading.value = false
           _hasCompletedInitialLoad.value = true
 
           val indexedFolders = MediaFileRepository.getIndexedNoMediaFolders()
           ensureActive()
-          var visibleFolders = mergeFolders(mediaStoreFolders, indexedFolders)
+          var visibleFolders = mergeFolders(baseFolders, indexedFolders)
           _allVideoFolders.value = visibleFolders
-          Log.d(TAG, "Published ${mediaStoreFolders.size} MediaStore and ${indexedFolders.size} indexed folders")
+          Log.d(
+            TAG,
+            "Published ${mediaStoreFolders.size} MediaStore, ${archiveFolders.size} archive and " +
+              "${indexedFolders.size} indexed folders",
+          )
 
           if (foldersPreferences.includeNoMediaFolders.get()) {
             _scanStatus.value =
@@ -518,7 +532,7 @@ class FolderListViewModel(
               }
 
             // Replace the old indexed snapshot after the scan, removing deleted/stale folders.
-            visibleFolders = mergeFolders(mediaStoreFolders, MediaFileRepository.getIndexedNoMediaFolders())
+            visibleFolders = mergeFolders(baseFolders, MediaFileRepository.getIndexedNoMediaFolders())
             ensureActive()
             _allVideoFolders.value = visibleFolders
           }

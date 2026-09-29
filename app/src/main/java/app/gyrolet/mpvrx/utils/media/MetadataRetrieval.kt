@@ -59,17 +59,18 @@ object MetadataRetrieval {
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val metadataChipsEnabled = isVideoMetadataNeeded(browserPreferences)
-      val hasArchiveEntries = videos.any { video -> ZipArchiveMedia.isPlaybackUri(video.uri.toString()) }
-      if (!metadataChipsEnabled && !hasArchiveEntries) {
+      if (!metadataChipsEnabled) {
         return@withContext videos
       }
 
       // Filter videos that need metadata extraction
       // MediaStore provides width, height, duration but NOT FPS or subtitle info
-      // So we need to extract metadata if FPS or subtitle info is missing
+      // So we need to extract metadata if FPS or subtitle info is missing. Archive entries are
+      // skipped on purpose: reading their metadata would extract the whole episode to cache, and
+      // archives are kept read-only in place.
       val videosNeedingMetadata =
         videos.filter { video ->
-          val needsArchiveMetadata = ZipArchiveMedia.isPlaybackUri(video.uri.toString())
+          if (ZipArchiveMedia.isPlaybackUri(video.uri.toString())) return@filter false
           val needsVideoCodec = browserPreferences.showCodecSupportIndicator.get() && !video.isAudio
           val needsResolution =
             browserPreferences.showResolutionChip.get() && !video.isAudio &&
@@ -79,8 +80,7 @@ object MetadataRetrieval {
           val needsSubtitleInfo =
             browserPreferences.showSubtitleIndicator.get() && !video.isAudio && video.subtitleCodec.isEmpty()
 
-          needsArchiveMetadata ||
-            needsResolution ||
+          needsResolution ||
             needsFramerate ||
             needsSubtitleInfo ||
             (needsVideoCodec && video.videoCodec.isBlank())
@@ -148,18 +148,6 @@ object MetadataRetrieval {
       localMetadata[file.absolutePath]?.let { metadata -> metadataByVideoPath[video.path] = metadata }
     }
 
-    videos.asSequence()
-      .filter { video -> ZipArchiveMedia.isPlaybackUri(video.uri.toString()) }
-      .forEach { video ->
-        val file = ZipArchiveMedia.materializeEntry(context, video.uri) ?: return@forEach
-        metadataCache.getOrExtractMetadata(
-          file = file,
-          uri = Uri.fromFile(file),
-          displayName = video.displayName,
-          includeVideoCodec = includeVideoCodec && !video.isAudio,
-        )?.let { metadata -> metadataByVideoPath[video.path] = metadata }
-      }
-
     return metadataByVideoPath
   }
 
@@ -184,24 +172,13 @@ object MetadataRetrieval {
         return@withContext folder
       }
 
+      // Archive folders keep duration at 0: measuring it would require extracting every episode.
+      if (ZipArchiveMedia.isBrowserPath(folder.path)) {
+        return@withContext folder
+      }
+
       // Extract metadata for all videos in folder
       try {
-        if (ZipArchiveMedia.isBrowserPath(folder.path)) {
-          val videos =
-            ZipArchiveMedia
-              .allMedia(context, folder.path, browserPreferences.includeAudioBrowser.get())
-              .getOrNull()
-              ?: return@withContext folder
-          val metadataMap =
-            extractMetadataByVideoPath(
-              context = context,
-              videos = videos,
-              metadataCache = metadataCache,
-              includeVideoCodec = false,
-            )
-          return@withContext folder.copy(totalDuration = metadataMap.values.sumOf { metadata -> metadata.durationMs })
-        }
-
         val directory = File(folder.path)
         if (!directory.exists() || !directory.isDirectory) {
           return@withContext folder
