@@ -60,11 +60,9 @@ target_compile_options(qjs_runtime PRIVATE -funsigned-char)
 target_link_libraries(qjs_runtime dl m)
 mpvrx_optimize_native_target(qjs_runtime)
 
-option(MPVRX_ENABLE_FRAMEGEN "Build the Fongmi-only Frame Generation JNI bridge" OFF)
+option(MPVRX_ENABLE_FRAMEGEN "Build the Arm64 Vulkan Frame Generation JNI bridge" OFF)
 
-if(MPVRX_ENABLE_FRAMEGEN)
-    # Frame Generation (LSFG) shader cache and library manager. This depends on Fongmi's
-    # MediaCodec-Vulkan renderer and must not be linked into other distributions.
+if(MPVRX_ENABLE_FRAMEGEN AND ANDROID_ABI STREQUAL "arm64-v8a")
     set(FRAMEGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/framegen")
     add_library(
         framegen

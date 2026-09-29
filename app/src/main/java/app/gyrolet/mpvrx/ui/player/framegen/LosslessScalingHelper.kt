@@ -14,6 +14,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Process
 import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -46,7 +47,9 @@ object LosslessScalingHelper {
     private const val TAG = "LosslessScalingHelper"
 
     val isAvailableInCurrentBuild: Boolean
-        get() = BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN
+        get() = BuildConfig.MPV_SUPPORTS_LSFG &&
+            Process.is64Bit() &&
+            Build.SUPPORTED_ABIS.firstOrNull() == "arm64-v8a"
 
     /** Result codes matching the native LosslessStatus enum. */
     const val RESULT_OK = 0
@@ -70,6 +73,7 @@ object LosslessScalingHelper {
     val statusText: StateFlow<String> = _statusText.asStateFlow()
 
     private inline fun <T> safeNative(default: T, block: () -> T): T {
+        if (!isAvailableInCurrentBuild) return default
         return try {
             block()
         } catch (t: Throwable) {
@@ -313,6 +317,7 @@ object LosslessScalingHelper {
 
     suspend fun install(context: Context, source: Uri): Int =
         withContext(Dispatchers.IO) {
+            if (!isAvailableInCurrentBuild) return@withContext RESULT_NOT_INSTALLED
             initStorage(context)
             val destination = getDestinationFile(context)
             Log.d(TAG, "Installing Lossless.dll to: ${destination.absolutePath}")
@@ -363,6 +368,7 @@ object LosslessScalingHelper {
 
     suspend fun install(contentResolver: ContentResolver, source: Uri): Int =
         withContext(Dispatchers.IO) {
+            if (!isAvailableInCurrentBuild) return@withContext RESULT_NOT_INSTALLED
             val path = runCatching { FrameGenNative.getLosslessDllPath() }.getOrNull()
             val destination = if (!path.isNullOrBlank() && File(path).isAbsolute) {
                 File(path)
@@ -398,6 +404,7 @@ object LosslessScalingHelper {
     // ── Remove ──────────────────────────────────────────────────────────────
 
     suspend fun remove(context: Context? = null): Boolean = withContext(Dispatchers.IO) {
+        if (!isAvailableInCurrentBuild) return@withContext false
         if (context != null) {
             initStorage(context)
         }

@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.download.AppDownloadManager
 import app.gyrolet.mpvrx.domain.download.DownloadLocations
@@ -58,6 +57,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.SubtitlesSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoZoomSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoQualitySheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VisualizerStyleSheet
+import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
 import app.gyrolet.mpvrx.ui.player.setTrackSelectionId
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import dev.vivvvek.seeker.Segment
@@ -666,7 +666,7 @@ fun PlayerSheets(
     }
 
     Sheets.FrameGenConfig -> {
-      if (BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+      if (LosslessScalingHelper.isAvailableInCurrentBuild) {
         val isFrameGenEnabled by viewModel.isFrameGenEnabled.composeCollectAsState()
         val frameGenMultiplier by viewModel.frameGenMultiplier.composeCollectAsState()
         val frameGenSupported by viewModel.frameGenSupported.composeCollectAsState()

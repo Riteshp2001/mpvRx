@@ -11,10 +11,10 @@ package app.gyrolet.mpvrx.preferences
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
 
 /**
  * Represents a customizable button in the player controls.
@@ -67,7 +67,7 @@ val allPlayerButtons =
     it != PlayerButton.NONE &&
       it != PlayerButton.BACK_ARROW &&
       it != PlayerButton.VIDEO_TITLE &&
-      (it != PlayerButton.FRAME_GENERATION || BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN)
+      (it != PlayerButton.FRAME_GENERATION || LosslessScalingHelper.isAvailableInCurrentBuild)
   }
 
 /**

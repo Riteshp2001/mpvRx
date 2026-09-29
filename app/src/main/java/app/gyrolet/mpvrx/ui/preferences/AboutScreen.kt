@@ -734,7 +734,7 @@ private fun collectSystemStats(context: Context): List<Pair<String, String>> {
     "GPU" to (if (compat.gpuModel.isNotBlank() && compat.gpuModel != "Unknown GPU") compat.gpuModel else Build.HARDWARE.ifBlank { "Unknown" }),
     "Vulkan" to vulkanStr,
     "OpenGL ES" to glesVersion,
-    if (BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+    if (LosslessScalingHelper.isAvailableInCurrentBuild) {
       "Frame Generation" to if (compat.isHardwareSupported) {
         if (installed) "Supported ✓ (Library installed)" else "Supported ✓ (Library not installed)"
       } else {

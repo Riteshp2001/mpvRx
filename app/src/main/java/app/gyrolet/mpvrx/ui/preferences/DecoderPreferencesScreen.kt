@@ -497,7 +497,7 @@ object DecoderPreferencesScreen : Screen {
 
           // ── Frame Generation (LSFG) ──────────────────────────────────
           item {
-            if (BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+            if (LosslessScalingHelper.isAvailableInCurrentBuild) {
               PreferenceSectionHeader(
                 title = stringResource(R.string.frame_gen_sheet_title),
               )
@@ -505,7 +505,7 @@ object DecoderPreferencesScreen : Screen {
           }
 
           item {
-            if (!BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) return@item
+            if (!LosslessScalingHelper.isAvailableInCurrentBuild) return@item
             val installed by LosslessScalingHelper.installed.composeCollectAsState()
             val statusText by LosslessScalingHelper.statusText.composeCollectAsState()
             val isSupported =

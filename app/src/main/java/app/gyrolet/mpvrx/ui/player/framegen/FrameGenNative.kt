@@ -9,8 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.framegen
 
-import app.gyrolet.mpvrx.BuildConfig
-
 /**
  * JNI bridge to the native frame-generation layer in mpvlibAndroid.
  *
@@ -118,7 +116,7 @@ object FrameGenNative {
     external fun setGpuDeviceInfo(name: String, apiVersion: String, driverVersion: String, isSupported: Boolean)
 
     init {
-        if (BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+        if (LosslessScalingHelper.isAvailableInCurrentBuild) {
             try { System.loadLibrary("mpv") } catch (t: Throwable) {}
             try { System.loadLibrary("player") } catch (t: Throwable) {}
             try { System.loadLibrary("framegen") } catch (t: Throwable) {}

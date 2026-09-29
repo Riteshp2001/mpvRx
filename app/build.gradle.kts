@@ -81,6 +81,12 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
+      buildConfigField("boolean", "MPV_SUPPORTS_LSFG", "true")
+      externalNativeBuild {
+        cmake {
+          arguments += "-DMPVRX_ENABLE_FRAMEGEN=ON"
+        }
+      }
     }
 
     create("noVulkan") {
@@ -90,6 +96,12 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
+      buildConfigField("boolean", "MPV_SUPPORTS_LSFG", "false")
+      externalNativeBuild {
+        cmake {
+          arguments += "-DMPVRX_ENABLE_FRAMEGEN=OFF"
+        }
+      }
     }
 
     create("fongmi") {
@@ -99,6 +111,7 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "true")
+      buildConfigField("boolean", "MPV_SUPPORTS_LSFG", "true")
       externalNativeBuild {
         cmake {
           arguments += "-DMPVRX_ENABLE_FRAMEGEN=ON"
@@ -108,9 +121,11 @@ android {
   }
 
   sourceSets {
-    getByName("fongmi") {
-      assets.directories.add("src/fongmi/assets")
-      jniLibs.directories.add("src/fongmi/jniLibs")
+    listOf("standard", "fongmi").forEach { distribution ->
+      getByName(distribution) {
+        assets.directories.add("src/lsfg/assets")
+        jniLibs.directories.add("src/lsfg/jniLibs")
+      }
     }
   }
 

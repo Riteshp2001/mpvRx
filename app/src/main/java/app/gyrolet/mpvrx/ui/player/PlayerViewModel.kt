@@ -2133,7 +2133,8 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   val isPostProcessingEnabled: StateFlow<Boolean> = _isPostProcessingEnabled.asStateFlow()
 
   // ==================== Frame Generation (LSFG) ============================
-  private val _isFrameGenEnabled = MutableStateFlow(playerPreferences.isFrameGenEnabled.get())
+  private val _isFrameGenEnabled =
+    MutableStateFlow(LosslessScalingHelper.isAvailableInCurrentBuild && playerPreferences.isFrameGenEnabled.get())
   val isFrameGenEnabled: StateFlow<Boolean> = _isFrameGenEnabled.asStateFlow()
 
   private val _frameGenMultiplier = MutableStateFlow(playerPreferences.frameGenMultiplier.get())

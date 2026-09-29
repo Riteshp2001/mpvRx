@@ -1263,7 +1263,7 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.FRAME_GENERATION -> {
-      if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN) {
+      if (app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper.isAvailableInCurrentBuild) {
         val isFrameGenEnabled by viewModel.isFrameGenEnabled.collectAsState()
         val frameGenSupported by viewModel.frameGenSupported.collectAsState()
         @OptIn(ExperimentalFoundationApi::class)
