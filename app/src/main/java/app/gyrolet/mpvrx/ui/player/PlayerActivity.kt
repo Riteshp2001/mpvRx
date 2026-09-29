@@ -1331,18 +1331,22 @@ class PlayerActivity :
   }
 
   private fun setupCastPlayback() {
+    // Use WeakReferences for all ViewModel-capturing lambdas to prevent
+    // CastPlaybackController.instance (static) from keeping PlayerViewModel alive
+    // after onCleared() — fixes 21.5 kB LeakCanary-reported retain chain.
+    val vmRef = java.lang.ref.WeakReference(viewModel)
     castPlaybackController =
       CastPlaybackController(
         activity = this,
         currentMedia = ::currentCastMediaSnapshot,
-        pauseLocal = viewModel::pause,
+        pauseLocal = { vmRef.get()?.pause() },
         restoreLocal = { positionMs, play ->
           if (!isFinishing && !isDestroyed) {
-            viewModel.seekTo((positionMs / 1000L).toInt().coerceAtLeast(0))
-            if (play) viewModel.unpause() else viewModel.pause()
+            vmRef.get()?.seekTo((positionMs / 1000L).toInt().coerceAtLeast(0))
+            if (play) vmRef.get()?.unpause() else vmRef.get()?.pause()
           }
         },
-        notifyUser = viewModel::showToast,
+        notifyUser = { msg -> vmRef.get()?.showToast(msg) },
       )
     castPlaybackController.start()
   }
