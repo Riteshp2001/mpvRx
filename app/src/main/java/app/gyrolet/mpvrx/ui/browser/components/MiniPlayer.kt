@@ -30,6 +30,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,8 +94,11 @@ import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.ui.player.PlayerArtworkDestination
+import app.gyrolet.mpvrx.ui.player.PlayerArtworkTransitions
 import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.player.declaredMediaKind
+import app.gyrolet.mpvrx.ui.player.playerArtworkAnchor
 import app.gyrolet.mpvrx.ui.player.toObject
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import kotlinx.coroutines.Dispatchers
@@ -229,9 +233,14 @@ private fun MiniPlayerContent(
   var offsetX by remember { mutableFloatStateOf(0f) }
   val density = LocalDensity.current
   val dismissThresholdPx = with(density) { 100.dp.toPx() }
+  val expandThresholdPx = with(density) { 48.dp.toPx() }
 
-  val launchPlayer = remember(context) {
+  val launchPlayer = remember(context, isAudioOnlyItem) {
     {
+      val animateArtwork = isAudioOnlyItem && PlayerArtworkTransitions.begin(
+        PlayerArtworkDestination.FULL,
+        PlaybackSession.state.value.currentItem?.stableId,
+      )
       val intent = Intent(context, PlayerActivity::class.java).apply {
         action = MediaPlaybackService.ACTION_OPEN_PLAYER
         putExtra("is_audio", isAudioOnlyItem)
@@ -240,13 +249,10 @@ private fun MiniPlayerContent(
         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
       }
       context.startActivity(intent)
-      if (context is Activity) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-          context.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, R.anim.slide_in_up, 0)
-        } else {
-          @Suppress("DEPRECATION")
-          context.overridePendingTransition(R.anim.slide_in_up, 0)
-        }
+      if (context is Activity && android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        val enterAnimation = if (animateArtwork) 0 else R.anim.slide_in_up
+        @Suppress("DEPRECATION")
+        context.overridePendingTransition(enterAnimation, 0)
       }
     }
   }
@@ -266,6 +272,21 @@ private fun MiniPlayerContent(
     modifier = Modifier
       .offset { IntOffset(offsetX.roundToInt(), 0) }
       .clip(miniPlayerShape)
+      .pointerInput(launchPlayer, expandThresholdPx) {
+        var verticalDrag = 0f
+        detectVerticalDragGestures(
+          onDragStart = { verticalDrag = 0f },
+          onDragCancel = { verticalDrag = 0f },
+          onDragEnd = {
+            if (verticalDrag < -expandThresholdPx) launchPlayer()
+            verticalDrag = 0f
+          },
+          onVerticalDrag = { change, amount ->
+            change.consume()
+            verticalDrag = (verticalDrag + amount).coerceAtMost(0f)
+          },
+        )
+      }
       .pointerInput(Unit) {
         detectHorizontalDragGestures(
           onDragEnd = {
@@ -468,6 +489,7 @@ private fun MiniPlayerContent(
         Box(
           modifier = Modifier
             .size(48.dp)
+            .playerArtworkAnchor(PlayerArtworkDestination.MINI, currentItem?.stableId, coverArt, 10.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
           contentAlignment = Alignment.Center,

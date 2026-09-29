@@ -57,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -435,6 +436,7 @@ class PlayerActivity :
   private var pendingPipExitResolution = false
   private var pendingBackgroundTransition = false
   private var pendingBackNavigationBackgroundTransition = false
+  private var returnToBrowserAfterMinimize = false
   private var noisyReceiverRegistered = false
   private var lastVid = -1 // Track video track for background playback optimization
   private var isInBackgroundPlayback = false // Track if we are currently in background playback mode
@@ -632,6 +634,12 @@ class PlayerActivity :
     applyInitialVideoOrientation(intent)
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+      intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER
+    ) {
+      val animateArtwork = PlayerArtworkTransitions.motion?.destination == PlayerArtworkDestination.FULL
+      overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, if (animateArtwork) 0 else R.anim.slide_in_up, 0)
+    }
     if (intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER && player.userScriptsNeedReload()) {
       currentPlaybackIntentForScriptReload()?.let { playbackIntent ->
         setIntent(playbackIntent)
@@ -949,7 +957,35 @@ class PlayerActivity :
       .start()
   }
 
+  override fun minimizeToMiniPlayer(): Boolean {
+    if (pendingBackNavigationBackgroundTransition || viewModel.areControlsLocked.value) return false
+    if (!mpvInitialized || !ownsPlaybackSession() || !isReady || isFinishing || isDestroyed || !isMiniPlayerEnabled()) return false
+    if (viewModel.sheetShown.value != Sheets.None || viewModel.panelShown.value != Panels.None) return false
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      runCatching {
+        setPictureInPictureParams(android.app.PictureInPictureParams.Builder().setAutoEnterEnabled(false).build())
+      }
+    }
+    returnToBrowserAfterMinimize = true
+    return when (startBackgroundPlayback()) {
+      BackgroundPlaybackStartResult.Started -> {
+        pendingBackNavigationBackgroundTransition = true
+        completePendingBackgroundHandoff()
+        true
+      }
+      BackgroundPlaybackStartResult.PendingPermission -> {
+        pendingBackNavigationBackgroundTransition = true
+        false
+      }
+      BackgroundPlaybackStartResult.Blocked -> {
+        returnToBrowserAfterMinimize = false
+        false
+      }
+    }
+  }
+
   private fun handleBackPress() {
+    returnToBrowserAfterMinimize = false
     // Dismiss overlays first
     if (viewModel.sheetShown.value != Sheets.None) {
       lastExitBackPressAtMs = null
@@ -1065,11 +1101,18 @@ class PlayerActivity :
     binding.controls.setContent {
       MpvrxTheme {
         Box(modifier = Modifier.fillMaxSize()) {
-          PlayerControls(
-            viewModel = viewModel,
-            onBackPress = ::handleBackPress,
-            modifier = Modifier,
-          )
+          Box(
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+              alpha = PlayerArtworkTransitions.contentAlpha(PlayerArtworkDestination.FULL)
+            },
+          ) {
+            PlayerControls(
+              viewModel = viewModel,
+              onBackPress = ::handleBackPress,
+              modifier = Modifier,
+            )
+          }
+          PlayerArtworkTransitionOverlay(PlayerArtworkDestination.FULL)
         }
       }
     }
@@ -1829,16 +1872,17 @@ class PlayerActivity :
       Log.e(TAG, "Error during finish", e)
     }
 
+    val animateArtwork = isBackgroundPlaybackSessionActive && isMiniPlayerEnabled() &&
+      PlayerArtworkTransitions.begin(PlayerArtworkDestination.MINI, PlaybackSession.state.value.currentItem?.stableId)
     super.finish()
 
-    // Minimizing into the Mini Player: slide the full player down toward the bottom
-    // bar. The browser tab stays in place; the Mini Player slides up to meet it.
     if (isMiniPlayerEnabled()) {
+      val exitAnimation = if (animateArtwork) 0 else R.anim.slide_out_down
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, R.anim.slide_out_down)
+        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, exitAnimation)
       } else {
         @Suppress("DEPRECATION")
-        overridePendingTransition(0, R.anim.slide_out_down)
+        overridePendingTransition(0, exitAnimation)
       }
     }
   }
@@ -7133,6 +7177,12 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     isBackgroundPlaybackSessionActive = true
     pendingBackNavigationBackgroundTransition = false
     disableVideoForBackground()
+    if (returnToBrowserAfterMinimize && isTaskRoot) {
+      startActivity(
+        Intent(this, app.gyrolet.mpvrx.MainActivity::class.java)
+          .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+      )
+    }
     isUserFinishing = true
     finish()
   }
@@ -7161,6 +7211,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         pendingBackNavigationBackgroundTransition = false
         setActivityMediaSessionActive(true)
         if (failedBackgroundHandoff) {
+          returnToBrowserAfterMinimize = false
           Toast.makeText(this@PlayerActivity, R.string.toast_playback_load_failed, Toast.LENGTH_LONG).show()
         }
         endBackgroundPlayback()

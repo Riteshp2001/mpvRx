@@ -162,6 +162,8 @@ class PlayerViewModel : ViewModel(),
   private val host: PlayerHost
     get() = checkNotNull(hostReference.get()) { "Player host is not attached" }
 
+  fun minimizeToMiniPlayer(): Boolean = hostReference.get()?.minimizeToMiniPlayer() == true
+
   fun attachHost(host: PlayerHost) {
     hostReference = WeakReference(host)
   }

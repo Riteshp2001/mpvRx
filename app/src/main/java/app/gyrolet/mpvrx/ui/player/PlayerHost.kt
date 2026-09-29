@@ -51,6 +51,8 @@ interface PlayerHost {
 
   fun isCurrentMediaKnownAudio(): Boolean = false
 
+  fun minimizeToMiniPlayer(): Boolean = false
+
   fun reloadCurrentYtdlFormat(format: String): Boolean = false
 
   fun playQueueItem(index: Int)

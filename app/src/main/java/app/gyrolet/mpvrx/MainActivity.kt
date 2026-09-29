@@ -77,6 +77,8 @@ import app.gyrolet.mpvrx.ui.player.MPVPipHelper
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.ui.player.PlayerArtworkDestination
+import app.gyrolet.mpvrx.ui.player.PlayerArtworkTransitionOverlay
 import app.gyrolet.mpvrx.ui.player.PlayerLifecyclePolicy
 import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.TrackNode
@@ -650,6 +652,7 @@ class MainActivity : AppCompatActivity() {
           ) {
             MiniPlayer(modifier = miniPlayerModifier)
           }
+          PlayerArtworkTransitionOverlay(PlayerArtworkDestination.MINI, Modifier.matchParentSize())
         }
       }
 

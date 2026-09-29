@@ -181,6 +181,7 @@ fun GestureHandler(
   val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
   val centerVerticalSubtitlePositionGesture by gesturePreferences.centerVerticalSubtitlePositionGesture.collectAsState()
   val enableCenterSwipeUpGesture by gesturePreferences.enableCenterSwipeUpGesture.collectAsState()
+  val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
   val pinchToZoomSubtitles by gesturePreferences.pinchToZoomSubtitles.collectAsState()
   val swipeSubtitlesToSeekDialog by gesturePreferences.swipeSubtitlesToSeekDialog.collectAsState()
   val isSwipeSubtitlesInverted by gesturePreferences.swipeSubtitlesInvertDirection.collectAsState()
@@ -504,6 +505,7 @@ fun GestureHandler(
           volumeGesture,
           centerVerticalSubtitlePositionGesture,
           enableCenterSwipeUpGesture,
+          enableVideoMiniPlayer,
           externalPanelShown,
         ) {
           if (
@@ -511,6 +513,7 @@ fun GestureHandler(
               !brightnessGesture &&
                 !volumeGesture &&
                 !centerVerticalSubtitlePositionGesture &&
+                !enableVideoMiniPlayer &&
                 multipleSpeedGesture <= 0f
             ) ||
             areControlsLocked
@@ -621,6 +624,7 @@ fun GestureHandler(
               }
 
             var gestureType: String? = null
+            var minimizeDistance = 0f
 
             do {
               val event = awaitPointerEvent()
@@ -655,6 +659,8 @@ fun GestureHandler(
                         speedHoldPending = false
                         val isCenterTouch =
                           enableCenterSwipeUpGesture && startPosition.x in (size.width * 0.35f)..(size.width * 0.65f)
+                        val isMinimizeTouch = enableVideoMiniPlayer && !externalPanelShown &&
+                          !isVerticalGestureDeadZone && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
                         if (
                           isLongPressing &&
                             isDynamicSpeedControlActive &&
@@ -663,6 +669,9 @@ fun GestureHandler(
                         ) {
                           longPressJob.cancel()
                           gestureType = "speed_control"
+                        } else if (isMinimizeTouch && isVerticalDrag && deltaY > 20f && claimGesture(GestureOwner.VERTICAL)) {
+                          longPressJob.cancel()
+                          gestureType = "minimize"
                         } else if (isCenterTouch && isVerticalDrag) {
                           longPressJob.cancel()
                           if (
@@ -748,6 +757,10 @@ fun GestureHandler(
 
                     // Handle the appropriate gesture
                     when (gestureType) {
+                      "minimize" -> {
+                        minimizeDistance = deltaY.coerceAtLeast(0f)
+                        change.consume()
+                      }
                       "playlist_swipe" -> {
                         viewModel.playlistSwipeOffset.value = deltaY
                         change.consume()
@@ -997,6 +1010,9 @@ fun GestureHandler(
 
             if (gestureType == "playlist_swipe") {
               viewModel.isPlaylistSwipeActive.value = false
+            }
+            if (gestureType == "minimize" && minimizeDistance >= 80.dp.toPx()) {
+              if (viewModel.minimizeToMiniPlayer()) actionHaptics.pickup()
             }
 
             when (gestureType) {
