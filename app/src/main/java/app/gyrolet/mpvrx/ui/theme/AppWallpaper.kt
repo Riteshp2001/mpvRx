@@ -14,6 +14,8 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -22,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
@@ -72,16 +76,30 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
   val wallpaperScaleMode by preferences.customWallpaperScaleMode.collectAsState()
   val wallpaperBlur by preferences.customWallpaperBlur.collectAsState()
   val wallpaperAlpha by preferences.customWallpaperAlpha.collectAsState()
+  // Hold the UI back until the first wallpaper load finishes, so the app doesn't flash a plain
+  // background and then pop the wallpaper in on launch.
+  var initialWallpaperResolved by remember { mutableStateOf(wallpaperUri.isBlank()) }
   val wallpaper =
     produceState<Bitmap?>(initialValue = null, wallpaperUri) {
       val loadedWallpaper =
         if (wallpaperUri.isBlank()) {
           null
         } else {
-          withContext(Dispatchers.IO) { loadWallpaperBitmap(context, wallpaperUri) }
+          try {
+            withContext(Dispatchers.IO) { loadWallpaperBitmap(context, wallpaperUri) }
+          } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            null
+          }
         }
       value = loadedWallpaper
+      initialWallpaperResolved = true
     }.value
+  val contentAlpha by animateFloatAsState(
+    targetValue = if (initialWallpaperResolved) 1f else 0f,
+    animationSpec = tween(durationMillis = 180),
+    label = "wallpaperContentAlpha",
+  )
   DisposableEffect(wallpaper) {
     val displayedWallpaper = wallpaper
     onDispose {
@@ -124,7 +142,9 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
       LocalAppWallpaperActive provides wallpaperActive,
       LocalLightTextOnWallpaper provides lightTextOnWallpaper,
     ) {
-      content()
+      Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }) {
+        content()
+      }
     }
   }
 }
