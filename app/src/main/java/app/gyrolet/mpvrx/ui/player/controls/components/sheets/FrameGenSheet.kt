@@ -11,36 +11,26 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import app.gyrolet.mpvrx.ui.icons.Icon
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,44 +43,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
-/**
- * OSD bottom sheet for Lossless Scaling Frame Generation (LSFG) settings.
- *
- * Mirrors Eden's QuickSettings.addFrameGen() section, adapted to mpvRx's
- * Compose PlayerSheet pattern.
- *
- * Layout:
- *   ┌─────────────────────────────────────┐
- *   │  Frame Generation      [toggle]     │
- *   │  ─────────────────────────────────  │
- *   │  [description text]                 │
- *   │                                     │
- *   │  Multiplier                         │
- *   │  [  2×  ] [  3×  ] [  4×  ]        │
- *   │                                     │
- *   │  Library                            │
- *   │  Status: Installed / Not installed  │
- *   │  [Install / Replace]  [Remove]      │
- *   └─────────────────────────────────────┘
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FrameGenSheet(
     isEnabled: Boolean,
     isSupported: Boolean,
-    multiplier: Int,              // 2, 3, or 4
+    multiplier: Int,
     onToggle: (Boolean) -> Unit,
     onMultiplierChange: (Int) -> Unit,
     onDismissRequest: () -> Unit,
@@ -100,20 +71,27 @@ fun FrameGenSheet(
     val scope = rememberCoroutineScope()
 
     val installed by LosslessScalingHelper.installed.collectAsState()
-    val statusText by LosslessScalingHelper.statusText.collectAsState()
-
-    var installing by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
     var showRemoveDialog by remember { mutableStateOf(false) }
+    var failureCode by remember { mutableStateOf<Int?>(null) }
 
-    // File picker — any file type, users pick Lossless.dll
     val dllPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        installing = true
+        busy = true
         scope.launch {
-            LosslessScalingHelper.install(context, uri)
-            installing = false
+            try {
+                onToggle(false)
+                val result = LosslessScalingHelper.install(context, uri)
+                if (result != LosslessScalingHelper.RESULT_OK) failureCode = result
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                failureCode = LosslessScalingHelper.RESULT_UNREADABLE
+            } finally {
+                busy = false
+            }
         }
     }
 
@@ -122,213 +100,160 @@ fun FrameGenSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-
-            // ── Header row: title + toggle ──────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.RoundedFilled.FrameGen,
-                        contentDescription = null,
-                        tint = if (isEnabled) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.frame_gen_sheet_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-
+                Icon(
+                    imageVector = Icons.RoundedFilled.FrameGen,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Text(
+                    text = stringResource(R.string.frame_gen_sheet_title),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Switch(
                     checked = isEnabled,
-                    onCheckedChange = { if (isSupported && installed) onToggle(it) },
-                    enabled = isSupported && installed,
+                    onCheckedChange = onToggle,
+                    enabled = !busy && (isEnabled || (isSupported && installed)),
                 )
             }
 
-            // ── GPU not supported warning ────────────────────────────────────
             if (!isSupported) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.RoundedFilled.ErrorOutline,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.frame_gen_not_supported),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.frame_gen_not_supported),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
 
-            // ── Description ─────────────────────────────────────────────────
-            Text(
-                text = stringResource(R.string.frame_gen_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = stringResource(R.string.frame_gen_heat_warning),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-
-            // ── Multiplier chips (only shown when enabled and supported) ─────
-            AnimatedVisibility(
-                visible = isSupported,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(R.string.frame_gen_multiplier_label),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                Icon(
+                    imageVector = Icons.RoundedFilled.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = stringResource(R.string.frame_gen_heat_warning),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            HorizontalDivider()
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.frame_gen_multiplier_label),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    val options = listOf(
+                        2 to R.string.frame_gen_multiplier_2x,
+                        3 to R.string.frame_gen_multiplier_3x,
+                        4 to R.string.frame_gen_multiplier_4x,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(2 to R.string.frame_gen_multiplier_2x,
-                               3 to R.string.frame_gen_multiplier_3x,
-                               4 to R.string.frame_gen_multiplier_4x).forEach { (value, labelRes) ->
-                            FilterChip(
-                                selected = multiplier == value,
-                                enabled = isSupported,
-                                onClick = { onMultiplierChange(value) },
-                                label = { Text(stringResource(labelRes)) },
-                                leadingIcon = null,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                ),
-                            )
+                    options.forEachIndexed { index, (value, labelRes) ->
+                        SegmentedButton(
+                            selected = multiplier == value,
+                            onClick = { onMultiplierChange(value) },
+                            enabled = isSupported && installed && !busy,
+                            shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                            icon = {},
+                        ) {
+                            Text(stringResource(labelRes), maxLines = 1)
                         }
                     }
                 }
             }
 
-            // ── Divider ──────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-            )
-
-            // ── Library management ───────────────────────────────────────────
-            Text(
-                text = stringResource(R.string.frame_gen_library_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-
-            // Status badge
+            HorizontalDivider()
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (installed)
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (installing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(
-                        imageVector = if (installed) Icons.RoundedFilled.CheckCircle
-                                      else Icons.RoundedFilled.ErrorOutline,
-                        contentDescription = null,
-                        tint = if (installed) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.frame_gen_library_title),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        text = "Lossless.dll",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    text = if (installing) stringResource(R.string.frame_gen_installing)
-                           else statusText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (installed) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (busy) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        text = stringResource(
+                            if (installed) R.string.frame_gen_library_installed_short
+                            else R.string.frame_gen_library_missing_short,
+                        ),
+                        modifier = Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (installed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
-            // Install / Replace + Remove buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(
+                FilledTonalButton(
                     onClick = { dllPicker.launch(arrayOf("*/*")) },
-                    enabled = !installing,
+                    enabled = !busy,
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(
                         imageVector = Icons.RoundedFilled.FileUpload,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                     )
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         text = if (installed) stringResource(R.string.frame_gen_replace_library)
                                else stringResource(R.string.frame_gen_install_library),
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                 }
 
                 if (installed) {
-                    OutlinedButton(
+                    IconButton(
                         onClick = { showRemoveDialog = true },
-                        enabled = !installing,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
+                        enabled = !busy,
+                        modifier = Modifier.size(48.dp),
                     ) {
                         Icon(
                             imageVector = Icons.RoundedFilled.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            contentDescription = stringResource(R.string.frame_gen_remove_library),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }
             }
-
-            // How to get the library — brief hint
-            Text(
-                text = stringResource(R.string.frame_gen_library_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                textAlign = TextAlign.Start,
-            )
-
-            Spacer(Modifier.height(4.dp))
         }
     }
 
-    // Remove confirmation dialog
     if (showRemoveDialog) {
         AlertDialog(
             onDismissRequest = { showRemoveDialog = false },
@@ -338,20 +263,42 @@ fun FrameGenSheet(
                 TextButton(
                     onClick = {
                         showRemoveDialog = false
-                        scope.launch { LosslessScalingHelper.remove() }
-                        // Also disable frame gen if it was on
-                        if (isEnabled) onToggle(false)
+                        busy = true
+                        scope.launch {
+                            try {
+                                onToggle(false)
+                                if (!LosslessScalingHelper.remove(context)) {
+                                    failureCode = LosslessScalingHelper.RESULT_UNREADABLE
+                                }
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                failureCode = LosslessScalingHelper.RESULT_UNREADABLE
+                            } finally {
+                                busy = false
+                            }
+                        }
                     },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
                 ) {
-                    Text(stringResource(R.string.frame_gen_remove_library))
+                    Text(stringResource(R.string.frame_gen_remove_library), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRemoveDialog = false }) {
                     Text(stringResource(R.string.generic_cancel))
+                }
+            },
+        )
+    }
+
+    failureCode?.let { code ->
+        AlertDialog(
+            onDismissRequest = { failureCode = null },
+            title = { Text(stringResource(R.string.frame_gen_library_title)) },
+            text = { Text(stringResource(R.string.frame_gen_library_update_failed, code)) },
+            confirmButton = {
+                TextButton(onClick = { failureCode = null }) {
+                    Text(stringResource(android.R.string.ok))
                 }
             },
         )

@@ -2576,4 +2576,20 @@
   <string name="frame_gen_heat_warning">帧生成可能会显著提高设备温度并增加电池消耗。</string>
   <string name="frame_gen_library_title">库</string>
   <string name="frame_gen_library_hint">请从 Lossless Scaling 安装目录获取 Lossless.dll（Steam - 本地文件）。</string>
+  <string name="btn_label_frame_generation">帧生成</string>
+  <string name="frame_gen_on">帧生成已开启</string>
+  <string name="frame_gen_off">帧生成已关闭</string>
+  <string name="frame_gen_sheet_title">帧生成</string>
+  <string name="frame_gen_multiplier_label">倍数</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">此设备不支持帧生成，需要支持 Vulkan 的 GPU。</string>
+  <string name="frame_gen_install_library">安装库</string>
+  <string name="frame_gen_replace_library">替换库</string>
+  <string name="frame_gen_remove_library">移除库</string>
+  <string name="frame_gen_remove_confirmation">移除已安装的 Lossless Scaling 库？帧生成将被禁用。</string>
+  <string name="frame_gen_library_installed_short">已安装</string>
+  <string name="frame_gen_library_missing_short">未安装</string>
+  <string name="frame_gen_library_update_failed">无法更新库（错误 %1$d）。</string>
 </resources>

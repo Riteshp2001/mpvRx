@@ -2577,4 +2577,20 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="frame_gen_heat_warning">A geração de quadros pode aumentar significativamente a temperatura do dispositivo e o consumo da bateria.</string>
   <string name="frame_gen_library_title">Biblioteca</string>
   <string name="frame_gen_library_hint">Obtenha Lossless.dll da sua instalação do Lossless Scaling (Steam - Arquivos locais).</string>
+  <string name="btn_label_frame_generation">Geração de quadros</string>
+  <string name="frame_gen_on">Geração de quadros ativada</string>
+  <string name="frame_gen_off">Geração de quadros desativada</string>
+  <string name="frame_gen_sheet_title">Geração de quadros</string>
+  <string name="frame_gen_multiplier_label">Multiplicador</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">Este dispositivo não oferece suporte à geração de quadros. É necessária uma GPU compatível com Vulkan.</string>
+  <string name="frame_gen_install_library">Instalar biblioteca</string>
+  <string name="frame_gen_replace_library">Substituir biblioteca</string>
+  <string name="frame_gen_remove_library">Remover biblioteca</string>
+  <string name="frame_gen_remove_confirmation">Remover a biblioteca Lossless Scaling instalada? A geração de quadros será desativada.</string>
+  <string name="frame_gen_library_installed_short">Instalada</string>
+  <string name="frame_gen_library_missing_short">Não instalada</string>
+  <string name="frame_gen_library_update_failed">Não foi possível atualizar a biblioteca (erro %1$d).</string>
 </resources>

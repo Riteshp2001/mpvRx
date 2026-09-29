@@ -2570,4 +2570,20 @@
   <string name="frame_gen_heat_warning">フレーム生成はデバイスの温度とバッテリー消費を大幅に増加させることがあります。</string>
   <string name="frame_gen_library_title">ライブラリ</string>
   <string name="frame_gen_library_hint">Lossless Scaling のインストール先から Lossless.dll を取得してください（Steam - ローカルファイル）。</string>
+  <string name="btn_label_frame_generation">フレーム生成</string>
+  <string name="frame_gen_on">フレーム生成オン</string>
+  <string name="frame_gen_off">フレーム生成オフ</string>
+  <string name="frame_gen_sheet_title">フレーム生成</string>
+  <string name="frame_gen_multiplier_label">倍率</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">このデバイスはフレーム生成に対応していません。Vulkan 対応の GPU が必要です。</string>
+  <string name="frame_gen_install_library">ライブラリをインストール</string>
+  <string name="frame_gen_replace_library">ライブラリを置き換え</string>
+  <string name="frame_gen_remove_library">ライブラリを削除</string>
+  <string name="frame_gen_remove_confirmation">インストール済みの Lossless Scaling ライブラリを削除しますか？フレーム生成は無効になります。</string>
+  <string name="frame_gen_library_installed_short">インストール済み</string>
+  <string name="frame_gen_library_missing_short">未インストール</string>
+  <string name="frame_gen_library_update_failed">ライブラリを更新できませんでした（エラー %1$d）。</string>
 </resources>

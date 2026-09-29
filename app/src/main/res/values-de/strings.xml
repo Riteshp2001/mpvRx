@@ -2577,4 +2577,20 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="frame_gen_heat_warning">Die Frame-Generierung kann die Gerätetemperatur und den Akkuverbrauch deutlich erhöhen.</string>
   <string name="frame_gen_library_title">Bibliothek</string>
   <string name="frame_gen_library_hint">Hole Lossless.dll aus deiner Lossless-Scaling-Installation (Steam - Lokale Dateien).</string>
+  <string name="btn_label_frame_generation">Frame-Generierung</string>
+  <string name="frame_gen_on">Frame-Generierung aktiviert</string>
+  <string name="frame_gen_off">Frame-Generierung deaktiviert</string>
+  <string name="frame_gen_sheet_title">Frame-Generierung</string>
+  <string name="frame_gen_multiplier_label">Multiplikator</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">Die Frame-Generierung wird auf diesem Gerät nicht unterstützt. Eine Vulkan-fähige GPU ist erforderlich.</string>
+  <string name="frame_gen_install_library">Bibliothek installieren</string>
+  <string name="frame_gen_replace_library">Bibliothek ersetzen</string>
+  <string name="frame_gen_remove_library">Bibliothek entfernen</string>
+  <string name="frame_gen_remove_confirmation">Die installierte Lossless-Scaling-Bibliothek entfernen? Die Frame-Generierung wird deaktiviert.</string>
+  <string name="frame_gen_library_installed_short">Installiert</string>
+  <string name="frame_gen_library_missing_short">Nicht installiert</string>
+  <string name="frame_gen_library_update_failed">Die Bibliothek konnte nicht aktualisiert werden (Fehler %1$d).</string>
 </resources>

@@ -2577,4 +2577,20 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="frame_gen_heat_warning">La generación de fotogramas puede aumentar considerablemente la temperatura del dispositivo y el uso de batería.</string>
   <string name="frame_gen_library_title">Biblioteca</string>
   <string name="frame_gen_library_hint">Obtén Lossless.dll de tu instalación de Lossless Scaling (Steam - Archivos locales).</string>
+  <string name="btn_label_frame_generation">Generación de fotogramas</string>
+  <string name="frame_gen_on">Generación de fotogramas activada</string>
+  <string name="frame_gen_off">Generación de fotogramas desactivada</string>
+  <string name="frame_gen_sheet_title">Generación de fotogramas</string>
+  <string name="frame_gen_multiplier_label">Multiplicador</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">Este dispositivo no admite la generación de fotogramas. Se requiere una GPU compatible con Vulkan.</string>
+  <string name="frame_gen_install_library">Instalar biblioteca</string>
+  <string name="frame_gen_replace_library">Reemplazar biblioteca</string>
+  <string name="frame_gen_remove_library">Eliminar biblioteca</string>
+  <string name="frame_gen_remove_confirmation">¿Eliminar la biblioteca de Lossless Scaling instalada? Se desactivará la generación de fotogramas.</string>
+  <string name="frame_gen_library_installed_short">Instalada</string>
+  <string name="frame_gen_library_missing_short">No instalada</string>
+  <string name="frame_gen_library_update_failed">No se pudo actualizar la biblioteca (error %1$d).</string>
 </resources>

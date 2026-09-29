@@ -2481,4 +2481,20 @@
   <string name="frame_gen_heat_warning">फ्रेम जनरेशन से डिवाइस का तापमान और बैटरी खपत काफी बढ़ सकती है।</string>
   <string name="frame_gen_library_title">लाइब्रेरी</string>
   <string name="frame_gen_library_hint">अपने Lossless Scaling इंस्टॉलेशन से Lossless.dll प्राप्त करें (Steam - Local Files)।</string>
+  <string name="btn_label_frame_generation">फ्रेम जनरेशन</string>
+  <string name="frame_gen_on">फ्रेम जनरेशन चालू</string>
+  <string name="frame_gen_off">फ्रेम जनरेशन बंद</string>
+  <string name="frame_gen_sheet_title">फ्रेम जनरेशन</string>
+  <string name="frame_gen_multiplier_label">गुणक</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">इस डिवाइस पर फ्रेम जनरेशन समर्थित नहीं है। Vulkan-सक्षम GPU आवश्यक है।</string>
+  <string name="frame_gen_install_library">लाइब्रेरी इंस्टॉल करें</string>
+  <string name="frame_gen_replace_library">लाइब्रेरी बदलें</string>
+  <string name="frame_gen_remove_library">लाइब्रेरी हटाएँ</string>
+  <string name="frame_gen_remove_confirmation">इंस्टॉल की गई Lossless Scaling लाइब्रेरी हटाएँ? फ्रेम जनरेशन बंद हो जाएगा।</string>
+  <string name="frame_gen_library_installed_short">इंस्टॉल है</string>
+  <string name="frame_gen_library_missing_short">इंस्टॉल नहीं है</string>
+  <string name="frame_gen_library_update_failed">लाइब्रेरी अपडेट नहीं हो सकी (त्रुटि %1$d)।</string>
 </resources>

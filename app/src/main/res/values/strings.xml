@@ -1404,6 +1404,9 @@
   <string name="frame_gen_heat_warning">Frame generation can significantly increase device temperature and battery use.</string>
   <string name="frame_gen_library_title">Library</string>
   <string name="frame_gen_library_hint">Obtain Lossless.dll from your Lossless Scaling installation (Steam - Local Files).</string>
+  <string name="frame_gen_library_installed_short">Installed</string>
+  <string name="frame_gen_library_missing_short">Not installed</string>
+  <string name="frame_gen_library_update_failed">Unable to update the library (error %1$d).</string>
   <string name="btn_label_none">None</string>
 
   <string name="scopes_title">Scopes</string>

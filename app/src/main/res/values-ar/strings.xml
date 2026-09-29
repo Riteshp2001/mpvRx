@@ -2603,4 +2603,20 @@
   <string name="frame_gen_heat_warning">قد يؤدي توليد الإطارات إلى زيادة ملحوظة في حرارة الجهاز واستهلاك البطارية.</string>
   <string name="frame_gen_library_title">المكتبة</string>
   <string name="frame_gen_library_hint">احصل على Lossless.dll من تثبيت Lossless Scaling لديك (Steam - الملفات المحلية).</string>
+  <string name="btn_label_frame_generation">توليد الإطارات</string>
+  <string name="frame_gen_on">تم تشغيل توليد الإطارات</string>
+  <string name="frame_gen_off">تم إيقاف توليد الإطارات</string>
+  <string name="frame_gen_sheet_title">توليد الإطارات</string>
+  <string name="frame_gen_multiplier_label">المضاعف</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">توليد الإطارات غير مدعوم على هذا الجهاز. يلزم معالج رسومي يدعم Vulkan.</string>
+  <string name="frame_gen_install_library">تثبيت المكتبة</string>
+  <string name="frame_gen_replace_library">استبدال المكتبة</string>
+  <string name="frame_gen_remove_library">إزالة المكتبة</string>
+  <string name="frame_gen_remove_confirmation">هل تريد إزالة مكتبة Lossless Scaling المثبتة؟ سيتم تعطيل توليد الإطارات.</string>
+  <string name="frame_gen_library_installed_short">مثبتة</string>
+  <string name="frame_gen_library_missing_short">غير مثبتة</string>
+  <string name="frame_gen_library_update_failed">تعذر تحديث المكتبة (الخطأ %1$d).</string>
 </resources>

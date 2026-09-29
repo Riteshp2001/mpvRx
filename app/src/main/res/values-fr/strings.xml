@@ -2577,4 +2577,20 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="frame_gen_heat_warning">La génération d’images peut augmenter fortement la température de l’appareil et la consommation de batterie.</string>
   <string name="frame_gen_library_title">Bibliothèque</string>
   <string name="frame_gen_library_hint">Récupérez Lossless.dll depuis votre installation de Lossless Scaling (Steam - Fichiers locaux).</string>
+  <string name="btn_label_frame_generation">Génération d’images</string>
+  <string name="frame_gen_on">Génération d’images activée</string>
+  <string name="frame_gen_off">Génération d’images désactivée</string>
+  <string name="frame_gen_sheet_title">Génération d’images</string>
+  <string name="frame_gen_multiplier_label">Multiplicateur</string>
+  <string name="frame_gen_multiplier_2x">2×</string>
+  <string name="frame_gen_multiplier_3x">3×</string>
+  <string name="frame_gen_multiplier_4x">4×</string>
+  <string name="frame_gen_not_supported">Cet appareil ne prend pas en charge la génération d’images. Un GPU compatible Vulkan est nécessaire.</string>
+  <string name="frame_gen_install_library">Installer la bibliothèque</string>
+  <string name="frame_gen_replace_library">Remplacer la bibliothèque</string>
+  <string name="frame_gen_remove_library">Supprimer la bibliothèque</string>
+  <string name="frame_gen_remove_confirmation">Supprimer la bibliothèque Lossless Scaling installée ? La génération d’images sera désactivée.</string>
+  <string name="frame_gen_library_installed_short">Installée</string>
+  <string name="frame_gen_library_missing_short">Non installée</string>
+  <string name="frame_gen_library_update_failed">La mise à jour de la bibliothèque a échoué (erreur %1$d).</string>
 </resources>
