@@ -1263,7 +1263,8 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.FRAME_GENERATION -> {
-      if (app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper.isAvailableInCurrentBuild) {
+      val isFrameGenAudioOnly by viewModel.isAudioOnly.collectAsState()
+      if (app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper.isAvailableInCurrentBuild && !isFrameGenAudioOnly) {
         val isFrameGenEnabled by viewModel.isFrameGenEnabled.collectAsState()
         val frameGenSupported by viewModel.frameGenSupported.collectAsState()
         @OptIn(ExperimentalFoundationApi::class)

@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 import android.Manifest
@@ -27,7 +29,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -51,7 +52,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -172,7 +172,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import kotlin.math.abs
@@ -626,11 +625,6 @@ private fun CoverArtCardImage(
       )
     }
   }
-}
-
-private enum class CoverSwipeDirection {
-  NEXT,
-  PREV,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1344,41 +1338,57 @@ fun AudioPlayerControls(
       }
     }
 
-    val animatableOffsetX = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     val haptic = rememberAppHaptics()
-    var activeCoverOverride by remember { mutableStateOf<Bitmap?>(null) }
+    val artworkItems = queueState.items
+    val artworkQueueOrder = remember(artworkItems.size, queueState.shuffleEnabled, queueState.shuffleOrder) {
+      if (queueState.shuffleEnabled && queueState.shuffleOrder.size == artworkItems.size) {
+        queueState.shuffleOrder
+      } else {
+        artworkItems.indices.toList()
+      }
+    }
+    val repeatArtwork = queueState.repeatMode == app.gyrolet.mpvrx.ui.player.RepeatMode.ALL && artworkItems.size > 1
+    val artworkPageOrder = remember(artworkQueueOrder, repeatArtwork) {
+      if (repeatArtwork) {
+        listOf(artworkQueueOrder.last()) + artworkQueueOrder + artworkQueueOrder.first()
+      } else {
+        artworkQueueOrder
+      }
+    }
+    val currentArtworkPage = artworkQueueOrder.indexOf(queueState.currentIndex).coerceAtLeast(0) + if (repeatArtwork) 1 else 0
+    val latestArtworkPageOrder by rememberUpdatedState(artworkPageOrder)
+    val artworkPagerState = rememberPagerState(
+      initialPage = currentArtworkPage.coerceIn(0, artworkPageOrder.lastIndex.coerceAtLeast(0)),
+      pageCount = { artworkPageOrder.size.coerceAtLeast(1) },
+    )
 
-    LaunchedEffect(currentItem?.stableId, albumArtBitmap) {
-      activeCoverOverride = null
+    LaunchedEffect(artworkPagerState, currentArtworkPage, queueState.currentItem?.stableId) {
+      if (currentArtworkPage in artworkPageOrder.indices && artworkPagerState.currentPage != currentArtworkPage) {
+        artworkPagerState.scrollToPage(currentArtworkPage)
+      }
     }
 
-    val nextItem = remember(filteredPlaylist, mediaPath) {
-      val idx = filteredPlaylist.indexOfFirst { it.isPlaying || it.path == mediaPath || it.uri.toString() == mediaPath }
-      if (idx in 0 until filteredPlaylist.lastIndex) filteredPlaylist[idx + 1] else null
+    LaunchedEffect(artworkPagerState, viewModel, isAudiobook) {
+      var previousPage = artworkPagerState.settledPage
+      snapshotFlow { artworkPagerState.settledPage }.collect { page ->
+        if (page != previousPage) {
+          previousPage = page
+          val liveQueue = PlaybackSession.queue.value
+          val queueIndex = latestArtworkPageOrder.getOrNull(page)
+          if (!isAudiobook && liveQueue.isExplicitQueue && queueIndex != null &&
+            queueIndex in liveQueue.items.indices && queueIndex != liveQueue.currentIndex
+          ) {
+            haptic.pickup()
+            viewModel.playPlaylistItem(queueIndex)
+          }
+        }
+      }
     }
-
-    val prevItem = remember(filteredPlaylist, mediaPath) {
-      val idx = filteredPlaylist.indexOfFirst { it.isPlaying || it.path == mediaPath || it.uri.toString() == mediaPath }
-      if (idx > 0) filteredPlaylist[idx - 1] else null
-    }
-
-    val nextCoverBitmap =
-      rememberAudioAlbumArt(
-        pathOrUri = nextItem?.let { it.path.ifBlank { it.uri.toString() } },
-        artworkUri = nextItem?.tvgLogo,
-      )
-    val prevCoverBitmap =
-      rememberAudioAlbumArt(
-        pathOrUri = prevItem?.let { it.path.ifBlank { it.uri.toString() } },
-        artworkUri = prevItem?.tvgLogo,
-      )
-    val swipeNextCoverBitmap by androidx.compose.runtime.rememberUpdatedState(nextCoverBitmap ?: albumArtBitmap)
-    val swipePrevCoverBitmap by androidx.compose.runtime.rememberUpdatedState(prevCoverBitmap ?: albumArtBitmap)
 
     @OptIn(ExperimentalFoundationApi::class)
     val centerVisualizerView = @Composable { visualizerModifier: Modifier ->
-      BoxWithConstraints(
+      Box(
         modifier =
           visualizerModifier
             .then(if (showVisualizer) Modifier else Modifier.clipToBounds())
@@ -1395,9 +1405,6 @@ fun AudioPlayerControls(
             ),
         contentAlignment = Alignment.Center,
       ) {
-        val containerWidthPx = constraints.maxWidth.toFloat()
-        val currentOffset = animatableOffsetX.value
-
         if (showInPlaceLyrics && !isTabletLandscape) {
           app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
             viewModel = viewModel,
@@ -1445,121 +1452,28 @@ fun AudioPlayerControls(
             )
           } else {
             val coverShape = RoundedCornerShape(32.dp)
-            val density = LocalDensity.current
-            val gap = with(density) { 24.dp.toPx() }
-            val stride = containerWidthPx + gap
-
-            Box(
+            HorizontalPager(
+              state = artworkPagerState,
+              userScrollEnabled = !isAudiobook && queueState.isExplicitQueue && artworkItems.size > 1,
+              pageSpacing = 24.dp,
+              beyondViewportPageCount = 1,
               modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(if (isTabletPortrait) 0.52f else if (isPortrait) 0.88f else 1f)
-                .pointerInput(viewModel, mediaPath, showVisualizer, containerWidthPx, isAudiobook) {
-                  if (showVisualizer || isAudiobook || containerWidthPx <= 0f) return@pointerInput
-                  detectHorizontalDragGestures(
-                    onDragStart = {
-                      coroutineScope.launch { animatableOffsetX.snapTo(0f) }
-                    },
-                    onDragEnd = {
-                      val threshold = containerWidthPx * 0.25f
-                      val dragVal = animatableOffsetX.value
-                      coroutineScope.launch {
-                        if (dragVal < -threshold) {
-                          haptic.pickup()
-                          animatableOffsetX.animateTo(
-                            targetValue = -stride,
-                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
-                          )
-                          activeCoverOverride = swipeNextCoverBitmap
-                          animatableOffsetX.snapTo(0f)
-                          if (viewModel.hasPlaylistSupport()) {
-                            viewModel.playNext()
-                          } else {
-                            runCatching { PlaybackSession.command("playlist-next") }
-                          }
-                        } else if (dragVal > threshold) {
-                          haptic.pickup()
-                          animatableOffsetX.animateTo(
-                            targetValue = stride,
-                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
-                          )
-                          activeCoverOverride = swipePrevCoverBitmap
-                          animatableOffsetX.snapTo(0f)
-                          if (viewModel.hasPlaylistSupport()) {
-                            viewModel.playPrevious()
-                          } else {
-                            runCatching { PlaybackSession.command("playlist-prev") }
-                          }
-                        } else {
-                          animatableOffsetX.animateTo(
-                            targetValue = 0f,
-                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f),
-                          )
-                        }
-                      }
-                    },
-                    onDragCancel = {
-                      coroutineScope.launch {
-                        animatableOffsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.85f))
-                      }
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                      change.consume()
-                      coroutineScope.launch {
-                        animatableOffsetX.snapTo(animatableOffsetX.value + dragAmount)
-                      }
-                    }
-                  )
-                },
-              contentAlignment = Alignment.Center,
-            ) {
-              // 1. Previous Cover Art Card (Visible when dragging right -> currentOffset > 0)
-              if (currentOffset > 0f) {
-                Surface(
-                  modifier = Modifier
-                    .aspectRatio(1f)
-                    .offset { IntOffset((-stride + currentOffset).roundToInt(), 0) }
-                    .clip(coverShape),
-                  shape = coverShape,
-                  color = Color.Transparent,
-                ) {
-                  CoverArtCardImage(
-                    bitmap = prevCoverBitmap,
-                    artworkUrl = prevItem?.tvgLogo?.takeIf { it.isNotBlank() },
-                    contentScale = if (isAudiobook) ContentScale.Fit else ContentScale.Crop,
-                  )
-                }
-              }
-
-              // 2. Next Cover Art Card (Visible when dragging left -> currentOffset < 0)
-              if (currentOffset < 0f) {
-                Surface(
-                  modifier = Modifier
-                    .aspectRatio(1f)
-                    .offset { IntOffset((stride + currentOffset).roundToInt(), 0) }
-                    .clip(coverShape),
-                  shape = coverShape,
-                  color = Color.Transparent,
-                ) {
-                  CoverArtCardImage(
-                    bitmap = nextCoverBitmap,
-                    artworkUrl = nextItem?.tvgLogo?.takeIf { it.isNotBlank() },
-                    contentScale = if (isAudiobook) ContentScale.Fit else ContentScale.Crop,
-                  )
-                }
-              }
-
-              // 3. Current Cover Art Card
+                .fillMaxWidth(if (isTabletPortrait) 0.52f else if (isPortrait) 0.88f else 1f),
+            ) { page ->
+              val pageItem = artworkPageOrder.getOrNull(page)?.let { queueIndex -> artworkItems.getOrNull(queueIndex) }
+              val isCurrentPage = pageItem == null || pageItem.stableId == currentItem?.stableId
+              val pageArtwork = rememberAudioAlbumArt(pageItem?.originalUri, pageItem?.artworkUri)
               Surface(
                 modifier = Modifier
                   .aspectRatio(1f)
-                  .offset { IntOffset(currentOffset.roundToInt(), 0) }
                   .clip(coverShape),
                 shape = coverShape,
                 color = Color.Transparent,
               ) {
                 CoverArtCardImage(
-                  bitmap = activeCoverOverride ?: albumArtBitmap,
-                  artworkUrl = currentArtworkUri,
+                  bitmap = pageArtwork ?: albumArtBitmap.takeIf { isCurrentPage },
+                  artworkUrl = pageItem?.artworkUri ?: currentArtworkUri.takeIf { isCurrentPage },
                   contentScale = if (isAudiobook) ContentScale.Fit else ContentScale.Crop,
                 )
               }

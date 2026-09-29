@@ -874,6 +874,9 @@ object PlaybackSession : MPVLib.EventObserver {
       if (_state.value.phase == PlaybackPhase.STOPPING) return@withCore -1L
       AudiobookPlayback.capture()
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
+      if (resolvedItem.isDefinitelyAudioOnly() || resolvedItem.audiobook != null) {
+        app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper.setFrameGenerationEnabled(false, 2)
+      }
       loadedPlaybackItem = null
       if (resolvedItem.audiobook != null) AudiobookPlayback.ensureStarted()
       if (resolvedItem.audiobook == null && speedBeforeAudiobook != null) {

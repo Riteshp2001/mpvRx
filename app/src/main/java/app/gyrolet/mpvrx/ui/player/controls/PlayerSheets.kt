@@ -666,7 +666,8 @@ fun PlayerSheets(
     }
 
     Sheets.FrameGenConfig -> {
-      if (LosslessScalingHelper.isAvailableInCurrentBuild) {
+      val isFrameGenAudioOnly by viewModel.isAudioOnly.composeCollectAsState()
+      if (LosslessScalingHelper.isAvailableInCurrentBuild && !isFrameGenAudioOnly) {
         val isFrameGenEnabled by viewModel.isFrameGenEnabled.composeCollectAsState()
         val frameGenMultiplier by viewModel.frameGenMultiplier.composeCollectAsState()
         val frameGenSupported by viewModel.frameGenSupported.composeCollectAsState()
@@ -674,10 +675,12 @@ fun PlayerSheets(
           isEnabled = isFrameGenEnabled,
           isSupported = frameGenSupported,
           multiplier = frameGenMultiplier,
-          onToggle = { viewModel.toggleFrameGen() },
+          onToggle = viewModel::setFrameGenEnabled,
           onMultiplierChange = { viewModel.setFrameGenMultiplier(it) },
           onDismissRequest = onDismissRequest,
         )
+      } else {
+        LaunchedEffect(Unit) { onDismissRequest() }
       }
     }
 

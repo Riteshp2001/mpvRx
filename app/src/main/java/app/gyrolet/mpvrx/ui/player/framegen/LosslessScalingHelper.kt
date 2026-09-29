@@ -18,6 +18,8 @@ import android.os.Process
 import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.isDefinitelyAudioOnly
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,6 +73,24 @@ object LosslessScalingHelper {
     private val _statusText = MutableStateFlow("")
     /** Human-readable status string for display in the UI. */
     val statusText: StateFlow<String> = _statusText.asStateFlow()
+
+    private var appliedFrameGenMultiplier: Int? = null
+
+    @Synchronized
+    fun setFrameGenerationEnabled(enabled: Boolean, multiplier: Int): Boolean {
+        val media = PlaybackSession.state.value.currentItem
+        val canEnable = enabled && isAvailableInCurrentBuild &&
+            media != null && !media.isDefinitelyAudioOnly() && media.audiobook == null
+        val boundedMultiplier = multiplier.coerceIn(2, 4)
+        if (!canEnable && appliedFrameGenMultiplier == null) return false
+        if (canEnable && appliedFrameGenMultiplier == boundedMultiplier) return true
+        val applied = safeNative(false) {
+            FrameGenNative.setFrameGenEnabled(canEnable, boundedMultiplier)
+            true
+        }
+        if (applied) appliedFrameGenMultiplier = boundedMultiplier.takeIf { canEnable }
+        return applied && canEnable
+    }
 
     private inline fun <T> safeNative(default: T, block: () -> T): T {
         if (!isAvailableInCurrentBuild) return default

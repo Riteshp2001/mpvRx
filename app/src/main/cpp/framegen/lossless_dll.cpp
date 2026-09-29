@@ -604,9 +604,9 @@ void SetFrameGenEnabled(bool enabled, int multiplier) {
         setenv("LSFG_MULTIPLIER", "1", 1);
         setenv("VK_INSTANCE_LAYERS", "", 1);
 
-        void* hLayer = dlopen("libVkLayer_LS_frame_generation.so", RTLD_NOLOAD);
+        void* hLayer = dlopen("libVkLayer_LS_frame_generation.so", RTLD_NOW | RTLD_NOLOAD);
         if (!hLayer) {
-            hLayer = dlopen("liblsfg-vk.so", RTLD_NOLOAD);
+            hLayer = dlopen("liblsfg-vk.so", RTLD_NOW | RTLD_NOLOAD);
         }
         if (hLayer) {
             using PfnSetConfig = void(*)(bool, int, const char*);
@@ -614,6 +614,7 @@ void SetFrameGenEnabled(bool enabled, int multiplier) {
             if (setConfig) {
                 setConfig(false, 1, dll_path.c_str());
             }
+            dlclose(hLayer);
         }
     }
 }

@@ -144,7 +144,6 @@ import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.random.Random
 import kotlin.reflect.KProperty
-import app.gyrolet.mpvrx.ui.player.framegen.FrameGenNative
 import app.gyrolet.mpvrx.ui.player.framegen.LosslessScalingHelper
 
 enum class AutoCropState {
@@ -2133,19 +2132,13 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   val isPostProcessingEnabled: StateFlow<Boolean> = _isPostProcessingEnabled.asStateFlow()
 
   // ==================== Frame Generation (LSFG) ============================
-  private val _isFrameGenEnabled =
-    MutableStateFlow(LosslessScalingHelper.isAvailableInCurrentBuild && playerPreferences.isFrameGenEnabled.get())
+  private val _isFrameGenEnabled = MutableStateFlow(false)
   val isFrameGenEnabled: StateFlow<Boolean> = _isFrameGenEnabled.asStateFlow()
 
   private val _frameGenMultiplier = MutableStateFlow(playerPreferences.frameGenMultiplier.get())
   val frameGenMultiplier: StateFlow<Int> = _frameGenMultiplier.asStateFlow()
 
-  private val _frameGenSupported = MutableStateFlow(isFrameGenerationReady()).also { supported ->
-    // Re-arm native layer on startup if pref is already enabled and library is installed
-    if (supported.value && playerPreferences.isFrameGenEnabled.get() && LosslessScalingHelper.installed.value) {
-      runCatching { FrameGenNative.setFrameGenEnabled(true, playerPreferences.frameGenMultiplier.get()) }
-    }
-  }
+  private val _frameGenSupported = MutableStateFlow(false)
   val frameGenSupported: StateFlow<Boolean> = _frameGenSupported.asStateFlow()
 
   private val _postProcessingPreset = MutableStateFlow(playerPreferences.postProcessingPreset.get())
@@ -2219,6 +2212,17 @@ val isBrightnessSliderShown = MutableStateFlow(false)
       decoderPreferences.useVulkan.changes().collect { enabled ->
         _isVulkanEnabled.value = enabled
         reconcileHdrModeWithRenderer()
+        checkFrameGenSupport()
+      }
+    }
+    viewModelScope.launch {
+      combine(
+        isAudioOnly,
+        allTracks,
+        PlaybackSession.state.map { it.currentItem to it.phase }.distinctUntilChanged(),
+        playerPreferences.isFrameGenEnabled.changes(),
+        playerPreferences.frameGenMultiplier.changes(),
+      ) { _, _, _, _, _ -> Unit }.collect {
         checkFrameGenSupport()
       }
     }
@@ -7740,9 +7744,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     runCatching { disableAmbientShader() }
     runCatching { clearPostProcessingShaders() }
     // Disable frame gen on teardown so the native layer stops the compute pass.
-    if (LosslessScalingHelper.isAvailableInCurrentBuild) {
-      runCatching { FrameGenNative.setFrameGenEnabled(false, 2) }
-    }
+    LosslessScalingHelper.setFrameGenerationEnabled(false, 2)
 
     super.onCleared()
   }
@@ -7756,18 +7758,13 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   fun checkFrameGenSupport() {
     val supported = isFrameGenerationReady()
     _frameGenSupported.value = supported
-    // Also sync install state
-    LosslessScalingHelper.refreshStatus()
-    val installed = LosslessScalingHelper.installed.value
-    // If GPU doesn't support it or library gone, ensure it's toggled off
-    if (_isFrameGenEnabled.value && (!supported || !installed)) {
-      _isFrameGenEnabled.value = false
-      playerPreferences.isFrameGenEnabled.set(false)
-      runCatching { FrameGenNative.setFrameGenEnabled(false, 2) }
-    } else if (supported && installed && _isFrameGenEnabled.value) {
-      // Re-arm native if supported and pref is on (e.g. called after renderer init)
-      runCatching { FrameGenNative.setFrameGenEnabled(true, _frameGenMultiplier.value) }
-    }
+    val multiplier = playerPreferences.frameGenMultiplier.get().coerceIn(2, 4)
+    _frameGenMultiplier.value = multiplier
+    val installed = supported && LosslessScalingHelper.refreshStatus(appContext)
+    _isFrameGenEnabled.value = LosslessScalingHelper.setFrameGenerationEnabled(
+      enabled = supported && installed && playerPreferences.isFrameGenEnabled.get(),
+      multiplier = multiplier,
+    )
   }
 
   /**
@@ -7775,20 +7772,15 @@ val isBrightnessSliderShown = MutableStateFlow(false)
    * Mirrors [togglePostProcessing] / [toggleAmbientMode] patterns.
    */
   fun toggleFrameGen() {
-    if (!_frameGenSupported.value) {
-      if (_isFrameGenEnabled.value) {
-        _isFrameGenEnabled.value = false
-        playerPreferences.isFrameGenEnabled.set(false)
-      }
-      return
-    }
-    val newState = !_isFrameGenEnabled.value
-    _isFrameGenEnabled.value = newState
-    playerPreferences.isFrameGenEnabled.set(newState)
-    val mult = _frameGenMultiplier.value
-    runCatching { FrameGenNative.setFrameGenEnabled(newState, mult) }
+    setFrameGenEnabled(!_isFrameGenEnabled.value)
+  }
+
+  fun setFrameGenEnabled(enabled: Boolean) {
+    if (enabled && !isFrameGenerationReady()) return
+    playerPreferences.isFrameGenEnabled.set(enabled)
+    checkFrameGenSupport()
     playerUpdate.value = PlayerUpdates.ShowText(
-      appContext.getString(if (newState) R.string.frame_gen_on else R.string.frame_gen_off)
+      appContext.getString(if (_isFrameGenEnabled.value) R.string.frame_gen_on else R.string.frame_gen_off)
     )
   }
 
@@ -7798,15 +7790,20 @@ val isBrightnessSliderShown = MutableStateFlow(false)
    */
   fun setFrameGenMultiplier(multiplier: Int) {
     val clamped = multiplier.coerceIn(2, 4)
-    _frameGenMultiplier.value = clamped
     playerPreferences.frameGenMultiplier.set(clamped)
-    if (_isFrameGenEnabled.value && _frameGenSupported.value) {
-      runCatching { FrameGenNative.setFrameGenEnabled(true, clamped) }
-    }
+    checkFrameGenSupport()
   }
 
-  private fun isFrameGenerationReady(): Boolean =
-    LosslessScalingHelper.isReadyForFrameGeneration(decoderPreferences)
+  private fun isFrameGenerationReady(): Boolean {
+    val session = PlaybackSession.state.value
+    val media = session.currentItem ?: return false
+    if (isAudioOnly.value || media.isDefinitelyAudioOnly() || media.audiobook != null) return false
+    if (media.declaredMediaKind() == DeclaredPlaybackMediaKind.UNKNOWN) {
+      if (session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return false
+      if (allTracks.value.none { it.isVideo && !it.isAlbumArtwork }) return false
+    }
+    return LosslessScalingHelper.isReadyForFrameGeneration(decoderPreferences)
+  }
 }
 
 
