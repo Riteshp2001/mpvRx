@@ -17,6 +17,7 @@ import app.gyrolet.mpvrx.data.network.credentials.NetworkCredentialStorageExcept
 import app.gyrolet.mpvrx.database.dao.PlaylistDao
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.entities.PlaylistItemEntity
+import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
@@ -26,6 +27,7 @@ import app.gyrolet.mpvrx.utils.media.M3UParseResult
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.M3UPlaylistItem
 import app.gyrolet.mpvrx.utils.storage.LocalPlaylistScanner
+import app.gyrolet.mpvrx.utils.sort.SortUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -67,6 +69,7 @@ class PlaylistRepository(
   }
 
   private val playlistWriteMutex = Mutex()
+  private val zipPlaylistMutex = Mutex()
   private val remotePlaylistWriteMutex = Mutex()
   private val localPlaylistScanMutex = Mutex()
   private val localPlaylistRevisions = mutableMapOf<String, Triple<String, Long, Long>>()
@@ -90,6 +93,61 @@ class PlaylistRepository(
 
   suspend fun getOrCreateFavoritesPlaylist(isAudio: Boolean = true): PlaylistEntity =
     playlistWriteMutex.withLock { getOrCreateFavoritesPlaylistLocked(isAudio) }
+
+  suspend fun createZipPlaylist(uri: Uri): Result<Long> = zipPlaylistMutex.withLock { createZipPlaylistLocked(uri) }
+
+  private suspend fun createZipPlaylistLocked(uri: Uri): Result<Long> = withContext(Dispatchers.IO) {
+    val resolver = applicationContext.contentResolver
+    val hadPermission = resolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission }
+    var saved = false
+    try {
+      if (uri.scheme == "content" && !hadPermission) {
+        resolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      }
+      val archive = ZipArchiveMedia.playlistContent(applicationContext, uri)
+      val sourceKey = ZipArchiveMedia.browserPath(archive.source)
+      val videos = archive.videos.sortedWith(compareBy(SortUtils.NaturalOrderComparator.DEFAULT) { it.path })
+      currentCoroutineContext().ensureActive()
+      val playlistId = playlistWriteMutex.withLock {
+        val previous = playlistDao.getAllPlaylists().firstOrNull { it.isZipPlaylist && it.m3uSourceUrl == sourceKey }
+        val previousItems = previous?.let { playlistDao.getPlaylistItems(it.id) }.orEmpty().associateBy { it.filePath }
+        val now = System.currentTimeMillis()
+        val playlist = previous?.copy(updatedAt = now) ?: PlaylistEntity(
+          name = archive.name,
+          createdAt = now,
+          updatedAt = now,
+          m3uSourceUrl = sourceKey,
+        )
+        val items = videos.mapIndexed { index, video ->
+          val entryName = ZipArchiveMedia.entryPathOf(video.path) ?: video.displayName
+          previousItems[video.path]?.copy(position = index, fileName = entryName, fileSize = video.size)
+            ?: PlaylistItemEntity(
+              playlistId = playlist.id,
+              filePath = video.path,
+              fileName = entryName,
+              position = index,
+              addedAt = now,
+              fileSize = video.size,
+            )
+        }
+        if (previous == null) {
+          playlistDao.insertPlaylistWithItems(playlist, items)
+        } else {
+          playlistDao.replacePlaylistItems(playlist, items)
+          playlist.id.toLong()
+        }.also { saved = true }
+      }
+      Result.success(playlistId)
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (error: Exception) {
+      Result.failure(error)
+    } finally {
+      if (!saved && !hadPermission && uri.scheme == "content") {
+        runCatching { resolver.releasePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+      }
+    }
+  }
 
   private suspend fun getOrCreateFavoritesPlaylistLocked(isAudio: Boolean): PlaylistEntity {
     val existing = playlistDao.getAllPlaylists().find {
@@ -222,7 +280,7 @@ class PlaylistRepository(
     for (playlist in playlists) {
       // M3U/IPTV lists can mix radio and video entries. Keep them in the playlist section
       // where they were imported instead of moving the whole list after spotting one audio URL.
-      if (playlist.isM3uPlaylist) {
+      if (playlist.isM3uPlaylist || playlist.isZipPlaylist) {
         if (!targetIsAudio) result.add(playlist)
         continue
       }
@@ -245,6 +303,16 @@ class PlaylistRepository(
   }
 
   suspend fun getPlaylistById(playlistId: Int): PlaylistEntity? = playlistDao.getPlaylistById(playlistId)
+
+  suspend fun removeDeletedZipPlaylists() = withContext(Dispatchers.IO) {
+    playlistWriteMutex.withLock {
+      for (playlist in playlistDao.getAllPlaylists()) {
+        if (!playlist.isZipPlaylist) continue
+        val source = ZipArchiveMedia.parseBrowserPath(playlist.m3uSourceUrl.orEmpty())?.archivePath ?: continue
+        if (ZipArchiveMedia.sourceDeleted(applicationContext, source)) playlistDao.deletePlaylist(playlist)
+      }
+    }
+  }
 
   fun observePlaylistById(playlistId: Int): Flow<PlaylistEntity?> = playlistDao.observePlaylistById(playlistId)
 

@@ -1320,8 +1320,6 @@
   <string name="ui_toggle_menu">Переключить меню</string>
   <string name="ui_quick_play">Быстрое воспроизведение</string>
   <string name="ui_open_file">Открыть файл</string>
-  <string name="ui_open_zip_folder">Открыть ZIP-папку</string>
-  <string name="ui_cannot_open_zip">Не удалось открыть ZIP-архив</string>
   <string name="ui_open_link">Открыть ссылку</string>
   <string name="ui_search_folders_and_videos">Поиск папок и видео...</string>
   <string name="ui_pinned">Закреплено</string>
@@ -2571,4 +2569,23 @@
 
   <string name="snapshot_search_folder_placeholder">Поиск папок и кадров</string>
   <string name="snapshot_folder_count">Кадры: %1$d</string>
+  <string name="playlist_add_zip">Добавить ZIP-архив</string>
+  <string name="playlist_zip_import_success">ZIP-плейлист сохранён</string>
+  <string name="playlist_zip_import_failed">Не удалось добавить ZIP-архив. Выберите доступный для чтения и перемотки ZIP с аудио- или видеофайлами.</string>
+  <string name="playlist_zip_read_only">ZIP (только чтение)</string>
+  <string name="oss_haze_description">Постепенное размытие для полупрозрачных поверхностей навигации.</string>
+  <string name="oss_backdrop_description">Размытие и преломление Compose для поверхностей Liquid Glass.</string>
+  <string name="oss_telephoto_description">Жесты масштабирования и панорамирования в просмотрщике изображений.</string>
+  <string name="oss_androidx_lifecycle_description">Состояние с учётом жизненного цикла и ViewModel для экранов Compose.</string>
+  <string name="oss_anitomy_description">Разбирает имена медиафайлов на названия и сведения об эпизодах.</string>
+  <string name="oss_leakcanary_description">Обнаруживает утечки памяти в отладочных сборках.</string>
+  <string name="oss_python_description">Встроенная среда Python для онлайн-извлечения и анализа имён файлов.</string>
+  <string name="oss_ytdlp_description">Онлайн-экстрактор мультимедиа для поддерживаемых ссылок.</string>
+  <string name="oss_guessit_description">Извлекает структурированные сведения о медиа из имён файлов.</string>
+  <string name="oss_rebulk_description">Механизм правил для сопоставления имён файлов в GuessIt.</string>
+  <string name="oss_babelfish_description">Преобразование кодов языков и стран для GuessIt.</string>
+  <string name="oss_python_dateutil_description">Средства разбора даты и времени для GuessIt.</string>
+  <string name="oss_six_description">Средства совместимости Python, включённые в анализатор имён.</string>
+  <string name="oss_anime4k_description">Шейдеры повышения разрешения и восстановления анимационного видео в реальном времени.</string>
+  <string name="oss_hdr_toys_description">Шейдеры тонального и цветового отображения HDR и передаточных функций.</string>
 </resources>

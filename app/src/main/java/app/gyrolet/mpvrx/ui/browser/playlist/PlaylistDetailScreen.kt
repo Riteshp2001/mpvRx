@@ -160,6 +160,11 @@ data class PlaylistDetailScreen(
           ),
       )
 
+    androidx.lifecycle.compose.LifecycleResumeEffect(viewModel) {
+      viewModel.refresh()
+      onPauseOrDispose { }
+    }
+
     val playlist by viewModel.playlist.collectAsState()
     val videoItems by viewModel.videoItems.collectAsState()
     val categories by viewModel.categories.collectAsState()
@@ -450,7 +455,7 @@ data class PlaylistDetailScreen(
             onSortClick = if (isReorderMode) null else ({ showSortDialog = true }),
             useRemoveIcon = true, // Show remove icon instead of delete for playlist
             onInfoClick =
-              if (selectionManager.isSingleSelection && playlist?.isXtreamPlaylist != true) {
+              if (selectionManager.isSingleSelection && playlist?.isXtreamPlaylist != true && playlist?.isZipPlaylist != true) {
                 {
                   val item = selectionManager.getSelectedItems().firstOrNull()
                   if (item != null) {
@@ -473,7 +478,7 @@ data class PlaylistDetailScreen(
                 null
               },
             onShareClick =
-              if (playlist?.isM3uPlaylist != true) {
+              if (playlist?.isM3uPlaylist != true && playlist?.isZipPlaylist != true) {
                 // Hide share button for M3U playlists
                 {
                   val videosToShare = selectionManager.getSelectedItems().map { it.video }
@@ -586,7 +591,7 @@ data class PlaylistDetailScreen(
         }
       },
       floatingActionButton = {
-        if (!isSearching && !isReorderMode && !selectionManager.isInSelectionMode) {
+        if (!isSearching && !isReorderMode && !selectionManager.isInSelectionMode && playlist?.isZipPlaylist != true) {
           val isAudioPlaylist = playlist?.isAudio == true || videoItems.any { it.video.isAudio }
           val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
           val miniPlayerClearance = app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance

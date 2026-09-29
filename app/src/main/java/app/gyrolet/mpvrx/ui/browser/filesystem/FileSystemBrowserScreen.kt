@@ -366,35 +366,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
       }
     }
 
-  // ZIP picker
-  val zipPicker =
-    rememberLauncherForActivityResult(
-      contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-      uri?.let {
-        runCatching {
-          context.contentResolver.takePersistableUriPermission(
-            it,
-            Intent.FLAG_GRANT_READ_URI_PERMISSION,
-          )
-        }
-        coroutineScope.launch {
-          val resolvedPath = ZipArchiveMedia.resolveZipPath(context, it)
-          if (resolvedPath != null && File(resolvedPath).canRead()) {
-            val archiveFile = File(resolvedPath)
-            val bucketId = ZipArchiveMedia.browserPath(archiveFile.absolutePath)
-            backstack.navigateTo(FileSystemDirectoryScreen(bucketId))
-          } else {
-            android.widget.Toast.makeText(
-              context,
-              context.getString(app.gyrolet.mpvrx.R.string.ui_cannot_open_zip),
-              android.widget.Toast.LENGTH_SHORT,
-            ).show()
-          }
-        }
-      }
-    }
-
   // Tree picker for Play Store-safe copy/move destinations
   val treePickerLauncher =
     rememberLauncherForActivityResult(
@@ -708,28 +679,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
                     text =
                       androidx.compose.ui.res
                         .stringResource(app.gyrolet.mpvrx.R.string.ui_open_file),
-                  )
-                },
-              )
-
-              FloatingActionButtonMenuItem(
-                onClick = {
-                  isFabExpanded.value = false
-                  zipPicker.launch(
-                    arrayOf(
-                      "application/zip",
-                      "application/x-zip-compressed",
-                      "application/x-zip",
-                      "application/octet-stream",
-                    ),
-                  )
-                },
-                icon = { Icon(Icons.RoundedFilled.FolderZip, contentDescription = null) },
-                text = {
-                  Text(
-                    text =
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_open_zip_folder),
                   )
                 },
               )

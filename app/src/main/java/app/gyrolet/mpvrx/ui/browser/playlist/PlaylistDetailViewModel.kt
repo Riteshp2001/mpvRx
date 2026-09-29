@@ -25,6 +25,7 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.network.ConnectionStatus
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
+import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.repository.NetworkProbeResult
@@ -149,6 +150,9 @@ class PlaylistDetailViewModel(
               _videoItems.value = videoItems
             } else {
               val networkRefs = items.map { NetworkPlaybackUri.parse(it.filePath) }
+              val archiveSources = items.map { ZipArchiveMedia.sourceOf(it.filePath) }
+              val availableArchives = archiveSources.filterNotNull().distinct()
+                .associateWith { ZipArchiveMedia.sourceAvailable(getApplication(), it) }
               val connectionsById = connections.associateBy { it.id }
 
               // For regular playlists, use the existing logic with MediaFileRepository
@@ -169,7 +173,7 @@ class PlaylistDetailViewModel(
               // otherwise inject junk buckets into the MediaStore lookup.
               val bucketIds =
                 items.indices
-                  .filter { networkRefs[it] == null }
+                  .filter { networkRefs[it] == null && archiveSources[it] == null }
                   .mapNotNull { fileObjects[it].parent }
                   .filter { it.isNotBlank() }
                   .toSet()
@@ -180,6 +184,9 @@ class PlaylistDetailViewModel(
               // Match videos by path, maintaining playlist order
               val videoItems =
                 items.mapIndexedNotNull { index, item ->
+                  archiveSources[index]?.let { source ->
+                    return@mapIndexedNotNull buildArchiveVideoItem(item, source, availableArchives[source] == true)
+                  }
                   val networkRef = networkRefs[index]
                   if (networkRef != null) {
                     return@mapIndexedNotNull buildNetworkVideoItem(item, networkRef, connectionsById[networkRef.connectionId])
@@ -262,9 +269,10 @@ class PlaylistDetailViewModel(
    *
    * This is useful for UI gestures like pull-to-refresh that need to know when refreshing is done.
    */
-  suspend fun refreshNow() {
+  suspend fun refreshNow() = withContext(Dispatchers.IO) {
     try {
       _isLoading.value = true
+      playlistRepository.removeDeletedZipPlaylists()
       // Trigger a refresh by reloading playlist items
       val items = playlistRepository.getPlaylistItems(playlistId)
       val playlist = _playlist.value
@@ -276,16 +284,22 @@ class PlaylistDetailViewModel(
         } else {
           // For regular playlists, use existing logic
           val networkRefs = items.map { NetworkPlaybackUri.parse(it.filePath) }
+          val archiveSources = items.map { ZipArchiveMedia.sourceOf(it.filePath) }
+          val availableArchives = archiveSources.filterNotNull().distinct()
+            .associateWith { ZipArchiveMedia.sourceAvailable(getApplication(), it) }
           val connectionsById = networkRepository.getAllConnectionsIncludingDeleted().associateBy { it.id }
           val bucketIds =
             items
-              .filterIndexed { index, _ -> networkRefs[index] == null }
+              .filterIndexed { index, _ -> networkRefs[index] == null && archiveSources[index] == null }
               .map { item ->
                 File(item.filePath).parent ?: ""
               }.toSet()
           val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds, includeAudioOverride = true)
           val videoItems =
             items.mapIndexedNotNull { index, item ->
+              archiveSources[index]?.let { source ->
+                return@mapIndexedNotNull buildArchiveVideoItem(item, source, availableArchives[source] == true)
+              }
               val networkRef = networkRefs[index]
               if (networkRef != null) {
                 return@mapIndexedNotNull buildNetworkVideoItem(item, networkRef, connectionsById[networkRef.connectionId])
@@ -384,6 +398,7 @@ class PlaylistDetailViewModel(
   }
 
   suspend fun addVideosToPlaylist(videos: List<Video>) {
+    if (_playlist.value?.isZipPlaylist == true) return
     val isAudio = _playlist.value?.isAudio ?: return
     val compatibleVideos = videos.filter { it.isAudio == isAudio }
     playlistRepository.addItemsToPlaylist(playlistId, compatibleVideos.map { PlaylistItemInput(it.path, it.displayName) })
@@ -425,6 +440,38 @@ class PlaylistDetailViewModel(
 
   suspend fun toggleFavorite(itemId: Int) {
     playlistRepository.toggleFavorite(itemId)
+  }
+
+  private fun buildArchiveVideoItem(item: PlaylistItemEntity, source: String, available: Boolean): PlaylistVideoItem {
+    val isAudio = FileTypeUtils.isAudioFile(File(item.fileName))
+    val video = Video(
+      id = item.id.toLong(),
+      title = item.fileName,
+      displayName = item.fileName,
+      path = item.filePath,
+      uri = Uri.parse(item.filePath),
+      duration = 0L,
+      durationFormatted = "",
+      size = item.fileSize ?: 0L,
+      sizeFormatted = "",
+      dateModified = item.addedAt / 1000L,
+      dateAdded = item.addedAt / 1000L,
+      mimeType = if (isAudio) "audio/*" else "video/*",
+      bucketId = ZipArchiveMedia.browserPath(source),
+      bucketDisplayName = _playlist.value?.name.orEmpty(),
+      width = 0,
+      height = 0,
+      fps = 0f,
+      resolution = "",
+      isAudio = isAudio,
+    )
+    return PlaylistVideoItem(
+      playlistItem = item,
+      video = video,
+      sourcePath = source,
+      isAvailable = available,
+      unavailableReasonRes = if (available) null else R.string.playlist_unavailable_file,
+    )
   }
 
 

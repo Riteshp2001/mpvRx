@@ -133,6 +133,7 @@ object PlaybackSession : MPVLib.EventObserver {
     val hlsProxy: HlsStreamingProxy? = null,
     val xtreamProxy: XtreamStreamingProxy? = null,
     val streamId: String,
+    val archiveDescriptor: android.os.ParcelFileDescriptor? = null,
   )
 
   private data class ResolvedPlayable(
@@ -1944,6 +1945,16 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   private fun resolvePlayableUri(item: PlaybackItem): ResolvedPlayable {
+    if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.isPlaybackUri(item.originalUri)) {
+      val context = applicationContext ?: error("Application context is unavailable for ZIP playback")
+      val archive = app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.openPlayback(context, item.originalUri)
+      return ResolvedPlayable(
+        archive.uri,
+        archive.descriptor?.let { descriptor ->
+          NetworkStreamRegistration(streamId = "archive-${streamSequence.incrementAndGet()}", archiveDescriptor = descriptor)
+        },
+      )
+    }
     val xtreamReference = XtreamPlaybackUri.parse(item.playableUri)
     if (xtreamReference != null) {
       val proxy = XtreamStreamingProxy.getInstance()
@@ -2033,6 +2044,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   private fun releaseNetworkStream(registration: NetworkStreamRegistration) {
     runCatching {
+      registration.archiveDescriptor?.close()
       registration.proxy?.unregisterStream(registration.streamId)
       registration.hlsProxy?.unregisterStream(registration.streamId)
       registration.xtreamProxy?.unregisterStream(registration.streamId)

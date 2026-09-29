@@ -1310,8 +1310,6 @@
   <string name="ui_toggle_menu">切换菜单</string>
   <string name="ui_quick_play">快速播放</string>
   <string name="ui_open_file">打开文件</string>
-  <string name="ui_open_zip_folder">打开 ZIP 文件夹</string>
-  <string name="ui_cannot_open_zip">无法打开 ZIP 压缩包</string>
   <string name="ui_open_link">打开链接</string>
   <string name="ui_search_folders_and_videos">搜索文件夹和视频...</string>
   <string name="ui_pinned">已固定</string>
@@ -2556,4 +2554,23 @@
 
   <string name="snapshot_search_folder_placeholder">搜索文件夹和快照</string>
   <string name="snapshot_folder_count">%1$d 张快照</string>
+  <string name="playlist_add_zip">添加 ZIP 压缩包</string>
+  <string name="playlist_zip_import_success">ZIP 播放列表已保存</string>
+  <string name="playlist_zip_import_failed">无法添加 ZIP 压缩包。请选择可读取、支持随机访问且包含音频或视频文件的 ZIP。</string>
+  <string name="playlist_zip_read_only">ZIP（只读）</string>
+  <string name="oss_haze_description">用于半透明导航表面的渐进式模糊。</string>
+  <string name="oss_backdrop_description">用于 Liquid Glass 表面的 Compose 模糊和折射。</string>
+  <string name="oss_telephoto_description">图像查看器的缩放和平移手势。</string>
+  <string name="oss_androidx_lifecycle_description">为 Compose 界面提供生命周期感知状态和 ViewModel 支持。</string>
+  <string name="oss_anitomy_description">从媒体文件名解析标题和剧集信息。</string>
+  <string name="oss_leakcanary_description">检测调试版本中的内存泄漏。</string>
+  <string name="oss_python_description">用于在线提取和文件名解析的内置 Python 运行时。</string>
+  <string name="oss_ytdlp_description">用于受支持流媒体链接的在线媒体提取器。</string>
+  <string name="oss_guessit_description">从文件名提取结构化媒体信息。</string>
+  <string name="oss_rebulk_description">GuessIt 用于文件名匹配的规则引擎。</string>
+  <string name="oss_babelfish_description">GuessIt 使用的语言和国家代码转换。</string>
+  <string name="oss_python_dateutil_description">GuessIt 使用的日期和时间解析工具。</string>
+  <string name="oss_six_description">随文件名解析器提供的 Python 兼容性辅助库。</string>
+  <string name="oss_anime4k_description">用于动画视频的实时放大和修复着色器。</string>
+  <string name="oss_hdr_toys_description">HDR 色调映射、色域映射和传递函数着色器。</string>
 </resources>

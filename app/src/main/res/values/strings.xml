@@ -1560,8 +1560,6 @@
   <string name="ui_toggle_menu">Toggle menu</string>
   <string name="ui_quick_play">Quick Play</string>
   <string name="ui_open_file">Open File</string>
-  <string name="ui_open_zip_folder">Open ZIP Folder</string>
-  <string name="ui_cannot_open_zip">Cannot open ZIP archive</string>
   <string name="ui_open_link">Open Link</string>
   <string name="ui_search_folders_and_videos">Search folders and videos...</string>
   <string name="ui_pinned">Pinned</string>
@@ -2677,4 +2675,23 @@
 
   <string name="snapshot_search_folder_placeholder">Search folders and snapshots</string>
   <string name="snapshot_folder_count">%1$d snapshots</string>
+  <string name="playlist_add_zip">Add ZIP archive</string>
+  <string name="playlist_zip_import_success">ZIP playlist saved</string>
+  <string name="playlist_zip_import_failed">Could not add ZIP archive. Select a readable, seekable ZIP containing audio or video files.</string>
+  <string name="playlist_zip_read_only">ZIP (read-only)</string>
+  <string name="oss_haze_description">Progressive blur for translucent navigation surfaces.</string>
+  <string name="oss_backdrop_description">Compose blur and refraction for Liquid Glass surfaces.</string>
+  <string name="oss_telephoto_description">Zoom and pan gestures for the image viewer.</string>
+  <string name="oss_androidx_lifecycle_description">Lifecycle-aware state and ViewModel support for Compose screens.</string>
+  <string name="oss_anitomy_description">Parses media filenames into titles and episode information.</string>
+  <string name="oss_leakcanary_description">Detects memory leaks in debug builds.</string>
+  <string name="oss_python_description">Embedded Python runtime for online extraction and filename parsing.</string>
+  <string name="oss_ytdlp_description">Online media extractor used for supported streaming links.</string>
+  <string name="oss_guessit_description">Extracts structured media information from filenames.</string>
+  <string name="oss_rebulk_description">Rule engine used by GuessIt for filename matching.</string>
+  <string name="oss_babelfish_description">Language and country code conversions used by GuessIt.</string>
+  <string name="oss_python_dateutil_description">Date and time parsing utilities used by GuessIt.</string>
+  <string name="oss_six_description">Python compatibility helpers bundled with the filename parser.</string>
+  <string name="oss_anime4k_description">Real-time upscaling and restoration shaders for animated video.</string>
+  <string name="oss_hdr_toys_description">HDR tone-mapping, gamut-mapping, and transfer-function shaders.</string>
 </resources>

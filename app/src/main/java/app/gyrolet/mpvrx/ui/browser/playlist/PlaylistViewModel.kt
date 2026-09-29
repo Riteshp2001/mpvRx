@@ -134,7 +134,7 @@ class PlaylistViewModel(
   ): PlaylistStats {
     // M3U entries are remote streams rather than files, so those cards keep their playlist-type
     // badge instead of per-source chips.
-    if (playlist.isM3uPlaylist) {
+    if (playlist.isM3uPlaylist || playlist.isZipPlaylist) {
       return PlaylistStats(repository.getPlaylistItemCount(playlist.id), emptyList())
     }
 
@@ -199,6 +199,7 @@ class PlaylistViewModel(
   private suspend fun refreshPlaylists(scanLocalFiles: Boolean, forceLocalFiles: Boolean = false) = refreshMutex.withLock {
     try {
       _isLoading.value = true
+      repository.removeDeletedZipPlaylists()
       if (scanLocalFiles) repository.discoverLocalPlaylists(force = forceLocalFiles)
       val playlistsFromDb = repository.getAllPlaylists()
       _playlistsWithCount.value = loadPlaylistsWithCounts(playlistsFromDb)
@@ -227,6 +228,8 @@ class PlaylistViewModel(
 
   suspend fun createM3UPlaylistFromFile(uri: android.net.Uri): Result<Long> =
     repository.createM3UPlaylistFromFile(getApplication(), uri)
+
+  suspend fun createZipPlaylist(uri: android.net.Uri): Result<Long> = repository.createZipPlaylist(uri)
 
   suspend fun refreshM3UPlaylist(playlistId: Int): Result<Unit> = repository.refreshM3UPlaylist(playlistId)
 

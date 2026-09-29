@@ -1324,8 +1324,6 @@
   <string name="ui_toggle_menu">تبديل القائمة</string>
   <string name="ui_quick_play">التشغيل السريع</string>
   <string name="ui_open_file">فتح ملف</string>
-  <string name="ui_open_zip_folder">فتح مجلد ZIP</string>
-  <string name="ui_cannot_open_zip">تعذر فتح أرشيف ZIP</string>
   <string name="ui_open_link">فتح رابط</string>
   <string name="ui_search_folders_and_videos">البحث في المجلدات ومقاطع الفيديو...</string>
   <string name="ui_pinned">مثبّت</string>
@@ -2583,4 +2581,23 @@
 
   <string name="snapshot_search_folder_placeholder">البحث في المجلدات واللقطات</string>
   <string name="snapshot_folder_count">%1$d لقطات</string>
+  <string name="playlist_add_zip">إضافة أرشيف ZIP</string>
+  <string name="playlist_zip_import_success">تم حفظ قائمة تشغيل ZIP</string>
+  <string name="playlist_zip_import_failed">تعذرت إضافة أرشيف ZIP. اختر ملف ZIP قابلًا للقراءة ويدعم الوصول العشوائي ويحتوي على ملفات صوت أو فيديو.</string>
+  <string name="playlist_zip_read_only">ZIP (للقراءة فقط)</string>
+  <string name="oss_haze_description">تمويه تدريجي لأسطح التنقل الشفافة.</string>
+  <string name="oss_backdrop_description">تمويه وانكسار في Compose لأسطح Liquid Glass.</string>
+  <string name="oss_telephoto_description">إيماءات التكبير والتحريك لعارض الصور.</string>
+  <string name="oss_androidx_lifecycle_description">حالة واعية بدورة الحياة ودعم ViewModel لشاشات Compose.</string>
+  <string name="oss_anitomy_description">تحليل أسماء ملفات الوسائط إلى عناوين ومعلومات حلقات.</string>
+  <string name="oss_leakcanary_description">اكتشاف تسربات الذاكرة في إصدارات التصحيح.</string>
+  <string name="oss_python_description">بيئة Python مضمّنة للاستخراج عبر الإنترنت وتحليل أسماء الملفات.</string>
+  <string name="oss_ytdlp_description">مستخرج وسائط عبر الإنترنت للروابط المدعومة.</string>
+  <string name="oss_guessit_description">استخراج معلومات وسائط منظمة من أسماء الملفات.</string>
+  <string name="oss_rebulk_description">محرك قواعد يستخدمه GuessIt لمطابقة أسماء الملفات.</string>
+  <string name="oss_babelfish_description">تحويل رموز اللغات والبلدان المستخدم في GuessIt.</string>
+  <string name="oss_python_dateutil_description">أدوات تحليل التاريخ والوقت المستخدمة في GuessIt.</string>
+  <string name="oss_six_description">أدوات توافق Python المضمّنة مع محلل أسماء الملفات.</string>
+  <string name="oss_anime4k_description">مظللات ترقية واستعادة فورية للفيديو المتحرك.</string>
+  <string name="oss_hdr_toys_description">مظللات تعيين درجات HDR والنطاق اللوني ودوال النقل.</string>
 </resources>

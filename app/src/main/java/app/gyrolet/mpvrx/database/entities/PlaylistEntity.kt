@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.database.entities
 
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -33,4 +34,8 @@ data class PlaylistEntity(
   val xtreamServerUrl: String? = null,
   val xtreamUsername: String? = null,
   val xtreamEncryptedPassword: String? = null,
-)
+) {
+  @get:Ignore
+  val isZipPlaylist: Boolean
+    get() = !isM3uPlaylist && m3uSourceUrl?.startsWith("mpvrx-zip://") == true
+}

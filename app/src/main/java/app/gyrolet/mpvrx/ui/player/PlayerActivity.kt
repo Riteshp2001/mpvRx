@@ -7899,7 +7899,10 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
             if (networkSource == null) uri.resolveLocalPath(this)?.let(PlaybackIdentity::forLocalPath) else null,
           title = title,
           artist = existingItem?.artist,
-          mimeType = launchMimeType,
+          mimeType =
+            app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.entryPathOf(uri.toString())?.let { entry ->
+              app.gyrolet.mpvrx.utils.storage.FileTypeUtils.getMimeTypeFromExtension(entry.substringAfterLast('.').lowercase())
+            } ?: launchMimeType,
           headers = headers,
           networkSource = networkSource,
           playlistItemId = databaseItem?.id,

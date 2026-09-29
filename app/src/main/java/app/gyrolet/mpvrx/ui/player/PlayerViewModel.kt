@@ -6288,6 +6288,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   }
 
   private fun getVideoMetadata(uri: Uri): Pair<String, String> {
+    if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.isPlaybackUri(uri.toString())) return "" to ""
     val resolvedUri =
       if (uri.scheme == "content") {
         uri.extractLocalPath()?.let { Uri.fromFile(File(it)) } ?: uri

@@ -30,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -53,6 +54,7 @@ import app.gyrolet.mpvrx.ui.browser.dialogs.AddXtreamPlaylistDialog
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.media.SharedUrlExtractor
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +64,7 @@ fun PlaylistActionSheet(
   onDismiss: () -> Unit,
   onCreatePlaylist: suspend (String) -> Long,
   onCreateM3UPlaylistFromFile: suspend (Uri) -> Result<Long>,
+  onCreateZipPlaylist: suspend (Uri) -> Result<Long>,
   onCreateM3UPlaylist: suspend (String, String?) -> Result<Long>,
   onCreateXtreamPlaylist: suspend (String, String, String) -> Result<Long>,
   context: android.content.Context,
@@ -70,6 +73,26 @@ fun PlaylistActionSheet(
   var showCreateDialog by remember { mutableStateOf(false) }
   var showM3UDialog by remember { mutableStateOf(false) }
   var showXtreamDialog by remember { mutableStateOf(false) }
+  val zipScope = rememberCoroutineScope()
+  var zipImportJob by remember { mutableStateOf<Job?>(null) }
+  var isImportingZip by remember { mutableStateOf(false) }
+  val zipPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    if (uri != null && !isImportingZip) {
+      isImportingZip = true
+      zipImportJob = zipScope.launch {
+        try {
+          onCreateZipPlaylist(uri).onSuccess {
+            android.widget.Toast.makeText(context, app.gyrolet.mpvrx.R.string.playlist_zip_import_success, android.widget.Toast.LENGTH_SHORT).show()
+            onDismiss()
+          }.onFailure {
+            android.widget.Toast.makeText(context, app.gyrolet.mpvrx.R.string.playlist_zip_import_failed, android.widget.Toast.LENGTH_LONG).show()
+          }
+        } finally {
+          isImportingZip = false
+        }
+      }
+    }
+  }
   val folderPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
     if (uri != null) {
       runCatching {
@@ -92,7 +115,10 @@ fun PlaylistActionSheet(
   val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
 
   ModalBottomSheet(
-    onDismissRequest = onDismiss,
+    onDismissRequest = {
+      zipImportJob?.cancel()
+      onDismiss()
+    },
     sheetState = sheetState,
     dragHandle = { BottomSheetDefaults.DragHandle() },
     modifier = modifier,
@@ -116,6 +142,27 @@ fun PlaylistActionSheet(
       )
 
       Spacer(modifier = Modifier.height(4.dp))
+
+      Card(
+        onClick = { zipPickerLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream")) },
+        enabled = !isImportingZip,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          horizontalArrangement = Arrangement.spacedBy(16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Icon(Icons.RoundedFilled.FolderZip, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+          Text(
+            text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_add_zip),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+          )
+        }
+        if (isImportingZip) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+      }
 
       // Action cards
       Card(
