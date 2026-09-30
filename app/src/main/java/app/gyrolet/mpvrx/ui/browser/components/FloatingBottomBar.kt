@@ -16,6 +16,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -261,7 +262,7 @@ fun BrowserBottomBar(
           }
         }
 
-      LiquidGlassSurface(
+      Box(
         modifier =
           Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
@@ -270,107 +271,110 @@ fun BrowserBottomBar(
               horizontal = layoutParams.surfacePaddingHorizontal,
               vertical = layoutParams.surfacePaddingVertical,
             ),
-        shape = RoundedCornerShape(percent = 100),
-        style = LiquidGlassStyle.MiniPlayer,
-        glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.30f),
-        fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-        backdrop = backdrop,
       ) {
-        Row(
-          modifier =
-            Modifier.padding(
-              horizontal = layoutParams.rowPaddingHorizontal,
-              vertical = layoutParams.rowPaddingVertical,
-            ),
-          horizontalArrangement = Arrangement.spacedBy(layoutParams.spacing),
-          verticalAlignment = Alignment.CenterVertically,
+        LiquidGlassSurface(
+          shape = RoundedCornerShape(percent = 100),
+          style = LiquidGlassStyle.MiniPlayer,
+          glassColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.30f),
+          fallbackColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+          backdrop = backdrop,
         ) {
-          BrowserBottomBarButton(
-            effectiveShowCopy,
-            onCopyClick,
-            Icons.RoundedFilled.ContentCopy,
-            "Copy",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowMove,
-            onMoveClick,
-            Icons.RoundedFilled.DriveFileMove,
-            "Move",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowDownscale,
-            onDownscaleClick,
-            Icons.RoundedFilled.FitScreen,
-            "Compressor",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowRename,
-            onRenameClick,
-            Icons.RoundedFilled.DriveFileRenameOutline,
-            "Rename",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowPlayNext,
-            onPlayNextClick ?: {},
-            Icons.RoundedFilled.SkipNext,
-            "Play Next",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowAddToQueue,
-            onAddToQueueClick ?: {},
-            Icons.RoundedFilled.QueueMusic,
-            "Add to Queue",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowAddToPlaylist,
-            onAddToPlaylistClick,
-            Icons.RoundedFilled.PlaylistAdd,
-            "Add to Playlist",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowPin,
-            {
-              if (isSelectionMode) {
-                onPinClick?.let { action ->
-                  action()
-                  haptics.selection(!effectiveUnpinSelected)
+          Row(
+            modifier =
+              Modifier.padding(
+                horizontal = layoutParams.rowPaddingHorizontal,
+                vertical = layoutParams.rowPaddingVertical,
+              ),
+            horizontalArrangement = Arrangement.spacedBy(layoutParams.spacing),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            BrowserBottomBarButton(
+              effectiveShowCopy,
+              onCopyClick,
+              Icons.RoundedFilled.ContentCopy,
+              "Copy",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowMove,
+              onMoveClick,
+              Icons.RoundedFilled.DriveFileMove,
+              "Move",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowDownscale,
+              onDownscaleClick,
+              Icons.RoundedFilled.FitScreen,
+              "Compressor",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowRename,
+              onRenameClick,
+              Icons.RoundedFilled.DriveFileRenameOutline,
+              "Rename",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowPlayNext,
+              onPlayNextClick ?: {},
+              Icons.RoundedFilled.SkipNext,
+              "Play Next",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowAddToQueue,
+              onAddToQueueClick ?: {},
+              Icons.RoundedFilled.QueueMusic,
+              "Add to Queue",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowAddToPlaylist,
+              onAddToPlaylistClick,
+              Icons.RoundedFilled.PlaylistAdd,
+              "Add to Playlist",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowPin,
+              {
+                if (isSelectionMode) {
+                  onPinClick?.let { action ->
+                    action()
+                    haptics.selection(!effectiveUnpinSelected)
+                  }
                 }
-              }
-            },
-            Icons.RoundedFilled.PushPin,
-            androidx.compose.ui.res.stringResource(
-              if (effectiveUnpinSelected) {
-                app.gyrolet.mpvrx.R.string.ui_unpin_folders
-              } else {
-                app.gyrolet.mpvrx.R.string.ui_pin_folders
               },
-            ),
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-          )
-          BrowserBottomBarButton(
-            effectiveShowDelete,
-            onDeleteClick,
-            Icons.RoundedFilled.Delete,
-            "Delete",
-            layoutParams.buttonSize,
-            layoutParams.iconSize,
-            tint = MaterialTheme.colorScheme.error,
-          )
+              Icons.RoundedFilled.PushPin,
+              androidx.compose.ui.res.stringResource(
+                if (effectiveUnpinSelected) {
+                  app.gyrolet.mpvrx.R.string.ui_unpin_folders
+                } else {
+                  app.gyrolet.mpvrx.R.string.ui_pin_folders
+                },
+              ),
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+            )
+            BrowserBottomBarButton(
+              effectiveShowDelete,
+              onDeleteClick,
+              Icons.RoundedFilled.Delete,
+              "Delete",
+              layoutParams.buttonSize,
+              layoutParams.iconSize,
+              tint = MaterialTheme.colorScheme.error,
+            )
+          }
         }
       }
     }
