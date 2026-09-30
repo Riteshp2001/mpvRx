@@ -668,8 +668,11 @@ fun PlayerSheets(
       app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerSheet(
         state = equalizerState,
         onEnabledChanged = viewModel::setEqualizerEnabled,
+        onModeChanged = viewModel::setEqualizerMode,
         onPresetSelected = viewModel::applyEqualizerPreset,
         onBandChanged = viewModel::setEqualizerBandGain,
+        onToneChanged = viewModel::setEqualizerTone,
+        onToneFocusChanged = viewModel::setEqualizerToneFocused,
         onVolumeBoostChanged = viewModel::setEqualizerVolumeBoost,
         onDismissRequest = onDismissRequest,
       )

@@ -79,14 +79,18 @@ import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
 import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MAX_DB
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MIN_DB
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_TONE_STEPS
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerMode
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerFilterKind
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerPreset
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerState
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.activeFilters
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.recommendedPreampDb
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
 import app.gyrolet.mpvrx.ui.preferences.CustomButton
 import app.gyrolet.mpvrx.ui.preferences.CustomButtonScriptLanguage
-import app.gyrolet.mpvrx.utils.media.AudioEqualizerManager
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
@@ -1023,8 +1027,22 @@ class PlayerViewModel : ViewModel(),
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
   // The style and artwork/visualizer display choice are persisted via audioPreferences.
   val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.showAudioVisualizer.get())
-  val equalizerState = MutableStateFlow(EqualizerState())
-  private val audioEqualizerManager = AudioEqualizerManager()
+  private val restoredEqualizerBands = audioPreferences.equalizerBands.get()
+  val equalizerState =
+    MutableStateFlow(
+      EqualizerState(
+        isEnabled = audioPreferences.equalizerEnabled.get(),
+        mode =
+          runCatching { EqualizerMode.valueOf(audioPreferences.equalizerMode.get()) }
+            .getOrDefault(EqualizerMode.DYNAMIC),
+        currentPreset = EqualizerPreset.matching(restoredEqualizerBands),
+        bandGains = restoredEqualizerBands,
+        toneX = audioPreferences.equalizerToneX.get().coerceIn(-EQ_TONE_STEPS, EQ_TONE_STEPS),
+        toneY = audioPreferences.equalizerToneY.get().coerceIn(-EQ_TONE_STEPS, EQ_TONE_STEPS),
+        toneFocused = audioPreferences.equalizerFocused.get(),
+        volumeBoostDb = audioPreferences.equalizerVolumeBoost.get().coerceIn(0, 10),
+      ),
+    )
   private var equalizerMpvDebounceJob: Job? = null
 
   data class LyricsUiState(
@@ -1121,6 +1139,14 @@ class PlayerViewModel : ViewModel(),
 
   fun setEqualizerEnabled(enabled: Boolean) {
     equalizerState.value = equalizerState.value.copy(isEnabled = enabled)
+    audioPreferences.equalizerEnabled.set(enabled)
+    applyEqualizerMpvFilters(immediate = true)
+  }
+
+  fun setEqualizerMode(mode: EqualizerMode) {
+    if (equalizerState.value.mode == mode) return
+    equalizerState.value = equalizerState.value.copy(mode = mode)
+    audioPreferences.equalizerMode.set(mode.name)
     applyEqualizerMpvFilters(immediate = true)
   }
 
@@ -1131,23 +1157,46 @@ class PlayerViewModel : ViewModel(),
         currentPreset = preset,
         bandGains = preset.gains,
       )
+    audioPreferences.equalizerBands.set(preset.gains)
     applyEqualizerMpvFilters(immediate = true)
   }
 
   fun setEqualizerBandGain(
     index: Int,
-    gainDb: Int,
+    gainDb: Float,
   ) {
     val currentGains = equalizerState.value.bandGains.toMutableList()
     if (index in currentGains.indices && currentGains[index] != gainDb) {
       currentGains[index] = gainDb.coerceIn(EQ_MIN_DB, EQ_MAX_DB)
       equalizerState.value =
         equalizerState.value.copy(
-          currentPreset = EqualizerPreset.CUSTOM,
+          currentPreset = EqualizerPreset.matching(currentGains),
           bandGains = currentGains,
         )
+      audioPreferences.equalizerBands.set(currentGains)
       applyEqualizerMpvFilters(immediate = false)
     }
+  }
+
+  fun setEqualizerTone(
+    x: Int,
+    y: Int,
+  ) {
+    val boundedX = x.coerceIn(-EQ_TONE_STEPS, EQ_TONE_STEPS)
+    val boundedY = y.coerceIn(-EQ_TONE_STEPS, EQ_TONE_STEPS)
+    val current = equalizerState.value
+    if (current.toneX == boundedX && current.toneY == boundedY) return
+    equalizerState.value = current.copy(toneX = boundedX, toneY = boundedY)
+    audioPreferences.equalizerToneX.set(boundedX)
+    audioPreferences.equalizerToneY.set(boundedY)
+    applyEqualizerMpvFilters(immediate = false)
+  }
+
+  fun setEqualizerToneFocused(focused: Boolean) {
+    if (equalizerState.value.toneFocused == focused) return
+    equalizerState.value = equalizerState.value.copy(toneFocused = focused)
+    audioPreferences.equalizerFocused.set(focused)
+    applyEqualizerMpvFilters(immediate = true)
   }
 
   private fun currentLyricsPath(): String? = PlaybackSession.state.value.currentItem?.originalUri?.takeIf(String::isNotBlank)
@@ -1597,22 +1646,15 @@ class PlayerViewModel : ViewModel(),
 
   fun setEqualizerVolumeBoost(db: Int) {
     if (equalizerState.value.volumeBoostDb != db) {
-      equalizerState.value = equalizerState.value.copy(volumeBoostDb = db.coerceIn(0, 10))
+      val bounded = db.coerceIn(0, 10)
+      equalizerState.value = equalizerState.value.copy(volumeBoostDb = bounded)
+      audioPreferences.equalizerVolumeBoost.set(bounded)
       applyEqualizerMpvFilters(immediate = false)
     }
   }
 
   fun applyEqualizerMpvFilters(immediate: Boolean = false) {
     val state = equalizerState.value
-
-    // 1. Hardware Android AudioFx (Equalizer & LoudnessEnhancer matching AFinity)
-    audioEqualizerManager.updateState(
-      enabled = state.isEnabled,
-      bandGains = state.bandGains,
-      volumeBoostDb = state.volumeBoostDb,
-    )
-
-    // 2. MPV Audio Filter Fallback
     // Changing MPV "af" filter property during playback causes MPV to recreate audio filter graph.
     // Debouncing while dragging prevents audio stutter/breaking.
     equalizerMpvDebounceJob?.cancel()
@@ -1667,27 +1709,35 @@ class PlayerViewModel : ViewModel(),
       filterList.add("pan=[stereo|c0=c1|c1=c0]")
     }
 
-    // 5. Equalizer filters (if enabled)
+    // 5. Equalizer filters (if enabled). One lavfi graph owns the whole curve so Android AudioFx
+    // cannot apply a second, device-dependent EQ on top of it.
     if (state.isEnabled) {
-      val maxGain = state.bandGains.maxOrNull() ?: 0
-      if (maxGain > 0) {
-        filterList.add("volume=volume=${-maxGain}dB")
+      val filters = state.activeFilters()
+      val outputGain = state.recommendedPreampDb() + state.volumeBoostDb
+      if (kotlin.math.abs(outputGain) >= 0.01f) {
+        filterList.add("volume=volume=${formatEqualizerNumber(outputGain)}dB")
       }
-      val freqs = listOf(60, 230, 910, 3600, 14000)
-      for (i in 0 until 5) {
-        val gain = state.bandGains.getOrElse(i) { 0 }
-        if (gain != 0) {
-          filterList.add("equalizer=f=${freqs[i]}:width_type=o:width=1.5:g=$gain")
-        }
-      }
-      if (state.volumeBoostDb > 0) {
-        filterList.add("volume=volume=${state.volumeBoostDb}dB")
+      if (filters.isNotEmpty()) {
+        val graph =
+          filters.joinToString(",") { filter ->
+            val gain = formatEqualizerNumber(filter.gainDb)
+            val q = formatEqualizerNumber(filter.q)
+            when (filter.kind) {
+              EqualizerFilterKind.BELL -> "equalizer=f=${filter.frequencyHz}:t=q:w=$q:g=$gain"
+              EqualizerFilterKind.LOW_SHELF -> "bass=f=${filter.frequencyHz}:t=q:w=$q:g=$gain"
+              EqualizerFilterKind.HIGH_SHELF -> "treble=f=${filter.frequencyHz}:t=q:w=$q:g=$gain"
+            }
+          }
+        filterList.add("lavfi=[$graph]")
       }
     }
 
     val afString = filterList.joinToString(",")
     PlaybackSession.setPropertyString("af", afString)
   }
+
+  private fun formatEqualizerNumber(value: Float): String =
+    String.format(java.util.Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
 
   fun updateAlbumArtBounds(rect: android.graphics.Rect?) {
     albumArtBounds.value = rect
@@ -7717,7 +7767,6 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     runCatching { metadataCache.evictAll() }
 
     runCatching { syncplayManager.clearPlayerBindings() }
-    runCatching { audioEqualizerManager.release() }
     _isAmbientLifecycleActive.value = false
     runCatching { disableAmbientShader() }
     runCatching { clearPostProcessingShaders() }

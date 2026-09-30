@@ -35,6 +35,22 @@ class AudioPreferences(
   val miniPlayerTrackSwitching = preferenceStore.getBoolean("audio_mini_player_track_switching", false)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val drcEnabled = preferenceStore.getBoolean("audio_drc_enabled", false)
+  val equalizerEnabled = preferenceStore.getBoolean("audio_equalizer_enabled", false)
+  val equalizerMode = preferenceStore.getString("audio_equalizer_mode", "DYNAMIC")
+  val equalizerBands =
+    preferenceStore.getObject(
+      key = "audio_equalizer_bands",
+      defaultValue = List(7) { 0f },
+      serializer = { gains -> gains.joinToString(",") },
+      deserializer = { stored ->
+        val values = stored.split(',')
+        List(7) { index -> values.getOrNull(index)?.trim()?.toFloatOrNull()?.coerceIn(-12f, 12f) ?: 0f }
+      },
+    )
+  val equalizerToneX = preferenceStore.getInt("audio_equalizer_tone_x", 0)
+  val equalizerToneY = preferenceStore.getInt("audio_equalizer_tone_y", 0)
+  val equalizerFocused = preferenceStore.getBoolean("audio_equalizer_focused", false)
+  val equalizerVolumeBoost = preferenceStore.getInt("audio_equalizer_volume_boost", 0)
   val showAudioVisualizer = preferenceStore.getBoolean("show_audio_visualizer", true)
   val audioVisualizerStyle = preferenceStore.getEnum("audio_visualizer_style", AudioVisualizerStyle.Blob)
   val audioOrientation = preferenceStore.getEnum("audio_player_orientation", AudioPlayerOrientation.Auto)
