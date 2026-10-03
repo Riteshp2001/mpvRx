@@ -452,6 +452,14 @@ class FolderListViewModel(
               MediaFileRepository.getAllAudioFolders(
                 context = getApplication(),
                 minimumAudioDurationSeconds = browserPreferences.minimumAudioDurationSeconds.get(),
+                // Same reason as the video path: this is one long MediaStore read, and every folder
+                // found so far is worth showing. Merged, not replaced, for the same reason.
+                onSnapshot = { partial ->
+                  ensureActive()
+                  _allVideoFolders.value = mergeFolders(_allVideoFolders.value, partial)
+                  _isLoading.value = false
+                  _hasCompletedInitialLoad.value = true
+                },
               )
             ensureActive()
             publishFinalFolders(folders)
@@ -492,6 +500,18 @@ class FolderListViewModel(
               },
               forceFileSystemCheck = forceFileSystemCheck,
               includeAudioOverride = browserPreferences.includeAudioBrowser.get(),
+              // The folder scan reads the whole media table and then walks the tree, so waiting for
+              // it means an empty screen for as long as the slowest phase takes. Each snapshot is
+              // only what has been found so far, so it is merged into what is already shown rather
+              // than replacing it: a folder from the previous scan must not blink out and back.
+              // The authoritative list is published once the scan returns.
+              onSnapshot = { partial ->
+                ensureActive()
+                _allVideoFolders.value = mergeFolders(_allVideoFolders.value, partial)
+                _scanStatus.value = "Found ${partial.size} folders"
+                _isLoading.value = false
+                _hasCompletedInitialLoad.value = true
+              },
             )
           ensureActive()
           // This is the important latency boundary: never wait for a filesystem walk.

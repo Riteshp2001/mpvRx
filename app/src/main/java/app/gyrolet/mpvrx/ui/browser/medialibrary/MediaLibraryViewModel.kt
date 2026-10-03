@@ -152,7 +152,7 @@ class MediaLibraryViewModel(
                 // Republish as results stream in so the list appears instead of one long
                 // spinner. Throttled, and always with matching playback info, because every
                 // publish re-sorts the list and restarts the thumbnail pipeline.
-                onPartial = publish@{ partial ->
+                onSnapshot = publish@{ partial ->
                   if (partial.isEmpty()) return@publish
                   val now = System.currentTimeMillis()
                   if (now - lastPublishAt < PARTIAL_PUBLISH_INTERVAL_MS) return@publish

@@ -143,7 +143,10 @@ class FileSystemBrowserViewModel(
     // If no initial path was specified, check storage volumes and navigate accordingly
     if (initialPath == null) {
       viewModelScope.launch(Dispatchers.IO) {
-        val roots = MediaFileRepository.getStorageRoots(getApplication())
+        // Only the number of volumes decides where to navigate, and counting what is on them is a
+        // walk of all of storage. Asking for the volumes without their counts turns a launch that
+        // could take seconds into one that only enumerates volumes.
+        val roots = MediaFileRepository.getStorageRoots(getApplication(), includeCounts = false)
         if (roots.size == 1) {
           // Only one storage volume, navigate directly to it and set as home
           val singleRoot = roots.first()
@@ -442,12 +445,26 @@ class FileSystemBrowserViewModel(
         if (path == STORAGE_ROOTS_MARKER) {
           Log.d(TAG, "Loading storage roots")
           _breadcrumbs.value = emptyList()
-          val roots = MediaFileRepository.getStorageRoots(getApplication(), forceFileSystemCheck)
-          ensureActive()
-          _unsortedItems.value = roots
+          // Cleared before the first snapshot paints, not after the last one lands, or the previous
+          // directory's markers stay live while the volumes are already on screen.
           _videoFilesWithPlayback.value = emptyMap()
           _newVideoIds.value = emptySet()
           _watchedVideoIds.value = emptySet()
+          // Volumes appear first with no counts, then each one republishes as its recursive count
+          // finishes. Waiting for every count before showing the list means a storage picker that
+          // stays blank on a large library, and the counts are decoration on this screen.
+          val roots =
+            MediaFileRepository.getStorageRoots(
+              context = getApplication(),
+              forceFileSystemCheck = forceFileSystemCheck,
+              onSnapshot = { found ->
+                ensureActive()
+                _unsortedItems.value = found
+                _isLoading.value = false
+              },
+            )
+          ensureActive()
+          _unsortedItems.value = roots
           Log.d(TAG, "Loaded ${roots.size} storage roots")
         } else {
           // Update breadcrumbs for real paths
@@ -467,10 +484,18 @@ class FileSystemBrowserViewModel(
               ZipArchiveMedia.scan(getApplication(), path, includeAudio = false)
             } else {
               MediaFileRepository.scanDirectory(
-                getApplication(),
-                path,
+                context = getApplication(),
+                path = path,
                 showAllFileTypes = false,
                 forceFileSystemCheck = forceFileSystemCheck,
+                // Subfolders first, then files as they are found, so the screen is useful while the
+                // directory is still being read. Only the result below is authoritative: it also
+                // carries the playback and NEW markers, which are applied once at the end.
+                onSnapshot = { partial ->
+                  ensureActive()
+                  _unsortedItems.value = partial
+                  _isLoading.value = false
+                },
               )
             }
           scanResult

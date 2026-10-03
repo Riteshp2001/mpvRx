@@ -16,6 +16,7 @@ import android.util.Log
 import app.gyrolet.mpvrx.database.dao.DirectoryScanDao
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
+import app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -82,6 +83,17 @@ object FolderViewScanner {
     val videos: MutableList<VideoInfo> = mutableListOf(),
   )
 
+  /**
+   * Per-folder totals accumulated while a MediaStore table is being read, so publishing a row costs
+   * the same whether the folder holds ten tracks or ten thousand.
+   */
+  private class RunningFolderTotals(
+    var count: Int = 0,
+    var size: Long = 0L,
+    var duration: Long = 0L,
+    var modified: Long = 0L,
+  )
+
   private data class DirectoryWork(
     val file: File,
     val rootPath: String,
@@ -98,11 +110,16 @@ object FolderViewScanner {
   /**
    * Get all video folders for folder list view
    * Only shows folders with immediate video children (not recursive)
+   *
+   * @param onSnapshot invoked with the folders discovered so far. The MediaStore pass reads the
+   *   whole media table before the filesystem walk starts, so without this a caller would wait for
+   *   the slower of the two before showing anything.
    */
   suspend fun getAllVideoFolders(
     context: Context,
     options: MediaScanOptions = MediaScanOptions(),
     forceFileSystemCheck: Boolean = false,
+    onSnapshot: (suspend (List<VideoFolder>) -> Unit)? = null,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
       val now = System.currentTimeMillis()
@@ -110,6 +127,9 @@ object FolderViewScanner {
       // Return cached data if still valid
       folderCache?.let { cached ->
         if (!forceFileSystemCheck && now - cached.createdAt < CACHE_TTL_MS && cached.optionsKey == options.cacheKey) {
+          // A cached answer is the whole answer, so it is published in full rather than left for a
+          // scan that will never run.
+          onSnapshot?.invoke(cached.folders)
           return@withContext cached.folders
         }
       }
@@ -117,21 +137,48 @@ object FolderViewScanner {
       // Build fresh data
       val allFolders = mutableMapOf<String, FolderData>()
       val noMediaPathFilter = NoMediaPathFilter(options)
+      val publisher = ProgressiveResultsPublisher(onSnapshot, snapshot = {
+        allFolders.values.map { data ->
+          VideoFolder(
+            bucketId = data.path,
+            name = data.name,
+            path = data.path,
+            videoCount = data.videoCount,
+            totalSize = data.totalSize,
+            totalDuration = data.totalDuration,
+            lastModified = data.lastModified,
+          )
+        }
+      })
 
       // Per-stage timings: with a large library the MediaStore pass and the filesystem walk
       // dominate, and they scale very differently. Logged so a slow launch can be attributed
       // without guesswork.
       val mediaStoreStartedAt = System.currentTimeMillis()
 
+      // A stage that fails is remembered rather than swallowed. The result is still returned, but
+      // it is not cached, and a caller watching progress is told instead of being handed a list
+      // that is quietly missing a whole storage volume.
+      var scanError: Exception? = null
+
       // Step 1: Scan MediaStore (fast, covers most cases)
-      scanMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter)
-      if (options.includeAudio) {
-        scanAudioMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter, options)
+      try {
+        scanMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter, publisher)
+        if (options.includeAudio) {
+          scanAudioMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter, options, publisher)
+        }
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        scanError = error
       }
+      // Everything MediaStore knows about is now known, including the folders the filesystem walk
+      // is about to re-count. Publishing here is what lets a list appear before the walk finishes.
+      publisher.publishIfNeeded(force = true)
       val mediaStoreElapsed = System.currentTimeMillis() - mediaStoreStartedAt
 
       val fileSystemStartedAt = System.currentTimeMillis()
-      scanFileSystemRoots(context, allFolders, options, noMediaPathFilter, forceFileSystemCheck)
+      scanFileSystemRoots(context, allFolders, options, noMediaPathFilter, forceFileSystemCheck, publisher)
       val fileSystemElapsed = System.currentTimeMillis() - fileSystemStartedAt
 
       Log.d(
@@ -139,6 +186,8 @@ object FolderViewScanner {
         "Folder scan: MediaStore ${mediaStoreElapsed}ms, filesystem ${fileSystemElapsed}ms, " +
           "nomedia=${options.includeNoMediaFolders}",
       )
+
+      currentCoroutineContext().ensureActive()
 
       // Convert to VideoFolder list
       val result =
@@ -155,9 +204,12 @@ object FolderViewScanner {
             )
           }.sortedBy { it.name.lowercase(Locale.getDefault()) }
 
-      // Update cache
-      folderCache = FolderCache(result, now, options.cacheKey)
+      // Update cache. A partial scan is not cached: doing so would make an empty or partial library
+      // the answer every later launch reads back.
+      if (scanError == null) folderCache = FolderCache(result, now, options.cacheKey)
 
+      onSnapshot?.invoke(result)
+      if (onSnapshot != null) scanError?.let { throw it }
       result
     }
 
@@ -708,10 +760,11 @@ object FolderViewScanner {
   /**
    * Scan MediaStore for all videos and build folder map (immediate children only)
    */
-  private fun scanMediaStoreImmediateChildren(
+  private suspend fun scanMediaStoreImmediateChildren(
     context: Context,
     folders: MutableMap<String, FolderData>,
     noMediaPathFilter: NoMediaPathFilter,
+    publisher: ProgressiveResultsPublisher<VideoFolder>,
   ) {
     val projection =
       arrayOf(
@@ -739,7 +792,8 @@ object FolderViewScanner {
           val videosByFolder = mutableMapOf<String, FolderAggregate>()
 
           while (cursor.moveToNext()) {
-            val videoPath = cursor.getString(dataColumn)
+            currentCoroutineContext().ensureActive()
+            val videoPath = cursor.getString(dataColumn) ?: continue
             val file = File(videoPath)
 
             if (!file.exists()) continue
@@ -760,6 +814,22 @@ object FolderViewScanner {
             aggregate.videos.add(
               VideoInfo(size, duration, dateModified),
             )
+
+            // Running totals, published as they go. This is what makes the folder list fill in
+            // while the media table is still being read: the aggregation below would otherwise
+            // leave a folder with nothing to show until the last row was in.
+            val previous = folders[folderKey]
+            folders[folderKey] =
+              FolderData(
+                path = aggregate.path,
+                name = leafStorageName(aggregate.path),
+                videoCount = (previous?.videoCount ?: 0) + 1,
+                totalSize = (previous?.totalSize ?: 0L) + size,
+                totalDuration = (previous?.totalDuration ?: 0L) + duration,
+                lastModified = maxOf(previous?.lastModified ?: 0L, dateModified),
+                hasSubfolders = previous?.hasSubfolders == true,
+              )
+            publisher.publishIfNeeded()
           }
 
           // Build parent -> direct children index for O(1) subfolder lookups
@@ -803,16 +873,20 @@ object FolderViewScanner {
               )
           }
         }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
     } catch (e: Exception) {
       Log.e(TAG, "MediaStore scan error", e)
+      throw e
     }
   }
 
-  private fun scanAudioMediaStoreImmediateChildren(
+  private suspend fun scanAudioMediaStoreImmediateChildren(
     context: Context,
     folders: MutableMap<String, FolderData>,
     noMediaPathFilter: NoMediaPathFilter,
     options: MediaScanOptions,
+    publisher: ProgressiveResultsPublisher<VideoFolder>,
   ) {
     val projection =
       arrayOf(
@@ -822,6 +896,11 @@ object FolderViewScanner {
         MediaStore.Audio.Media.DATE_MODIFIED,
       )
     val audioByFolder = mutableMapOf<String, FolderAggregate>()
+    val runningTotals = mutableMapOf<String, RunningFolderTotals>()
+    // Audio is added on top of the video pass above rather than replacing it, so the running
+    // totals published per row below would otherwise be added to twice. This is the state to add
+    // to, captured before a single audio row is counted.
+    val beforeAudio = folders.toMap()
     try {
       context.contentResolver
         .query(
@@ -836,20 +915,46 @@ object FolderViewScanner {
           val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
           val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
           while (cursor.moveToNext()) {
-            val file = File(cursor.getString(dataColumn))
+            currentCoroutineContext().ensureActive()
+            val path = cursor.getString(dataColumn) ?: continue
+            val file = File(path)
             if (!file.exists() || noMediaPathFilter.shouldExcludeDirectory(file.parentFile)) continue
             if (!FileTypeUtils.isAudioFile(file)) continue
             val duration = cursor.getLong(durationColumn)
             if (!options.includesAudioDuration(duration)) continue
             val folderPath = normalizeStoragePath(file.parent) ?: continue
             val folderKey = storagePathKey(folderPath) ?: continue
+            val size = cursor.getLong(sizeColumn)
+            val dateModified = cursor.getLong(dateColumn)
             val aggregate = audioByFolder.getOrPut(folderKey) { FolderAggregate(folderPath) }
-            aggregate.videos += VideoInfo(cursor.getLong(sizeColumn), duration, cursor.getLong(dateColumn))
+            aggregate.videos += VideoInfo(size, duration, dateModified)
+
+            // Published per row for the same reason as the video pass. The base is [beforeAudio]
+            // and the totals are running rather than summed from [FolderAggregate.videos], which
+            // would make every row cost a walk of the folder's whole audio list.
+            val previous = folders[folderKey]
+            val base = beforeAudio[folderKey]
+            val totals = runningTotals.getOrPut(folderKey) { RunningFolderTotals() }
+            totals.count++
+            totals.size += size
+            totals.duration += duration
+            totals.modified = maxOf(totals.modified, dateModified)
+            folders[folderKey] =
+              FolderData(
+                path = previous?.path ?: aggregate.path,
+                name = previous?.name ?: leafStorageName(aggregate.path),
+                videoCount = (base?.videoCount ?: 0) + totals.count,
+                totalSize = (base?.totalSize ?: 0L) + totals.size,
+                totalDuration = (base?.totalDuration ?: 0L) + totals.duration,
+                lastModified = maxOf(base?.lastModified ?: 0L, totals.modified),
+                hasSubfolders = previous?.hasSubfolders == true,
+              )
+            publisher.publishIfNeeded()
           }
         }
 
       for ((folderKey, aggregate) in audioByFolder) {
-        val existing = folders[folderKey]
+        val existing = beforeAudio[folderKey]
         val audioSize = aggregate.videos.sumOf { it.size }
         val audioDuration = aggregate.videos.sumOf { it.duration }
         val audioModified = aggregate.videos.maxOfOrNull { it.dateModified } ?: 0L
@@ -878,8 +983,11 @@ object FolderViewScanner {
             )
           }
       }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
     } catch (e: Exception) {
       Log.e(TAG, "MediaStore audio folder scan error", e)
+      throw e
     }
   }
 
@@ -892,6 +1000,7 @@ object FolderViewScanner {
     options: MediaScanOptions,
     noMediaPathFilter: NoMediaPathFilter,
     forceFileSystemCheck: Boolean,
+    publisher: ProgressiveResultsPublisher<VideoFolder>,
   ) {
     try {
       val rootsToScan = linkedSetOf<File>()
@@ -927,6 +1036,7 @@ object FolderViewScanner {
           options = options,
           noMediaPathFilter = noMediaPathFilter,
           visitedDirectories = visitedDirectories,
+          publisher = publisher,
         )
       }
     } catch (cancellation: CancellationException) {
@@ -947,6 +1057,7 @@ object FolderViewScanner {
     options: MediaScanOptions,
     noMediaPathFilter: NoMediaPathFilter,
     visitedDirectories: MutableSet<String>,
+    publisher: ProgressiveResultsPublisher<VideoFolder>,
   ) {
     currentCoroutineContext().ensureActive()
     if (currentDepth >= maxDepth) return
@@ -959,6 +1070,16 @@ object FolderViewScanner {
 
       val mediaFiles = mutableListOf<File>()
       val subdirectories = mutableListOf<File>()
+
+      // A folder MediaStore never reported is published as its files are counted, rather than
+      // after the whole walk. On a deep tree the walk is the slowest phase by far, and this is the
+      // only way its findings are visible before it ends.
+      val discoveredPath = normalizeStoragePath(directory.absolutePath)
+      val discoveredKey = discoveredPath?.let { storagePathKey(it) }
+      val discoveredHere = discoveredKey != null && discoveredKey !in folders
+      var discoveredSize = 0L
+      var discoveredDuration = 0L
+      var discoveredModified = 0L
 
       for (file in files) {
         currentCoroutineContext().ensureActive()
@@ -978,6 +1099,22 @@ object FolderViewScanner {
                 val duration = if (isAudio) FileTypeUtils.getDurationMs(file) else 0L
                 if (!isAudio || options.includesAudioDuration(duration)) {
                   mediaFiles.add(file)
+                  if (discoveredHere && discoveredKey != null && discoveredPath != null) {
+                    discoveredSize += file.length()
+                    discoveredDuration += duration
+                    discoveredModified = maxOf(discoveredModified, file.lastModified() / 1000)
+                    folders[discoveredKey] =
+                      FolderData(
+                        path = discoveredPath,
+                        name = leafStorageName(discoveredPath),
+                        videoCount = mediaFiles.size,
+                        totalSize = discoveredSize,
+                        totalDuration = discoveredDuration,
+                        lastModified = discoveredModified,
+                        hasSubfolders = subdirectories.isNotEmpty(),
+                      )
+                    publisher.publishIfNeeded()
+                  }
                 }
               }
             }
@@ -986,6 +1123,7 @@ object FolderViewScanner {
           continue
         }
       }
+      publisher.publishIfNeeded()
 
       // Add folder if it has videos
       if (mediaFiles.isNotEmpty()) {
@@ -1032,7 +1170,16 @@ object FolderViewScanner {
 
       // Recurse into subdirectories
       for (subdir in subdirectories) {
-        scanDirectoryRecursive(subdir, folders, maxDepth, currentDepth + 1, options, noMediaPathFilter, visitedDirectories)
+        scanDirectoryRecursive(
+          subdir,
+          folders,
+          maxDepth,
+          currentDepth + 1,
+          options,
+          noMediaPathFilter,
+          visitedDirectories,
+          publisher,
+        )
       }
     } catch (cancellation: CancellationException) {
       throw cancellation
