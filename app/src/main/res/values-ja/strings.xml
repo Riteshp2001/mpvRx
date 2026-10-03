@@ -218,6 +218,8 @@
   <string name="pref_player_gestures_volume">音量ジェスチャー</string>
   <string name="pref_player_gestures_pinch_to_zoom">ピンチでズーム</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">ピンチで字幕を拡大</string>
+  <string name="pref_subtitles_secondary_pinch_zoom">ピンチで第2字幕も拡大</string>
+  <string name="pref_subtitles_secondary_pinch_zoom_summary">プライマリ字幕をピンチするとセカンダリ字幕も拡大されます</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">字幕をスワイプしてシーク画面を開く</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction">字幕スワイプの方向を反転</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction_summary">右から左へスワイプすると早送り、左から右へスワイプすると巻き戻しになります</string>

@@ -218,6 +218,8 @@
   <string name="pref_player_gestures_volume">Gestes de volume</string>
   <string name="pref_player_gestures_pinch_to_zoom">Pincer pour zoomer</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">Pincer pour zoomer les sous-titres</string>
+  <string name="pref_subtitles_secondary_pinch_zoom">Le pincement zoome le sous-titre secondaire</string>
+  <string name="pref_subtitles_secondary_pinch_zoom_summary">En pinçant le sous-titre principal, le secondaire est aussi mis à l’échelle</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">Faire glisser les sous-titres pour ouvrir la boîte de recherche</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction">Inverser le sens de glissement des sous-titres</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction_summary">Glissez de droite à gauche pour avancer et de gauche à droite pour reculer</string>

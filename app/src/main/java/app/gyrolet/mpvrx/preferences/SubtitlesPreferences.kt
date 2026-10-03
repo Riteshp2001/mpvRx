@@ -49,6 +49,7 @@ class SubtitlesPreferences(
   val justification = preferenceStore.getEnum("sub_justify", SubtitleJustification.Auto)
   val subPos = preferenceStore.getInt("sub_pos", 100)
   val secondarySubPos = preferenceStore.getInt("secondary_sub_pos", 10)
+  val secondarySubPinchZoom = preferenceStore.getBoolean("secondary_sub_pinch_zoom", true)
 
   val overrideAssSubs = preferenceStore.getBoolean("sub_override_ass")
   val forceRtlSubtitles = preferenceStore.getBoolean("sub_force_ltr", false)

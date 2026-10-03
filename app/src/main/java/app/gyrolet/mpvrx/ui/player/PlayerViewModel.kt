@@ -5310,14 +5310,27 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   }
 
   fun changeSubtitlePositionTo(position: Int) {
-    val newPosition = clampSubtitlePosition(position)
-    subtitlesPreferences.subPos.set(newPosition)
-    syncSubtitleLayout(newPosition)
-    playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(R.string.subtitle_position_update, newPosition))
+    changeSubtitlePositionsTo(position, subtitlesPreferences.secondarySubPos.get())
   }
 
-  private fun syncSubtitleLayout(primaryPosition: Int = subtitlesPreferences.subPos.get()) {
-    applySubtitleLayout(primaryPosition, subtitlesPreferences.overrideAssSubs.get())
+  /**
+   * Moves primary + secondary subtitles together (secondary keeps its offset from
+   * primary). Both mpv props, prefs, OSD and settings sliders update live.
+   */
+  fun changeSubtitlePositionsTo(primaryPosition: Int, secondaryPosition: Int) {
+    val newPrimary = clampSubtitlePosition(primaryPosition)
+    val newSecondary = clampSubtitlePosition(secondaryPosition)
+    subtitlesPreferences.subPos.set(newPrimary)
+    subtitlesPreferences.secondarySubPos.set(newSecondary)
+    syncSubtitleLayout(newPrimary, newSecondary)
+    playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(R.string.subtitle_position_update, newPrimary))
+  }
+
+  private fun syncSubtitleLayout(
+    primaryPosition: Int = subtitlesPreferences.subPos.get(),
+    secondaryPosition: Int = subtitlesPreferences.secondarySubPos.get(),
+  ) {
+    applySubtitleLayout(primaryPosition, subtitlesPreferences.overrideAssSubs.get(), secondaryPosition)
   }
 
   private fun syncCurrentSystemVolume(): Int {

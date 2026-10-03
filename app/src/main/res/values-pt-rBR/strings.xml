@@ -218,6 +218,8 @@
   <string name="pref_player_gestures_volume">Gestos de volume</string>
   <string name="pref_player_gestures_pinch_to_zoom">Pinçar para ampliar</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">Pinçar para ampliar legendas</string>
+  <string name="pref_subtitles_secondary_pinch_zoom">Pinçar amplia a legenda secundária</string>
+  <string name="pref_subtitles_secondary_pinch_zoom_summary">Ao pinçar a legenda principal, a secundária também é redimensionada</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">Deslizar legendas para abrir a caixa de busca</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction">Inverter a direção do deslizamento das legendas</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction_summary">Deslize da direita para a esquerda para avançar e da esquerda para a direita para voltar</string>

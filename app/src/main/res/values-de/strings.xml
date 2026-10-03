@@ -218,6 +218,8 @@
   <string name="pref_player_gestures_volume">Lautstärkegesten</string>
   <string name="pref_player_gestures_pinch_to_zoom">Zum Zoomen zusammenziehen</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">Untertitel durch Zusammenziehen zoomen</string>
+  <string name="pref_subtitles_secondary_pinch_zoom">Sekundären Untertitel per Pinch zoomen</string>
+  <string name="pref_subtitles_secondary_pinch_zoom_summary">Beim Zoomen des primären Untertitels wird auch der sekundäre skaliert</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">Untertitel wischen, um den Suchdialog zu öffnen</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction">Wischrichtung für Untertitel umkehren</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction_summary">Von rechts nach links wischen, um vorwärts zu suchen, und von links nach rechts, um rückwärts zu suchen</string>

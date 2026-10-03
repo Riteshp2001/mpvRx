@@ -109,6 +109,22 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
           summary = { Text(stringResource(R.string.player_sheets_sub_scale_by_window_summary)) },
         )
+        var secondaryPinchZoom by remember {
+          mutableStateOf(preferences.secondarySubPinchZoom.get())
+        }
+        LaunchedEffect(preferences.secondarySubPinchZoom.get()) {
+          secondaryPinchZoom = preferences.secondarySubPinchZoom.get()
+        }
+        SwitchPreference(
+          secondaryPinchZoom,
+          enabled = scaleOptions.none(configOwnedOptions::contains),
+          onValueChange = {
+            secondaryPinchZoom = it
+            preferences.secondarySubPinchZoom.set(it)
+          },
+          title = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom)) },
+          summary = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom_summary)) },
+        )
         var blendSubtitlesWithVideo by remember {
           mutableStateOf(preferences.blendSubtitlesWithVideo.get())
         }
