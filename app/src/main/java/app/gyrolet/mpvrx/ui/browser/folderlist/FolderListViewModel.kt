@@ -23,6 +23,7 @@ import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
+import app.gyrolet.mpvrx.utils.media.MediaLibraryFreshness
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils.StorageOps
@@ -117,15 +118,25 @@ class FolderListViewModel(
 
   init {
     // Load cached folders instantly for immediate display
-    val hasCachedData = loadCachedFolders()
+    val cachedFolders = loadCachedFolders()
 
-    // If no cached data (first launch), scan immediately. Otherwise defer to not slow down app launch
-    if (!hasCachedData) {
+    if (cachedFolders == null) {
       loadVideoFolders()
     } else {
       viewModelScope.launch(Dispatchers.IO) {
-        kotlinx.coroutines.delay(2000) // Wait 2 seconds before refreshing
-        loadVideoFolders()
+        // Reading the MediaStore token is a binder round-trip, so it must not happen in init.
+        when {
+          // The snapshot already matches the current media state, so re-scanning could only
+          // reproduce it. That scan is what made reopening the app as slow as a cold launch.
+          MediaLibraryFreshness.isSnapshotFresh(getApplication()) ->
+            loadVideoFolders(cachedFolders = cachedFolders)
+
+          // Snapshot is usable but possibly behind: paint it now, refresh shortly after.
+          else -> {
+            kotlinx.coroutines.delay(2000) // Wait 2 seconds before refreshing
+            loadVideoFolders()
+          }
+        }
       }
     }
 
@@ -210,30 +221,32 @@ class FolderListViewModel(
     }
   }
 
-  private fun loadCachedFolders(): Boolean {
-    var hasCachedData = false
+  /**
+   * Publishes the persisted snapshot for instant display and returns it, or null when there is
+   * nothing usable to show.
+   */
+  private fun loadCachedFolders(): List<VideoFolder>? {
     val prefs =
       getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
-    val cachedJson = prefs.getString(currentFolderCacheKey(), null)
+    val cachedJson = prefs.getString(currentFolderCacheKey(), null) ?: return null
 
-    if (cachedJson != null) {
-      try {
-        // Parse JSON and restore folders
-        val folders = parseFoldersFromJson(cachedJson)
-        if (folders.isNotEmpty()) {
-          Log.d(TAG, "Loaded ${folders.size} folders from cache instantly")
-          hasCachedData = true
-          viewModelScope.launch(Dispatchers.IO) {
-            _allVideoFolders.value = folders
-            _hasCompletedInitialLoad.value = true
-          }
-        }
-      } catch (e: Exception) {
-        Log.e(TAG, "Error loading cached folders", e)
+    return try {
+      // Parse JSON and restore folders
+      val folders = parseFoldersFromJson(cachedJson)
+      if (folders.isEmpty()) {
+        null
+      } else {
+        Log.d(TAG, "Loaded ${folders.size} folders from cache instantly")
+        // Published synchronously so the scan path sees a populated list no matter which
+        // coroutine runs first; StateFlow writes are safe from any thread.
+        _allVideoFolders.value = folders
+        _hasCompletedInitialLoad.value = true
+        folders
       }
+    } catch (e: Exception) {
+      Log.e(TAG, "Error loading cached folders", e)
+      null
     }
-
-    return hasCachedData
   }
 
   private fun saveFoldersToCache(folders: List<VideoFolder>) {
@@ -253,10 +266,18 @@ class FolderListViewModel(
       }
   }
 
+  /**
+   * Namespaces the snapshot by everything that changes what a scan produces.
+   *
+   * [MediaScanOptions.cacheKey] includes the marker set but the MediaStore token does not move
+   * when markers are edited, so leaving it out here would let a snapshot built with the old
+   * markers satisfy the freshness check and skip the scan that applies the new ones.
+   */
   private fun currentFolderCacheKey(): String =
     "folders_${if (audioOnly) "audioOnly" else "video"}" +
       "_${if (foldersPreferences.includeNoMediaFolders.get()) "with_nomedia" else "exclude_nomedia"}" +
-      "_audio_${browserPreferences.includeAudioBrowser.get()}_${browserPreferences.minimumAudioDurationSeconds.get()}"
+      "_audio_${browserPreferences.includeAudioBrowser.get()}_${browserPreferences.minimumAudioDurationSeconds.get()}" +
+      "_markers_${foldersPreferences.hiddenFolderMarkerNames.get().sorted().joinToString(",")}"
 
   private fun serializeFoldersToJson(folders: List<VideoFolder>): String {
     // Simple JSON serialization
@@ -432,7 +453,10 @@ class FolderListViewModel(
   }
 
   /** Publishes MediaStore immediately, then merges indexed .nomedia folders in the background. */
-  private fun loadVideoFolders(forceFileSystemCheck: Boolean = false) {
+  private fun loadVideoFolders(
+    forceFileSystemCheck: Boolean = false,
+    cachedFolders: List<VideoFolder>? = null,
+  ) {
     currentScanJob?.cancel()
     folderContentRevision.update { it + 1 }
 
@@ -449,6 +473,7 @@ class FolderListViewModel(
               )
             ensureActive()
             publishFinalFolders(folders)
+            MediaLibraryFreshness.recordScan(getApplication())
             _isLoading.value = false
             _hasCompletedInitialLoad.value = true
           } catch (error: kotlinx.coroutines.CancellationException) {
@@ -479,7 +504,7 @@ class FolderListViewModel(
 
           val previousFolders = _allVideoFolders.value.associateBy(::folderKey)
           val mediaStoreFolders =
-            MediaFileRepository.getAllVideoFoldersFast(
+            cachedFolders ?: MediaFileRepository.getAllVideoFoldersFast(
               context = getApplication(),
               onProgress = { count ->
                 if (!hasExistingData) _scanStatus.value = "Found $count folders"
@@ -524,6 +549,10 @@ class FolderListViewModel(
           }
 
           publishFinalFolders(visibleFolders)
+          // Only now are these folders known to describe the current media state, which is what
+          // lets the next launch keep them instead of rescanning. Stamping this anywhere that
+          // merely republishes a snapshot would pin a stale list as fresh forever.
+          MediaLibraryFreshness.recordScan(getApplication())
           if (visibleFolders.isEmpty()) return@launch
 
           var needsEnrichment = false

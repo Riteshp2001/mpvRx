@@ -1259,6 +1259,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_advanced_export_logs_title,
+          summaryRes = R.string.pref_advanced_export_logs_summary,
+          keywords = listOf("logs", "export", "save", "file", "diagnostics", "bug report"),
+          category = "Advanced",
+          screen = AdvancedPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_codecs_title,
           summaryRes = R.string.pref_codecs_summary,
           keywords = listOf("codec", "codecs", "hardware", "software", "decoder", "decoding", "av1", "hevc", "h264", "vp9", "hardware acceleration", "gpu", "cpu", "battery", "heating", "media", "mime"),

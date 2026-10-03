@@ -211,6 +211,7 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced_clear_fonts_cache, itemIndex = 15),
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced_verbose_logging_title, itemIndex = 17),
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced_dump_logs_title, itemIndex = 17),
+        SettingsSearchListAnchor(titleRes = R.string.pref_advanced_export_logs_title, itemIndex = 17),
       ),
     MediaServersPreferencesScreen to
       listOf(

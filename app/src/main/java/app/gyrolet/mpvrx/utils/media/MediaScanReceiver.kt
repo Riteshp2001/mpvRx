@@ -34,6 +34,10 @@ class MediaScanReceiver : BroadcastReceiver() {
         val data = intent.data
         Log.d(TAG, "Media scan event: ${intent.action}, data: $data")
 
+        // The persisted folder snapshot was taken before this scan, so it can no longer be
+        // trusted on the next launch even if the app was not running to observe the event.
+        MediaLibraryFreshness.markLibraryChanged(context)
+
         // Notify the app that media library has changed
         MediaLibraryEvents.notifyChanged()
       }

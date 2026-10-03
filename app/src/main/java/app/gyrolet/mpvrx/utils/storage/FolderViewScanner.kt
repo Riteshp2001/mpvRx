@@ -118,12 +118,27 @@ object FolderViewScanner {
       val allFolders = mutableMapOf<String, FolderData>()
       val noMediaPathFilter = NoMediaPathFilter(options)
 
+      // Per-stage timings: with a large library the MediaStore pass and the filesystem walk
+      // dominate, and they scale very differently. Logged so a slow launch can be attributed
+      // without guesswork.
+      val mediaStoreStartedAt = System.currentTimeMillis()
+
       // Step 1: Scan MediaStore (fast, covers most cases)
       scanMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter)
       if (options.includeAudio) {
         scanAudioMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter, options)
       }
+      val mediaStoreElapsed = System.currentTimeMillis() - mediaStoreStartedAt
+
+      val fileSystemStartedAt = System.currentTimeMillis()
       scanFileSystemRoots(context, allFolders, options, noMediaPathFilter, forceFileSystemCheck)
+      val fileSystemElapsed = System.currentTimeMillis() - fileSystemStartedAt
+
+      Log.d(
+        TAG,
+        "Folder scan: MediaStore ${mediaStoreElapsed}ms, filesystem ${fileSystemElapsed}ms, " +
+          "nomedia=${options.includeNoMediaFolders}",
+      )
 
       // Convert to VideoFolder list
       val result =

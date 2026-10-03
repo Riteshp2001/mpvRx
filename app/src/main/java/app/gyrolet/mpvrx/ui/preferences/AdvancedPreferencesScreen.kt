@@ -75,6 +75,7 @@ import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+import app.gyrolet.mpvrx.utils.media.LogExporter
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -239,7 +240,16 @@ object AdvancedPreferencesScreen : Screen {
         preferences.mpvConfStorageUri.set(uriString)
         subtitlesPreferences.subtitleSaveFolder.set(uriString)
         val root = DocumentFile.fromTreeUri(context, uri) ?: return@rememberLauncherForActivityResult
-        listOf("Backup", "Downloads", "fonts", "Subtitles", "scripts", "script-opts", "shaders").forEach { name ->
+        listOf(
+          "Backup",
+          "Downloads",
+          "fonts",
+          "Subtitles",
+          "scripts",
+          "script-opts",
+          "shaders",
+          LogExporter.LOGS_DIRECTORY_NAME,
+        ).forEach { name ->
           if (root.findFile(name) == null) root.createDirectory(name)
         }
         if (downloadLocations.setLocationUnderTree(uri, "Downloads") == null) {
@@ -1097,6 +1107,65 @@ object AdvancedPreferencesScreen : Screen {
                       text = CrashActivity.concatLogs(deviceInfo, null, logcat),
                     )
                     CrashActivity.shareLogs(deviceInfo, null, logcat, activity)
+                  }
+                },
+              )
+
+              PreferenceDivider()
+
+              Preference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_export_logs_title),
+                title = { Text(stringResource(R.string.pref_advanced_export_logs_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_advanced_export_logs_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                icon = {
+                  Icon(
+                    Icons.RoundedFilled.FileUpload,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                  )
+                },
+                onClick = {
+                  scope.launch(Dispatchers.IO) {
+                    val deviceInfo = CrashActivity.collectDeviceInfo()
+                    val deviceInfoBytes = deviceInfo.toByteArray(Charsets.UTF_8).size
+                    val logcat =
+                      DebugLogReader.trimTextToByteBudget(
+                        CrashActivity.collectLogcat(),
+                        (debugLogSizeMb.coerceIn(1, 10) * 1024 * 1024 - deviceInfoBytes - 64).coerceAtLeast(0),
+                      )
+
+                    LogExporter
+                      .exportToConfigurationFolder(
+                        context = context,
+                        treeUriString = configurationFolderUri,
+                        logText = CrashActivity.concatLogs(deviceInfo, null, logcat),
+                      ).onSuccess { fileName ->
+                        withContext(Dispatchers.Main) {
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(R.string.pref_advanced_logs_exported_toast, fileName),
+                              Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                      }.onFailure { error ->
+                        withContext(Dispatchers.Main) {
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(
+                                R.string.pref_export_failed,
+                                error.message ?: unknownError,
+                              ),
+                              Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                      }
                   }
                 },
               )

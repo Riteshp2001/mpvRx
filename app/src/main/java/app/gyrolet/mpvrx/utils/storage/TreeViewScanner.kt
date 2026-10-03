@@ -276,6 +276,7 @@ object TreeViewScanner {
           newLabelOverrides = newLabelOverrides,
         )
       val currentTimeMs = System.currentTimeMillis()
+      val mediaStoreStartedAt = System.currentTimeMillis()
 
       scanMediaStoreRecursive(context, allFolders, noMediaPathFilter, newBadgeConfig, currentTimeMs)
       if (options.includeAudio) {
@@ -288,6 +289,9 @@ object TreeViewScanner {
           options,
         )
       }
+      val mediaStoreElapsed = System.currentTimeMillis() - mediaStoreStartedAt
+
+      val fileSystemStartedAt = System.currentTimeMillis()
       scanFileSystemRoots(
         context = context,
         folders = allFolders,
@@ -296,6 +300,13 @@ object TreeViewScanner {
         forceFileSystemCheck = forceFileSystemCheck,
         newBadgeConfig = newBadgeConfig,
         currentTimeMs = currentTimeMs,
+      )
+      val fileSystemElapsed = System.currentTimeMillis() - fileSystemStartedAt
+
+      Log.d(
+        TAG,
+        "Tree scan: MediaStore ${mediaStoreElapsed}ms, filesystem ${fileSystemElapsed}ms, " +
+          "${allFolders.size} nodes, nomedia=${options.includeNoMediaFolders}",
       )
       buildParentHierarchy(allFolders)
       // Flattening inspects every node, so it needs the pre-prune tree; the index handed to
