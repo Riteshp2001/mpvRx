@@ -67,7 +67,8 @@ object MediaFileRepository : KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val database: MpvRxDatabase by inject()
 
-  private fun currentScanOptions(includeAudioOverride: Boolean? = null): MediaScanOptions =
+  /** Public so a persisted listing can be namespaced by the options that produced it. */
+  fun currentScanOptions(includeAudioOverride: Boolean? = null): MediaScanOptions =
     MediaScanOptions(
       includeNoMediaFolders = foldersPreferences.includeNoMediaFolders.get(),
       hiddenFolderMarkerNames = foldersPreferences.hiddenFolderMarkerNames.get(),

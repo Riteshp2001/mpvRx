@@ -10,6 +10,8 @@
 package app.gyrolet.mpvrx.ui.browser.medialibrary
 
 import android.app.Application
+import android.media.MediaScannerConnection
+import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -29,6 +31,7 @@ import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,11 +64,12 @@ class MediaLibraryViewModel(
   private val loadJob = AtomicReference<Job?>(null)
   private val loadGeneration = AtomicInteger(0)
   private val loadLock = Any()
+  private var snapshotWriteJob: Job? = null
 
   private val tag = "MediaLibraryViewModel"
 
   init {
-    loadData()
+    restoreSnapshotOrScan()
     viewModelScope.launch(Dispatchers.IO) {
       app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes.collectLatest {
         loadData()
@@ -78,6 +82,54 @@ class MediaLibraryViewModel(
         if (loadJob.get()?.isActive != true && _videos.value.isNotEmpty()) updatePlaybackInfo(mediaIdentifier)
       }
     }
+  }
+
+  /**
+   * The persisted listing is the whole launch path for this mode: a warm start shows it and scans
+   * nothing. Re-deriving the library on open is a MediaStore query per folder, which is what made
+   * entering this mode as slow as a cold start, and it could only reproduce what the snapshot
+   * already holds. Refreshing is explicit ([refresh]) or event-driven.
+   *
+   * Read off the main thread because this is one record per video: a large library is megabytes of
+   * JSON, which is far too much to parse during composition.
+   */
+  private fun restoreSnapshotOrScan() {
+    val generationAtStart = loadGeneration.get()
+    // Raised for the duration of the read so the list is never briefly "found nothing" between an
+    // empty state and the snapshot landing. The scan path below owns this flag from then on.
+    _isLoading.value = true
+    viewModelScope.launch(Dispatchers.IO) {
+      val snapshot = MediaLibrarySnapshot.read(getApplication(), snapshotKey())
+      when {
+        // A scan started while the file was being read, from a media event or a manual refresh.
+        // Its result is the newer one, so publishing the snapshot now would undo it.
+        generationAtStart != loadGeneration.get() -> Unit
+
+        // Nothing persisted yet, so a scan is the only way to have a list to show at all.
+        snapshot.isEmpty() -> loadData()
+
+        else -> {
+          _videos.value = snapshot
+          loadPlaybackInfo(snapshot)
+          _isLoading.value = false
+        }
+      }
+    }
+  }
+
+  /** Namespaces the listing by the scan options behind it, so stale options never read as current. */
+  private fun snapshotKey(): String =
+    MediaFileRepository.currentScanOptions(includeAudioOverride = true).cacheKey
+
+  private fun saveSnapshot(videos: List<Video>) {
+    snapshotWriteJob?.cancel()
+    snapshotWriteJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        // Same cadence the folder snapshot uses: an operation that ends in several quick scans
+        // should not rewrite the file once per scan.
+        delay(SNAPSHOT_WRITE_DEBOUNCE_MS)
+        MediaLibrarySnapshot.write(getApplication(), snapshotKey(), videos)
+      }
   }
 
   private fun loadData() {
@@ -126,6 +178,7 @@ class MediaLibraryViewModel(
             if (generation == loadGeneration.get()) {
               _videos.value = enriched
               loadPlaybackInfo(enriched)
+              saveSnapshot(enriched)
             }
           } catch (e: CancellationException) {
             throw e
@@ -141,7 +194,31 @@ class MediaLibraryViewModel(
   }
 
   override fun refresh() {
+    // This mode lists the whole library by asking for every video folder first, and that folder
+    // list is the cached snapshot folder mode persists. Reading it again could only republish the
+    // same buckets, so a file in a folder created since the last scan could never show up here.
+    // Dropping the cache is what makes this a hard refresh, matching folder and tree mode.
+    MediaFileRepository.clearCache()
+    // Files copied by other apps are not in MediaStore until the platform indexes them, so ask it
+    // to, exactly as the other two modes do. MediaScanReceiver turns the completion into a media
+    // event, which reloads the list once the new rows exist.
+    triggerMediaScan()
     loadData()
+  }
+
+  private fun triggerMediaScan() {
+    try {
+      val externalStorage = Environment.getExternalStorageDirectory()
+      MediaScannerConnection.scanFile(
+        getApplication(),
+        arrayOf(externalStorage.absolutePath),
+        null,
+      ) { path, uri ->
+        Log.d(tag, "Media scan completed for: $path -> $uri")
+      }
+    } catch (error: Exception) {
+      Log.e(tag, "Failed to trigger media scan", error)
+    }
   }
 
   private suspend fun loadPlaybackInfo(videos: List<Video>) {
@@ -213,6 +290,9 @@ class MediaLibraryViewModel(
      * thumbnail pipeline, so unthrottled streaming would cost more than it saves.
      */
     private const val PARTIAL_PUBLISH_INTERVAL_MS = 700L
+
+    /** Same reason as the publish floor: the file is rewritten in full, so batch the writes. */
+    private const val SNAPSHOT_WRITE_DEBOUNCE_MS = 750L
 
     fun factory(application: Application): ViewModelProvider.Factory =
       object : ViewModelProvider.Factory {
