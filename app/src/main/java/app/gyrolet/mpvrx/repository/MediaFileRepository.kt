@@ -25,9 +25,11 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.ProgressiveResultsPublisher
+import app.gyrolet.mpvrx.utils.storage.FileFilterUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
 import app.gyrolet.mpvrx.utils.storage.MediaScanOptions
+import app.gyrolet.mpvrx.utils.storage.NoMediaPathFilter
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
@@ -803,6 +805,56 @@ object MediaFileRepository : KoinComponent {
         }
 
         val items = mutableListOf<FileSystemItem>()
+
+        // Fast first pass, and only when someone is watching.
+        //
+        // The two passes below are both slow: the tree index is a recursive walk, and the video
+        // scan is a MediaStore query plus metadata. Neither is needed to know that a directory
+        // contains "Movies" and "Recordings", which is what listFiles answers in one read. Without
+        // this a launch into tree mode shows nothing until the whole tree has been indexed.
+        //
+        // Filtered exactly as the authoritative pass filters, so an entry that appears here is an
+        // entry that will still be there when the real result replaces this list.
+        if (onSnapshot != null) {
+          val noMediaPathFilter = NoMediaPathFilter(scanOptions)
+          val quick = mutableListOf<FileSystemItem>()
+          for (file in directory.listFiles().orEmpty()) {
+            currentCoroutineContext().ensureActive()
+            when {
+              file.isDirectory -> {
+                if (!FileFilterUtils.shouldSkipFolder(file, scanOptions, noMediaPathFilter)) {
+                  quick.add(
+                    FileSystemItem.Folder(
+                      name = file.name,
+                      path = file.absolutePath,
+                      lastModified = file.lastModified(),
+                    ),
+                  )
+                }
+              }
+              file.isFile -> {
+                if (FileFilterUtils.shouldSkipFile(file, scanOptions, noMediaPathFilter)) {
+                  continue
+                }
+                if (!FileTypeUtils.isSupportedMediaFile(file, scanOptions)) continue
+                val isAudio = FileTypeUtils.isAudioFile(file)
+                val durationMs = if (isAudio) FileTypeUtils.getDurationMs(file) else 0L
+                if (isAudio && durationMs / 1000 < scanOptions.minimumAudioDurationSeconds) continue
+                quick.add(
+                  toVideoItem(
+                    createVideoFromFileWithMetadata(
+                      file = file,
+                      bucketId = directory.absolutePath,
+                      bucketDisplayName = directory.name,
+                      metadata = null,
+                    ).copy(isAudio = isAudio),
+                  ),
+                )
+              }
+            }
+          }
+          if (quick.isNotEmpty()) onSnapshot(quick)
+        }
 
         // Get folders using TreeViewScanner (instant from cache)
         val (showNewLabels, thresholdDays, playedMediaTitles, newLabelOverrides) = getTreeViewNewBadgeParams()

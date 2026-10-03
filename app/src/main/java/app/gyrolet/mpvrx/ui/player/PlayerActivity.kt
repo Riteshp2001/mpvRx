@@ -139,6 +139,7 @@ import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -451,6 +452,9 @@ class PlayerActivity :
   private var isInBackgroundPlayback = false // Track if we are currently in background playback mode
   private var screenStateReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
+
+  /** The MPV asset copy, running from before the player UI is inflated until setupMPV joins it. */
+  private var startupAssetPreparation: Deferred<Unit>? = null
   private var viewModelHostAttached = false
   private var torrentPickerHandoff = false
   private var savePlaybackStateJob: Job? = null // Track ongoing save job
@@ -690,6 +694,14 @@ class PlayerActivity :
     }
     // Read from the actual launch intent now that it's safe to (see isSecureFolderLaunch kdoc).
     isSecureFolderLaunch = intent.getStringExtra("launch_source") == "secure_folder"
+
+    // Started here, joined in setupMPV. The MPV assets are multi-megabyte APK copies plus a SAF
+    // tree walk, and inflating and composing the player is the other big cost on the way to a
+    // first frame. Running them one after the other put both in series on the critical path; the
+    // ordering that matters is only that the assets are on disk before libmpv initializes, and that
+    // is still enforced, just overlapped rather than queued.
+    startupAssetPreparation = lifecycleScope.async(Dispatchers.IO) { prepareStartupAssets() }
+
     setContentView(binding.root)
     setupSystemBarsAutoHide()
     setupPipHelper()
@@ -2607,19 +2619,13 @@ class PlayerActivity :
    * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
   private fun setupMPV(): String? {
-    // Prepare config and user MPV assets before initializing MPV. These are multi-MB APK asset
-    // copies, preference reads and a SAF tree walk, so they run on IO but are still joined here:
-    // MPV must not initialize, and onCreate must not continue, before they have completed.
+    // Joined rather than started: the copy began before the view tree was inflated, so by now it is
+    // usually finished and this costs nothing. libmpv must not initialize before the assets are on
+    // disk, so this cannot be skipped, only awaited.
     runCatching {
       runBlocking {
         withContext(Dispatchers.IO) {
-          val preparationStartedAt = android.os.SystemClock.elapsedRealtime()
-          syncBundledAssetsIfNeeded()
-          prepareUserMpvAssetsForStartup()
-          googleFontsRepository.syncMpvFonts()
-          sanitizeInternalFontsDirectory()
-          val elapsed = android.os.SystemClock.elapsedRealtime() - preparationStartedAt
-          Log.d(TAG, "MPV startup assets ready in $elapsed ms")
+          startupAssetPreparation?.await()
         }
       }
     }.onFailure { e ->
@@ -2653,6 +2659,24 @@ class PlayerActivity :
 
     scheduleDeferredSubtitleFontsSync()
     return null
+  }
+
+  /**
+ * Everything libmpv needs on disk before it initializes: bundled assets, the user's mpv directory,
+ * the fonts, and the internal font directory.
+ *
+ * Started before the player UI is inflated and joined in [setupMPV]. It must complete before
+ * initialization either way, because libmpv reads scripts and config while it starts, so the win
+ * here is overlap rather than removal.
+ */
+private fun prepareStartupAssets() {
+    val startedAt = android.os.SystemClock.elapsedRealtime()
+    syncBundledAssetsIfNeeded()
+    prepareUserMpvAssetsForStartup()
+    googleFontsRepository.syncMpvFonts()
+    sanitizeInternalFontsDirectory()
+    val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
+    Log.d(TAG, "MPV startup assets ready in $elapsed ms")
   }
 
   private fun prepareUserMpvAssetsForStartup() {

@@ -60,6 +60,7 @@ class FileSystemBrowserViewModel(
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val browserPreferences: BrowserPreferences by inject()
+  private val foldersPreferences: app.gyrolet.mpvrx.preferences.FoldersPreferences by inject()
   private val appearancePreferences: app.gyrolet.mpvrx.preferences.AppearancePreferences by inject()
 
   // Special marker for "show storage volumes" mode
@@ -192,9 +193,13 @@ class FileSystemBrowserViewModel(
         _unsortedItems,
         browserPreferences.folderSortType.changes(),
         browserPreferences.folderSortOrder.changes(),
-      ) { items, sortType, sortOrder ->
-        // Sort using the same logic as Fossify's FileDirItem.sort()
-        SortUtils.sortFileSystemItems(items, sortType, sortOrder)
+        foldersPreferences.blacklistedFolders.changes(),
+        _currentPath,
+      ) { items, sortType, sortOrder, blacklist, currentPath ->
+        // Sorting using the same logic as Fossify's FileDirItem.sort(), after hiding what the user
+        // blacklisted. Folder mode has always applied this list; without it here, blacklisting a
+        // folder only hid it from one of the two places it appears in.
+        SortUtils.sortFileSystemItems(blacklistItems(items, blacklist, currentPath), sortType, sortOrder)
       }.collectLatest { sortedItems ->
         _items.value = sortedItems
         Log.d(TAG, "Items sorted: ${sortedItems.size} items")
@@ -589,6 +594,31 @@ class FileSystemBrowserViewModel(
         Log.e(TAG, "Exception loading directory", e)
       } finally {
         if (isActive) _isLoading.value = false
+      }
+    }
+  }
+
+  /**
+   * Hides what the user blacklisted, matching the rule folder mode applies: a blacklisted folder
+   * takes its subfolders with it.
+   *
+   * The one thing this does not do is blank a directory the user is standing in. Folder mode can
+   * hide a blacklisted folder because you cannot navigate into a list you cannot see; tree mode can,
+   * by path or breadcrumb, and filtering there would leave an empty screen with no way to tell it
+   * apart from a genuinely empty folder. Inside a blacklisted directory nothing is filtered, which
+   * is also what makes it a usable escape hatch.
+   */
+  private fun blacklistItems(
+    items: List<FileSystemItem>,
+    blacklist: Set<String>,
+    currentPath: String,
+  ): List<FileSystemItem> {
+    if (blacklist.isEmpty()) return items
+    if (blacklist.any { currentPath.equals(it, ignoreCase = true) }) return items
+    return items.filter { item ->
+      blacklist.none { blocked ->
+        item.path.equals(blocked, ignoreCase = true) ||
+          item.path.startsWith(if (blocked.endsWith("/")) blocked else "$blocked/", ignoreCase = true)
       }
     }
   }
