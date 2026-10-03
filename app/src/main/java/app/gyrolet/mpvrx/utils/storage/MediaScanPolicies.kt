@@ -47,13 +47,22 @@ internal fun isAndroidDataAccessiblePath(file: File?): Boolean {
   return normalizedPath.endsWith("/android") || normalizedPath.contains("/android/data")
 }
 
+/**
+ * Compiled once: [normalizeStoragePath] runs a few million times on a full storage scan
+ * (twice per MediaStore row, twice per directory in the tree walk), so recompiling the
+ * pattern per call dominated the scan.
+ */
+private val MULTI_SLASH = Regex("/+")
+
 internal fun normalizeStoragePath(path: String?): String? {
   val rawPath = path?.trim()?.replace('\\', '/') ?: return null
   if (rawPath.isBlank()) {
     return null
   }
 
-  val collapsedSeparators = rawPath.replace(Regex("/+"), "/")
+  // Collapse runs of separators only when there is one to collapse, so the common case
+  // allocates nothing extra.
+  val collapsedSeparators = if (rawPath.contains("//")) rawPath.replace(MULTI_SLASH, "/") else rawPath
   val normalized =
     if (collapsedSeparators.length > 1) {
       collapsedSeparators.trimEnd('/')
@@ -111,20 +120,6 @@ internal fun isStoragePathDescendant(
   val candidateKey = storagePathKey(normalizedCandidate) ?: return false
 
   return candidateKey != parentKey && candidateKey.startsWith("$parentKey/")
-}
-
-internal fun isDirectStorageChild(
-  parentPath: String?,
-  candidatePath: String?,
-): Boolean {
-  val parentKey = storagePathKey(parentPath) ?: return false
-  val candidateKey = storagePathKey(candidatePath) ?: return false
-  if (candidateKey == parentKey || !candidateKey.startsWith("$parentKey/")) {
-    return false
-  }
-
-  val relativePath = candidateKey.removePrefix("$parentKey/")
-  return !relativePath.contains('/')
 }
 
 internal fun choosePreferredStoragePath(

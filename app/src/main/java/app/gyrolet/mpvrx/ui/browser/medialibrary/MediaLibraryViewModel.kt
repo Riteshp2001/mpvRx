@@ -26,12 +26,16 @@ import app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -51,7 +55,12 @@ class MediaLibraryViewModel(
 
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-  private var playbackIndexByIdentifier: Map<String, Int> = emptyMap()
+
+  @Volatile private var playbackIndexByIdentifier: Map<String, Int> = emptyMap()
+
+  private val loadJob = AtomicReference<Job?>(null)
+  private val loadGeneration = AtomicInteger(0)
+  private val loadLock = Any()
 
   private val tag = "MediaLibraryViewModel"
 
@@ -64,38 +73,70 @@ class MediaLibraryViewModel(
     }
     viewModelScope.launch(Dispatchers.IO) {
       PlaybackStateEvents.changes.collectLatest { mediaIdentifier ->
-        if (_videos.value.isNotEmpty()) updatePlaybackInfo(mediaIdentifier)
+        // Mid-scan the raw list and the decorated list are from different generations, so the
+        // size guard below would fail and rebuild the whole index on every single event.
+        if (loadJob.get()?.isActive != true && _videos.value.isNotEmpty()) updatePlaybackInfo(mediaIdentifier)
       }
     }
   }
 
   private fun loadData() {
-    viewModelScope.launch(Dispatchers.IO) {
-      try {
-        _isLoading.value = true
-        var videoList =
-          MediaFileRepository.getAllVideos(
-            context = getApplication(),
-            includeAudioOverride = true,
-          )
+    var lastPublishAt = 0L
+    // Media events arrive in bursts, and each load lists every folder, so only the newest run is
+    // wanted. Reached from both the main thread and an IO collector, so retiring the previous
+    // job and publishing the new one has to be one step; otherwise a run started mid-swap is
+    // never cancelled and two full library scans end up racing.
+    synchronized(loadLock) {
+      loadJob.getAndSet(null)?.cancel()
+      val generation = loadGeneration.incrementAndGet()
+      loadJob.set(
+        viewModelScope.launch(Dispatchers.IO) {
+          try {
+            _isLoading.value = true
+            val videoList =
+              MediaFileRepository.getAllVideos(
+                context = getApplication(),
+                includeAudioOverride = true,
+                // Republish as results stream in so the list appears instead of one long
+                // spinner. Throttled, and always with matching playback info, because every
+                // publish re-sorts the list and restarts the thumbnail pipeline.
+                onPartial = publish@{ partial ->
+                  if (partial.isEmpty()) return@publish
+                  val now = System.currentTimeMillis()
+                  if (now - lastPublishAt < PARTIAL_PUBLISH_INTERVAL_MS) return@publish
+                  lastPublishAt = now
+                  _videos.value = partial
+                  loadPlaybackInfo(partial)
+                },
+              )
 
-        if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
-          videoList =
-            MetadataRetrieval.enrichVideosIfNeeded(
-              context = getApplication(),
-              videos = videoList,
-              browserPreferences = browserPreferences,
-              metadataCache = metadataCache,
-            )
-        }
+            val enriched =
+              if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
+                MetadataRetrieval.enrichVideosIfNeeded(
+                  context = getApplication(),
+                  videos = videoList,
+                  browserPreferences = browserPreferences,
+                  metadataCache = metadataCache,
+                )
+              } else {
+                videoList
+              }
 
-        _videos.value = videoList
-        loadPlaybackInfo(videoList)
-      } catch (e: Exception) {
-        Log.e(tag, "Error loading media library videos", e)
-      } finally {
-        _isLoading.value = false
-      }
+            // A superseded run must not overwrite the newer one it raced with.
+            if (generation == loadGeneration.get()) {
+              _videos.value = enriched
+              loadPlaybackInfo(enriched)
+            }
+          } catch (e: CancellationException) {
+            throw e
+          } catch (e: Exception) {
+            Log.e(tag, "Error loading media library videos", e)
+          } finally {
+            // A superseded run must not clear the flag its replacement already raised.
+            if (generation == loadGeneration.get()) _isLoading.value = false
+          }
+        },
+      )
     }
   }
 
@@ -167,6 +208,12 @@ class MediaLibraryViewModel(
   }
 
   companion object {
+    /**
+     * Floor between two mid-scan publishes. Each one re-sorts the library and restarts the
+     * thumbnail pipeline, so unthrottled streaming would cost more than it saves.
+     */
+    private const val PARTIAL_PUBLISH_INTERVAL_MS = 700L
+
     fun factory(application: Application): ViewModelProvider.Factory =
       object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

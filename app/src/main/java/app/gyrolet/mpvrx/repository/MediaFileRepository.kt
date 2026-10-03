@@ -31,7 +31,13 @@ import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.mediaPathKey
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -368,6 +374,8 @@ object MediaFileRepository : KoinComponent {
           currentScanOptions(includeAudioOverride),
           forceFileSystemCheck,
         )
+      } catch (cancellation: CancellationException) {
+        throw cancellation
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for bucket $bucketId", e)
         emptyList()
@@ -375,31 +383,60 @@ object MediaFileRepository : KoinComponent {
     }
 
   /**
+   * Folders scanned at once. Every bucket costs a MediaStore query plus, for hidden folders, a
+   * native metadata pass per file, so they are resolved concurrently in bounded chunks rather
+   * than one after another.
+   */
+  private const val BUCKET_SCAN_CHUNK_SIZE = 8
+
+  /**
    * Gets videos from multiple folders
    * Shows all videos including hidden ones.
+   *
+   * @param onPartial invoked with the videos resolved so far after each chunk, so callers can
+   *   paint before the whole library is listed.
    */
   suspend fun getVideosForBuckets(
     context: Context,
     bucketIds: Set<String>,
     includeAudioOverride: Boolean? = null,
+    onPartial: (suspend (List<Video>) -> Unit)? = null,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val result = linkedMapOf<String, Video>()
-      for (id in bucketIds) {
-        runCatching {
-          getVideosInFolder(
-            context,
-            id,
-            includeAudioOverride = includeAudioOverride,
-          ).forEach { media ->
-            val key = mediaPathKey(media.path) ?: media.path
-            val existing = result[key]
-            if (existing == null || shouldReplaceMedia(existing, media)) {
-              result[key] = media
-            }
+
+      fun absorb(media: List<Video>) {
+        for (item in media) {
+          val key = mediaPathKey(item.path) ?: item.path
+          val existing = result[key]
+          if (existing == null || shouldReplaceMedia(existing, item)) {
+            result[key] = item
           }
         }
       }
+
+      for (chunk in bucketIds.chunked(BUCKET_SCAN_CHUNK_SIZE)) {
+        currentCoroutineContext().ensureActive()
+        val resolved =
+          coroutineScope {
+            chunk
+              .map { id ->
+                async(Dispatchers.IO) {
+                  try {
+                    getVideosInFolder(context, id, includeAudioOverride = includeAudioOverride)
+                  } catch (cancellation: CancellationException) {
+                    // Never absorbed: swallowing this would keep a superseded scan alive.
+                    throw cancellation
+                  } catch (_: Exception) {
+                    emptyList()
+                  }
+                }
+              }.awaitAll()
+          }
+        resolved.forEach(::absorb)
+        onPartial?.invoke(result.values.toList())
+      }
+
       result.values.toList()
     }
 
@@ -563,11 +600,12 @@ object MediaFileRepository : KoinComponent {
   suspend fun getAllVideos(
     context: Context,
     includeAudioOverride: Boolean? = null,
+    onPartial: (suspend (List<Video>) -> Unit)? = null,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val folders = getAllVideoFolders(context, includeAudioOverride = includeAudioOverride)
       val bucketIds = folders.map { it.bucketId }.toSet()
-      getVideosForBuckets(context, bucketIds, includeAudioOverride)
+      getVideosForBuckets(context, bucketIds, includeAudioOverride, onPartial)
     }
 
   // =============================================================================

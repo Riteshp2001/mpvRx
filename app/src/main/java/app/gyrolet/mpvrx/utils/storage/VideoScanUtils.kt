@@ -62,10 +62,18 @@ object VideoScanUtils : KoinComponent {
         return@withContext emptyList()
       }
 
+      // MediaStore never indexes a dot directory or anything below a hidden-folder marker, so a
+      // query scoped to one of those can only ever come back empty. With dot-folder scanning on
+      // those folders are the majority the library asks about, and each wasted query is a full
+      // scan-and-filter of the media table.
+      val mediaStoreVisible = isMediaStoreVisible(folder, options.normalizedHiddenFolderMarkerNames)
+
       // Try MediaStore first (fast)
-      scanVideosFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter)
-      if (options.includeAudio) {
-        scanAudioFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter, options)
+      if (mediaStoreVisible) {
+        scanVideosFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter)
+        if (options.includeAudio) {
+          scanAudioFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter, options)
+        }
       }
 
       // MediaStore returns 0 duration for .ts/.mts/.m2ts — fix those entries now
@@ -305,6 +313,24 @@ object VideoScanUtils : KoinComponent {
     } catch (e: Exception) {
       Log.e(TAG, "MediaStore audio scan error", e)
     }
+  }
+
+/**
+   * Whether MediaStore can index media under [folder].
+   *
+   * Covers the two rules MediaStore actually applies: dot-prefixed directories, and directories
+   * carrying one of [markerNames] (the folder itself or any ancestor). The audiobook marker is
+   * deliberately not considered, because MediaStore does not honour it, and skipping its query
+   * would replace indexed rows with filesystem-derived ones.
+   */
+  private fun isMediaStoreVisible(folder: File, markerNames: Set<String>): Boolean {
+    var current: File? = folder
+    while (current != null) {
+      if (current.name.startsWith(".")) return false
+      if (markerNames.any { marker -> File(current, marker).isFile }) return false
+      current = current.parentFile
+    }
+    return true
   }
 
   /**
@@ -699,19 +725,35 @@ object FileFilterUtils {
     options: MediaScanOptions = MediaScanOptions(),
     noMediaPathFilter: NoMediaPathFilter = NoMediaPathFilter(options),
   ): Boolean {
+    val name = folder.name.lowercase()
+
     if (isAndroidDataAccessiblePath(folder)) {
       // Allow navigation/scanning into Android/data so app-specific video folders
       // can appear in both the folder list and filesystem browser.
-      return folder.name.startsWith(".") && !options.includeNoMediaFolders
+      if (name.startsWith(".")) return !options.includeNoMediaFolders
+
+      // The Android/data and Android entries themselves are named "data" and "android", both of
+      // which are on the deny list, so they must stay reachable. Their descendants are not
+      // exempt: without this, every app's cache/, temp/, logs/ and backup/ tree was walked in
+      // full, which is the bulk of shared storage once dot-folder scanning is on.
+      if (isAndroidDataEntryPoint(folder)) return false
+
+      return SKIP_FOLDERS.contains(name)
     }
 
     if (noMediaPathFilter.shouldExcludeDirectory(folder)) {
       return true
     }
 
-    val name = folder.name.lowercase()
     val isHidden = name.startsWith(".")
     return (isHidden && !options.includeNoMediaFolders) || SKIP_FOLDERS.contains(name)
+  }
+
+  /** True for the `Android` and `Android/data` directories that must stay traversable. */
+  private fun isAndroidDataEntryPoint(folder: File): Boolean {
+    val normalizedName = folder.name.lowercase()
+    if (normalizedName == "android") return true
+    return normalizedName == "data" && folder.parentFile?.name.equals("android", ignoreCase = true)
   }
 
   /**
