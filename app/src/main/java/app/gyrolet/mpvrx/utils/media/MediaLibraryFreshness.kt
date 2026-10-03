@@ -22,10 +22,11 @@ import android.util.Log
  * cold launch. Comparing a cheap MediaStore token lets a warm start keep the snapshot instead of
  * re-deriving what it already has.
  *
- * [MediaStore.getMediaVersion] only exists from API 29 and changes whenever MediaProvider's tables
- * are written. Below that there is no equivalent token, so one is managed locally and bumped by
- * [MediaScanReceiver] whenever the platform reports a media scan. That fallback cannot see copies
- * made without a media scan, so [MAX_SNAPSHOT_AGE_MS] caps how long any snapshot is trusted.
+ * [MediaStore.getVersion] only exists from API 29 and changes whenever MediaProvider's tables
+ * are written. Below that there is no equivalent token, so this class reports "no signal" and the
+ * caller falls back to its previous behaviour of always rescanning. [MAX_SNAPSHOT_AGE_MS] caps how
+ * long any snapshot is trusted regardless, which covers a change the version did not report, such
+ * as a copy made without triggering a media scan.
  */
 object MediaLibraryFreshness {
   private const val TAG = "MediaLibraryFreshness"
@@ -34,10 +35,7 @@ object MediaLibraryFreshness {
   private const val KEY_TOKEN = "scanned_token"
   private const val KEY_RECORDED_AT = "recorded_at"
 
-  /**
-   * Longest a snapshot is trusted without any corroborating token. Keeps a missed change on
-   * API 26-28 from hiding new media indefinitely, while still avoiding a rescan per app launch.
-   */
+  /** Backstop for a change the token did not report, such as a copy made without a media scan. */
   private const val MAX_SNAPSHOT_AGE_MS = 6L * 60L * 60L * 1000L
 
   /** Whether a folder snapshot taken from the current media state can still be used as-is. */
@@ -47,15 +45,19 @@ object MediaLibraryFreshness {
     if (System.currentTimeMillis() - recordedAt > MAX_SNAPSHOT_AGE_MS) return false
 
     val expected = prefs(context).getString(KEY_TOKEN, null) ?: return false
-    return expected == currentToken(context)
+    // No token means no signal, which is treated as "changed" so an unreadable version can never
+    // be mistaken for an unchanged library.
+    val current = currentToken(context) ?: return false
+    return expected == current
   }
 
   /** Called after a scan completes, alongside writing the snapshot it produced. */
   fun recordScan(context: Context) {
+    val token = currentToken(context) ?: return
     runCatching {
       prefs(context)
         .edit()
-        .putString(KEY_TOKEN, currentToken(context))
+        .putString(KEY_TOKEN, token)
         .putLong(KEY_RECORDED_AT, System.currentTimeMillis())
         .apply()
     }.onFailure { error ->
@@ -63,31 +65,28 @@ object MediaLibraryFreshness {
     }
   }
 
-  /**
-   * Invalidates the snapshot when the platform reports new or changed media. Redundant on API 29+
-   * where the MediaStore token already moved, but it is the only signal available below that.
-   */
-  fun markLibraryChanged(context: Context) {
-    runCatching {
-      prefs(context)
-        .edit()
-        .putString(KEY_TOKEN, "changed:${System.currentTimeMillis()}")
-        .apply()
-    }.onFailure { error ->
-      Log.w(TAG, "Unable to invalidate media library freshness", error)
-    }
-  }
-
   private fun prefs(context: Context) =
     context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
-  private fun currentToken(context: Context): String =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      runCatching { MediaStore.getMediaVersion(context) }.getOrElse { error ->
-        Log.w(TAG, "Unable to read the MediaStore version", error)
-        "unavailable"
+  /**
+   * A token that changes whenever MediaProvider's tables are written, or null when no such signal
+   * is available.
+   *
+   * [MediaStore.getVersion] and [MediaStore.getExternalVolumeNames] are API 29+. There is no
+   * equivalent below that, so those versions always rescan and only benefit from the age cap.
+   */
+  private fun currentToken(context: Context): String? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+
+    return runCatching {
+      val volumes = MediaStore.getExternalVolumeNames(context)
+      if (volumes.isEmpty()) {
+        null
+      } else {
+        volumes.sorted().joinToString("|") { volume -> "$volume=${MediaStore.getVersion(context, volume)}" }
       }
-    } else {
-      "legacy"
-    }
+    }.onFailure { error ->
+      Log.w(TAG, "Unable to read the MediaStore version", error)
+    }.getOrNull()
+  }
 }
