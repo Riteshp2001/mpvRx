@@ -387,7 +387,7 @@ class App :
       is PlayerActivity -> {
         PlaybackPerformanceTrace.mark("PLAYER_ACTIVITY_RESUMED")
         activity.window.decorView.postOnAnimation {
-          PlaybackPerformanceTrace.mark("PLAYER_FIRST_FRAME")
+          PlaybackPerformanceTrace.markFirstFrame()
         }
       }
       is MainActivity -> {

@@ -181,7 +181,7 @@ object MediaUtils {
         putExtra(PlayerActivity.EXTRA_VIDEO_WIDTH, selected.width)
         putExtra(PlayerActivity.EXTRA_VIDEO_HEIGHT, selected.height)
       }
-    PlaybackPerformanceTrace.mark("OPEN_REQUEST", "source=$launchSource queue=${videos.size}")
+    PlaybackPerformanceTrace.markOpenRequested("source=$launchSource queue=${videos.size}")
     context.startActivity(intent)
   }
 
@@ -364,8 +364,7 @@ object MediaUtils {
         videoSource?.let { listOf((it.duration / 1000L).toInt().takeIf { d -> d > 0 } ?: 0) } ?: emptyList()
       },
     )
-    PlaybackPerformanceTrace.mark(
-      "OPEN_REQUEST",
+    PlaybackPerformanceTrace.markOpenRequested(
       "source=${launchSource ?: (if (videoSource != null) "library" else "direct")} kind=${if (videoSource != null) "video" else (playbackUri.scheme ?: "path")}",
     )
     context.startActivity(intent)

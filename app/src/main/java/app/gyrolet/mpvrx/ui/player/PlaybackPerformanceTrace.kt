@@ -16,6 +16,7 @@ import app.gyrolet.mpvrx.BuildConfig
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Lightweight playback instrumentation intended for Perfetto/system-trace captures.
@@ -35,6 +36,34 @@ object PlaybackPerformanceTrace : MPVLib.EventObserver {
   private const val TRACE_PREFIX = "mpvRx:"
   private val sectionStartsNs = ConcurrentHashMap<String, Long>()
   private val openSections = ConcurrentHashMap.newKeySet<String>()
+
+  /** Set by [markOpenRequested], consumed by [markFirstFrame]. Zero means no open is in flight. */
+  private val openRequestedNs = AtomicLong(0L)
+
+  /**
+   * Starts the tap-to-first-frame measurement.
+   *
+   * Deliberately not gated on [BuildConfig.DEBUG] the way the individual marks are. The per-mark
+   * milestones are development detail, but "how long did opening a video take" is the one number
+   * that has to be readable from a release build, because that is the build anyone actually
+   * reports a slow open from: a release log had no way to show it, so a slow open and a fast one
+   * were indistinguishable.
+   */
+  fun markOpenRequested(detail: String? = null) {
+    // compareAndSet rather than a plain set: a second open starting before the first reported would
+    // otherwise overwrite the origin of the open actually in flight.
+    openRequestedNs.compareAndSet(0L, SystemClock.elapsedRealtimeNanos())
+    mark("OPEN_REQUEST", detail)
+  }
+
+  /** Ends the measurement started by [markOpenRequested] and reports it. */
+  fun markFirstFrame() {
+    mark("PLAYER_FIRST_FRAME")
+    val startedNs = openRequestedNs.getAndSet(0L)
+    if (startedNs <= 0L) return
+    val elapsedMs = (SystemClock.elapsedRealtimeNanos() - startedNs) / 1_000_000L
+    Log.i(TAG, "open_latency_ms=$elapsedMs")
+  }
 
   fun mark(
     name: String,
