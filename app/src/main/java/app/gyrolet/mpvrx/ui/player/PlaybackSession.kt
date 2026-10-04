@@ -21,6 +21,7 @@ import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.XtreamStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
+import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import `is`.xyz.mpv.MPVLib
@@ -118,6 +119,13 @@ object PlaybackSession : MPVLib.EventObserver {
       "percent-pos",
     )
   private val AUDIO_SUBTITLE_TRACK_PROPERTIES = setOf("aid", "sid", "secondary-sid")
+
+  /** URI schemes whose playback goes through a network protocol in libmpv. */
+  private val STREAMING_OPTION_SCHEMES =
+    setOf(
+      "http", "https", "smb", "nfs", "ftp", "ftps", "sftp",
+      "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh", "sctp", "gopher",
+    )
 
   private enum class EndFileReason {
     EOF,
@@ -237,6 +245,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private val activeAmbientShaderPaths = linkedSetOf<String>()
   private var desiredAmbientScaleX = 1.0
   private var desiredAmbientScaleY = 1.0
+  private var streamingOptionsApplied = false
+  private var appliedUserAgent: String? = null
 
   val isInitialized: Boolean
     get() = initialized
@@ -339,6 +349,7 @@ object PlaybackSession : MPVLib.EventObserver {
         desiredPaused = true
         loadedGeneration = 0L
         defaultUserAgent = null
+        appliedUserAgent = null
         pendingPositionRestoreGeneration = 0L
         pendingPositionRestoreOverride = null
         initialPositionGeneration = 0L
@@ -367,6 +378,7 @@ object PlaybackSession : MPVLib.EventObserver {
           // Preserve the effective default after mpv.conf has been parsed. Per-media request
           // headers may temporarily override it, but must not leak into the next item.
           defaultUserAgent = MPVLib.getPropertyString("user-agent")
+          appliedUserAgent = defaultUserAgent
           postInitOptions()
           MPVLib.getPropertyString("vo")
             ?.takeIf { it.isNotBlank() && it != "null" }
@@ -397,6 +409,7 @@ object PlaybackSession : MPVLib.EventObserver {
           desiredPaused = true
           loadedGeneration = 0L
           defaultUserAgent = null
+          appliedUserAgent = null
           pendingPositionRestoreGeneration = 0L
           pendingPositionRestoreOverride = null
           initialPositionGeneration = 0L
@@ -674,6 +687,7 @@ object PlaybackSession : MPVLib.EventObserver {
     desiredPaused = true
     loadedGeneration = 0L
     defaultUserAgent = null
+    appliedUserAgent = null
     pendingPositionRestoreGeneration = 0L
     pendingPositionRestoreOverride = null
     initialPositionGeneration = 0L
@@ -702,6 +716,7 @@ object PlaybackSession : MPVLib.EventObserver {
     initialized = false
     nativeCoreReady = false
     nativeCoreCreated = false
+    streamingOptionsApplied = false
     activeCoreConfigurationKey = null
     activeUserScriptsKey = null
     clearTimelinePropertiesLocked()
@@ -926,6 +941,7 @@ object PlaybackSession : MPVLib.EventObserver {
     }
     return withCore(default = -1L) {
       if (_state.value.phase == PlaybackPhase.STOPPING) return@withCore -1L
+      applyStreamingOptionsLocked(playableUri)
       AudiobookPlayback.capture()
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
       loadedPlaybackItem = null
@@ -975,12 +991,21 @@ object PlaybackSession : MPVLib.EventObserver {
         )
       }
       clearTimelinePropertiesLocked()
-      val userAgent = PlaybackHttpHeaders.userAgent(resolvedItem.headers)
-      val headerFields = PlaybackHttpHeaders.toMpvHeaderFields(resolvedItem.headers)
       // URL-specific headers are request metadata, not a global mpv preference. Always apply the
-      // media UA, then restore the post-mpv.conf default for a headerless item.
-      MPVLib.setPropertyString("user-agent", userAgent ?: defaultUserAgent.orEmpty())
-      MPVLib.setPropertyString("http-header-fields", headerFields)
+      // media UA, then restore the post-mpv.conf default for a headerless item. Both writes are
+      // skipped when the value already matches what is applied, so a local file after another
+      // local file costs nothing while a headerless item still gets the default back.
+      val userAgent = PlaybackHttpHeaders.userAgent(resolvedItem.headers) ?: defaultUserAgent.orEmpty()
+      if (userAgent != appliedUserAgent) {
+        MPVLib.setPropertyString("user-agent", userAgent)
+        appliedUserAgent = userAgent
+      }
+      if (resolvedItem.headers.isNotEmpty()) {
+        MPVLib.setPropertyString(
+          "http-header-fields",
+          PlaybackHttpHeaders.toMpvHeaderFields(resolvedItem.headers),
+        )
+      }
       MPVLib.setPropertyString("force-media-title", "")
       MPVLib.setPropertyString("user-data/mpvrx/original-path", smbPath ?: resolvedItem.originalUri)
 
@@ -1710,6 +1735,7 @@ object PlaybackSession : MPVLib.EventObserver {
             loadedGeneration = 0L
             pendingEofSeekGeneration = null
             defaultUserAgent = null
+            appliedUserAgent = null
             pendingPositionRestoreGeneration = 0L
             pendingPositionRestoreOverride = null
             initialPositionGeneration = 0L
@@ -1996,6 +2022,52 @@ object PlaybackSession : MPVLib.EventObserver {
       }.onFailure { error ->
         Log.w(TAG, "Failed to restore video track ${suspended.id} after Surface reattachment", error)
       }
+  }
+
+  /**
+   * Cookie, TLS, cache and reconnect settings. Only libmpv's network protocols read them, and they
+   * are all runtime properties, so they are applied on the first item that actually opens over the
+   * network instead of on every core init. A local file never pays for them.
+   */
+  private fun applyStreamingOptionsLocked(playableUri: String) {
+    if (streamingOptionsApplied) return
+    if (!playableUri.requiresStreamingOptions()) return
+    val context = applicationContext ?: return
+    streamingOptionsApplied = true
+
+    // Use adaptive HLS bitrate selection to avoid forcing the heaviest stream profile.
+    // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
+    setPropertyString("hls-bitrate", "no")
+    setPropertyString("cookies", "yes")
+    setPropertyString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
+    setPropertyString("cache", "auto")
+    setPropertyString("cache-pause", "yes")
+    setPropertyString("cache-pause-wait", "2")
+    setPropertyString("demuxer-max-bytes", "64MiB")
+    setPropertyString("tls-verify", "yes")
+    setPropertyString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
+    // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
+    // Do not use reconnect_at_eof globally: a legitimate VOD EOF must still finish normally.
+    setPropertyString(
+      "demuxer-lavf-o",
+      "http_persistent=0,reconnect=1,reconnect_on_network_error=1,reconnect_streamed=1," +
+        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
+    )
+    // demuxer-lavf-o only reaches demuxer-internal opens (HLS/DASH segments). The primary http(s)
+    // URL is opened by stream_lavf, which reads stream-lavf-o; without it a dropped connection or
+    // one failed seek-reopen permanently stalls network playback (endless buffering).
+    setPropertyString(
+      "stream-lavf-o",
+      "reconnect=1,reconnect_on_network_error=1,reconnect_on_http_error=5xx,reconnect_streamed=1," +
+        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
+    )
+    Log.d(TAG, "Applied streaming options for the first network item of this core")
+  }
+
+  private fun String.requiresStreamingOptions(): Boolean {
+    val scheme = substringBefore("://", missingDelimiterValue = "").lowercase()
+    if (scheme.isEmpty()) return false
+    return scheme in STREAMING_OPTION_SCHEMES
   }
 
   private fun resolvePlayableUri(item: PlaybackItem): ResolvedPlayable {

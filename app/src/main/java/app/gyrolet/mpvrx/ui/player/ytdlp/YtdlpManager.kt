@@ -67,6 +67,9 @@ object YtdlpManager {
   @Volatile
   private var runtimeAssetsPrepared = false
 
+  @Volatile
+  private var bridgeEnvironmentApplied = false
+
   private val installationInfoScript =
     """
     import json, sys
@@ -356,12 +359,46 @@ object YtdlpManager {
 
     return withContext(Dispatchers.IO) {
       installMutex.withLock {
+        applyBridgeEnvironment(context)
         if (!prepareRuntimeAssets(context, onLog)) return@withLock false
         if (!requiresYtdlp(source) || isPlaybackRuntimeReady(context)) return@withLock true
 
         onLog("Preparing the current yt-dlp web playback runtime.\n")
         installYtdlp(context, onLog)
       }
+    }
+  }
+
+  /**
+   * Points libmpv's yt-dlp subprocess at the bundled Python runtime. Only the subprocess reads
+   * these, and it is only ever spawned for an http(s) source, so this stays off the player-open
+   * path where it used to run for every local file. Process env survives a core rebuild.
+   */
+  private fun applyBridgeEnvironment(context: Context) {
+    if (bridgeEnvironmentApplied) return
+    val nativeLibDir = context.applicationInfo.nativeLibraryDir
+    val ytdlDir = getYtdlDir(context).absolutePath
+    try {
+      Os.setenv("YTDL_PYTHON", File(nativeLibDir, "libpython.so").absolutePath, true)
+      Os.setenv("YTDL_SCRIPT", File(ytdlDir, "yt-dlp").absolutePath, true)
+      Os.setenv("PYTHONHOME", ytdlDir, true)
+      // Include both the zip and the directory itself in PYTHONPATH
+      // Also include nativeLibDir for potential .so modules
+      Os.setenv("PYTHONPATH", "$ytdlDir/python313.zip:$ytdlDir:$nativeLibDir", true)
+      Os.setenv("SSL_CERT_FILE", File(context.filesDir, "cacert.pem").absolutePath, true)
+
+      // Add nativeLibDir to PATH so scripts can find our bridge if they search PATH
+      val currentPath = runCatching { Os.getenv("PATH") }.getOrNull()
+      Os.setenv("PATH", if (currentPath.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentPath", true)
+
+      // Set LD_LIBRARY_PATH for the subprocess to find libpython.so's dependencies
+      val currentLd = runCatching { Os.getenv("LD_LIBRARY_PATH") }.getOrNull()
+      Os.setenv("LD_LIBRARY_PATH", if (currentLd.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentLd", true)
+
+      bridgeEnvironmentApplied = true
+      Log.d(TAG, "Environment variables set for ytdl bridge")
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to set environment variables", e)
     }
   }
 
@@ -451,34 +488,7 @@ object YtdlpManager {
     val nativeLibDir = context.applicationInfo.nativeLibraryDir
     val ytdlBinaryPath = File(nativeLibDir, "libytdl.so").absolutePath
     val ytdlDir = getYtdlDir(context).absolutePath
-    val ytDlpScriptPath = File(ytdlDir, "yt-dlp").absolutePath
-    val pythonPath = File(nativeLibDir, "libpython.so").absolutePath
     val quickJsPath = File(nativeLibDir, "libqjs.so").absolutePath
-
-    // Set environment variables for the subprocesses started by libmpv
-    try {
-      Os.setenv("YTDL_PYTHON", pythonPath, true)
-      Os.setenv("YTDL_SCRIPT", ytDlpScriptPath, true)
-      Os.setenv("PYTHONHOME", ytdlDir, true)
-      // Include both the zip and the directory itself in PYTHONPATH
-      // Also include nativeLibDir for potential .so modules
-      Os.setenv("PYTHONPATH", "$ytdlDir/python313.zip:$ytdlDir:$nativeLibDir", true)
-      Os.setenv("SSL_CERT_FILE", File(context.filesDir, "cacert.pem").absolutePath, true)
-
-      // Add nativeLibDir to PATH so scripts can find our bridge if they search PATH
-      val currentPath = runCatching { Os.getenv("PATH") }.getOrNull()
-      val newPath = if (currentPath.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentPath"
-      Os.setenv("PATH", newPath, true)
-
-      // Set LD_LIBRARY_PATH for the subprocess to find libpython.so's dependencies
-      val currentLd = runCatching { Os.getenv("LD_LIBRARY_PATH") }.getOrNull()
-      val newLd = if (currentLd.isNullOrBlank()) nativeLibDir else "$nativeLibDir:$currentLd"
-      Os.setenv("LD_LIBRARY_PATH", newLd, true)
-
-      Log.d(TAG, "Environment variables set for ytdl bridge")
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to set environment variables", e)
-    }
 
     // Check if yt-dlp actually exists. If not, log a warning.
     val ytDlpFile = File(ytdlDir, "yt-dlp")

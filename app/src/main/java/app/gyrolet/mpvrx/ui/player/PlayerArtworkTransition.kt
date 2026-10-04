@@ -204,7 +204,10 @@ internal fun PlayerArtworkTransitionOverlay(
             .first()
         }
         if (target != null) {
-          if (reducedMotion) motion.progress.snapTo(1f)
+          // A re-entry into an already-READY session is showing the same frame the poster depicts,
+          // so there is nothing to cross-fade. Snapping keeps the extra 320ms off the open.
+          val alreadyLive = session.phase == PlaybackPhase.READY || session.phase == PlaybackPhase.BACKGROUND
+          if (reducedMotion || alreadyLive) motion.progress.snapTo(1f)
           else motion.progress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
         }
       } finally {

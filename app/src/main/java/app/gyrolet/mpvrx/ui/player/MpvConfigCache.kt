@@ -39,6 +39,20 @@ class MpvConfigCache(
    */
   private var cachedBytes: ByteArray? = null
 
+  /**
+   * [configurationKey] is on the player-open path and used to read the whole file plus hash it on
+   * every open. These two fields let it return immediately when neither the stored configuration
+   * nor the preference it was derived from has moved. A changed preference — or an explicit
+   * [update] — invalidates them, so the file is re-read and re-hashed as before. The only case no
+   * longer observed is an out-of-band rewrite of this app-private file with the preference held
+   * constant, which has no supported flow.
+   */
+  @Volatile
+  private var cachedConfigurationKey: String? = null
+
+  @Volatile
+  private var configurationKeyPreferenceValue: String? = null
+
   init {
     scope.launch {
       preferences.mpvConf.changes().collect {
@@ -49,6 +63,7 @@ class MpvConfigCache(
   }
 
   fun update(content: String): Boolean {
+    cachedConfigurationKey = null
     val result =
       synchronized(lock) {
         updateLocked(content = content, updatePreference = true)
@@ -67,6 +82,8 @@ class MpvConfigCache(
   }
 
   fun configurationKey(): String {
+    val preferenceValue = preferences.mpvConf.get()
+    cachedConfigurationKey?.takeIf { configurationKeyPreferenceValue == preferenceValue }?.let { return it }
     ensureCurrent()
     return synchronized(lock) {
       // [ensureCurrent] always leaves [cachedBytes] matching the file. The fallback only covers a
@@ -75,6 +92,9 @@ class MpvConfigCache(
       val bytes = cachedBytes ?: atomicConfigFile.readFully().also { cachedBytes = it }
       val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
       Base64.encodeToString(digest, Base64.NO_WRAP or Base64.URL_SAFE)
+    }.also {
+      cachedConfigurationKey = it
+      configurationKeyPreferenceValue = preferenceValue
     }
   }
 

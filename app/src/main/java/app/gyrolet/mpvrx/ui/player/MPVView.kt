@@ -19,7 +19,6 @@ import androidx.core.view.WindowInsetsCompat
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
-import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -260,9 +259,6 @@ class MPVView(
     PlaybackSession.setOptionString("keep-open", "yes")
     PlaybackSession.setOptionString("input-default-bindings", "yes")
 
-    PlaybackSession.setOptionString("tls-verify", "yes")
-    PlaybackSession.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
-
     val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
     screenshotDir.mkdirs()
     PlaybackSession.setOptionString("screenshot-directory", screenshotDir.path)
@@ -276,31 +272,8 @@ class MPVView(
     // Let mpv choose the safest path for the active decoder/backend.
     PlaybackSession.setOptionString("vd-lavc-film-grain", "auto")
 
-    // Streaming improvements
-    // Use adaptive HLS bitrate selection to avoid forcing the heaviest stream profile.
-    // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
-    PlaybackSession.setOptionString("hls-bitrate", "no")
-    PlaybackSession.setOptionString("cookies", "yes")
-    PlaybackSession.setOptionString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
-    PlaybackSession.setOptionString("cache", "auto")
-    PlaybackSession.setOptionString("cache-pause", "yes")
-    PlaybackSession.setOptionString("cache-pause-wait", "2")
-    PlaybackSession.setOptionString("demuxer-max-bytes", "64MiB")
-    // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
-    // Do not use reconnect_at_eof globally: a legitimate VOD EOF must still finish normally.
-    PlaybackSession.setOptionString(
-      "demuxer-lavf-o",
-      "http_persistent=0,reconnect=1,reconnect_on_network_error=1,reconnect_streamed=1," +
-        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
-    )
-    // demuxer-lavf-o only reaches demuxer-internal opens (HLS/DASH segments). The primary http(s)
-    // URL is opened by stream_lavf, which reads stream-lavf-o; without it a dropped connection or
-    // one failed seek-reopen permanently stalls network playback (endless buffering).
-    PlaybackSession.setOptionString(
-      "stream-lavf-o",
-      "reconnect=1,reconnect_on_network_error=1,reconnect_on_http_error=5xx,reconnect_streamed=1," +
-        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
-    )
+    // Cache, TLS, cookie and reconnect settings are applied by PlaybackSession on the first
+    // item that actually opens over the network, so a local file never pays for them.
     // Drop only video-output-bound late frames when rendering cannot keep up.
     // This prevents long-term jitter buildup without aggressively sacrificing smoothness.
     PlaybackSession.setOptionString("framedrop", "vo")

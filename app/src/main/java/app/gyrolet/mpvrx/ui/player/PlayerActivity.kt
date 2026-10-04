@@ -463,6 +463,7 @@ class PlayerActivity :
   private var backgroundHandoffJob: Job? = null
   private var deferredFontSyncJob: Job? = null
   private var deferredMpvAssetSyncJob: Job? = null
+  private var mpvAssetPreparationJob: Job? = null
   private var systemBarsAutoHideJob: Job? = null
   private var videoParamRefreshJob: Job? = null
   private var intentSubtitleJob: Job? = null
@@ -663,6 +664,9 @@ class PlayerActivity :
     applyInitialVideoOrientation(intent)
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    // Kick the multi-MB asset copy and the user mpv.conf SAF walk off the main thread first, so
+    // they run concurrently with everything below instead of being joined inside setupMPV().
+    startMpvAssetPreparation()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
       intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER
     ) {
@@ -1675,6 +1679,7 @@ class PlayerActivity :
     backgroundHandoffJob?.cancel()
     deferredFontSyncJob?.cancel()
     deferredMpvAssetSyncJob?.cancel()
+    mpvAssetPreparationJob?.cancel()
     mediaLoadJob?.cancel()
     cancelPlaybackLoadRecovery()
     eofAdvanceJob?.cancel()
@@ -2610,18 +2615,13 @@ class PlayerActivity :
    * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
   private fun setupMPV(): String? {
-    // Prepare config and user MPV assets before initializing MPV. These are multi-MB APK asset
-    // copies, preference reads and a SAF tree walk, so they run on IO but are still joined here:
-    // MPV must not initialize, and onCreate must not continue, before they have completed.
-    runCatching {
-      val preparationStartedAt = android.os.SystemClock.elapsedRealtime()
-      syncBundledAssetsIfNeeded()
-      prepareUserMpvAssetsForStartup()
-      val elapsed = android.os.SystemClock.elapsedRealtime() - preparationStartedAt
-      Log.d(TAG, "MPV startup assets ready in $elapsed ms")
-    }.onFailure { e ->
-      Log.e(TAG, "Error copying MPV config and assets", e)
-    }
+    // The asset prep itself was already started on IO at the top of onCreate, so by the time we
+    // get here it has overlapped layout inflation and the Compose trees. Only MPVLib.init() needs
+    // the scripts on disk, so that is the single point where the work is joined.
+    val waitStartedAt = android.os.SystemClock.elapsedRealtime()
+    runCatching { joinMpvAssetPreparation() }
+      .onFailure { e -> Log.e(TAG, "Error copying MPV config and assets", e) }
+    Log.d(TAG, "MPV startup assets joined in ${android.os.SystemClock.elapsedRealtime() - waitStartedAt} ms")
 
     player.onSurfaceReady = {
       if (!isDeviceScreenOffOrLocked() && (isInBackgroundPlayback || lastVid > 0)) {
@@ -2650,6 +2650,29 @@ class PlayerActivity :
 
     scheduleDeferredSubtitleFontsSync()
     return null
+  }
+
+  /**
+   * Starts the multi-MB asset copy and the user mpv.conf SAF walk on IO. Called at the top of
+   * onCreate so they overlap layout inflation, Compose setup and the notification channel instead
+   * of blocking them.
+   */
+  private fun startMpvAssetPreparation() {
+    mpvAssetPreparationJob?.cancel()
+    mpvAssetPreparationJob =
+      lifecycleScope.launch(Dispatchers.IO) {
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        runCatching {
+          syncBundledAssetsIfNeeded()
+          prepareUserMpvAssetsForStartup()
+        }.onFailure { e -> Log.e(TAG, "Error copying MPV config and assets", e) }
+        Log.d(TAG, "MPV startup assets prepared in ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
+      }
+  }
+
+  /** The only point that must wait: MPVLib.init() loads the scripts this produced. */
+  private fun joinMpvAssetPreparation() {
+    runBlocking { mpvAssetPreparationJob?.join() }
   }
 
   private fun prepareUserMpvAssetsForStartup() {
@@ -4494,7 +4517,9 @@ class PlayerActivity :
     currentUri?.let { viewModel.calculateVideoHash(it) }
 
     reportJellyfinStop()
-    currentUri?.toString()?.let { url ->
+    // Only a remote server can hold a playback session. A local file has no token, no host and no
+    // reachable Emby/Jellyfin endpoint, so building a reporter for it is dead work on this path.
+    currentUri?.takeIf { HttpUtils.isNetworkStream(it) }?.toString()?.let { url ->
       val tokenFromHeader =
         networkPlaylistHeaders.getOrNull(playlistIndex)?.get("X-Emby-Token")
           ?: intent.getStringArrayExtra("headers")?.let { PlaybackHttpHeaders.fromFlatPairs(it)["X-Emby-Token"] }
