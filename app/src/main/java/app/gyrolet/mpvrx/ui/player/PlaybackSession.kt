@@ -21,6 +21,7 @@ import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.XtreamStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
+import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import `is`.xyz.mpv.MPVLib
@@ -108,6 +109,10 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
   private const val AMBIENT_SCALE_EPSILON = 0.000001
+
+  /** Guards against unbounded growth if a core is created but never reaches `mpv_initialize`. */
+  private const val MAX_DEFERRED_CORE_COMMANDS = 64
+
   private val TIMELINE_PROPERTIES =
     setOf(
       "time-pos",
@@ -118,6 +123,13 @@ object PlaybackSession : MPVLib.EventObserver {
       "percent-pos",
     )
   private val AUDIO_SUBTITLE_TRACK_PROPERTIES = setOf("aid", "sid", "secondary-sid")
+
+  /** URI schemes whose playback goes through a network protocol in libmpv. */
+  private val STREAMING_OPTION_SCHEMES =
+    setOf(
+      "http", "https", "smb", "nfs", "ftp", "ftps", "sftp",
+      "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh", "sctp", "gopher",
+    )
 
   private enum class EndFileReason {
     EOF,
@@ -159,6 +171,20 @@ object PlaybackSession : MPVLib.EventObserver {
   private val _videoPanY = MutableStateFlow(0f)
   private val streamSequence = AtomicLong()
   private val observedProperties = mutableSetOf<Pair<String, Int>>()
+
+  /**
+   * Commands issued before `mpv_initialize` has run, replayed in order the moment it has.
+   *
+   * libmpv rejects `mpv_command` on an uninitialized handle with `MPV_ERROR_UNINITIALIZED`
+   * (mpv `player/client.c`), and the JNI shim discards that return code, so every command sent
+   * between `MPVLib.create()` and `MPVLib.init()` used to vanish without a trace. That window is
+   * exactly where `initOptions()` installs the HDR-Toys and Anime4K `glsl-shaders` appends, which
+   * is why those shaders only appeared on a later core. Option and property writes are unaffected:
+   * `mpv_set_property` degrades to `mpv_set_option` while uninitialized, so only commands need this.
+   *
+   * Guarded by [nativeLock].
+   */
+  private val deferredCoreCommands = ArrayDeque<Array<String>>()
   private val seekAudioGuardHandler = Handler(Looper.getMainLooper())
   private val playbackTransitionAudioGuardHandler = Handler(Looper.getMainLooper())
 
@@ -199,6 +225,14 @@ object PlaybackSession : MPVLib.EventObserver {
   @Volatile
   private var initialized = false
   private var nativeCoreReady = false
+
+  /**
+   * Whether libmpv's process-wide `mpv_handle` currently exists, i.e. whether `MPVLib.create` has
+   * run without a matching `MPVLib.destroy`. Mirrors native state that the JNI layer exposes no
+   * accessor for. Guarded by [nativeLock]; `MPVLib.create` exits the process if it is called twice
+   * and `MPVLib.init` exits if it is never called, so it must never disagree with the native layer.
+   */
+  private var nativeCoreCreated = false
   private var pendingEofSeekGeneration: Long? = null
   private var applicationContext: Context? = null
   private var desiredVideoOutput = "gpu"
@@ -229,12 +263,53 @@ object PlaybackSession : MPVLib.EventObserver {
   private val activeAmbientShaderPaths = linkedSetOf<String>()
   private var desiredAmbientScaleX = 1.0
   private var desiredAmbientScaleY = 1.0
+  private var streamingOptionsApplied = false
+  private var appliedUserAgent: String? = null
 
   val isInitialized: Boolean
     get() = initialized
 
+  /**
+   * True only inside the `MPVLib.create()`..`MPVLib.init()` window of a core being created.
+   * [nativeCoreReady] is the single source of that window: it is cleared at the top of every core
+   * (re)build and in [destroyLocked], and only set once `MPVLib.init()` has returned. Init-time
+   * option writers can use it to tell "writing to a pristine core" apart from "writing to a live
+   * core that already ran mpv.conf". Only safe to read while holding [nativeLock], which is
+   * re-entrant for the `initialize()` call stack that runs those writers.
+   */
+  internal val isNativeCorePendingInit: Boolean
+    get() = nativeLock.withLock { !nativeCoreReady }
+
   fun invalidateCoreConfiguration() {
     nativeLock.withLock { activeCoreConfigurationKey = null }
+  }
+
+  /**
+   * Moves libmpv's native core creation off the main thread, ahead of the first video open.
+   *
+   * Touching [MPVLib] for the first time runs its `System.loadLibrary` of the ~30-40MB libmpv
+   * (`dlopen` + ELF relocation + page faults), and `MPVLib.create` then allocates the process-wide
+   * `mpv_handle`. Both used to happen on the main thread inside `initialize()`, before the
+   * SurfaceView surface is created — delaying the `vo` flip and therefore MediaCodec startup.
+   *
+   * libmpv's core is a process-wide singleton with no handle to stash: `MPVLib.create` exits the
+   * process when `g_mpv` is already non-null, and `MPVLib.init` exits when it is null. So this
+   * only creates the core and records that it exists; [initialize] adopts it instead of creating a
+   * second one. [nativeLock] serializes the two, and it is released again immediately, so the main
+   * thread never pays for the load twice.
+   *
+   * Deliberately does *not* call `MPVLib.init()`: that parses mpv.conf and loads Lua scripts, and
+   * every option must first be written by `initOptions()`, which is bound to `MPVView`. Leaving the
+   * core uninitialized costs nothing either, because `destroy()` and `destroyLocked()` are the only
+   * callers of `MPVLib.destroy()` and both are guarded on [initialized].
+   */
+  internal fun prewarmNativeCore(context: Context) {
+    nativeLock.withLock {
+      if (nativeCoreCreated) return
+      runCatching { MPVLib.create(context.applicationContext) }
+        .onSuccess { nativeCoreCreated = true }
+        .onFailure { error -> Log.w(TAG, "Failed to prewarm the libmpv core", error) }
+    }
   }
 
   internal fun userScriptsNeedReload(currentKey: String): Boolean = nativeLock.withLock {
@@ -292,15 +367,22 @@ object PlaybackSession : MPVLib.EventObserver {
         desiredPaused = true
         loadedGeneration = 0L
         defaultUserAgent = null
+        appliedUserAgent = null
         pendingPositionRestoreGeneration = 0L
         pendingPositionRestoreOverride = null
         initialPositionGeneration = 0L
         clearSeekAudioGuardLocked(restoreMute = false)
         clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
         resetAmbientShaderTrackingLocked()
+        clearDeferredCoreCommandsLocked()
         updateState { it.copy(phase = PlaybackPhase.INITIALIZING, error = null) }
         try {
-          MPVLib.create(context.applicationContext)
+          // Adopts the core [prewarmNativeCore] already created instead of calling
+          // MPVLib.create a second time, which libmpv treats as a fatal double-create.
+          if (!nativeCoreCreated) {
+            MPVLib.create(context.applicationContext)
+            nativeCoreCreated = true
+          }
           MPVLib.setOptionString("config", "yes")
           MPVLib.setOptionString("config-dir", configDir)
           MPVLib.setOptionString("gpu-shader-cache-dir", cacheDir)
@@ -312,9 +394,13 @@ object PlaybackSession : MPVLib.EventObserver {
           // Runtime properties do not exist between MPVLib.create() and MPVLib.init(). Keep option
           // writes available in that window, but permit property reads only from this point on.
           nativeCoreReady = true
+          // libmpv only accepts mpv_command once initialized, so replay whatever initOptions()
+          // parked before the core was torn down below.
+          flushDeferredCoreCommandsLocked()
           // Preserve the effective default after mpv.conf has been parsed. Per-media request
           // headers may temporarily override it, but must not leak into the next item.
           defaultUserAgent = MPVLib.getPropertyString("user-agent")
+          appliedUserAgent = defaultUserAgent
           postInitOptions()
           MPVLib.getPropertyString("vo")
             ?.takeIf { it.isNotBlank() && it != "null" }
@@ -335,6 +421,7 @@ object PlaybackSession : MPVLib.EventObserver {
           runCatching { MPVLib.destroy() }
           initialized = false
           nativeCoreReady = false
+          nativeCoreCreated = false
           activeCoreConfigurationKey = null
           activeUserScriptsKey = null
           suspendedVideoTrack = null
@@ -344,12 +431,14 @@ object PlaybackSession : MPVLib.EventObserver {
           desiredPaused = true
           loadedGeneration = 0L
           defaultUserAgent = null
+          appliedUserAgent = null
           pendingPositionRestoreGeneration = 0L
           pendingPositionRestoreOverride = null
           initialPositionGeneration = 0L
           clearSeekAudioGuardLocked(restoreMute = false)
           clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
           resetAmbientShaderTrackingLocked()
+          clearDeferredCoreCommandsLocked()
           updateState {
             it.copy(
               phase = PlaybackPhase.ERROR,
@@ -621,6 +710,7 @@ object PlaybackSession : MPVLib.EventObserver {
     desiredPaused = true
     loadedGeneration = 0L
     defaultUserAgent = null
+    appliedUserAgent = null
     pendingPositionRestoreGeneration = 0L
     pendingPositionRestoreOverride = null
     initialPositionGeneration = 0L
@@ -643,11 +733,14 @@ object PlaybackSession : MPVLib.EventObserver {
     observers.clear()
     observedProperties.clear()
     resetAmbientShaderTrackingLocked()
+    clearDeferredCoreCommandsLocked()
     _videoZoom.value = 0f
     _videoPanX.value = 0f
     _videoPanY.value = 0f
     initialized = false
     nativeCoreReady = false
+    nativeCoreCreated = false
+    streamingOptionsApplied = false
     activeCoreConfigurationKey = null
     activeUserScriptsKey = null
     clearTimelinePropertiesLocked()
@@ -872,6 +965,7 @@ object PlaybackSession : MPVLib.EventObserver {
     }
     return withCore(default = -1L) {
       if (_state.value.phase == PlaybackPhase.STOPPING) return@withCore -1L
+      applyStreamingOptionsLocked(playableUri)
       AudiobookPlayback.capture()
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
       loadedPlaybackItem = null
@@ -921,12 +1015,21 @@ object PlaybackSession : MPVLib.EventObserver {
         )
       }
       clearTimelinePropertiesLocked()
-      val userAgent = PlaybackHttpHeaders.userAgent(resolvedItem.headers)
-      val headerFields = PlaybackHttpHeaders.toMpvHeaderFields(resolvedItem.headers)
       // URL-specific headers are request metadata, not a global mpv preference. Always apply the
-      // media UA, then restore the post-mpv.conf default for a headerless item.
-      MPVLib.setPropertyString("user-agent", userAgent ?: defaultUserAgent.orEmpty())
-      MPVLib.setPropertyString("http-header-fields", headerFields)
+      // media UA, then restore the post-mpv.conf default for a headerless item. Both writes are
+      // skipped when the value already matches what is applied, so a local file after another
+      // local file costs nothing while a headerless item still gets the default back.
+      val userAgent = PlaybackHttpHeaders.userAgent(resolvedItem.headers) ?: defaultUserAgent.orEmpty()
+      if (userAgent != appliedUserAgent) {
+        MPVLib.setPropertyString("user-agent", userAgent)
+        appliedUserAgent = userAgent
+      }
+      if (resolvedItem.headers.isNotEmpty()) {
+        MPVLib.setPropertyString(
+          "http-header-fields",
+          PlaybackHttpHeaders.toMpvHeaderFields(resolvedItem.headers),
+        )
+      }
       MPVLib.setPropertyString("force-media-title", "")
       MPVLib.setPropertyString("user-data/mpvrx/original-path", smbPath ?: resolvedItem.originalUri)
 
@@ -1028,8 +1131,44 @@ object PlaybackSession : MPVLib.EventObserver {
     withCore(Unit) {
       val preparedCommand = prepareSeekCommandLocked(command)
       if (handleAmbientShaderCommandLocked(preparedCommand)) return@withCore
-      MPVLib.command(*preparedCommand)
+      runCoreCommandLocked(preparedCommand)
     }
+  }
+
+  /**
+   * Runs a command that libmpv will accept, or parks it until the core is initialized.
+   *
+   * Must be called with [nativeLock] held. The parking branch is what makes shader and OSD setup
+   * issued from `initOptions()` survive: those run before `MPVLib.init()`, where `mpv_command`
+   * would otherwise fail silently.
+   */
+  private fun runCoreCommandLocked(command: Array<out String>) {
+    if (!nativeCoreReady) {
+      if (deferredCoreCommands.size >= MAX_DEFERRED_CORE_COMMANDS) {
+        Log.w(TAG, "Dropping deferred MPV command, queue is full: ${command.joinToString(" ")}")
+        deferredCoreCommands.removeFirst()
+      }
+      deferredCoreCommands.addLast(command.map { it }.toTypedArray())
+      return
+    }
+    MPVLib.command(*command)
+  }
+
+  /** Replays everything parked by [runCoreCommandLocked]. Requires [nativeCoreReady]. */
+  private fun flushDeferredCoreCommandsLocked() {
+    if (deferredCoreCommands.isEmpty()) return
+    val pending = deferredCoreCommands.toList()
+    deferredCoreCommands.clear()
+    pending.forEach { command ->
+      runCatching { MPVLib.command(*command) }
+        .onFailure { error -> Log.e(TAG, "Failed to run deferred MPV command", error) }
+    }
+  }
+
+  private fun clearDeferredCoreCommandsLocked() {
+    if (deferredCoreCommands.isEmpty()) return
+    Log.w(TAG, "Discarding ${deferredCoreCommands.size} deferred MPV command(s) for a core that never initialized")
+    deferredCoreCommands.clear()
   }
 
   /** Executes a media-specific command only while its load generation is still current. */
@@ -1656,6 +1795,7 @@ object PlaybackSession : MPVLib.EventObserver {
             loadedGeneration = 0L
             pendingEofSeekGeneration = null
             defaultUserAgent = null
+            appliedUserAgent = null
             pendingPositionRestoreGeneration = 0L
             pendingPositionRestoreOverride = null
             initialPositionGeneration = 0L
@@ -1664,6 +1804,7 @@ object PlaybackSession : MPVLib.EventObserver {
             clearSeekAudioGuardLocked(restoreMute = false)
             clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
             resetAmbientShaderTrackingLocked()
+            clearDeferredCoreCommandsLocked()
             initialized = false
             nativeCoreReady = false
             clearTimelinePropertiesLocked()
@@ -1942,6 +2083,52 @@ object PlaybackSession : MPVLib.EventObserver {
       }.onFailure { error ->
         Log.w(TAG, "Failed to restore video track ${suspended.id} after Surface reattachment", error)
       }
+  }
+
+  /**
+   * Cookie, TLS, cache and reconnect settings. Only libmpv's network protocols read them, and they
+   * are all runtime properties, so they are applied on the first item that actually opens over the
+   * network instead of on every core init. A local file never pays for them.
+   */
+  private fun applyStreamingOptionsLocked(playableUri: String) {
+    if (streamingOptionsApplied) return
+    if (!playableUri.requiresStreamingOptions()) return
+    val context = applicationContext ?: return
+    streamingOptionsApplied = true
+
+    // Use adaptive HLS bitrate selection to avoid forcing the heaviest stream profile.
+    // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
+    setPropertyString("hls-bitrate", "no")
+    setPropertyString("cookies", "yes")
+    setPropertyString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
+    setPropertyString("cache", "auto")
+    setPropertyString("cache-pause", "yes")
+    setPropertyString("cache-pause-wait", "2")
+    setPropertyString("demuxer-max-bytes", "64MiB")
+    setPropertyString("tls-verify", "yes")
+    setPropertyString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
+    // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
+    // Do not use reconnect_at_eof globally: a legitimate VOD EOF must still finish normally.
+    setPropertyString(
+      "demuxer-lavf-o",
+      "http_persistent=0,reconnect=1,reconnect_on_network_error=1,reconnect_streamed=1," +
+        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
+    )
+    // demuxer-lavf-o only reaches demuxer-internal opens (HLS/DASH segments). The primary http(s)
+    // URL is opened by stream_lavf, which reads stream-lavf-o; without it a dropped connection or
+    // one failed seek-reopen permanently stalls network playback (endless buffering).
+    setPropertyString(
+      "stream-lavf-o",
+      "reconnect=1,reconnect_on_network_error=1,reconnect_on_http_error=5xx,reconnect_streamed=1," +
+        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
+    )
+    Log.d(TAG, "Applied streaming options for the first network item of this core")
+  }
+
+  private fun String.requiresStreamingOptions(): Boolean {
+    val scheme = substringBefore("://", missingDelimiterValue = "").lowercase()
+    if (scheme.isEmpty()) return false
+    return scheme in STREAMING_OPTION_SCHEMES
   }
 
   private fun resolvePlayableUri(item: PlaybackItem): ResolvedPlayable {

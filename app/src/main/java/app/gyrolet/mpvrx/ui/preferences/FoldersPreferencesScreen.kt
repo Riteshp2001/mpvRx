@@ -76,6 +76,7 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
+import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import app.gyrolet.mpvrx.utils.storage.normalizeHiddenMarkerName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -521,7 +522,7 @@ private fun BlacklistedFolderItem(
         }
         Column {
           Text(
-            text = folderPath.substringAfterLast('/'),
+            text = leafStorageName(folderPath),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
           )
@@ -814,7 +815,7 @@ private suspend fun scanAllMediaFolders(context: Application): List<VideoFolder>
   val extraAudioFolders = audioFolderPaths.filter { path -> path.lowercase() !in existingPaths }.map { path ->
     VideoFolder(
       bucketId = path,
-      name = path.substringAfterLast('/'),
+      name = leafStorageName(path),
       path = path,
       videoCount = 0,
       totalSize = 0L,

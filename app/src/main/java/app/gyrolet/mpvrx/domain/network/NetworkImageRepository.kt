@@ -236,6 +236,18 @@ class NetworkImageRepository(
    * file name is derived from the remote mtime, so editing a file on the server strands its old
    * thumbnail forever — the age sweep is the only thing that reclaims those.
    */
+  /**
+   * Age/size sweep for re-downloadable image caches.
+   *
+   * Only [fullImageDir] is swept. That directory holds the raw downloaded originals under
+   * `cacheDir`, so the platform can reclaim it whenever it wants and a stale copy costs nothing
+   * but a re-download.
+   *
+   * [thumbnailDir] is deliberately excluded: it lives under `filesDir` and holds the thumbnails the
+   * user has already generated, which are kept for the lifetime of the install and removed only by
+   * an explicit cache clear, the same as the local video thumbnails. Ageing them out would silently
+   * regenerate work the user already paid for, which is exactly what we do not want.
+   */
   fun evictStaleImageCaches(
     maxAgeDays: Int = 30,
     maxSizeBytes: Long = DEFAULT_MAX_CACHE_BYTES,
@@ -243,7 +255,6 @@ class NetworkImageRepository(
     val now = System.currentTimeMillis()
     val maxAgeMs = maxAgeDays * 24L * 60 * 60 * 1000
 
-    deleteFilesOlderThan(thumbnailDir, now, maxAgeMs)
     deleteFilesOlderThan(fullImageDir, now, maxAgeMs)
 
     val remaining = fullImageDir.listFiles()?.filter { it.isFile } ?: return

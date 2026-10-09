@@ -15,6 +15,7 @@ import app.gyrolet.mpvrx.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
@@ -24,6 +25,9 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+
+/** Signals that the resuming attempt must be abandoned and retried without a Range header. */
+private object RetryWithoutRangeSignal : IOException("Stored partial is not resumable")
 
 class UpdateManager(
   private val context: Context,
@@ -216,43 +220,119 @@ class UpdateManager(
     }
   }
 
+  /**
+   * Downloads to a sidecar `.part` file and promotes it on success, so an interrupted download
+   * never leaves a truncated APK that [getApkFile] would happily offer to install. When a `.part`
+   * already exists the request asks for the remaining byte range, so closing and reopening the app
+   * continues where it stopped instead of starting over. Servers that ignore Range answer 200 with
+   * the whole body, which is detected and treated as a fresh start.
+   */
   private fun downloadApk(
     url: String,
     destination: File,
   ): Flow<Float> =
     flow {
-      val request = Request.Builder().url(url).build()
-      val response = client.newCall(request).execute()
-      if (!response.isSuccessful) throw IOException("Unexpected code $response")
-
-      val body = response.body
-      val contentLength = body.contentLength()
-      val inputStream = body.byteStream()
-      val outputStream = FileOutputStream(destination)
-
+      val partial = File(destination.absolutePath + PART_SUFFIX)
       try {
-        val buffer = ByteArray(8 * 1024)
-        var bytesRead: Int
-        var totalBytesRead: Long = 0
-
-        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-          outputStream.write(buffer, 0, bytesRead)
-          totalBytesRead += bytesRead
-          val progress =
-            if (contentLength > 0) {
-              (totalBytesRead.toFloat() / contentLength.toFloat()) * 100
-            } else {
-              -1f
-            }
-          emit(progress)
-        }
-        outputStream.flush()
-        emit(100f)
-      } finally {
-        inputStream.close()
-        outputStream.close()
+        emitAll(downloadAttempt(url, destination, partial, allowResume = true))
+        return@flow
+      } catch (_: RetryWithoutRangeSignal) {
+        // Stored partial is unusable; the attempt already discarded it, so start clean.
       }
+      emitAll(downloadAttempt(url, destination, partial, allowResume = false))
     }.flowOn(Dispatchers.IO)
+
+  private fun downloadAttempt(
+    url: String,
+    destination: File,
+    partial: File,
+    allowResume: Boolean,
+  ): Flow<Float> =
+    flow {
+      val alreadyDownloaded = if (allowResume) partial.takeIf { it.isFile }?.length() ?: 0L else 0L
+
+      val request =
+        Request.Builder()
+          .url(url)
+          .apply { if (alreadyDownloaded > 0L) header("Range", "bytes=$alreadyDownloaded-") }
+          .build()
+
+      client.newCall(request).execute().use { response ->
+        if (response.code == HTTP_RANGE_NOT_SATISFIABLE && allowResume) {
+          partial.delete()
+          throw RetryWithoutRangeSignal
+        }
+        if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+        val body = response.body
+        // 206 means the server honoured our Range. A plain 200 means it ignored it and is sending
+        // the whole asset, so the stored partial must be discarded rather than appended to.
+        val resuming = response.code == HTTP_PARTIAL_CONTENT
+        val appending = resuming && alreadyDownloaded > 0L
+        if (!appending) partial.delete()
+
+        val totalBytes =
+          body.contentLength().takeIf { it > 0L }?.let { if (resuming) alreadyDownloaded + it else it }
+        val inputStream = body.byteStream()
+        val outputStream = FileOutputStream(partial, appending)
+
+        try {
+          val buffer = ByteArray(8 * 1024)
+          var bytesRead: Int
+          var totalBytesRead: Long = if (appending) alreadyDownloaded else 0L
+
+          if (totalBytesRead > 0L) emit(progressOf(totalBytesRead, totalBytes))
+
+          while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            outputStream.write(buffer, 0, bytesRead)
+            totalBytesRead += bytesRead
+            emit(progressOf(totalBytesRead, totalBytes))
+          }
+          outputStream.flush()
+
+          if (totalBytes != null && totalBytesRead < totalBytes) {
+            throw IOException("Incomplete download: $totalBytesRead of $totalBytes bytes")
+          }
+          if (destination.exists()) destination.delete()
+          if (!partial.renameTo(destination)) {
+            throw IOException("Could not move the downloaded APK into place")
+          }
+          emit(100f)
+        } finally {
+          runCatching { inputStream.close() }
+          runCatching { outputStream.close() }
+        }
+      }
+    }
+
+  private fun progressOf(downloaded: Long, total: Long?): Float =
+    if (total != null && total > 0L) (downloaded.toFloat() / total.toFloat()) * 100f else -1f
+
+  /**
+   * Progress already banked from a previous session, so the UI can show a resumed download starting
+   * from where it stopped instead of snapping back to 0%.
+   */
+  suspend fun getResumableProgress(release: Release): Float? {
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return null
+    val asset = selectBestApkAsset(release.assets) ?: return null
+    val partial = File(File(context.externalCacheDir, asset.name).absolutePath + PART_SUFFIX)
+    val downloaded = partial.takeIf { it.isFile }?.takeIf { it.length() > 0L }?.length() ?: return null
+    val total = resolveAssetLength(asset) ?: return null
+    if (total <= downloaded) return null
+    return progressOf(downloaded, total)
+  }
+
+  private suspend fun resolveAssetLength(asset: Asset): Long? =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val request = Request.Builder().url(asset.downloadUrl).method("HEAD", null).build()
+        client.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) return@use null
+          response.header("Content-Length")?.toLongOrNull()
+            ?: response.body.contentLength().takeIf { it > 0L }
+        }
+      }.getOrNull()
+    }
 
   fun getApkFile(release: Release): File? {
     // Return null if update feature is disabled
@@ -272,7 +352,7 @@ class UpdateManager(
     }
 
     context.externalCacheDir?.listFiles()?.forEach {
-      if (it.name.endsWith(".apk")) it.delete()
+      if (it.name.endsWith(".apk") || it.name.endsWith(PART_SUFFIX)) it.delete()
     }
   }
 
@@ -280,6 +360,9 @@ class UpdateManager(
     const val STABLE_RELEASE_URL = "https://api.github.com/repos/Riteshp2001/mpvRx/releases/latest"
     const val PREVIEW_RELEASE_URL = "https://riteshp2001.github.io/mpvRx/latest.json"
     const val LEGACY_IGNORED_VERSION_KEY = "ignored_version"
+    const val PART_SUFFIX = ".part"
+    const val HTTP_PARTIAL_CONTENT = 206
+    const val HTTP_RANGE_NOT_SATISFIABLE = 416
     val PREVIEW_TAG_REGEX = Regex("""(?:preview-)?r(\d+)""", RegexOption.IGNORE_CASE)
     val SUPPORTED_ARCHITECTURES = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
   }

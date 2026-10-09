@@ -46,10 +46,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,6 +83,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.CurrentChapter
 import app.gyrolet.mpvrx.ui.theme.controlColor as defaultControlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.utils.AppHaptics
 import app.gyrolet.mpvrx.ui.utils.isAnyMpvOptionOwnedByConfig
 import app.gyrolet.mpvrx.ui.utils.isMpvOptionOwnedByConfig
 import dev.vivvvek.seeker.Segment
@@ -89,6 +92,23 @@ import org.koin.compose.koinInject
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import app.gyrolet.mpvrx.ui.icons.Icon as AppSymbolIcon
+
+/**
+ * Player-button inputs that [PlayerControls] already holds for the whole control layer.
+ *
+ * [RenderPlayerButton] is invoked once per configured button, so without these it re-resolved the
+ * same Koin singletons and opened a fresh flow collection for every button on every composition.
+ * [PlayerControls] provides them once around the entire control layout; the `null` defaults keep
+ * [RenderPlayerButton] usable outside that subtree.
+ */
+internal val LocalPlayerButtonAdvancedPreferences = staticCompositionLocalOf<AdvancedPreferences?> { null }
+
+internal val LocalPlayerButtonPreferences = staticCompositionLocalOf<PlayerPreferences?> { null }
+
+internal val LocalPlayerButtonHaptics = staticCompositionLocalOf<AppHaptics?> { null }
+
+/** Dynamic (not static) because the statistics page changes at runtime; only readers should update. */
+internal val LocalPlayerButtonStatisticsPage = compositionLocalOf<Int?> { null }
 
 @Composable
 fun RenderPlayerButton(
@@ -115,16 +135,40 @@ fun RenderPlayerButton(
     val controlColor =
       if (compact) androidx.compose.material3.LocalContentColor.current else defaultControlColor
     val clickEvent = LocalPlayerButtonsClickEvent.current
-    val bookmarkHaptics = app.gyrolet.mpvrx.ui.utils.rememberAppHaptics()
+    val providedHaptics = LocalPlayerButtonHaptics.current
+    val bookmarkHaptics =
+      if (providedHaptics != null) {
+        providedHaptics
+      } else {
+        app.gyrolet.mpvrx.ui.utils.rememberAppHaptics()
+      }
     val addPlaybackBookmark = {
       if (viewModel.preparePlaybackBookmark()) {
         bookmarkHaptics.confirm()
         onOpenSheet(Sheets.BookmarkEditor)
       }
     }
-    val advancedPreferences = koinInject<AdvancedPreferences>()
-    val playerPreferences = koinInject<PlayerPreferences>()
-    val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
+    val providedAdvancedPreferences = LocalPlayerButtonAdvancedPreferences.current
+    val advancedPreferences =
+      if (providedAdvancedPreferences != null) {
+        providedAdvancedPreferences
+      } else {
+        koinInject<AdvancedPreferences>()
+      }
+    val providedPlayerPreferences = LocalPlayerButtonPreferences.current
+    val playerPreferences =
+      if (providedPlayerPreferences != null) {
+        providedPlayerPreferences
+      } else {
+        koinInject<PlayerPreferences>()
+      }
+    val providedStatisticsPage = LocalPlayerButtonStatisticsPage.current
+    val statisticsPage =
+      if (providedStatisticsPage != null) {
+        providedStatisticsPage
+      } else {
+        advancedPreferences.enabledStatisticsPage.collectAsState().value
+      }
     when (button) {
     PlayerButton.BACK_ARROW -> {
       ControlsButton(
@@ -831,7 +875,6 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.CUSTOM_SKIP -> {
-      val playerPreferences = org.koin.compose.koinInject<app.gyrolet.mpvrx.preferences.PlayerPreferences>()
       ControlsButton(
         icon = Icons.RoundedFilled.FastForward,
         onClick = { viewModel.seekBy(playerPreferences.customSkipDuration.get()) },

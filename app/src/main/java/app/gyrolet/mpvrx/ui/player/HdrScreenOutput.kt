@@ -178,6 +178,12 @@ fun applyHdrScreenOutputOptions(
   pipelineReady: Boolean,
   boostSdrToHdr: Boolean = false,
 ) {
+  // OFF is mpv's own default colour profile, and these are init-time options: mpv.conf is parsed
+  // by the following MPVLib.init() and still wins over anything written here. On a core that was
+  // just created the ten writes below can only restate mpv's defaults, so skip them. Any core that
+  // has already been initialized (a re-applied option set) keeps the full write path, and so does
+  // the runtime-transition path in applyHdrScreenOutputProperties, which is untouched here.
+  if (mode == HdrScreenMode.OFF && !boostSdrToHdr && PlaybackSession.isNativeCorePendingInit) return
   hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr).forEach { (property, value) ->
     PlaybackSession.setOptionString(property, value)
   }

@@ -64,12 +64,6 @@ val domainModule =
     single { OnlineSubtitleOrchestrator(get<WyzieSearchRepository>(), get<MpvRxSubtitleHubRepository>()) }
     single { IntroDbRepository(get(), get(), androidContext()) }
     single { GitHubContributorsRepository(get(), get(), androidContext()) }
-    single { OpenCodeClient(get(), get()) }
-    single { GroqClient(get(), get()) }
-    single { OpenAiClient(get(), get()) }
-    single { AnthropicClient(get(), get()) }
-    single { OpenRouterClient(get(), get()) }
-    single { TogetherClient(get(), get()) }
     single { GroqSpeechClient(get(), get()) }
     single { OpenRouterSpeechClient(get(), get()) }
     single<AiClient>(named("opencode")) { OpenCodeClient(get(), get()) }

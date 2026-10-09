@@ -20,35 +20,54 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Lightweight playback instrumentation intended for Perfetto/system-trace captures.
  *
- * Trace slices are emitted in every build and are effectively dormant unless app tracing is
- * enabled. Human-readable logcat milestones are restricted to debug builds so production playback
- * does not pay a continuous logging cost.
+ * Trace slices are only emitted while a capture is attached ([android.os.Trace.isEnabled]), so a
+ * release build pays nothing for the atrace JNI calls or the trace-name allocation; slices reappear
+ * in full the moment Perfetto/atrace is attached. The open/close bookkeeping is tracked separately
+ * from the timestamps so a section is only ever closed by the [end] that matches its [begin] —
+ * `Trace.endSection()` on an unopened section corrupts the trace's slice stack.
+ *
+ * Human-readable logcat milestones stay restricted to debug builds. The duration log is not a
+ * tracing feature, so [begin] still records a timestamp whenever either tracing or a debug build
+ * wants it and debug builds keep printing `durationMs=…` with no capture attached.
  */
 object PlaybackPerformanceTrace : MPVLib.EventObserver {
   private const val TAG = "PlaybackPerf"
   private const val TRACE_PREFIX = "mpvRx:"
   private val sectionStartsNs = ConcurrentHashMap<String, Long>()
+  private val openSections = ConcurrentHashMap.newKeySet<String>()
 
   fun mark(
     name: String,
     detail: String? = null,
   ) {
-    val traceName = buildTraceName(name, detail)
-    Trace.beginSection(traceName)
-    Trace.endSection()
+    if (Trace.isEnabled()) {
+      val traceName = buildTraceName(name, detail)
+      Trace.beginSection(traceName)
+      Trace.endSection()
+    }
     if (BuildConfig.DEBUG) {
       Log.d(TAG, "${SystemClock.elapsedRealtimeNanos()} $name${detail?.let { " [$it]" }.orEmpty()}")
     }
   }
 
   fun begin(name: String) {
-    sectionStartsNs[name] = SystemClock.elapsedRealtimeNanos()
-    Trace.beginSection(TRACE_PREFIX + name)
+    val tracing = Trace.isEnabled()
+    if (tracing || BuildConfig.DEBUG) {
+      sectionStartsNs[name] = SystemClock.elapsedRealtimeNanos()
+    }
+    if (tracing) {
+      openSections.add(name)
+      Trace.beginSection(TRACE_PREFIX + name)
+    }
     if (BuildConfig.DEBUG) Log.d(TAG, "BEGIN $name")
   }
 
   fun end(name: String) {
-    Trace.endSection()
+    // Only close a section this thread's begin() actually opened; an unmatched endSection() would
+    // pop somebody else's slice off the trace stack.
+    if (openSections.remove(name)) {
+      Trace.endSection()
+    }
     val startedAt = sectionStartsNs.remove(name)
     if (BuildConfig.DEBUG) {
       val durationMs = startedAt?.let { (SystemClock.elapsedRealtimeNanos() - it) / 1_000_000.0 }

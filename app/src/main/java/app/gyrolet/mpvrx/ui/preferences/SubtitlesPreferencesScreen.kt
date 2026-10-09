@@ -433,6 +433,23 @@ object SubtitlesPreferencesScreen : Screen {
                   )
                 },
               )
+
+              PreferenceDivider()
+
+              val secondaryPinchZoom by preferences.secondarySubPinchZoom.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_secondary_pinch_zoom),
+                value = secondaryPinchZoom,
+                enabled = setOf("sub-scale", "secondary-sub-scale").none(configOwnedOptions::contains),
+                onValueChange = { preferences.secondarySubPinchZoom.set(it) },
+                title = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_subtitles_secondary_pinch_zoom_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
             }
           }
 

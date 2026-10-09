@@ -7,13 +7,16 @@ package app.gyrolet.mpvrx.domain.torrent
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import app.gyrolet.mpvrx.network.SharedHttpClient
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +26,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.libtorrent4j.AnnounceEntry
 import org.libtorrent4j.AlertListener
@@ -160,12 +162,11 @@ class TorrentStreamingEngine(
   private val lifecycleMutex = Mutex()
   private val generation = AtomicLong(0L)
   private val httpClient =
-    OkHttpClient
-      .Builder()
-      .connectTimeout(20L, TimeUnit.SECONDS)
-      .readTimeout(30L, TimeUnit.SECONDS)
-      .callTimeout(45L, TimeUnit.SECONDS)
-      .build()
+    SharedHttpClient.derive {
+      connectTimeout(20L, TimeUnit.SECONDS)
+      readTimeout(30L, TimeUnit.SECONDS)
+      callTimeout(45L, TimeUnit.SECONDS)
+    }
 
   private val _state = MutableStateFlow<TorrentStreamingState>(TorrentStreamingState.Idle)
   val state: StateFlow<TorrentStreamingState> = _state.asStateFlow()
@@ -335,14 +336,20 @@ class TorrentStreamingEngine(
           setEnableDht(true)
           setEnableLsd(true)
         }
-      startedSession.start(SessionParams(settings))
-      ensureCurrent(startGeneration)
-
       val torrent =
         if (normalized.startsWith("magnet:?", ignoreCase = true)) {
+          startedSession.start(SessionParams(settings))
+          ensureCurrent(startGeneration)
           prepareMagnet(startedSession, cacheDir, normalized, requestedFileIndex, startGeneration)
         } else {
-          prepareMetadata(startedSession, cacheDir, normalized, requestedFileIndex, startGeneration)
+          // Reading a .torrent needs no session at all, so its fetch overlaps libtorrent's session
+          // start-up instead of paying the two latencies back to back.
+          coroutineScope {
+            val payload = async { readMetadata(normalized) }
+            startedSession.start(SessionParams(settings))
+            ensureCurrent(startGeneration)
+            prepareMetadata(startedSession, cacheDir, payload.await(), requestedFileIndex, startGeneration)
+          }
         }
       handle = torrent.handle
 
@@ -472,12 +479,11 @@ class TorrentStreamingEngine(
   private suspend fun prepareMetadata(
     session: SessionManager,
     cacheDir: File,
-    source: String,
+    payload: ByteArray,
     requestedFileIndex: Int?,
     startGeneration: Long,
   ): PreparedTorrent {
     _state.value = TorrentStreamingState.Connecting("Reading torrent metadata...")
-    val payload = readMetadata(source)
     val endpoints = runCatching { extractTorrentMetadataEndpoints(payload) }.getOrElse {
       throw streamError("The selected file contains invalid torrent metadata.")
     }

@@ -31,6 +31,28 @@ class MpvConfigCache(
   private val atomicConfigFile = AtomicFile(configFile)
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+  /**
+   * The exact bytes of the last read/written mpv.conf, mirrored from [readCachedContent] and
+   * [writeCachedContent] while [lock] is held. [ensureCurrent] already reads the whole file to
+   * decide whether it must be rewritten, so [configurationKey] can hash this copy instead of
+   * reading the same file a second time in the same open. Never mutated in place, only replaced.
+   */
+  private var cachedBytes: ByteArray? = null
+
+  /**
+   * [configurationKey] is on the player-open path and used to read the whole file plus hash it on
+   * every open. These two fields let it return immediately when neither the stored configuration
+   * nor the preference it was derived from has moved. A changed preference — or an explicit
+   * [update] — invalidates them, so the file is re-read and re-hashed as before. The only case no
+   * longer observed is an out-of-band rewrite of this app-private file with the preference held
+   * constant, which has no supported flow.
+   */
+  @Volatile
+  private var cachedConfigurationKey: String? = null
+
+  @Volatile
+  private var configurationKeyPreferenceValue: String? = null
+
   init {
     scope.launch {
       preferences.mpvConf.changes().collect {
@@ -41,6 +63,7 @@ class MpvConfigCache(
   }
 
   fun update(content: String): Boolean {
+    cachedConfigurationKey = null
     val result =
       synchronized(lock) {
         updateLocked(content = content, updatePreference = true)
@@ -59,29 +82,46 @@ class MpvConfigCache(
   }
 
   fun configurationKey(): String {
+    val preferenceValue = preferences.mpvConf.get()
+    cachedConfigurationKey?.takeIf { configurationKeyPreferenceValue == preferenceValue }?.let { return it }
     ensureCurrent()
-    val bytes = synchronized(lock) { atomicConfigFile.readFully() }
-    val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
-    return Base64.encodeToString(digest, Base64.NO_WRAP or Base64.URL_SAFE)
+    return synchronized(lock) {
+      // [ensureCurrent] always leaves [cachedBytes] matching the file. The fallback only covers a
+      // concurrent external writer between that call and here; it keeps the pre-existing behaviour
+      // of hashing whatever is on disk instead of trusting a possibly stale mirror.
+      val bytes = cachedBytes ?: atomicConfigFile.readFully().also { cachedBytes = it }
+      val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+      Base64.encodeToString(digest, Base64.NO_WRAP or Base64.URL_SAFE)
+    }.also {
+      cachedConfigurationKey = it
+      configurationKeyPreferenceValue = preferenceValue
+    }
   }
 
-  private fun readCachedContent(): String? =
+  private fun readCachedContent(): String? {
     if (!configFile.isFile) {
-      null
-    } else {
-      runCatching { atomicConfigFile.readFully().toString(StandardCharsets.UTF_8) }.getOrNull()
+      cachedBytes = null
+      return null
     }
+    val bytes =
+      runCatching { atomicConfigFile.readFully() }
+        .onSuccess { cachedBytes = it }
+        .getOrNull()
+    return bytes?.toString(StandardCharsets.UTF_8)
+  }
 
   private fun writeCachedContent(content: String) {
     configFile.parentFile?.mkdirs()
+    val bytes = content.toByteArray(StandardCharsets.UTF_8)
     val output = atomicConfigFile.startWrite()
     try {
-      output.write(content.toByteArray(StandardCharsets.UTF_8))
+      output.write(bytes)
       atomicConfigFile.finishWrite(output)
     } catch (error: Throwable) {
       atomicConfigFile.failWrite(output)
       throw error
     }
+    cachedBytes = bytes
   }
 
   private fun updateLocked(

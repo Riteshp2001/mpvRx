@@ -30,6 +30,15 @@ data class Video(
   val bucketDisplayName: String,
   val width: Int,
   val height: Int,
+
+  /**
+   * Display rotation in degrees (0, 90, 180, 270).
+   *
+   * [width] and [height] are the coded dimensions, which are landscape for a portrait phone video
+   * that carries a 90/270 rotation. Callers that need the on-screen shape must apply this first,
+   * otherwise the player opens landscape and only corrects itself once mpv reports the rotation.
+   */
+  val rotation: Int = 0,
   val fps: Float,
   val resolution: String,
   val hasEmbeddedSubtitles: Boolean = false,

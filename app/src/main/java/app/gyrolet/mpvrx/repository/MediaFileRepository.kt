@@ -26,9 +26,11 @@ import app.gyrolet.mpvrx.preferences.FoldersPreferences
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
+import app.gyrolet.mpvrx.utils.storage.INTERNAL_STORAGE_LABEL
 import app.gyrolet.mpvrx.utils.storage.MediaScanOptions
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
+import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.mediaPathKey
 import kotlinx.coroutines.Dispatchers
@@ -322,8 +324,7 @@ object MediaFileRepository : KoinComponent {
   private fun normalizeAudioFolderKey(path: String): String =
     path.replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
 
-  private fun leafName(path: String): String =
-    path.replace('\\', '/').trimEnd('/').substringAfterLast('/')
+  private fun leafName(path: String): String = leafStorageName(path)
 
   fun scanNoMediaFoldersIncrementally(
     context: Context,
@@ -462,6 +463,7 @@ object MediaFileRepository : KoinComponent {
     var width = 0
     var height = 0
     var fps = 0f
+    var rotation = 0
     var hasEmbeddedSubtitles = false
     var subtitleCodec = ""
 
@@ -472,6 +474,7 @@ object MediaFileRepository : KoinComponent {
       width = metadata.width
       height = metadata.height
       fps = metadata.fps
+      rotation = metadata.rotation
       hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles
       subtitleCodec = metadata.subtitleCodec
     }
@@ -493,6 +496,7 @@ object MediaFileRepository : KoinComponent {
       bucketDisplayName = bucketDisplayName,
       width = width,
       height = height,
+      rotation = rotation,
       fps = fps,
       resolution = VideoScanUtils.formatResolutionWithFps(width, height, fps),
       hasEmbeddedSubtitles = hasEmbeddedSubtitles,
@@ -525,6 +529,7 @@ object MediaFileRepository : KoinComponent {
     var width = 0
     var height = 0
     var fps = 0f
+    var rotation = 0
 
     metadata?.let {
       if (it.sizeBytes > 0) size = it.sizeBytes
@@ -532,6 +537,7 @@ object MediaFileRepository : KoinComponent {
       width = it.width
       height = it.height
       fps = it.fps
+      rotation = it.rotation
     }
     val hasEmbeddedSubtitles = metadata?.hasEmbeddedSubtitles ?: false
     val subtitleCodec = metadata?.subtitleCodec ?: ""
@@ -553,6 +559,7 @@ object MediaFileRepository : KoinComponent {
       bucketDisplayName = bucketDisplayName,
       width = width,
       height = height,
+      rotation = rotation,
       fps = fps,
       resolution = VideoScanUtils.formatResolutionWithFps(width, height, fps),
       hasEmbeddedSubtitles = hasEmbeddedSubtitles,
@@ -594,7 +601,7 @@ object MediaFileRepository : KoinComponent {
     var currentPath = ""
     for (part in parts) {
       currentPath += "/$part"
-      components.add(PathComponent(part, currentPath))
+      components.add(PathComponent(leafStorageName(currentPath), currentPath))
     }
 
     return components
@@ -720,7 +727,7 @@ object MediaFileRepository : KoinComponent {
 
           roots.add(
             FileSystemItem.Folder(
-              name = "Internal Storage",
+              name = INTERNAL_STORAGE_LABEL,
               path = primaryPath,
               lastModified = primaryStorage.lastModified(),
               videoCount = folderData?.videoCount ?: 0,

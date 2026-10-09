@@ -169,6 +169,7 @@ object MediaUtils {
     val intent =
       Intent(Intent.ACTION_VIEW, selected.uri).apply {
         setClass(context, PlayerActivity::class.java)
+        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         putExtra("internal_launch", true)
         putExtra(PlayerActivity.EXTRA_PREPARED_PLAYBACK_QUEUE, true)
@@ -180,6 +181,7 @@ object MediaUtils {
         localPlaybackPath(selected)?.let { putExtra("local_media_path", it) }
         putExtra(PlayerActivity.EXTRA_VIDEO_WIDTH, selected.width)
         putExtra(PlayerActivity.EXTRA_VIDEO_HEIGHT, selected.height)
+        putExtra(PlayerActivity.EXTRA_VIDEO_ROTATION, selected.rotation)
       }
     PlaybackPerformanceTrace.mark("OPEN_REQUEST", "source=$launchSource queue=${videos.size}")
     context.startActivity(intent)
@@ -317,7 +319,7 @@ object MediaUtils {
         PlayerActivity::class.java
       },
     )
-    intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     intent.putExtra("internal_launch", true)
     localPath?.let { intent.putExtra("local_media_path", it) }
@@ -325,6 +327,7 @@ object MediaUtils {
       intent.putExtra("is_audio", videoSource.isAudio)
       intent.putExtra(PlayerActivity.EXTRA_VIDEO_WIDTH, videoSource.width)
       intent.putExtra(PlayerActivity.EXTRA_VIDEO_HEIGHT, videoSource.height)
+      intent.putExtra(PlayerActivity.EXTRA_VIDEO_ROTATION, videoSource.rotation)
     }
     startPositionSeconds?.takeIf { it.isFinite() && it >= 0 }?.let {
       intent.putExtra(PlayerActivity.EXTRA_START_POSITION_SECONDS, it)

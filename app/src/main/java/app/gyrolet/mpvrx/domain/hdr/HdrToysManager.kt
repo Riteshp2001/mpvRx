@@ -45,6 +45,15 @@ class HdrToysManager(
 ) {
   private var initialized = false
 
+  /**
+   * Whether [apply] last appended hdr-toys shaders to the running mpv instance. A freshly created
+   * core has an empty `glsl-shaders` list, so the 19 `change-list glsl-shaders remove` commands
+   * [clear] issues would all be no-ops. [initialized] does not cover this: it stays true across core
+   * recreations, while `applied` reflects what this process actually put into the current core.
+   */
+  @Volatile
+  private var applied = false
+
   @Synchronized
   fun initialize(): Boolean {
     if (initialized && requiredShadersExist()) return true
@@ -75,11 +84,16 @@ class HdrToysManager(
     profile.mpvShaderPaths.forEach { shaderPath ->
       shaderRuntime.command("change-list", "glsl-shaders", "append", shaderPath)
     }
+    applied = true
     return true
   }
 
   /** Removes every hdr-toys shader from mpv's active glsl-shaders list. */
   fun clear() {
+    // Nothing was ever appended to this core, so every removal below would be a no-op. Runtime HDR
+    // mode transitions still land here with `applied` set, so the full clear path is preserved.
+    if (!applied) return
+    applied = false
     HdrToysProfile.allMpvShaderPaths
       .toList()
       .asReversed()

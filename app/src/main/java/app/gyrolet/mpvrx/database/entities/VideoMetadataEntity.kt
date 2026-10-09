@@ -26,6 +26,7 @@ data class VideoMetadataEntity(
   val width: Int, // Video width in pixels
   val height: Int, // Video height in pixels
   val fps: Float, // Framerate in frames per second
+  val rotation: Int = 0, // Display rotation in degrees (0/90/180/270); MediaStore never reports it
   val hasEmbeddedSubtitles: Boolean = false,
   val subtitleCodec: String = "",
   val lastScanned: Long, // When this metadata was extracted (timestamp)

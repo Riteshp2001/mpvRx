@@ -23,6 +23,7 @@ import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
+import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.media.HttpUtils
@@ -226,7 +227,7 @@ class RecentlyPlayedViewModel(
       val dateAdded = dateModified
       val parent = file.parent ?: ""
       val bucketId = parent.hashCode().toString()
-      val bucketDisplayName = File(parent).name
+      val bucketDisplayName = leafStorageName(parent)
 
       val extension = file.extension.lowercase()
       val isAudio = extension in FileTypeUtils.AUDIO_EXTENSIONS

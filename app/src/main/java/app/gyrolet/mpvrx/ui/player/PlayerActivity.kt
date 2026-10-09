@@ -138,9 +138,12 @@ import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
@@ -153,6 +156,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import okhttp3.OkHttpClient
@@ -460,6 +464,17 @@ class PlayerActivity :
   private var backgroundHandoffJob: Job? = null
   private var deferredFontSyncJob: Job? = null
   private var deferredMpvAssetSyncJob: Job? = null
+  private var mpvAssetPreparationJob: Job? = null
+
+  /**
+   * Signals that only the files `mpv_initialize` actually reads are on disk.
+   *
+   * libmpv parses `mpv.conf` and `input.conf` and lists `scripts/` during `MPVLib.init()`, so
+   * [joinMpvAssetPreparation] has to wait for those. It never reads `subfont.ttf` (14.7 MB),
+   * `cacert.pem`, `fonts/` or `shaders/`, so those stay on the unjoined tail of the same job
+   * instead of stalling the main thread before the core can start.
+   */
+  private var mpvStartupAssetsReady = CompletableDeferred<Unit>()
   private var systemBarsAutoHideJob: Job? = null
   private var videoParamRefreshJob: Job? = null
   private var intentSubtitleJob: Job? = null
@@ -480,6 +495,26 @@ class PlayerActivity :
   private var currentPlayableUri: String? = null // Store current URI for notification re-entry
   private val playbackRenderDispatcher = Dispatchers.Main
   private val mediaLoadDispatcher = Dispatchers.Default.limitedParallelism(1)
+
+  // Captured at Activity construction. Cookies are only ever written by the cookie jar itself, so
+  // a cookie file newer than this is already current for every load in this session.
+  private val sessionStartedAtMillis = System.currentTimeMillis()
+
+  // PackageManager.getPackageInfo() and the first SharedPreferences read both hit disk; neither
+  // changes while the Activity is alive, so both are resolved once.
+  @Volatile private var cachedLongVersionCode: Long? = null
+  private val assetSyncPreferences: android.content.SharedPreferences by lazy {
+    getSharedPreferences(MPV_ASSET_SYNC_PREFERENCES, MODE_PRIVATE)
+  }
+
+  // Last value written to MPV for the subtitle/video-filter properties that are also applied as
+  // init OPTIONS, so FILE_LOADED only re-issues a write when the preference actually changed.
+  @Volatile private var lastAppliedMpvStyleProperties: MutableMap<String, Any> = mutableMapOf()
+
+  // getMediaIdentifier()/getLegacyMediaIdentifier() run back-to-back on the same intent URI and
+  // resolveLocalPath() queries the ContentResolver; share the single query between them.
+  @Volatile private var memoizedLocalPathKey: String? = null
+  @Volatile private var memoizedLocalPath: String? = null
 
   // ==================== Background Playback ====================
 
@@ -640,11 +675,20 @@ class PlayerActivity :
     applyInitialVideoOrientation(intent)
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    // Kick the multi-MB asset copy and the user mpv.conf SAF walk off the main thread first, so
+    // they run concurrently with everything below instead of being joined inside setupMPV().
+    startMpvAssetPreparation()
+    // Derive every init option value up front on IO. Only the option writes themselves need the
+    // core, so this overlaps with layout inflation and the Compose trees.
+    player.prepareInitInputs()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
       intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER
     ) {
       val animateArtwork = PlayerArtworkTransitions.motion?.destination == PlayerArtworkDestination.FULL
       overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, if (animateArtwork) 0 else R.anim.slide_in_up, 0)
+    } else {
+      @Suppress("DEPRECATION")
+      overridePendingTransition(android.R.anim.fade_in, 0)
     }
     if (intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER && player.userScriptsNeedReload()) {
       currentPlaybackIntentForScriptReload()?.let { playbackIntent ->
@@ -1649,6 +1693,7 @@ class PlayerActivity :
     backgroundHandoffJob?.cancel()
     deferredFontSyncJob?.cancel()
     deferredMpvAssetSyncJob?.cancel()
+    mpvAssetPreparationJob?.cancel()
     mediaLoadJob?.cancel()
     cancelPlaybackLoadRecovery()
     eofAdvanceJob?.cancel()
@@ -2584,17 +2629,13 @@ class PlayerActivity :
    * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
   private fun setupMPV(): String? {
-    // Prepare config and user MPV assets before initializing MPV.
-    runCatching {
-      val preparationStartedAt = android.os.SystemClock.elapsedRealtime()
-      syncBundledAssetsIfNeeded()
-      prepareUserMpvAssetsForStartup()
-      googleFontsRepository.syncMpvFonts()
-      sanitizeInternalFontsDirectory()
-      Log.d(TAG, "MPV startup assets ready in ${android.os.SystemClock.elapsedRealtime() - preparationStartedAt} ms")
-    }.onFailure { e ->
-      Log.e(TAG, "Error copying MPV config and assets", e)
-    }
+    // The asset prep itself was already started on IO at the top of onCreate, so by the time we
+    // get here it has overlapped layout inflation and the Compose trees. Only MPVLib.init() needs
+    // the scripts on disk, so that is the single point where the work is joined.
+    val waitStartedAt = android.os.SystemClock.elapsedRealtime()
+    runCatching { joinMpvAssetPreparation() }
+      .onFailure { e -> Log.e(TAG, "Error copying MPV config and assets", e) }
+    Log.d(TAG, "MPV startup assets joined in ${android.os.SystemClock.elapsedRealtime() - waitStartedAt} ms")
 
     player.onSurfaceReady = {
       if (!isDeviceScreenOffOrLocked() && (isInBackgroundPlayback || lastVid > 0)) {
@@ -2605,14 +2646,10 @@ class PlayerActivity :
       binding.root.post(::updateVideoAmbientPlayerBounds)
     }
 
-    // NOW initialize MPV - it will find and load the scripts we just copied
-    val initError = synchronized(USER_MPV_ASSET_LOCK) {
-      val cleanupFailure = runCatching { removeDisabledCachedScripts() }.exceptionOrNull()
-      if (cleanupFailure != null) {
-        Log.e(TAG, "Could not remove disabled cached scripts", cleanupFailure)
-        cleanupFailure.message ?: getString(R.string.toast_playback_load_failed)
-      } else initializePlayerWithRendererFallback()
-    }
+    // NOW initialize MPV - it will find and load the scripts we just copied.
+    // The scripts/ prune already ran on IO inside the asset job before it signalled readiness, so
+    // this only has to take the lock that keeps the job from touching filesDir mid-init.
+    val initError = synchronized(USER_MPV_ASSET_LOCK) { initializePlayerWithRendererFallback() }
     if (initError != null) return initError
     runCatching { PlaybackSession.setThumbnailJavaVM(applicationContext) }
     mpvInitialized = true
@@ -2625,9 +2662,53 @@ class PlayerActivity :
     return null
   }
 
-  private fun prepareUserMpvAssetsForStartup() {
+  /**
+   * Starts the multi-MB asset copy and the user mpv.conf SAF walk on IO. Called at the top of
+   * onCreate so they overlap layout inflation, Compose setup and the notification channel instead
+   * of blocking them.
+   *
+   * The job completes in two beats. [mpvStartupAssetsReady] completes once the config files and the
+   * script cache are on disk, which is all `mpv_initialize` reads, so
+   * [joinMpvAssetPreparation] can return while the bundled font/CA copy and the shader/font sync
+   * keep running unjoined.
+   */
+  private fun startMpvAssetPreparation() {
+    mpvAssetPreparationJob?.cancel()
+    val startupAssetsReady = CompletableDeferred<Unit>()
+    mpvStartupAssetsReady = startupAssetsReady
+    mpvAssetPreparationJob =
+      lifecycleScope.launch(Dispatchers.IO) {
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        runCatching {
+          prepareUserMpvAssetsForStartup(startupAssetsReady)
+        }.onFailure { e -> Log.e(TAG, "Error copying MPV config and assets", e) }
+        // Never leave the main thread blocked on a failure or an early return above.
+        startupAssetsReady.complete(Unit)
+        // Unjoined tail. libmpv reads none of this during init: subfont.ttf is only opened when
+        // libass renders a glyph, and cacert.pem is read by libav when TLS first negotiates, which
+        // happens on the media load dispatcher well after this point.
+        runCatching {
+          syncBundledAssetsIfNeeded()
+        }.onFailure { e -> Log.e(TAG, "Error copying bundled MPV assets", e) }
+        Log.d(TAG, "MPV startup assets prepared in ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
+      }
+    // joinMpvAssetPreparation() blocks the main thread on that deferred, so cancellation has to
+    // release it too. Covers the Activity being destroyed between onCreate and setupMPV().
+    mpvAssetPreparationJob?.invokeOnCompletion { startupAssetsReady.complete(Unit) }
+  }
+
+  /**
+   * The only point that must wait: `MPVLib.init()` parses the configs and lists the scripts this
+   * produced. Returns as soon as those specific files are on disk rather than waiting for the whole
+   * asset job, which also copies a 14.7 MB font and the shader/font trees.
+   */
+  private fun joinMpvAssetPreparation() {
+    runBlocking { mpvStartupAssetsReady.await() }
+  }
+
+  private fun prepareUserMpvAssetsForStartup(startupAssetsReady: CompletableDeferred<Unit>) {
     ensureConfigCacheForStartup()
-    val syncPreferences = getSharedPreferences(MPV_ASSET_SYNC_PREFERENCES, MODE_PRIVATE)
+    val syncPreferences = assetSyncPreferences
     val currentSelection = currentUserMpvAssetSelection()
     val storedSelection = syncPreferences.getString(USER_MPV_ASSET_SELECTION, null)
     val cacheReady = hasLaunchReadyUserMpvAssetCache()
@@ -2640,10 +2721,17 @@ class PlayerActivity :
     if (cacheReady && cachedScriptsMatchSelection() && (storedSelection == currentSelection || canAdoptExistingCache)) {
       if (canAdoptExistingCache) rememberUserMpvAssetSelection(syncPreferences)
       Log.d(TAG, "Using cached MPV user assets for startup")
+      // The cache check only compares scripts/ contents, so script-modules/ can still be stale.
+      // Prune before releasing the main thread, because libmpv lists scripts/ during init. The lock
+      // keeps this from interleaving with the deferred user-asset refresh.
+      runCatching {
+        synchronized(USER_MPV_ASSET_LOCK) { removeDisabledCachedScripts() }
+      }.onFailure { e -> Log.e(TAG, "Could not remove disabled cached scripts", e) }
+      startupAssetsReady.complete(Unit)
       return
     }
 
-    syncFromUserMpvDirectory()
+    syncFromUserMpvDirectory(startupAssetsReady)
     rememberUserMpvAssetSelection(syncPreferences)
     deferredUserMpvAssetRefreshStarted.set(true)
   }
@@ -2735,8 +2823,14 @@ class PlayerActivity :
    * Syncs MPV assets from the user's configured MPV directory to internal storage.
    * Handles: mpv.conf, input.conf, selected scripts/, script helper folders, script-opts/,
    * shaders/, and fonts/.
+   *
+   * [startupAssetsReady] is completed as soon as the configs and scripts are on disk, because those
+   * are the only files `mpv_initialize` touches. The shader and font copies keep going after it, so
+   * the startup join does not have to wait for them. The scripts/ prune has to run before that
+   * signal in both branches: libmpv lists scripts/ during init and would otherwise load a script
+   * the user just disabled.
    */
-  private fun syncFromUserMpvDirectory() {
+  private fun syncFromUserMpvDirectory(startupAssetsReady: CompletableDeferred<Unit>? = null) {
     synchronized(USER_MPV_ASSET_LOCK) {
     val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
 
@@ -2747,13 +2841,14 @@ class PlayerActivity :
       } else {
         null
       }
-
     if (tree != null) {
       Log.d(TAG, "Syncing from user MPV directory: ${tree.uri}")
       val rootChildren = listTreeFilesSafely(tree)
       syncConfigFiles(tree, rootChildren)
       syncScripts(tree, rootChildren)
       syncScriptOpts(tree, rootChildren)
+      removeDisabledCachedScripts()
+      startupAssetsReady?.complete(Unit)
       syncShaders(tree, rootChildren)
       syncFonts(tree, rootChildren)
       Log.d(TAG, "Full MPV directory sync completed")
@@ -2761,8 +2856,9 @@ class PlayerActivity :
       // Fallback: use preferences-based config (no user directory set)
       Log.d(TAG, "No MPV directory configured, using preferences fallback")
       copyMPVConfigFromPreferences()
+      removeDisabledCachedScripts()
+      startupAssetsReady?.complete(Unit)
     }
-    removeDisabledCachedScripts()
     }
   }
 
@@ -2981,11 +3077,8 @@ class PlayerActivity :
   }
 
   private fun syncBundledAssetsIfNeeded() {
-    val syncPrefs = getSharedPreferences("mpv_asset_sync", MODE_PRIVATE)
-    val currentVersion =
-      runCatching {
-        PackageInfoCompat.getLongVersionCode(packageManager.getPackageInfo(packageName, 0))
-      }.getOrDefault(-1L)
+    val syncPrefs = assetSyncPreferences
+    val currentVersion = longVersionCode()
 
     val assetsAlreadyPrepared =
       File(filesDir, "mpv.conf").exists() &&
@@ -3000,13 +3093,23 @@ class PlayerActivity :
     syncPrefs.edit().putLong("bundled_assets_version", currentVersion).apply()
   }
 
+  /** The installed version cannot change while this Activity exists, so it is resolved once. */
+  private fun longVersionCode(): Long =
+    cachedLongVersionCode
+      ?: runCatching {
+        PackageInfoCompat.getLongVersionCode(packageManager.getPackageInfo(packageName, 0))
+      }.getOrDefault(-1L).also { cachedLongVersionCode = it }
+
   private fun scheduleDeferredSubtitleFontsSync() {
     deferredFontSyncJob?.cancel()
     deferredFontSyncJob =
       lifecycleScope.launch(Dispatchers.IO) {
         delay(750)
-        runCatching { syncSubtitleFontsFromPreferenceFolder() }
-          .onFailure { e -> Log.e(TAG, "Deferred subtitle font sync failed", e) }
+        runCatching {
+          googleFontsRepository.syncMpvFonts()
+          sanitizeInternalFontsDirectory()
+          syncSubtitleFontsFromPreferenceFolder()
+        }.onFailure { e -> Log.e(TAG, "Deferred subtitle font sync failed", e) }
       }
   }
 
@@ -3023,7 +3126,7 @@ class PlayerActivity :
           deferredFontSyncJob?.join()
           syncFromUserMpvDirectory()
           syncSubtitleFontsFromPreferenceFolder()
-          rememberUserMpvAssetSelection(getSharedPreferences(MPV_ASSET_SYNC_PREFERENCES, MODE_PRIVATE))
+          rememberUserMpvAssetSelection(assetSyncPreferences)
           completed = true
           Log.d(TAG, "Refreshed cached MPV user assets after startup")
         } catch (cancellation: CancellationException) {
@@ -3995,14 +4098,21 @@ class PlayerActivity :
       viewModel.showToast(getString(R.string.toast_playback_load_failed))
       return null
     }
-    return if (uri.startsWith("content://")) {
-      // Resolve to a real path when possible, but never to a single-use fd:// here: this value is
-      // stored on the queue item, and a replay would reuse a descriptor mpv has already consumed.
-      // Unresolvable URIs stay content:// and get a fresh descriptor per load in PlaybackSession.
-      uri.toUri().openContentFd(this, allowFdFallback = false) ?: uri
-    } else {
-      uri
+    // PlaybackSession.resolvePlayableUri performs exactly this content:// resolution on its worker
+    // thread for every load, so it is deliberately NOT repeated here on the main thread: the queue
+    // item keeps the content:// URI (never a single-use fd://, which a replay could not reuse)
+    // and PlaybackSession resolves it, opening a fresh descriptor per load.
+    return uri
+  }
+
+  /** One ContentResolver query per Activity for the intent URI both identifier builders resolve. */
+  private fun resolveLocalPathMemoized(uri: Uri): String? {
+    val key = uri.toString()
+    if (memoizedLocalPathKey != key) {
+      memoizedLocalPath = uri.resolveLocalPath(this)
+      memoizedLocalPathKey = key
     }
+    return memoizedLocalPath
   }
 
   /**
@@ -4450,7 +4560,9 @@ class PlayerActivity :
     currentUri?.let { viewModel.calculateVideoHash(it) }
 
     reportJellyfinStop()
-    currentUri?.toString()?.let { url ->
+    // Only a remote server can hold a playback session. A local file has no token, no host and no
+    // reachable Emby/Jellyfin endpoint, so building a reporter for it is dead work on this path.
+    currentUri?.takeIf { HttpUtils.isNetworkStream(it) }?.toString()?.let { url ->
       val tokenFromHeader =
         networkPlaylistHeaders.getOrNull(playlistIndex)?.get("X-Emby-Token")
           ?: intent.getStringArrayExtra("headers")?.let { PlaybackHttpHeaders.fromFlatPairs(it)["X-Emby-Token"] }
@@ -4821,26 +4933,30 @@ class PlayerActivity :
         "no"
       }
 
+    // blend-subtitles is also written by the ambient enable/disable path, so it stays a forced
+    // write. Everything below is already applied as an init OPTION by MPVView.initOptions and is
+    // only re-issued here when the preference value actually changed, so mpv does not redo its
+    // OSD/style reconfiguration on the frame the player becomes ready for every load.
     PlaybackSession.setPropertyString("blend-subtitles", blendMode)
 
-    PlaybackSession.setPropertyInt("sub-font-size", fontSize)
+    setMpvStyleIntIfChanged("sub-font-size", fontSize)
     // Official mpv only has secondary-sub-delay/scale/pos/ass-override; secondary inherits primary style.
-    PlaybackSession.setPropertyString("sub-font", font)
-    PlaybackSession.setPropertyBoolean("sub-bold", bold)
-    PlaybackSession.setPropertyBoolean("sub-italic", italic)
-    PlaybackSession.setPropertyString("sub-justify", justify)
-    PlaybackSession.setPropertyString("sub-border-style", borderStyle)
-    PlaybackSession.setPropertyInt("sub-border-size", borderSize)
-    PlaybackSession.setPropertyInt("sub-outline-size", borderSize)
-    PlaybackSession.setPropertyInt("sub-shadow-offset", shadowOffset)
-    PlaybackSession.setPropertyString("sub-color", textColor)
-    PlaybackSession.setPropertyString("sub-border-color", borderColor)
-    PlaybackSession.setPropertyString("sub-back-color", backgroundColor)
-    PlaybackSession.setPropertyString("sub-shadow-color", shadowColor)
-    PlaybackSession.setPropertyString("sub-scale-by-window", scaleValue)
-    PlaybackSession.setPropertyString("sub-use-margins", scaleValue)
-    PlaybackSession.setPropertyFloat("sub-scale", subScale)
-    PlaybackSession.setPropertyFloat("secondary-sub-scale", secondarySubScale)
+    setMpvStyleStringIfChanged("sub-font", font)
+    setMpvStyleBooleanIfChanged("sub-bold", bold)
+    setMpvStyleBooleanIfChanged("sub-italic", italic)
+    setMpvStyleStringIfChanged("sub-justify", justify)
+    setMpvStyleStringIfChanged("sub-border-style", borderStyle)
+    setMpvStyleIntIfChanged("sub-border-size", borderSize)
+    setMpvStyleIntIfChanged("sub-outline-size", borderSize)
+    setMpvStyleIntIfChanged("sub-shadow-offset", shadowOffset)
+    setMpvStyleStringIfChanged("sub-color", textColor)
+    setMpvStyleStringIfChanged("sub-border-color", borderColor)
+    setMpvStyleStringIfChanged("sub-back-color", backgroundColor)
+    setMpvStyleStringIfChanged("sub-shadow-color", shadowColor)
+    setMpvStyleStringIfChanged("sub-scale-by-window", scaleValue)
+    setMpvStyleStringIfChanged("sub-use-margins", scaleValue)
+    setMpvStyleFloatIfChanged("sub-scale", subScale)
+    setMpvStyleFloatIfChanged("secondary-sub-scale", secondarySubScale)
 
     applySubtitleLayout(
       primaryPosition = subtitlesPreferences.subPos.get(),
@@ -4856,9 +4972,33 @@ class PlayerActivity :
   private fun applyVideoFilterPreferences() {
     if (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()) return
     VideoFilters.entries.forEach {
-      PlaybackSession.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).get())
+      setMpvStyleIntIfChanged(it.mpvProperty, it.preference(decoderPreferences).get())
     }
     Log.d(TAG, "Applied video filter preferences")
+  }
+
+  /** True when [value] differs from what was last written, recording it as applied. */
+  private fun recordMpvStylePropertyIfChanged(name: String, value: Any): Boolean {
+    val applied = lastAppliedMpvStyleProperties
+    if (applied[name] == value) return false
+    applied[name] = value
+    return true
+  }
+
+  private fun setMpvStyleIntIfChanged(name: String, value: Int) {
+    if (recordMpvStylePropertyIfChanged(name, value)) PlaybackSession.setPropertyInt(name, value)
+  }
+
+  private fun setMpvStyleFloatIfChanged(name: String, value: Float) {
+    if (recordMpvStylePropertyIfChanged(name, value)) PlaybackSession.setPropertyFloat(name, value)
+  }
+
+  private fun setMpvStyleBooleanIfChanged(name: String, value: Boolean) {
+    if (recordMpvStylePropertyIfChanged(name, value)) PlaybackSession.setPropertyBoolean(name, value)
+  }
+
+  private fun setMpvStyleStringIfChanged(name: String, value: String) {
+    if (recordMpvStylePropertyIfChanged(name, value)) PlaybackSession.setPropertyString(name, value)
   }
 
   /**
@@ -5123,6 +5263,9 @@ class PlayerActivity :
     }
 
     PlaybackSession.setPropertyDouble("sub-delay", subDelay)
+    // The secondary track has its own delay property and is otherwise left on the startup
+    // value, so a saved sync would silently not apply to it.
+    PlaybackSession.setPropertyDouble("secondary-sub-delay", subDelay)
     PlaybackSession.setPropertyDouble("speed", state.playbackSpeed)
     // Re-apply audio-pitch-correction after speed change, as mpv resets it to default
     PlaybackSession.setPropertyBoolean("audio-pitch-correction", audioPreferences.audioPitchCorrection.get())
@@ -5461,6 +5604,10 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val previousItemWasReady = isReady
 
     setIntent(intent)
+    // This Activity is singleTask, so onNewIntent is the same path as a cold onCreate. Reset the
+    // cached aspect first: the new intent may carry no video metadata at all, and a stale value
+    // from the previous file would pick the wrong orientation for this one.
+    launchVideoAspect = null
     applyInitialVideoOrientation(intent)
     applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
     if (!beginMediaRequest()) return
@@ -5790,24 +5937,42 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
                 torrentFileIndex = torrentResult?.selectedFile?.index,
               )
 
-          // Fetch artwork for music streaming URLs (YouTube / YouTube Music via oEmbed).
-          val itemWithArtwork =
+          // Fetch artwork for music streaming URLs (YouTube / YouTube Music via oEmbed) and stage
+          // libmpv's cookie file. Both are needed before loadfile (the queue item has to carry
+          // artworkUri for the notification, and mpv reads the cookie file when opening the
+          // stream), but neither depends on the other, so they are started together and joined
+          // at their point of use instead of one after the other.
+          val artworkDeferred =
             if (item.artworkUri.isNullOrBlank() && HttpUtils.isMusicStreamingUrl(resolvedOriginalUri)) {
-              val artwork = HttpUtils.fetchMusicStreamingArtwork(resolvedOriginalUri)
-              if (!artwork.isNullOrBlank()) item.copy(artworkUri = artwork) else item
+              async(Dispatchers.IO) { HttpUtils.fetchMusicStreamingArtwork(resolvedOriginalUri) }
             } else {
-              item
+              null
             }
-
-          val cookieSource =
+          val cookieExportDeferred =
             sequenceOf(resolvedPlayableUri, resolvedOriginalUri)
               .firstOrNull { value -> value.startsWith("http://", true) || value.startsWith("https://", true) }
-          if (cookieSource != null) {
-            androidCookieJar
-              .exportForPlayback(cookieSource, AndroidCookieJar.playbackCookieFile(this@PlayerActivity))
-              .onFailure { error -> Log.w(TAG, "Failed to prepare playback cookies", error) }
-          }
+              ?.let { cookieSource ->
+                // libmpv needs this file before it opens the stream, so the export cannot be deferred
+                // past loadfile. A file already written during this session is current: cookies are
+                // only written by OkHttp/WebView outside this Activity, so re-running the
+                // CookieManager read plus the AtomicFile fsync on every load is pure overhead.
+                if (AndroidCookieJar.playbackCookieFile(this@PlayerActivity).lastModified() >= sessionStartedAtMillis) {
+                  null
+                } else {
+                  async(Dispatchers.IO) {
+                    androidCookieJar
+                      .exportForPlayback(cookieSource, AndroidCookieJar.playbackCookieFile(this@PlayerActivity))
+                      .onFailure { error -> Log.w(TAG, "Failed to prepare playback cookies", error) }
+                  }
+                }
+              }
           ensureCurrentMediaRequest(requestGeneration)
+          val itemWithArtwork =
+            artworkDeferred
+              ?.await()
+              ?.takeIf { it.isNotBlank() }
+              ?.let { artwork -> item.copy(artworkUri = artwork) }
+              ?: item
           if (requestedQueueItem == null || isTorrentRequest) {
             val torrentSeries = torrentResult?.takeIf { it.playableFiles.size > 1 }
             if (torrentSeries != null) {
@@ -5856,6 +6021,8 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
               commitMediaRequest(requestGeneration) { PlaybackSession.replaceQueue(listOf(itemWithArtwork), 0) }
             }
           }
+          // libmpv reads the cookie file as it opens the stream, so this is the last join before loadfile.
+          cookieExportDeferred?.await()
           issuePlaybackLoad(
             item = itemWithArtwork,
             attempt = 0,
@@ -5912,34 +6079,48 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val restoreSavedPosition = playerPreferences.savePositionOnQuit.get()
     val resumeMode = playerPreferences.resumePlaybackMode.get()
     // Only Always Resume may use the fast load-local start option. Never starts at zero.
-    val initialPositionSeconds =
-      if (effectivePositionOverride != null) {
-        effectivePositionOverride.positionSeconds?.takeIf { it.isFinite() && it > 0.0 }
-      } else if (
+    val needsSavedPositionLookup =
+      effectivePositionOverride == null &&
         restoreSavedPosition &&
         resumeMode == ResumePlaybackMode.Always &&
         !item.isDefinitelyAudioOnly()
-      ) {
-        resolvePlaybackState(item.stableId, legacyMediaIdentifier)
-          ?.lastPosition
-          ?.takeIf { it > 3 }
-          ?.toDouble()
-      } else {
-        null
-      }
     ensureCurrentMediaRequest(requestGeneration)
     val requiresYtdlp = sequenceOf(item.originalUri, item.playableUri).any(YtdlpManager::requiresYtdlp)
-    val ytdlpReady =
-      YtdlpManager.prepareForPlayback(this, item.playableUri) { line ->
-        line.trim().takeIf { it.isNotEmpty() }?.let { message -> Log.d(TAG, message) }
+    // The yt-dlp runtime prep (multi-MB runtime copy plus a Python subprocess for web sources),
+    // the previous-session stop wait and the resume-position database read have no ordering
+    // dependency on each other, so they are started together and joined only where their result
+    // is needed: pre-load latency becomes max(...) instead of sum(...).
+    val generation = coroutineScope {
+      val ytdlpReadyDeferred =
+        async {
+          YtdlpManager.prepareForPlayback(this@PlayerActivity, item.playableUri) { line ->
+            line.trim().takeIf { it.isNotEmpty() }?.let { message -> Log.d(TAG, message) }
+          }
+        }
+      val stopCompletedDeferred = async { PlaybackSession.awaitStopCompletion() }
+      val savedPositionDeferred =
+        if (needsSavedPositionLookup) {
+          async {
+            resolvePlaybackState(item.stableId, legacyMediaIdentifier)
+              ?.lastPosition
+              ?.takeIf { it > 3 }
+              ?.toDouble()
+          }
+        } else {
+          null
+        }
+
+      val initialPositionSeconds =
+        effectivePositionOverride
+          ?.positionSeconds
+          ?.takeIf { it.isFinite() && it > 0.0 }
+          ?: savedPositionDeferred?.await()
+      if (!ytdlpReadyDeferred.await()) throw IllegalStateException("yt-dlp could not be prepared for web playback")
+      ensureCurrentMediaRequest(requestGeneration)
+      if (!stopCompletedDeferred.await()) {
+        throw IllegalStateException("Timed out waiting for previous playback to stop")
       }
-    if (!ytdlpReady) throw IllegalStateException("yt-dlp could not be prepared for web playback")
-    ensureCurrentMediaRequest(requestGeneration)
-    if (!PlaybackSession.awaitStopCompletion()) {
-      throw IllegalStateException("Timed out waiting for previous playback to stop")
-    }
-    ensureCurrentMediaRequest(requestGeneration)
-    val generation =
+      ensureCurrentMediaRequest(requestGeneration)
       PlaybackSession.load(
         item = item,
         restoreSavedPosition = restoreSavedPosition,
@@ -5957,6 +6138,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
           }
         },
       )
+    }
     if (generation < 0L) {
       ensureCurrentMediaRequest(requestGeneration)
       throw IllegalStateException("libmpv core is unavailable")
@@ -6300,9 +6482,13 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       when (orientationPref) {
         PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
         PlayerOrientation.Video -> {
-          // For video orientation, check if aspect is available
-          val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
-          Log.d(TAG, "setOrientation - Video mode: aspect=$aspect")
+          // Prefer the launch metadata: it is already known before the first frame, so the window
+          // opens in the right orientation. getVideoOutAspect() is only the fallback for sources
+          // that never carried width/height (network streams, deeplinks, archives).
+          val aspect =
+            launchVideoAspect
+              ?: runCatching { player.getVideoOutAspect() }.getOrNull()
+          Log.d(TAG, "setOrientation - Video mode: aspect=$aspect (fromLaunch=${launchVideoAspect != null})")
           if (aspect == null || !aspect.isFinite() || aspect <= 0.0) {
             // Aspect not available yet - wait for video-params/aspect update
             Log.d(TAG, "setOrientation - Aspect not available, retaining launch orientation")
@@ -6329,6 +6515,15 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       }
   }
 
+  /**
+   * Display aspect of the launching video, rotation already applied, or null when unknown.
+   *
+   * Set by [applyInitialVideoOrientation] from the caller-supplied metadata. The browser and every
+   * playlist now pass width/height/rotation through the launch intent, so a portrait phone video
+   * is recognised as portrait before the first frame instead of after mpv reports the rotation.
+   */
+  private var launchVideoAspect: Double? = null
+
   private fun applyInitialVideoOrientation(sourceIntent: Intent) {
     if (isTelevision) {
       requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -6336,47 +6531,65 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     }
     if (playerPreferences.orientation.get() != PlayerOrientation.Video || isKnownAudioLaunch(sourceIntent)) return
 
+    // This must stay synchronous, before super.onCreate(), so the requested orientation is applied
+    // while the window does not exist yet. Deferring it (even by one frame) makes the assignment
+    // land after the window is added and after overrideActivityTransition() has begun, and the
+    // resulting relayout drops the open animation — reproducible as a vertical video no longer
+    // sliding in. PlayerActivity handles orientation|screenSize|screenLayout itself, so the late
+    // assignment does not recreate the Activity; it relayouts the window mid-transition.
     var width = sourceIntent.getIntExtra(EXTRA_VIDEO_WIDTH, 0)
     var height = sourceIntent.getIntExtra(EXTRA_VIDEO_HEIGHT, 0)
-    var rotation = 0
+    var rotation = sourceIntent.getIntExtra(EXTRA_VIDEO_ROTATION, 0).takeIf { it != 0 }
+      ?: sourceIntent.getIntExtra("rotation", 0)
 
-    extractUriFromIntent(sourceIntent)
-      ?.takeIf { uri -> uri.scheme.equals("content", true) || uri.scheme.equals("file", true) }
-      ?.let { uri ->
-        runCatching {
-          val retriever = android.media.MediaMetadataRetriever()
-          try {
-            retriever.setDataSource(this, uri)
-            if (width <= 0) {
-              width =
-                retriever
-                  .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                  ?.toIntOrNull()
-                  ?: 0
+    // Only invoke expensive MediaMetadataRetriever synchronously if dimensions are not provided in intent extras
+    if (width <= 0 || height <= 0) {
+      extractUriFromIntent(sourceIntent)
+        ?.takeIf { uri -> uri.scheme.equals("content", true) || uri.scheme.equals("file", true) }
+        ?.let { uri ->
+          runCatching {
+            val retriever = android.media.MediaMetadataRetriever()
+            try {
+              retriever.setDataSource(this, uri)
+              if (width <= 0) {
+                width =
+                  retriever
+                    .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                    ?.toIntOrNull()
+                    ?: 0
+              }
+              if (height <= 0) {
+                height =
+                  retriever
+                    .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                    ?.toIntOrNull()
+                    ?: 0
+              }
+              if (rotation == 0) {
+                rotation =
+                  retriever
+                    .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                    ?.toIntOrNull()
+                    ?: 0
+              }
+            } finally {
+              retriever.release()
             }
-            if (height <= 0) {
-              height =
-                retriever
-                  .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                  ?.toIntOrNull()
-                  ?: 0
-            }
-            rotation =
-              retriever
-                .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-                ?.toIntOrNull()
-                ?: 0
-          } finally {
-            retriever.release()
           }
         }
-      }
+    }
     if (width <= 0 || height <= 0) return
 
+    // width/height are coded dimensions. A 90 or 270 rotation swaps them, which is exactly why a
+    // portrait phone video reports 1920x1080 here and only reveals itself once mpv loads.
     val normalizedRotation = ((rotation % 360) + 360) % 360
     val swapsDimensions = normalizedRotation == 90 || normalizedRotation == 270
+    val displayWidth = if (swapsDimensions) height else width
+    val displayHeight = if (swapsDimensions) width else height
+    launchVideoAspect = displayWidth.toDouble() / displayHeight.toDouble()
+
     val initialOrientation =
-      if ((width > height) != swapsDimensions) {
+      if (displayWidth > displayHeight) {
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
       } else {
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
@@ -7801,7 +8014,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val sourceUri = extractUriFromIntent(intent)
     val localPath =
       intent.getStringExtra("local_media_path")?.takeIf { it.isNotBlank() }
-        ?: sourceUri?.resolveLocalPath(this)
+        ?: sourceUri?.let { source -> resolveLocalPathMemoized(source) }
     localPath?.let {
       return PlaybackIdentity.forLocalPath(it)
     }
@@ -7834,7 +8047,8 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val explicitIdentifier = intent.getStringExtra("media_identifier")?.takeIf { it.isNotBlank() }
     val uri = extractUriFromIntent(intent)
     val hasLocalPath =
-      intent.getStringExtra("local_media_path")?.isNotBlank() == true || uri?.resolveLocalPath(this) != null
+      intent.getStringExtra("local_media_path")?.isNotBlank() == true ||
+        uri?.let { source -> resolveLocalPathMemoized(source) } != null
     if (hasLocalPath) return uri?.toString()?.let(PlaybackIdentity::forUri) ?: explicitIdentifier
     if (explicitIdentifier?.startsWith("media:v2:") == true) return null
     val networkFilePath = intent.getStringExtra("network_file_path")
@@ -8464,6 +8678,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     private const val EXTRA_SCRIPT_RESTORE_PAUSED = "script_restore_paused"
     const val EXTRA_VIDEO_WIDTH = "video_width"
     const val EXTRA_VIDEO_HEIGHT = "video_height"
+    const val EXTRA_VIDEO_ROTATION = "video_rotation"
 
     /** Start playback at this many seconds in, overriding resume-from-history. Set by snapshot jumps. */
     const val EXTRA_START_POSITION_SECONDS = "start_position_seconds"

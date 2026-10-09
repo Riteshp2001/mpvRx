@@ -15,6 +15,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,8 +59,22 @@ fun SubtitleDelayPanel(
 ) {
   val preferences = koinInject<SubtitlesPreferences>()
   val configOwnedOptions = currentMpvConfigOverrideOptions()
-  val delayEnabled = "sub-delay" !in configOwnedOptions
+  val delayEnabled = SUB_DELAY_PROPERTY !in configOwnedOptions
+  val secondaryDelayEnabled = SECONDARY_SUB_DELAY_PROPERTY !in configOwnedOptions
   val speedEnabled = "sub-speed" !in configOwnedOptions
+
+  /**
+   * mpv keeps `sub-delay` and `secondary-sub-delay` as two independent properties, but
+   * setupSubtitlesOptions initialises both from the same default. Writing only `sub-delay`
+   * left the secondary track stuck on the startup value, so a secondary subtitle could never
+   * be synced at all. Keep the two in lockstep, each one only while mpvRx still owns it.
+   */
+  fun setSubtitleDelay(
+    seconds: Float,
+  ) {
+    if (delayEnabled) PlaybackSession.setPropertyDouble(SUB_DELAY_PROPERTY, seconds.toDouble())
+    if (secondaryDelayEnabled) PlaybackSession.setPropertyDouble(SECONDARY_SUB_DELAY_PROPERTY, seconds.toDouble())
+  }
 
   DraggablePanel(
     modifier = modifier,
@@ -65,7 +82,7 @@ fun SubtitleDelayPanel(
       SubtitleDelayTitle(onClose = onDismissRequest)
     },
   ) {
-    val delay by PlaybackSession.propDouble["sub-delay"].collectAsState()
+    val delay by PlaybackSession.propDouble[SUB_DELAY_PROPERTY].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
     val speed by PlaybackSession.propDouble["sub-speed"].collectAsState()
     val speedFloat by remember { derivedStateOf { (speed ?: 1.0).toFloat() } }
@@ -73,9 +90,7 @@ fun SubtitleDelayPanel(
     // We unwrap the card content here because DraggablePanel already provides the card
     SubtitleDelayCardContent(
       delay = delayFloat,
-      onDelayChange = {
-        PlaybackSession.setPropertyDouble("sub-delay", it.toDouble())
-      },
+      onDelayChange = ::setSubtitleDelay,
       speed = speedFloat,
       onSpeedChange = { PlaybackSession.setPropertyDouble("sub-speed", it.toDouble()) },
       onApply = {
@@ -84,7 +99,7 @@ fun SubtitleDelayPanel(
         if (speedEnabled && currentSpeed in 0.1..10.0) preferences.defaultSubSpeed.set(currentSpeed.toFloat())
       },
       onReset = {
-        if (delayEnabled) PlaybackSession.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
+        setSubtitleDelay(preferences.defaultSubDelay.get() / 1000f)
         if (speedEnabled) PlaybackSession.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
       },
       delayEnabled = delayEnabled,
@@ -92,6 +107,9 @@ fun SubtitleDelayPanel(
     )
   }
 }
+
+private const val SUB_DELAY_PROPERTY = "sub-delay"
+private const val SECONDARY_SUB_DELAY_PROPERTY = "secondary-sub-delay"
 
 // Extracted content to avoid nested cards since DraggablePanel has a Card
 @Composable
@@ -164,6 +182,16 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
       decreaseIcon = Icons.RoundedFilled.Remove,
       valueFormatter = { "%.1f".format(it) },
       enabled = delayControlEnabled,
+    )
+    Text(
+      text = stringResource(R.string.player_sheets_delay_quick_sync_summary),
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    QuickSyncOffsets(
+      delay = delay,
+      enabled = delayControlEnabled,
+      onSelect = onDelayChange,
     )
     Column(
       modifier = Modifier.animateContentSize(),
@@ -247,6 +275,44 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
   }
 }
 
+/**
+ * One tap offsets covering the delays that actually show up in practice.
+ *
+ * Each chip selects an absolute offset rather than nudging the current one, so repeated taps
+ * are idempotent and the value the user sees is the value they picked. It also means a file
+ * that was synced in a previous session only needs the same chip again, and the value is
+ * stored per media so it is reapplied on the next playback.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun QuickSyncOffsets(
+  delay: Float,
+  enabled: Boolean,
+  onSelect: (Float) -> Unit,
+) {
+  FlowRow(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+  ) {
+    QUICK_SYNC_OFFSETS.forEach { offset ->
+      FilterChip(
+        selected = delay == offset,
+        enabled = enabled,
+        onClick = { onSelect(offset) },
+        label = {
+          // The signed format would render the zero chip as "+0 s", so it gets its own string.
+          if (offset == 0f) {
+            Text(stringResource(R.string.player_sheets_delay_offset_zero_seconds))
+          } else {
+            Text(stringResource(R.string.player_sheets_delay_offset_seconds, offset.toInt()))
+          }
+        },
+      )
+    }
+  }
+}
+
 @Composable
 fun SubtitleDelayTitle(
   onClose: () -> Unit,
@@ -276,3 +342,6 @@ enum class DelayType {
   Audio,
   Subtitle,
 }
+
+/** Offsets offered by [QuickSyncOffsets], in seconds. */
+private val QUICK_SYNC_OFFSETS = listOf(-3f, -2f, -1f, 0f, 1f, 2f, 3f)

@@ -83,13 +83,13 @@ fun isSecondarySubtitleActive(): Boolean = getTrackSelectionId("secondary-sid") 
 
 fun subtitleAssOverrideValue(
   forceAssOverride: Boolean,
-  secondarySubtitleActive: Boolean = isSecondarySubtitleActive(),
-): String = if (forceAssOverride || secondarySubtitleActive) "force" else "scale"
+): String = if (forceAssOverride) "force" else "scale"
 
 fun applySubtitleOverrides(forceAssOverride: Boolean) {
-  val overrideValue = subtitleAssOverrideValue(forceAssOverride)
-  PlaybackSession.setPropertyString("sub-ass-override", overrideValue)
-  PlaybackSession.setPropertyString("secondary-sub-ass-override", overrideValue)
+  val primaryOverride = subtitleAssOverrideValue(forceAssOverride)
+  val secondaryOverride = if (forceAssOverride || isSecondarySubtitleActive()) "force" else "scale"
+  PlaybackSession.setPropertyString("sub-ass-override", primaryOverride)
+  PlaybackSession.setPropertyString("secondary-sub-ass-override", secondaryOverride)
 }
 
 fun applySubtitlePositions(

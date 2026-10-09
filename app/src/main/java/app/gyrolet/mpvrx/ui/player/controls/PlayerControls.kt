@@ -669,6 +669,10 @@ fun PlayerControls(
           LocalForceDarkPlayerButtonsBackground provides forceDarkButtonBackground,
           LocalHidePlayerButtonsBackground provides hideBackground,
           LocalContentColor provides MaterialTheme.colorScheme.onSurface,
+          LocalPlayerButtonAdvancedPreferences provides advancedPreferences,
+          LocalPlayerButtonPreferences provides playerPreferences,
+          LocalPlayerButtonStatisticsPage provides statisticsPage,
+          LocalPlayerButtonHaptics provides app.gyrolet.mpvrx.ui.utils.rememberAppHaptics(),
         ) {
       CompositionLocalProvider(
         LocalLayoutDirection provides LayoutDirection.Ltr,

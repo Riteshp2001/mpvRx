@@ -426,6 +426,11 @@ object MediaInfoOps {
                 null
               }
 
+            // Display rotation, read from the descriptor that is already open. Without it a
+            // portrait phone video reports landscape coded dimensions and the player only
+            // corrects its orientation once mpv loads the file.
+            val rotation = readRotation(mi)
+
             VideoMetadata(
               sizeBytes =
                 fileSize.takeIf { it > 0L }
@@ -440,6 +445,7 @@ object MediaInfoOps {
               subtitleCodec = subtitleCodec,
               videoCodec = videoCodec.label,
               videoCodecMimeType = videoCodec.mimeType,
+              rotation = rotation,
             )
           } finally {
             mi.Close()
@@ -551,7 +557,29 @@ object MediaInfoOps {
     val subtitleCodec: String = "",
     val videoCodec: String = "",
     val videoCodecMimeType: String = "",
+    val rotation: Int = 0,
   )
+
+  /**
+   * Normalizes a container rotation to one of 0/90/180/270.
+   *
+   * MediaInfo reports signed values (-90, 270, ...) and can also surface the legacy
+   * `Rotation` value as a float. Anything that is not a quarter turn is treated as no
+   * rotation so a malformed tag can never flip the player's orientation.
+   */
+  private fun normalizeRotation(raw: Float?): Int {
+    if (raw == null || !raw.isFinite()) return 0
+    val normalized = ((raw.toInt() % 360) + 360) % 360
+    return if (normalized % 90 == 0) normalized else 0
+  }
+
+  /** Reads display rotation from an already-open MediaInfo handle, or 0 when absent. */
+  private fun readRotation(mi: MediaInfo): Int =
+    normalizeRotation(
+      runCatching {
+        mi.getInfo(MediaInfo.Stream.Video, 0, "Rotation").toFloatOrNull()
+      }.getOrNull(),
+    )
 
   /**
    * Extract rotation (in degrees) from the video stream. Returns 0 if not specified or on error.
@@ -569,8 +597,7 @@ object MediaInfoOps {
         val mi = MediaInfo()
         try {
           mi.Open(fd, fileName)
-          val rotationStr = mi.Get(MediaInfo.Stream.Video, 0, "Rotation")
-          rotationStr.toFloatOrNull()?.toInt() ?: 0
+          readRotation(mi)
         } finally {
           mi.Close()
           pfd.close()

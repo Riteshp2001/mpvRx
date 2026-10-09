@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Process
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -80,6 +81,13 @@ import java.io.File
 
 private const val DEBUG_LOG_POLL_INTERVAL_MS = 1_500L
 private const val DEBUG_LOG_TAG = "MpvRxDebugLogs"
+private const val DEBUG_LOG_FILE_PREFIX = "mpvrx-debug-"
+private const val DEBUG_LOG_KEEP = 5
+private const val SHARE_DIR_NAME = "shared_logs"
+
+// `filesDir` is what the player passes to mpv as its --config-dir, so this is the
+// mpv configuration folder users already browse to edit mpv.conf.
+private const val CONFIG_LOG_DIR_NAME = "logs"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -261,12 +269,24 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
                 },
               )
               DropdownMenuItem(
-                text = { Text("Export visible logs") },
+                text = { Text("Save logs to config folder") },
                 leadingIcon = { Icon(Icons.RoundedFilled.Download, contentDescription = null) },
                 enabled = filteredEntries.isNotEmpty(),
                 onClick = {
                   menuExpanded = false
-                  exportDebugLogs(context, visibleText(includeDeviceInfo = true))
+                  val text = visibleText(includeDeviceInfo = true)
+                  scope.launch {
+                    val saved = withContext(Dispatchers.IO) { saveDebugLogsToConfigDir(context, text) }
+                    val message =
+                      if (saved != null) {
+                        "Logs saved to ${saved.parent}/${saved.name}"
+                      } else {
+                        "Could not save logs to the config folder"
+                      }
+                    withContext(Dispatchers.Main) {
+                      Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                  }
                 },
               )
               DropdownMenuItem(
@@ -642,7 +662,7 @@ private fun shareDebugLogs(
   if (text.isBlank()) return
   val byteCount = text.toByteArray(Charsets.UTF_8).size
   if (byteCount > 256 * 1024) {
-    exportDebugLogs(context, text, chooserTitle = "Share debug logs")
+    shareDebugLogsAsFile(context, text, chooserTitle = "Share debug logs")
     return
   }
 
@@ -657,21 +677,21 @@ private fun shareDebugLogs(
   )
 }
 
-private fun exportDebugLogs(
+private fun shareDebugLogsAsFile(
   context: Context,
   text: String,
-  chooserTitle: String = "Export debug logs",
+  chooserTitle: String = "Share debug logs",
 ) {
   if (text.isBlank()) return
 
-  val exportDirectory = File(context.cacheDir, "shared_logs").apply { mkdirs() }
-  val file = File(exportDirectory, "mpvrx-debug-${System.currentTimeMillis()}.txt")
+  val shareDirectory = File(context.cacheDir, SHARE_DIR_NAME).apply { mkdirs() }
+  val file = File(shareDirectory, "$DEBUG_LOG_FILE_PREFIX${System.currentTimeMillis()}.txt")
   file.writeText(text)
 
-  exportDirectory
-    .listFiles { candidate -> candidate.isFile && candidate.name.startsWith("mpvrx-debug-") }
+  shareDirectory
+    .listFiles { candidate -> candidate.isFile && candidate.name.startsWith(DEBUG_LOG_FILE_PREFIX) }
     ?.sortedByDescending(File::lastModified)
-    ?.drop(5)
+    ?.drop(DEBUG_LOG_KEEP)
     ?.forEach { candidate -> candidate.delete() }
 
   val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
@@ -686,4 +706,33 @@ private fun exportDebugLogs(
       chooserTitle,
     ),
   )
+}
+
+/**
+ * Writes the log text to a `logs` subfolder of the mpv configuration folder.
+ *
+ * The player hands `filesDir` to mpv as its `--config-dir`, so saving here keeps every
+ * dump next to `mpv.conf` and the rest of the user editable configuration instead of
+ * inside the cache directory, which the system is free to delete at any time.
+ * Returns the written file, or null when the text was blank or could not be written.
+ */
+private fun saveDebugLogsToConfigDir(
+  context: Context,
+  text: String,
+): File? {
+  if (text.isBlank()) return null
+
+  return runCatching {
+    val logDirectory = File(context.filesDir, CONFIG_LOG_DIR_NAME).apply { mkdirs() }
+    val file = File(logDirectory, "$DEBUG_LOG_FILE_PREFIX${System.currentTimeMillis()}.txt")
+    file.writeText(text)
+
+    logDirectory
+      .listFiles { candidate -> candidate.isFile && candidate.name.startsWith(DEBUG_LOG_FILE_PREFIX) }
+      ?.sortedByDescending(File::lastModified)
+      ?.drop(DEBUG_LOG_KEEP)
+      ?.forEach { candidate -> candidate.delete() }
+
+    file
+  }.getOrNull()
 }

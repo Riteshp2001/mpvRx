@@ -19,7 +19,6 @@ import androidx.core.view.WindowInsetsCompat
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
-import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -37,6 +36,11 @@ import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.media.VideoCodecSupportInspector
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.KeyMapping
 import `is`.xyz.mpv.MPVLib
@@ -84,8 +88,11 @@ class MPVView(
     // The libmpv core is process-wide, so returning to the player can reuse a core created with
     // older renderer preferences. Keep fallbacks stable for the lifetime of that preference
     // selection, but recreate the core when gpu-next/Vulkan selection actually changes.
+    val inputs = awaitInitInputs()
     MpvConfigOverridePolicy.configure(advancedPreferences.mpvConfOverrides.get())
-    val requestedBackend = selectRenderBackend(ignoreForcedOpenGlFallback = true)
+    // The core key deliberately ignores forceOpenGlFallback so a failed Vulkan attempt does not
+    // invalidate the very key it is retrying under.
+    val requestedBackend = selectRenderBackend(inputs.anime4kEnabled, inputs.gpuNextEnabled, inputs.vulkanCapable)
     val scriptsKey = advancedPreferences.userScriptsConfigurationKey()
     val coreConfigurationKey =
       "${requestedBackend.configurationKey}|conf=${MpvConfigOverridePolicy.configurationKey()}" +
@@ -134,6 +141,79 @@ class MPVView(
   ) {
     val configurationKey: String
       get() = "$vo|$gpuApi|$gpuContext"
+  }
+
+  /**
+   * Everything [initOptions] needs that does not require a live core: preference reads, the
+   * MediaCodecList query, the renderer selection *ingredients* and the Pictures directory.
+   *
+   * Only the `PlaybackSession.setOptionString` calls actually need the core, so deriving these
+   * values off the main thread removes ~15 DataStore reads, a MediaCodecList query and an mkdirs
+   * from the open path without touching the MPVLib.create -> option writes -> MPVLib.init order.
+   */
+  private class InitInputs(
+    val profile: String,
+    val anime4kEnabled: Boolean,
+    val gpuNextEnabled: Boolean,
+    val vulkanCapable: Boolean,
+    val hdrScreenOutputEnabled: Boolean,
+    val hdrScreenModePreference: HdrScreenMode,
+    val boostSdrToHdr: Boolean,
+    val hardwareDecoderCodecs: List<String>,
+    val useYuv420p: Boolean,
+    val logLevel: String,
+    val screenshotDirectoryPath: String,
+    val filterValues: List<Pair<String, String>>,
+    val defaultSpeed: String,
+    val preciseSeek: Boolean,
+  )
+
+  @Volatile
+  private var preparedInitInputs: InitInputs? = null
+  private var initInputsJob: Job? = null
+
+  /** Kicks off the derivation. Safe to call more than once; only the first call starts work. */
+  fun prepareInitInputs() {
+    if (initInputsJob != null) return
+    initInputsJob =
+      CoroutineScope(Dispatchers.IO).launch {
+        preparedInitInputs = runCatching(::computeInitInputs).getOrNull()
+      }
+  }
+
+  /** Joins the derivation, computing it inline if it is not ready or failed. */
+  private fun awaitInitInputs(): InitInputs {
+    preparedInitInputs?.let { return it }
+    initInputsJob?.let { job -> runBlocking { job.join() } }
+    return preparedInitInputs ?: computeInitInputs().also { preparedInitInputs = it }
+  }
+
+  private fun computeInitInputs(): InitInputs {
+    val screenshotDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+    screenshotDirectory.mkdirs()
+    return InitInputs(
+      profile = decoderPreferences.profile.get(),
+      // These three are the inputs to the renderer choice. The choice itself is not precomputed
+      // because it also depends on forceOpenGlFallback, which differs on the Vulkan retry attempt.
+      anime4kEnabled = decoderPreferences.enableAnime4K.get() && decoderPreferences.anime4kMode.get() != "OFF",
+      gpuNextEnabled = decoderPreferences.gpuNext.get(),
+      vulkanCapable = RendererBackendPolicy.canUseVulkan(
+        buildIncludesVulkan = BuildConfig.MPV_SUPPORTS_VULKAN,
+        deviceSupportsVulkan = VulkanCapabilities.isDeviceSupported(context),
+        userEnabledVulkan = decoderPreferences.useVulkan.get(),
+        forceOpenGlFallback = false,
+      ),
+      hdrScreenOutputEnabled = decoderPreferences.hdrScreenOutput.get(),
+      hdrScreenModePreference = decoderPreferences.hdrScreenMode.get(),
+      boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
+      hardwareDecoderCodecs = VideoCodecSupportInspector.hardwareDecoderCodecIds(),
+      useYuv420p = decoderPreferences.useYUV420P.get(),
+      logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn",
+      screenshotDirectoryPath = screenshotDirectory.path,
+      filterValues = VideoFilters.entries.map { it.mpvProperty to it.preference(decoderPreferences).get().toString() },
+      defaultSpeed = playerPreferences.defaultSpeed.get().toString(),
+      preciseSeek = playerPreferences.usePreciseSeeking.get(),
+    )
   }
 
   fun getVideoOutAspect(): Double? {
@@ -203,26 +283,24 @@ class MPVView(
   var aid: Int by TrackDelegate("aid")
 
   override fun initOptions() {
-    val profile = decoderPreferences.profile.get()
-    PlaybackSession.setOptionString("profile", profile)
-    val backend = selectRenderBackend()
+    val inputs = awaitInitInputs()
+    PlaybackSession.setOptionString("profile", inputs.profile)
+    val backend = selectRenderBackend(inputs.anime4kEnabled, inputs.gpuNextEnabled, inputs.vulkanCapable)
     val useVulkan = backend.gpuApi == "vulkan"
     val hwdecMode = preferredHwdecMode(useVulkan)
     PlaybackSession.setVideoOutput(backend.vo)
     PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
     PlaybackSession.setOptionString("gpu-context", backend.gpuContext)
 
-    val hdrScreenOutputEnabled = decoderPreferences.hdrScreenOutput.get()
     val isLinearAvailable = useVulkan && backend.vo == "gpu-next"
     val hdrScreenMode =
-      if (!hdrScreenOutputEnabled) {
+      if (!inputs.hdrScreenOutputEnabled) {
         HdrScreenMode.OFF
       } else {
-        val mode = decoderPreferences.hdrScreenMode.get()
-        if (mode == HdrScreenMode.LINEAR && !isLinearAvailable) {
+        if (inputs.hdrScreenModePreference == HdrScreenMode.LINEAR && !isLinearAvailable) {
           HdrScreenMode.defaultEnabledMode
         } else {
-          mode
+          inputs.hdrScreenModePreference
         }
       }
     val hdrPipelineReady = hdrScreenMode != HdrScreenMode.LINEAR || isLinearAvailable
@@ -230,13 +308,13 @@ class MPVView(
       applyHdrScreenOutputOptions(
         mode = hdrScreenMode,
         pipelineReady = hdrPipelineReady,
-        boostSdrToHdr = decoderPreferences.boostSdrToHdr.get(),
+        boostSdrToHdr = inputs.boostSdrToHdr,
       )
     }
 
     // Fongmi can map direct MediaCodec frames into Vulkan; other Vulkan builds start with copy mode.
     if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HARDWARE_DECODER)) {
-      val hardwareDecoderCodecs = VideoCodecSupportInspector.hardwareDecoderCodecIds()
+      val hardwareDecoderCodecs = inputs.hardwareDecoderCodecs
       PlaybackSession.setOptionString(
         "hwdec",
         if (hardwareDecoderCodecs.isEmpty()) "no" else hwdecMode,
@@ -251,63 +329,33 @@ class MPVView(
     // rendering heuristic, matching mpv's defaults.
     PlaybackSession.setOptionString("vd-lavc-dr", "auto")
 
-    if (decoderPreferences.useYUV420P.get()) {
+    if (inputs.useYuv420p) {
       PlaybackSession.setOptionString("vf", "format=yuv420p")
     }
-    val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
-    PlaybackSession.setOptionString("msg-level", "all=$logLevel")
+    PlaybackSession.setOptionString("msg-level", "all=${inputs.logLevel}")
 
     PlaybackSession.setOptionString("keep-open", "yes")
     PlaybackSession.setOptionString("input-default-bindings", "yes")
 
-    PlaybackSession.setOptionString("tls-verify", "yes")
-    PlaybackSession.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
+    PlaybackSession.setOptionString("screenshot-directory", inputs.screenshotDirectoryPath)
 
-    val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-    screenshotDir.mkdirs()
-    PlaybackSession.setOptionString("screenshot-directory", screenshotDir.path)
-
-    VideoFilters.entries.forEach {
-      PlaybackSession.setOptionString(it.mpvProperty, it.preference(decoderPreferences).get().toString())
+    inputs.filterValues.forEach { (property, value) ->
+      PlaybackSession.setOptionString(property, value)
     }
 
-    PlaybackSession.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
+    PlaybackSession.setOptionString("speed", inputs.defaultSpeed)
     // Avoid forcing CPU-side film-grain synthesis globally; this can spike thermals on mobile SoCs.
     // Let mpv choose the safest path for the active decoder/backend.
     PlaybackSession.setOptionString("vd-lavc-film-grain", "auto")
 
-    // Streaming improvements
-    // Use adaptive HLS bitrate selection to avoid forcing the heaviest stream profile.
-    // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
-    PlaybackSession.setOptionString("hls-bitrate", "no")
-    PlaybackSession.setOptionString("cookies", "yes")
-    PlaybackSession.setOptionString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
-    PlaybackSession.setOptionString("cache", "auto")
-    PlaybackSession.setOptionString("cache-pause", "yes")
-    PlaybackSession.setOptionString("cache-pause-wait", "2")
-    PlaybackSession.setOptionString("demuxer-max-bytes", "64MiB")
-    // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
-    // Do not use reconnect_at_eof globally: a legitimate VOD EOF must still finish normally.
-    PlaybackSession.setOptionString(
-      "demuxer-lavf-o",
-      "http_persistent=0,reconnect=1,reconnect_on_network_error=1,reconnect_streamed=1," +
-        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
-    )
-    // demuxer-lavf-o only reaches demuxer-internal opens (HLS/DASH segments). The primary http(s)
-    // URL is opened by stream_lavf, which reads stream-lavf-o; without it a dropped connection or
-    // one failed seek-reopen permanently stalls network playback (endless buffering).
-    PlaybackSession.setOptionString(
-      "stream-lavf-o",
-      "reconnect=1,reconnect_on_network_error=1,reconnect_on_http_error=5xx,reconnect_streamed=1," +
-        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
-    )
+    // Cache, TLS, cookie and reconnect settings are applied by PlaybackSession on the first
+    // item that actually opens over the network, so a local file never pays for them.
     // Drop only video-output-bound late frames when rendering cannot keep up.
     // This prevents long-term jitter buildup without aggressively sacrificing smoothness.
     PlaybackSession.setOptionString("framedrop", "vo")
 
-    val preciseSeek = playerPreferences.usePreciseSeeking.get()
-    PlaybackSession.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
-    PlaybackSession.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
+    PlaybackSession.setOptionString("hr-seek", if (inputs.preciseSeek) "yes" else "no")
+    PlaybackSession.setOptionString("hr-seek-framedrop", if (inputs.preciseSeek) "no" else "yes")
 
     // Use audio-based video sync for better frame pacing with 4K HDR content.
     // This prevents timing jitter when the display refresh rate doesn't perfectly
@@ -529,8 +577,8 @@ class MPVView(
       PlaybackSession.setOptionString("sub-ass-justify", "yes")
       PlaybackSession.setOptionString("secondary-sub-ass-override", "force")
     } else {
-      PlaybackSession.setOptionString("sub-ass-override", "no")
-      PlaybackSession.setOptionString("secondary-sub-ass-override", "no")
+      PlaybackSession.setOptionString("sub-ass-override", "scale")
+      PlaybackSession.setOptionString("secondary-sub-ass-override", "scale")
     }
 
     // Typography and styling for both primary and secondary
@@ -679,20 +727,6 @@ class MPVView(
     }
   }
 
-  private fun shouldUseVulkan(ignoreForcedOpenGlFallback: Boolean = false): Boolean {
-    val canUseVulkan =
-      RendererBackendPolicy.canUseVulkan(
-        buildIncludesVulkan = BuildConfig.MPV_SUPPORTS_VULKAN,
-        deviceSupportsVulkan = VulkanCapabilities.isDeviceSupported(context),
-        userEnabledVulkan = decoderPreferences.useVulkan.get(),
-        forceOpenGlFallback = forceOpenGlFallback && !ignoreForcedOpenGlFallback,
-      )
-    if (decoderPreferences.useVulkan.get() && !canUseVulkan) {
-      Log.w(TAG, "Vulkan is unavailable for this build or device. Forcing OpenGL.")
-    }
-    return canUseVulkan
-  }
-
   private fun preferredHwdecMode(usesVulkan: Boolean): String =
     RendererBackendPolicy.preferredHwdecMode(
       hardwareDecodingEnabled = decoderPreferences.tryHWDecoding.get(),
@@ -700,12 +734,16 @@ class MPVView(
       buildSupportsMediaCodecVulkan = BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN,
     )
 
-  private fun selectRenderBackend(ignoreForcedOpenGlFallback: Boolean = false): RenderBackendSelection {
-    val anime4kEnabled =
-      decoderPreferences.enableAnime4K.get() &&
-        (decoderPreferences.anime4kMode.get() != "OFF")
-    val gpuNextEnabled = decoderPreferences.gpuNext.get()
-    val vulkanEnabled = shouldUseVulkan(ignoreForcedOpenGlFallback)
+  /**
+   * Pure decision over already-resolved ingredients. [initOptions] passes the precomputed values;
+   * [initializeSession] resolves them itself because it needs the selection for the core key and
+   * must ignore [forceOpenGlFallback] there.
+   */
+  private fun selectRenderBackend(
+    anime4kEnabled: Boolean,
+    gpuNextEnabled: Boolean,
+    vulkanEnabled: Boolean,
+  ): RenderBackendSelection {
 
     if (anime4kEnabled && gpuNextEnabled && !vulkanEnabled) {
       return RenderBackendSelection(

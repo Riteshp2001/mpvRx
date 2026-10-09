@@ -104,7 +104,6 @@ fun PlayerSheets(
   onDismissRequest: () -> Unit,
 ) {
   val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
-  val qualityDownloadAction = rememberQualityDownloadAction(viewModel)
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
   val configOwnedOptions =
@@ -396,6 +395,7 @@ fun PlayerSheets(
     }
 
     Sheets.VideoQuality -> {
+      val qualityDownloadAction = rememberQualityDownloadAction(viewModel)
       val videoQualityTracks by viewModel.videoQualityTracks.collectAsState()
       val playbackState by app.gyrolet.mpvrx.ui.player.PlaybackSession.state.composeCollectAsState()
       val selectionGeneration = playbackState.generation

@@ -968,6 +968,15 @@ val MIGRATION_30_31 =
     }
   }
 
+val MIGRATION_31_32 =
+  object : Migration(31, 32) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      // Display rotation is not exposed by MediaStore, so it can only come from the container.
+      // Default 0 keeps existing rows valid; they are re-extracted on the next cache miss.
+      db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `rotation` INTEGER NOT NULL DEFAULT 0")
+    }
+  }
+
 val MIGRATION_24_25 =
   object : Migration(24, 25) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -1037,6 +1046,7 @@ val DatabaseModule =
           MIGRATION_28_29,
           MIGRATION_29_30,
           MIGRATION_30_31,
+          MIGRATION_31_32,
         ).build()
     }
 

@@ -1288,6 +1288,7 @@ private fun FolderListContent(
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
   val showLoading = isLoading && !hasCompletedInitialLoad
   val showEmpty = folders.isEmpty() && hasCompletedInitialLoad && !foldersWereDeleted
+  val folderCardUiConfig = app.gyrolet.mpvrx.ui.browser.cards.rememberFolderCardUiConfig()
 
   val hasEnoughItems = folders.size > 20
   val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
@@ -1342,6 +1343,7 @@ private fun FolderListContent(
           onTogglePin = onTogglePin,
           selectedFolderBucketId = selectedFolderBucketId,
           audioOnly = audioOnly,
+          uiConfig = folderCardUiConfig,
         )
       } else {
         ListContent(
@@ -1360,6 +1362,7 @@ private fun FolderListContent(
           onTogglePin = onTogglePin,
           selectedFolderBucketId = selectedFolderBucketId,
           audioOnly = audioOnly,
+          uiConfig = folderCardUiConfig,
         )
       }
     }
@@ -1382,7 +1385,9 @@ private fun GridContent(
   onTogglePin: (VideoFolder) -> Unit,
   selectedFolderBucketId: String? = null,
   audioOnly: Boolean = false,
+  uiConfig: app.gyrolet.mpvrx.ui.browser.cards.FolderCardUiConfig? = null,
 ) {
+  val folderCardUiConfig = uiConfig ?: app.gyrolet.mpvrx.ui.browser.cards.rememberFolderCardUiConfig()
   val newCountByBucketId =
     remember(foldersWithNewCount) {
       foldersWithNewCount.associate { it.folder.bucketId to it.newVideoCount }
@@ -1438,6 +1443,7 @@ private fun GridContent(
           newVideoCount = newCount,
           customIcon = if (archiveFolder) Icons.RoundedFilled.FolderZip else null,
           isGridMode = true,
+          uiConfig = folderCardUiConfig,
           isPinned = folder.path in pinnedFolderPaths,
           onPinClick =
             if (!selectionManager.isInSelectionMode) {
@@ -1486,7 +1492,9 @@ private fun ListContent(
   selectedFolderBucketId: String? = null,
   audioOnly: Boolean = false,
   onFolderSwipe: ((VideoFolder, VideoSwipeAction) -> Unit)? = null,
+  uiConfig: app.gyrolet.mpvrx.ui.browser.cards.FolderCardUiConfig? = null,
 ) {
+  val folderCardUiConfig = uiConfig ?: app.gyrolet.mpvrx.ui.browser.cards.rememberFolderCardUiConfig()
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val browserPreferences = org.koin.compose.koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>()
@@ -1532,6 +1540,7 @@ private fun ListContent(
           newVideoCount = newCount,
           customIcon = if (archiveFolder) Icons.RoundedFilled.FolderZip else null,
           isGridMode = false,
+          uiConfig = folderCardUiConfig,
           onSwipeAction = onFolderSwipe.takeUnless { archiveFolder },
           isPinned = folder.path in pinnedFolderPaths,
           onPinClick =
@@ -1669,6 +1678,8 @@ private fun SearchResultsContent(
       )
     }
 
+  val folderCardUiConfig = app.gyrolet.mpvrx.ui.browser.cards.rememberFolderCardUiConfig()
+
   val isGridMode = mediaLayoutMode == app.gyrolet.mpvrx.preferences.MediaLayoutMode.GRID
 
   Box(modifier = Modifier.fillMaxSize()) {
@@ -1709,6 +1720,7 @@ private fun SearchResultsContent(
               onThumbClick = { onFolderClick(folder) },
               newVideoCount = 0,
               isGridMode = true,
+              uiConfig = folderCardUiConfig,
               customIcon = if (archiveFolder) Icons.RoundedFilled.FolderZip else null,
             )
           }
@@ -1765,6 +1777,7 @@ private fun SearchResultsContent(
             onThumbClick = { onFolderClick(folder) },
             newVideoCount = 0,
             isGridMode = false,
+            uiConfig = folderCardUiConfig,
             customIcon = if (archiveFolder) Icons.RoundedFilled.FolderZip else null,
             onSwipeAction = swipeActions.folder.takeUnless { archiveFolder },
           )

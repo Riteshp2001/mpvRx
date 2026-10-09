@@ -18,9 +18,12 @@ import app.gyrolet.mpvrx.repository.NetworkRepository
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -88,10 +91,19 @@ class NetworkStreamingProxy private constructor() :
     val knownSizes = ConcurrentHashMap<NetworkPath, Long>().apply {
       if (fileSize >= 0L) put(primaryPath, fileSize)
     }
+    // In-flight size probes, keyed by path. mpv asks for a size more than once per open (its own
+    // probe plus the first range read) and the read/write on knownSizes above has no window between
+    // them, so each concurrent probe pays its own upstream round trip. A single-flight map collapses
+    // them onto one; entries are dropped the moment their probe completes, so it cannot grow.
+    val sizeProbes = ConcurrentHashMap<NetworkPath, Deferred<Long>>()
     val clientMutex = Mutex()
 
     @Volatile
     var client: NetworkClient? = null
+
+    /** True only while [client] is a session this proxy dialled itself, and so has to close. */
+    @Volatile
+    var ownsClient: Boolean = false
   }
 
   private class HeadResponse(
@@ -260,16 +272,28 @@ class NetworkStreamingProxy private constructor() :
   ): Long {
     streamInfo.knownSizes[path]?.let { return it }
 
-    val discovered =
-      awaitProxyIo {
-        withConnectedClient(streamInfo) { client -> client.getFileSize(path.value) }
-      }.getOrNull() ?: -1L
+    // Single-flight: the first caller for a path runs the upstream probe, every later one awaits
+    // that same deferred instead of opening a second session round trip for the same answer.
+    val probe =
+      streamInfo.sizeProbes.computeIfAbsent(path) {
+        proxyScope
+          .async(start = CoroutineStart.LAZY) { probeFileSize(streamInfo, path) }
+          .also { pending -> pending.invokeOnCompletion { streamInfo.sizeProbes.remove(path, pending) } }
+      }
+
+    val discovered = awaitProxyIo { Result.success(probe.await()) }.getOrNull() ?: -1L
 
     if (discovered >= 0L) {
       streamInfo.knownSizes.putIfAbsent(path, discovered)
     }
     return discovered
   }
+
+  private suspend fun probeFileSize(
+    streamInfo: StreamInfo,
+    path: NetworkPath,
+  ): Long =
+    withConnectedClient(streamInfo) { client -> client.getFileSize(path.value) }.getOrNull() ?: -1L
 
   private fun getStream(
     streamInfo: StreamInfo,
@@ -325,45 +349,80 @@ class NetworkStreamingProxy private constructor() :
     }
   }
 
+  /**
+   * Returns a connected client for [streamInfo], reusing the session [NetworkRepository] already
+   * holds for this connection instead of dialling a second one.
+   *
+   * This mirrors the read-through reuse in `NetworkRepository.listFiles`: a browser that already
+   * has the share open would otherwise make playback pay for a whole extra handshake (SMB:
+   * NEGOTIATE + SESSION_SETUP + TREE_CONNECT + share listing; WebDAV: TCP + TLS + PROPFIND) only
+   * to read the same bytes. A borrowed session stays the repository's, so [StreamInfo.ownsClient]
+   * is left false and nothing here ever disconnects it — the browser's live connection has to
+   * outlive this playback stream either way.
+   *
+   * Must be called with [StreamInfo.clientMutex] held.
+   */
+  private suspend fun acquireClient(streamInfo: StreamInfo): Result<NetworkClient> {
+    val cached = streamInfo.client
+    if (cached != null) {
+      if (cached.isConnected()) return Result.success(cached)
+      if (streamInfo.ownsClient) {
+        try {
+          cached.connect().getOrThrow()
+          return Result.success(cached)
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (error: Exception) {
+          Log.w(TAG, "Upstream reconnect failed (${error::class.java.simpleName})")
+          streamInfo.client = null
+          streamInfo.ownsClient = false
+          runCatching { cached.disconnect() }
+          return Result.failure(error)
+        }
+      }
+      // A borrowed session that dropped is the repository's to replace; reconnecting it from here
+      // would race the lifecycle lock its own owner holds.
+      streamInfo.client = null
+      streamInfo.ownsClient = false
+    }
+
+    val shared = repository.getActiveClient(streamInfo.connectionId)?.takeIf { it.isConnected() }
+    if (shared != null) {
+      streamInfo.client = shared
+      streamInfo.ownsClient = false
+      return Result.success(shared)
+    }
+
+    val candidate =
+      repository.createClient(streamInfo.connectionId).getOrElse { error ->
+        Log.w(TAG, "Upstream client creation failed (${error::class.java.simpleName})")
+        return Result.failure(error)
+      }
+    return try {
+      candidate.connect().getOrThrow()
+      streamInfo.client = candidate
+      streamInfo.ownsClient = true
+      Result.success(candidate)
+    } catch (cancellation: CancellationException) {
+      runCatching { candidate.disconnect() }
+      throw cancellation
+    } catch (error: Exception) {
+      Log.w(TAG, "Upstream connect failed (${error::class.java.simpleName})")
+      runCatching { candidate.disconnect() }
+      Result.failure(error)
+    }
+  }
+
   private suspend fun <T> withConnectedClient(
     streamInfo: StreamInfo,
     operation: suspend (NetworkClient) -> Result<T>,
   ): Result<T> =
     streamInfo.clientMutex.withLock {
-      var client = streamInfo.client
-      if (client == null) {
-        val candidate =
-          repository.createClient(streamInfo.connectionId).getOrElse { error ->
-            Log.w(TAG, "Upstream client creation failed (${error::class.java.simpleName})")
-            return@withLock Result.failure(error)
-          }
-        try {
-          candidate.connect().getOrThrow()
-          streamInfo.client = candidate
-          client = candidate
-        } catch (cancellation: CancellationException) {
-          runCatching { candidate.disconnect() }
-          throw cancellation
-        } catch (error: Exception) {
-          Log.w(TAG, "Upstream connect failed (${error::class.java.simpleName})")
-          runCatching { candidate.disconnect() }
+      val client =
+        acquireClient(streamInfo).getOrElse { error ->
+          if (error is CancellationException) throw error
           return@withLock Result.failure(error)
         }
-      } else {
-        val existingClient = client
-        if (!existingClient.isConnected()) {
-          try {
-            existingClient.connect().getOrThrow()
-          } catch (cancellation: CancellationException) {
-            throw cancellation
-          } catch (error: Exception) {
-            Log.w(TAG, "Upstream reconnect failed (${error::class.java.simpleName})")
-            streamInfo.client = null
-            runCatching { existingClient.disconnect() }
-            return@withLock Result.failure(error)
-          }
-        }
-      }
 
       val result = operation(client)
       result.exceptionOrNull()?.let { error ->
@@ -375,7 +434,9 @@ class NetworkStreamingProxy private constructor() :
         val activeClient = streamInfo.client
         if (activeClient != null && !activeClient.isConnected()) {
           streamInfo.client = null
-          runCatching { activeClient.disconnect() }
+          if (streamInfo.ownsClient) {
+            runCatching { activeClient.disconnect() }
+          }
         }
       }
       result
@@ -468,8 +529,12 @@ class NetworkStreamingProxy private constructor() :
     withContext(NonCancellable) {
       streamInfo.clientMutex.withLock {
         val client = streamInfo.client
+        val owned = streamInfo.ownsClient
         streamInfo.client = null
-        runCatching { client?.disconnect() }
+        streamInfo.ownsClient = false
+        // A borrowed session belongs to NetworkRepository and outlives this stream: closing it here
+        // would take the browser's live connection down with the playback session.
+        if (owned) runCatching { client?.disconnect() }
       }
     }
 

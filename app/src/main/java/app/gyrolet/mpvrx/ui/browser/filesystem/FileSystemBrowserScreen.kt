@@ -96,6 +96,7 @@ import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
+import app.gyrolet.mpvrx.ui.browser.cards.rememberFolderCardUiConfig
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
 import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
@@ -1318,6 +1319,8 @@ private fun FileSystemBrowserContent(
       )
     }
 
+  val folderCardUiConfig = rememberFolderCardUiConfig()
+
   // Calculate thumbnail dimensions for list mode
   val thumbWidthDp = 160.dp
   val density = androidx.compose.ui.platform.LocalDensity.current
@@ -1483,6 +1486,7 @@ private fun FileSystemBrowserContent(
                     isRecentlyPlayed = false,
                     onClick = { onFolderClick(folder) },
                     onLongClick = if (archiveFolder) null else ({ onFolderLongClick(folder) }),
+                    uiConfig = folderCardUiConfig,
                     onThumbClick =
                       if (tapThumbnailToSelect && !archiveFolder) {
                         { selectionManager.toggleFromUser(folder) }
@@ -1600,6 +1604,7 @@ private fun FileSystemBrowserContent(
                   isRecentlyPlayed = false,
                   onClick = { onFolderClick(folder) },
                   onLongClick = if (archiveFolder) null else ({ onFolderLongClick(folder) }),
+                  uiConfig = folderCardUiConfig,
                   onThumbClick =
                     if (tapThumbnailToSelect && !archiveFolder) {
                       { selectionManager.toggleFromUser(folder) }
@@ -1761,6 +1766,8 @@ private fun FileSystemSearchContent(
       )
     }
 
+  val folderCardUiConfig = rememberFolderCardUiConfig()
+
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val isGridMode = mediaLayoutMode == app.gyrolet.mpvrx.preferences.MediaLayoutMode.GRID
   val searchFolders =
@@ -1904,6 +1911,7 @@ private fun FileSystemSearchContent(
                     onThumbClick = { onFolderClick(folder) },
                     newVideoCount = folder.newCount,
                     isGridMode = true,
+                    uiConfig = folderCardUiConfig,
                     customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
                   )
                 }
@@ -1991,6 +1999,7 @@ private fun FileSystemSearchContent(
                   onThumbClick = { onFolderClick(folder) },
                   newVideoCount = folder.newCount,
                   isGridMode = false,
+                  uiConfig = folderCardUiConfig,
                   customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
                   onSwipeAction = swipeActions.folder.takeUnless { archiveFolder },
                 )

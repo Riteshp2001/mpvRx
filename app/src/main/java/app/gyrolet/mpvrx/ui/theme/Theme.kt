@@ -271,6 +271,9 @@ private fun ThemeTransitionContent(content: @Composable () -> Unit) {
 // Main Theme
 // ============================================================================
 
+/** Immutable, all-default [Spacing]; identical to constructing `Spacing()` per composition. */
+private val DefaultAppSpacing = Spacing()
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MpvrxTheme(
@@ -327,35 +330,43 @@ fun MpvrxTheme(
       DarkMode.System -> darkTheme
     }
   val customThemeDefinition =
-    CustomThemeDefinition
-      .parseCollection(customTheme)
-      .firstOrNull { it.name == selectedCustomThemeName }
-      ?: CustomThemeDefinition.parse(customTheme).takeIf { selectedCustomThemeName.isBlank() }
+    remember(customTheme, selectedCustomThemeName) {
+      CustomThemeDefinition
+        .parseCollection(customTheme)
+        .firstOrNull { it.name == selectedCustomThemeName }
+        ?: CustomThemeDefinition.parse(customTheme).takeIf { selectedCustomThemeName.isBlank() }
+    }
 
+  // Keys below are exactly the inputs of resolveAppColorScheme other than the constant
+  // `useDarkTheme` literal passed at each call site (context, appTheme, customTheme, amoledMode).
   val darkColorScheme =
-    resolveAppColorScheme(
-      context = context,
-      appTheme = appTheme,
-      customTheme = customThemeDefinition,
-      useDarkTheme = true,
-      amoledMode = amoledMode,
-    )
-  val colorScheme =
-    if (useDarkTheme) {
-      darkColorScheme
-    } else {
+    remember(context, appTheme, customThemeDefinition, amoledMode) {
       resolveAppColorScheme(
         context = context,
         appTheme = appTheme,
         customTheme = customThemeDefinition,
-        useDarkTheme = false,
+        useDarkTheme = true,
         amoledMode = amoledMode,
       )
+    }
+  val colorScheme =
+    if (useDarkTheme) {
+      darkColorScheme
+    } else {
+      remember(context, appTheme, customThemeDefinition, amoledMode) {
+        resolveAppColorScheme(
+          context = context,
+          appTheme = appTheme,
+          customTheme = customThemeDefinition,
+          useDarkTheme = false,
+          amoledMode = amoledMode,
+        )
+      }
     }
 
   // Provide theme transition state first, OUTSIDE MaterialExpressiveTheme
   CompositionLocalProvider(
-    LocalSpacing provides Spacing(),
+    LocalSpacing provides DefaultAppSpacing,
     LocalThemeTransitionState provides transitionState,
     LocalMotionPolicy provides rememberMotionPolicy(),
     LocalAppFontFamily provides resolvedFontFamily,

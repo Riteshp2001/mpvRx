@@ -20,6 +20,14 @@ object VulkanCapabilities {
   private const val MIN_OPEN_GL_ES_VERSION = 0x00030001
   private const val MIN_VULKAN_VERSION = 0x00403000
 
+  /**
+   * Device Vulkan support cannot change while the process is alive, but probing it costs two
+   * binder IPCs (`systemAvailableFeatures` + `hasSystemFeature`) and used to run uncached twice per
+   * player open. Memoize the first answer so the open path pays for it at most once.
+   */
+  @Volatile
+  private var cachedDeviceSupport: Boolean? = null
+
   val isBackendIncluded: Boolean
     get() = BuildConfig.MPV_SUPPORTS_VULKAN
 
@@ -28,6 +36,11 @@ object VulkanCapabilities {
 
   /** Returns whether the device meets mpvRx's Vulkan renderer requirements. */
   fun isDeviceSupported(context: Context): Boolean {
+    cachedDeviceSupport?.let { return it }
+    return resolveDeviceSupport(context).also { cachedDeviceSupport = it }
+  }
+
+  private fun resolveDeviceSupport(context: Context): Boolean {
     try {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
         Log.d(TAG, "Vulkan unavailable: Android API ${Build.VERSION.SDK_INT} is below 33")

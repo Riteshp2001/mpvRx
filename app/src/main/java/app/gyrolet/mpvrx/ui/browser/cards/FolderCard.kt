@@ -69,6 +69,72 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import kotlin.math.pow
 
+@androidx.compose.runtime.Immutable
+data class FolderCardUiConfig(
+  val unlimitedNameLines: Boolean = false,
+  val showTotalVideosChip: Boolean = true,
+  val showTotalDurationChip: Boolean = true,
+  val showTotalSizeChip: Boolean = true,
+  val showDateChip: Boolean = false,
+  val showFolderPath: Boolean = false,
+  val centerGridTitles: Boolean = false,
+  val showFolderThumbnails: Boolean = false,
+  val thumbnailQuality: app.gyrolet.mpvrx.preferences.ThumbnailQuality = app.gyrolet.mpvrx.preferences.ThumbnailQuality.High,
+  val includeAudio: Boolean = false,
+  val swipeLeft: VideoSwipeAction = VideoSwipeAction.AddToPlaylist,
+  val swipeRight: VideoSwipeAction = VideoSwipeAction.ToggleWatched,
+)
+
+/** Hoist this once per screen and pass the result to every card rather than collecting per item. */
+@Composable
+fun rememberFolderCardUiConfig(viewPreferences: BrowserPageViewPreferences? = null): FolderCardUiConfig {
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val browserPreferences = koinInject<BrowserPreferences>()
+
+  val unlimitedNameLines by (viewPreferences?.unlimitedNameLines ?: appearancePreferences.unlimitedNameLines).collectAsState()
+  val showTotalVideosChip by (viewPreferences?.showItemCount ?: browserPreferences.showTotalVideosChip).collectAsState()
+  val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
+  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
+  val showDateChip by (viewPreferences?.showDateChip ?: browserPreferences.showDateChip).collectAsState()
+  val showFolderPath by browserPreferences.showFolderPath.collectAsState()
+  val centerGridTitles by (viewPreferences?.centerGridTitles ?: browserPreferences.centerGridTitles).collectAsState()
+  val showFolderThumbnails by (viewPreferences?.showThumbnails ?: browserPreferences.showFolderThumbnails).collectAsState()
+  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
+  val includeAudio by browserPreferences.includeAudioBrowser.collectAsState()
+  val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
+  val swipeRight by browserPreferences.videoSwipeRight.collectAsState()
+
+  return remember(
+    unlimitedNameLines,
+    showTotalVideosChip,
+    showTotalDurationChip,
+    showTotalSizeChip,
+    showDateChip,
+    showFolderPath,
+    centerGridTitles,
+    showFolderThumbnails,
+    thumbnailQuality,
+    includeAudio,
+    swipeLeft,
+    swipeRight,
+  ) {
+    FolderCardUiConfig(
+      unlimitedNameLines = unlimitedNameLines,
+      showTotalVideosChip = showTotalVideosChip,
+      showTotalDurationChip = showTotalDurationChip,
+      showTotalSizeChip = showTotalSizeChip,
+      showDateChip = showDateChip,
+      showFolderPath = showFolderPath,
+      centerGridTitles = centerGridTitles,
+      showFolderThumbnails = showFolderThumbnails,
+      thumbnailQuality = thumbnailQuality,
+      includeAudio = includeAudio,
+      swipeLeft = swipeLeft,
+      swipeRight = swipeRight,
+    )
+  }
+}
+
 @Composable
 fun FolderCard(
   folder: VideoFolder,
@@ -92,23 +158,21 @@ fun FolderCard(
   onSwipeAction: ((VideoFolder, VideoSwipeAction) -> Unit)? = null,
   placeholderIconSize: Dp? = null,
   viewPreferences: BrowserPageViewPreferences? = null,
+  uiConfig: FolderCardUiConfig? = null,
 ) {
-  val appearancePreferences = koinInject<AppearancePreferences>()
-  val browserPreferences = koinInject<BrowserPreferences>()
-  val unlimitedNameLines by
-    (viewPreferences?.unlimitedNameLines ?: appearancePreferences.unlimitedNameLines).collectAsState()
-  val showTotalVideosChip by (viewPreferences?.showItemCount ?: browserPreferences.showTotalVideosChip).collectAsState()
-  val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
-  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
-  val showDateChip by (viewPreferences?.showDateChip ?: browserPreferences.showDateChip).collectAsState()
-  val showFolderPath by browserPreferences.showFolderPath.collectAsState()
-  val centerGridTitles by (viewPreferences?.centerGridTitles ?: browserPreferences.centerGridTitles).collectAsState()
-  val showFolderThumbnails by
-    (viewPreferences?.showThumbnails ?: browserPreferences.showFolderThumbnails).collectAsState()
-  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
-  val includeAudio by browserPreferences.includeAudioBrowser.collectAsState()
-  val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
-  val swipeRight by browserPreferences.videoSwipeRight.collectAsState()
+  val resolvedUiConfig = uiConfig ?: rememberFolderCardUiConfig(viewPreferences)
+  val unlimitedNameLines = resolvedUiConfig.unlimitedNameLines
+  val showTotalVideosChip = resolvedUiConfig.showTotalVideosChip
+  val showTotalDurationChip = resolvedUiConfig.showTotalDurationChip
+  val showTotalSizeChip = resolvedUiConfig.showTotalSizeChip
+  val showDateChip = resolvedUiConfig.showDateChip
+  val showFolderPath = resolvedUiConfig.showFolderPath
+  val centerGridTitles = resolvedUiConfig.centerGridTitles
+  val showFolderThumbnails = resolvedUiConfig.showFolderThumbnails
+  val thumbnailQuality = resolvedUiConfig.thumbnailQuality
+  val includeAudio = resolvedUiConfig.includeAudio
+  val swipeLeft = resolvedUiConfig.swipeLeft
+  val swipeRight = resolvedUiConfig.swipeRight
   val context = androidx.compose.ui.platform.LocalContext.current
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   var thumbnailSize by remember { mutableStateOf(IntSize.Zero) }

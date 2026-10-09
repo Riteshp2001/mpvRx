@@ -43,6 +43,15 @@ class DecoderPreferences(
   val hueFilter = preferenceStore.getInt("filter_hue")
   val sharpnessFilter = preferenceStore.getInt("filter_sharpness")
 
+  /** User saved filter presets, offered next to the built in `FilterPreset` entries. */
+  val customFilterPresets =
+    preferenceStore.getObject(
+      key = "filter_custom_presets",
+      defaultValue = emptyList<CustomFilterPreset>(),
+      serializer = { presets -> CustomFilterPreset.encodeAll(presets) },
+      deserializer = { stored -> CustomFilterPreset.decodeAll(stored) },
+    )
+
   // Anime4K Preferences
   val enableAnime4K = preferenceStore.getBoolean("enable_anime4k", false)
   val anime4kMode = preferenceStore.getString("anime4k_mode", "OFF")

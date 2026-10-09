@@ -226,11 +226,14 @@ object SubtitleOps : KoinComponent {
     val videoDirectory = videoFile.parentFile ?: return
     val baseName = videoFileName.substringBeforeLast('.')
 
+    // Match the name first: isFile is a stat syscall on every entry in the directory, and only a
+    // handful of those entries can be this video's sidecar. Pure string checks, so the selected
+    // set — and its listFiles order — is unchanged.
     val subtitles =
       videoDirectory.listFiles()?.filter { file ->
-        file.isFile &&
-          isSubtitleFile(file.name) &&
-          file.nameWithoutExtension.startsWith(baseName, ignoreCase = true)
+        isSubtitleFile(file.name) &&
+          file.nameWithoutExtension.startsWith(baseName, ignoreCase = true) &&
+          file.isFile
       } ?: emptyList()
 
     if (subtitles.isNotEmpty()) {

@@ -95,11 +95,32 @@ internal fun parentStoragePath(path: String?): String? {
   }
 }
 
-internal fun leafStorageName(path: String?): String =
-  normalizeStoragePath(path)
-    ?.substringAfterLast('/')
-    ?.takeIf { it.isNotBlank() }
+/**
+ * The device's primary/emulated volume. Its leaf segment is the literal `0`, which is what
+ * `leafStorageName` would otherwise surface as a folder literally called "0".
+ */
+internal const val INTERNAL_STORAGE_LABEL = "Internal Storage"
+
+/** Aliases that all resolve to the same emulated volume as `Environment.getExternalStorageDirectory()`. */
+private val INTERNAL_STORAGE_PATH_KEYS =
+  setOf(
+    "/storage/emulated/0",
+    "/storage/self/primary",
+    "/sdcard",
+    "/storage/emulated/legacy",
+  )
+
+internal fun isInternalStoragePath(path: String?): Boolean =
+  storagePathKey(path) in INTERNAL_STORAGE_PATH_KEYS
+
+internal fun leafStorageName(path: String?): String {
+  val normalized = normalizeStoragePath(path) ?: return ""
+  if (isInternalStoragePath(normalized)) return INTERNAL_STORAGE_LABEL
+  return normalized
+    .substringAfterLast('/')
+    .takeIf { it.isNotBlank() }
     ?: ""
+}
 
 internal fun isStoragePathDescendant(
   parentPath: String?,

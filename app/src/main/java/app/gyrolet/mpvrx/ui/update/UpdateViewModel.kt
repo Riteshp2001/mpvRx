@@ -176,6 +176,9 @@ class UpdateViewModel(
     viewModelScope.launch {
       _isDownloading.value = true
       try {
+        // Surface what a previous session already banked, so a resumed download picks up its
+        // progress bar where it stopped instead of snapping back to 0%.
+        _downloadProgress.value = updateManager.getResumableProgress(release) ?: 0f
         updateManager.downloadUpdate(release).collect { progress ->
           _downloadProgress.value = progress
         }

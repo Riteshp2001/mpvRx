@@ -347,7 +347,7 @@ data class WallpaperEditorScreen(
               horizontalArrangement = Arrangement.spacedBy(8.dp),
               modifier = Modifier.tvFocusGroup(),
             ) {
-              items(ASPECT_RATIO_PRESETS) { preset ->
+              items(ASPECT_RATIO_PRESETS, key = { it.label }) { preset ->
                 FilterChip(
                   selected = previewAspect == preset.ratio,
                   onClick = { previewAspect = preset.ratio },

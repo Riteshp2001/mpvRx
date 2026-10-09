@@ -2,6 +2,12 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## Unreleased
+
+### Translations
+
+- **Ukrainian:** Added a complete Ukrainian translation, contributed by [@WATCHER-00](https://github.com/WATCHER-00). Every user-facing string and plural is covered, so the app now speaks Ukrainian alongside the existing locales.
+
 ## 2.7.2 - Hotfixes - mpvlib 1.1.1, Track Badges, Pinned Videos, and Font Sharing
 
 ### Highlights

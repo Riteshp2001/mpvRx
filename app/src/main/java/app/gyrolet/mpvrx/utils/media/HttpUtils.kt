@@ -215,12 +215,20 @@ object HttpUtils {
           }
         }
 
+        // The URL path is free to read; the HEAD fallback is a connection plus a round trip, so it
+        // is only worth paying when the path carries no usable name of its own.
+        val filenameFromUrl = extractFilenameFromUrlPath(uri)
+        val urlNameIsUsable = uri.lastPathSegment?.isNotBlank() == true && !isLikelyJunkTitle(filenameFromUrl)
+        if (urlNameIsUsable) {
+          Log.d(TAG, "Extracted filename from URL: $filenameFromUrl")
+          return@withContext filenameFromUrl
+        }
+
         val filenameFromHeaders = getFilenameFromHttpHeaders(url)
         if (filenameFromHeaders != null) {
           Log.d(TAG, "Extracted filename from headers: $filenameFromHeaders")
           return@withContext filenameFromHeaders
         }
-        val filenameFromUrl = extractFilenameFromUrlPath(uri)
         Log.d(TAG, "Extracted filename from URL: $filenameFromUrl")
         return@withContext filenameFromUrl
       } catch (e: Exception) {

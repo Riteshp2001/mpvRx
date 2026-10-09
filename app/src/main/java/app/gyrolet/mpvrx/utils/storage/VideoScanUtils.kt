@@ -434,37 +434,50 @@ fun formatResolution(
     if (width <= 0 || height <= 0) return "--"
 
     val longSide = maxOf(width, height)
-    val shortSide = minOf(width, height)
+
+    // Scanline count, which is what the "p" suffix actually names. Height carries it,
+    // except for a tall frame, which is a landscape recording rotated for portrait
+    // playback and therefore keeps the class on its width instead. Frames that are only
+    // 4:3-ish (1440×1080, 960×1080) are not tall: they are anamorphic 1080 and still
+    // carry a full 1080 lines, which minOf/maxOf would otherwise report as the width.
+    val isRotatedPortrait = height > width && height.toLong() * 10 >= width.toLong() * 13
+    val scanlines = if (isRotatedPortrait) width else height
 
     return when {
         // 8K / 4320p class
-        longSide >= 7680 || shortSide >= 4320 -> "4320p"
+        longSide >= 7680 || scanlines >= 4320 -> "4320p"
 
         // 4K / 2160p class
         // Includes cinematic 4K such as 3840×1600
-        longSide >= 3840 || shortSide >= 2160 -> "2160p"
+        longSide >= 3840 || scanlines >= 2160 -> "2160p"
 
         // QHD / 1440p class
         // Includes ultrawide 3440×1440
-        longSide >= 2560 && shortSide >= 1350 -> "1440p"
+        scanlines >= 1440 -> "1440p"
 
         // FHD / 1080p class
-        // Includes cinematic 1920×800, 1920×816, etc.
-        // and ultrawide 2560×1080
-        longSide >= 1920 && shortSide >= 750 -> "1080p"
+        // A frame that still carries a full 1080 scanlines is 1080p however narrow it
+        // is. Anamorphic, 4:3 broadcast and pillarboxed frames (1440×1080, 1152×1080,
+        // 1280×1080) have a long side below 1920, so requiring the long side to reach
+        // 1920 demoted them to 720p.
+        scanlines >= 1000 -> "1080p"
+
+        // Cinematic letterboxing crops scanlines away instead of squeezing them
+        // (1920×800, 1920×816, 2560×600), so the long side has to decide here.
+        longSide >= 1920 && scanlines >= 750 -> "1080p"
 
         // HD / 720p class
         // Includes 1280×544, 1280×576, etc.
-        longSide >= 1280 && shortSide >= 500 -> "720p"
+        longSide >= 1280 && scanlines >= 500 -> "720p"
 
         // 480p class
-        longSide >= 854 || shortSide >= 480 -> "480p"
+        longSide >= 854 || scanlines >= 480 -> "480p"
 
         // 360p class
-        longSide >= 640 || shortSide >= 360 -> "360p"
+        longSide >= 640 || scanlines >= 360 -> "360p"
 
         // 240p class
-        longSide >= 426 || shortSide >= 240 -> "240p"
+        longSide >= 426 || scanlines >= 240 -> "240p"
 
         // 144p / everything below 240p
         else -> "144p"

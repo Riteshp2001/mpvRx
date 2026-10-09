@@ -81,9 +81,9 @@ class TrackSelector(
   )
 
   suspend fun onFileLoaded(hasState: Boolean = false) =
-    withContext(Dispatchers.Main) {
+    withContext(Dispatchers.IO) {
       var attempts = 0
-      val maxAttempts = 20
+      val maxAttempts = 5
 
       while (attempts < maxAttempts) {
         val count = PlaybackSession.getPropertyInt("track-list/count") ?: 0

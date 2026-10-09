@@ -46,6 +46,8 @@ class HlsStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     private const val MIME_M3U8 = "application/vnd.apple.mpegurl"
     private const val MIME_OCTET = "application/octet-stream"
     private const val MAX_TARGETS_PER_SESSION = 8_192
+    private const val MAX_MANIFEST_CACHE_ENTRIES = 8
+    private val MANIFEST_CACHE_TTL_NANOS = TimeUnit.SECONDS.toNanos(5)
 
     @Volatile
     private var instance: HlsStreamingProxy? = null
@@ -77,11 +79,34 @@ class HlsStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     internal val targetTokensByUrl = mutableMapOf<String, String>()
   }
 
+  /**
+   * One fetched manifest: the body exactly as the origin returned it plus the URL the fetch
+   * finally landed on (the rewrite below resolves relative child URLs against it).
+   */
+  private class ManifestEntry(
+    val body: String,
+    val finalUrl: String,
+    val storedAtNanos: Long,
+  )
+
   private val random = SecureRandom()
   private val proxyJob = SupervisorJob()
   private val proxyScope = CoroutineScope(Dispatchers.IO + proxyJob)
   private val tokenByRegistration = ConcurrentHashMap<String, String>()
   private val sessionsByToken = ConcurrentHashMap<String, HlsSession>()
+
+  /**
+   * Manifest bodies for the open burst, keyed by the requested URL and access-ordered.
+   *
+   * One open asks for the same playlist more than once — the probe that decides what the stream is,
+   * then mpv's own reads of the master and of the selected variant — and each ask costs a full
+   * upstream round trip. Only the raw body is cached (rewriting is pure CPU and still runs per
+   * response, so target tokens stay per-request); the TTL is deliberately a few seconds because live
+   * playlists rotate, and the map is capped at a handful of entries. Segments and keys are never
+   * cached. Every access is synchronized: mpv reads from several NanoHTTPD worker threads and a
+   * LinkedHashMap read reorders it.
+   */
+  private val manifestCache = LinkedHashMap<String, ManifestEntry>(16, 0.75f, true)
 
   private val httpClient: OkHttpClient by lazy {
     SharedHttpClient.derive {
@@ -190,6 +215,8 @@ class HlsStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     session: HlsSession,
     headOnly: Boolean,
   ): Response {
+    cachedManifest(session.sourceUrl)?.let { return respondWithManifest(token, session, it, headOnly, true) }
+
     val requestBuilder = Request.Builder().url(session.sourceUrl)
     applyHeaders(requestBuilder, session.headers, session.userAgent, session.sourceUrl)
 
@@ -216,14 +243,7 @@ class HlsStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     val finalUrl = okResponse.request.url.toString()
     okResponse.close()
 
-    val rewritten = rewriteMasterManifest(content, token, session, finalUrl)
-    val bytes = rewritten.toByteArray(StandardCharsets.UTF_8)
-    val stream = if (headOnly) ByteArrayInputStream(ByteArray(0)) else ByteArrayInputStream(bytes)
-
-    return newFixedLengthResponse(Response.Status.OK, MIME_M3U8, stream, bytes.size.toLong()).apply {
-      addCorsHeaders(this)
-      addHeader("Cache-Control", "no-cache, no-store, must-revalidate")
-    }
+    return respondWithManifest(token, session, rememberManifest(session.sourceUrl, content, finalUrl), headOnly, true)
   }
 
   private fun handleVariantManifest(
@@ -232,6 +252,8 @@ class HlsStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     variantUrl: String,
     headOnly: Boolean,
   ): Response {
+    cachedManifest(variantUrl)?.let { return respondWithManifest(token, session, it, headOnly, false) }
+
     val requestBuilder = Request.Builder().url(variantUrl)
     applyHeaders(requestBuilder, credentialsFor(variantUrl, session), session.userAgent, session.sourceUrl)
 
@@ -258,7 +280,22 @@ class HlsStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     val finalUrl = okResponse.request.url.toString()
     okResponse.close()
 
-    val rewritten = rewriteVariantManifest(content, token, session, finalUrl)
+    return respondWithManifest(token, session, rememberManifest(variantUrl, content, finalUrl), headOnly, false)
+  }
+
+  private fun respondWithManifest(
+    token: String,
+    session: HlsSession,
+    entry: ManifestEntry,
+    headOnly: Boolean,
+    masterPlaylist: Boolean,
+  ): Response {
+    val rewritten =
+      if (masterPlaylist) {
+        rewriteMasterManifest(entry.body, token, session, entry.finalUrl)
+      } else {
+        rewriteVariantManifest(entry.body, token, session, entry.finalUrl)
+      }
     val bytes = rewritten.toByteArray(StandardCharsets.UTF_8)
     val stream = if (headOnly) ByteArrayInputStream(ByteArray(0)) else ByteArrayInputStream(bytes)
 
@@ -266,6 +303,36 @@ class HlsStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
       addCorsHeaders(this)
       addHeader("Cache-Control", "no-cache, no-store, must-revalidate")
     }
+  }
+
+  private fun cachedManifest(url: String): ManifestEntry? {
+    val now = System.nanoTime()
+    return synchronized(manifestCache) {
+      val entry = manifestCache[url]
+      if (entry != null && now - entry.storedAtNanos > MANIFEST_CACHE_TTL_NANOS) {
+        manifestCache.remove(url)
+        null
+      } else {
+        entry
+      }
+    }
+  }
+
+  private fun rememberManifest(
+    url: String,
+    body: String,
+    finalUrl: String,
+  ): ManifestEntry {
+    val entry = ManifestEntry(body, finalUrl, System.nanoTime())
+    synchronized(manifestCache) {
+      manifestCache[url] = entry
+      // Access-ordered, so the head of the entry set is the least recently used one.
+      while (manifestCache.size > MAX_MANIFEST_CACHE_ENTRIES) {
+        val eldest = manifestCache.entries.firstOrNull() ?: break
+        manifestCache.remove(eldest.key)
+      }
+    }
+    return entry
   }
 
   private fun handleSegment(
