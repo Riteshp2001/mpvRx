@@ -134,7 +134,11 @@ fun AdaptiveControlsContainer(
     if (enabled) resolvedTint else resolvedTint.copy(alpha = resolvedTint.alpha * PlayerButtonAlpha.DISABLED_CONTENT)
   val controlModifier =
     modifier
-      .tvFocusHighlight(CircleShape, isInteractive && enabled)
+      .tvFocusHighlight(
+        CircleShape,
+        isInteractive && enabled,
+        clipContent = !(liquidGlassEnabled && useGlass),
+      )
       .then(if (isInteractive) Modifier.minimumInteractiveComponentSize() else Modifier)
 
   if (liquidGlassEnabled && useGlass) {

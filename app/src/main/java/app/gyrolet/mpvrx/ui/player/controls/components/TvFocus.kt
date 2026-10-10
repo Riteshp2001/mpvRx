@@ -44,10 +44,12 @@ fun Modifier.tvFocusHighlight(
   shape: Shape = RoundedCornerShape(8.dp),
   enabled: Boolean = true,
   focusedScale: Float = 1f,
+  clipContent: Boolean = true,
 ): Modifier =
   composed {
     val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
-    if (!isTelevision || !enabled) return@composed clip(shape)
+    // Glass transforms must be allowed outside the original hit shape.
+    if (!isTelevision || !enabled) return@composed if (clipContent) clip(shape) else this
 
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -61,7 +63,7 @@ fun Modifier.tvFocusHighlight(
         scaleX = scale
         scaleY = scale
       }
-      .clip(shape)
+      .then(if (clipContent) Modifier.clip(shape) else Modifier)
       .then(
         if (focused) {
           Modifier.border(3.dp, MaterialTheme.colorScheme.primary, shape)

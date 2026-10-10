@@ -143,8 +143,7 @@ import app.gyrolet.mpvrx.ui.player.PlayerUpdates
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.VideoOpenAnimationOverlay
-import app.gyrolet.mpvrx.ui.player.components.VideoAmbientFrame
-import app.gyrolet.mpvrx.ui.player.components.rememberVideoAmbientFrame
+import app.gyrolet.mpvrx.ui.player.components.PlayerGlassBackdropCapture
 import app.gyrolet.mpvrx.ui.player.buildControlsEnterH
 import app.gyrolet.mpvrx.ui.player.buildControlsEnterV
 import app.gyrolet.mpvrx.ui.player.buildControlsExitH
@@ -481,28 +480,6 @@ fun PlayerControls(
       playbackSessionState.surfaceAttached &&
       (playbackSessionState.phase == PlaybackPhase.READY ||
         playbackSessionState.phase == PlaybackPhase.BACKGROUND)
-  val playerGlassFrame =
-    if (videoSurface != null) {
-      rememberVideoAmbientFrame(
-        surfaceView = videoSurface,
-        active = canCapturePlayerGlass && controlsShown && !areControlsLocked,
-        retainFrameWhenInactive = canCapturePlayerGlass,
-        playbackGeneration = playbackSessionState.generation,
-        hdrScreenMode = hdrScreenMode,
-        orientation = configuration.orientation,
-        isSurfaceReadyProvider = {
-          PlaybackSession.state.value.surfaceAttached && videoSurface.holder.surface.isValid
-        },
-        isPlayingProvider = { !PlaybackSession.state.value.paused },
-        fallbackFrameProvider = { dimension ->
-          withContext(Dispatchers.IO) {
-            runCatching { PlaybackSession.grabThumbnail(dimension) }.getOrNull()
-          }
-        },
-      )
-    } else {
-      VideoAmbientFrame(supported = false)
-    }
   var playerBounds by remember { mutableStateOf(IntSize.Zero) }
   val isPortrait =
     remember(configuration.orientation, playerBounds) {
@@ -672,7 +649,9 @@ fun PlayerControls(
         modifier =
           modifier
             .fillMaxSize()
-            .clipToBounds()
+            // Do not cut off Kyant's press/stretch layer at the controls viewport.
+            // Standard controls retain their previous clipping behavior.
+            .then(if (enableLiquidGlass) Modifier else Modifier.clipToBounds())
             .onSizeChanged { playerBounds = it },
       ) {
     VideoOpenAnimationOverlay(
@@ -681,31 +660,21 @@ fun PlayerControls(
       animationState = videoOpenAnimState,
     )
     if (enableLiquidGlass) {
-      // mpv renders in a separate SurfaceView layer, which Compose effects cannot sample directly.
-      // Mirror its tiny, throttled PixelCopy frame into an invisible Compose layer so Kyant glass
-      // refracts the live video without duplicating full-resolution playback work.
-      val glassFrame = playerGlassFrame.frame
-      if (glassFrame != null) {
-        Image(
-          bitmap = glassFrame,
-          contentDescription = null,
-          contentScale = ContentScale.FillBounds,
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .alpha(0f)
-              .layerBackdrop(playerKyantBackdrop),
-        )
-      } else {
-        Box(
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .alpha(0f)
-              .layerBackdrop(playerKyantBackdrop)
-              .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-        )
-      }
+      // The mpv SurfaceView is composed outside Compose. Capture its *actual pixels*
+      // into a transparent Kyant backdrop source, without ambient blending/smoothing.
+      // Keep the frame state inside this child to avoid recomposing all player controls.
+      PlayerGlassBackdropCapture(
+        surfaceView = videoSurface,
+        backdrop = playerKyantBackdrop,
+        active = canCapturePlayerGlass && controlsShown && !areControlsLocked,
+        playbackGeneration = playbackSessionState.generation,
+        hdrScreenMode = hdrScreenMode,
+        orientation = configuration.orientation,
+        isSurfaceReadyProvider = {
+          PlaybackSession.state.value.surfaceAttached && videoSurface?.holder?.surface?.isValid == true
+        },
+        isPlayingProvider = { !PlaybackSession.state.value.paused },
+      )
       Box(
         modifier =
           Modifier
@@ -1598,7 +1567,7 @@ is PlayerUpdates.FrameInfo -> {
                   modifier =
                     Modifier
                       .size(56.dp)
-                      .tvFocusHighlight(CircleShape, enabled = viewModel.hasPrevious())
+                      .tvFocusHighlight(CircleShape, enabled = viewModel.hasPrevious(), clipContent = !enableLiquidGlass)
                       .then(
                         if (hideBackground && !enableLiquidGlass) {
                           Modifier.background(brush = buttonShadow, shape = CircleShape)
@@ -1640,7 +1609,7 @@ is PlayerUpdates.FrameInfo -> {
                     Modifier
                       .size(64.dp)
                       .tvInitialFocus(tvPlayFocusRequester)
-                      .tvFocusHighlight(CircleShape)
+                      .tvFocusHighlight(CircleShape, clipContent = !enableLiquidGlass)
                       .then(
                         if (hideBackground && !enableLiquidGlass) {
                           Modifier.background(brush = buttonShadow, shape = CircleShape)
@@ -1673,7 +1642,7 @@ is PlayerUpdates.FrameInfo -> {
                   modifier =
                     Modifier
                       .size(56.dp)
-                      .tvFocusHighlight(CircleShape, enabled = viewModel.hasNext())
+                      .tvFocusHighlight(CircleShape, enabled = viewModel.hasNext(), clipContent = !enableLiquidGlass)
                       .then(
                         if (hideBackground && !enableLiquidGlass) {
                           Modifier.background(brush = buttonShadow, shape = CircleShape)
@@ -1716,7 +1685,7 @@ is PlayerUpdates.FrameInfo -> {
                   Modifier
                     .size(64.dp)
                     .tvInitialFocus(tvPlayFocusRequester)
-                    .tvFocusHighlight(CircleShape)
+                    .tvFocusHighlight(CircleShape, clipContent = !enableLiquidGlass)
                     .then(
                       if (hideBackground && !enableLiquidGlass) {
                         Modifier.background(brush = buttonShadow, shape = CircleShape)

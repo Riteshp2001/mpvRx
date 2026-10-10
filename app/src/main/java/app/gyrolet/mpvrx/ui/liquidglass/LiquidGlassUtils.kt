@@ -57,11 +57,12 @@ object LiquidControlColors {
     val accent: Color
         @Composable get() = MaterialTheme.colorScheme.primary
     val content: Color
-        @Composable get() = MaterialTheme.colorScheme.onSurface
+        @Composable get() = Color.White
     val disabledContent: Color
         @Composable get() = content.copy(alpha = PlayerButtonAlpha.DISABLED_CONTENT)
+    // Minimal clear surface film: refraction comes from the live screen/video backdrop.
     val surface: Color
-        @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = PlayerButtonAlpha.GLASS_CONTAINER)
+        @Composable get() = Color.White.copy(alpha = 0.10f)
     val selectedSurface: Color
         @Composable get() = accent.copy(alpha = PlayerButtonAlpha.SELECTED_GLASS_CONTAINER)
     val inactiveTrack: Color

@@ -68,7 +68,7 @@ fun ControlsButton(
     icon = icon,
     onLongClick = onLongClick,
     title = title,
-    color = color ?: playerButtonContentColor(),
+    color = color,
     enabled = enabled,
     onLongClickLabel = onLongClickLabel,
     hideBackground = LocalHidePlayerButtonsBackground.current,
