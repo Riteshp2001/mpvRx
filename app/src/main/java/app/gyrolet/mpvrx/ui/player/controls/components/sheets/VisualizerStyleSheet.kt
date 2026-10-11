@@ -9,10 +9,11 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 
 @Composable
 fun VisualizerStyleSheet(
@@ -31,9 +33,10 @@ fun VisualizerStyleSheet(
   PlayerSheet(onDismissRequest, title = stringResource(R.string.pref_audio_visualizer_style_title)) {
     LazyColumn(
       modifier = modifier.fillMaxWidth(),
-      contentPadding = PaddingValues(bottom = 8.dp),
+      contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
     ) {
-      items(AudioVisualizerStyle.entries, key = { it.name }) { style ->
+      itemsIndexed(AudioVisualizerStyle.entries, key = { _, style -> style.name }) { index, style ->
         AudioTrackRow(
           title = stringResource(style.title),
           isSelected = selectedStyle == style,
@@ -41,6 +44,8 @@ fun VisualizerStyleSheet(
             onSelectStyle(style)
             onDismissRequest()
           },
+          groupIndex = index,
+          groupSize = AudioVisualizerStyle.entries.size,
         )
       }
     }

@@ -315,8 +315,20 @@ fun MpvrxTheme(
       else -> GoogleSansRounded
     }
   val typography =
-    remember(resolvedFontFamily, useSystemFont, localeNeedsSystemFont) {
-      if (useSystemFont || localeNeedsSystemFont) SystemTypography else typographyWithFontFamily(resolvedFontFamily)
+    remember(resolvedFontFamily, downloadedFontFamily, useSystemFont, localeNeedsSystemFont) {
+      if (useSystemFont || localeNeedsSystemFont) {
+        SystemTypography
+      } else {
+        typographyWithFontFamily(
+          fontFamily = resolvedFontFamily,
+          displayFontFamily =
+            if (downloadedFontFamily == null) {
+              GoogleSansExpressiveDisplay
+            } else {
+              resolvedFontFamily
+            },
+        )
+      }
     }
   val emphasizedTypography = remember(typography) { emphasizedTypography(typography) }
 

@@ -61,7 +61,6 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import kotlinx.serialization.Serializable
-import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
 @Serializable
@@ -82,7 +81,7 @@ object LiquidGlassPreferencesScreen : Screen {
         )
       },
     ) { padding ->
-      ProvidePreferenceLocals {
+      ProvideExpressivePreferenceLocals {
         val (listState, highlight) =
           rememberSettingsSearchList(LiquidGlassPreferencesScreen, MaterialTheme.colorScheme.primary)
         BoxWithConstraints(

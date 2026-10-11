@@ -11,6 +11,8 @@ package app.gyrolet.mpvrx.ui.player.controls
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -38,6 +40,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.panels.LuaScriptsPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.SubtitleDelayPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.SubtitleSettingsPanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.VideoSettingsPanel
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.utils.isAnyMpvOptionOwnedByConfig
 import app.gyrolet.mpvrx.ui.utils.isMpvOptionOwnedByConfig
 
@@ -48,13 +51,24 @@ fun PlayerPanels(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val reducedMotion = AppMotion.playerReducedMotion()
   AnimatedContent(
     targetState = panelShown,
     label = "panels",
     contentAlignment = Alignment.CenterEnd,
     contentKey = { it.name },
     transitionSpec = {
-      fadeIn() + slideInHorizontally { it / 3 } togetherWith fadeOut() + slideOutHorizontally { it / 2 }
+      if (reducedMotion) {
+        fadeIn(tween(90)) togetherWith fadeOut(tween(70))
+      } else {
+        val spatial =
+          spring<androidx.compose.ui.unit.IntOffset>(
+            dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+            stiffness = AppMotion.Spatial.Expressive.stiffness,
+          )
+        fadeIn(AppMotion.Effect.Alpha) + slideInHorizontally(spatial) { it / 3 } togetherWith
+          fadeOut(AppMotion.Effect.Alpha) + slideOutHorizontally(spatial) { it / 2 }
+      }
     },
     modifier = modifier,
   ) { currentPanel ->

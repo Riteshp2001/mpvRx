@@ -80,7 +80,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -151,6 +150,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
 import app.gyrolet.mpvrx.ui.preferences.ProfileWatchStatistics
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.theme.onWallpaper
 import app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor
@@ -249,6 +249,10 @@ object ProfileScreen : Screen {
         else (listState.firstVisibleItemScrollOffset / 180f).coerceIn(0f, 1f)
       }
     }
+    val reduceMotion = AppMotion.shouldReduceMotion()
+    val headerAlphaSpec = if (reduceMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha
+    val headerOffsetSpec = if (reduceMotion) AppMotion.ReducedOffset else AppMotion.Spatial.ExpressiveOffset
+    val headerScaleSpec = if (reduceMotion) AppMotion.ReducedAlpha else AppMotion.Spatial.ExpressiveDefault
 
     fun playRecent(video: Video) {
       scope.launch {
@@ -275,12 +279,14 @@ object ProfileScreen : Screen {
             AnimatedContent(
               targetState = showHeaderAvatar,
               transitionSpec = {
-                if (targetState) {
-                  (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 2 } + scaleIn(tween(220), initialScale = 0.8f))
-                    .togetherWith(fadeOut(tween(140)) + slideOutVertically(tween(140)) { -it / 2 })
+                if (reduceMotion) {
+                  fadeIn(headerAlphaSpec).togetherWith(fadeOut(headerAlphaSpec))
+                } else if (targetState) {
+                  (fadeIn(headerAlphaSpec) + slideInVertically(headerOffsetSpec) { it / 2 } + scaleIn(headerScaleSpec, initialScale = 0.86f))
+                    .togetherWith(fadeOut(headerAlphaSpec) + slideOutVertically(headerOffsetSpec) { -it / 2 })
                 } else {
-                  (fadeIn(tween(220)) + slideInVertically(tween(220)) { -it / 2 })
-                    .togetherWith(fadeOut(tween(140)) + slideOutVertically(tween(140)) { it / 2 } + scaleOut(tween(140), targetScale = 0.8f))
+                  (fadeIn(headerAlphaSpec) + slideInVertically(headerOffsetSpec) { -it / 2 })
+                    .togetherWith(fadeOut(headerAlphaSpec) + slideOutVertically(headerOffsetSpec) { it / 2 } + scaleOut(headerScaleSpec, targetScale = 0.86f))
                 }
               },
               label = "profileHeaderTransition",

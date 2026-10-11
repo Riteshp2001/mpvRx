@@ -103,7 +103,7 @@ fun DraggablePanel(
           .onSizeChanged { panelWidth = it.width }
           .widthIn(max = 380.dp)
           .height(panelHeight),
-      shape = shape ?: MaterialTheme.shapes.extraLarge,
+      shape = shape ?: MaterialTheme.shapes.extraLargeIncreased,
       color = containerColor ?: colors.containerColor,
       contentColor = colors.contentColor,
       tonalElevation = tonalElevation,

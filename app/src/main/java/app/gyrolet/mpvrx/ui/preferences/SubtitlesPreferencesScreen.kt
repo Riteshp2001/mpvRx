@@ -98,7 +98,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.Preference
-import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.TextFieldPreference
 import org.koin.compose.koinInject
 
@@ -171,7 +170,7 @@ object SubtitlesPreferencesScreen : Screen {
         )
       },
     ) { padding ->
-      ProvidePreferenceLocals {
+      ProvideExpressivePreferenceLocals {
         val subtitleSaveFolder by preferences.subtitleSaveFolder.collectAsState()
         val fontsFolder by preferences.fontsFolder.collectAsState()
         val selectedFont by preferences.font.collectAsState()

@@ -95,7 +95,11 @@ object AppMotion {
     val ExpressiveDefault: SpringSpec<Float> = spring(dampingRatio = 0.9f, stiffness = 700f)
     val ExpressiveFast: SpringSpec<Float> = spring(dampingRatio = 0.9f, stiffness = 1400f)
     val ExpressiveSlow: SpringSpec<Float> = spring(dampingRatio = 0.9f, stiffness = 300f)
+    val ExpressiveOffset: SpringSpec<IntOffset> = spring(dampingRatio = 0.9f, stiffness = 700f)
+    val ExpressiveSize: SpringSpec<IntSize> = spring(dampingRatio = 0.9f, stiffness = 700f)
     val StandardDefault: SpringSpec<Float> = spring(dampingRatio = 1f, stiffness = 380f)
+    val StandardOffset: SpringSpec<IntOffset> = spring(dampingRatio = 1f, stiffness = 380f)
+    val StandardSize: SpringSpec<IntSize> = spring(dampingRatio = 1f, stiffness = 380f)
     val Expressive: SpringSpec<Float> = ExpressiveDefault
     val Standard: SpringSpec<Float> = StandardDefault
     val Snappy: SpringSpec<Float> = ExpressiveFast

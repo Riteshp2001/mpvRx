@@ -1,6 +1,7 @@
 package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -52,6 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -76,6 +78,10 @@ import app.gyrolet.mpvrx.repository.GitHubContributorsRepository
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -182,7 +188,7 @@ object HallOfFameScreen : Screen {
             index++
 
             item(key = "creators", span = { GridItemSpan(maxLineSpan) }) {
-              Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+              Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
                 HallOfFameLeadCard(
                   name = "MarlboroAdvance",
                   handle = "marlboro-advance",
@@ -193,6 +199,7 @@ object HallOfFameScreen : Screen {
                     listOf(colors.primaryContainer, colors.secondaryContainer.copy(alpha = 0.85f)),
                   ),
                   contentColor = colors.onPrimaryContainer,
+                  shape = rememberConnectedShape(0, 2, ConnectedLayout.Vertical),
                 )
                 HallOfFameLeadCard(
                   name = "Ritesh Pandit",
@@ -204,6 +211,7 @@ object HallOfFameScreen : Screen {
                     listOf(colors.secondaryContainer.copy(alpha = 0.9f), colors.surfaceContainerHigh),
                   ),
                   contentColor = colors.onSecondaryContainer,
+                  shape = rememberConnectedShape(1, 2, ConnectedLayout.Vertical),
                 )
               }
             }
@@ -227,7 +235,7 @@ object HallOfFameScreen : Screen {
             index++
 
             item(key = "featured:profiles", span = { GridItemSpan(maxLineSpan) }) {
-              HallOfFameTopThree(featuredContributors) { contributor, tileModifier ->
+              HallOfFameTopThree(featuredContributors) { contributor, tileModifier, shape ->
                 HallOfFameSpotlightCard(
                   name = contributor.name,
                   subtitle = "@${contributor.login}",
@@ -235,6 +243,7 @@ object HallOfFameScreen : Screen {
                   avatarUrl = "https://avatars.githubusercontent.com/u/${contributor.avatarId}?s=256",
                   profileUrl = "https://github.com/${contributor.login}",
                   modifier = tileModifier,
+                  shape = shape,
                 )
               }
             }
@@ -272,7 +281,7 @@ object HallOfFameScreen : Screen {
               highlightedKeys = topReporters.mapTo(mutableSetOf()) { it.login },
               highlightedContent = if (topReporters.isEmpty()) null else {
                 {
-                  HallOfFameTopThree(topReporters) { member, tileModifier ->
+                  HallOfFameTopThree(topReporters) { member, tileModifier, shape ->
                     HallOfFameSpotlightCard(
                       name = member.login,
                       subtitle = communityDetails(member),
@@ -280,6 +289,7 @@ object HallOfFameScreen : Screen {
                       avatarUrl = member.avatarUrl,
                       profileUrl = member.profileUrl,
                       modifier = tileModifier,
+                      shape = shape,
                     )
                   }
                 }
@@ -441,16 +451,21 @@ private fun <T> LazyGridScope.creditsSection(
 @Composable
 private fun <T> HallOfFameTopThree(
   entries: List<T>,
-  content: @Composable (T, Modifier) -> Unit,
+  content: @Composable (T, Modifier, Shape) -> Unit,
 ) {
+  val visibleEntries = entries.take(3)
   Row(
     modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
   ) {
-    entries.take(3).forEach { entry ->
-      content(entry, Modifier.weight(1f).fillMaxHeight())
+    visibleEntries.forEachIndexed { index, entry ->
+      content(
+        entry,
+        Modifier.weight(1f).fillMaxHeight(),
+        rememberConnectedShape(index, visibleEntries.size, ConnectedLayout.Horizontal),
+      )
     }
-    repeat((3 - entries.size).coerceAtLeast(0)) {
+    repeat((3 - visibleEntries.size).coerceAtLeast(0)) {
       Spacer(Modifier.weight(1f))
     }
   }
@@ -586,13 +601,16 @@ private fun SectionHeader(
   trailing: (@Composable () -> Unit)? = null,
 ) {
   val colors = MaterialTheme.colorScheme
-  val shape = RoundedCornerShape(20.dp)
+  val shape = MaterialTheme.shapes.extraLarge
   Row(
     modifier = modifier
       .fillMaxWidth()
       .padding(top = 16.dp, bottom = 2.dp)
       .clip(shape)
-      .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
+      .background(colors.surfaceContainerLow)
+      .border(BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.28f)), shape)
+      .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+      .padding(horizontal = 14.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(14.dp),
   ) {
@@ -642,6 +660,12 @@ private fun ViewAllPill(onClick: () -> Unit) {
 @Composable
 private fun CountPill(count: Int, expandable: Boolean, expanded: Boolean) {
   val colors = MaterialTheme.colorScheme
+  val arrowRotation by animateFloatAsState(
+    targetValue = if (expanded) 180f else 0f,
+    animationSpec =
+      if (AppMotion.shouldReduceMotion()) AppMotion.ReducedAlpha else AppMotion.Spatial.ExpressiveFast,
+    label = "hall_of_fame_expand_rotation",
+  )
   Row(
     modifier = Modifier
       .clip(CircleShape)
@@ -660,7 +684,7 @@ private fun CountPill(count: Int, expandable: Boolean, expanded: Boolean) {
       Icon(
         Icons.RoundedFilled.ExpandMore,
         stringResource(if (expanded) R.string.hall_of_fame_hide_section else R.string.hall_of_fame_show_section),
-        Modifier.size(18.dp).rotate(if (expanded) 180f else 0f),
+        Modifier.size(18.dp).rotate(arrowRotation),
         tint = colors.onPrimaryContainer,
       )
     }
@@ -687,9 +711,9 @@ private fun HallOfFameLeadCard(
   profileUrl: String?,
   brush: Brush,
   contentColor: Color,
+  shape: Shape,
   modifier: Modifier = Modifier,
 ) {
-  val shape = RoundedCornerShape(28.dp)
   Row(
     modifier = modifier
       .fillMaxWidth()
@@ -763,10 +787,10 @@ private fun HallOfFameSpotlightCard(
   badge: String,
   avatarUrl: String?,
   profileUrl: String?,
+  shape: Shape,
   modifier: Modifier = Modifier,
 ) {
   val colors = MaterialTheme.colorScheme
-  val shape = RoundedCornerShape(24.dp)
   Box(
     modifier = modifier
       .clip(shape)

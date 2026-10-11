@@ -77,7 +77,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.Preference
-import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
@@ -207,7 +206,7 @@ object AppearancePreferencesScreen : Screen {
         )
       },
     ) { padding ->
-      ProvidePreferenceLocals {
+      ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
           rememberSettingsSearchList(AppearancePreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
@@ -445,7 +444,8 @@ object AppearancePreferencesScreen : Screen {
           }
 
           item {
-            PreferenceCard {
+            ExpressivePreferenceGroup {
+              val itemCount = 7
               val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unlimited_name_lines_title),
@@ -465,9 +465,9 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 0,
+                groupSize = itemCount,
               )
-
-              PreferenceDivider()
 
               val showUnplayedOldVideoLabel by preferences.showUnplayedOldVideoLabel.collectAsState()
               SwitchPreference(
@@ -491,42 +491,42 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 1,
+                groupSize = itemCount,
               )
-
-              PreferenceDivider()
 
               val unplayedOldVideoDays by preferences.unplayedOldVideoDays.collectAsState()
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unplayed_old_video_days_title),
-                value = unplayedOldVideoDays.toFloat(),
-                onValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_unplayed_old_video_days_title),
-                  )
-                },
-                valueRange = 0f..30f,
-                valueSteps = 29,
-                summary = {
-                  Text(
-                    text =
-                      if (unplayedOldVideoDays == 0) {
-                        "Unlimited — NEW stays until the watched threshold is reached"
-                      } else {
-                        stringResource(
-                          id = R.string.pref_appearance_unplayed_old_video_days_summary,
-                          unplayedOldVideoDays,
-                        )
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onSliderValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
-                sliderValue = unplayedOldVideoDays.toFloat(),
-                enabled = showUnplayedOldVideoLabel,
-              )
-
-              PreferenceDivider()
+              ExpressivePreferenceTile(index = 2, itemCount = itemCount) {
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unplayed_old_video_days_title),
+                  value = unplayedOldVideoDays.toFloat(),
+                  onValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
+                  title = {
+                    Text(
+                      text = stringResource(id = R.string.pref_appearance_unplayed_old_video_days_title),
+                    )
+                  },
+                  valueRange = 0f..30f,
+                  valueSteps = 29,
+                  summary = {
+                    Text(
+                      text =
+                        if (unplayedOldVideoDays == 0) {
+                          "Unlimited — NEW stays until the watched threshold is reached"
+                        } else {
+                          stringResource(
+                            id = R.string.pref_appearance_unplayed_old_video_days_summary,
+                            unplayedOldVideoDays,
+                          )
+                        },
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  onSliderValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
+                  sliderValue = unplayedOldVideoDays.toFloat(),
+                  enabled = showUnplayedOldVideoLabel,
+                )
+              }
 
               val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
               SwitchPreference(
@@ -542,29 +542,29 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 3,
+                groupSize = itemCount,
               )
 
-              PreferenceDivider()
-
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_tree_flatten_depth_title),
-                value = treeFlattenDepth,
-                onValueChange = browserPreferences.treeFlattenDepth::set,
-                values = TreeFlattenDepth.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(stringResource(R.string.pref_tree_flatten_depth_title)) },
-                summary = {
-                  Text(
-                    stringResource(
-                      R.string.pref_tree_flatten_depth_summary,
-                      treeFlattenDepth.displayName,
-                    ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
+              ExpressivePreferenceTile(index = 4, itemCount = itemCount) {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_tree_flatten_depth_title),
+                  value = treeFlattenDepth,
+                  onValueChange = browserPreferences.treeFlattenDepth::set,
+                  values = TreeFlattenDepth.entries,
+                  valueToText = { AnnotatedString(it.displayName) },
+                  title = { Text(stringResource(R.string.pref_tree_flatten_depth_title)) },
+                  summary = {
+                    Text(
+                      stringResource(
+                        R.string.pref_tree_flatten_depth_summary,
+                        treeFlattenDepth.displayName,
+                      ),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.ui_dual_pane_view),
@@ -587,9 +587,9 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 5,
+                groupSize = itemCount,
               )
-
-              PreferenceDivider()
 
               val deleteFolderAllContents by browserPreferences.deleteFolderAllContents.collectAsState()
               SwitchPreference(
@@ -614,6 +614,8 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 6,
+                groupSize = itemCount,
               )
             }
           }
@@ -625,7 +627,8 @@ object AppearancePreferencesScreen : Screen {
           }
 
           item {
-            PreferenceCard {
+            ExpressivePreferenceGroup {
+              val itemCount = if (thumbnailMode == ThumbnailMode.FrameAtPosition) 6 else 5
               val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_show_video_thumbnails_title),
@@ -645,95 +648,68 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 0,
+                groupSize = itemCount,
               )
 
-              PreferenceDivider()
-
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_thumbnail_generation_title),
-                value = thumbnailMode,
-                onValueChange = { newMode ->
-                  if (newMode != thumbnailMode) {
-                    pendingThumbnailMode = newMode
-                  }
-                },
-                values = ThumbnailMode.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_thumbnail_generation_title),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      when (thumbnailMode) {
-                        ThumbnailMode.FrameAtPosition ->
-                          "${thumbnailMode.displayName} (${thumbnailFramePosition.roundToInt()}%)"
-                        else -> thumbnailMode.displayName
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                enabled = showVideoThumbnails,
-              )
-
-              PreferenceDivider()
-
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_thumbnail_quality_title),
-                value = thumbnailQuality,
-                onValueChange = { newQuality ->
-                  if (newQuality != thumbnailQuality) {
-                    scope.launch {
-                      withContext(Dispatchers.IO) {
-                        thumbnailRepository.clearThumbnailCache()
-                      }
-                      browserPreferences.thumbnailQuality.set(newQuality)
+              ExpressivePreferenceTile(index = 1, itemCount = itemCount) {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_thumbnail_generation_title),
+                  value = thumbnailMode,
+                  onValueChange = { newMode ->
+                    if (newMode != thumbnailMode) {
+                      pendingThumbnailMode = newMode
                     }
-                  }
-                },
-                values = ThumbnailQuality.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_thumbnail_quality_title),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        id = R.string.pref_appearance_thumbnail_quality_summary,
-                        thumbnailQuality.maxSizePx,
-                      ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                enabled = showVideoThumbnails,
-              )
-
-              if (thumbnailMode == ThumbnailMode.FrameAtPosition) {
-                PreferenceDivider()
-
-                SliderPreference(
-                  value = thumbnailFramePosition,
-                  onValueChange = { browserPreferences.thumbnailFramePosition.set(it) },
-                  sliderValue = thumbnailFramePosition,
-                  onSliderValueChange = { browserPreferences.thumbnailFramePosition.set(it) },
+                  },
+                  values = ThumbnailMode.entries,
+                  valueToText = { AnnotatedString(it.displayName) },
                   title = {
                     Text(
-                      text = stringResource(id = R.string.pref_appearance_thumbnail_position_title),
+                      text = stringResource(id = R.string.pref_appearance_thumbnail_generation_title),
                     )
                   },
-                  valueRange = 0f..100f,
-                  valueSteps = 99,
+                  summary = {
+                    Text(
+                      text =
+                        when (thumbnailMode) {
+                          ThumbnailMode.FrameAtPosition ->
+                            "${thumbnailMode.displayName} (${thumbnailFramePosition.roundToInt()}%)"
+                          else -> thumbnailMode.displayName
+                        },
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  enabled = showVideoThumbnails,
+                )
+              }
+
+              ExpressivePreferenceTile(index = 2, itemCount = itemCount) {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_thumbnail_quality_title),
+                  value = thumbnailQuality,
+                  onValueChange = { newQuality ->
+                    if (newQuality != thumbnailQuality) {
+                      scope.launch {
+                        withContext(Dispatchers.IO) {
+                          thumbnailRepository.clearThumbnailCache()
+                        }
+                        browserPreferences.thumbnailQuality.set(newQuality)
+                      }
+                    }
+                  },
+                  values = ThumbnailQuality.entries,
+                  valueToText = { AnnotatedString(it.displayName) },
+                  title = {
+                    Text(
+                      text = stringResource(id = R.string.pref_appearance_thumbnail_quality_title),
+                    )
+                  },
                   summary = {
                     Text(
                       text =
                         stringResource(
-                          id = R.string.pref_appearance_thumbnail_position_summary,
-                          thumbnailFramePosition.roundToInt(),
+                          id = R.string.pref_appearance_thumbnail_quality_summary,
+                          thumbnailQuality.maxSizePx,
                         ),
                       color = MaterialTheme.colorScheme.outline,
                     )
@@ -742,7 +718,34 @@ object AppearancePreferencesScreen : Screen {
                 )
               }
 
-              PreferenceDivider()
+              if (thumbnailMode == ThumbnailMode.FrameAtPosition) {
+                ExpressivePreferenceTile(index = 3, itemCount = itemCount) {
+                  SliderPreference(
+                    value = thumbnailFramePosition,
+                    onValueChange = { browserPreferences.thumbnailFramePosition.set(it) },
+                    sliderValue = thumbnailFramePosition,
+                    onSliderValueChange = { browserPreferences.thumbnailFramePosition.set(it) },
+                    title = {
+                      Text(
+                        text = stringResource(id = R.string.pref_appearance_thumbnail_position_title),
+                      )
+                    },
+                    valueRange = 0f..100f,
+                    valueSteps = 99,
+                    summary = {
+                      Text(
+                        text =
+                          stringResource(
+                            id = R.string.pref_appearance_thumbnail_position_summary,
+                            thumbnailFramePosition.roundToInt(),
+                          ),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                    enabled = showVideoThumbnails,
+                  )
+                }
+              }
 
               val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
               SwitchPreference(
@@ -764,9 +767,9 @@ object AppearancePreferencesScreen : Screen {
                   )
                 },
                 enabled = showVideoThumbnails,
+                groupIndex = if (thumbnailMode == ThumbnailMode.FrameAtPosition) 4 else 3,
+                groupSize = itemCount,
               )
-
-              PreferenceDivider()
 
               val showNetworkThumbnails by preferences.showNetworkThumbnails.collectAsState()
               SwitchPreference(
@@ -791,6 +794,8 @@ object AppearancePreferencesScreen : Screen {
                   )
                 },
                 enabled = showVideoThumbnails,
+                groupIndex = itemCount - 1,
+                groupSize = itemCount,
               )
             }
           }
@@ -802,7 +807,7 @@ object AppearancePreferencesScreen : Screen {
           }
 
           item {
-            PreferenceCard {
+            ExpressivePreferenceGroup {
               val showMusicTab by preferences.showMusicTab.collectAsState()
               val showProfileTab by preferences.showProfileTab.collectAsState()
               val showNetworkTab by preferences.showNetworkTab.collectAsState()
@@ -819,9 +824,9 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 0,
+                groupSize = 6,
               )
-
-              PreferenceDivider()
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_nav_profile_title),
@@ -834,9 +839,9 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 1,
+                groupSize = 6,
               )
-
-              PreferenceDivider()
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_nav_network_title),
@@ -849,9 +854,9 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 2,
+                groupSize = 6,
               )
-
-              PreferenceDivider()
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_nav_jellyfin_title),
@@ -864,9 +869,9 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 3,
+                groupSize = 6,
               )
-
-              PreferenceDivider()
 
               val showQuickPlayFab by preferences.showQuickPlayFab.collectAsState()
               SwitchPreference(
@@ -880,9 +885,9 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 4,
+                groupSize = 6,
               )
-
-              PreferenceDivider()
 
               val quickPlayFabDirect by preferences.quickPlayFabDirect.collectAsState()
               SwitchPreference(
@@ -897,6 +902,8 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+                groupIndex = 5,
+                groupSize = 6,
               )
             }
           }
@@ -907,86 +914,88 @@ object AppearancePreferencesScreen : Screen {
           }
 
           item {
-            PreferenceCard {
+            ExpressivePreferenceGroup {
               val controlsAnimStyle by playerPreferences.controlsAnimStyle.collectAsState()
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_anim_controls_style_title),
-                value = controlsAnimStyle,
-                onValueChange = playerPreferences.controlsAnimStyle::set,
-                values = ControlsAnimationStyle.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(stringResource(R.string.pref_anim_controls_style_title)) },
-                summary = {
-                  Text(
-                    controlsAnimStyle.displayName,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
+              ExpressivePreferenceTile(index = 0, itemCount = 4) {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_anim_controls_style_title),
+                  value = controlsAnimStyle,
+                  onValueChange = playerPreferences.controlsAnimStyle::set,
+                  values = ControlsAnimationStyle.entries,
+                  valueToText = { AnnotatedString(it.displayName) },
+                  title = { Text(stringResource(R.string.pref_anim_controls_style_title)) },
+                  summary = {
+                    Text(
+                      controlsAnimStyle.displayName,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
 
               val videoOpenAnim by playerPreferences.videoOpenAnimation.collectAsState()
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_anim_video_open_title),
-                value = videoOpenAnim,
-                onValueChange = playerPreferences.videoOpenAnimation::set,
-                values = VideoOpenAnimation.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(stringResource(R.string.pref_anim_video_open_title)) },
-                summary = {
-                  Text(
-                    videoOpenAnim.displayName,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
+              ExpressivePreferenceTile(index = 1, itemCount = 4) {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_anim_video_open_title),
+                  value = videoOpenAnim,
+                  onValueChange = playerPreferences.videoOpenAnimation::set,
+                  values = VideoOpenAnimation.entries,
+                  valueToText = { AnnotatedString(it.displayName) },
+                  title = { Text(stringResource(R.string.pref_anim_video_open_title)) },
+                  summary = {
+                    Text(
+                      videoOpenAnim.displayName,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
 
               val appNavStyle by playerPreferences.appNavStyle.collectAsState()
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_anim_screen_nav_style_title),
-                value = appNavStyle,
-                onValueChange = playerPreferences.appNavStyle::set,
-                values = NavigationAnimStyle.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(stringResource(R.string.pref_anim_screen_nav_style_title)) },
-                summary = {
-                  Text(
-                    appNavStyle.displayName,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
+              ExpressivePreferenceTile(index = 2, itemCount = 4) {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_anim_screen_nav_style_title),
+                  value = appNavStyle,
+                  onValueChange = playerPreferences.appNavStyle::set,
+                  values = NavigationAnimStyle.entries,
+                  valueToText = { AnnotatedString(it.displayName) },
+                  title = { Text(stringResource(R.string.pref_anim_screen_nav_style_title)) },
+                  summary = {
+                    Text(
+                      appNavStyle.displayName,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
 
               val animSpeed by playerPreferences.animationSpeed.collectAsState()
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_anim_speed_title),
-                value = animSpeed,
-                onValueChange = { playerPreferences.animationSpeed.set(it) },
-                title = { Text(stringResource(R.string.pref_anim_speed_title)) },
-                valueRange = 0.25f..2.5f,
-                summary = {
-                  val label =
-                    when {
-                      animSpeed < 0.6f ->
-                        stringResource(
-                          R.string.pref_anim_speed_very_fast,
-                          animSpeed,
-                        )
-                      animSpeed < 0.9f -> stringResource(R.string.pref_anim_speed_fast, animSpeed)
-                      animSpeed < 1.1f -> stringResource(R.string.pref_anim_speed_normal, animSpeed)
-                      animSpeed < 1.6f -> stringResource(R.string.pref_anim_speed_slow, animSpeed)
-                      else -> stringResource(R.string.pref_anim_speed_very_slow, animSpeed)
-                    }
-                  Text(label, color = MaterialTheme.colorScheme.outline)
-                },
-                onSliderValueChange = { playerPreferences.animationSpeed.set(it) },
-                sliderValue = animSpeed,
-              )
+              ExpressivePreferenceTile(index = 3, itemCount = 4) {
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_anim_speed_title),
+                  value = animSpeed,
+                  onValueChange = { playerPreferences.animationSpeed.set(it) },
+                  title = { Text(stringResource(R.string.pref_anim_speed_title)) },
+                  valueRange = 0.25f..2.5f,
+                  summary = {
+                    val label =
+                      when {
+                        animSpeed < 0.6f ->
+                          stringResource(
+                            R.string.pref_anim_speed_very_fast,
+                            animSpeed,
+                          )
+                        animSpeed < 0.9f -> stringResource(R.string.pref_anim_speed_fast, animSpeed)
+                        animSpeed < 1.1f -> stringResource(R.string.pref_anim_speed_normal, animSpeed)
+                        animSpeed < 1.6f -> stringResource(R.string.pref_anim_speed_slow, animSpeed)
+                        else -> stringResource(R.string.pref_anim_speed_very_slow, animSpeed)
+                      }
+                    Text(label, color = MaterialTheme.colorScheme.outline)
+                  },
+                  onSliderValueChange = { playerPreferences.animationSpeed.set(it) },
+                  sliderValue = animSpeed,
+                )
+              }
             }
           }
         }

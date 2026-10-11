@@ -472,7 +472,7 @@ object MainScreen : Screen {
                         contentAlignment = Alignment.Center,
                       ) {
                         androidx.compose.material3.Card(
-                          shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                          shape = MaterialTheme.shapes.extraLarge,
                           colors =
                             androidx.compose.material3.CardDefaults.cardColors(
                               containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -523,7 +523,7 @@ object MainScreen : Screen {
                         contentAlignment = Alignment.Center,
                       ) {
                         androidx.compose.material3.Card(
-                          shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                          shape = MaterialTheme.shapes.extraLarge,
                           colors =
                             androidx.compose.material3.CardDefaults.cardColors(
                               containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -585,7 +585,7 @@ object MainScreen : Screen {
                         contentAlignment = Alignment.Center,
                       ) {
                         androidx.compose.material3.Card(
-                          shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                          shape = MaterialTheme.shapes.extraLarge,
                           colors =
                             androidx.compose.material3.CardDefaults.cardColors(
                               containerColor = MaterialTheme.colorScheme.surfaceContainerLow,

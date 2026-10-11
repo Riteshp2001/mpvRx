@@ -14,7 +14,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -85,6 +84,7 @@ import app.gyrolet.mpvrx.presentation.components.ExposedTextDropDownMenu
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -195,6 +195,8 @@ data object SecureFolderGateScreen : Screen {
         )
       },
     ) { padding ->
+      val gateTransitionSpec =
+        if (AppMotion.shouldReduceMotion()) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha
       Surface(
         modifier = Modifier.fillMaxSize().padding(padding),
         color = MaterialTheme.colorScheme.background,
@@ -213,7 +215,7 @@ data object SecureFolderGateScreen : Screen {
           ) {
             AnimatedContent(
               targetState = gateStep,
-              transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
+              transitionSpec = { fadeIn(gateTransitionSpec) togetherWith fadeOut(gateTransitionSpec) },
               label = "secure_folder_gate_step",
             ) { step ->
               when (step) {

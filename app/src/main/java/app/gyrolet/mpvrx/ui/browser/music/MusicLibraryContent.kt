@@ -477,7 +477,7 @@ fun MusicLibraryContent(
                 }
               }
             },
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
           )
         } else {

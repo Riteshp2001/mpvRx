@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -29,7 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 
 /**
  * A card container for grouping related preferences, mimicking modern Android settings UI.
@@ -64,6 +69,54 @@ fun PreferenceCard(
 }
 
 /**
+ * A Material 3 Expressive preference section made from individually connected tiles.
+ *
+ * Unlike [PreferenceCard], this does not draw one large container behind every setting. Each
+ * child owns its complete row and uses [ExpressivePreferenceTile] or the connected parameters on
+ * a preference component. This keeps selected states full-width while preserving a clear visual
+ * relationship between adjacent settings.
+ */
+@Composable
+fun ExpressivePreferenceGroup(
+  modifier: Modifier = Modifier,
+  content: @Composable ColumnScope.() -> Unit,
+) {
+  val reduceMotion = AppMotion.shouldReduceMotion()
+  Column(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .animateContentSize(if (reduceMotion) snap() else AppMotion.IntSizeSpring)
+        .padding(horizontal = 16.dp, vertical = 8.dp),
+    verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+    content = content,
+  )
+}
+
+/** A full-width tile whose outer and inner corners follow its position in a vertical group. */
+@Composable
+fun ExpressivePreferenceTile(
+  index: Int,
+  itemCount: Int,
+  modifier: Modifier = Modifier,
+  content: @Composable () -> Unit,
+) {
+  val shape =
+    rememberConnectedShape(
+      index = index,
+      itemCount = itemCount,
+      layout = ConnectedLayout.Vertical,
+    )
+  Surface(
+    modifier = modifier.fillMaxWidth(),
+    shape = shape,
+    color = MaterialTheme.colorScheme.surfaceContainerLow,
+  ) {
+    content()
+  }
+}
+
+/**
  * A divider to separate preferences within a card.
  */
 @Composable
@@ -83,40 +136,24 @@ fun PreferenceSectionHeader(
   modifier: Modifier = Modifier,
   topPadding: Dp = 30.dp,
 ) {
-  val emphasizedTypography = LocalEmphasizedTypography.current
-
-  Column(
+  Row(
     modifier =
       modifier
         .fillMaxWidth()
-        .padding(start = 24.dp, end = 24.dp, top = topPadding, bottom = 8.dp),
+        .padding(start = 20.dp, end = 20.dp, top = topPadding, bottom = 10.dp),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
+    Surface(
+      modifier = Modifier.width(5.dp).height(30.dp),
+      color = MaterialTheme.colorScheme.primary,
+      shape = MaterialTheme.shapes.extraSmall,
+      content = {},
+    )
+    Spacer(modifier = Modifier.width(12.dp))
     Text(
       text = title,
-      style = emphasizedTypography.titleLarge,
+      style = MaterialTheme.typography.headlineSmall,
       color = MaterialTheme.colorScheme.onSurface,
     )
-    Row(
-      modifier =
-        Modifier
-          .padding(top = 10.dp)
-          .fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Surface(
-        modifier =
-          Modifier
-            .width(42.dp)
-            .height(4.dp),
-        color = MaterialTheme.colorScheme.primary,
-        shape = MaterialTheme.shapes.extraSmall,
-        content = {},
-      )
-      Spacer(modifier = Modifier.width(8.dp))
-      HorizontalDivider(
-        modifier = Modifier.weight(1f),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-      )
-    }
   }
 }

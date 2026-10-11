@@ -25,7 +25,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,7 +54,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -102,6 +111,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.expressiveDisplayFontForText
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import kotlinx.coroutines.CancellationException
@@ -322,6 +332,7 @@ fun PermissionDeniedState(
       OnboardingStep.AUDIO -> isAudioGranted
       OnboardingStep.FINISH -> true
     }
+  val reduceMotion = AppMotion.shouldReduceMotion()
   val stepFocusRequester =
     rememberTvInitialFocusRequester(requestKey = currentStep to currentStepGranted)
   val explanationFocusRequester =
@@ -379,16 +390,29 @@ fun PermissionDeniedState(
           ) {
             steps.forEachIndexed { index, _ ->
               val isCurrent = index == stepIndex
+              val indicatorWidth by
+                animateDpAsState(
+                  targetValue = if (isCurrent) 28.dp else 8.dp,
+                  animationSpec = if (reduceMotion) AppMotion.ReducedDp else AppMotion.Spatial.SnappyDp,
+                  label = "onboarding progress width",
+                )
+              val indicatorColor by
+                animateColorAsState(
+                  targetValue =
+                    if (isCurrent) {
+                      MaterialTheme.colorScheme.primary
+                    } else {
+                      MaterialTheme.colorScheme.surfaceContainerHighest
+                    },
+                  animationSpec = if (reduceMotion) snap() else AppMotion.Effect.Color,
+                  label = "onboarding progress color",
+                )
               Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = if (isCurrent) {
-                  MaterialTheme.colorScheme.primary
-                } else {
-                  MaterialTheme.colorScheme.surfaceContainerHighest
-                },
+                shape = AppShapeScale.full,
+                color = indicatorColor,
                 modifier = Modifier
                   .height(8.dp)
-                  .width(if (isCurrent) 22.dp else 8.dp),
+                  .width(indicatorWidth),
               ) {}
             }
           }
@@ -402,9 +426,35 @@ fun PermissionDeniedState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
           ) {
-            AnimatedContent(targetState = currentStep, label = "onboarding_step") { step ->
+            AnimatedContent(
+              targetState = currentStep,
+              transitionSpec = {
+                if (reduceMotion) {
+                  fadeIn(animationSpec = tween(120)) togetherWith fadeOut(animationSpec = tween(90))
+                } else {
+                  val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                  (
+                    slideInHorizontally(
+                      animationSpec = tween(360, easing = FastOutSlowInEasing),
+                      initialOffsetX = { width -> direction * width / 4 },
+                    ) +
+                      fadeIn(animationSpec = tween(240, delayMillis = 60)) +
+                      scaleIn(initialScale = 0.97f, animationSpec = tween(360, easing = FastOutSlowInEasing))
+                  ) togetherWith
+                    (
+                      slideOutHorizontally(
+                        animationSpec = tween(240, easing = FastOutSlowInEasing),
+                        targetOffsetX = { width -> -direction * width / 5 },
+                      ) +
+                        fadeOut(animationSpec = tween(150)) +
+                        scaleOut(targetScale = 0.99f, animationSpec = tween(180))
+                    )
+                }
+              },
+              label = "onboarding_step",
+            ) { step ->
               Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+                horizontalAlignment = if (isTelevision) Alignment.CenterHorizontally else Alignment.Start,
                 modifier = Modifier.fillMaxWidth(),
               ) {
                 val stepIcon = when (step) {
@@ -436,15 +486,28 @@ fun PermissionDeniedState(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                  text = when (step) {
+                val pageTitle =
+                  when (step) {
                     OnboardingStep.FINISH -> stringResource(R.string.onboarding_all_set_title)
                     OnboardingStep.CONFIGURATION -> stringResource(R.string.onboarding_configuration_title)
                     else -> stringResource(R.string.ui_app_permissions)
-                  },
-                  style = MaterialTheme.typography.headlineMedium,
+                  }
+                Text(
+                  text = "${steps.indexOf(step) + 1} / ${steps.size}",
+                  style = MaterialTheme.typography.labelLarge,
                   fontWeight = FontWeight.Bold,
-                  textAlign = TextAlign.Center,
+                  color = MaterialTheme.colorScheme.primary,
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                  text = pageTitle,
+                  style = MaterialTheme.typography.displaySmall.copy(
+                    fontFamily = expressiveDisplayFontForText(pageTitle),
+                    fontWeight = FontWeight.Normal,
+                  ),
+                  textAlign = if (isTelevision) TextAlign.Center else TextAlign.Start,
                   color = MaterialTheme.colorScheme.onSurface,
                 )
 
@@ -456,8 +519,8 @@ fun PermissionDeniedState(
                     OnboardingStep.CONFIGURATION -> stringResource(R.string.onboarding_configuration_desc)
                     else -> stringResource(R.string.ui_permissions_setup_subtitle)
                   },
-                  style = MaterialTheme.typography.bodyMedium,
-                  textAlign = TextAlign.Center,
+                  style = MaterialTheme.typography.bodyLarge,
+                  textAlign = if (isTelevision) TextAlign.Center else TextAlign.Start,
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 

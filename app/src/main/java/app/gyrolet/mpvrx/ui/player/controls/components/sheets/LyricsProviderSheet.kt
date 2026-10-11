@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +40,7 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 
 /**
  * Every online source as a sheet row, with what it has done for this track so far.
@@ -61,7 +62,8 @@ fun LyricsProviderSheet(
 
     LazyColumn(
       modifier = modifier.fillMaxWidth(),
-      contentPadding = PaddingValues(bottom = 8.dp),
+      contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
     ) {
       item(key = "auto") {
         val status = autoStatus(state)
@@ -73,10 +75,12 @@ fun LyricsProviderSheet(
             viewModel.switchLyricsProvider(null)
           },
           trailing = { ProviderStatusChip(status) },
+          groupIndex = 0,
+          groupSize = LyricsProvider.entries.size + 1,
         )
       }
 
-      items(LyricsProvider.entries, key = { it.name }) { provider ->
+      itemsIndexed(LyricsProvider.entries, key = { _, provider -> provider.name }) { index, provider ->
         AudioTrackRow(
           title = provider.label,
           details = provider.detail.takeIf { it.isNotBlank() },
@@ -86,6 +90,8 @@ fun LyricsProviderSheet(
             viewModel.switchLyricsProvider(provider)
           },
           trailing = { ProviderStatusChip(providerStatus(provider, state)) },
+          groupIndex = index + 1,
+          groupSize = LyricsProvider.entries.size + 1,
         )
       }
     }

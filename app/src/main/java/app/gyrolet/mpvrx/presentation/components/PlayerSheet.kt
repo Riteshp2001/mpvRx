@@ -242,7 +242,7 @@ fun PlayerSheet(
         },
     contentAlignment = Alignment.BottomCenter,
   ) {
-    val sheetShape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize)
+    val sheetShape = MaterialTheme.shapes.extraLargeIncreased.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize)
     val baseContainerColor = surfaceColor ?: MaterialTheme.colorScheme.surfaceContainerHigh
     val frostedSurfaceColor = baseContainerColor.copy(alpha = 0.80f)
     val rimHighlightBrush =
@@ -324,7 +324,7 @@ fun PlayerSheet(
           )
           .then(glassModifier),
       shape = sheetShape,
-      color = if (isFrosted) Color.Transparent else (surfaceColor ?: MaterialTheme.colorScheme.surface),
+      color = if (isFrosted) Color.Transparent else baseContainerColor,
       tonalElevation = if (isFrosted) 0.dp else tonalElevation,
       content = {
         BackHandler(
@@ -441,7 +441,7 @@ fun PlayerSheetHeader(
       Text(
         text = title,
         modifier = Modifier.weight(1f).semantics { heading() },
-        style = MaterialTheme.typography.titleLargeEmphasized,
+        style = MaterialTheme.typography.headlineSmall,
         color = MaterialTheme.colorScheme.onSurface,
       )
     } else {
@@ -460,12 +460,27 @@ fun PlayerSheetSectionHeader(
   title: String,
   modifier: Modifier = Modifier,
 ) {
-  Text(
-    text = title,
-    modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).semantics { heading() },
-    style = MaterialTheme.typography.labelLargeEmphasized,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-  )
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(horizontal = 20.dp, vertical = 12.dp)
+        .semantics { heading() },
+    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Surface(
+      modifier = Modifier.size(width = 4.dp, height = 24.dp),
+      shape = MaterialTheme.shapes.extraSmall,
+      color = MaterialTheme.colorScheme.primary,
+      content = {},
+    )
+    Text(
+      text = title,
+      style = MaterialTheme.typography.labelLargeEmphasized,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)

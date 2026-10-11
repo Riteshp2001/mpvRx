@@ -24,10 +24,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +59,8 @@ import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusReq
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlinx.collections.immutable.ImmutableList
 import org.koin.compose.koinInject
@@ -125,12 +126,14 @@ fun AudioTracksSheet(
             PlayerSheetSectionHeader(stringResource(R.string.player_sheets_embedded_audio_tracks))
           }
         }
-        items(embeddedTracks, key = { it.id }) {
+        itemsIndexed(embeddedTracks, key = { _, track -> track.id }) { index, track ->
           AudioTrackCard(
-            track = it,
-            isSelected = it.isSelected,
-            onClick = { onSelect(it) },
-            modifier = if (it.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
+            track = track,
+            isSelected = track.isSelected,
+            onClick = { onSelect(track) },
+            groupIndex = index,
+            groupSize = embeddedTracks.size,
+            modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
           )
         }
         if (externalTracks.isNotEmpty()) {
@@ -138,12 +141,14 @@ fun AudioTracksSheet(
             PlayerSheetSectionHeader(stringResource(R.string.player_sheets_external_audio_tracks))
           }
         }
-        items(externalTracks, key = { it.id }) {
+        itemsIndexed(externalTracks, key = { _, track -> track.id }) { index, track ->
           AudioTrackCard(
-            track = it,
-            isSelected = it.isSelected,
-            onClick = { onSelect(it) },
-            modifier = if (it.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
+            track = track,
+            isSelected = track.isSelected,
+            onClick = { onSelect(track) },
+            groupIndex = index,
+            groupSize = externalTracks.size,
+            modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
           )
         }
         item {
@@ -212,10 +217,21 @@ fun AudioTrackCard(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
+  groupIndex: Int? = null,
+  groupSize: Int? = null,
 ) {
   val haptics = rememberAppHaptics()
   val reducedMotion = AppMotion.playerReducedMotion()
-  val shape = RoundedCornerShape(8.dp)
+  val shape =
+    if (groupIndex != null && groupSize != null && groupSize > 0) {
+      rememberConnectedShape(
+        index = groupIndex,
+        itemCount = groupSize,
+        layout = ConnectedLayout.Vertical,
+      )
+    } else {
+      MaterialTheme.shapes.medium
+    }
   val containerColor by animateColorAsState(
     targetValue =
       if (isSelected) {
@@ -238,7 +254,7 @@ fun AudioTrackCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .padding(horizontal = 8.dp, vertical = 3.dp)
+        .padding(horizontal = 8.dp, vertical = 2.dp)
         .tvFocusHighlight(shape, enabled = enabled)
         .selectable(selected = isSelected, enabled = enabled, role = Role.RadioButton) {
           onClick()
@@ -281,10 +297,22 @@ fun AudioTrackRow(
   enabled: Boolean = true,
   details: String? = null,
   trailing: (@Composable () -> Unit)? = null,
+  groupIndex: Int? = null,
+  groupSize: Int? = null,
 ) {
   val haptics = rememberAppHaptics()
   val reducedMotion = AppMotion.playerReducedMotion()
-  val shape = MaterialTheme.shapes.medium
+  val isGrouped = groupIndex != null && groupSize != null && groupSize > 0
+  val shape =
+    if (isGrouped) {
+      rememberConnectedShape(
+        index = requireNotNull(groupIndex),
+        itemCount = requireNotNull(groupSize),
+        layout = ConnectedLayout.Vertical,
+      )
+    } else {
+      MaterialTheme.shapes.medium
+    }
   val isFrosted = LocalKyantPlayerBackdrop.current != null
   val containerColor by animateColorAsState(
     targetValue =
@@ -307,7 +335,7 @@ fun AudioTrackRow(
     modifier =
       modifier
         .fillMaxWidth()
-        .padding(horizontal = 8.dp, vertical = 3.dp)
+        .then(if (isGrouped) Modifier else Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
         .tvFocusHighlight(shape, enabled = enabled)
         .clip(shape)
         .selectable(selected = isSelected, enabled = enabled, role = Role.RadioButton) {

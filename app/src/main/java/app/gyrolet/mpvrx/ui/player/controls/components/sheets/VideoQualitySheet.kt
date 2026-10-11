@@ -11,19 +11,18 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +32,10 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.TrackNode
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 
 @Composable
@@ -46,33 +48,44 @@ fun VideoQualitySheet(
   PlayerSheet(onDismissRequest, title = stringResource(R.string.player_video_quality)) {
     val haptics = rememberAppHaptics()
     Column(modifier = Modifier.fillMaxWidth()) {
-      LazyColumn(contentPadding = PaddingValues(bottom = 8.dp)) {
-        items(tracks, key = TrackNode::id) { track ->
+      LazyColumn(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+      ) {
+        itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
           val containerColor by animateColorAsState(
-            targetValue = MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (track.isSelected) 0.35f else 0f),
+            targetValue =
+              if (track.isSelected) {
+                MaterialTheme.colorScheme.secondaryContainer
+              } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+              },
             animationSpec = AppMotion.spatial(AppMotion.Effect.Color, snap()),
             label = "videoQualitySelection",
           )
-          Row(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 8.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
+          val shape =
+            rememberConnectedShape(
+              index = index,
+              itemCount = tracks.size,
+              layout = ConnectedLayout.Vertical,
+            )
+          Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = shape,
+            color = containerColor,
+            tonalElevation = if (track.isSelected) 1.dp else 0.dp,
           ) {
             Row(
+              verticalAlignment = Alignment.CenterVertically,
               modifier =
                 Modifier
-                  .weight(1f)
-                  .background(containerColor, MaterialTheme.shapes.medium)
-                  .clip(MaterialTheme.shapes.medium)
+                  .fillMaxWidth()
+                  .heightIn(min = 64.dp)
                   .selectable(selected = track.isSelected, role = Role.RadioButton) {
                     onSelect(track)
                     if (!track.isSelected) haptics.selection(true)
                     onDismissRequest()
-                  }.padding(horizontal = 12.dp, vertical = 10.dp),
-              verticalAlignment = Alignment.CenterVertically,
+                  }.padding(start = 16.dp, end = if (onDownload == null) 16.dp else 4.dp, top = 10.dp, bottom = 10.dp),
             ) {
               RadioButton(
                 selected = track.isSelected,
@@ -93,9 +106,13 @@ fun VideoQualitySheet(
                   )
                 }
               }
-            }
-            if (onDownload != null) {
-              PlayerSheetAction(Icons.RoundedFilled.Download, stringResource(R.string.downloads_download), { onDownload(track) })
+              if (onDownload != null) {
+                PlayerSheetAction(
+                  Icons.RoundedFilled.Download,
+                  stringResource(R.string.downloads_download),
+                  { onDownload(track) },
+                )
+              }
             }
           }
         }

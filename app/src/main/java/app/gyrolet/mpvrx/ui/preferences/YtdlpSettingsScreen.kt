@@ -12,7 +12,6 @@ package app.gyrolet.mpvrx.ui.preferences
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -33,6 +32,10 @@ import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallationStatus
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpReleaseChannel
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
@@ -40,7 +43,6 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
 @Serializable
@@ -126,7 +128,7 @@ object YtdlpSettingsScreen : Screen {
         )
       },
     ) { padding ->
-      ProvidePreferenceLocals {
+      ProvideExpressivePreferenceLocals {
         Column(
           modifier =
             Modifier
@@ -163,7 +165,7 @@ object YtdlpSettingsScreen : Screen {
           PreferenceCard {
             Column(
               modifier = Modifier.fillMaxWidth().padding(16.dp),
-              verticalArrangement = Arrangement.spacedBy(10.dp),
+              verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
             ) {
               Button(
                 onClick = {
@@ -177,7 +179,13 @@ object YtdlpSettingsScreen : Screen {
                 },
                 enabled = !isRunning,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape =
+                  rememberConnectedShape(
+                    index = 0,
+                    itemCount = 2,
+                    layout = ConnectedLayout.Vertical,
+                    tokens = AppConnectedControlShapeTokens,
+                  ),
               ) {
                 Icon(Icons.RoundedFilled.Download, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -190,7 +198,13 @@ object YtdlpSettingsScreen : Screen {
                 },
                 enabled = !isRunning && isInstalled,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape =
+                  rememberConnectedShape(
+                    index = 1,
+                    itemCount = 2,
+                    layout = ConnectedLayout.Vertical,
+                    tokens = AppConnectedControlShapeTokens,
+                  ),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
               ) {
                 Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))

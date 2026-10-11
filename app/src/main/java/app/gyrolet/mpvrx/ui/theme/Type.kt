@@ -113,15 +113,90 @@ val GoogleSansRounded =
     ),
   )
 
-fun typographyWithFontFamily(fontFamily: FontFamily): Typography =
+/**
+ * Display cut of the bundled Google Sans Flex variable font.
+ *
+ * The wider, lightly slanted axis mix gives app headings and hero copy a recognizable expressive
+ * voice; body text keeps [GoogleSansRounded] for readability and predictable fallback. Multiple
+ * weight instances keep the variable axes intentional instead of relying on synthetic bolding.
+ */
+@OptIn(ExperimentalTextApi::class)
+val GoogleSansExpressiveDisplay =
+  FontFamily(
+    Font(
+      resId = R.font.gflex_variable,
+      weight = FontWeight.Medium,
+      variationSettings =
+        FontVariation.Settings(
+          FontVariation.weight(FontWeight.Medium.weight),
+          FontVariation.width(110f),
+          FontVariation.slant(-4f),
+          FontVariation.Setting("GRAD", 60f),
+          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+        ),
+    ),
+    Font(
+      resId = R.font.gflex_variable,
+      weight = FontWeight.SemiBold,
+      variationSettings =
+        FontVariation.Settings(
+          FontVariation.weight(FontWeight.SemiBold.weight),
+          FontVariation.width(111f),
+          FontVariation.slant(-4f),
+          FontVariation.Setting("GRAD", 70f),
+          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+        ),
+    ),
+    Font(
+      resId = R.font.gflex_variable,
+      weight = FontWeight.Bold,
+      variationSettings =
+        FontVariation.Settings(
+          FontVariation.weight(FontWeight.Bold.weight),
+          FontVariation.width(112f),
+          FontVariation.slant(-4f),
+          FontVariation.Setting("GRAD", 80f),
+          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+        ),
+    ),
+    Font(
+      resId = R.font.gflex_variable,
+      weight = FontWeight.ExtraBold,
+      variationSettings =
+        FontVariation.Settings(
+          FontVariation.weight(FontWeight.ExtraBold.weight),
+          FontVariation.width(112f),
+          FontVariation.slant(-3f),
+          FontVariation.Setting("GRAD", 90f),
+          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+        ),
+    ),
+    Font(
+      resId = R.font.gflex_variable,
+      weight = FontWeight.Black,
+      variationSettings =
+        FontVariation.Settings(
+          FontVariation.weight(FontWeight.Black.weight),
+          FontVariation.width(112f),
+          FontVariation.slant(-2f),
+          FontVariation.Setting("GRAD", 100f),
+          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+        ),
+    ),
+  )
+
+fun typographyWithFontFamily(
+  fontFamily: FontFamily,
+  displayFontFamily: FontFamily = fontFamily,
+): Typography =
   SystemTypography.run {
     copy(
-      displayLarge = displayLarge.copy(fontFamily = fontFamily, fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
-      displayMedium = displayMedium.copy(fontFamily = fontFamily, fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
-      displaySmall = displaySmall.copy(fontFamily = fontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-      headlineLarge = headlineLarge.copy(fontFamily = fontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-      headlineMedium = headlineMedium.copy(fontFamily = fontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-      headlineSmall = headlineSmall.copy(fontFamily = fontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
+      displayLarge = displayLarge.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.Black, letterSpacing = 0.sp),
+      displayMedium = displayMedium.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.sp),
+      displaySmall = displaySmall.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
+      headlineLarge = headlineLarge.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
+      headlineMedium = headlineMedium.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
+      headlineSmall = headlineSmall.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
       titleLarge = titleLarge.copy(fontFamily = fontFamily, fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
       titleMedium = titleMedium.copy(fontFamily = fontFamily, fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
       titleSmall = titleSmall.copy(fontFamily = fontFamily, fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
@@ -135,13 +210,16 @@ fun typographyWithFontFamily(fontFamily: FontFamily): Typography =
   }
 
 // Use PixelPlayer's rounded Google Sans Flex typography app-wide by default.
-val AppTypography = typographyWithFontFamily(GoogleSansRounded)
+val AppTypography = typographyWithFontFamily(GoogleSansRounded, GoogleSansExpressiveDisplay)
 
 val LocalAppFontFamily = staticCompositionLocalOf { GoogleSansRounded }
 
 @Composable
 fun fontFamilyForText(text: String): FontFamily =
   if (text.requiresSystemFontFallback()) FontFamily.SansSerif else LocalAppFontFamily.current
+
+fun expressiveDisplayFontForText(text: String): FontFamily =
+  if (text.requiresSystemFontFallback()) FontFamily.SansSerif else GoogleSansExpressiveDisplay
 
 fun localeRequiresSystemFont(locale: Locale): Boolean =
   locale.getDisplayName(locale).requiresSystemFontFallback()

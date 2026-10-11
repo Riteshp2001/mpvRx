@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,7 +65,10 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
@@ -260,12 +262,6 @@ object PreferencesScreen : Screen {
               screen = PlayerPreferencesScreen,
             ),
             SettingsDestination(
-              title = stringResource(R.string.pref_decoder),
-              summary = stringResource(R.string.pref_decoder_summary),
-              icon = Icons.RoundedFilled.DeveloperBoard,
-              screen = DecoderPreferencesScreen,
-            ),
-            SettingsDestination(
               title = stringResource(R.string.pref_audio),
               summary = stringResource(R.string.pref_audio_summary),
               icon = Icons.RoundedFilled.Audiotrack,
@@ -277,6 +273,12 @@ object PreferencesScreen : Screen {
               icon = Icons.RoundedFilled.Subtitles,
               screen = SubtitlesPreferencesScreen,
             ),
+            SettingsDestination(
+              title = stringResource(R.string.pref_decoder),
+              summary = stringResource(R.string.pref_decoder_summary),
+              icon = Icons.RoundedFilled.DeveloperBoard,
+              screen = DecoderPreferencesScreen,
+            ),
           ),
       ),
       SettingsSection(
@@ -285,16 +287,16 @@ object PreferencesScreen : Screen {
         items =
           listOf(
             SettingsDestination(
-              title = stringResource(R.string.pref_gesture),
-              summary = stringResource(R.string.pref_gesture_summary),
-              icon = Icons.RoundedFilled.Gesture,
-              screen = GesturePreferencesScreen,
-            ),
-            SettingsDestination(
               title = stringResource(R.string.pref_layout_title),
               summary = stringResource(R.string.pref_layout_summary),
               icon = Icons.RoundedFilled.GridView,
               screen = PlayerControlsPreferencesScreen,
+            ),
+            SettingsDestination(
+              title = stringResource(R.string.pref_gesture),
+              summary = stringResource(R.string.pref_gesture_summary),
+              icon = Icons.RoundedFilled.Gesture,
+              screen = GesturePreferencesScreen,
             ),
           ),
       ),
@@ -492,24 +494,19 @@ private fun SettingsDestinationGroup(
   onItemClick: (SettingsDestination) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Surface(
+  Column(
     modifier = modifier.fillMaxWidth(),
-    shape = MaterialTheme.shapes.extraLargeIncreased,
-    color = MaterialTheme.colorScheme.surfaceContainerLow,
-    tonalElevation = 1.dp,
+    verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
   ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-      section.items.forEachIndexed { index, item ->
-        SettingsDestinationRow(
-          item = item,
-          tint = section.tint,
-          isSelected = selectedScreen == item.screen,
-          onClick = { onItemClick(item) },
-        )
-        if (index < section.items.lastIndex) {
-          PreferenceDivider()
-        }
-      }
+    section.items.forEachIndexed { index, item ->
+      SettingsDestinationRow(
+        item = item,
+        index = index,
+        itemCount = section.items.size,
+        tint = section.tint,
+        isSelected = selectedScreen == item.screen,
+        onClick = { onItemClick(item) },
+      )
     }
   }
 }
@@ -517,72 +514,85 @@ private fun SettingsDestinationGroup(
 @Composable
 private fun SettingsDestinationRow(
   item: SettingsDestination,
+  index: Int,
+  itemCount: Int,
   tint: Color,
   isSelected: Boolean,
   onClick: () -> Unit,
 ) {
-  val rowBgColor =
+  val shape =
+    rememberConnectedShape(
+      index = index,
+      itemCount = itemCount,
+      layout = ConnectedLayout.Vertical,
+    )
+  val containerColor =
     if (isSelected) {
       MaterialTheme.colorScheme.secondaryContainer
     } else {
-      Color.Transparent
+      MaterialTheme.colorScheme.surfaceContainerLow
     }
-  Row(
+  Surface(
     modifier =
       Modifier
         .fillMaxWidth()
-        .tvFocusHighlight(MaterialTheme.shapes.medium, focusedScale = 1.01f)
-        .clip(MaterialTheme.shapes.medium)
-        .background(rowBgColor)
+        .tvFocusHighlight(shape, focusedScale = 1.01f)
+        .clip(shape)
         .semantics { selected = isSelected }
-        .clickable(onClick = onClick)
-        .padding(horizontal = 14.dp, vertical = 13.dp),
-    verticalAlignment = Alignment.CenterVertically,
+        .clickable(onClick = onClick),
+    shape = shape,
+    color = containerColor,
+    tonalElevation = 1.dp,
   ) {
-    Surface(
-      shape = MaterialTheme.shapes.largeIncreased,
-      color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-      Box(
-        modifier = Modifier.size(48.dp),
-        contentAlignment = Alignment.Center,
+      Surface(
+        shape = MaterialTheme.shapes.largeIncreased,
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
       ) {
-        Icon(
-          imageVector = item.icon,
-          contentDescription = null,
-          modifier = Modifier.size(26.dp),
-          tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else tint,
+        Box(
+          modifier = Modifier.size(48.dp),
+          contentAlignment = Alignment.Center,
+        ) {
+          Icon(
+            imageVector = item.icon,
+            contentDescription = null,
+            modifier = Modifier.size(26.dp),
+            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else tint,
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.width(14.dp))
+
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          text = item.title,
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.SemiBold,
+          color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+          text = item.summary,
+          style = MaterialTheme.typography.bodyMedium,
+          color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
         )
       }
-    }
 
-    Spacer(modifier = Modifier.width(14.dp))
+      Spacer(modifier = Modifier.width(10.dp))
 
-    Column(modifier = Modifier.weight(1f)) {
-      Text(
-        text = item.title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Text(
-        text = item.summary,
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
+      Icon(
+        imageVector = Icons.RoundedFilled.ChevronRight,
+        contentDescription = null,
+        modifier = Modifier.size(24.dp),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
-
-    Spacer(modifier = Modifier.width(10.dp))
-
-    Icon(
-      imageVector = Icons.RoundedFilled.ChevronRight,
-      contentDescription = null,
-      modifier = Modifier.size(24.dp),
-      tint = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
   }
 }

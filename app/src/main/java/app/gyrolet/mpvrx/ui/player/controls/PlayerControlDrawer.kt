@@ -67,8 +67,9 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.DraggablePanel
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
@@ -82,6 +83,7 @@ internal fun PlayerControlDrawer(
   onPanelVisibilityChanged: (Boolean) -> Unit,
   renderButton: @Composable (PlayerButton) -> Unit,
 ) {
+  val reducedMotion = AppMotion.playerReducedMotion()
   val clickEvent = LocalPlayerButtonsClickEvent.current
   val openPanel = {
     if (controlsVisible && buttons.isNotEmpty() && !panelVisible) {
@@ -97,11 +99,31 @@ internal fun PlayerControlDrawer(
       visible = controlsVisible && buttons.isNotEmpty() && !panelVisible,
       modifier = Modifier.align(Alignment.CenterEnd),
       enter =
-        fadeIn(animationSpec = tween(160)) +
-          slideInHorizontally(animationSpec = tween(180)) { it / 2 },
+        if (reducedMotion) {
+          fadeIn(animationSpec = tween(90))
+        } else {
+          fadeIn(animationSpec = AppMotion.Effect.Alpha) +
+            slideInHorizontally(
+              animationSpec =
+                spring(
+                  dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+                  stiffness = AppMotion.Spatial.Expressive.stiffness,
+                ),
+            ) { it / 2 }
+        },
       exit =
-        fadeOut(animationSpec = tween(140)) +
-          slideOutHorizontally(animationSpec = tween(160)) { it / 2 },
+        if (reducedMotion) {
+          fadeOut(animationSpec = tween(70))
+        } else {
+          fadeOut(animationSpec = AppMotion.Effect.Alpha) +
+            slideOutHorizontally(
+              animationSpec =
+                spring(
+                  dampingRatio = AppMotion.Spatial.Standard.dampingRatio,
+                  stiffness = AppMotion.Spatial.Standard.stiffness,
+                ),
+            ) { it / 2 }
+        },
     ) {
       PlayerControlEdgeHandle(
         enabled = controlsVisible,
@@ -113,13 +135,31 @@ internal fun PlayerControlDrawer(
       visible = panelVisible,
       modifier = Modifier.fillMaxSize(),
       enter =
-        fadeIn(animationSpec = tween(180)) +
-          slideInHorizontally(
-            animationSpec = spring(dampingRatio = 0.88f, stiffness = 520f),
-          ) { it / 3 },
+        if (reducedMotion) {
+          fadeIn(animationSpec = tween(90))
+        } else {
+          fadeIn(animationSpec = AppMotion.Effect.Alpha) +
+            slideInHorizontally(
+              animationSpec =
+                spring(
+                  dampingRatio = AppMotion.Spatial.Expressive.dampingRatio,
+                  stiffness = AppMotion.Spatial.Expressive.stiffness,
+                ),
+            ) { it / 3 }
+        },
       exit =
-        fadeOut(animationSpec = tween(140)) +
-          slideOutHorizontally(animationSpec = tween(180)) { it / 3 },
+        if (reducedMotion) {
+          fadeOut(animationSpec = tween(70))
+        } else {
+          fadeOut(animationSpec = AppMotion.Effect.Alpha) +
+            slideOutHorizontally(
+              animationSpec =
+                spring(
+                  dampingRatio = AppMotion.Spatial.Standard.dampingRatio,
+                  stiffness = AppMotion.Spatial.Standard.stiffness,
+                ),
+            ) { it / 3 }
+        },
     ) {
       PlayerControlPanel(
         buttons = buttons,
@@ -235,7 +275,7 @@ private fun PlayerControlPanel(
   DraggablePanel(
     modifier = Modifier.fillMaxSize(),
     header = { PlayerControlPanelHeader(onDismissRequest) },
-    shape = RoundedCornerShape(24.dp),
+    shape = MaterialTheme.shapes.extraLargeIncreased,
     containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f),
     tonalElevation = 2.dp,
     shadowElevation = 10.dp,
@@ -272,7 +312,7 @@ private fun PlayerControlPanelHeader(onDismissRequest: () -> Unit) {
   ) {
     Text(
       text = stringResource(R.string.pref_player_controls_drawer_title),
-      style = MaterialTheme.typography.titleLarge,
+      style = MaterialTheme.typography.headlineSmall,
       fontWeight = FontWeight.SemiBold,
       modifier = Modifier.weight(1f),
     )

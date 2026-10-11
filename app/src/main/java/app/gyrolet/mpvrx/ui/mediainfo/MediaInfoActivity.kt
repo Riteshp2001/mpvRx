@@ -86,8 +86,11 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.resolveLocalPath
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import kotlinx.coroutines.Dispatchers
@@ -1174,18 +1177,20 @@ class MediaInfoActivity : AppCompatActivity() {
         // Two-column chunked Stat Tiles inspired by the premium mpvFlux UI
         Column(
           modifier = Modifier.padding(12.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
         ) {
           val chunked = properties.chunked(2)
-          chunked.forEach { pair ->
+          chunked.forEachIndexed { rowIndex, pair ->
             Row(
               modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
             ) {
-              pair.forEach { (label, value) ->
+              pair.forEachIndexed { columnIndex, (label, value) ->
                 StatTile(
                   label = label,
                   value = value,
+                  index = rowIndex * 2 + columnIndex,
+                  itemCount = properties.size,
                   modifier = Modifier.weight(1f),
                 )
               }
@@ -1203,14 +1208,22 @@ class MediaInfoActivity : AppCompatActivity() {
   private fun StatTile(
     label: String,
     value: String,
+    index: Int,
+    itemCount: Int,
     modifier: Modifier = Modifier,
   ) {
     val requestValueDetail = LocalValueDetailRequest.current
+    val shape =
+      rememberConnectedShape(
+        index = index,
+        itemCount = itemCount,
+        layout = ConnectedLayout.Grid,
+        columns = 2,
+      )
     Surface(
-      modifier = modifier.clip(RoundedCornerShape(12.dp)).clickable { requestValueDetail(label, value) },
-      shape = RoundedCornerShape(12.dp),
-      color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
-      border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
+      modifier = modifier.clip(shape).clickable { requestValueDetail(label, value) },
+      shape = shape,
+      color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
       Column(
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),

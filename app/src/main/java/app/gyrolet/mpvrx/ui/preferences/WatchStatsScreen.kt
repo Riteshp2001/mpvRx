@@ -63,7 +63,10 @@ import app.gyrolet.mpvrx.repository.WatchStatsRepository
 import app.gyrolet.mpvrx.repository.WatchStatsSnapshot
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import java.io.File
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -330,12 +333,25 @@ private fun WatchSplitBentoCard(stats: WatchStatsSnapshot) {
 
       Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {
-        // Video Pill Card
+        val videoShape =
+          rememberConnectedShape(
+            index = 0,
+            itemCount = 2,
+            layout = ConnectedLayout.Horizontal,
+          )
+        val audioShape =
+          rememberConnectedShape(
+            index = 1,
+            itemCount = 2,
+            layout = ConnectedLayout.Horizontal,
+          )
+
+        // Connected video tile
         Surface(
           modifier = Modifier.weight(1f),
-          shape = RoundedCornerShape(16.dp),
+          shape = videoShape,
           color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
         ) {
           Row(
@@ -376,10 +392,10 @@ private fun WatchSplitBentoCard(stats: WatchStatsSnapshot) {
           }
         }
 
-        // Audio Pill Card
+        // Connected audio tile
         Surface(
           modifier = Modifier.weight(1f),
-          shape = RoundedCornerShape(16.dp),
+          shape = audioShape,
           color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
         ) {
           Row(

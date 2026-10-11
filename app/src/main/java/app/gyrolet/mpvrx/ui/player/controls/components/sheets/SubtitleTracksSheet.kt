@@ -63,6 +63,8 @@ import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusReq
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
@@ -73,6 +75,8 @@ import java.util.Locale
 sealed class SubtitleItem {
   data class Track(
     val node: TrackNode,
+    val groupIndex: Int,
+    val groupSize: Int,
   ) : SubtitleItem()
 
   data class Header(
@@ -133,11 +137,15 @@ fun SubtitlesSheet(
 
       if (internal.isNotEmpty() || external.isNotEmpty()) {
         list.add(SubtitleItem.Header(if (internal.isNotEmpty()) "Embedded Subtitles" else "Local Subtitles"))
-        list.addAll(internal.map { SubtitleItem.Track(it) })
+        internal.forEachIndexed { index, track ->
+          list.add(SubtitleItem.Track(track, groupIndex = index, groupSize = internal.size))
+        }
         if (internal.isNotEmpty() && external.isNotEmpty()) {
           list.add(SubtitleItem.Header("External Subtitles"))
         }
-        list.addAll(external.map { SubtitleItem.Track(it) })
+        external.forEachIndexed { index, track ->
+          list.add(SubtitleItem.Track(track, groupIndex = index, groupSize = external.size))
+        }
       }
 
       list.toImmutableList()
@@ -499,6 +507,8 @@ fun SubtitlesSheet(
                 },
                 translationEnabled = translationEnabled,
                 isCurrentlyTranslating = track.id == translatingTrackId,
+                groupIndex = item.groupIndex,
+                groupSize = item.groupSize,
               )
             }
             is SubtitleItem.Header -> {
@@ -586,11 +596,22 @@ fun SubtitleTrackRow(
   onTranslate: () -> Unit,
   translationEnabled: Boolean,
   isCurrentlyTranslating: Boolean = false,
+  groupIndex: Int? = null,
+  groupSize: Int? = null,
   modifier: Modifier = Modifier,
 ) {
   val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
   val haptics = rememberAppHaptics()
-  val shape = MaterialTheme.shapes.medium
+  val shape =
+    if (groupIndex != null && groupSize != null && groupSize > 0) {
+      rememberConnectedShape(
+        index = groupIndex,
+        itemCount = groupSize,
+        layout = ConnectedLayout.Vertical,
+      )
+    } else {
+      MaterialTheme.shapes.medium
+    }
   val isFrosted = LocalKyantPlayerBackdrop.current != null
   val containerColor by animateColorAsState(
     targetValue =
@@ -614,7 +635,7 @@ fun SubtitleTrackRow(
     modifier =
       modifier
         .fillMaxWidth()
-        .padding(horizontal = 8.dp, vertical = 3.dp)
+        .padding(horizontal = 8.dp, vertical = 2.dp)
         .tvFocusHighlight(shape)
         .clip(shape)
         .toggleable(value = isSelected, role = Role.Checkbox) { selected ->

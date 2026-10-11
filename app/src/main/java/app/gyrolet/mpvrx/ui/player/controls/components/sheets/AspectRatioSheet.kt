@@ -26,6 +26,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -101,24 +102,38 @@ fun AspectRatioSheet(
           autoCropState == AutoCropState.ERROR -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_failed
           else -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_summary
         }
-      ListItem(
-        content = {
-          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars))
-        },
-        supportingContent = { Text(androidx.compose.ui.res.stringResource(autoCropSummary)) },
-        trailingContent = {
-          IconSwitch(
-            checked = autoCropEnabled,
-            onCheckedChange = null,
-            enabled = autoCropControlEnabled,
-          )
-        },
+      Surface(
         modifier =
-          Modifier.clickable(enabled = autoCropControlEnabled) {
-            onAutoCropChanged(!autoCropEnabled)
+          Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        color =
+          if (autoCropEnabled) {
+            MaterialTheme.colorScheme.secondaryContainer
+          } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
           },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-      )
+      ) {
+        ListItem(
+          content = {
+            Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars))
+          },
+          supportingContent = { Text(androidx.compose.ui.res.stringResource(autoCropSummary)) },
+          trailingContent = {
+            IconSwitch(
+              checked = autoCropEnabled,
+              onCheckedChange = null,
+              enabled = autoCropControlEnabled,
+            )
+          },
+          modifier =
+            Modifier.clickable(enabled = autoCropControlEnabled) {
+              onAutoCropChanged(!autoCropEnabled)
+            },
+          colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+      }
 
       // Preset ratios
       PlayerSheetSectionHeader(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_presets))

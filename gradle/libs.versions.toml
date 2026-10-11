@@ -43,6 +43,7 @@ materialSymbols = "2.2.1"
 seeker = "2.0.1"
 markdownRenderer = "0.45.0"
 kotlinTest = "2.4.20"
+junit4 = "4.13.2"
 mediainfo = "v1.0.0-fix"
 mpvlib = "1.1.2"
 googleCast = "22.3.1"
@@ -86,6 +87,7 @@ androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.r
 seeker = { module = "com.github.abdallahmehiz:seeker", version.ref = "seeker" }
 markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlinTest" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }
 mediainfo-lib = { module = "com.github.marlboro-advance:mediainfoAndroid", version.ref = "mediainfo" }
 mpvlib-standard = { module = "app.gyrolet.mpvlib:mpvlib", version.ref = "mpvlib" }
 mpvlib-no-vulkan = { module = "app.gyrolet.mpvlib:mpvlib-no-vulkan", version.ref = "mpvlib" }

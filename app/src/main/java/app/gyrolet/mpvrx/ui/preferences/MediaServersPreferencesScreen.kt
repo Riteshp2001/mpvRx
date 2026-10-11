@@ -71,7 +71,6 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.Preference
-import me.zhanghai.compose.preference.ProvidePreferenceLocals
 
 @Serializable
 object MediaServersPreferencesScreen : Screen {
@@ -115,7 +114,7 @@ object MediaServersPreferencesScreen : Screen {
         )
       },
     ) { padding ->
-      ProvidePreferenceLocals {
+      ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
           rememberSettingsSearchList(MediaServersPreferencesScreen, MaterialTheme.colorScheme.primary)
 
