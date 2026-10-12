@@ -349,6 +349,7 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.jsoup)
   implementation(libs.androidx.media3.common)
+  implementation(libs.androidx.media3.extractor)
   implementation(libs.androidx.media3.effect)
   implementation(libs.androidx.media3.transformer)
   implementation(platform(libs.sora.editor.bom))

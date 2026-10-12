@@ -32,6 +32,7 @@ internal data class RealtimeMediaInput(
   val headers: Map<String, String> = emptyMap(),
   val audioTrackIndex: Int? = null,
   val audioTrackOrdinal: Int = 0,
+  val strictAudioTrack: Boolean = false,
 )
 
 internal class RealtimeAudioChunkExtractor(
@@ -162,6 +163,7 @@ internal class RealtimeAudioChunkExtractor(
         extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
     }?.let { return it }
 
+    check(!input.strictAudioTrack) { "Selected audio track is not available to the device decoder" }
     val audioTracks =
       (0 until extractor.trackCount).filter { index ->
         extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true

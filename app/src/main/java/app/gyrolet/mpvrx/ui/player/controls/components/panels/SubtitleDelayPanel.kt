@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +60,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SubtitleDelayPanel(
   onDismissRequest: () -> Unit,
+  viewModel: PlayerViewModel,
   modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<SubtitlesPreferences>()
@@ -94,6 +96,7 @@ fun SubtitleDelayPanel(
     val speed by PlaybackSession.propDouble["sub-speed"].collectAsState()
     val speedFloat by remember { derivedStateOf { (speed ?: 1.0).toFloat() } }
 
+    OfflineSubtitleAlignmentControls(viewModel, enabled = delayEnabled && speedEnabled)
     // We unwrap the card content here because DraggablePanel already provides the card
     SubtitleDelayCardContent(
       delay = delayFloat,

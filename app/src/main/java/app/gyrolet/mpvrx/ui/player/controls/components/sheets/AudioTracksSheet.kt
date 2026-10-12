@@ -80,6 +80,7 @@ fun AudioTracksSheet(
   reverseStereoEnabled: Boolean = true,
   audioEffectsEnabled: Boolean = true,
   modifier: Modifier = Modifier,
+  offlineAudioControls: (@Composable () -> Unit)? = null,
 ) {
   val audioPreferences = koinInject<AudioPreferences>()
   val audioChannels by audioPreferences.audioChannels.collectAsState()
@@ -149,6 +150,9 @@ fun AudioTracksSheet(
             groupSize = externalTracks.size,
             modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
           )
+        }
+        if (offlineAudioControls != null) {
+          item(key = "offline_silence_controls") { offlineAudioControls() }
         }
         item {
           Column(modifier = Modifier.fillMaxWidth()) {

@@ -12,6 +12,7 @@
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -42,6 +43,7 @@ import kotlin.math.roundToInt
 @Composable
 fun AudioDelayPanel(
   onDismissRequest: () -> Unit,
+  viewModel: PlayerViewModel,
   modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<AudioPreferences>()
@@ -58,6 +60,7 @@ fun AudioDelayPanel(
     val delay by PlaybackSession.propDouble["audio-delay"].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
 
+    OfflineSilenceSkippingControls(viewModel)
     DelayCard(
       delay = delayFloat,
       onDelayChange = {

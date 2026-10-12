@@ -100,10 +100,10 @@ fun PlayerPanels(
         )
       }
       Panels.SubtitleDelay -> {
-        SubtitleDelayPanel(onDismissRequest)
+        SubtitleDelayPanel(onDismissRequest, viewModel)
       }
       Panels.AudioDelay -> {
-        AudioDelayPanel(onDismissRequest)
+        AudioDelayPanel(onDismissRequest, viewModel)
       }
       Panels.VideoFilters -> {
         VideoSettingsPanel(onDismissRequest)

@@ -9,6 +9,25 @@ mpvRx supports primary and secondary subtitle tracks, local files, embedded trac
 
 Open the subtitle controls during playback to select a track or explicitly turn subtitles off. Primary and secondary tracks are positioned independently to reduce overlap. Delay controls let you correct a constant timing offset without rewriting the subtitle file.
 
+## Offline automatic alignment
+
+In the subtitle-delay panel, choose **Analyze timing** for the selected primary
+external SRT or VTT subtitle. The tool compares subtitle intervals with local
+audio activity in three windows to estimate offset and, for sufficiently spread
+windows, timing drift. It does not use speech recognition or send audio to a
+server. Music, continuous dialogue, and mismatched subtitle files can prevent a
+reliable match; uncertain results are rejected.
+
+Review the offset and timing scale, then choose **Apply correction** or
+**Undo correction**. The subtitle file is never rewritten, and applied options
+reset when the media file ends. mpv's subtitle timing scale can also affect
+secondary text subtitles. Options owned by `mpv.conf` cannot be overwritten.
+
+Analysis requires a local, seekable media file at least one minute long, an
+embedded audio track with zero audio delay, and subtitles no larger than 8 MB.
+Streams, external audio, image subtitles, and multi-file audiobooks are not
+supported. Changing media or selected tracks invalidates the result.
+
 ## Styling
 
 You can configure font, size, weight, italics, border, shadow, color, alignment, and scale behavior. ASS override modes decide how much embedded styling is preserved.

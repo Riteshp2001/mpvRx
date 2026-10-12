@@ -13,6 +13,24 @@ Use the track selector to choose embedded audio streams. Audio delay can correct
 Volume above 100% applies digital gain and may clip. Lower the boost when distortion appears.
 :::
 
+## Offline silence skipping
+
+Enable **Silence skipping** in the audio-track sheet or audio-delay panel.
+Adjust **Quiet threshold** in dBFS, **Minimum pause**, and **Speech padding**.
+More negative thresholds skip only quieter sections; padding retains audio on
+both sides of each detected pause. The controls show analysis progress and the
+total time skipped during the current run.
+
+Audio is decoded locally in look-ahead chunks using the device decoder. No
+server is contacted. Skipping pauses while playback is paused or seeking and
+stops when the media or selected audio track changes. Closing the controls does
+not stop it; turn the switch off to stop skipping.
+
+This requires a local, seekable file, an embedded audio track, and zero audio
+delay. Streams, external audio, and multi-file audiobooks are not supported.
+Detection is based on loudness, not speech recognition: a high threshold may
+skip quiet speech, while music or background noise may prevent skipping.
+
 ## Music library
 
 The Music tab can use local storage, Jellyfin, or Navidrome as its source. Local browsing includes:

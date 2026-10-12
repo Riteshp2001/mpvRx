@@ -3688,6 +3688,35 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     return if (media.startsWith("/")) File(media).toUri() else Uri.parse(media)
   }
 
+  internal fun setOfflineSilenceSkipping(enabled: Boolean) {
+    if (!enabled) {
+      OfflinePlaybackAudioTools.stopSkipping()
+      return
+    }
+    val input = currentOfflineMediaInput()
+    if (input == null) {
+      OfflinePlaybackAudioTools.reportError(appContext.getString(R.string.offline_audio_local_media_required))
+      return
+    }
+    OfflinePlaybackAudioTools.startSkipping(appContext, input)
+  }
+
+  internal fun analyzeOfflineSubtitleAlignment() {
+    val input = currentOfflineMediaInput()
+    val externalPath = subtitleTracks.value.firstOrNull(TrackNode::isSelected)?.externalFilename
+    if (input == null || externalPath.isNullOrBlank()) {
+      OfflinePlaybackAudioTools.reportError(appContext.getString(R.string.offline_alignment_local_subtitle_required))
+      return
+    }
+    OfflinePlaybackAudioTools.analyzeAlignment(appContext, input, mpvPathToUriMap[externalPath] ?: externalPath)
+  }
+
+  private fun currentOfflineMediaInput(): RealtimeMediaInput? {
+    val selected = audioTracks.value.firstOrNull(TrackNode::isSelected) ?: return null
+    if (selected.external == true || !selected.externalFilename.isNullOrBlank()) return null
+    return currentRealtimeMediaInput()?.copy(headers = emptyMap(), strictAudioTrack = true)
+  }
+
   private fun currentRealtimeMediaInput(): RealtimeMediaInput? {
     val item = PlaybackSession.state.value.currentItem
     val tracks = audioTracks.value

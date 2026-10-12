@@ -391,6 +391,7 @@ fun PlayerSheets(
         audioChannelsEnabled = "audio-channels" !in configOwnedOptions,
         reverseStereoEnabled = "af" !in configOwnedOptions,
         audioEffectsEnabled = "af" !in configOwnedOptions,
+        offlineAudioControls = { app.gyrolet.mpvrx.ui.player.controls.components.panels.OfflineSilenceSkippingControls(viewModel, showSettings = false) },
         onDismissRequest = onDismissRequest,
       )
     }

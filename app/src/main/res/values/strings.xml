@@ -2905,4 +2905,25 @@
     <string name="pref_playstore_hidden_remove">Remove folder access</string>
     <string name="pref_playstore_hidden_grant_failed">Cannot access that folder. Choose a supported folder and grant read access.</string>
     <string name="pref_playstore_hidden_limitations">Only files directly inside selected folders are listed; select subfolders separately. Android may block storage roots, Download, Android/data and Android/obb. Pull to refresh after copying files into a selected folder.</string>
+  <string name="offline_silence_skipping">Silence skipping</string>
+  <string name="offline_silence_threshold">Quiet threshold</string>
+  <string name="offline_silence_minimum">Minimum pause</string>
+  <string name="offline_silence_padding">Speech padding</string>
+  <string name="offline_silence_db">%1$.0f dBFS</string>
+  <string name="offline_silence_seconds">%1$.1f s</string>
+  <string name="offline_silence_skipped">Skipped %1$.1f s</string>
+  <string name="offline_audio_analyzing">Analyzing audio...</string>
+  <string name="offline_subtitle_alignment">Automatic subtitle alignment</string>
+  <string name="offline_alignment_analyze">Analyze timing</string>
+  <string name="offline_alignment_apply">Apply correction</string>
+  <string name="offline_alignment_undo">Undo correction</string>
+  <string name="offline_alignment_result">Offset %1$.2f s; timing scale %2$.4fx</string>
+  <string name="offline_alignment_applied">Timing correction applied</string>
+  <string name="offline_audio_local_media_required">Select a local, seekable audio or video file. Streams and multi-file audiobooks are not supported.</string>
+  <string name="offline_alignment_local_subtitle_required">Select a local SRT or VTT subtitle and a local media file at least one minute long.</string>
+  <string name="offline_audio_analysis_failed">Audio analysis failed. This audio format may not be supported by the device decoder.</string>
+  <string name="offline_audio_track_required">Select an embedded audio track and set audio delay to zero before analyzing.</string>
+  <string name="offline_subtitle_too_large">The subtitle file exceeds the 8 MB analysis limit.</string>
+  <string name="offline_audio_media_changed">The media or selected track changed. Analyze again.</string>
+  <string name="offline_alignment_uncertain">No reliable timing match found. Use manual delay adjustment for this subtitle.</string>
 </resources>
