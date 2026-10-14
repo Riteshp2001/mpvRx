@@ -2143,10 +2143,16 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     scaleX: Double = 1.0,
     scaleY: Double = 1.0,
   ) {
+    val ambientActive =
+      kotlin.math.abs(scaleX - 1.0) > AMBIENT_SCALE_EPSILON ||
+        kotlin.math.abs(scaleY - 1.0) > AMBIENT_SCALE_EPSILON
     val options = buildList {
       if (!MpvConfigOverridePolicy.isOwnedByMpvConf("glsl-shaders")) addAll(shaderOptions)
       if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-x")) add("video-scale-x" to scaleX.toString())
       if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-y")) add("video-scale-y" to scaleY.toString())
+      if (!MpvConfigOverridePolicy.isOwnedByMpvConf("blend-subtitles")) {
+        add("blend-subtitles" to subtitleBlendMode(ambientActive))
+      }
     }
     if (options.isEmpty()) return
 

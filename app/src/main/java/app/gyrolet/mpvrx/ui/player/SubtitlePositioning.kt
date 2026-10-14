@@ -121,12 +121,14 @@ fun applySubtitleScales() {
 }
 
 /** Blending into the video would bake subtitle pixels into mpv's own zoom and pan. */
-fun subtitleBlendMode(): String {
+fun subtitleBlendMode(
+  ambientActive: Boolean = GlobalContext.get().get<PlayerPreferences>().isAmbientEnabled.get(),
+): String {
   val transformed = !overlaysFollowVideoZoom() && (
     PlaybackSession.videoZoom.value != 0f ||
       PlaybackSession.videoPanX.value != 0f || PlaybackSession.videoPanY.value != 0f
     )
-  return if (!transformed && subtitlesPreferences.blendSubtitlesWithVideo.get() &&
-    GlobalContext.get().get<PlayerPreferences>().isAmbientEnabled.get()
-  ) "video" else "no"
+  return if (!transformed && (
+    subtitlesPreferences.blendSubtitlesWithVideo.get() || ambientActive
+  )) "video" else "no"
 }
