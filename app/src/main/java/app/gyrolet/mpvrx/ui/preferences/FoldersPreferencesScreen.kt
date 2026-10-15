@@ -29,6 +29,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.horizontalScroll
+import androidx.compose.foundation.layout.rememberScrollState
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +49,7 @@ import androidx.compose.material3.Checkbox
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -67,6 +72,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -299,16 +307,35 @@ object FoldersPreferencesScreen : Screen {
             stringResource(R.string.pref_hidden_scan_per_mode_title),
             style = MaterialTheme.typography.titleMediumEmphasized,
           )
-          Text(
-            stringResource(
-              if (BuildConfig.SCOPED_STORAGE_ONLY) R.string.pref_hidden_scan_scoped_summary
-              else R.string.pref_hidden_scan_per_mode_summary,
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-          HiddenScanModeCard(
+          val markerHeader = stringResource(R.string.pref_hidden_scan_markers_short)
+          val dotHeader = stringResource(R.string.pref_hidden_scan_dots_short)
+          // One compact connected group: the two columns control hidden markers and dot folders.
+          // Expand a view only when editing individual .nomedia/custom-marker selections.
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Spacer(Modifier.weight(1f))
+            Text(
+              markerHeader,
+              modifier = Modifier.width(76.dp),
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+              dotHeader,
+              modifier = Modifier.width(58.dp),
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          HiddenScanModeRow(
             title = stringResource(R.string.pref_hidden_scan_library),
+            index = 0,
+            markerHeader = markerHeader,
+            dotHeader = dotHeader,
             markerEnabled = libraryMarkers,
             dotEnabled = libraryDotFolders,
             enabled = includeNoMediaFolders,
@@ -323,8 +350,11 @@ object FoldersPreferencesScreen : Screen {
               onScanPreferenceChanged()
             },
           )
-          HiddenScanModeCard(
+          HiddenScanModeRow(
             title = stringResource(R.string.pref_hidden_scan_tree),
+            index = 1,
+            markerHeader = markerHeader,
+            dotHeader = dotHeader,
             markerEnabled = treeMarkers,
             dotEnabled = treeDotFolders,
             enabled = includeNoMediaFolders,
@@ -339,8 +369,11 @@ object FoldersPreferencesScreen : Screen {
               onScanPreferenceChanged()
             },
           )
-          HiddenScanModeCard(
+          HiddenScanModeRow(
             title = stringResource(R.string.pref_hidden_scan_folders),
+            index = 2,
+            markerHeader = markerHeader,
+            dotHeader = dotHeader,
             markerEnabled = folderMarkers,
             dotEnabled = folderDotFolders,
             enabled = includeNoMediaFolders,
@@ -597,9 +630,16 @@ private fun PlayStoreHiddenFolderCard(
   }
 }
 
+/**
+ * Compact Material 3 Expressive connected rows, rather than repeating a full settings card for
+ * every marker in every mode. Individual marker choices are revealed on demand.
+ */
 @Composable
-private fun HiddenScanModeCard(
+private fun HiddenScanModeRow(
   title: String,
+  index: Int,
+  markerHeader: String,
+  dotHeader: String,
   markerEnabled: Boolean,
   dotEnabled: Boolean,
   enabled: Boolean,
@@ -609,42 +649,71 @@ private fun HiddenScanModeCard(
   ignoredMarkers: Set<String>,
   onIndividualMarkerChanged: (String, Boolean) -> Unit,
 ) {
+  var expanded by rememberSaveable { mutableStateOf(false) }
   Card(
     modifier = Modifier.fillMaxWidth(),
+    shape = rememberConnectedShape(index, 3, ConnectedLayout.Vertical),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    shape = MaterialTheme.shapes.large,
   ) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-      Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-      )
-      SwitchPreference(
-        value = markerEnabled,
-        onValueChange = onMarkerChanged,
-        enabled = enabled,
-        title = { Text(stringResource(R.string.pref_hidden_scan_marked)) },
-        summary = { Text(stringResource(R.string.pref_hidden_scan_marked_summary)) },
-      )
-      if (markerNames.isNotEmpty()) {
-        markerNames.forEach { marker ->
-          SwitchPreference(
-            value = markerEnabled && marker !in ignoredMarkers,
-            onValueChange = { checked -> onIndividualMarkerChanged(marker, checked) },
-            enabled = enabled && markerEnabled,
-            title = { Text(marker) },
-            summary = { Text(stringResource(R.string.pref_hidden_scan_single_marker_summary)) },
+    Column {
+      Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(horizontal = 12.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Row(
+          modifier = Modifier.weight(1f)
+            .clickable(enabled = enabled && markerNames.isNotEmpty()) { expanded = !expanded }
+            .padding(horizontal = 3.dp, vertical = 8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+          Text(title, style = MaterialTheme.typography.bodyLargeEmphasized, maxLines = 1)
+          if (markerNames.isNotEmpty()) {
+            Icon(
+              if (expanded) Icons.RoundedFilled.ExpandLess else Icons.RoundedFilled.ExpandMore,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+        }
+        Box(Modifier.width(76.dp), contentAlignment = Alignment.Center) {
+          Checkbox(
+            checked = markerEnabled,
+            onCheckedChange = onMarkerChanged,
+            enabled = enabled,
+            modifier = Modifier.semantics { contentDescription = "$title: $markerHeader" },
+          )
+        }
+        Box(Modifier.width(58.dp), contentAlignment = Alignment.Center) {
+          Checkbox(
+            checked = dotEnabled,
+            onCheckedChange = onDotChanged,
+            enabled = enabled,
+            modifier = Modifier.semantics { contentDescription = "$title: $dotHeader" },
           )
         }
       }
-      SwitchPreference(
-        value = dotEnabled,
-        onValueChange = onDotChanged,
-        enabled = enabled,
-        title = { Text(stringResource(R.string.pref_hidden_scan_dot)) },
-        summary = { Text(stringResource(R.string.pref_hidden_scan_dot_summary)) },
-      )
+      if (expanded && markerNames.isNotEmpty()) {
+        Row(
+          modifier = Modifier.fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = 14.dp, end = 14.dp, bottom = 8.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          markerNames.forEach { marker ->
+            val included = markerEnabled && marker !in ignoredMarkers
+            FilterChip(
+              selected = included,
+              enabled = enabled && markerEnabled,
+              onClick = { onIndividualMarkerChanged(marker, marker in ignoredMarkers) },
+              label = { Text(marker, maxLines = 1) },
+              modifier = Modifier.semantics { contentDescription = "$title: $marker" },
+            )
+          }
+        }
+      }
     }
   }
 }
