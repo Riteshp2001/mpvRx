@@ -80,6 +80,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.RadioButton
 import app.gyrolet.mpvrx.preferences.BlacklistScope
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
@@ -122,6 +123,16 @@ object FoldersPreferencesScreen : Screen {
     val includeNoMediaFolders by preferences.includeNoMediaFolders.collectAsState()
     val hiddenFolderMarkerNames by preferences.hiddenFolderMarkerNames.collectAsState()
     val scopedHiddenFolderUris by preferences.scopedHiddenFolderUris.collectAsState()
+    val libraryMarkers by preferences.libraryScanMarkedFolders.collectAsState()
+    val libraryDotFolders by preferences.libraryScanDotFolders.collectAsState()
+    val treeMarkers by preferences.treeScanMarkedFolders.collectAsState()
+    val treeDotFolders by preferences.treeScanDotFolders.collectAsState()
+    val folderMarkers by preferences.foldersScanMarkedFolders.collectAsState()
+    val folderDotFolders by preferences.foldersScanDotFolders.collectAsState()
+    fun onScanPreferenceChanged() {
+      app.gyrolet.mpvrx.repository.MediaFileRepository.clearCache()
+      MediaLibraryEvents.notifyChanged()
+    }
     var availableFolders by remember { mutableStateOf<List<VideoFolder>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -249,6 +260,17 @@ object FoldersPreferencesScreen : Screen {
                 MediaLibraryEvents.notifyChanged()
               },
             )
+            // Scoped builds also support user-defined marker names, but scan only SAF grants.
+            NoMediaPreferenceCard(
+              includeNoMediaFolders = includeNoMediaFolders,
+              markerNames = hiddenFolderMarkerNames,
+              onIncludeNoMediaFoldersChanged = { },
+              onMarkerNamesChanged = { names ->
+                preferences.hiddenFolderMarkerNames.set(names)
+                onScanPreferenceChanged()
+              },
+              showMasterToggle = false,
+            )
           } else {
             NoMediaPreferenceCard(
               modifier = Modifier.settingsSearchTarget(R.string.pref_folders_include_hidden_title),
@@ -268,6 +290,44 @@ object FoldersPreferencesScreen : Screen {
               },
             )
           }
+
+          Spacer(modifier = Modifier.height(12.dp))
+          Text(
+            stringResource(R.string.pref_hidden_scan_per_mode_title),
+            style = MaterialTheme.typography.titleMediumEmphasized,
+          )
+          Text(
+            stringResource(
+              if (BuildConfig.SCOPED_STORAGE_ONLY) R.string.pref_hidden_scan_scoped_summary
+              else R.string.pref_hidden_scan_per_mode_summary,
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          HiddenScanModeCard(
+            title = stringResource(R.string.pref_hidden_scan_library),
+            markerEnabled = libraryMarkers,
+            dotEnabled = libraryDotFolders,
+            enabled = includeNoMediaFolders,
+            onMarkerChanged = { preferences.libraryScanMarkedFolders.set(it); onScanPreferenceChanged() },
+            onDotChanged = { preferences.libraryScanDotFolders.set(it); onScanPreferenceChanged() },
+          )
+          HiddenScanModeCard(
+            title = stringResource(R.string.pref_hidden_scan_tree),
+            markerEnabled = treeMarkers,
+            dotEnabled = treeDotFolders,
+            enabled = includeNoMediaFolders,
+            onMarkerChanged = { preferences.treeScanMarkedFolders.set(it); onScanPreferenceChanged() },
+            onDotChanged = { preferences.treeScanDotFolders.set(it); onScanPreferenceChanged() },
+          )
+          HiddenScanModeCard(
+            title = stringResource(R.string.pref_hidden_scan_folders),
+            markerEnabled = folderMarkers,
+            dotEnabled = folderDotFolders,
+            enabled = includeNoMediaFolders,
+            onMarkerChanged = { preferences.foldersScanMarkedFolders.set(it); onScanPreferenceChanged() },
+            onDotChanged = { preferences.foldersScanDotFolders.set(it); onScanPreferenceChanged() },
+          )
 
           Spacer(modifier = Modifier.height(16.dp))
 
@@ -511,12 +571,51 @@ private fun PlayStoreHiddenFolderCard(
 }
 
 @Composable
+private fun HiddenScanModeCard(
+  title: String,
+  markerEnabled: Boolean,
+  dotEnabled: Boolean,
+  enabled: Boolean,
+  onMarkerChanged: (Boolean) -> Unit,
+  onDotChanged: (Boolean) -> Unit,
+) {
+  Card(
+    modifier = Modifier.fillMaxWidth(),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    shape = MaterialTheme.shapes.large,
+  ) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+      Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+      )
+      SwitchPreference(
+        value = markerEnabled,
+        onValueChange = onMarkerChanged,
+        enabled = enabled,
+        title = { Text(stringResource(R.string.pref_hidden_scan_marked)) },
+        summary = { Text(stringResource(R.string.pref_hidden_scan_marked_summary)) },
+      )
+      SwitchPreference(
+        value = dotEnabled,
+        onValueChange = onDotChanged,
+        enabled = enabled,
+        title = { Text(stringResource(R.string.pref_hidden_scan_dot)) },
+        summary = { Text(stringResource(R.string.pref_hidden_scan_dot_summary)) },
+      )
+    }
+  }
+}
+
+@Composable
 private fun NoMediaPreferenceCard(
   includeNoMediaFolders: Boolean,
   markerNames: Set<String>,
   onIncludeNoMediaFoldersChanged: (Boolean) -> Unit,
   onMarkerNamesChanged: (Set<String>) -> Unit,
   modifier: Modifier = Modifier,
+  showMasterToggle: Boolean = true,
 ) {
   var showAddMarkerDialog by remember { mutableStateOf(false) }
   var markerInput by remember { mutableStateOf("") }
@@ -537,7 +636,7 @@ private fun NoMediaPreferenceCard(
     modifier = modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
   ) {
-    Card(
+    if (showMasterToggle) Card(
       modifier = Modifier.fillMaxWidth(),
       shape = rememberConnectedShape(0, 2, ConnectedLayout.Vertical),
       colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -572,7 +671,11 @@ private fun NoMediaPreferenceCard(
 
     Card(
       modifier = Modifier.fillMaxWidth(),
-      shape = rememberConnectedShape(1, 2, ConnectedLayout.Vertical),
+      shape = rememberConnectedShape(
+        if (showMasterToggle) 1 else 0,
+        if (showMasterToggle) 2 else 1,
+        ConnectedLayout.Vertical,
+      ),
       colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
       Row(
