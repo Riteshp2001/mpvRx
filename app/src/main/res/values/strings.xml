@@ -652,6 +652,7 @@
   <string name="pref_hidden_scan_folders">Folders</string>
   <string name="pref_hidden_scan_marked">Scan marker-hidden folders</string>
   <string name="pref_hidden_scan_marked_summary">Folders containing .nomedia or another marker from your list</string>
+  <string name="pref_hidden_scan_single_marker_summary">Include folders containing this marker in this view</string>
   <string name="pref_hidden_scan_dot">Scan dot-prefixed folders</string>
   <string name="pref_hidden_scan_dot_summary">Folders with names starting with a dot, such as .Videos</string>
   <string name="pref_folders_add_marker">Add marker file</string>
