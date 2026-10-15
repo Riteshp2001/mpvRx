@@ -161,7 +161,7 @@ object FolderViewScanner {
     dao: DirectoryScanDao,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
-      if (!options.includeNoMediaFolders) return@withContext emptyList()
+      if (!options.scanHiddenFolders) return@withContext emptyList()
       dao
         .getEntries(options.cacheKey)
         .mapNotNull(::toVideoFolder)
@@ -179,7 +179,7 @@ object FolderViewScanner {
     forceDiscovery: Boolean = false,
   ): Flow<List<VideoFolder>> =
     flow {
-      if (!options.includeNoMediaFolders) return@flow
+      if (!options.scanHiddenFolders) return@flow
 
       val scanKey = options.cacheKey
       val cached =
@@ -625,12 +625,13 @@ object FolderViewScanner {
     options: MediaScanOptions,
     files: List<File>? = null,
   ): Boolean =
-    directory.name.startsWith(".") ||
-      if (files == null) {
-        options.normalizedHiddenFolderMarkerNames.any { File(directory, it).isFile }
-      } else {
-        files.any { file -> file.isFile && file.name in options.normalizedHiddenFolderMarkerNames }
-      }
+    (options.includeDotFolders && directory.name.startsWith(".")) ||
+      (options.includeNoMediaFolders &&
+        if (files == null) {
+          options.normalizedHiddenFolderMarkerNames.any { File(directory, it).isFile }
+        } else {
+          files.any { file -> file.isFile && file.name in options.normalizedHiddenFolderMarkerNames }
+        })
 
   private fun directoryFingerprint(
     directory: File,
