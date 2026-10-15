@@ -2202,16 +2202,14 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     MutableStateFlow(playerPreferences.ambientYouTubeEdgeBlend.get().takeIf { it.isFinite() }?.coerceIn(0f, 0.1f) ?: 0f)
   val ambientYouTubeEdgeBlend: StateFlow<Float> = _ambientYouTubeEdgeBlend.asStateFlow()
 
-  @Volatile private var lastAmbientScaleX = -1.0
-  @Volatile private var lastAmbientScaleY = -1.0
-  @Volatile private var lastAmbientBlendMode: String? = null
+  @Volatile private var lastAmbientGeometry: AmbientGeometry? = null
+  @Volatile private var isAmbientPipActive = false
   private var ambientDebounceJob: kotlinx.coroutines.Job? = null
   private val ambientScheduleLock = Any()
   private val ambientRenderLock = Any()
   private val ambientUpdateGeneration = AtomicLong()
   private val _isAmbientLifecycleActive = MutableStateFlow(false)
   val isAmbientLifecycleActive: StateFlow<Boolean> = _isAmbientLifecycleActive.asStateFlow()
-  private val ambientShaderSeq = AtomicLong()
   @Volatile private var ambientShaderFile: java.io.File? = null
 
   /**
@@ -2481,7 +2479,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
           // --- AMBIENT FIX: Adapt shader to new file dimensions by @Chinna95P ---
           if (_isAmbientEnabled.value) {
-            lastAmbientScaleX = -1.0 // Force a complete shader rewrite
+            lastAmbientGeometry = null
             // Slight delay ensures MPV's video-params (w/h/crop) are fully populated.
             scheduleAmbientUpdate(250)
           }
@@ -2495,7 +2493,8 @@ val isBrightnessSliderShown = MutableStateFlow(false)
         PlaybackSession.state
           .map { state ->
             state.generation.takeIf {
-              state.phase == PlaybackPhase.READY || state.phase == PlaybackPhase.BACKGROUND
+              state.surfaceAttached &&
+                (state.phase == PlaybackPhase.READY || state.phase == PlaybackPhase.BACKGROUND)
             }
           }.distinctUntilChanged()
 
@@ -2506,10 +2505,23 @@ val isBrightnessSliderShown = MutableStateFlow(false)
       ) { crop, generation, coreReady -> Triple(crop, generation, coreReady) }
         .distinctUntilChanged()
         .collect { (_, generation, coreReady) ->
-          if (!coreReady || generation == null) return@collect
+          if (!coreReady || generation == null) {
+            disableAmbientShader()
+            return@collect
+          }
           refreshStretchAspectAfterCropChange()
           restartAmbientIfActive()
         }
+    }
+
+    viewModelScope.launch {
+      combine(
+        PlaybackSession.propInt["osd-width"],
+        PlaybackSession.propInt["osd-height"],
+        PlaybackSession.propInt["video-out-params/dw"],
+        PlaybackSession.propInt["video-out-params/dh"],
+        PlaybackSession.propInt["video-out-params/rotate"],
+      ) { _, _, _, _, _ -> Unit }.collect { onAmbientGeometryChanged() }
     }
 
     viewModelScope.launch {
@@ -5579,6 +5591,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     _videoAspect.value = aspect
     _currentAspectRatio.value = -1.0 // Reset custom ratio when using standard modes
 
+    onAmbientGeometryChanged()
     // Notify the UI
     if (showUpdate) {
       playerUpdate.value = PlayerUpdates.AspectRatio
@@ -5594,6 +5607,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     PlaybackSession.setPropertyDouble("video-aspect-override", ratio)
     playerPreferences.lastCustomAspectRatio.set(ratio.toFloat())
     _currentAspectRatio.value = ratio
+    onAmbientGeometryChanged()
     if (showUpdate) {
       playerUpdate.value = PlayerUpdates.AspectRatio
     }
@@ -7329,21 +7343,24 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     _isAmbientLifecycleActive.value &&
       _isMpvCoreReady.value &&
       _isAmbientEnabled.value &&
+      !isAmbientPipActive &&
+      !isAudioOnly.value &&
+      PlaybackSession.state.value.surfaceAttached &&
+      PlaybackSession.state.value.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) &&
       !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)
 
-  private fun isAmbientGlowRuntimeActive(): Boolean =
-    isAmbientRuntimeActive() && _ambientStyle.value == AmbientStyle.Glow
-
-  /** True when the active ambient style uses an mpv GLSL hook shader (any of Glow/Cinema/Echo/Mirror). */
+  /** All shader styles share the same renderer and lifecycle. YouTube retains its capture renderer. */
   private fun isAmbientShaderRuntimeActive(): Boolean =
     isAmbientRuntimeActive() && _ambientStyle.value != AmbientStyle.YouTube
 
-  /** True when an fx-ambient mode (Cinema/Echo/Mirror) is the active shader. */
-  private fun isAmbientFxRuntimeActive(): Boolean =
-    isAmbientRuntimeActive() && when (_ambientStyle.value) {
-      AmbientStyle.Cinema, AmbientStyle.Echo, AmbientStyle.Mirror -> true
-      else -> false
-    }
+  fun setAmbientPipActive(active: Boolean) {
+    isAmbientPipActive = active
+    if (active) disableAmbientShader() else scheduleAmbientUpdate(0)
+  }
+
+  fun onAmbientGeometryChanged() {
+    if (isAmbientShaderRuntimeActive()) scheduleAmbientUpdate(0)
+  }
 
   fun toggleAmbientMode() {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
@@ -7351,7 +7368,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
     if (_isAmbientEnabled.value) {
       if (_ambientStyle.value != AmbientStyle.YouTube) {
-        lastAmbientScaleX = -1.0
+        lastAmbientGeometry = null
         scheduleAmbientUpdate(0)
       }
       playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(R.string.player_ambience_on))
@@ -7423,7 +7440,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
         // Any shader-based mode: invalidate scale and spec caches so a fresh shader is compiled
         // for the new mode. Both lastCompiledSpec and lastCompiledFxSpec are cleared so
         // switching between Glow and Fx modes (or between Fx modes) never hits a stale shader cache.
-        lastAmbientScaleX = -1.0
+        lastAmbientGeometry = null
         lastCompiledSpec = null
         lastCompiledFxSpec = null
         scheduleAmbientUpdate(0)
@@ -7439,33 +7456,17 @@ val isBrightnessSliderShown = MutableStateFlow(false)
       ambientDebounceJob?.cancel()
       ambientDebounceJob = null
     }
+    clearAmbientRenderState()
+  }
+
+  private fun clearAmbientRenderState() {
     synchronized(ambientRenderLock) {
-      ambientShaderFile?.let { file ->
-        runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", file.absolutePath) }
-        file.delete()
-      }
+      if (!PlaybackSession.clearAmbientShader()) return@synchronized
+      ambientShaderFile?.delete()
       ambientShaderFile = null
-      runCatching {
-        appContext.cacheDir.listFiles { _, name ->
-          name.startsWith("ambient_") && name.endsWith(".glsl")
-        }?.forEach { it.delete() }
-      }
-      // Reset both spec caches and scale tracking so a subsequent enable always
-      // compiles a fresh shader and recalculates the correct video-scale offsets.
       lastCompiledSpec = null
       lastCompiledFxSpec = null
-      runCatching {
-        if (kotlin.math.abs(lastAmbientScaleX - 1.0) > 0.000001) {
-          PlaybackSession.setPropertyDouble("video-scale-x", 1.0)
-        }
-        if (kotlin.math.abs(lastAmbientScaleY - 1.0) > 0.000001) {
-          PlaybackSession.setPropertyDouble("video-scale-y", 1.0)
-        }
-        applySubtitleBlendMode()
-      }
-      lastAmbientScaleX = 1.0
-      lastAmbientScaleY = 1.0
-      lastAmbientBlendMode = "no"
+      lastAmbientGeometry = null
     }
   }
 
@@ -7475,8 +7476,6 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
     // The output dimensions are part of the compiled spec. Keep the cache intact here so a
     // redundant orientation callback cannot recompile the same Vulkan shader.
-    lastAmbientScaleX = -1.0
-    lastAmbientScaleY = -1.0
     scheduleAmbientUpdate(200)
   }
 
@@ -7484,8 +7483,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
   fun prepareAmbientForNewVideo() {
     if (!_isAmbientEnabled.value || MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
     disableAmbientShader()
-    lastAmbientScaleX = -1.0
-    lastAmbientScaleY = -1.0
+    lastAmbientGeometry = null
   }
 
   /**
@@ -7869,183 +7867,88 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
   private suspend fun updateAmbientStretch(generation: Long) {
     if (!isAmbientShaderRuntimeActive() || generation != ambientUpdateGeneration.get()) return
-
-    runCatching {
-      val osdW = PlaybackSession.getPropertyInt("osd-width") ?: 1920
-      val osdH = PlaybackSession.getPropertyInt("osd-height") ?: 1080
-
-      // Portrait mode: ambient glow goes on top/bottom (letterbox)
-      // Landscape mode: ambient glow goes on left/right (pillarbox)
-      // Both are handled by the same scaleX/scaleY math below
-
-      val vidAr = VideoAspectGeometry.currentEffectiveDisplayAspect() ?: return
-
-      if (osdW <= 0 || osdH <= 0) return
-
-      val screenAr = osdW.toDouble() / osdH.toDouble()
-
-      // Scale the video to fill the screen — the shader remaps it back to the
-      // correct aspect ratio, so only the "overflow" area receives ambient glow.
-      val scaleX = if (screenAr > vidAr) screenAr / vidAr else 1.0
-      val scaleY = if (vidAr > screenAr) vidAr / screenAr else 1.0
-
-      // ── Snapshot current parameter values ─────────────────────────────────
-      val sx = scaleX
-      val sy = scaleY
-      // Thermal-aware sample budget: cap shader complexity before the device enters
-      // hard CPU/GPU throttling.  On a cool device this is a no-op.
-      val rawSamples = _ambientBlurSamples.value
-      val samples = ThermalMonitor.clampAmbientSampleBudget(rawSamples, thermalHeadroom)
-      val radius = _ambientMaxRadius.value
-      val glow = _ambientGlowIntensity.value
-      val sat = _ambientSatBoost.value
-      val vignette = _ambientVignetteStrength.value
-      val warmth = _ambientWarmth.value
-      val curve = _ambientFadeCurve.value
-      val opacity = _ambientOpacity.value
-      val edgeBlend = _ambientGlowEdgeBlend.value
-
-      // ── Determine compilation path based on active style ──────────────────
-      val currentStyle = _ambientStyle.value
-
-      if (currentStyle == AmbientStyle.Glow) {
-        val spec =
-          buildAmbientSpec(
-            sx = sx,
-            sy = sy,
-            blurSamples = samples,
-            maxRadius = radius,
-            glowIntensity = glow,
-            satBoost = sat,
-            vignetteStrength = vignette,
-            warmth = warmth,
-            fadeCurve = curve,
-            opacity = opacity,
-            edgeBlend = edgeBlend,
-          )
-
-        // ── Shader parameter cache (Glow) ───────────────────────────────────
-        val shaderIsCurrent =
-          synchronized(ambientRenderLock) {
-            spec == lastCompiledSpec && ambientShaderFile?.exists() == true
-          }
-        if (shaderIsCurrent) return
-
-        val shaderCode = AmbientShaderBuilder.build(appContext, spec)
-        val newFile = File(appContext.cacheDir, "ambient_${ambientShaderSeq.incrementAndGet()}.glsl")
-        try {
-          withContext(kotlinx.coroutines.Dispatchers.IO) { newFile.writeText(shaderCode) }
-        } catch (error: Throwable) {
-          newFile.delete()
-          throw error
-        }
-        currentCoroutineContext().ensureActive()
-
+    try {
+      val playbackGeneration = PlaybackSession.state.value.generation
+      val geometry = PlaybackSession.ambientGeometry()
+      if (geometry == null || !geometry.hasBars) {
         synchronized(ambientRenderLock) {
-          if (!isAmbientGlowRuntimeActive() || generation != ambientUpdateGeneration.get()) {
-            newFile.delete()
-            return@synchronized
-          }
-          if (kotlin.math.abs(lastAmbientScaleX - scaleX) > 0.000001) {
-            PlaybackSession.setPropertyDouble("video-scale-x", scaleX)
-          }
-          if (kotlin.math.abs(lastAmbientScaleY - scaleY) > 0.000001) {
-            PlaybackSession.setPropertyDouble("video-scale-y", scaleY)
-          }
-          val blendMode = subtitleBlendMode()
-          if (lastAmbientBlendMode != blendMode) {
-            PlaybackSession.setPropertyString("blend-subtitles", blendMode)
-          }
-          // Fix shader leak: explicitly remove the previous ambient shader from mpv's
-          // glsl-shaders list before appending the new one. Previously only the file was
-          // deleted from disk while mpv's list kept the stale path, causing duplicate
-          // ambient passes to accumulate on every slider drag / orientation flip.
-          ambientShaderFile?.let { old ->
-            runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", old.absolutePath) }
-            old.delete()
-          }
-          PlaybackSession.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
-          lastAmbientScaleX = scaleX
-          lastAmbientScaleY = scaleY
-          lastAmbientBlendMode = blendMode
-          ambientShaderFile = newFile
-          lastCompiledSpec = spec
-          lastCompiledFxSpec = null // clear fx cache when Glow is active
+          if (generation == ambientUpdateGeneration.get()) clearAmbientRenderState()
         }
-
-      } else {
-        // ── Fx ambient modes: Cinema, Echo, Mirror ───────────────────────────
-        val fxSpec =
-          FxAmbientShaderSpec(
-            style = currentStyle,
-            scaleX = sx,
-            scaleY = sy,
-            blurSamples = samples,
-            spread = radius,
-            intensity = glow,
-            satBoost = sat,
-            vignetteStrength = vignette,
-            warmth = warmth,
-            fadeCurve = curve,
-            opacity = opacity,
-          )
-
-        val fxShaderIsCurrent =
-          synchronized(ambientRenderLock) {
-            fxSpec == lastCompiledFxSpec &&
-              ambientShaderFile?.exists() == true
-          }
-        if (fxShaderIsCurrent) return
-
-        val shaderCode = when (currentStyle) {
-          AmbientStyle.Cinema -> FxAmbientShaderBuilder.buildCinema(appContext, fxSpec)
-          AmbientStyle.Echo   -> FxAmbientShaderBuilder.buildEcho(appContext, fxSpec)
-          AmbientStyle.Mirror -> FxAmbientShaderBuilder.buildMirror(appContext, fxSpec)
-          else -> return // should never reach here
-        }
-        val newFile = File(appContext.cacheDir, "ambient_${ambientShaderSeq.incrementAndGet()}.glsl")
-        try {
-          withContext(kotlinx.coroutines.Dispatchers.IO) { newFile.writeText(shaderCode) }
-        } catch (error: Throwable) {
-          newFile.delete()
-          throw error
-        }
-        currentCoroutineContext().ensureActive()
-
-        synchronized(ambientRenderLock) {
-          if (!isAmbientFxRuntimeActive() || generation != ambientUpdateGeneration.get()) {
-            newFile.delete()
-            return@synchronized
-          }
-          if (kotlin.math.abs(lastAmbientScaleX - sx) > 0.000001) {
-            PlaybackSession.setPropertyDouble("video-scale-x", sx)
-          }
-          if (kotlin.math.abs(lastAmbientScaleY - sy) > 0.000001) {
-            PlaybackSession.setPropertyDouble("video-scale-y", sy)
-          }
-          val blendMode = subtitleBlendMode()
-          if (lastAmbientBlendMode != blendMode) {
-            PlaybackSession.setPropertyString("blend-subtitles", blendMode)
-          }
-          ambientShaderFile?.let { old ->
-            runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", old.absolutePath) }
-            old.delete()
-          }
-          PlaybackSession.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
-          lastAmbientScaleX = sx
-          lastAmbientScaleY = sy
-          lastAmbientBlendMode = blendMode
-          ambientShaderFile = newFile
-          lastCompiledFxSpec = fxSpec
-          lastCompiledSpec = null // clear Glow cache when fx mode is active
-        }
+        return
       }
-    }.onFailure { e ->
-      // runCatching catches Throwable including CancellationException — rethrow it so
-      // structured concurrency is not broken and debounce cancellation does not log
-      // spurious "Failed to update ambient stretch" stack traces that would mask real errors.
-      if (e is kotlinx.coroutines.CancellationException) throw e
-      Log.e(TAG, "Failed to update ambient stretch", e)
+      val currentStyle = _ambientStyle.value
+      val samples = ThermalMonitor.clampAmbientSampleBudget(_ambientBlurSamples.value, thermalHeadroom)
+      val glowSpec = if (currentStyle == AmbientStyle.Glow) {
+        buildAmbientSpec(
+          context = geometry.picture,
+          blurSamples = samples,
+          maxRadius = _ambientMaxRadius.value,
+          glowIntensity = _ambientGlowIntensity.value,
+          satBoost = _ambientSatBoost.value,
+          vignetteStrength = _ambientVignetteStrength.value,
+          warmth = _ambientWarmth.value,
+          fadeCurve = _ambientFadeCurve.value,
+          opacity = _ambientOpacity.value,
+          edgeBlend = _ambientGlowEdgeBlend.value,
+        )
+      } else null
+      val fxSpec = if (currentStyle != AmbientStyle.Glow && currentStyle != AmbientStyle.YouTube) {
+        FxAmbientShaderSpec(
+          style = currentStyle,
+          scaleX = geometry.picture.scaleX,
+          scaleY = geometry.picture.scaleY,
+          centerX = geometry.picture.centerX,
+          centerY = geometry.picture.centerY,
+          blurSamples = samples,
+          spread = _ambientMaxRadius.value,
+          intensity = _ambientGlowIntensity.value,
+          satBoost = _ambientSatBoost.value,
+          vignetteStrength = _ambientVignetteStrength.value,
+          warmth = _ambientWarmth.value,
+          fadeCurve = _ambientFadeCurve.value,
+          opacity = _ambientOpacity.value,
+        )
+      } else null
+      if (glowSpec == null && fxSpec == null) return
+      val shaderIsCurrent = synchronized(ambientRenderLock) {
+        geometry == lastAmbientGeometry && glowSpec == lastCompiledSpec && fxSpec == lastCompiledFxSpec &&
+          ambientShaderFile?.exists() == true && PlaybackSession.isAmbientShaderActive
+      }
+      if (shaderIsCurrent) return
+      val shaderCode = when (currentStyle) {
+        AmbientStyle.Glow -> AmbientShaderBuilder.build(appContext, checkNotNull(glowSpec))
+        AmbientStyle.Cinema -> FxAmbientShaderBuilder.buildCinema(appContext, checkNotNull(fxSpec))
+        AmbientStyle.Echo -> FxAmbientShaderBuilder.buildEcho(appContext, checkNotNull(fxSpec))
+        AmbientStyle.Mirror -> FxAmbientShaderBuilder.buildMirror(appContext, checkNotNull(fxSpec))
+        AmbientStyle.YouTube -> return
+      }
+      val newFile = File.createTempFile("ambient_", ".glsl", appContext.cacheDir)
+      var installed = false
+      try {
+        withContext(kotlinx.coroutines.Dispatchers.IO) { newFile.writeText(shaderCode) }
+        currentCoroutineContext().ensureActive()
+        synchronized(ambientRenderLock) {
+          if (generation != ambientUpdateGeneration.get() || !isAmbientShaderRuntimeActive() ||
+            currentStyle != _ambientStyle.value
+          ) return@synchronized
+          installed = PlaybackSession.installAmbientShader(newFile.absolutePath, geometry, playbackGeneration)
+          if (installed) {
+            val previous = ambientShaderFile
+            ambientShaderFile = newFile
+            lastAmbientGeometry = geometry
+            lastCompiledSpec = glowSpec
+            lastCompiledFxSpec = fxSpec
+            previous?.delete()
+          }
+        }
+      } finally {
+        // Includes cancellation during writeText/withContext, not only stale installs under the lock.
+        if (!installed) newFile.delete()
+      }
+    } catch (error: kotlinx.coroutines.CancellationException) {
+      throw error
+    } catch (error: Exception) {
+      Log.e(TAG, "Failed to update Ambient renderer", error)
     }
   }
 
@@ -8056,8 +7959,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
    * spec has actually changed from the last compiled version.
    */
   private fun buildAmbientSpec(
-    sx: Double,
-    sy: Double,
+    context: AmbientRenderContext,
     blurSamples: Int,
     maxRadius: Float,
     glowIntensity: Float,
@@ -8068,7 +7970,6 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     opacity: Float,
     edgeBlend: Float,
   ): AmbientGlowShaderSpec {
-    val context = AmbientRenderContext(scaleX = sx, scaleY = sy)
     val shared =
       AmbientSharedShaderConfig(
         bezelDepth = 0f,

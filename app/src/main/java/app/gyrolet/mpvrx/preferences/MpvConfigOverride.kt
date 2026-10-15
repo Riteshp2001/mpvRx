@@ -249,6 +249,16 @@ object MpvConfigControlledFeatures {
       "glsl-shaders",
       "video-scale-x",
       "video-scale-y",
+      "video-zoom",
+      "video-pan-x",
+      "video-pan-y",
+      "blend-subtitles",
+      "keepaspect",
+      "video-unscaled",
+      "video-margin-ratio-left",
+      "video-margin-ratio-right",
+      "video-margin-ratio-top",
+      "video-margin-ratio-bottom",
     )
 
   val AUDIO_TRACK_SELECTION = setOf("alang")

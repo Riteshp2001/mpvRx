@@ -16,6 +16,8 @@ import kotlin.math.sqrt
 data class AmbientRenderContext(
   val scaleX: Double,
   val scaleY: Double,
+  val centerX: Double = 0.5,
+  val centerY: Double = 0.5,
 )
 
 data class AmbientSharedShaderConfig(
@@ -193,7 +195,7 @@ mediump vec3 dither_out(mediump vec3 c, highp vec2 p) {
 private val GLSL_VIDEO_PROLOGUE =
   """
     highp vec2 uv = HOOKED_pos;
-    highp vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
+    highp vec2 video_uv = (uv - vec2(CENTER_X, CENTER_Y)) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
     // Stay half a texel inside the decoded frame when sampling the video edge.
     highp vec2 half_texel = vec2(0.5) / HOOKED_size;
@@ -207,11 +209,17 @@ private val GLSL_VIDEO_PROLOGUE =
       highp vec2 video_size = HOOKED_size / vec2(SCALE_X, SCALE_Y);
       mediump float blend_width = EDGE_BLEND * min(video_size.x, video_size.y);
       mediump float inside_dist = blend_width;
-      if (SCALE_X > 1.0) {
-        inside_dist = min(inside_dist, min(video_uv.x, 1.0 - video_uv.x) * video_size.x);
+      if (CENTER_X - 0.5 / SCALE_X > 0.0) {
+        inside_dist = min(inside_dist, video_uv.x * video_size.x);
       }
-      if (SCALE_Y > 1.0) {
-        inside_dist = min(inside_dist, min(video_uv.y, 1.0 - video_uv.y) * video_size.y);
+      if (CENTER_X + 0.5 / SCALE_X < 1.0) {
+        inside_dist = min(inside_dist, (1.0 - video_uv.x) * video_size.x);
+      }
+      if (CENTER_Y - 0.5 / SCALE_Y > 0.0) {
+        inside_dist = min(inside_dist, video_uv.y * video_size.y);
+      }
+      if (CENTER_Y + 0.5 / SCALE_Y < 1.0) {
+        inside_dist = min(inside_dist, (1.0 - video_uv.y) * video_size.y);
       }
       if (EDGE_BLEND <= 0.0 || inside_dist >= blend_width) {
         return HOOKED_tex(clamp(video_uv, safe_min, safe_max));
@@ -298,6 +306,8 @@ precision highp int;
 #define OPACITY          ${glslFloat(spec.shared.opacity.toDouble())}
 #define SCALE_X          ${glslFloat(spec.context.scaleX)}
 #define SCALE_Y          ${glslFloat(spec.context.scaleY)}
+#define CENTER_X         ${glslFloat(spec.context.centerX)}
+#define CENTER_Y         ${glslFloat(spec.context.centerY)}
 
 // tap.xy = pre-scaled offset by maxRadius; tap.z = precomputed distance falloff.
 ${buildSpiralTapTable("GLOW_TAPS", spec)}

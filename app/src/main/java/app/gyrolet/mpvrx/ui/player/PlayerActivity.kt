@@ -1329,6 +1329,8 @@ class PlayerActivity :
       val isAudioOnly by viewModel.isAudioOnly.collectAsState()
       val playbackState by PlaybackSession.state.collectAsState()
       val videoCrop by PlaybackSession.propString["video-crop"].collectAsState()
+      val aspectOverride by PlaybackSession.propString["video-aspect-override"].collectAsState()
+      val panscan by PlaybackSession.propFloat["panscan"].collectAsState()
       val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
       val orientation = LocalConfiguration.current.orientation
       val playbackReady =
@@ -1337,6 +1339,7 @@ class PlayerActivity :
         enabled &&
           lifecycleActive &&
           style == AmbientStyle.YouTube &&
+          !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
           !isAudioOnly &&
           !isAmbientPipMode &&
           playbackReady &&
@@ -1371,7 +1374,7 @@ class PlayerActivity :
 
       // Auto-crop changes after playback becomes ready. Refreshing on the property itself keeps
       // YouTube Ambient's SurfaceView aligned with the newly cropped content rectangle.
-      LaunchedEffect(presentationActive, videoCrop) {
+      LaunchedEffect(presentationActive, videoCrop, aspectOverride, panscan) {
         setVideoAmbientPresentationActive(presentationActive)
       }
 
@@ -1407,6 +1410,14 @@ class PlayerActivity :
     val videoAspect = VideoAspectGeometry.currentEffectiveDisplayAspect()
     if (containerWidth <= 0 || containerHeight <= 0 || videoAspect == null || videoAspect <= 0.0) return
 
+    val geometry = AmbientGeometry.calculate(
+      containerWidth, containerHeight, videoAspect,
+      panscan = PlaybackSession.getPropertyDouble("panscan") ?: 0.0,
+    ) ?: return
+    if (!geometry.hasBars) {
+      restoreFullSizePlayerBounds()
+      return
+    }
     val containerAspect = containerWidth.toDouble() / containerHeight.toDouble()
     val videoWidth: Int
     val videoHeight: Int
@@ -1488,6 +1499,7 @@ class PlayerActivity :
     PlaybackSession.setPropertyFloat("video-zoom", if (followVideo) 0f else zoom)
     PlaybackSession.setPropertyFloat("video-pan-x", mpvPanX)
     PlaybackSession.setPropertyFloat("video-pan-y", mpvPanY)
+    viewModel.onAmbientGeometryChanged()
     applySubtitleBlendMode()
   }
 
@@ -6509,6 +6521,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
 
     isAmbientPipMode = isInPictureInPictureMode
+    viewModel.setAmbientPipActive(isInPictureInPictureMode)
     if (isInPictureInPictureMode) setVideoAmbientPresentationActive(false)
     pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
     if (isInPictureInPictureMode) {

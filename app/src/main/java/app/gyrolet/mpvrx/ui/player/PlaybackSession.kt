@@ -24,6 +24,7 @@ import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -146,7 +147,6 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
-  private const val AMBIENT_SCALE_EPSILON = 0.000001
   private val TIMELINE_PROPERTIES =
     setOf(
       "time-pos",
@@ -282,6 +282,11 @@ object PlaybackSession : MPVLib.EventObserver {
   private val activeAmbientShaderPaths = linkedSetOf<String>()
   private var desiredAmbientScaleX = 1.0
   private var desiredAmbientScaleY = 1.0
+  // Logical video transforms remain available to gestures while Ambient owns the OUTPUT canvas.
+  private var ambientVideoTransform: MutableMap<String, Double>? = null
+  @Volatile var isAmbientShaderActive: Boolean = false
+    private set
+  private val ambientTransformProperties = setOf("video-zoom", "video-pan-x", "video-pan-y")
   private var streamingOptionsApplied = false
   private var appliedUserAgent: String? = null
   private var defaultHttpHeaderFields: String? = null
@@ -1363,7 +1368,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
-  fun getPropertyDouble(property: String): Double? = withReadyCore(null) { MPVLib.getPropertyDouble(property) }
+  fun getPropertyDouble(property: String): Double? = withReadyCore(null) {
+    ambientVideoTransform?.get(property) ?: MPVLib.getPropertyDouble(property)
+  }
 
   fun setPropertyDouble(
     property: String,
@@ -1371,13 +1378,11 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   ) {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
+      if (property in ambientTransformProperties && ambientVideoTransform != null) {
+        ambientVideoTransform!![property] = value
+        return@withCore
+      }
       when (property) {
-        "video-scale-x" -> {
-          desiredAmbientScaleX = value
-        }
-        "video-scale-y" -> {
-          desiredAmbientScaleY = value
-        }
         "time-pos" -> {
           rememberEofSeekLocked(value, listOf("absolute"))
           MPVLib.setPropertyDouble(property, value)
@@ -1387,14 +1392,22 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
-  fun getPropertyFloat(property: String): Float? = withReadyCore(null) { MPVLib.getPropertyFloat(property) }
+  fun getPropertyFloat(property: String): Float? = withReadyCore(null) {
+    ambientVideoTransform?.get(property)?.toFloat() ?: MPVLib.getPropertyFloat(property)
+  }
 
   fun setPropertyFloat(
     property: String,
     value: Float,
   ) {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
-    withCore(Unit) { MPVLib.setPropertyFloat(property, value) }
+    withCore(Unit) {
+      if (property in ambientTransformProperties && ambientVideoTransform != null) {
+        ambientVideoTransform!![property] = value.toDouble()
+      } else {
+        MPVLib.setPropertyFloat(property, value)
+      }
+    }
   }
 
   fun getPropertyBoolean(property: String): Boolean? = withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
@@ -1609,7 +1622,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         activeAmbientShaderPaths.clear()
         return@withCore
       }
-      MPVLib.setPropertyString(property, value)
+      // A preference update can race with a shader install. Enforce the composition boundary
+      // under the same native lock, rather than trusting a blend value calculated before it.
+      MPVLib.setPropertyString(property, if (property == "blend-subtitles" && isAmbientShaderActive) "no" else value)
     }
   }
 
@@ -2060,6 +2075,45 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  /** Read one coherent geometry snapshot; never guess a 16:9 frame during a file transition. */
+  internal fun ambientGeometry(): AmbientGeometry? = withReadyCore(null) {
+    if ((MPVLib.getPropertyInt("video-params/w") ?: 0) <= 0) return@withReadyCore null
+    val aspect = VideoAspectGeometry.currentEffectiveDisplayAspect() ?: return@withReadyCore null
+    AmbientGeometry.calculate(
+      width = MPVLib.getPropertyInt("osd-width") ?: 0,
+      height = MPVLib.getPropertyInt("osd-height") ?: 0,
+      aspect = aspect,
+      panscan = MPVLib.getPropertyDouble("panscan") ?: 0.0,
+      zoom = getPropertyDouble("video-zoom") ?: 0.0,
+      panX = getPropertyDouble("video-pan-x") ?: 0.0,
+      panY = getPropertyDouble("video-pan-y") ?: 0.0,
+      alignX = MPVLib.getPropertyDouble("video-align-x") ?: 0.0,
+      alignY = MPVLib.getPropertyDouble("video-align-y") ?: 0.0,
+      recenter = MPVLib.getPropertyBoolean("video-recenter") ?: false,
+    )
+  }
+
+  /** Shader, canvas and subtitle policy change together, without an intermediate stretched frame. */
+  internal fun installAmbientShader(path: String, geometry: AmbientGeometry, generation: Long): Boolean =
+    withReadyCore(false) {
+      if (_state.value.generation != generation || !geometry.hasBars ||
+        MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) ||
+        ambientGeometry() != geometry
+      ) return@withReadyCore false
+      val shaderOptions = activeAmbientShaderPaths.map { "glsl-shaders-remove" to it } +
+        ("glsl-shaders-append" to path)
+      applyAmbientRenderStateLocked(shaderOptions, geometry.canvasScaleX, geometry.canvasScaleY, true)
+      desiredAmbientScaleX = geometry.canvasScaleX
+      desiredAmbientScaleY = geometry.canvasScaleY
+      activeAmbientShaderPaths.clear()
+      activeAmbientShaderPaths += path
+      true
+    }
+
+  internal fun clearAmbientShader(): Boolean = withCore(true) {
+    clearAmbientShadersLocked(resetDesired = true)
+  }
+
   private fun handleAmbientShaderCommandLocked(command: Array<out String>): Boolean {
     if (command.size < 3 || command[0] != "change-list" || command[1] != "glsl-shaders") return false
 
@@ -2094,21 +2148,15 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         activeAmbientShaderPaths.remove(path)
       }
       "append", "add", "pre", "set" -> {
-        // A cancelled/debounced Ambient coroutine may finish its file write after Ambient was turned
-        // off. Identity scale is the process-wide teardown state, so never let that late shader
-        // resurrect itself. This is especially important for Flow because SCALE_X/Y are baked into
-        // the GLSL and can crop the centre picture even after the real video scale was reset.
-        if (ambientScaleIsIdentityLocked()) {
-          clearAmbientShadersLocked(resetDesired = false)
-          Log.w(TAG, "Ignored stale Ambient shader install while scale is identity: $path")
-          return true
-        }
+        // New installs use installAmbientShader with a media generation and geometry snapshot.
+        // Generic stack reordering may only move the currently installed program.
+        if (path !in activeAmbientShaderPaths) return true
 
         val shaderOptions = buildList {
           activeAmbientShaderPaths.forEach { oldPath -> add("glsl-shaders-remove" to oldPath) }
           add((if (action == "set") "glsl-shaders" else "glsl-shaders-$action") to path)
         }
-        applyAmbientRenderStateLocked(shaderOptions, desiredAmbientScaleX, desiredAmbientScaleY)
+        applyAmbientRenderStateLocked(shaderOptions, desiredAmbientScaleX, desiredAmbientScaleY, true)
         activeAmbientShaderPaths.clear()
         activeAmbientShaderPaths += path
       }
@@ -2122,48 +2170,58 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     return fileName.startsWith(AMBIENT_SHADER_PREFIX) && fileName.endsWith(AMBIENT_SHADER_SUFFIX)
   }
 
-  private fun ambientScaleIsIdentityLocked(): Boolean =
-    kotlin.math.abs(desiredAmbientScaleX - 1.0) <= AMBIENT_SCALE_EPSILON &&
-      kotlin.math.abs(desiredAmbientScaleY - 1.0) <= AMBIENT_SCALE_EPSILON
-
-  private fun clearAmbientShadersLocked(resetDesired: Boolean) {
-    runCatching {
-      applyAmbientRenderStateLocked(activeAmbientShaderPaths.map { path -> "glsl-shaders-remove" to path })
-    }.onFailure { error -> Log.w(TAG, "Failed to clear Ambient render state", error) }
+  private fun clearAmbientShadersLocked(resetDesired: Boolean): Boolean {
+    if (activeAmbientShaderPaths.isNotEmpty() || isAmbientShaderActive) {
+      try {
+        applyAmbientRenderStateLocked(activeAmbientShaderPaths.map { path -> "glsl-shaders-remove" to path })
+      } catch (error: Exception) {
+        Log.w(TAG, "Failed to clear Ambient render state", error)
+        return false
+      }
+    }
     activeAmbientShaderPaths.clear()
-
     if (resetDesired) {
       desiredAmbientScaleX = 1.0
       desiredAmbientScaleY = 1.0
     }
+    return true
   }
 
   private fun applyAmbientRenderStateLocked(
     shaderOptions: List<Pair<String, String>>,
     scaleX: Double = 1.0,
     scaleY: Double = 1.0,
+    ambientActive: Boolean = false,
   ) {
-    val ambientActive =
-      kotlin.math.abs(scaleX - 1.0) > AMBIENT_SCALE_EPSILON ||
-        kotlin.math.abs(scaleY - 1.0) > AMBIENT_SCALE_EPSILON
+    val transform = ambientVideoTransform ?: if (ambientActive) {
+      ambientTransformProperties.associateWith { MPVLib.getPropertyDouble(it) ?: 0.0 }.toMutableMap()
+    } else null
     val options = buildList {
       if (!MpvConfigOverridePolicy.isOwnedByMpvConf("glsl-shaders")) addAll(shaderOptions)
       if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-x")) add("video-scale-x" to scaleX.toString())
       if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-y")) add("video-scale-y" to scaleY.toString())
+      transform?.forEach { (name, value) ->
+        if (!MpvConfigOverridePolicy.isOwnedByMpvConf(name)) {
+          add(name to if (ambientActive) "0" else value.toString())
+        }
+      }
       if (!MpvConfigOverridePolicy.isOwnedByMpvConf("blend-subtitles")) {
         add("blend-subtitles" to subtitleBlendMode(ambientActive))
       }
     }
     if (options.isEmpty()) return
-
     val config = options.joinToString("\n") { (name, value) ->
       require(value.none { it == '\n' || it == '\r' || it == '\u0000' })
       "$name=%${value.toByteArray(Charsets.UTF_8).size}%$value"
     }
     MPVLib.command("load-config-file", "memory://$config")
+    ambientVideoTransform = transform.takeIf { ambientActive }
+    isAmbientShaderActive = ambientActive
   }
 
   private fun resetAmbientShaderTrackingLocked() {
+    ambientVideoTransform = null
+    isAmbientShaderActive = false
     activeAmbientShaderPaths.clear()
     desiredAmbientScaleX = 1.0
     desiredAmbientScaleY = 1.0

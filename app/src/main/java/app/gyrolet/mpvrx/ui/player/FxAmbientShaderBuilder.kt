@@ -26,6 +26,8 @@ data class FxAmbientShaderSpec(
   val warmth: Float,
   val fadeCurve: Float,
   val opacity: Float,
+  val centerX: Double = 0.5,
+  val centerY: Double = 0.5,
 )
 
 data class FxAmbientPreset(
@@ -98,7 +100,7 @@ object FxAmbientShaderBuilder {
   /**
    * Builds the standard mpv hook header and GLSL helper functions.
    */
-  private fun buildHeader(desc: String, scaleX: Double, scaleY: Double): String = """
+  private fun buildHeader(desc: String, scaleX: Double, scaleY: Double, centerX: Double, centerY: Double): String = """
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!DESC $desc
@@ -117,6 +119,8 @@ precision highp int;
 // SCALE_Y > 1 -> letterboxed (top/bottom bars).
 #define SCALE_X ${f(scaleX)}
 #define SCALE_Y ${f(scaleY)}
+#define CENTER_X ${f(centerX)}
+#define CENTER_Y ${f(centerY)}
 
 // -- Common GLSL helpers (identical subset to AmbientShaderBuilder) -----------
 
@@ -168,7 +172,7 @@ mediump vec3 dither_out(mediump vec3 c, highp vec2 p) {
    */
   private fun videoPrologue(reachScale: Double): String = """
     highp vec2 uv       = HOOKED_pos;
-    highp vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
+    highp vec2 video_uv = (uv - vec2(CENTER_X, CENTER_Y)) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
     // Half-texel inset to avoid fetching outside decoded frame boundaries.
     highp vec2 half_texel = vec2(0.5) / HOOKED_size;
@@ -183,9 +187,10 @@ mediump vec3 dither_out(mediump vec3 c, highp vec2 p) {
     }
 
     // -- Bar geometry --------------------------------------------------------
-    // Bar thickness (in video-UV space) = (SCALE - 1) / 2.
-    highp float bx = max((SCALE_X - 1.0) * 0.5, 0.001);
-    highp float by = max((SCALE_Y - 1.0) * 0.5, 0.001);
+    // Thickness of the bar being shaded, including asymmetric bars introduced by pan.
+    // At the default center this reduces to the original (SCALE - 1) / 2.
+    highp float bx = max((video_uv.x < 0.0 ? CENTER_X : 1.0 - CENTER_X) * SCALE_X - 0.5, 0.001);
+    highp float by = max((video_uv.y < 0.0 ? CENTER_Y : 1.0 - CENTER_Y) * SCALE_Y - 0.5, 0.001);
 
     // Penetration depth into each bar axis (>0 only when outside that axis).
     highp float dx = max(max(-video_uv.x, video_uv.x - 1.0), 0.0);
@@ -195,7 +200,7 @@ mediump vec3 dither_out(mediump vec3 c, highp vec2 p) {
     highp float d = length(vec2(dx, dy));
 
     // Which axis dominates: pillarbox (dx > dy) uses bx, letterbox uses by.
-    highp float thick = (SCALE_X > SCALE_Y && dx > dy) ? bx : by;
+    highp float thick = dx > dy ? bx : by;
 
     // Normalised depth: 0 at the video edge, 1 at the nominal reach boundary.
     highp float dn = clamp(d / (thick * ${f(reachScale)}), 0.0, 1.0);
@@ -246,7 +251,7 @@ mediump vec3 dither_out(mediump vec3 c, highp vec2 p) {
     val opacityLine = if (abs(opacityVal - 1.0) > 0.0001) "    ambient_rgb *= ${f(opacityVal)};\n" else ""
 
     return """
-${buildHeader("Fx Ambient -- Cinema", spec.scaleX, spec.scaleY)}
+${buildHeader("Fx Ambient -- Cinema", spec.scaleX, spec.scaleY, spec.centerX, spec.centerY)}
 
 // Pre-computed Spiral Poisson tap offsets ($tapCount taps, max reach = ${f(farRadius)} UV units).
 $tapTable
@@ -365,7 +370,7 @@ $vignetteLine$opacityLine
     val offsetsDecl = "const float ECHO_OFFSETS[$tapCount] = float[$tapCount](${(-halfCount..halfCount).joinToString(", ") { f(it.toDouble() / halfCount) }});"
 
     return """
-${buildHeader("Fx Ambient -- Echo", spec.scaleX, spec.scaleY)}
+${buildHeader("Fx Ambient -- Echo", spec.scaleX, spec.scaleY, spec.centerX, spec.centerY)}
 
 $weightsDecl
 $offsetsDecl
@@ -479,7 +484,7 @@ $vignetteLine$opacityLine
     val offsetsDecl = "const float MIRROR_OFFSETS[$tapCount] = float[$tapCount](${(-halfCount..halfCount).joinToString(", ") { f(it.toDouble() / halfCount) }});"
 
     return """
-${buildHeader("Fx Ambient -- Mirror", spec.scaleX, spec.scaleY)}
+${buildHeader("Fx Ambient -- Mirror", spec.scaleX, spec.scaleY, spec.centerX, spec.centerY)}
 
 $weightsDecl
 $offsetsDecl
