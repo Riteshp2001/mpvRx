@@ -2558,4 +2558,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="app_icon_logo_white">Branco</string>
   <string name="app_icon_logo_black">Preto</string>
   <string name="app_icon_logo_classic">Clássico</string>
+  <string name="pref_hidden_scan_markers_short">Marcadores</string>
+  <string name="pref_hidden_scan_dots_short">Ponto</string>
 </resources>
