@@ -76,6 +76,7 @@ object MediaFileRepository : KoinComponent {
       includeDotFolders = !BuildConfig.SCOPED_STORAGE_ONLY &&
         foldersPreferences.includeNoMediaFolders.get() && foldersPreferences.scanDotFolders(scope),
       hiddenFolderMarkerNames = foldersPreferences.hiddenFolderMarkerNames.get(),
+      ignoredHiddenMarkerNames = foldersPreferences.ignoredMarkers(scope),
       includeAudio = includeAudioOverride ?: browserPreferences.includeAudioBrowser.get(),
       minimumAudioDurationSeconds = browserPreferences.minimumAudioDurationSeconds.get(),
     )
@@ -134,6 +135,7 @@ object MediaFileRepository : KoinComponent {
         includeMarkedFolders = foldersPreferences.scanMarkedFolders(scope),
         includeDotFolders = foldersPreferences.scanDotFolders(scope),
         markerNames = foldersPreferences.hiddenFolderMarkerNames.get(),
+        ignoredMarkerNames = foldersPreferences.ignoredMarkers(scope),
       )
     } else {
       emptyList()
