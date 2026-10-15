@@ -405,11 +405,12 @@ object MediaFileRepository : KoinComponent {
     bucketId: String,
     forceFileSystemCheck: Boolean = false,
     includeAudioOverride: Boolean? = null,
+    scope: HiddenScanScope = HiddenScanScope.FOLDERS,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       try {
         if (BuildConfig.SCOPED_STORAGE_ONLY &&
-          foldersPreferences.includeNoMediaFolders.get() &&
+          foldersPreferences.hiddenScanEnabled(scope) &&
           ScopedHiddenFolderScanner.isGrantedFolder(bucketId, foldersPreferences.scopedHiddenFolderUris.get())
         ) {
           ScopedHiddenFolderScanner.getVideos(
@@ -426,7 +427,7 @@ object MediaFileRepository : KoinComponent {
           VideoScanUtils.getVideosInFolder(
             context,
             bucketId,
-            currentScanOptions(includeAudioOverride),
+            currentScanOptions(includeAudioOverride, scope),
             forceFileSystemCheck,
           )
         }
@@ -446,6 +447,7 @@ object MediaFileRepository : KoinComponent {
     context: Context,
     bucketIds: Set<String>,
     includeAudioOverride: Boolean? = null,
+    scope: HiddenScanScope = HiddenScanScope.FOLDERS,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val result = linkedMapOf<String, Video>()
@@ -455,6 +457,7 @@ object MediaFileRepository : KoinComponent {
             context,
             id,
             includeAudioOverride = includeAudioOverride,
+            scope = scope,
           ).forEach { media ->
             val key = if (BuildConfig.SCOPED_STORAGE_ONLY && ScopedHiddenFolderScanner.isScopedFolder(media.path)) {
               ScopedHiddenFolderScanner.documentKey(media.uri)
