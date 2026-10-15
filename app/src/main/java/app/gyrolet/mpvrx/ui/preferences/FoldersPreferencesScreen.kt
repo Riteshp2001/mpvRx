@@ -21,6 +21,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +71,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
@@ -122,6 +124,9 @@ object FoldersPreferencesScreen : Screen {
     val includeNoMediaFolders by preferences.includeNoMediaFolders.collectAsState()
     val hiddenFolderMarkerNames by preferences.hiddenFolderMarkerNames.collectAsState()
     val scopedHiddenFolderUris by preferences.scopedHiddenFolderUris.collectAsState()
+    val libraryModeEnabled by preferences.libraryHiddenScanEnabled.collectAsState()
+    val treeModeEnabled by preferences.treeHiddenScanEnabled.collectAsState()
+    val foldersModeEnabled by preferences.foldersHiddenScanEnabled.collectAsState()
     val scanMarkers by preferences.sharedScanMarkedFolders.collectAsState()
     val scanDotFolders by preferences.sharedScanDotFolders.collectAsState()
     val ignoredMarkers by preferences.sharedIgnoredMarkers.collectAsState()
@@ -261,6 +266,12 @@ object FoldersPreferencesScreen : Screen {
             enabled = includeNoMediaFolders,
             showMasterToggle = !BuildConfig.SCOPED_STORAGE_ONLY,
             onEnabledChange = { preferences.includeNoMediaFolders.set(it); onScanPreferenceChanged() },
+            libraryModeEnabled = libraryModeEnabled,
+            treeModeEnabled = treeModeEnabled,
+            foldersModeEnabled = foldersModeEnabled,
+            onLibraryModeChanged = { preferences.libraryHiddenScanEnabled.set(it); onScanPreferenceChanged() },
+            onTreeModeChanged = { preferences.treeHiddenScanEnabled.set(it); onScanPreferenceChanged() },
+            onFoldersModeChanged = { preferences.foldersHiddenScanEnabled.set(it); onScanPreferenceChanged() },
             markerEnabled = scanMarkers,
             onMarkerChanged = { preferences.sharedScanMarkedFolders.set(it); onScanPreferenceChanged() },
             dotEnabled = scanDotFolders,
@@ -522,6 +533,57 @@ private fun PlayStoreHiddenFolderCard(
   }
 }
 
+/** Three connected Material 3 Expressive selection tiles, independent of marker rules. */
+@Composable
+private fun HiddenScanModeButton(
+  title: String,
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+  enabled: Boolean,
+  modifier: Modifier = Modifier,
+  shape: Shape,
+) {
+  val colors = MaterialTheme.colorScheme
+  Card(
+    modifier = modifier,
+    shape = shape,
+    colors = CardDefaults.cardColors(
+      containerColor = if (checked) colors.surfaceContainerHighest else colors.surfaceContainerHigh,
+    ),
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(48.dp)
+        .toggleable(
+          value = checked,
+          enabled = enabled,
+          role = Role.Checkbox,
+          onValueChange = onCheckedChange,
+        )
+        .padding(horizontal = 8.dp),
+      horizontalArrangement = Arrangement.Center,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (checked) {
+        Icon(
+          Icons.RoundedFilled.Check,
+          contentDescription = null,
+          tint = if (enabled) colors.primary else colors.onSurfaceVariant,
+          modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.size(4.dp))
+      }
+      Text(
+        title,
+        style = MaterialTheme.typography.labelMedium,
+        color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
+        maxLines = 1,
+      )
+    }
+  }
+}
+
 /** Connected, neutral settings row: the accent belongs to the switch, not the entire card. */
 @Composable
 private fun CompactHiddenScanOption(
@@ -564,6 +626,12 @@ private fun HiddenScanSettingsCard(
   enabled: Boolean,
   showMasterToggle: Boolean,
   onEnabledChange: (Boolean) -> Unit,
+  libraryModeEnabled: Boolean,
+  treeModeEnabled: Boolean,
+  foldersModeEnabled: Boolean,
+  onLibraryModeChanged: (Boolean) -> Unit,
+  onTreeModeChanged: (Boolean) -> Unit,
+  onFoldersModeChanged: (Boolean) -> Unit,
   markerEnabled: Boolean,
   onMarkerChanged: (Boolean) -> Unit,
   dotEnabled: Boolean,
@@ -606,20 +674,46 @@ private fun HiddenScanSettingsCard(
             style = MaterialTheme.typography.titleSmallEmphasized,
             maxLines = 1,
           )
-          Text(
-            text = listOf(
-              stringResource(R.string.pref_hidden_scan_library),
-              stringResource(R.string.pref_hidden_scan_tree),
-              stringResource(R.string.pref_hidden_scan_folders),
-            ).joinToString(" · "),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-          )
         }
         if (showMasterToggle) {
           IconSwitch(checked = enabled, onCheckedChange = onEnabledChange)
         }
+      }
+
+      Text(
+        text = stringResource(R.string.pref_hidden_scan_enable_in),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+      )
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+      ) {
+        HiddenScanModeButton(
+          title = stringResource(R.string.pref_hidden_scan_library),
+          checked = libraryModeEnabled,
+          onCheckedChange = onLibraryModeChanged,
+          enabled = enabled,
+          modifier = Modifier.weight(1f),
+          shape = rememberConnectedShape(0, 3, ConnectedLayout.Horizontal),
+        )
+        HiddenScanModeButton(
+          title = stringResource(R.string.pref_hidden_scan_tree),
+          checked = treeModeEnabled,
+          onCheckedChange = onTreeModeChanged,
+          enabled = enabled,
+          modifier = Modifier.weight(1f),
+          shape = rememberConnectedShape(1, 3, ConnectedLayout.Horizontal),
+        )
+        HiddenScanModeButton(
+          title = stringResource(R.string.pref_hidden_scan_folders),
+          checked = foldersModeEnabled,
+          onCheckedChange = onFoldersModeChanged,
+          enabled = enabled,
+          modifier = Modifier.weight(1f),
+          shape = rememberConnectedShape(2, 3, ConnectedLayout.Horizontal),
+        )
       }
 
       Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
