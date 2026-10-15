@@ -23,14 +23,17 @@ Add one feature at a time and compare it against that baseline.
 | Anime4K | Multiple GPU passes; cost rises with source and display resolution. |
 | Shader chains | One or more full-frame passes for every displayed frame. |
 | SDR-to-HDR | Additional color and luminance processing. |
-| Ambient modes | Repeated blur, sampling, and composition around the video. |
+| Ambient modes | Low-resolution captures, small CPU blurs, and a separate background composition. |
 | High-quality scalers | More GPU work during resize and chroma reconstruction. |
 | Software decoding | Sustained CPU load when hardware decoding is unavailable. |
 | Volume boost | Little rendering cost, but can produce audible clipping. |
 
 ## Thermal safeguards
 
-mpvRx samples thermal headroom during playback, caps ambient shader work, and can lower Anime4K quality under pressure. It also reduces some polling while controls are hidden or playback is paused.
+mpvRx can lower Anime4K quality under thermal pressure. Ambient uses a bounded
+low-resolution capture pipeline rather than per-frame GLSL, slows captures when
+paused, and stops when the player is not visible. Polling also reduces while
+controls are hidden or playback is paused.
 
 These safeguards reduce sustained load; they cannot make every shader chain appropriate for every device.
 

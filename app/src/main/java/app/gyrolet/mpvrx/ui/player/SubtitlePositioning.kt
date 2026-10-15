@@ -36,14 +36,23 @@ fun getSubtitleGestureRegion(
     ?: (if (secondary) subtitlesPreferences.secondarySubPos.get() else subtitlesPreferences.subPos.get()).toFloat()
   val scale = PlaybackSession.getPropertyFloat("${target.prefix}-scale")
     ?: if (secondary) subtitlesPreferences.secondarySubScale.get() else subtitlesPreferences.subScale.get()
-  val aspect = PlaybackSession.getPropertyDouble("video-params/aspect")?.toFloat() ?: 0f
-  val videoHeight = if (aspect > 0f) minOf(screenHeight, screenWidth / aspect) else screenHeight
-  val renderHeight = if (renderInVideoFrame) videoHeight else screenHeight
-  val renderTop = if (renderInVideoFrame) (screenHeight - renderHeight) / 2f else 0f
+  // Ambient fits the Android video layer inside the controls; subtitle hit regions use that viewport.
+  val viewportWidth =
+    PlaybackSession.getPropertyInt("osd-width")?.takeIf { it > 0 }?.toFloat()
+      ?.coerceAtMost(screenWidth) ?: screenWidth
+  val viewportHeight =
+    PlaybackSession.getPropertyInt("osd-height")?.takeIf { it > 0 }?.toFloat()
+      ?.coerceAtMost(screenHeight) ?: screenHeight
+  val viewportLeft = (screenWidth - viewportWidth) / 2f
+  val viewportTop = (screenHeight - viewportHeight) / 2f
+  val aspect = VideoAspectGeometry.currentEffectiveDisplayAspect(respectAspectOverride = true)?.toFloat() ?: 0f
+  val videoHeight = if (aspect > 0f) minOf(viewportHeight, viewportWidth / aspect) else viewportHeight
+  val renderHeight = if (renderInVideoFrame) videoHeight else viewportHeight
+  val renderTop = if (renderInVideoFrame) (viewportHeight - renderHeight) / 2f else 0f
   val fontReferenceHeight = when {
     PlaybackSession.getPropertyString("sub-scale-by-window") == "no" -> 720f
     PlaybackSession.getPropertyString("sub-scale-with-window") == "no" -> videoHeight
-    else -> screenHeight
+    else -> viewportHeight
   }
   return estimateSubtitleGestureRegion(
     target = target,
@@ -56,8 +65,8 @@ fun getSubtitleGestureRegion(
     // Center drags must also recover a subtitle positioned beyond the visible frame.
     position = if (includeWhenTextEmpty) position.coerceIn(0f, 100f) else position,
     scale = scale,
-    screenWidth = screenWidth,
-    screenHeight = screenHeight,
+    screenWidth = viewportWidth,
+    screenHeight = viewportHeight,
     renderTop = renderTop,
     renderHeight = renderHeight,
     fontSize = (PlaybackSession.getPropertyInt("sub-font-size") ?: subtitlesPreferences.fontSize.get()).toFloat(),
@@ -65,7 +74,14 @@ fun getSubtitleGestureRegion(
     marginY = (PlaybackSession.getPropertyInt("sub-margin-y") ?: 34).toFloat(),
     fontReferenceHeight = fontReferenceHeight,
   )?.let { estimatedRegion ->
-    val region = if (includeWhenTextEmpty) estimatedRegion.copy(position = position) else estimatedRegion
+    val region =
+      estimatedRegion.copy(
+        position = if (includeWhenTextEmpty) position else estimatedRegion.position,
+        left = estimatedRegion.left + viewportLeft,
+        top = estimatedRegion.top + viewportTop,
+        right = estimatedRegion.right + viewportLeft,
+        bottom = estimatedRegion.bottom + viewportTop,
+      )
     if (!overlaysFollowVideoZoom()) return@let region
     region.zoomedAroundCenter(
       videoZoomMultiplier(PlaybackSession.videoZoom.value),
@@ -126,7 +142,5 @@ fun subtitleBlendMode(): String {
     PlaybackSession.videoZoom.value != 0f ||
       PlaybackSession.videoPanX.value != 0f || PlaybackSession.videoPanY.value != 0f
     )
-  return if (!transformed && subtitlesPreferences.blendSubtitlesWithVideo.get() &&
-    GlobalContext.get().get<PlayerPreferences>().isAmbientEnabled.get()
-  ) "video" else "no"
+  return if (!transformed && subtitlesPreferences.blendSubtitlesWithVideo.get()) "video" else "no"
 }

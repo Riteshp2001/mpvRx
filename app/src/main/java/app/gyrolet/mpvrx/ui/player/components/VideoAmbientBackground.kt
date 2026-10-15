@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.view.PixelCopy
 import app.gyrolet.mpvrx.ui.player.MPVView
 import androidx.compose.foundation.Image
@@ -27,6 +28,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ClipOp
@@ -79,7 +81,7 @@ private const val CAPTURE_OK = 0
 private const val CAPTURE_RETRY = 1
 private const val CAPTURE_UNSUPPORTED = 2
 
-private const val BLUR_RADIUS = 2
+internal const val AMBIENT_DEFAULT_BLUR_RADIUS = 2
 private const val BLUR_PASSES = 3
 private const val LINEAR_LUT_SIZE = 4096
 
@@ -131,6 +133,7 @@ fun rememberVideoAmbientFrame(
   isSurfaceReadyProvider: () -> Boolean,
   isPlayingProvider: () -> Boolean,
   retainFrameWhenInactive: Boolean = false,
+  blurRadius: Int = AMBIENT_DEFAULT_BLUR_RADIUS,
   fallbackFrameProvider: suspend (Int) -> Bitmap?,
 ): VideoAmbientFrame {
   var state by remember(surfaceView, playbackGeneration, hdrScreenMode, orientation) {
@@ -139,6 +142,7 @@ fun rememberVideoAmbientFrame(
   val currentIsSurfaceReadyProvider by rememberUpdatedState(isSurfaceReadyProvider)
   val currentIsPlayingProvider by rememberUpdatedState(isPlayingProvider)
   val currentFallbackFrameProvider by rememberUpdatedState(fallbackFrameProvider)
+  val currentBlurRadius by rememberUpdatedState(blurRadius)
   val lifecycleOwner = LocalLifecycleOwner.current
 
   LaunchedEffect(
@@ -157,7 +161,7 @@ fun rememberVideoAmbientFrame(
 
     lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
       if (!retainFrameWhenInactive) state = VideoAmbientFrame()
-      val pipeline = VideoAmbientPipeline()
+      val pipeline = VideoAmbientPipeline { currentBlurRadius }
       var unsupported = false
       try {
         coroutineScope {
@@ -186,7 +190,9 @@ fun rememberVideoAmbientFrame(
   return state
 }
 
-private class VideoAmbientPipeline : AutoCloseable {
+private class VideoAmbientPipeline(
+  private val blurRadius: () -> Int,
+) : AutoCloseable {
   private val sample = Bitmap.createBitmap(SAMPLE_WIDTH, SAMPLE_HEIGHT, Bitmap.Config.ARGB_8888)
   private val samplePixels = IntArray(SAMPLE_WIDTH * SAMPLE_HEIGHT)
   private val previousPixels = IntArray(SAMPLE_WIDTH * SAMPLE_HEIGHT)
@@ -217,6 +223,7 @@ private class VideoAmbientPipeline : AutoCloseable {
 
   private var outputBitmapIndex = 0
   private var hasPreviousSample = false
+  private var previousBlurRadius = -1
   private var hasTarget = false
   private var seeded = false
   private var supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
@@ -280,15 +287,19 @@ private class VideoAmbientPipeline : AutoCloseable {
   }
 
   private fun computeTarget(): Boolean {
+    val radius = blurRadius().coerceIn(0, 4)
     sample.getPixels(samplePixels, 0, SAMPLE_WIDTH, 0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT)
-    if (hasPreviousSample && ambientMeanAbsoluteDifference(samplePixels, previousPixels) < FRAME_CHANGE_THRESHOLD) {
+    if (hasPreviousSample && previousBlurRadius == radius &&
+      ambientMeanAbsoluteDifference(samplePixels, previousPixels) < FRAME_CHANGE_THRESHOLD
+    ) {
       return false
     }
 
     samplePixels.copyInto(previousPixels)
     hasPreviousSample = true
+    previousBlurRadius = radius
     decimateToLinear(samplePixels, stagingGrid)
-    ambientBoxBlur(stagingGrid, scratchGrid, DISPLAY_WIDTH, DISPLAY_HEIGHT, BLUR_RADIUS, BLUR_PASSES)
+    ambientBoxBlur(stagingGrid, scratchGrid, DISPLAY_WIDTH, DISPLAY_HEIGHT, radius, BLUR_PASSES)
 
     val (base, accent) = extractAmbientColors(sample)
     stagingBase.fill(0f)
@@ -564,7 +575,8 @@ private suspend fun captureSurface(
         },
         handler,
       )
-    } catch (_: Throwable) {
+    } catch (error: IllegalArgumentException) {
+      Log.w("VideoAmbient", "PixelCopy could not capture the video surface", error)
       if (continuation.isActive) continuation.resume(CAPTURE_RETRY)
     }
   }
@@ -643,7 +655,7 @@ fun VideoAmbientBackground(
   }
 }
 
-private fun Modifier.videoAmbientMask(videoBounds: ComposeRect, edgeBlend: Float): Modifier {
+internal fun Modifier.videoAmbientMask(videoBounds: ComposeRect, edgeBlend: Float): Modifier {
   val layer =
     if (edgeBlend > 0f) {
       Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
@@ -651,40 +663,66 @@ private fun Modifier.videoAmbientMask(videoBounds: ComposeRect, edgeBlend: Float
       Modifier
     }
   return then(layer).drawWithCache {
+    val canvasSize = size
     val videoPath = Path().apply { addRect(videoBounds) }
-    val horizontal = videoBounds.width < size.width
-    val vertical = videoBounds.height < size.height
-    val mask =
-      if (edgeBlend > 0f && !videoBounds.isEmpty && (horizontal || vertical)) {
-        val axisLength = if (horizontal) videoBounds.width else videoBounds.height
-        val fraction = edgeBlend * minOf(videoBounds.width, videoBounds.height) / axisLength
-        val ramp = List(5) { index ->
-          val progress = index / 4f
-          (progress * fraction) to Color.Black.copy(alpha = progress * progress * (3f - 2f * progress))
+    val blendWidth = edgeBlend.coerceIn(0f, 0.1f) * minOf(videoBounds.width, videoBounds.height)
+    val masks =
+      buildList<Pair<ComposeRect, Brush>> {
+        if (blendWidth <= 0f || videoBounds.isEmpty) return@buildList
+        if (videoBounds.left > 0f) {
+          add(
+            ComposeRect(0f, 0f, videoBounds.left, canvasSize.height) to
+              Brush.horizontalGradient(
+                listOf(Color.Black, Color.Transparent),
+                startX = videoBounds.left - blendWidth,
+                endX = videoBounds.left,
+              ),
+          )
         }
-        val stops = (ramp + ramp.asReversed().map { (position, color) -> (1f - position) to color }).toTypedArray()
-        if (horizontal) {
-          Brush.horizontalGradient(*stops, startX = videoBounds.left, endX = videoBounds.right)
-        } else {
-          Brush.verticalGradient(*stops, startY = videoBounds.top, endY = videoBounds.bottom)
+        if (videoBounds.right < canvasSize.width) {
+          add(
+            ComposeRect(videoBounds.right, 0f, canvasSize.width, canvasSize.height) to
+              Brush.horizontalGradient(
+                listOf(Color.Transparent, Color.Black),
+                startX = videoBounds.right,
+                endX = videoBounds.right + blendWidth,
+              ),
+          )
         }
-      } else {
-        null
+        if (videoBounds.top > 0f) {
+          add(
+            ComposeRect(0f, 0f, canvasSize.width, videoBounds.top) to
+              Brush.verticalGradient(
+                listOf(Color.Black, Color.Transparent),
+                startY = videoBounds.top - blendWidth,
+                endY = videoBounds.top,
+              ),
+          )
+        }
+        if (videoBounds.bottom < canvasSize.height) {
+          add(
+            ComposeRect(0f, videoBounds.bottom, canvasSize.width, canvasSize.height) to
+              Brush.verticalGradient(
+                listOf(Color.Transparent, Color.Black),
+                startY = videoBounds.bottom,
+                endY = videoBounds.bottom + blendWidth,
+              ),
+          )
+        }
       }
     onDrawWithContent {
       if (!videoBounds.isEmpty) {
-        if (mask == null) {
-          clipPath(videoPath, clipOp = ClipOp.Difference) {
-            this@onDrawWithContent.drawContent()
+        // The background, including its edge fade, must never paint over video or subtitle pixels.
+        clipPath(videoPath, clipOp = ClipOp.Difference) {
+          this@onDrawWithContent.drawContent()
+          for ((bounds, brush) in masks) {
+            drawRect(
+              brush = brush,
+              topLeft = Offset(bounds.left, bounds.top),
+              size = bounds.size,
+              blendMode = BlendMode.DstIn,
+            )
           }
-        } else {
-          drawContent()
-          drawRect(
-            brush = mask,
-            topLeft = videoBounds.topLeft,
-            size = videoBounds.size,
-            blendMode = BlendMode.DstOut,
-          )
         }
       }
     }

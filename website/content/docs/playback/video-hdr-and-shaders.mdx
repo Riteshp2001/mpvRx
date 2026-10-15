@@ -35,7 +35,7 @@ Anime4K is most useful for compatible animated sources at lower resolutions. It 
 - CPU debanding uses `gradfun`.
 - GPU debanding exposes iterations, threshold, range, and grain.
 - Video filter presets include Vivid, Cinematic, Dramatic, Ghibli Style, Neon Pop, and Deep Black.
-- Ambient GLOW and FRAME_EXTEND modes render around the video with configurable blur, color, warmth, vignette, and noise controls.
+- Ambient Glow, YouTube, Cinema, Echo, and Mirror modes light the black bars around the video.
 - Automatic cropping can analyze supported videos for encoded black borders.
 
 ### Tune GPU debanding
@@ -52,13 +52,22 @@ can erase intentional texture or add visible noise.
 
 ### Ambient modes
 
-**GLOW** extends color and light beyond the picture, while **FRAME_EXTEND**
-uses the frame itself as the surrounding composition. Settings include sample
-count, blur, intensity, saturation, warmth, vignette, and dither/noise.
+All five styles use a separate Android background layer. The video keeps its
+aspect ratio, and ambient never stretches or filters subtitle text. The effect
+is clipped to the black bars, including when edge blending is enabled.
 
-mpvRx caches compiled shader configurations and reduces the effective sample
-budget under thermal pressure. Adjust one parameter at a time; sample count and
-blur radius usually have the largest performance impact.
+**Glow** projects heavily blurred colour, **Cinema** extends soft light from the
+picture, **Echo** smears the edge colours, and **Mirror** reflects nearby pixels.
+These four styles retain their quality presets and blur, spread, intensity,
+saturation, warmth, fade, opacity, and vignette controls. **YouTube** is automatic.
+
+Small captured frames update a few times per second and blend smoothly between
+updates. Paused playback and capture failures use a slower cadence. No ambient
+GLSL compilation or mpv video-scale changes are required.
+
+Ambient follows crop, rotation, pixel aspect, custom aspect ratios, and window
+resizing. It suspends during PiP, background playback, manual zoom/pan, and
+full-screen Crop or Stretch so those controls retain their normal behaviour.
 
 ### Filter presets
 
@@ -74,8 +83,8 @@ is conservative around dark scenes, short files, rotation, and changing aspect
 ratios, then caches a successful result for repeat playback.
 
 Disable it for intentional letterboxing, rapidly changing aspect ratios, or
-content where edge darkness is part of the image. Crop, stretch, pan, zoom, and
-ambient output share the final video geometry.
+content where edge darkness is part of the image. Ambient follows the resulting
+cropped picture without changing mpv's scaling options.
 
 ## Watch thermal behavior
 

@@ -41,4 +41,7 @@ Use refresh-rate matching for visible judder, not as a general performance switc
 
 ## Thermal interpretation
 
-Thermal headroom ranges from cool/full budget toward the device limit. mpvRx can reduce ambient shader samples as headroom falls and throttle Anime4K below severe thresholds. See [Performance and battery](/docs/reference/performance-and-battery) for a repeatable low-power baseline.
+Thermal headroom ranges from cool/full budget toward the device limit. mpvRx can
+throttle Anime4K below severe thresholds. Ambient uses small, rate-limited frame
+captures instead of a per-frame shader. See [Performance and battery](/docs/reference/performance-and-battery)
+for a repeatable low-power baseline.

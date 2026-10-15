@@ -106,8 +106,8 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 
 | Feature | Description |
 |---|---|
-| **ThermalMonitor** | Samples thermal headroom every 10s during playback |
-| **Adaptive Shader Budget** | Ambient shader budget auto-capped based on thermal headroom |
+| **ThermalMonitor** | Checks thermal headroom when selecting shader quality |
+| **Bounded Ambient Work** | Small, rate-limited captures with slower updates while paused |
 | **Anime4K Proactive Throttling** | Auto-downgrades Anime4K quality when thermal headroom drops below 40% |
 | **Background Poll Optimization** | Position poll interval doubles when controls are hidden, cutting JNI wake-ups 50% |
 | **Stats Poll Backoff** | Stats page poll loop backs off from 1s to 2s when playback is paused |
@@ -131,9 +131,10 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 
 | Feature | Description |
 |---|---|
-| **Two Visual Modes** | GLOW and FRAME_EXTEND — both rendered via custom GLSL at runtime |
-| **15+ Configurable Parameters** | Blur samples, glow intensity, saturation, warmth, vignette, dither noise, and more |
-| **Shader Recompilation Caching** | Skips recompilation when parameters match last compiled version |
+| **Five Visual Styles** | Glow, YouTube, Cinema, Echo, and Mirror in a separate Android background layer |
+| **Configurable Effects** | Quality presets, blur, spread, intensity, saturation, warmth, fade, opacity, vignette, and edge blend |
+| **Undistorted Playback** | Ambient stays in the black bars without stretching video or subtitles |
+| **Smooth, Low-Cost Updates** | Blurred low-resolution captures with temporal smoothing; no ambient shader compilation |
 
 </details>
 

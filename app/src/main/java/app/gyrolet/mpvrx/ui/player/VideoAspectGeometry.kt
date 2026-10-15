@@ -9,7 +9,7 @@ internal data class VideoDimensions(
   val height: Double,
 )
 
-/** Geometry shared by playback aspect modes and both Ambient implementations. */
+/** Geometry shared by playback aspect modes and the ambient background. */
 internal object VideoAspectGeometry {
   private val cropDimensionsRegex = Regex("""^(\d+)x(\d+)""")
 
@@ -22,21 +22,33 @@ internal object VideoAspectGeometry {
   }
 
   /**
-   * Returns the post-crop display aspect used by both Glow and YouTube Ambient.
-   *
-   * `video-params/aspect` describes the uncropped source, so it cannot size the YouTube Ambient
-   * surface after auto-crop removes encoded black bars. Deriving the aspect from the effective
-   * dimensions keeps both Ambient styles on the same geometry path.
+   * Includes crop, pixel aspect and rotation. Ambient also respects an explicit aspect override.
    */
   fun currentEffectiveDisplayAspect(
     fallbackWidth: Double = 1920.0,
     fallbackHeight: Double = 1080.0,
-  ): Double? =
-    effectiveDisplayAspect(
+    respectAspectOverride: Boolean = false,
+  ): Double? {
+    val source = currentSourceDimensions()
+    val aspectOverride =
+      if (respectAspectOverride) {
+        PlaybackSession.getPropertyString("video-aspect-override")?.toDoubleOrNull()
+          ?.takeIf { it.isFinite() && it > 0.0 }
+      } else {
+        null
+      }
+    val pixelAspectRatio =
+      if (aspectOverride != null && source != null) {
+        aspectOverride * source.height / source.width
+      } else {
+        PlaybackSession.getPropertyDouble("video-params/par") ?: 1.0
+      }
+    return effectiveDisplayAspect(
       dimensions = currentEffectiveDimensions(fallbackWidth, fallbackHeight),
-      pixelAspectRatio = PlaybackSession.getPropertyDouble("video-params/par") ?: 1.0,
+      pixelAspectRatio = pixelAspectRatio,
       rotationDegrees = PlaybackSession.getPropertyInt("video-params/rotate") ?: 0,
     )
+  }
 
   internal fun effectiveDisplayAspect(
     dimensions: VideoDimensions,

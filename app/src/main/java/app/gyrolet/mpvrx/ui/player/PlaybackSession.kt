@@ -144,9 +144,6 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val SEEK_AUDIO_RESTORE_DELAY_MS = 60L
   private const val SEEK_AUDIO_FALLBACK_RESTORE_MS = 750L
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
-  private const val AMBIENT_SHADER_PREFIX = "ambient_"
-  private const val AMBIENT_SHADER_SUFFIX = ".glsl"
-  private const val AMBIENT_SCALE_EPSILON = 0.000001
   private val TIMELINE_PROPERTIES =
     setOf(
       "time-pos",
@@ -279,9 +276,6 @@ object PlaybackSession : MPVLib.EventObserver {
   private var playbackTransitionAudioGuardToken = 0L
   private var playbackTransitionAudioGuardPreviousMute: Boolean? = null
   private var playbackTransitionAudioGuardCanRestore = false
-  private val activeAmbientShaderPaths = linkedSetOf<String>()
-  private var desiredAmbientScaleX = 1.0
-  private var desiredAmbientScaleY = 1.0
   private var streamingOptionsApplied = false
   private var appliedUserAgent: String? = null
   private var defaultHttpHeaderFields: String? = null
@@ -369,7 +363,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         initialPositionGeneration = 0L
         clearSeekAudioGuardLocked(restoreMute = false)
         clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
-        resetAmbientShaderTrackingLocked()
         updateState { it.copy(phase = PlaybackPhase.INITIALIZING, error = null) }
         try {
           MPVLib.create(context.applicationContext)
@@ -428,7 +421,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           initialPositionGeneration = 0L
           clearSeekAudioGuardLocked(restoreMute = false)
           clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
-          resetAmbientShaderTrackingLocked()
           updateState {
             it.copy(
               phase = PlaybackPhase.ERROR,
@@ -659,11 +651,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       pendingPositionRestoreOverride = null
       initialPositionGeneration = 0L
 
-      // Ambient shaders contain dimensions and scale baked for one video. Never leave them attached
-      // to the process-wide core after playback ends, even if the Activity/ViewModel that created
-      // them has already gone away.
-      clearAmbientShadersLocked(resetDesired = true)
-
       // Stop/quit must silence the native audio output before its decoder/output queues are torn
       // down. Restoring a seek guard's mute state before stop previously let a short buffered tail
       // escape after the Activity had already disappeared.
@@ -828,7 +815,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     releaseAuxiliaryNetworkStreamsLocked()
     observers.clear()
     observedProperties.clear()
-    resetAmbientShaderTrackingLocked()
     _videoZoom.value = 0f
     _videoPanX.value = 0f
     _videoPanY.value = 0f
@@ -1082,12 +1068,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       val ytdlVideoRequiresSelection = selectVideoForNewFile &&
         app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager.requiresYtdlp(playableUri)
 
-      // An OUTPUT Ambient shader bakes the previous video's aspect ratio into its GLSL. Because the
-      // libmpv core outlives PlayerActivity, a late/cancelled Ambient job can otherwise poison the
-      // next file even when the UI preference is OFF. Start every replacement load from a clean,
-      // identity-scaled shader state; an enabled Ambient mode will re-append after FILE_LOADED.
-      clearAmbientShadersLocked(resetDesired = true)
-
       // A saved video-track id belongs to the outgoing file only. Never carry it into a new load.
       suspendedVideoTrack = null
       lastSurfaceVideoTrack = null
@@ -1243,7 +1223,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     if (MpvConfigOverridePolicy.shouldSuppress(command)) return
     withCore(Unit) {
       val preparedCommand = prepareSeekCommandLocked(command)
-      if (handleAmbientShaderCommandLocked(preparedCommand)) return@withCore
       MPVLib.command(*preparedCommand)
     }
   }
@@ -1257,7 +1236,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
       if (MpvConfigOverridePolicy.shouldSuppress(command)) return@withLock true
       val preparedCommand = prepareSeekCommandLocked(command)
-      if (!handleAmbientShaderCommandLocked(preparedCommand)) MPVLib.command(*preparedCommand)
+      MPVLib.command(*preparedCommand)
       true
     }
 
@@ -1372,12 +1351,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
       when (property) {
-        "video-scale-x" -> {
-          desiredAmbientScaleX = value
-        }
-        "video-scale-y" -> {
-          desiredAmbientScaleY = value
-        }
         "time-pos" -> {
           rememberEofSeekLocked(value, listOf("absolute"))
           MPVLib.setPropertyDouble(property, value)
@@ -1602,13 +1575,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         }
       }
 
-      // Some shader-stack managers replace the whole list instead of using change-list/remove.
-      // If that replacement drops Ambient, restore the base video scale before the next frame.
-      if (property == "glsl-shaders" && activeAmbientShaderPaths.isNotEmpty() && !value.contains(AMBIENT_SHADER_PREFIX)) {
-        applyAmbientRenderStateLocked(listOf("glsl-shaders" to value))
-        activeAmbientShaderPaths.clear()
-        return@withCore
-      }
       MPVLib.setPropertyString(property, value)
     }
   }
@@ -1905,7 +1871,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             supersededStopGeneration = 0L
             clearSeekAudioGuardLocked(restoreMute = false)
             clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
-            resetAmbientShaderTrackingLocked()
             initialized = false
             nativeCoreReady = false
             clearTimelinePropertiesLocked()
@@ -2058,109 +2023,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     if (restoreMute && initialized && previousMute != null) {
       runCatching { MPVLib.setPropertyBoolean("mute", previousMute) }
     }
-  }
-
-  private fun handleAmbientShaderCommandLocked(command: Array<out String>): Boolean {
-    if (command.size < 3 || command[0] != "change-list" || command[1] != "glsl-shaders") return false
-
-    val action = command[2]
-    if (action == "clr") {
-      if (activeAmbientShaderPaths.isEmpty()) {
-        MPVLib.command(*command)
-      } else {
-        applyAmbientRenderStateLocked(listOf("glsl-shaders-clr" to ""))
-      }
-      activeAmbientShaderPaths.clear()
-      return true
-    }
-
-    val path = command.getOrNull(3) ?: return false
-    val isAmbient = isAmbientShaderPath(path)
-
-    if (action == "set" && !isAmbient && activeAmbientShaderPaths.isNotEmpty()) {
-      applyAmbientRenderStateLocked(listOf("glsl-shaders" to path))
-      activeAmbientShaderPaths.clear()
-      return true
-    }
-    if (!isAmbient) return false
-
-    when (action) {
-      "remove" -> {
-        if (path !in activeAmbientShaderPaths) {
-          MPVLib.command(*command)
-          return true
-        }
-        applyAmbientRenderStateLocked(listOf("glsl-shaders-remove" to path))
-        activeAmbientShaderPaths.remove(path)
-      }
-      "append", "add", "pre", "set" -> {
-        // A cancelled/debounced Ambient coroutine may finish its file write after Ambient was turned
-        // off. Identity scale is the process-wide teardown state, so never let that late shader
-        // resurrect itself. This is especially important for Flow because SCALE_X/Y are baked into
-        // the GLSL and can crop the centre picture even after the real video scale was reset.
-        if (ambientScaleIsIdentityLocked()) {
-          clearAmbientShadersLocked(resetDesired = false)
-          Log.w(TAG, "Ignored stale Ambient shader install while scale is identity: $path")
-          return true
-        }
-
-        val shaderOptions = buildList {
-          activeAmbientShaderPaths.forEach { oldPath -> add("glsl-shaders-remove" to oldPath) }
-          add((if (action == "set") "glsl-shaders" else "glsl-shaders-$action") to path)
-        }
-        applyAmbientRenderStateLocked(shaderOptions, desiredAmbientScaleX, desiredAmbientScaleY)
-        activeAmbientShaderPaths.clear()
-        activeAmbientShaderPaths += path
-      }
-      else -> return false
-    }
-    return true
-  }
-
-  private fun isAmbientShaderPath(path: String): Boolean {
-    val fileName = path.substringAfterLast('/').substringAfterLast('\\')
-    return fileName.startsWith(AMBIENT_SHADER_PREFIX) && fileName.endsWith(AMBIENT_SHADER_SUFFIX)
-  }
-
-  private fun ambientScaleIsIdentityLocked(): Boolean =
-    kotlin.math.abs(desiredAmbientScaleX - 1.0) <= AMBIENT_SCALE_EPSILON &&
-      kotlin.math.abs(desiredAmbientScaleY - 1.0) <= AMBIENT_SCALE_EPSILON
-
-  private fun clearAmbientShadersLocked(resetDesired: Boolean) {
-    runCatching {
-      applyAmbientRenderStateLocked(activeAmbientShaderPaths.map { path -> "glsl-shaders-remove" to path })
-    }.onFailure { error -> Log.w(TAG, "Failed to clear Ambient render state", error) }
-    activeAmbientShaderPaths.clear()
-
-    if (resetDesired) {
-      desiredAmbientScaleX = 1.0
-      desiredAmbientScaleY = 1.0
-    }
-  }
-
-  private fun applyAmbientRenderStateLocked(
-    shaderOptions: List<Pair<String, String>>,
-    scaleX: Double = 1.0,
-    scaleY: Double = 1.0,
-  ) {
-    val options = buildList {
-      if (!MpvConfigOverridePolicy.isOwnedByMpvConf("glsl-shaders")) addAll(shaderOptions)
-      if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-x")) add("video-scale-x" to scaleX.toString())
-      if (!MpvConfigOverridePolicy.isOwnedByMpvConf("video-scale-y")) add("video-scale-y" to scaleY.toString())
-    }
-    if (options.isEmpty()) return
-
-    val config = options.joinToString("\n") { (name, value) ->
-      require(value.none { it == '\n' || it == '\r' || it == '\u0000' })
-      "$name=%${value.toByteArray(Charsets.UTF_8).size}%$value"
-    }
-    MPVLib.command("load-config-file", "memory://$config")
-  }
-
-  private fun resetAmbientShaderTrackingLocked() {
-    activeAmbientShaderPaths.clear()
-    desiredAmbientScaleX = 1.0
-    desiredAmbientScaleY = 1.0
   }
 
   /**

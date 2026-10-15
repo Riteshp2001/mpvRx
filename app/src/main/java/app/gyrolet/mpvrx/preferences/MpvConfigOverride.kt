@@ -244,12 +244,8 @@ object MpvConfigControlledFeatures {
       "vd-lavc-dr",
     )
 
-  val AMBIENT =
-    setOf(
-      "glsl-shaders",
-      "video-scale-x",
-      "video-scale-y",
-    )
+  // Ambient is an Android background layer and no longer owns any mpv options.
+  val AMBIENT: Set<String> = emptySet()
 
   val AUDIO_TRACK_SELECTION = setOf("alang")
 

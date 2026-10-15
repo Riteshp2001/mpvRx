@@ -506,7 +506,7 @@
   <string name="player_sheets_sub_scale_by_window">Scale by window</string>
   <string name="player_sheets_sub_scale_by_window_summary">Scale subtitle size with the window; keep subtitles inside the video\'s safe-area margins</string>
   <string name="player_sheets_sub_blend_with_video">Blend subtitles with video</string>
-  <string name="player_sheets_sub_blend_with_video_summary">When ambient mode is on, draw subtitles with the video instead of over the ambient area</string>
+  <string name="player_sheets_sub_blend_with_video_summary">Draw subtitles into the video frame. Ambient mode never stretches the video or subtitles.</string>
   <string name="player_sheets_sub_scale">Scale</string>
   <string name="player_sheets_sub_position">Position</string>
   <string name="player_sheets_sub_primary_scale">Primary subtitle scale</string>

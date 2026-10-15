@@ -114,6 +114,9 @@ import app.gyrolet.mpvrx.ui.cast.CastPlaybackController
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControls
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
 import app.gyrolet.mpvrx.ui.player.components.VideoAmbientBackground
+import app.gyrolet.mpvrx.ui.player.components.AmbientRenderParams
+import app.gyrolet.mpvrx.ui.player.components.AmbientStyleBackground
+import app.gyrolet.mpvrx.ui.player.components.ambientBlurRadiusFor
 import app.gyrolet.mpvrx.ui.player.components.rememberVideoAmbientFrame
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
@@ -1294,6 +1297,11 @@ class PlayerActivity :
   }
 
   private fun setupVideoAmbientBackground() {
+    binding.root.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+      if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+        updateVideoAmbientPlayerBounds()
+      }
+    }
     binding.player.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
       videoAmbientBounds = Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
     }
@@ -1303,11 +1311,7 @@ class PlayerActivity :
     // Pre-Android 11 stops inset dispatch at a consuming sibling, which would starve the controls of IME insets.
     binding.ambientBackground.consumeWindowInsets = false
 
-    // The ambient tree subscribes to eleven sources and registers its own MPV observer. With the
-    // effect off — the default, and every offline open — that whole composition would render
-    // nothing, because `presentationActive` requires `isAmbientEnabled`. So mount it only once the
-    // preference says it can produce output, and keep a single cheap watcher to mount it later if
-    // the user turns it on.
+    // Do not mount the frame-capture pipeline until ambient mode is enabled.
     if (viewModel.isAmbientEnabled.value) {
       setVideoAmbientBackgroundContent()
     } else {
@@ -1324,11 +1328,25 @@ class PlayerActivity :
     binding.ambientBackground.setContent {
       val enabled by viewModel.isAmbientEnabled.collectAsState()
       val style by viewModel.ambientStyle.collectAsState()
-      val edgeBlend by viewModel.ambientYouTubeEdgeBlend.collectAsState()
+      val youTubeEdgeBlend by viewModel.ambientYouTubeEdgeBlend.collectAsState()
+      val glowEdgeBlend by viewModel.ambientGlowEdgeBlend.collectAsState()
+      val blurSamples by viewModel.ambientBlurSamples.collectAsState()
+      val spread by viewModel.ambientMaxRadius.collectAsState()
+      val intensity by viewModel.ambientGlowIntensity.collectAsState()
+      val saturation by viewModel.ambientSatBoost.collectAsState()
+      val vignette by viewModel.ambientVignetteStrength.collectAsState()
+      val warmth by viewModel.ambientWarmth.collectAsState()
+      val fadeCurve by viewModel.ambientFadeCurve.collectAsState()
+      val ambientOpacity by viewModel.ambientOpacity.collectAsState()
       val lifecycleActive by viewModel.isAmbientLifecycleActive.collectAsState()
       val isAudioOnly by viewModel.isAudioOnly.collectAsState()
       val playbackState by PlaybackSession.state.collectAsState()
       val videoCrop by PlaybackSession.propString["video-crop"].collectAsState()
+      val videoAspect by viewModel.videoAspect.collectAsState()
+      val customAspectRatio by viewModel.currentAspectRatio.collectAsState()
+      val videoZoom by viewModel.videoZoom.collectAsState()
+      val videoPanX by viewModel.videoPanX.collectAsState()
+      val videoPanY by viewModel.videoPanY.collectAsState()
       val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
       val orientation = LocalConfiguration.current.orientation
       val playbackReady =
@@ -1336,11 +1354,32 @@ class PlayerActivity :
       val active =
         enabled &&
           lifecycleActive &&
-          style == AmbientStyle.YouTube &&
           !isAudioOnly &&
           !isAmbientPipMode &&
+          (videoAspect == VideoAspect.Fit || customAspectRatio > 0.0) &&
+          videoZoom == 0f && videoPanX == 0f && videoPanY == 0f &&
+          !MpvConfigOverridePolicy.ownsAny(
+            setOf("video-scale-x", "video-scale-y", "video-zoom", "video-pan-x", "video-pan-y", "keepaspect", "video-unscaled", "panscan"),
+          ) &&
           playbackReady &&
           playbackState.surfaceAttached
+      val renderParams =
+        AmbientRenderParams(
+          style = style,
+          spread = spread,
+          intensity = intensity,
+          saturation = saturation,
+          vignette = vignette,
+          warmth = warmth,
+          fadeCurve = fadeCurve,
+          opacity = ambientOpacity,
+          edgeBlend =
+            when (style) {
+              AmbientStyle.YouTube -> youTubeEdgeBlend
+              AmbientStyle.Glow -> glowEdgeBlend
+              else -> 0f
+            },
+        )
       val ambientFrame =
         rememberVideoAmbientFrame(
           surfaceView = binding.player,
@@ -1357,9 +1396,16 @@ class PlayerActivity :
           isPlayingProvider = {
             !PlaybackSession.state.value.paused
           },
+          blurRadius = ambientBlurRadiusFor(style, blurSamples),
           fallbackFrameProvider = { dimension ->
             withContext(Dispatchers.IO) {
-              runCatching { PlaybackSession.grabThumbnail(dimension) }.getOrNull()
+              try {
+                PlaybackSession.grabThumbnail(dimension)
+              } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                Log.w(TAG, "Unable to capture an ambient fallback frame", error)
+                null
+              }
             }
           },
         )
@@ -1369,22 +1415,30 @@ class PlayerActivity :
       // forcing BLAST/libmpv reconfiguration and visible black flashes.
       val presentationActive = active && ambientFrame.supported
 
-      // Auto-crop changes after playback becomes ready. Refreshing on the property itself keeps
-      // YouTube Ambient's SurfaceView aligned with the newly cropped content rectangle.
-      LaunchedEffect(presentationActive, videoCrop) {
+      // Crop and aspect changes must resize the Android video layer, never stretch it in mpv.
+      LaunchedEffect(presentationActive, videoCrop, videoAspect, customAspectRatio, orientation) {
         setVideoAmbientPresentationActive(presentationActive)
       }
 
       MpvrxTheme {
         if (presentationActive && ambientFrame.frame != null) {
-          VideoAmbientBackground(
-            frame = ambientFrame.frame,
-            baseColor = ambientFrame.base,
-            accentColor = ambientFrame.accent,
-            videoBounds = videoAmbientBounds,
-            edgeBlend = edgeBlend,
-            modifier = Modifier.fillMaxSize(),
-          )
+          if (style == AmbientStyle.YouTube) {
+            VideoAmbientBackground(
+              frame = ambientFrame.frame,
+              baseColor = ambientFrame.base,
+              accentColor = ambientFrame.accent,
+              videoBounds = videoAmbientBounds,
+              edgeBlend = youTubeEdgeBlend,
+              modifier = Modifier.fillMaxSize(),
+            )
+          } else {
+            AmbientStyleBackground(
+              frame = ambientFrame.frame,
+              params = renderParams,
+              videoBounds = videoAmbientBounds,
+              modifier = Modifier.fillMaxSize(),
+            )
+          }
         }
       }
     }
@@ -1404,7 +1458,7 @@ class PlayerActivity :
     if (!isVideoAmbientPresentationActive || binding.player.visibility != View.VISIBLE) return
     val containerWidth = binding.root.width
     val containerHeight = binding.root.height
-    val videoAspect = VideoAspectGeometry.currentEffectiveDisplayAspect()
+    val videoAspect = VideoAspectGeometry.currentEffectiveDisplayAspect(respectAspectOverride = true)
     if (containerWidth <= 0 || containerHeight <= 0 || videoAspect == null || videoAspect <= 0.0) return
 
     val containerAspect = containerWidth.toDouble() / containerHeight.toDouble()
@@ -2368,7 +2422,6 @@ class PlayerActivity :
       Log.e(TAG, "Error restoring the player after PiP expansion", error)
     }
     viewModel.restartPostProcessingIfActive()
-    viewModel.restartAmbientIfActive()
   }
 
   private fun finishStoppedBackgroundPlaybackIfNeeded(): Boolean {
@@ -2901,7 +2954,6 @@ class PlayerActivity :
         enableVideoAfterBackground()
       }
       viewModel.restartPostProcessingIfActive()
-      viewModel.restartAmbientIfActive()
       binding.root.post(::updateVideoAmbientPlayerBounds)
     }
 
@@ -4376,7 +4428,6 @@ class PlayerActivity :
    */
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    viewModel.onOrientationChanged()
     binding.root.post(::updateVideoAmbientPlayerBounds)
     if (isReady) {
       handleConfigurationChange()
@@ -4648,12 +4699,13 @@ class PlayerActivity :
         pipHelper.updatePictureInPictureParams()
 
         setOrientation(aspect)
+        binding.root.post(::updateVideoAmbientPlayerBounds)
 
         if (pendingVideoParamRefreshRequiresShaderReload) {
           pendingVideoParamRefreshRequiresShaderReload = false
           withContext(playbackRenderDispatcher) {
             player.applyAnime4KShaders()
-            viewModel.restartHdrScreenOutputAndAmbientIfActive()
+            viewModel.restartHdrScreenOutputAndPostProcessingIfActive()
           }
         }
       }
@@ -4810,8 +4862,6 @@ class PlayerActivity :
     // Reset AB loop values when video changes
     viewModel.clearABLoop()
 
-    // Drop the old ambient shader file, but keep the user's ambient preference/style.
-    viewModel.prepareAmbientForNewVideo()
     viewModel.preparePostProcessingForNewVideo()
 
     setIntentExtras(intent.extras)
@@ -4905,7 +4955,7 @@ class PlayerActivity :
       withContext(playbackRenderDispatcher) {
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
         player.applyAnime4KShaders()
-        viewModel.restartHdrScreenOutputAndAmbientIfActive()
+        viewModel.restartHdrScreenOutputAndPostProcessingIfActive()
       }
     }
 
@@ -6531,7 +6581,6 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         Log.e(TAG, "Error entering PiP UI mode", error)
       }
       viewModel.restartPostProcessingIfActive()
-      viewModel.restartAmbientIfActive()
     }
   }
 

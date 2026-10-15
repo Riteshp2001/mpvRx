@@ -113,19 +113,13 @@ enum class AmbientStyle(
   /** Soft blurred projection of the whole frame, like YouTube's Ambient Mode. */
   YouTube(R.string.ambient_style_youtube),
 
-  // ── Fx ambient modes (ported from fx_ambient GLSL package) ──────────────────
-  // These modes run as mpv OUTPUT hook shaders with user-adjustable parameters.
-
-  /** Whole-frame soft projection extending into bars, blur grows with bar depth.
-   *  Adapted from fx_ambient cinema(). */
+  /** Soft cinema-screen light projected into the surrounding bars. */
   Cinema(R.string.ambient_cinema),
 
-  /** Edge-parallel spatial smear that simulates light propagating outward.
-   *  Inspired by fx_ambient echo(). */
+  /** Edge colours smeared outward into the bars. */
   Echo(R.string.ambient_echo),
 
-  /** Reflected / folded UV mirror of the video edge, blur grows with depth.
-   *  Adapted from fx_ambient mirror() — top bar is dimmer than bottom. */
+  /** A blurred reflection of the video edge, with a dimmer ceiling than floor. */
   Mirror(R.string.ambient_mirror),
 }
 
