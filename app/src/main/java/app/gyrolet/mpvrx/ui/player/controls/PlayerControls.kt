@@ -645,9 +645,12 @@ fun PlayerControls(
 
   val glassSource = rememberVideoGlassSource(videoSurface)
   val videoSurfaceReady = videoSurface?.surfaceReady?.collectAsState()?.value == true
+  val videoFrameReady = videoSurface?.textureFrameReadyState?.collectAsState()?.value == true
   // Recreate the recorder with the actual source scene. The old persistent recorder could
   // keep painting a released TextureView's pixels after an HDR/native-surface handoff.
-  val videoBackdrop = key(glassSource) {
+  val videoBackdrop = key(glassSource, isHdrOutputEnabled, liquidGlassInHdr) {
+    // HDR output changes the captured colorspace even when the TextureView stays mounted.
+    // A new recorder must not replay pre-HDR pixels or filters over the new output.
     rememberLayerBackdrop(onDraw = { with(glassSource) { drawVideo() } })
   }
   // Native HDR output is a separate SurfaceView: Kyaant cannot sample it from Compose.
@@ -657,6 +660,7 @@ fun PlayerControls(
       (!isHdrOutputEnabled || liquidGlassInHdr) &&
       videoSurface?.isTextureSurface == true &&
       videoSurfaceReady &&
+      videoFrameReady &&
       glassSource.scene != null
   }
 
