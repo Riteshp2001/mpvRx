@@ -2600,4 +2600,6 @@
   <string name="app_icon_logo_white">أبيض</string>
   <string name="app_icon_logo_black">أسود</string>
   <string name="app_icon_logo_classic">كلاسيكي</string>
+  <string name="pref_hidden_scan_per_mode_title">فحص المجلدات المخفية</string>
+  <string name="pref_hidden_scan_dot">مجلدات تبدأ بنقطة</string>
 </resources>
