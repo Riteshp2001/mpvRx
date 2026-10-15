@@ -2601,5 +2601,6 @@
   <string name="app_icon_logo_black">أسود</string>
   <string name="app_icon_logo_classic">كلاسيكي</string>
   <string name="pref_hidden_scan_per_mode_title">فحص المجلدات المخفية</string>
+  <string name="pref_hidden_scan_enable_in">تفعيل في</string>
   <string name="pref_hidden_scan_dot">مجلدات تبدأ بنقطة</string>
 </resources>
