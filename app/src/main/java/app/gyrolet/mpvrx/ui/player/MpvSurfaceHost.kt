@@ -31,6 +31,8 @@ import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * HDR stays on a native SurfaceView: Android tone-maps TextureView content into the app window's
@@ -56,6 +58,11 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
   private var rendererEpoch = 0
   private var textureRendering: Boolean? = null
 
+  // A TextureView layer exists before mpv has submitted its first frame. Never let Kyant sample
+  // that blank layer during HDR <-> SDR or Liquid Glass renderer switches.
+  private val textureFrameReady = MutableStateFlow(false)
+  internal val textureFrameReadyState: StateFlow<Boolean> = textureFrameReady
+
   internal val isTextureSurface: Boolean
     get() = textureRendering == true
 
@@ -67,6 +74,7 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
   internal fun setTextureRendering(enabled: Boolean) {
     if (textureRendering == enabled) return
     textureRendering = enabled
+    textureFrameReady.value = false
     val epoch = ++rendererEpoch
     if (renderSurface != null) onRenderSurfaceDestroyed()
     if (ownsSurface) renderSurface?.release()
@@ -89,6 +97,7 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
 
     fun destroyed() {
       if (epoch != rendererEpoch) return
+      textureFrameReady.value = false
       onRenderSurfaceDestroyed()
       if (ownsSurface) renderSurface?.release()
       renderSurface = null
@@ -132,7 +141,12 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
                       return true // TextureView owns and releases the SurfaceTexture after MPV detaches.
                     }
 
-                    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
+                    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {
+                      if (epoch == rendererEpoch && !textureFrameReady.value) {
+                        // Surface attachment alone doesn't guarantee a sampleable HDR/SDR frame.
+                        textureFrameReady.value = true
+                      }
+                    }
                   }
                 }
               },
