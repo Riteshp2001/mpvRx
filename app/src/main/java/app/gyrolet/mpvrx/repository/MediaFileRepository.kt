@@ -36,6 +36,7 @@ import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
 import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.mediaPathKey
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -153,6 +154,8 @@ object MediaFileRepository : KoinComponent {
         (mediaStoreFolders + indexedFolders + getScopedHiddenVideoFolders(context, includeAudioOverride))
           .distinctBy { if (ScopedHiddenFolderScanner.isScopedFolder(it.path)) it.path else it.path.lowercase(Locale.ROOT) }
           .sortedBy { it.name.lowercase(Locale.getDefault()) }
+      } catch (cancelled: CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(TAG, "Error scanning for video folders", e)
         emptyList()
@@ -416,6 +419,8 @@ object MediaFileRepository : KoinComponent {
             forceFileSystemCheck,
           )
         }
+      } catch (cancelled: CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for bucket $bucketId", e)
         emptyList()
@@ -434,7 +439,7 @@ object MediaFileRepository : KoinComponent {
     withContext(Dispatchers.IO) {
       val result = linkedMapOf<String, Video>()
       for (id in bucketIds) {
-        runCatching {
+        try {
           getVideosInFolder(
             context,
             id,
@@ -448,6 +453,10 @@ object MediaFileRepository : KoinComponent {
               result[key] = media
             }
           }
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (error: Exception) {
+          Log.w(TAG, "Skipping failed media bucket", error)
         }
       }
       result.values.toList()
