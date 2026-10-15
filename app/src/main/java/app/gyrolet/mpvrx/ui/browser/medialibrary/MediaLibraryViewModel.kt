@@ -19,6 +19,7 @@ import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
+import app.gyrolet.mpvrx.preferences.HiddenScanScope
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.browser.videolist.VideoWithPlaybackInfo
@@ -34,6 +35,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -106,11 +109,17 @@ class MediaLibraryViewModel(
       loadData()
     }
     viewModelScope.launch(Dispatchers.IO) {
-      app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes.collectLatest {
-        // A media event means both the cached list and its recorded generation are suspect.
+      val hiddenPreferences = combine(
+        foldersPreferences.includeNoMediaFolders.changes(),
+        foldersPreferences.hiddenFolderMarkerNames.changes(),
+        foldersPreferences.libraryScanMarkedFolders.changes(),
+        foldersPreferences.libraryScanDotFolders.changes(),
+      ) { _, _, _, _ -> Unit }.drop(1)
+      merge(app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes, hiddenPreferences).collectLatest {
+        // A change in Library's hidden-folder policy must not reuse the old path list.
         MediaLibraryCache.clear(getApplication())
         MediaStoreGenerationGuard.invalidate(getApplication())
-        loadData()
+        loadData(force = true)
       }
     }
     viewModelScope.launch(Dispatchers.IO) {
@@ -128,9 +137,7 @@ class MediaLibraryViewModel(
  * which also means the scan runs regardless — the cache then only avoids an empty first frame.
  */
   private fun loadCachedVideos(): Boolean {
-    if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
-      foldersPreferences.includeNoMediaFolders.get()
-    ) return false
+    if (foldersPreferences.hiddenScanEnabled(HiddenScanScope.LIBRARY)) return false
     if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) return false
     if (!MediaStoreGenerationGuard.isUnchangedSinceLastScan(getApplication())) return false
     val cached = MediaLibraryCache.load(getApplication())
@@ -147,7 +154,7 @@ class MediaLibraryViewModel(
     // still matches the current MediaStore, or refresh() was asked to invalidate and rebuild. force
     // comes from refresh() and always re-reads.
     if (!force &&
-      !(app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && foldersPreferences.includeNoMediaFolders.get()) &&
+      !foldersPreferences.hiddenScanEnabled(HiddenScanScope.LIBRARY) &&
       _videos.value.isNotEmpty() &&
       MediaStoreGenerationGuard.isUnchangedSinceLastScan(getApplication())
     ) {
