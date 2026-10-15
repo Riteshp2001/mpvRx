@@ -360,7 +360,7 @@ object FolderViewScanner {
   ): IndexedDirectorySnapshot {
     val path = normalizeStoragePath(directory.absolutePath) ?: directory.absolutePath
     val fingerprint = directoryFingerprint(directory, files)
-    val subdirectories = files.filter { it.isDirectory && shouldVisitDuringNoMediaScan(it) }
+    val subdirectories = files.filter { it.isDirectory && shouldVisitDuringNoMediaScan(it, options) }
     val unchangedEntity = previous?.takeIf { it.fingerprint == fingerprint }
     val contentChanged = unchangedEntity == null
 
@@ -377,7 +377,7 @@ object FolderViewScanner {
         var duration = 0L
         var modified = 0L
         for (file in files) {
-          if (!file.isFile || file.name.startsWith(".")) continue
+          if (!file.isFile || (file.name.startsWith(".") && !options.includeDotFolders)) continue
           val isAudio = options.includeAudio && FileTypeUtils.isAudioFile(file)
           if (!isAudio && !FileTypeUtils.isVideoFile(file)) continue
           val mediaDuration = if (isAudio) FileTypeUtils.getDurationMs(file) else 0L
@@ -508,7 +508,7 @@ object FolderViewScanner {
         } else {
           files
             .asSequence()
-            .filter { file -> file.isDirectory && shouldVisitDuringNoMediaScan(file) }
+            .filter { file -> file.isDirectory && shouldVisitDuringNoMediaScan(file, options) }
             .forEach { child ->
               if (scanEntryKey(child.absolutePath) !in cached) {
                 enqueueNewDirectory(child, work.rootPath)
@@ -615,23 +615,27 @@ object FolderViewScanner {
   private fun scanEntryKey(path: String): String =
     storagePathKey(path) ?: path.replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
 
-  private fun shouldVisitDuringNoMediaScan(directory: File): Boolean {
+  private fun shouldVisitDuringNoMediaScan(directory: File, options: MediaScanOptions): Boolean {
     val name = directory.name.lowercase(Locale.ROOT)
-    return name !in NO_MEDIA_SCAN_SKIP_FOLDERS && directory.canRead()
+    return name !in NO_MEDIA_SCAN_SKIP_FOLDERS && directory.canRead() &&
+      !NoMediaPathFilter(options).shouldExcludeDirectory(directory)
   }
 
   private fun isHiddenMediaRoot(
     directory: File,
     options: MediaScanOptions,
     files: List<File>? = null,
-  ): Boolean =
-    (options.includeDotFolders && directory.name.startsWith(".")) ||
+  ): Boolean {
+    // A disabled marker wins even when the same directory is dot-prefixed.
+    if (NoMediaPathFilter(options).shouldExcludeDirectory(directory)) return false
+    return (options.includeDotFolders && directory.name.startsWith(".")) ||
       (options.activeHiddenMarkerNames.isNotEmpty() &&
         if (files == null) {
           options.activeHiddenMarkerNames.any { File(directory, it).isFile }
         } else {
           files.any { file -> file.isFile && file.name in options.activeHiddenMarkerNames }
         })
+  }
 
   private fun directoryFingerprint(
     directory: File,
