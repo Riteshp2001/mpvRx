@@ -155,6 +155,7 @@ class FolderListViewModel(
       val scanPreferenceChanges =
         combine(
           foldersPreferences.includeNoMediaFolders.changes(),
+          foldersPreferences.foldersHiddenScanEnabled.changes(),
           foldersPreferences.hiddenFolderMarkerNames.changes(),
           foldersPreferences.sharedScanMarkedFolders.changes(),
           foldersPreferences.sharedScanDotFolders.changes(),
@@ -287,6 +288,7 @@ class FolderListViewModel(
   private fun currentFolderCacheKey(): String =
     "folders_v3_${if (audioOnly) "audioOnly" else "video"}" +
       "_${if (foldersPreferences.includeNoMediaFolders.get()) "with_nomedia" else "exclude_nomedia"}" +
+      "_enabled${foldersPreferences.foldersHiddenScanEnabled.get()}" +
       "_m${foldersPreferences.sharedScanMarkedFolders.get()}_d${foldersPreferences.sharedScanDotFolders.get()}" +
       "_markers${foldersPreferences.hiddenFolderMarkerNames.get().sorted().joinToString(",")}" +
       "_ignore${foldersPreferences.sharedIgnoredMarkers.get().sorted().joinToString(",")}" +
