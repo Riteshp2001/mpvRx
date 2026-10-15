@@ -114,7 +114,8 @@ class MediaLibraryViewModel(
         foldersPreferences.hiddenFolderMarkerNames.changes(),
         foldersPreferences.libraryScanMarkedFolders.changes(),
         foldersPreferences.libraryScanDotFolders.changes(),
-      ) { _, _, _, _ -> Unit }.drop(1)
+        foldersPreferences.libraryIgnoredMarkers.changes(),
+      ) { _ -> Unit }.drop(1)
       merge(app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes, hiddenPreferences).collectLatest {
         // A change in Library's hidden-folder policy must not reuse the old path list.
         MediaLibraryCache.clear(getApplication())
