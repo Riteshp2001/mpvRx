@@ -30,7 +30,7 @@ data class MediaScanOptions(
     else emptySet()
 
   val scanHiddenFolders: Boolean
-    get() = includeNoMediaFolders || includeDotFolders
+    get() = activeHiddenMarkerNames.isNotEmpty() || includeDotFolders
 
   val excludeNoMediaFolders: Boolean
     get() = !includeNoMediaFolders
@@ -58,6 +58,7 @@ class NoMediaPathFilter(
   private val options: MediaScanOptions,
 ) {
   private val exclusionCache = ConcurrentHashMap<String, Boolean>()
+  private val excludedMarkerNames = options.normalizedHiddenFolderMarkerNames - options.activeHiddenMarkerNames
 
   fun shouldExcludeDirectory(directory: File?): Boolean {
     if (directory == null) return false
@@ -75,9 +76,7 @@ class NoMediaPathFilter(
     val result =
       runCatching {
         (directory.name.startsWith(".") && !options.includeDotFolders) ||
-          (options.normalizedHiddenFolderMarkerNames
-            .minus(options.activeHiddenMarkerNames)
-            .any { File(directory, it).isFile }) ||
+          excludedMarkerNames.any { File(directory, it).isFile } ||
           (!options.scanHiddenFolders &&
             File(directory, app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.AUDIOBOOK_MARKER).isFile) ||
           directory.parentFile?.let(::hasHiddenMarkerInPath) == true
