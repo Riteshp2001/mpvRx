@@ -156,9 +156,9 @@ class FolderListViewModel(
         combine(
           foldersPreferences.includeNoMediaFolders.changes(),
           foldersPreferences.hiddenFolderMarkerNames.changes(),
-          foldersPreferences.foldersScanMarkedFolders.changes(),
-          foldersPreferences.foldersScanDotFolders.changes(),
-          foldersPreferences.foldersIgnoredMarkers.changes(),
+          foldersPreferences.sharedScanMarkedFolders.changes(),
+          foldersPreferences.sharedScanDotFolders.changes(),
+          foldersPreferences.sharedIgnoredMarkers.changes(),
           browserPreferences.includeAudioBrowser.changes(),
           browserPreferences.minimumAudioDurationSeconds.changes(),
         ) { _ -> Unit }
@@ -287,9 +287,9 @@ class FolderListViewModel(
   private fun currentFolderCacheKey(): String =
     "folders_v3_${if (audioOnly) "audioOnly" else "video"}" +
       "_${if (foldersPreferences.includeNoMediaFolders.get()) "with_nomedia" else "exclude_nomedia"}" +
-      "_m${foldersPreferences.foldersScanMarkedFolders.get()}_d${foldersPreferences.foldersScanDotFolders.get()}" +
+      "_m${foldersPreferences.sharedScanMarkedFolders.get()}_d${foldersPreferences.sharedScanDotFolders.get()}" +
       "_markers${foldersPreferences.hiddenFolderMarkerNames.get().sorted().joinToString(",")}" +
-      "_ignore${foldersPreferences.foldersIgnoredMarkers.get().sorted().joinToString(",")}" +
+      "_ignore${foldersPreferences.sharedIgnoredMarkers.get().sorted().joinToString(",")}" +
       "_audio_${browserPreferences.includeAudioBrowser.get()}_${browserPreferences.minimumAudioDurationSeconds.get()}"
 
   private fun serializeFoldersToJson(folders: List<VideoFolder>): String {
@@ -450,16 +450,17 @@ class FolderListViewModel(
     if (audioOnly || currentScanJob?.isActive == true ||
       !foldersPreferences.hiddenScanEnabled(HiddenScanScope.FOLDERS)) return
 
-    val markerNames = foldersPreferences.hiddenFolderMarkerNames.get() -
-      foldersPreferences.foldersIgnoredMarkers.get()
-      .map { it.trim() }
-      .filter { it.isNotEmpty() && '/' !in it && '\\' !in it }
-      .map { if (it.startsWith(".")) it else ".$it" }
+    val markerNames =
+      (foldersPreferences.hiddenFolderMarkerNames.get() - foldersPreferences.sharedIgnoredMarkers.get())
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && '/' !in it && '\\' !in it }
+        .map { if (it.startsWith(".")) it else ".$it" }
     val roots = MediaFileRepository.getIndexedNoMediaRootPaths()
     val directories = (roots + _allVideoFolders.value.map { it.path }).distinct()
     val markerSnapshot = directories.associateWith { path ->
       val directory = File(path)
-      directory.name.startsWith(".") || markerNames.any { File(directory, it).isFile }
+      (foldersPreferences.scanDotFolders(HiddenScanScope.FOLDERS) && directory.name.startsWith(".")) ||
+        (foldersPreferences.scanMarkedFolders(HiddenScanScope.FOLDERS) && markerNames.any { File(directory, it).isFile })
     }
     val previous = lastHiddenMarkerSnapshot
     lastHiddenMarkerSnapshot = markerSnapshot
