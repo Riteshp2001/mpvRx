@@ -430,21 +430,13 @@ class FolderListViewModel(
   override fun refresh() {
     Log.d(TAG, "Refreshing folder list and MediaStore snapshot")
 
-    // Set loading state
-    _isLoading.value = true
-
-    // Invalidate folder results without destroying TreeView/.nomedia fingerprints. The previous
-    // path cleared every scanner cache and then cleared FolderViewScanner a second time.
+    // Keep the last published folders visible while MediaStore is refreshed. A full recursive
+    // filesystem walk and MediaScanner.scanFile(storageRoot) do not belong on the interactive
+    // refresh path: both can take tens of seconds and overlap the folder query.
+    if (_allVideoFolders.value.isEmpty()) _isLoading.value = true
     MediaFileRepository.invalidateFolderCache()
-    // A user-driven refresh must never be satisfied by the cold-boot fast path.
     MediaStoreGenerationGuard.invalidate(getApplication())
-
-    // Force the direct hidden index first; MediaScanner cannot see .nomedia trees.
-    loadVideoFolders(forceFileSystemCheck = true)
-
-    // Preserve full Refresh semantics for ordinary files copied by other apps. Completion emits a
-    // debounced MediaLibraryEvents update, while this asynchronous pass never blocks hidden results.
-    triggerMediaScan()
+    loadVideoFolders()
   }
 
   /**
@@ -489,22 +481,9 @@ class FolderListViewModel(
     Log.d(TAG, "Folder mode detected external folder/marker change; refreshing independently of Library")
     MediaFileRepository.invalidateFolderCache()
     MediaStoreGenerationGuard.invalidate(getApplication())
-    loadVideoFolders(forceFileSystemCheck = true, silent = true)
-  }
-
-  private fun triggerMediaScan() {
-    try {
-      val externalStorage = android.os.Environment.getExternalStorageDirectory()
-      android.media.MediaScannerConnection.scanFile(
-        getApplication(),
-        arrayOf(externalStorage.absolutePath),
-        null,
-      ) { path, uri ->
-        Log.d(TAG, "Media scan completed for: $path -> $uri")
-      }
-    } catch (error: Exception) {
-      Log.e(TAG, "Failed to trigger media scan", error)
-    }
+    // A periodic foreground verification is incremental; only changed hidden markers need
+    // the forced filesystem/discovery fallback.
+    loadVideoFolders(forceFileSystemCheck = staleHiddenRoot || markersChanged, silent = true)
   }
 
   suspend fun renameFolder(
@@ -681,6 +660,15 @@ class FolderListViewModel(
                 folder
               }
             }
+
+          // Render the fresh folder list before potentially slow file-by-file metadata retrieval.
+          // A running enrichment job can be cancelled by the next refresh; it must never hold
+          // back visible Library updates. Cache and file metadata are reused above when unchanged.
+          if (_allVideoFolders.value != foldersForEnrichment) {
+            _allVideoFolders.value = foldersForEnrichment
+          }
+          _isLoading.value = false
+          _hasCompletedInitialLoad.value = true
 
           val needsDurationEnrichment = needsEnrichment && foldersForEnrichment.isNotEmpty() &&
             MetadataRetrieval.isFolderMetadataNeeded(browserPreferences)
