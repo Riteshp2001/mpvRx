@@ -112,9 +112,9 @@ class MediaLibraryViewModel(
       val hiddenPreferences = combine(
         foldersPreferences.includeNoMediaFolders.changes(),
         foldersPreferences.hiddenFolderMarkerNames.changes(),
-        foldersPreferences.libraryScanMarkedFolders.changes(),
-        foldersPreferences.libraryScanDotFolders.changes(),
-        foldersPreferences.libraryIgnoredMarkers.changes(),
+        foldersPreferences.sharedScanMarkedFolders.changes(),
+        foldersPreferences.sharedScanDotFolders.changes(),
+        foldersPreferences.sharedIgnoredMarkers.changes(),
       ) { _ -> Unit }.drop(1)
       merge(app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes, hiddenPreferences).collectLatest {
         // A change in Library's hidden-folder policy must not reuse the old path list.
