@@ -13,7 +13,6 @@ import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.database.dao.DirectoryScanDao
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
@@ -106,13 +105,11 @@ object FolderViewScanner {
     forceFileSystemCheck: Boolean = false,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
-      val started = PerformanceDiagnostics.mark()
       val now = System.currentTimeMillis()
 
       // Return cached data if still valid
       folderCache?.let { cached ->
         if (!forceFileSystemCheck && now - cached.createdAt < CACHE_TTL_MS && cached.optionsKey == options.cacheKey) {
-          PerformanceDiagnostics.finish("folder.scanner.memory.hit", started, "count=${cached.folders.size}")
           return@withContext cached.folders
         }
       }
@@ -136,7 +133,6 @@ object FolderViewScanner {
         // Keep unindexed USB/SD videos discoverable without rescanning the entire
         // primary storage whenever the normal MediaStore-backed library is refreshed.
         scanUnindexedExternalVolumes(context, allFolders, options, noMediaPathFilter)
-        PerformanceDiagnostics.record("folder.scanner.primary.filesystem.skipped", "folders=${allFolders.size}")
       }
 
       // Convert to VideoFolder list
@@ -156,7 +152,6 @@ object FolderViewScanner {
 
       // Update cache
       folderCache = FolderCache(result, now, options.cacheKey)
-      PerformanceDiagnostics.finish("folder.scanner.rebuild", started, "count=${result.size};forced=$forceFileSystemCheck")
 
       result
     }
@@ -967,7 +962,6 @@ object FolderViewScanner {
       }
       val root = File(path)
       if (!root.isDirectory || !root.canRead()) continue
-      PerformanceDiagnostics.record("folder.scanner.external.fallback", "unindexed volume")
       scanDirectoryRecursive(
         root,
         folders,
