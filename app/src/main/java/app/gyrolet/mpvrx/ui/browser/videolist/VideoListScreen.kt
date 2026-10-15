@@ -50,9 +50,6 @@ import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.withFrameNanos
-import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -899,13 +896,6 @@ internal fun VideoListContent(
   pinnedVideoPaths: Set<String> = emptySet(),
 ) {
   val archiveFolder = remember(folderId) { ZipArchiveMedia.isBrowserPath(folderId) }
-  LaunchedEffect(folderId, videosWithInfo.size, isLoading) {
-    if (!isLoading && PerformanceDiagnostics.enabled) {
-      val frameStarted = PerformanceDiagnostics.mark()
-      withFrameNanos { }
-      PerformanceDiagnostics.finish("list.next.frame", frameStarted, "items=${videosWithInfo.size};audio=$isAudio")
-    }
-  }
   val swipeScope = rememberCoroutineScope()
   val swipeActions = rememberVideoSwipeActions(audioOnly = isAudio) { swipeScope.launch { onRefresh() } }
   val thumbnailRepository = koinInject<ThumbnailRepository>()
@@ -1113,13 +1103,6 @@ internal fun VideoListContent(
             }
           }
 
-        val listIsScrolling by remember(listState, gridState, mediaLayoutMode) {
-          derivedStateOf {
-            if (mediaLayoutMode == MediaLayoutMode.LIST) listState.isScrollInProgress
-            else gridState.isScrollInProgress
-          }
-        }
-
         LaunchedEffect(
           folderId, showVideoThumbnails, thumbWidthPx, thumbHeightPx,
           mediaLayoutMode, thumbnailListKey, listState, gridState,
@@ -1240,7 +1223,6 @@ internal fun VideoListContent(
                       showSubtitleIndicator = showSubtitleIndicator,
                       allowThumbnailGeneration = !archiveFolder,
                       allowThumbnailLoading = !archiveFolder,
-                      deferThumbnailLoading = listIsScrolling,
                       uiConfig = videoCardUiConfig,
                   )
                 }
@@ -1311,7 +1293,6 @@ internal fun VideoListContent(
                       showSubtitleIndicator = showSubtitleIndicator,
                       allowThumbnailGeneration = !archiveFolder,
                       allowThumbnailLoading = !archiveFolder,
-                      deferThumbnailLoading = listIsScrolling,
                       uiConfig = videoCardUiConfig,
                       thumbnailWidthPx = if (isAudio) with(density) { musicCoverArtSize.dp.roundToPx() } else null,
                       thumbnailHeightPx = if (isAudio) with(density) { musicCoverArtSize.dp.roundToPx() } else null,
