@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 data class MediaScanOptions(
   val includeNoMediaFolders: Boolean = false,
-  val includeDotFolders: Boolean = false,
+  val includeDotFolders: Boolean = includeNoMediaFolders,
   val hiddenFolderMarkerNames: Set<String> = setOf(".nomedia"),
   val includeAudio: Boolean = false,
   val minimumAudioDurationSeconds: Int = 0,
@@ -57,7 +57,8 @@ class NoMediaPathFilter(
     return hasHiddenMarkerInPath(directory)
   }
 
-  fun shouldExcludeFile(file: File): Boolean = shouldExcludeDirectory(file.parentFile)
+  fun shouldExcludeFile(file: File): Boolean =
+    (file.name.startsWith(".") && !options.includeDotFolders) || shouldExcludeDirectory(file.parentFile)
 
   private fun hasHiddenMarkerInPath(directory: File): Boolean {
     val path = runCatching { directory.absolutePath }.getOrElse { return false }
