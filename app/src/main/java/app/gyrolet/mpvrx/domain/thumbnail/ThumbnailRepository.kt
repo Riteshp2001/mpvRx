@@ -21,7 +21,6 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.LruCache
 import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
-import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.media.model.Video
@@ -145,15 +144,9 @@ class ThumbnailRepository(
 
       synchronized(memoryCache) {
         memoryCache.get(key)
-      }?.let {
-        PerformanceDiagnostics.record("thumb.memory.hit")
-        return@withContext it
-      }
+      }?.let { return@withContext it }
 
-      ongoingOperations[key]?.let {
-        PerformanceDiagnostics.record("thumb.inflight.join")
-        return@withContext it.await()
-      }
+      ongoingOperations[key]?.let { return@withContext it.await() }
 
       val candidate =
         async(start = CoroutineStart.LAZY) {
@@ -165,7 +158,6 @@ class ThumbnailRepository(
             return@async cached
           }
 
-          val generationStarted = PerformanceDiagnostics.mark()
           val bitmap =
             when {
               isHttpUrl(video.path) ->
@@ -177,19 +169,13 @@ class ThumbnailRepository(
                 localGenerationSemaphore.withPermit {
                   generateLocalThumbnail(video, widthPx, heightPx)
                 }
-            } ?: run {
-              PerformanceDiagnostics.finish("thumb.generate.fail", generationStarted)
-              return@async null
-            }
-          PerformanceDiagnostics.finish("thumb.generate", generationStarted, "network=${isNetworkUrl(video.path)}")
+            } ?: return@async null
 
           currentCoroutineContext().ensureActive()
           synchronized(memoryCache) {
             memoryCache.put(key, bitmap)
           }
-          val diskWriteStarted = PerformanceDiagnostics.mark()
           writeBitmapToDisk(diskCacheKey(video), bitmap, isNetworkUrl(video.path))
-          PerformanceDiagnostics.finish("thumb.disk.write", diskWriteStarted)
           _thumbnailReadyKeys.tryEmit(key)
           bitmap
         }
@@ -220,10 +206,7 @@ class ThumbnailRepository(
       val key = thumbnailKey(video, widthPx, heightPx)
       synchronized(memoryCache) {
         memoryCache.get(key)
-      }?.let {
-        PerformanceDiagnostics.record("thumb.memory.hit")
-        return@withContext it
-      }
+      }?.let { return@withContext it }
 
       val isNetwork = isNetworkUrl(video.path)
       var decoded = readBitmapFromDisk(diskCacheKey(video), isNetwork)
@@ -238,11 +221,7 @@ class ThumbnailRepository(
           }
         }
       }
-      if (decoded == null) {
-        PerformanceDiagnostics.record("thumb.disk.miss")
-        return@withContext null
-      }
-      PerformanceDiagnostics.record("thumb.disk.hit")
+      if (decoded == null) return@withContext null
 
       val scaled = scaleBitmap(decoded, widthPx, heightPx)
       synchronized(memoryCache) {
@@ -271,7 +250,6 @@ class ThumbnailRepository(
   }
 
   fun clearThumbnailCache() {
-    PerformanceDiagnostics.record("thumb.cache.clear")
     folderJobs.values.forEach { it.cancel() }
     folderJobs.clear()
     folderStates.clear()
@@ -329,10 +307,8 @@ class ThumbnailRepository(
         .toList()
 
     if (filteredVideos.isEmpty()) {
-      PerformanceDiagnostics.record("thumb.folder.skip", "empty")
       return
     }
-    PerformanceDiagnostics.record("thumb.folder.schedule", "count=${filteredVideos.size}")
 
     folderJobs.entries.removeAll { !it.value.isActive }
 
