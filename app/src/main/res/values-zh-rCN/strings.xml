@@ -2546,5 +2546,6 @@
   <string name="app_icon_logo_black">黑色</string>
   <string name="app_icon_logo_classic">经典</string>
   <string name="pref_hidden_scan_per_mode_title">隐藏文件夹</string>
+  <string name="pref_hidden_scan_enable_in">在以下视图中启用</string>
   <string name="pref_hidden_scan_dot">点前缀文件夹</string>
 </resources>
