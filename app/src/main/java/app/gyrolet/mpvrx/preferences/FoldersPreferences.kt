@@ -78,6 +78,18 @@ class FoldersPreferences(
     libraryIgnoredMarkers.get() + treeIgnoredMarkers.get() + foldersIgnoredMarkers.get(),
   )
 
+  // Compact connected selector under Hidden Folder Scan. Keep the marker/dot policies
+  // shared while allowing each Home browser mode to skip hidden content independently.
+  val libraryHiddenScanEnabled = preferenceStore.getBoolean("hidden_scan_enabled_library", true)
+  val treeHiddenScanEnabled = preferenceStore.getBoolean("hidden_scan_enabled_tree", true)
+  val foldersHiddenScanEnabled = preferenceStore.getBoolean("hidden_scan_enabled_folders", true)
+
+  fun isModeScanEnabled(scope: HiddenScanScope): Boolean = when (scope) {
+    HiddenScanScope.LIBRARY -> libraryHiddenScanEnabled.get()
+    HiddenScanScope.TREE -> treeHiddenScanEnabled.get()
+    HiddenScanScope.FOLDERS -> foldersHiddenScanEnabled.get()
+  }
+
   // Keep the scope parameter for existing scanner callers; all three use one policy now.
   @Suppress("UNUSED_PARAMETER")
   fun ignoredMarkers(scope: HiddenScanScope): Set<String> = sharedIgnoredMarkers.get()
@@ -92,7 +104,7 @@ class FoldersPreferences(
     if (scanMarkedFolders(scope)) hiddenFolderMarkerNames.get() - ignoredMarkers(scope) else emptySet()
 
   fun hiddenScanEnabled(scope: HiddenScanScope): Boolean =
-    includeNoMediaFolders.get() &&
+    includeNoMediaFolders.get() && isModeScanEnabled(scope) &&
       (enabledMarkerNames(scope).isNotEmpty() || scanDotFolders(scope))
 
   fun addBlacklistedFolders(paths: Set<String>, scope: BlacklistScope) {
