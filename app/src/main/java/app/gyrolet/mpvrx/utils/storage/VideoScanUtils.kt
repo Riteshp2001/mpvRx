@@ -18,7 +18,6 @@ import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import android.provider.MediaStore
 import android.util.Log
-import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +72,6 @@ object VideoScanUtils : KoinComponent {
     forceFileSystemCheck: Boolean = false,
   ): List<Video> =
     withContext(Dispatchers.IO) {
-      val started = PerformanceDiagnostics.mark()
       val normalizedFolderPath = normalizeStoragePath(folderPath) ?: return@withContext emptyList()
       val videosMap = mutableMapOf<String, Video>()
       val noMediaPathFilter = NoMediaPathFilter(options)
@@ -85,9 +83,7 @@ object VideoScanUtils : KoinComponent {
 
       // Try MediaStore first (fast)
       val keyResolver = MediaPathKeyResolver()
-      val mediaStoreStarted = PerformanceDiagnostics.mark()
       scanVideosFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter, keyResolver)
-      PerformanceDiagnostics.finish("video.scan.mediastore", mediaStoreStarted, "count=${videosMap.size}")
       if (options.includeAudio) {
         scanAudioFromMediaStore(context, normalizedFolderPath, videosMap, noMediaPathFilter, options, keyResolver)
       }
@@ -128,14 +124,10 @@ object VideoScanUtils : KoinComponent {
         folder.canRead() &&
         shouldRunFilesystemVideoCheck(forceFileSystemCheck, videosMap.size)
       ) {
-        val filesystemStarted = PerformanceDiagnostics.mark()
         scanVideosFromFileSystem(context, folder, videosMap, options, noMediaPathFilter, keyResolver)
-        PerformanceDiagnostics.finish("video.scan.filesystem", filesystemStarted, "count=${videosMap.size}")
       }
 
-      videosMap.values.sortedBy { it.displayName.lowercase(Locale.getDefault()) }.also {
-        PerformanceDiagnostics.finish("video.scan.total", started, "count=${it.size};forced=$forceFileSystemCheck")
-      }
+      videosMap.values.sortedBy { it.displayName.lowercase(Locale.getDefault()) }
     }
 
   /**
