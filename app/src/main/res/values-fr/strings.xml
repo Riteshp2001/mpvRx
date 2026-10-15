@@ -2558,4 +2558,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="app_icon_logo_white">Blanc</string>
   <string name="app_icon_logo_black">Noir</string>
   <string name="app_icon_logo_classic">Classique</string>
+  <string name="pref_hidden_scan_per_mode_title">Dossiers masqués</string>
+  <string name="pref_hidden_scan_dot">Dossiers à point</string>
 </resources>
