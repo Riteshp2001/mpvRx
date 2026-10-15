@@ -64,6 +64,8 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -211,6 +213,13 @@ object FolderListScreen : Screen {
     val foldersWithNewCount by viewModel.foldersWithNewCount.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+  LaunchedEffect(videoFolders.size, isLoading) {
+    if (!isLoading && PerformanceDiagnostics.enabled) {
+      val frameStarted = PerformanceDiagnostics.mark()
+      withFrameNanos { }
+      PerformanceDiagnostics.finish("folder.next.frame", frameStarted, "items=${videoFolders.size}")
+    }
+  }
     val scanStatus by viewModel.scanStatus.collectAsState()
     val hasCompletedInitialLoad by viewModel.hasCompletedInitialLoad.collectAsState()
     val foldersWereDeleted by viewModel.foldersWereDeleted.collectAsState()

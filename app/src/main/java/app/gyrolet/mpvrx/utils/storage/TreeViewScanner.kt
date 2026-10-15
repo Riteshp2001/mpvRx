@@ -13,6 +13,7 @@ import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -172,6 +173,7 @@ object TreeViewScanner {
     newLabelOverrides: Map<String, Boolean>,
   ): Map<String, FolderNode> =
     withContext(Dispatchers.IO) {
+      val started = PerformanceDiagnostics.mark()
       val now = System.currentTimeMillis()
       val cacheKey =
         buildCacheKey(
@@ -184,6 +186,7 @@ object TreeViewScanner {
 
       cachedTreeViewData?.let { cached ->
         if (!forceFileSystemCheck && now - cacheTimestamp < CACHE_TTL_MS && cacheOptionsKey == cacheKey) {
+          PerformanceDiagnostics.finish("tree.cache.memory.hit", started, "nodes=${cached.size}")
           return@withContext cached
         }
       }
@@ -196,6 +199,7 @@ object TreeViewScanner {
           cachedTreeViewData = restored
           cacheTimestamp = now
           cacheOptionsKey = cacheKey
+          PerformanceDiagnostics.finish("tree.cache.disk.hit", started, "nodes=${restored.size}")
           return@withContext restored
         }
       }
@@ -205,6 +209,7 @@ object TreeViewScanner {
       val observedGeneration =
         if (forceFileSystemCheck) null else MediaStoreGenerationGuard.currentToken(context)
 
+      PerformanceDiagnostics.record("tree.cache.miss", "forced=$forceFileSystemCheck")
       val data =
         buildTreeViewData(
           context = context,
@@ -228,6 +233,7 @@ object TreeViewScanner {
         // No generation to prove it fresh, so there is nothing worth keeping.
         TreeViewCache.clear(context)
       }
+      PerformanceDiagnostics.finish("tree.cache.rebuild", started, "nodes=${data.size}")
       data
     }
 

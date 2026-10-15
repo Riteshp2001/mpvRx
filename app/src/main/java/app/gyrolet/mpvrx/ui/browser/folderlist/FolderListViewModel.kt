@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -235,6 +236,7 @@ class FolderListViewModel(
   }
 
   private fun loadCachedFolders(): Boolean {
+    val start = PerformanceDiagnostics.mark()
     var hasCachedData = false
     val prefs =
       getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
@@ -245,6 +247,7 @@ class FolderListViewModel(
         // Parse JSON and restore folders
         val folders = parseFoldersFromJson(cachedJson)
         if (folders.isNotEmpty()) {
+          PerformanceDiagnostics.finish("folder.cache.disk.hit", start, "count=${folders.size}")
           Log.d(TAG, "Loaded ${folders.size} folders from cache instantly")
           hasCachedData = true
           _allVideoFolders.value = folders
@@ -256,6 +259,7 @@ class FolderListViewModel(
       }
     }
 
+    if (!hasCachedData) PerformanceDiagnostics.record("folder.cache.disk.miss")
     return hasCachedData
   }
 
@@ -267,12 +271,14 @@ class FolderListViewModel(
         try {
           val prefs =
             getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
+          val start = PerformanceDiagnostics.mark()
           val json = serializeFoldersToJson(folders)
           prefs.edit().putString(currentFolderCacheKey(), json).apply()
           // Only now, with a list a real scan produced, is it safe to record the MediaStore state
           // that scan observed. Remembering after the fact would bless a newer MediaStore than the
           // data was built from, and the next cold boot would keep a stale list.
           MediaStoreGenerationGuard.remember(getApplication(), observedMediaStoreGeneration)
+          PerformanceDiagnostics.finish("folder.cache.disk.write", start, "count=${folders.size};bytes=${json.length}")
           Log.d(TAG, "Saved ${folders.size} folders to cache")
         } catch (e: Exception) {
           Log.e(TAG, "Error saving folders to cache", e)
@@ -531,6 +537,7 @@ class FolderListViewModel(
     if (audioOnly) {
       currentScanJob =
         viewModelScope.launch(Dispatchers.IO) {
+          val started = PerformanceDiagnostics.mark()
           try {
             val hasExistingData = _allVideoFolders.value.isNotEmpty()
             if (!hasExistingData && !silent) {
@@ -560,6 +567,7 @@ class FolderListViewModel(
               _isEnriching.value = false
               _scanStatus.value = null
             }
+            PerformanceDiagnostics.finish("folder.scan.audio", started, "count=${_allVideoFolders.value.size}")
           }
         }
       return
@@ -567,6 +575,8 @@ class FolderListViewModel(
 
     currentScanJob =
       viewModelScope.launch(Dispatchers.IO) {
+        val started = PerformanceDiagnostics.mark()
+        PerformanceDiagnostics.record("folder.scan.start", "forced=$forceFileSystemCheck;silent=$silent;reuse=$skipMediaStoreScan")
         try {
           val hasExistingData = _allVideoFolders.value.isNotEmpty()
           if (!hasExistingData && !silent) {
@@ -714,6 +724,7 @@ class FolderListViewModel(
             _isEnriching.value = false
             _scanStatus.value = null
           }
+          PerformanceDiagnostics.finish("folder.scan", started, "count=${_allVideoFolders.value.size};reuse=$skipMediaStoreScan;active=$isActive")
         }
       }
   }

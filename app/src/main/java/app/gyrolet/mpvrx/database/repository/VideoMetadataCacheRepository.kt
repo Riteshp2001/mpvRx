@@ -13,6 +13,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import app.gyrolet.mpvrx.database.dao.VideoMetadataDao
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.database.entities.VideoMetadataEntity
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +68,7 @@ class VideoMetadataCacheRepository(
       // Try cache first
       val cached = dao.getMetadata(path, dateModified, size)
       if (cached != null && !shouldRefreshCachedMetadata(file, cached)) {
+        PerformanceDiagnostics.record("metadata.cache.hit")
         Log.d(TAG, "Cache hit for $displayName")
         val metadata = MediaInfoOps.VideoMetadata(
           sizeBytes = cached.size,
@@ -87,6 +89,8 @@ class VideoMetadataCacheRepository(
       }
 
       // Cache miss - extract metadata
+      PerformanceDiagnostics.record("metadata.cache.miss")
+      val extractStarted = PerformanceDiagnostics.mark()
       Log.d(TAG, "Cache miss for $displayName, extracting metadata")
       val result = MediaInfoOps.extractBasicMetadata(context, uri, displayName)
 
@@ -111,6 +115,7 @@ class VideoMetadataCacheRepository(
           Log.w(TAG, "Failed to extract metadata for $displayName: ${error.message}")
         }
 
+      PerformanceDiagnostics.finish("metadata.extract", extractStarted, "success=${result.isSuccess}")
       result.getOrNull()
     }
 
@@ -156,6 +161,7 @@ class VideoMetadataCacheRepository(
         }
       }
 
+      PerformanceDiagnostics.record("metadata.cache.batch", "hits=${cachedFiles.size};misses=${uncachedFiles.size}")
       Log.d(TAG, "Batch lookup: ${cachedFiles.size} cached, ${uncachedFiles.size} need extraction")
 
       // Add cached results
@@ -220,7 +226,9 @@ class VideoMetadataCacheRepository(
 
         // Batch insert all extracted metadata into cache
         if (extractedMetadata.isNotEmpty()) {
+          val writeStarted = PerformanceDiagnostics.mark()
           dao.insertMetadataBatch(extractedMetadata)
+          PerformanceDiagnostics.finish("metadata.cache.write", writeStarted, "count=${extractedMetadata.size}")
           Log.d(TAG, "Batch inserted ${extractedMetadata.size} metadata entries to cache")
         }
       }

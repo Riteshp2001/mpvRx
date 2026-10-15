@@ -27,6 +27,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
 import app.gyrolet.mpvrx.di.PreferencesModule
@@ -128,6 +129,7 @@ class App :
       return
     }
 
+    PerformanceDiagnostics.initialize()
     configureDebugStrictMode()
 
     // Initialize Koin
@@ -363,6 +365,7 @@ class App :
   }
 
   override fun onActivityResumed(activity: Activity) {
+    PerformanceDiagnostics.onActivityResumed(activity)
     when (activity) {
       is PlayerActivity -> {
         PlaybackPerformanceTrace.mark("PLAYER_ACTIVITY_RESUMED")
@@ -383,7 +386,9 @@ class App :
     if (activity is PlayerActivity) PlaybackPerformanceTrace.begin("ON_PAUSE")
   }
 
-  override fun onActivityPaused(activity: Activity) = Unit
+  override fun onActivityPaused(activity: Activity) {
+    PerformanceDiagnostics.onActivityPaused(activity)
+  }
 
   override fun onActivityPostPaused(activity: Activity) {
     if (activity is PlayerActivity) PlaybackPerformanceTrace.end("ON_PAUSE")

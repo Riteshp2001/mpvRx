@@ -15,6 +15,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.domain.browser.FileSystemItem
 import app.gyrolet.mpvrx.domain.browser.PathComponent
@@ -95,6 +96,7 @@ object MediaFileRepository : KoinComponent {
    * Call this when media library changes are detected or when forcing a hard refresh
    */
   fun clearCache() {
+    PerformanceDiagnostics.record("cache.clear", "folder and tree scanners")
     Log.d(TAG, "Clearing all caches (FolderViewScanner + TreeViewScanner)")
     FolderViewScanner.clearCache()
     TreeViewScanner.clearCache()
@@ -102,10 +104,12 @@ object MediaFileRepository : KoinComponent {
 
   /** Invalidates only the album MediaStore snapshot, preserving tree and filesystem indexes. */
   fun invalidateFolderCache() {
+    PerformanceDiagnostics.record("cache.invalidate", "folder")
     FolderViewScanner.clearCache()
   }
 
   fun invalidateTreeCache() {
+    PerformanceDiagnostics.record("cache.invalidate", "tree")
     TreeViewScanner.clearCache()
   }
 

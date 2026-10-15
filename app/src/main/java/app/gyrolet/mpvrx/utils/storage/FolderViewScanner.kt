@@ -13,6 +13,7 @@ import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.database.dao.DirectoryScanDao
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
@@ -105,11 +106,13 @@ object FolderViewScanner {
     forceFileSystemCheck: Boolean = false,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
+      val started = PerformanceDiagnostics.mark()
       val now = System.currentTimeMillis()
 
       // Return cached data if still valid
       folderCache?.let { cached ->
         if (!forceFileSystemCheck && now - cached.createdAt < CACHE_TTL_MS && cached.optionsKey == options.cacheKey) {
+          PerformanceDiagnostics.finish("folder.scanner.memory.hit", started, "count=${cached.folders.size}")
           return@withContext cached.folders
         }
       }
@@ -142,6 +145,7 @@ object FolderViewScanner {
 
       // Update cache
       folderCache = FolderCache(result, now, options.cacheKey)
+      PerformanceDiagnostics.finish("folder.scanner.rebuild", started, "count=${result.size};forced=$forceFileSystemCheck")
 
       result
     }

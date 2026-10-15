@@ -53,6 +53,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +72,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.update.AppUpdateChannel
 import app.gyrolet.mpvrx.presentation.Screen
@@ -94,6 +98,8 @@ object AboutScreen : Screen {
   override fun Content() {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
+    var logoTaps by remember { mutableIntStateOf(0) }
+    var lastLogoTapAt by remember { mutableLongStateOf(0L) }
     val packageManager: PackageManager = context.packageManager
     val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
     val versionName =
@@ -196,7 +202,22 @@ object AboutScreen : Screen {
           ) {
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(64.dp)) {
+                Box(
+                  modifier = Modifier.size(64.dp).clickable {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    logoTaps = if (now - lastLogoTapAt <= 2_500L) logoTaps + 1 else 1
+                    lastLogoTapAt = now
+                    if (logoTaps == 7) {
+                      logoTaps = 0
+                      val active = PerformanceDiagnostics.toggle(context)
+                      Toast.makeText(
+                        context,
+                        if (active) "Performance overlay enabled" else "Performance overlay disabled",
+                        Toast.LENGTH_SHORT,
+                      ).show()
+                    }
+                  },
+                ) {
                   AndroidView(
                     modifier = Modifier.matchParentSize(),
                     factory = { ctx ->
