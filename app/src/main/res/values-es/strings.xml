@@ -2559,5 +2559,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="app_icon_logo_black">Negro</string>
   <string name="app_icon_logo_classic">Clásico</string>
   <string name="pref_hidden_scan_per_mode_title">Carpetas ocultas</string>
+  <string name="pref_hidden_scan_enable_in">Activar en</string>
   <string name="pref_hidden_scan_dot">Carpetas con punto</string>
 </resources>
