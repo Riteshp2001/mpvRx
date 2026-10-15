@@ -2462,4 +2462,6 @@
   <string name="app_icon_logo_white">सफ़ेद</string>
   <string name="app_icon_logo_black">काला</string>
   <string name="app_icon_logo_classic">क्लासिक</string>
+  <string name="pref_hidden_scan_markers_short">मार्कर</string>
+  <string name="pref_hidden_scan_dots_short">डॉट</string>
 </resources>
