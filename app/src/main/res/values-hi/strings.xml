@@ -2462,4 +2462,6 @@
   <string name="app_icon_logo_white">सफ़ेद</string>
   <string name="app_icon_logo_black">काला</string>
   <string name="app_icon_logo_classic">क्लासिक</string>
+  <string name="pref_hidden_scan_per_mode_title">छिपे फ़ोल्डर</string>
+  <string name="pref_hidden_scan_dot">डॉट फ़ोल्डर</string>
 </resources>
