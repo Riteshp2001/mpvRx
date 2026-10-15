@@ -220,6 +220,7 @@ fun PlayerControls(
   val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
   val enableLiquidGlass by appearancePreferences.liquidGlassEnabled.collectAsState()
+  val liquidGlassInHdr by appearancePreferences.liquidGlassInHdr.collectAsState()
   val forceDarkButtonBackground by appearancePreferences.forceDarkPlayerButtonsBackground.collectAsState()
   val portraitPlaybackControlsPosition by
     appearancePreferences.portraitPlaybackControlsPosition.collectAsState()
@@ -644,13 +645,24 @@ fun PlayerControls(
     rippleRequest = seekRippleRequest,
   )
 
-  val glassSource = rememberVideoGlassSource(videoSurface)
-  // Map the real TextureView GPU layer into the controls' window coordinates. All consumers
-  // share the same live layer; no snapshots, sampling cadence, or per-frame recomposition.
+  // A SurfaceView is rendered outside the Compose GPU scene and can never be sampled by Kyant.
+  // Also, after switching HDR / Liquid Glass modes, the new TextureView exists *before* its
+  // first video frame. Sampling that empty or stale layer produces the dark, distorted glass
+  // shown around controls, especially when HDR glass is disabled mid-playback.
+  val firstTextureFrameReady = videoSurface?.textureFrameReadyState?.collectAsState()?.value == true
+  val sampleVideoGlass =
+    enableLiquidGlass &&
+      videoSurface?.isTextureSurface == true &&
+      firstTextureFrameReady &&
+      (!isHdrOutputEnabled || liquidGlassInHdr)
+  val glassSource = rememberVideoGlassSource(videoSurface.takeIf { sampleVideoGlass })
+  // Reuse the live texture layer only when the current renderer actually supplies frames.
+  // When HDR uses SurfaceView, LiquidButton/playerGlassSurface use their capsule-clipped,
+  // translucent fallback instead of attempting to capture an unavailable video surface.
   val currentGlassSource by rememberUpdatedState(glassSource)
   val recordVideo: ContentDrawScope.() -> Unit = remember { { with(currentGlassSource) { drawVideo() } } }
   val videoBackdrop = rememberLayerBackdrop(onDraw = recordVideo)
-  val playerKyantBackdrop = if (enableLiquidGlass && glassSource.scene != null) videoBackdrop else null
+  val playerKyantBackdrop = videoBackdrop.takeIf { sampleVideoGlass && glassSource.scene != null }
 
   CompositionLocalProvider(
     LocalKyantPlayerBackdrop provides playerKyantBackdrop,
@@ -672,7 +684,9 @@ fun PlayerControls(
       animationState = videoOpenAnimState,
     )
     if (enableLiquidGlass) {
-      VideoGlassBackdropSource(glassSource, videoBackdrop)
+      if (playerKyantBackdrop != null) {
+        VideoGlassBackdropSource(glassSource, videoBackdrop)
+      }
       Box(
         modifier =
           Modifier
