@@ -647,6 +647,8 @@
   <string name="pref_hidden_scan_per_mode_title">Hidden folder scans by view</string>
   <string name="pref_hidden_scan_per_mode_summary">Choose whether each Home mode scans marker-hidden or dot-prefixed folders. Turning either off also skips that content during browsing. The switch above enables hidden media globally.</string>
   <string name="pref_hidden_scan_scoped_summary">Each view can include or skip dot-prefixed and marker-hidden folders inside your selected Android folder grants only. Unselected folders remain inaccessible.</string>
+  <string name="pref_hidden_scan_markers_short">Markers</string>
+  <string name="pref_hidden_scan_dots_short">Dot</string>
   <string name="pref_hidden_scan_library">Library</string>
   <string name="pref_hidden_scan_tree">Tree</string>
   <string name="pref_hidden_scan_folders">Folders</string>
