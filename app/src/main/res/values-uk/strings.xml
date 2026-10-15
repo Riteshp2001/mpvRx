@@ -2523,5 +2523,6 @@
   <string name="app_icon_logo_black">Чорний</string>
   <string name="app_icon_logo_classic">Класичний</string>
   <string name="pref_hidden_scan_per_mode_title">Приховані папки</string>
+  <string name="pref_hidden_scan_enable_in">Увімкнути в</string>
   <string name="pref_hidden_scan_dot">Папки з крапкою</string>
 </resources>
