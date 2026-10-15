@@ -62,23 +62,31 @@ class FoldersPreferences(
   val treeIgnoredMarkers = preferenceStore.getStringSet("hidden_scan_tree_ignored_markers", emptySet())
   val foldersIgnoredMarkers = preferenceStore.getStringSet("hidden_scan_folders_ignored_markers", emptySet())
 
-  fun ignoredMarkers(scope: HiddenScanScope): Set<String> = when (scope) {
-    HiddenScanScope.LIBRARY -> libraryIgnoredMarkers.get()
-    HiddenScanScope.TREE -> treeIgnoredMarkers.get()
-    HiddenScanScope.FOLDERS -> foldersIgnoredMarkers.get()
-  }
+  // A single compact control drives Library, Tree and Folders. Defaulting to the
+  // intersection of the legacy per-view settings is a conservative one-time migration:
+  // nothing the user previously disabled is silently re-enabled.
+  val sharedScanMarkedFolders = preferenceStore.getBoolean(
+    "hidden_scan_shared_markers",
+    libraryScanMarkedFolders.get() && treeScanMarkedFolders.get() && foldersScanMarkedFolders.get(),
+  )
+  val sharedScanDotFolders = preferenceStore.getBoolean(
+    "hidden_scan_shared_dot_folders",
+    libraryScanDotFolders.get() && treeScanDotFolders.get() && foldersScanDotFolders.get(),
+  )
+  val sharedIgnoredMarkers = preferenceStore.getStringSet(
+    "hidden_scan_shared_ignored_markers",
+    libraryIgnoredMarkers.get() + treeIgnoredMarkers.get() + foldersIgnoredMarkers.get(),
+  )
 
-  fun scanMarkedFolders(scope: HiddenScanScope): Boolean = when (scope) {
-    HiddenScanScope.LIBRARY -> libraryScanMarkedFolders.get()
-    HiddenScanScope.TREE -> treeScanMarkedFolders.get()
-    HiddenScanScope.FOLDERS -> foldersScanMarkedFolders.get()
-  }
+  // Keep the scope parameter for existing scanner callers; all three use one policy now.
+  @Suppress("UNUSED_PARAMETER")
+  fun ignoredMarkers(scope: HiddenScanScope): Set<String> = sharedIgnoredMarkers.get()
 
-  fun scanDotFolders(scope: HiddenScanScope): Boolean = when (scope) {
-    HiddenScanScope.LIBRARY -> libraryScanDotFolders.get()
-    HiddenScanScope.TREE -> treeScanDotFolders.get()
-    HiddenScanScope.FOLDERS -> foldersScanDotFolders.get()
-  }
+  @Suppress("UNUSED_PARAMETER")
+  fun scanMarkedFolders(scope: HiddenScanScope): Boolean = sharedScanMarkedFolders.get()
+
+  @Suppress("UNUSED_PARAMETER")
+  fun scanDotFolders(scope: HiddenScanScope): Boolean = sharedScanDotFolders.get()
 
   fun enabledMarkerNames(scope: HiddenScanScope): Set<String> =
     if (scanMarkedFolders(scope)) hiddenFolderMarkerNames.get() - ignoredMarkers(scope) else emptySet()
