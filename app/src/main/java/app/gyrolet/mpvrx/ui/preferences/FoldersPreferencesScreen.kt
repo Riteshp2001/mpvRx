@@ -80,7 +80,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.RadioButton
 import app.gyrolet.mpvrx.preferences.BlacklistScope
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
@@ -519,6 +518,39 @@ private fun PlayStoreHiddenFolderCard(
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
+    }
+  }
+}
+
+/** Connected, neutral settings row: the accent belongs to the switch, not the entire card. */
+@Composable
+private fun CompactHiddenScanOption(
+  title: String,
+  checked: Boolean,
+  enabled: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+  shape: Shape,
+) {
+  Card(
+    modifier = Modifier.fillMaxWidth(),
+    shape = shape,
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .clickable(enabled = enabled) { onCheckedChange(!checked) }
+        .padding(horizontal = 12.dp, vertical = 6.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Text(
+        text = title,
+        style = MaterialTheme.typography.bodyMediumEmphasized,
+        modifier = Modifier.weight(1f),
+        maxLines = 1,
+      )
+      IconSwitch(checked = checked, enabled = enabled, onCheckedChange = onCheckedChange)
     }
   }
 }
