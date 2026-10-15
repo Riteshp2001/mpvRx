@@ -123,15 +123,9 @@ object FoldersPreferencesScreen : Screen {
     val includeNoMediaFolders by preferences.includeNoMediaFolders.collectAsState()
     val hiddenFolderMarkerNames by preferences.hiddenFolderMarkerNames.collectAsState()
     val scopedHiddenFolderUris by preferences.scopedHiddenFolderUris.collectAsState()
-    val libraryMarkers by preferences.libraryScanMarkedFolders.collectAsState()
-    val libraryDotFolders by preferences.libraryScanDotFolders.collectAsState()
-    val treeMarkers by preferences.treeScanMarkedFolders.collectAsState()
-    val treeDotFolders by preferences.treeScanDotFolders.collectAsState()
-    val folderMarkers by preferences.foldersScanMarkedFolders.collectAsState()
-    val folderDotFolders by preferences.foldersScanDotFolders.collectAsState()
-    val libraryIgnoredMarkers by preferences.libraryIgnoredMarkers.collectAsState()
-    val treeIgnoredMarkers by preferences.treeIgnoredMarkers.collectAsState()
-    val foldersIgnoredMarkers by preferences.foldersIgnoredMarkers.collectAsState()
+    val scanMarkers by preferences.sharedScanMarkedFolders.collectAsState()
+    val scanDotFolders by preferences.sharedScanDotFolders.collectAsState()
+    val ignoredMarkers by preferences.sharedIgnoredMarkers.collectAsState()
     fun onScanPreferenceChanged() {
       app.gyrolet.mpvrx.repository.MediaFileRepository.clearCache()
       MediaLibraryEvents.notifyChanged()
@@ -236,14 +230,13 @@ object FoldersPreferencesScreen : Screen {
           )
 
           if (BuildConfig.SCOPED_STORAGE_ONLY) {
-            // This Play Store-only UI intentionally cannot request broad storage access.
+            // SAF scanning remains restricted to folders explicitly selected by the user.
             PlayStoreHiddenFolderCard(
               enabled = includeNoMediaFolders,
               grantedTreeUris = scopedHiddenFolderUris,
               onEnabledChange = { enabled ->
                 preferences.includeNoMediaFolders.set(enabled)
-                app.gyrolet.mpvrx.repository.MediaFileRepository.clearCache()
-                MediaLibraryEvents.notifyChanged()
+                onScanPreferenceChanged()
               },
               onAddFolder = {
                 scopedTreePicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(
@@ -259,101 +252,34 @@ object FoldersPreferencesScreen : Screen {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                   )
                 }
-                app.gyrolet.mpvrx.repository.MediaFileRepository.clearCache()
-                MediaLibraryEvents.notifyChanged()
-              },
-            )
-            // Scoped builds also support user-defined marker names, but scan only SAF grants.
-            NoMediaPreferenceCard(
-              includeNoMediaFolders = includeNoMediaFolders,
-              markerNames = hiddenFolderMarkerNames,
-              onIncludeNoMediaFoldersChanged = { },
-              onMarkerNamesChanged = { names ->
-                preferences.hiddenFolderMarkerNames.set(names)
                 onScanPreferenceChanged()
-              },
-              showMasterToggle = false,
-            )
-          } else {
-            NoMediaPreferenceCard(
-              modifier = Modifier.settingsSearchTarget(R.string.pref_folders_include_hidden_title),
-              includeNoMediaFolders = includeNoMediaFolders,
-              markerNames = hiddenFolderMarkerNames,
-              onIncludeNoMediaFoldersChanged = { enabled ->
-                preferences.includeNoMediaFolders.set(enabled)
-                app.gyrolet.mpvrx.repository.MediaFileRepository
-                  .clearCache()
-                MediaLibraryEvents.notifyChanged()
-              },
-              onMarkerNamesChanged = { markerNames ->
-                preferences.hiddenFolderMarkerNames.set(markerNames)
-                app.gyrolet.mpvrx.repository.MediaFileRepository
-                  .clearCache()
-                MediaLibraryEvents.notifyChanged()
               },
             )
           }
 
-          Spacer(modifier = Modifier.height(12.dp))
-          Text(
-            stringResource(R.string.pref_hidden_scan_per_mode_title),
-            style = MaterialTheme.typography.titleMediumEmphasized,
-          )
-          Text(
-            stringResource(
-              if (BuildConfig.SCOPED_STORAGE_ONLY) R.string.pref_hidden_scan_scoped_summary
-              else R.string.pref_hidden_scan_per_mode_summary,
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-          HiddenScanModeCard(
-            title = stringResource(R.string.pref_hidden_scan_library),
-            markerEnabled = libraryMarkers,
-            dotEnabled = libraryDotFolders,
+          // One unified compact group; these settings apply to Library, Tree AND Folders.
+          HiddenScanSettingsCard(
             enabled = includeNoMediaFolders,
-            onMarkerChanged = { preferences.libraryScanMarkedFolders.set(it); onScanPreferenceChanged() },
-            onDotChanged = { preferences.libraryScanDotFolders.set(it); onScanPreferenceChanged() },
-            markerNames = hiddenFolderMarkerNames.sorted(),
-            ignoredMarkers = libraryIgnoredMarkers,
+            showMasterToggle = !BuildConfig.SCOPED_STORAGE_ONLY,
+            onEnabledChange = { preferences.includeNoMediaFolders.set(it); onScanPreferenceChanged() },
+            markerEnabled = scanMarkers,
+            onMarkerChanged = { preferences.sharedScanMarkedFolders.set(it); onScanPreferenceChanged() },
+            dotEnabled = scanDotFolders,
+            onDotChanged = { preferences.sharedScanDotFolders.set(it); onScanPreferenceChanged() },
+            markerNames = hiddenFolderMarkerNames,
+            ignoredMarkers = ignoredMarkers,
             onIndividualMarkerChanged = { marker, checked ->
-              preferences.libraryIgnoredMarkers.set(
-                if (checked) libraryIgnoredMarkers - marker else libraryIgnoredMarkers + marker,
+              preferences.sharedIgnoredMarkers.set(
+                if (checked) ignoredMarkers - marker else ignoredMarkers + marker,
               )
               onScanPreferenceChanged()
             },
-          )
-          HiddenScanModeCard(
-            title = stringResource(R.string.pref_hidden_scan_tree),
-            markerEnabled = treeMarkers,
-            dotEnabled = treeDotFolders,
-            enabled = includeNoMediaFolders,
-            onMarkerChanged = { preferences.treeScanMarkedFolders.set(it); onScanPreferenceChanged() },
-            onDotChanged = { preferences.treeScanDotFolders.set(it); onScanPreferenceChanged() },
-            markerNames = hiddenFolderMarkerNames.sorted(),
-            ignoredMarkers = treeIgnoredMarkers,
-            onIndividualMarkerChanged = { marker, checked ->
-              preferences.treeIgnoredMarkers.set(
-                if (checked) treeIgnoredMarkers - marker else treeIgnoredMarkers + marker,
-              )
+            onMarkerNamesChanged = { markers ->
+              preferences.hiddenFolderMarkerNames.set(markers)
+              preferences.sharedIgnoredMarkers.set(ignoredMarkers.intersect(markers))
               onScanPreferenceChanged()
             },
-          )
-          HiddenScanModeCard(
-            title = stringResource(R.string.pref_hidden_scan_folders),
-            markerEnabled = folderMarkers,
-            dotEnabled = folderDotFolders,
-            enabled = includeNoMediaFolders,
-            onMarkerChanged = { preferences.foldersScanMarkedFolders.set(it); onScanPreferenceChanged() },
-            onDotChanged = { preferences.foldersScanDotFolders.set(it); onScanPreferenceChanged() },
-            markerNames = hiddenFolderMarkerNames.sorted(),
-            ignoredMarkers = foldersIgnoredMarkers,
-            onIndividualMarkerChanged = { marker, checked ->
-              preferences.foldersIgnoredMarkers.set(
-                if (checked) foldersIgnoredMarkers - marker else foldersIgnoredMarkers + marker,
-              )
-              onScanPreferenceChanged()
-            },
+            modifier = Modifier.settingsSearchTarget(R.string.pref_hidden_scan_per_mode_title),
           )
 
           Spacer(modifier = Modifier.height(16.dp))
@@ -597,74 +523,30 @@ private fun PlayStoreHiddenFolderCard(
   }
 }
 
+/**
+ * Compact Material 3 Expressive group shared by all three Home browser modes.
+ * A marker can be opted out individually without three duplicated settings stacks.
+ */
 @Composable
-private fun HiddenScanModeCard(
-  title: String,
-  markerEnabled: Boolean,
-  dotEnabled: Boolean,
+private fun HiddenScanSettingsCard(
   enabled: Boolean,
+  showMasterToggle: Boolean,
+  onEnabledChange: (Boolean) -> Unit,
+  markerEnabled: Boolean,
   onMarkerChanged: (Boolean) -> Unit,
+  dotEnabled: Boolean,
   onDotChanged: (Boolean) -> Unit,
-  markerNames: List<String>,
+  markerNames: Set<String>,
   ignoredMarkers: Set<String>,
   onIndividualMarkerChanged: (String, Boolean) -> Unit,
-) {
-  Card(
-    modifier = Modifier.fillMaxWidth(),
-    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    shape = MaterialTheme.shapes.large,
-  ) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-      Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-      )
-      SwitchPreference(
-        value = markerEnabled,
-        onValueChange = onMarkerChanged,
-        enabled = enabled,
-        title = { Text(stringResource(R.string.pref_hidden_scan_marked)) },
-        summary = { Text(stringResource(R.string.pref_hidden_scan_marked_summary)) },
-      )
-      if (markerNames.isNotEmpty()) {
-        markerNames.forEach { marker ->
-          SwitchPreference(
-            value = markerEnabled && marker !in ignoredMarkers,
-            onValueChange = { checked -> onIndividualMarkerChanged(marker, checked) },
-            enabled = enabled && markerEnabled,
-            title = { Text(marker) },
-            summary = { Text(stringResource(R.string.pref_hidden_scan_single_marker_summary)) },
-          )
-        }
-      }
-      SwitchPreference(
-        value = dotEnabled,
-        onValueChange = onDotChanged,
-        enabled = enabled,
-        title = { Text(stringResource(R.string.pref_hidden_scan_dot)) },
-        summary = { Text(stringResource(R.string.pref_hidden_scan_dot_summary)) },
-      )
-    }
-  }
-}
-
-@Composable
-private fun NoMediaPreferenceCard(
-  includeNoMediaFolders: Boolean,
-  markerNames: Set<String>,
-  onIncludeNoMediaFoldersChanged: (Boolean) -> Unit,
   onMarkerNamesChanged: (Set<String>) -> Unit,
   modifier: Modifier = Modifier,
-  showMasterToggle: Boolean = true,
 ) {
   var showAddMarkerDialog by remember { mutableStateOf(false) }
   var markerInput by remember { mutableStateOf("") }
   var addedMarker by remember { mutableStateOf<String?>(null) }
   val markerListState = rememberLazyListState()
-
   val orderedMarkers = remember(markerNames) { markerNames.sorted() }
-  // Sorted order can place a newly added marker off-screen.
   LaunchedEffect(orderedMarkers, addedMarker) {
     val index = addedMarker?.let { orderedMarkers.indexOf(it) } ?: -1
     if (index >= 0) {
@@ -673,119 +555,102 @@ private fun NoMediaPreferenceCard(
     }
   }
 
-  Column(
+  Card(
     modifier = modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+    shape = MaterialTheme.shapes.extraLarge,
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
   ) {
-    if (showMasterToggle) Card(
-      modifier = Modifier.fillMaxWidth(),
-      shape = rememberConnectedShape(0, 2, ConnectedLayout.Vertical),
-      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    Column(
+      modifier = Modifier.fillMaxWidth().padding(12.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .clickable { onIncludeNoMediaFoldersChanged(!includeNoMediaFolders) }
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
           Text(
-            text = stringResource(R.string.pref_folders_include_hidden_title),
-            style = MaterialTheme.typography.titleMediumEmphasized,
+            text = stringResource(R.string.pref_hidden_scan_per_mode_title),
+            style = MaterialTheme.typography.titleSmallEmphasized,
+            maxLines = 1,
           )
-          Spacer(modifier = Modifier.height(4.dp))
           Text(
-            text = stringResource(R.string.pref_folders_include_hidden_summary),
-            style = MaterialTheme.typography.bodySmall,
+            text = listOf(
+              stringResource(R.string.pref_hidden_scan_library),
+              stringResource(R.string.pref_hidden_scan_tree),
+              stringResource(R.string.pref_hidden_scan_folders),
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
           )
         }
-        IconSwitch(
-          checked = includeNoMediaFolders,
-          onCheckedChange = onIncludeNoMediaFoldersChanged,
+        if (showMasterToggle) {
+          IconSwitch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+      }
+
+      Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
+        CompactHiddenScanOption(
+          title = stringResource(R.string.pref_folders_hidden_markers_title),
+          checked = markerEnabled,
+          enabled = enabled,
+          onCheckedChange = onMarkerChanged,
+          shape = rememberConnectedShape(0, 2, ConnectedLayout.Vertical),
+        )
+        CompactHiddenScanOption(
+          title = stringResource(R.string.pref_hidden_scan_dot),
+          checked = dotEnabled,
+          enabled = enabled,
+          onCheckedChange = onDotChanged,
+          shape = rememberConnectedShape(1, 2, ConnectedLayout.Vertical),
         )
       }
-    }
 
-    Card(
-      modifier = Modifier.fillMaxWidth(),
-      shape = rememberConnectedShape(
-        if (showMasterToggle) 1 else 0,
-        if (showMasterToggle) 2 else 1,
-        ConnectedLayout.Vertical,
-      ),
-      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
+      // Individual markers are small selectable chips instead of a third switch row per marker.
+      LazyRow(
+        state = markerListState,
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = stringResource(R.string.pref_folders_hidden_markers_title),
-            style = MaterialTheme.typography.titleMediumEmphasized,
-          )
-          Spacer(modifier = Modifier.height(4.dp))
-          Text(
-            text = if (orderedMarkers.isEmpty()) {
-              stringResource(R.string.pref_folders_hidden_markers_empty)
-            } else {
-              stringResource(R.string.pref_folders_hidden_markers_summary)
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        IconButton(
-          onClick = {
-            markerInput = ""
-            showAddMarkerDialog = true
-          },
-          shapes = IconButtonDefaults.shapes(),
-          enabled = includeNoMediaFolders,
-          colors = IconButtonDefaults.filledTonalIconButtonColors(),
-        ) {
-          Icon(Icons.RoundedFilled.Add, contentDescription = stringResource(R.string.pref_folders_add_marker))
-        }
-      }
-
-      if (orderedMarkers.isNotEmpty()) {
-        LazyRow(
-          state = markerListState,
-          modifier = Modifier.fillMaxWidth(),
-          contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          items(orderedMarkers, key = { it }) { markerName ->
-            InputChip(
-              selected = false,
-              onClick = { onMarkerNamesChanged(markerNames - markerName) },
-              label = { Text(markerName, maxLines = 1) },
-              modifier =
-                Modifier.animateItem(
-                  fadeInSpec = AppMotion.Effect.Alpha,
-                  placementSpec = AppMotion.spatial(AppMotion.Spatial.ExpressiveOffset, AppMotion.ReducedOffset),
-                  fadeOutSpec = AppMotion.Effect.Alpha,
-                ),
-              trailingIcon = {
+        items(orderedMarkers, key = { it }) { marker ->
+          InputChip(
+            selected = markerEnabled && marker !in ignoredMarkers,
+            enabled = enabled && markerEnabled,
+            onClick = { onIndividualMarkerChanged(marker, marker in ignoredMarkers) },
+            label = { Text(marker, maxLines = 1) },
+            trailingIcon = {
+              IconButton(
+                modifier = Modifier.size(24.dp),
+                onClick = { onMarkerNamesChanged(markerNames - marker) },
+              ) {
                 Icon(
                   Icons.RoundedFilled.Close,
-                  contentDescription = stringResource(R.string.pref_folders_remove_marker, markerName),
-                  modifier = Modifier.size(InputChipDefaults.IconSize),
+                  contentDescription = stringResource(R.string.pref_folders_remove_marker, marker),
+                  modifier = Modifier.size(14.dp),
                 )
-              },
-              shape = CircleShape,
-              colors =
-                InputChipDefaults.inputChipColors(
-                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                  labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                  trailingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-              border = null,
+              }
+            },
+            colors = InputChipDefaults.inputChipColors(
+              containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+              selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+            ),
+          )
+        }
+        item(key = "add-marker") {
+          IconButton(
+            onClick = {
+              markerInput = ""
+              showAddMarkerDialog = true
+            },
+            enabled = enabled,
+            colors = IconButtonDefaults.filledTonalIconButtonColors(),
+            modifier = Modifier.size(40.dp),
+          ) {
+            Icon(
+              Icons.RoundedFilled.Add,
+              contentDescription = stringResource(R.string.pref_folders_add_marker),
             )
           }
         }
