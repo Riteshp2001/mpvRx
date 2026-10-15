@@ -133,7 +133,10 @@ object FolderViewScanner {
       if (forceFileSystemCheck || allFolders.isEmpty()) {
         scanFileSystemRoots(context, allFolders, options, noMediaPathFilter, forceFileSystemCheck)
       } else {
-        PerformanceDiagnostics.record("folder.scanner.filesystem.skipped", "folders=${allFolders.size}")
+        // Keep unindexed USB/SD videos discoverable without rescanning the entire
+        // primary storage whenever the normal MediaStore-backed library is refreshed.
+        scanUnindexedExternalVolumes(context, allFolders, options, noMediaPathFilter)
+        PerformanceDiagnostics.record("folder.scanner.primary.filesystem.skipped", "folders=${allFolders.size}")
       }
 
       // Convert to VideoFolder list
@@ -940,6 +943,39 @@ object FolderViewScanner {
       throw cancellation
     } catch (e: Exception) {
       Log.e(TAG, "Filesystem folder scan error", e)
+    }
+  }
+
+  /**
+   * USB/SD volumes may not be registered with MediaStore on every Android device.
+   * Only fall back to a filesystem walk for removable volumes with no indexed media.
+   */
+  private suspend fun scanUnindexedExternalVolumes(
+    context: Context,
+    folders: MutableMap<String, FolderData>,
+    options: MediaScanOptions,
+    noMediaPathFilter: NoMediaPathFilter,
+  ) {
+    if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) return
+    val visitedDirectories = mutableSetOf<String>()
+    for (volume in StorageVolumeUtils.getExternalStorageVolumes(context)) {
+      currentCoroutineContext().ensureActive()
+      val path = StorageVolumeUtils.getVolumePath(volume) ?: continue
+      val normalizedPath = normalizeStoragePath(path) ?: continue
+      if (folders.values.any { it.path == normalizedPath || it.path.startsWith("$normalizedPath/") }) {
+        continue
+      }
+      val root = File(path)
+      if (!root.isDirectory || !root.canRead()) continue
+      PerformanceDiagnostics.record("folder.scanner.external.fallback", "unindexed volume")
+      scanDirectoryRecursive(
+        root,
+        folders,
+        maxDepth = 20,
+        options = options,
+        noMediaPathFilter = noMediaPathFilter,
+        visitedDirectories = visitedDirectories,
+      )
     }
   }
 
