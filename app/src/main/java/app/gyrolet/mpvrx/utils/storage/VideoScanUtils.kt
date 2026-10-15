@@ -768,12 +768,12 @@ object FileFilterUtils {
     if (isAndroidDataAccessiblePath(folder)) {
       // Allow navigation/scanning into Android/data so app-specific video folders
       // can appear in both the folder list and filesystem browser.
-      return folder.name.startsWith(".") && !options.includeNoMediaFolders
+      return folder.name.startsWith(".") && !options.includeDotFolders
     }
 
     val name = folder.name.lowercase()
     val isHidden = name.startsWith(".")
-    return (isHidden && !options.includeNoMediaFolders) || SKIP_FOLDERS.contains(name)
+    return (isHidden && !options.includeDotFolders) || SKIP_FOLDERS.contains(name)
   }
 
   /**
@@ -784,7 +784,7 @@ object FileFilterUtils {
     options: MediaScanOptions = MediaScanOptions(),
     noMediaPathFilter: NoMediaPathFilter = NoMediaPathFilter(options),
   ): Boolean {
-    if (file.name.startsWith(".")) {
+    if (file.name.startsWith(".") && !options.includeDotFolders) {
       return true
     }
 
