@@ -16,7 +16,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
-import app.gyrolet.mpvrx.debug.PerformanceDiagnostics
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
@@ -221,8 +220,6 @@ class VideoListViewModel(
 
   private fun loadVideos(forceFileSystemCheck: Boolean = false) {
     viewModelScope.launch(Dispatchers.IO) {
-      val scanStarted = PerformanceDiagnostics.mark()
-      PerformanceDiagnostics.record("list.load.start", "forced=$forceFileSystemCheck;audio=$includeAudio")
       try {
         // First attempt to load videos (basic info from MediaStore)
         var videoList =
@@ -299,21 +296,17 @@ class VideoListViewModel(
           previousVideoCount = retryVideoList.size
 
           _videos.value = retryVideoList
-          PerformanceDiagnostics.record("list.items", "count=${retryVideoList.size};retried=true")
           loadPlaybackInfo(retryVideoList)
         } else {
           _videos.value = videoList
-          PerformanceDiagnostics.record("list.items", "count=${videoList.size};retried=false")
           loadPlaybackInfo(videoList)
         }
       } catch (e: Exception) {
-        PerformanceDiagnostics.record("list.load.error", e.javaClass.simpleName)
         Log.e(tag, "Error loading videos for bucket $bucketId", e)
         _videos.value = emptyList()
         _videosWithPlaybackInfo.value = emptyList()
       } finally {
         _isLoading.value = false
-        PerformanceDiagnostics.finish("list.load", scanStarted, "count=${_videos.value.size};forced=$forceFileSystemCheck")
       }
     }
   }
