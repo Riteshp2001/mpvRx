@@ -72,9 +72,11 @@ object MediaFileRepository : KoinComponent {
     MediaScanOptions(
       // Scoped builds discover unindexed folders only through explicit user-granted SAF trees.
       includeNoMediaFolders = !BuildConfig.SCOPED_STORAGE_ONLY &&
-        foldersPreferences.includeNoMediaFolders.get() && foldersPreferences.scanMarkedFolders(scope),
+        foldersPreferences.includeNoMediaFolders.get() && foldersPreferences.isModeScanEnabled(scope) &&
+        foldersPreferences.scanMarkedFolders(scope),
       includeDotFolders = !BuildConfig.SCOPED_STORAGE_ONLY &&
-        foldersPreferences.includeNoMediaFolders.get() && foldersPreferences.scanDotFolders(scope),
+        foldersPreferences.includeNoMediaFolders.get() && foldersPreferences.isModeScanEnabled(scope) &&
+        foldersPreferences.scanDotFolders(scope),
       hiddenFolderMarkerNames = foldersPreferences.hiddenFolderMarkerNames.get(),
       ignoredHiddenMarkerNames = foldersPreferences.ignoredMarkers(scope),
       includeAudio = includeAudioOverride ?: browserPreferences.includeAudioBrowser.get(),
