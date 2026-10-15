@@ -158,6 +158,7 @@ class FolderListViewModel(
           foldersPreferences.hiddenFolderMarkerNames.changes(),
           foldersPreferences.foldersScanMarkedFolders.changes(),
           foldersPreferences.foldersScanDotFolders.changes(),
+          foldersPreferences.foldersIgnoredMarkers.changes(),
           browserPreferences.includeAudioBrowser.changes(),
           browserPreferences.minimumAudioDurationSeconds.changes(),
         ) { _ -> Unit }
@@ -288,6 +289,7 @@ class FolderListViewModel(
       "_${if (foldersPreferences.includeNoMediaFolders.get()) "with_nomedia" else "exclude_nomedia"}" +
       "_m${foldersPreferences.foldersScanMarkedFolders.get()}_d${foldersPreferences.foldersScanDotFolders.get()}" +
       "_markers${foldersPreferences.hiddenFolderMarkerNames.get().sorted().joinToString(",")}" +
+      "_ignore${foldersPreferences.foldersIgnoredMarkers.get().sorted().joinToString(",")}" +
       "_audio_${browserPreferences.includeAudioBrowser.get()}_${browserPreferences.minimumAudioDurationSeconds.get()}"
 
   private fun serializeFoldersToJson(folders: List<VideoFolder>): String {
@@ -448,7 +450,8 @@ class FolderListViewModel(
     if (audioOnly || currentScanJob?.isActive == true ||
       !foldersPreferences.hiddenScanEnabled(HiddenScanScope.FOLDERS)) return
 
-    val markerNames = foldersPreferences.hiddenFolderMarkerNames.get()
+    val markerNames = foldersPreferences.hiddenFolderMarkerNames.get() -
+      foldersPreferences.foldersIgnoredMarkers.get()
       .map { it.trim() }
       .filter { it.isNotEmpty() && '/' !in it && '\\' !in it }
       .map { if (it.startsWith(".")) it else ".$it" }
