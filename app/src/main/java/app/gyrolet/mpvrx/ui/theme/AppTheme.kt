@@ -673,8 +673,10 @@ enum class AppTheme(
       background = Color.Black,
       surface = Color.Black,
       surfaceVariant = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1A1A1A)),
-      surfaceContainer = Color(0xFF0A0A0A),
-      surfaceContainerLow = Color(0xFF050505),
+      // Consistent lifted surface for settings and connected controls in AMOLED;
+      // only the page background and lowest level stay pure black.
+      surfaceContainer = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
+      surfaceContainerLow = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
       surfaceContainerLowest = Color.Black,
       surfaceContainerHigh = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
       surfaceContainerHighest = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1F1F1F)),
