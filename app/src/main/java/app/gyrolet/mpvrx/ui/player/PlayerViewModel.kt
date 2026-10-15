@@ -2204,6 +2204,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
 
   @Volatile private var lastAmbientScaleX = -1.0
   @Volatile private var lastAmbientScaleY = -1.0
+  @Volatile private var lastAmbientBlendMode: String? = null
   private var ambientDebounceJob: kotlinx.coroutines.Job? = null
   private val ambientScheduleLock = Any()
   private val ambientRenderLock = Any()
@@ -7464,6 +7465,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
       }
       lastAmbientScaleX = 1.0
       lastAmbientScaleY = 1.0
+      lastAmbientBlendMode = "no"
     }
   }
 
@@ -7950,15 +7952,22 @@ val isBrightnessSliderShown = MutableStateFlow(false)
           if (kotlin.math.abs(lastAmbientScaleY - scaleY) > 0.000001) {
             PlaybackSession.setPropertyDouble("video-scale-y", scaleY)
           }
-          applySubtitleBlendMode()
-          // PlaybackSession atomically replaces the previous Ambient shader and its scale.
-          // Removing it here first resets video geometry between the two commands, exposing
-          // a differently sized frame/subtitle canvas during every style or parameter update.
-          val previousFile = ambientShaderFile
+          val blendMode = subtitleBlendMode()
+          if (lastAmbientBlendMode != blendMode) {
+            PlaybackSession.setPropertyString("blend-subtitles", blendMode)
+          }
+          // Fix shader leak: explicitly remove the previous ambient shader from mpv's
+          // glsl-shaders list before appending the new one. Previously only the file was
+          // deleted from disk while mpv's list kept the stale path, causing duplicate
+          // ambient passes to accumulate on every slider drag / orientation flip.
+          ambientShaderFile?.let { old ->
+            runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", old.absolutePath) }
+            old.delete()
+          }
           PlaybackSession.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
-          previousFile?.delete()
           lastAmbientScaleX = scaleX
           lastAmbientScaleY = scaleY
+          lastAmbientBlendMode = blendMode
           ambientShaderFile = newFile
           lastCompiledSpec = spec
           lastCompiledFxSpec = null // clear fx cache when Glow is active
@@ -8014,13 +8023,18 @@ val isBrightnessSliderShown = MutableStateFlow(false)
           if (kotlin.math.abs(lastAmbientScaleY - sy) > 0.000001) {
             PlaybackSession.setPropertyDouble("video-scale-y", sy)
           }
-          applySubtitleBlendMode()
-          // Use the same atomic replacement as Glow; only discard the old file after install.
-          val previousFile = ambientShaderFile
+          val blendMode = subtitleBlendMode()
+          if (lastAmbientBlendMode != blendMode) {
+            PlaybackSession.setPropertyString("blend-subtitles", blendMode)
+          }
+          ambientShaderFile?.let { old ->
+            runCatching { PlaybackSession.command("change-list", "glsl-shaders", "remove", old.absolutePath) }
+            old.delete()
+          }
           PlaybackSession.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
-          previousFile?.delete()
           lastAmbientScaleX = sx
           lastAmbientScaleY = sy
+          lastAmbientBlendMode = blendMode
           ambientShaderFile = newFile
           lastCompiledFxSpec = fxSpec
           lastCompiledSpec = null // clear Glow cache when fx mode is active
