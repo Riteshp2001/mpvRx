@@ -129,6 +129,9 @@ object FoldersPreferencesScreen : Screen {
     val treeDotFolders by preferences.treeScanDotFolders.collectAsState()
     val folderMarkers by preferences.foldersScanMarkedFolders.collectAsState()
     val folderDotFolders by preferences.foldersScanDotFolders.collectAsState()
+    val libraryIgnoredMarkers by preferences.libraryIgnoredMarkers.collectAsState()
+    val treeIgnoredMarkers by preferences.treeIgnoredMarkers.collectAsState()
+    val foldersIgnoredMarkers by preferences.foldersIgnoredMarkers.collectAsState()
     fun onScanPreferenceChanged() {
       app.gyrolet.mpvrx.repository.MediaFileRepository.clearCache()
       MediaLibraryEvents.notifyChanged()
@@ -311,6 +314,14 @@ object FoldersPreferencesScreen : Screen {
             enabled = includeNoMediaFolders,
             onMarkerChanged = { preferences.libraryScanMarkedFolders.set(it); onScanPreferenceChanged() },
             onDotChanged = { preferences.libraryScanDotFolders.set(it); onScanPreferenceChanged() },
+            markerNames = hiddenFolderMarkerNames.sorted(),
+            ignoredMarkers = libraryIgnoredMarkers,
+            onIndividualMarkerChanged = { marker, checked ->
+              preferences.libraryIgnoredMarkers.set(
+                if (checked) libraryIgnoredMarkers - marker else libraryIgnoredMarkers + marker,
+              )
+              onScanPreferenceChanged()
+            },
           )
           HiddenScanModeCard(
             title = stringResource(R.string.pref_hidden_scan_tree),
@@ -319,6 +330,14 @@ object FoldersPreferencesScreen : Screen {
             enabled = includeNoMediaFolders,
             onMarkerChanged = { preferences.treeScanMarkedFolders.set(it); onScanPreferenceChanged() },
             onDotChanged = { preferences.treeScanDotFolders.set(it); onScanPreferenceChanged() },
+            markerNames = hiddenFolderMarkerNames.sorted(),
+            ignoredMarkers = treeIgnoredMarkers,
+            onIndividualMarkerChanged = { marker, checked ->
+              preferences.treeIgnoredMarkers.set(
+                if (checked) treeIgnoredMarkers - marker else treeIgnoredMarkers + marker,
+              )
+              onScanPreferenceChanged()
+            },
           )
           HiddenScanModeCard(
             title = stringResource(R.string.pref_hidden_scan_folders),
@@ -327,6 +346,14 @@ object FoldersPreferencesScreen : Screen {
             enabled = includeNoMediaFolders,
             onMarkerChanged = { preferences.foldersScanMarkedFolders.set(it); onScanPreferenceChanged() },
             onDotChanged = { preferences.foldersScanDotFolders.set(it); onScanPreferenceChanged() },
+            markerNames = hiddenFolderMarkerNames.sorted(),
+            ignoredMarkers = foldersIgnoredMarkers,
+            onIndividualMarkerChanged = { marker, checked ->
+              preferences.foldersIgnoredMarkers.set(
+                if (checked) foldersIgnoredMarkers - marker else foldersIgnoredMarkers + marker,
+              )
+              onScanPreferenceChanged()
+            },
           )
 
           Spacer(modifier = Modifier.height(16.dp))
@@ -578,6 +605,9 @@ private fun HiddenScanModeCard(
   enabled: Boolean,
   onMarkerChanged: (Boolean) -> Unit,
   onDotChanged: (Boolean) -> Unit,
+  markerNames: List<String>,
+  ignoredMarkers: Set<String>,
+  onIndividualMarkerChanged: (String, Boolean) -> Unit,
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -597,6 +627,17 @@ private fun HiddenScanModeCard(
         title = { Text(stringResource(R.string.pref_hidden_scan_marked)) },
         summary = { Text(stringResource(R.string.pref_hidden_scan_marked_summary)) },
       )
+      if (markerNames.isNotEmpty()) {
+        markerNames.forEach { marker ->
+          SwitchPreference(
+            value = markerEnabled && marker !in ignoredMarkers,
+            onValueChange = { checked -> onIndividualMarkerChanged(marker, checked) },
+            enabled = enabled && markerEnabled,
+            title = { Text(marker) },
+            summary = { Text(stringResource(R.string.pref_hidden_scan_single_marker_summary)) },
+          )
+        }
+      }
       SwitchPreference(
         value = dotEnabled,
         onValueChange = onDotChanged,
