@@ -2558,4 +2558,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="app_icon_logo_white">Weiß</string>
   <string name="app_icon_logo_black">Schwarz</string>
   <string name="app_icon_logo_classic">Klassisch</string>
+  <string name="pref_hidden_scan_per_mode_title">Versteckte Ordner</string>
+  <string name="pref_hidden_scan_dot">Punktordner</string>
 </resources>
