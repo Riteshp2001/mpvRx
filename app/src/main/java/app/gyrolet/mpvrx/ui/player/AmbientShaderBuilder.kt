@@ -155,7 +155,8 @@ mediump float luma(mediump vec3 rgb) {
 }
 
 mediump vec3 adjust_saturation(mediump vec3 rgb, mediump float amount) {
-    return mix(vec3(luma(rgb)), rgb, amount);
+    mediump float l = luma(rgb);
+    return max(vec3(l) + (rgb - vec3(l)) * amount, vec3(0.0));
 }
 
 // FIX 1: Multiplicative color-temperature adjustment.
@@ -221,11 +222,6 @@ private val GLSL_VIDEO_PROLOGUE =
     highp vec2 edge_origin = clamp(video_uv, safe_min, safe_max);
     mediump float edge_dist = length(video_uv - clamp(video_uv, 0.0, 1.0));
 
-    // Anchor the tap centre with a constant inward inset (independent of distance).
-    // Inward inset ensures negative-direction Poisson taps spread into decoded content
-    // without clamping to the border wall, while anchoring prevents reverse/mirror motion.
-    highp vec2 sample_origin = mix(edge_origin, vec2(0.5), 0.035);
-
     // Interleaved Gradient Noise jitter: avoids rand() sin() overhead and improves GPU cache hits
     mediump float jitter = ign(uv * HOOKED_size) * 6.2831853;
     mediump float jitter_s = sin(jitter);
@@ -273,7 +269,7 @@ object AmbientShaderBuilder {
     @Suppress("UNUSED_PARAMETER") context: Context,
     spec: AmbientGlowShaderSpec,
   ): String {
-    val invRadiusScale = 3.0 / spec.maxRadius.toDouble().coerceAtLeast(0.001)
+    val invRadiusScale = 1.0 / spec.maxRadius.toDouble().coerceAtLeast(0.001)
 
     return """
 //!HOOK OUTPUT
@@ -298,6 +294,7 @@ precision highp int;
 #define EDGE_BLEND       ${glslFloat(spec.shared.edgeBlend.toDouble())}
 #define VIGNETTE_STR     ${glslFloat(spec.shared.vignetteStrength.toDouble())}
 #define WARMTH           ${glslFloat(spec.warmth.toDouble())}
+#define FADE_CURVE       ${glslFloat(spec.fadeCurve.toDouble())}
 #define OPACITY          ${glslFloat(spec.shared.opacity.toDouble())}
 #define SCALE_X          ${glslFloat(spec.context.scaleX)}
 #define SCALE_Y          ${glslFloat(spec.context.scaleY)}
@@ -310,9 +307,18 @@ $GLSL_COMMON_HELPERS
 vec4 hook() {
 $GLSL_VIDEO_PROLOGUE
 
-    // Rational falloff curve: replaces expensive exp() with cheap ALU operations
-    mediump float d = edge_dist * INV_RADIUS_SCALE;
-    mediump float edge_fade = 1.0 / (1.0 + d * (1.0 + d * 0.5));
+    // Normalised reach distance: 0.0 at frame edge, >= 1.0 beyond glow reach.
+    mediump float dn = edge_dist * INV_RADIUS_SCALE;
+    if (dn >= 1.0) {
+        return vec4(dither_out(vec3(0.0), uv * HOOKED_size), 1.0);
+    }
+
+    // Dynamic depth inset (from fx_ambient): pulls deeper from picture further into the glow.
+    highp vec2 sample_origin = mix(edge_origin, vec2(0.5), 0.03 + 0.10 * dn);
+
+    // Physical dual-phase emitter curve (from fx_ambient):
+    // luminous core relaxing into a smooth tail that cleanly lands on true black at dn = 1.0.
+    mediump float edge_fade = pow(1.0 - dn, FADE_CURVE * 1.4) * (0.6 + 0.4 * exp(-5.0 * dn));
 
     mediump vec3 acc_color = vec3(0.0);
     mediump float acc_weight = 0.0;
@@ -325,8 +331,6 @@ $GLSL_VIDEO_PROLOGUE
             tap.x * jitter_c_aspect - tap.y * jitter_s_aspect,
             tap.x * jitter_s + tap.y * jitter_c
         );
-        // FIX 5: use sample_origin instead of edge_origin so the tap centre is
-        // pulled slightly inward, preventing border-wall clamping on half the disk.
         mediump vec3 sample_rgb = HOOKED_tex(clamp(sample_origin + offset, safe_min, safe_max)).rgb;
 
         mediump float weight = tap.z * (1.0 + luma(sample_rgb) * 2.0);

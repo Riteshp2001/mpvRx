@@ -7461,9 +7461,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
         if (kotlin.math.abs(lastAmbientScaleY - 1.0) > 0.000001) {
           PlaybackSession.setPropertyDouble("video-scale-y", 1.0)
         }
-        if (lastAmbientBlendMode != "no") {
-          PlaybackSession.setPropertyString("blend-subtitles", "no")
-        }
+        applySubtitleBlendMode()
       }
       lastAmbientScaleX = 1.0
       lastAmbientScaleY = 1.0
