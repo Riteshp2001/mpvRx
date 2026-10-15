@@ -57,6 +57,16 @@ class FoldersPreferences(
   val treeScanDotFolders = preferenceStore.getBoolean("hidden_scan_tree_dot_folders", true)
   val foldersScanMarkedFolders = preferenceStore.getBoolean("hidden_scan_folders_markers", true)
   val foldersScanDotFolders = preferenceStore.getBoolean("hidden_scan_folders_dot_folders", true)
+  // Individual marker opt-outs per view; entries refer to the user's global marker list.
+  val libraryIgnoredMarkers = preferenceStore.getStringSet("hidden_scan_library_ignored_markers", emptySet())
+  val treeIgnoredMarkers = preferenceStore.getStringSet("hidden_scan_tree_ignored_markers", emptySet())
+  val foldersIgnoredMarkers = preferenceStore.getStringSet("hidden_scan_folders_ignored_markers", emptySet())
+
+  fun ignoredMarkers(scope: HiddenScanScope): Set<String> = when (scope) {
+    HiddenScanScope.LIBRARY -> libraryIgnoredMarkers.get()
+    HiddenScanScope.TREE -> treeIgnoredMarkers.get()
+    HiddenScanScope.FOLDERS -> foldersIgnoredMarkers.get()
+  }
 
   fun scanMarkedFolders(scope: HiddenScanScope): Boolean = when (scope) {
     HiddenScanScope.LIBRARY -> libraryScanMarkedFolders.get()
