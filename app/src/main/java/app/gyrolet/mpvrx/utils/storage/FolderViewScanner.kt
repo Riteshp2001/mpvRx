@@ -626,11 +626,11 @@ object FolderViewScanner {
     files: List<File>? = null,
   ): Boolean =
     (options.includeDotFolders && directory.name.startsWith(".")) ||
-      (options.includeNoMediaFolders &&
+      (options.activeHiddenMarkerNames.isNotEmpty() &&
         if (files == null) {
-          options.normalizedHiddenFolderMarkerNames.any { File(directory, it).isFile }
+          options.activeHiddenMarkerNames.any { File(directory, it).isFile }
         } else {
-          files.any { file -> file.isFile && file.name in options.normalizedHiddenFolderMarkerNames }
+          files.any { file -> file.isFile && file.name in options.activeHiddenMarkerNames }
         })
 
   private fun directoryFingerprint(
