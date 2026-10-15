@@ -405,8 +405,11 @@ internal fun resolveAppColorScheme(
             surfaceDim = surfaceDimPureBlack,
             surfaceBright = surfaceBrightPureBlack,
             surfaceContainerLowest = surfaceContainerLowestPureBlack,
-            surfaceContainerLow = surfaceContainerLowPureBlack,
-            surfaceContainer = surfaceContainerPureBlack,
+            // AMOLED keeps the background fully black while preference tiles share
+            // one neutral raised tone. Previously "Low" was nearly black and
+            // "High" was tinted, so adjacent settings looked unrelated.
+            surfaceContainerLow = surfaceContainerHighPureBlack,
+            surfaceContainer = surfaceContainerHighPureBlack,
             surfaceContainerHigh = surfaceContainerHighPureBlack,
             surfaceContainerHighest = surfaceContainerHighestPureBlack,
           )
