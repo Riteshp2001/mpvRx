@@ -331,6 +331,10 @@ object FoldersPreferencesScreen : Screen {
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
+          Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+          ) {
           HiddenScanModeRow(
             title = stringResource(R.string.pref_hidden_scan_library),
             index = 0,
@@ -388,6 +392,7 @@ object FoldersPreferencesScreen : Screen {
               onScanPreferenceChanged()
             },
           )
+          }
 
           Spacer(modifier = Modifier.height(16.dp))
 
