@@ -661,7 +661,12 @@ fun PlayerControls(
   // translucent fallback instead of attempting to capture an unavailable video surface.
   val currentGlassSource by rememberUpdatedState(glassSource)
   val recordVideo: ContentDrawScope.() -> Unit = remember { { with(currentGlassSource) { drawVideo() } } }
-  val videoBackdrop = rememberLayerBackdrop(onDraw = recordVideo)
+  // Kyant's layer caches its capture. HDR output mode or a native surface handoff changes
+  // the sampled colorspace/content; a fresh backdrop prevents its old SDR texture from being
+  // replayed behind newly rendered HDR buttons after a runtime toggle.
+  val videoBackdrop = key(videoSurface?.surfaceAttachmentGeneration, isHdrOutputEnabled, liquidGlassInHdr) {
+    rememberLayerBackdrop(onDraw = recordVideo)
+  }
   val playerKyantBackdrop = videoBackdrop.takeIf { sampleVideoGlass && glassSource.scene != null }
 
   CompositionLocalProvider(
