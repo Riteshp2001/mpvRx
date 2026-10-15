@@ -111,6 +111,7 @@ class MediaLibraryViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       val hiddenPreferences = combine(
         foldersPreferences.includeNoMediaFolders.changes(),
+        foldersPreferences.libraryHiddenScanEnabled.changes(),
         foldersPreferences.hiddenFolderMarkerNames.changes(),
         foldersPreferences.sharedScanMarkedFolders.changes(),
         foldersPreferences.sharedScanDotFolders.changes(),
