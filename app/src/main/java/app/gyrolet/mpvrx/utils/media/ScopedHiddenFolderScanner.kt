@@ -157,10 +157,15 @@ object ScopedHiddenFolderScanner {
     includeMarkedFolders: Boolean = true,
     includeDotFolders: Boolean = true,
     markerNames: Set<String> = setOf(".nomedia"),
+    ignoredMarkerNames: Set<String> = emptySet(),
   ): List<VideoFolder> = withContext(Dispatchers.IO) {
     // SAF permissions are explicit: inspect only the documents inside user-granted trees.
     // Normalize marker names exactly like the filesystem scanner.
     val normalizedMarkers = markerNames.mapNotNull { app.gyrolet.mpvrx.utils.storage.normalizeHiddenMarkerName(it) }.toSet()
+    val ignoredMarkers = ignoredMarkerNames.mapNotNull {
+      app.gyrolet.mpvrx.utils.storage.normalizeHiddenMarkerName(it)
+    }.toSet()
+    val excludedMarkers = if (includeMarkedFolders) normalizedMarkers.intersect(ignoredMarkers) else normalizedMarkers
     val folders = mutableListOf<VideoFolder>()
     val discovered = mutableMapOf<String, IndexedDirectory>()
     for (treeUri in grantedTreeUris.sorted()) {
@@ -177,7 +182,7 @@ object ScopedHiddenFolderScanner {
         if (!visited.add(documentKey(folder.document.uri))) continue
         val children = listTreeFilesSafely(folder.document)
         if (!includeDotFolders && folder.document.name?.startsWith(".") == true) continue
-        if (!includeMarkedFolders && children.any { it.isFile && it.name in normalizedMarkers }) continue
+        if (children.any { it.isFile && it.name in excludedMarkers }) continue
         discovered[folder.bucketId] =
           IndexedDirectory(folder.document, treeUri, folder.displayName, folder.parentBucketId)
         val videos = readVideosFromFiles(
