@@ -19,6 +19,7 @@ import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.FoldersPreferences
+import app.gyrolet.mpvrx.preferences.HiddenScanScope
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
@@ -155,9 +156,11 @@ class FolderListViewModel(
         combine(
           foldersPreferences.includeNoMediaFolders.changes(),
           foldersPreferences.hiddenFolderMarkerNames.changes(),
+          foldersPreferences.foldersScanMarkedFolders.changes(),
+          foldersPreferences.foldersScanDotFolders.changes(),
           browserPreferences.includeAudioBrowser.changes(),
           browserPreferences.minimumAudioDurationSeconds.changes(),
-        ) { _, _, _, _ -> Unit }
+        ) { _ -> Unit }
           .drop(1)
 
       merge(MediaLibraryEvents.changes, scanPreferenceChanges).collectLatest {
@@ -283,6 +286,8 @@ class FolderListViewModel(
   private fun currentFolderCacheKey(): String =
     "folders_v3_${if (audioOnly) "audioOnly" else "video"}" +
       "_${if (foldersPreferences.includeNoMediaFolders.get()) "with_nomedia" else "exclude_nomedia"}" +
+      "_m${foldersPreferences.foldersScanMarkedFolders.get()}_d${foldersPreferences.foldersScanDotFolders.get()}" +
+      "_markers${foldersPreferences.hiddenFolderMarkerNames.get().sorted().joinToString(",")}" +
       "_audio_${browserPreferences.includeAudioBrowser.get()}_${browserPreferences.minimumAudioDurationSeconds.get()}"
 
   private fun serializeFoldersToJson(folders: List<VideoFolder>): String {
@@ -440,7 +445,8 @@ class FolderListViewModel(
    * an old device is revisited after a while (Android 10 has no MediaStore generation token).
    */
   suspend fun checkExternalFolderChanges(onResume: Boolean) {
-    if (audioOnly || currentScanJob?.isActive == true) return
+    if (audioOnly || currentScanJob?.isActive == true ||
+      !foldersPreferences.hiddenScanEnabled(HiddenScanScope.FOLDERS)) return
 
     val markerNames = foldersPreferences.hiddenFolderMarkerNames.get()
       .map { it.trim() }
@@ -599,7 +605,7 @@ class FolderListViewModel(
           }
           Log.d(TAG, "Scanned ${mediaStoreFolders.size} MediaStore and ${indexedFolders.size} indexed folders")
 
-          if (foldersPreferences.includeNoMediaFolders.get()) {
+          if (foldersPreferences.hiddenScanEnabled(HiddenScanScope.FOLDERS)) {
             if (!hasExistingData && !silent) {
               _scanStatus.value =
                 if (forceFileSystemCheck || indexedFolders.isEmpty()) {
