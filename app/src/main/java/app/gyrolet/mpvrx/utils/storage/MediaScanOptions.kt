@@ -17,11 +17,17 @@ data class MediaScanOptions(
   val includeNoMediaFolders: Boolean = false,
   val includeDotFolders: Boolean = includeNoMediaFolders,
   val hiddenFolderMarkerNames: Set<String> = setOf(".nomedia"),
+  val ignoredHiddenMarkerNames: Set<String> = emptySet(),
   val includeAudio: Boolean = false,
   val minimumAudioDurationSeconds: Int = 0,
 ) {
   val normalizedHiddenFolderMarkerNames: Set<String> =
     hiddenFolderMarkerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
+
+  val activeHiddenMarkerNames: Set<String> =
+    if (includeNoMediaFolders) normalizedHiddenFolderMarkerNames -
+      ignoredHiddenMarkerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
+    else emptySet()
 
   val scanHiddenFolders: Boolean
     get() = includeNoMediaFolders || includeDotFolders
@@ -32,14 +38,16 @@ data class MediaScanOptions(
   val cacheKey: String
     get() {
       val markers = normalizedHiddenFolderMarkerNames.sorted().joinToString("") { "${it.length}:$it" }
-      return "hiddenScanV4=$includeNoMediaFolders|dot=$includeDotFolders|markers=$markers|" +
+      val active = activeHiddenMarkerNames.sorted().joinToString("") { "${it.length}:$it" }
+      return "hiddenScanV5=$includeNoMediaFolders|dot=$includeDotFolders|markers=$markers|active=$active|" +
         "includeAudio=$includeAudio|minAudio=$minimumAudioDurationSeconds"
     }
 
   val rootDiscoveryCacheKey: String
     get() {
       val markers = normalizedHiddenFolderMarkerNames.sorted().joinToString("") { "${it.length}:$it" }
-      return "hiddenRootDiscoveryV2|marked=$includeNoMediaFolders|dot=$includeDotFolders|markers=$markers"
+      val active = activeHiddenMarkerNames.sorted().joinToString("") { "${it.length}:$it" }
+      return "hiddenRootDiscoveryV3|marked=$includeNoMediaFolders|dot=$includeDotFolders|markers=$markers|active=$active"
     }
 
   fun includesAudioDuration(durationMs: Long): Boolean =
@@ -67,8 +75,9 @@ class NoMediaPathFilter(
     val result =
       runCatching {
         (directory.name.startsWith(".") && !options.includeDotFolders) ||
-          (!options.includeNoMediaFolders &&
-            options.normalizedHiddenFolderMarkerNames.any { File(directory, it).isFile }) ||
+          (options.normalizedHiddenFolderMarkerNames
+            .minus(options.activeHiddenMarkerNames)
+            .any { File(directory, it).isFile }) ||
           (!options.scanHiddenFolders &&
             File(directory, app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.AUDIOBOOK_MARKER).isFile) ||
           directory.parentFile?.let(::hasHiddenMarkerInPath) == true
