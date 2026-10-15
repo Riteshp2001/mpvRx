@@ -80,8 +80,12 @@ class FoldersPreferences(
     HiddenScanScope.FOLDERS -> foldersScanDotFolders.get()
   }
 
+  fun enabledMarkerNames(scope: HiddenScanScope): Set<String> =
+    if (scanMarkedFolders(scope)) hiddenFolderMarkerNames.get() - ignoredMarkers(scope) else emptySet()
+
   fun hiddenScanEnabled(scope: HiddenScanScope): Boolean =
-    includeNoMediaFolders.get() && (scanMarkedFolders(scope) || scanDotFolders(scope))
+    includeNoMediaFolders.get() &&
+      (enabledMarkerNames(scope).isNotEmpty() || scanDotFolders(scope))
 
   fun addBlacklistedFolders(paths: Set<String>, scope: BlacklistScope) {
     val currentVideo = blacklistedFolders.get().toMutableSet()
