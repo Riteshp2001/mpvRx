@@ -2558,4 +2558,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="app_icon_logo_white">Branco</string>
   <string name="app_icon_logo_black">Preto</string>
   <string name="app_icon_logo_classic">Clássico</string>
+  <string name="pref_hidden_scan_per_mode_title">Pastas ocultas</string>
+  <string name="pref_hidden_scan_dot">Pastas com ponto</string>
 </resources>
