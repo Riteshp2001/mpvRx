@@ -19,6 +19,7 @@ import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -231,6 +232,8 @@ object MetadataRetrieval {
         val totalDuration = metadataMap.values.sumOf { it.durationMs }
 
         folder.copy(totalDuration = totalDuration)
+      } catch (cancelled: CancellationException) {
+        throw cancelled
       } catch (e: Exception) {
         Log.e(TAG, "Error enriching folder metadata: ${folder.name}", e)
         folder
