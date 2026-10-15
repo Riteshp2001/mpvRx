@@ -183,7 +183,7 @@ object ScopedHiddenFolderScanner {
         val videos = readVideosFromFiles(
           context, children, folder.bucketId, folder.displayName, includeAudio,
           minimumAudioDurationSeconds, audioOnly, excludeMediaStoreItems = true,
-        )
+        ).filter { includeDotFolders || !it.displayName.startsWith(".") }
         if (videos.isNotEmpty()) {
           folders += VideoFolder(
             bucketId = folder.bucketId,
