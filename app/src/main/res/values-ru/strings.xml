@@ -2580,4 +2580,6 @@
   <string name="app_icon_logo_white">Белый</string>
   <string name="app_icon_logo_black">Чёрный</string>
   <string name="app_icon_logo_classic">Классический</string>
+  <string name="pref_hidden_scan_per_mode_title">Скрытые папки</string>
+  <string name="pref_hidden_scan_dot">Папки с точкой</string>
 </resources>
