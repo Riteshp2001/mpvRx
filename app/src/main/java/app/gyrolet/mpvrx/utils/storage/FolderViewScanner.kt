@@ -126,7 +126,15 @@ object FolderViewScanner {
       if (options.includeAudio) {
         scanAudioMediaStoreImmediateChildren(context, allFolders, noMediaPathFilter, options)
       }
-      scanFileSystemRoots(context, allFolders, options, noMediaPathFilter, forceFileSystemCheck)
+      // MediaStore already covers indexed primary/removable media. Recursively walking every
+      // filesystem root on each normal refresh defeats the cache and can block for minutes.
+      // Keep the filesystem fallback for an empty/unindexed library and explicit forced checks;
+      // hidden .nomedia folders are discovered through their separate incremental index.
+      if (forceFileSystemCheck || allFolders.isEmpty()) {
+        scanFileSystemRoots(context, allFolders, options, noMediaPathFilter, forceFileSystemCheck)
+      } else {
+        PerformanceDiagnostics.record("folder.scanner.filesystem.skipped", "folders=${allFolders.size}")
+      }
 
       // Convert to VideoFolder list
       val result =
