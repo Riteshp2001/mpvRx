@@ -263,7 +263,9 @@ internal object LauncherIconManager {
       val customMode = CustomIconShortcut.appliedMode(activity)
       val bitmap = if (customMode == "color") {
         CustomIconShortcut.render(activity, CustomIconShortcut.savedColor(activity),
-          CustomIconShortcut.savedMark(activity, icon.mark), size = 128) ?: return@runCatching
+          CustomIconShortcut.savedMark(activity, icon.mark), size = 128,
+          colorEnd = CustomIconShortcut.savedColorEnd(activity),
+          angle = CustomIconShortcut.savedAngle(activity)) ?: return@runCatching
       } else {
         cachedArtwork?.takeIf { it.first == icon && icon.background != IconBackground.Wallpaper }?.second ?: run {
           val drawable: Drawable = ContextCompat.getDrawable(activity, icon.preview) ?: return@runCatching

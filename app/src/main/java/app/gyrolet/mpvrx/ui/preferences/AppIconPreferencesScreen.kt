@@ -77,13 +77,25 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.unit.Dp
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.components.ColorPickerMode
+import app.gyrolet.mpvrx.ui.components.GradientBar
 import app.gyrolet.mpvrx.ui.components.ExpressiveColorPicker
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
@@ -122,9 +134,20 @@ object AppIconPreferencesScreen : Screen {
     var customBackground by rememberSaveable { mutableStateOf(CustomIconShortcut.appliedMode(context) != "preset") }
     var customColor by rememberSaveable { mutableIntStateOf(CustomIconShortcut.savedColor(context)) }
     var customMark by rememberSaveable { mutableStateOf(CustomIconShortcut.savedMark(context, pending.mark)) }
-    var customMode by rememberSaveable { mutableStateOf("picker") }
-    val nearestIcon = remember(context, customColor, customMark) {
-      LauncherIcon.closest(context, customColor, customMark)
+    var customMode by rememberSaveable { mutableStateOf("wheel") }
+    var customGradient by rememberSaveable { mutableStateOf(CustomIconShortcut.savedColorEnd(context) != null) }
+    var customEnd by rememberSaveable {
+      mutableIntStateOf(CustomIconShortcut.savedColorEnd(context) ?: shiftedHue(CustomIconShortcut.savedColor(context), 60f))
+    }
+    var customAngle by rememberSaveable { mutableFloatStateOf(CustomIconShortcut.savedAngle(context)) }
+    var editingEnd by rememberSaveable { mutableStateOf(false) }
+    val gradientActive = customBackground && customGradient
+    // A gradient is matched by its midpoint, the tone the eye reads as the icon's colour.
+    val nativeMatchColor = if (gradientActive) {
+      androidx.core.graphics.ColorUtils.blendARGB(customColor or 0xFF000000.toInt(), customEnd or 0xFF000000.toInt(), 0.5f)
+    } else customColor
+    val nearestIcon = remember(context, nativeMatchColor, customMark) {
+      LauncherIcon.closest(context, nativeMatchColor, customMark)
     }
     val selectedChoice = if (customBackground) nearestIcon else visibleChoice
     val canApply = (if (customBackground) true else selectedChoice != current) && !pager.isScrollInProgress
@@ -171,6 +194,8 @@ object AppIconPreferencesScreen : Screen {
             customBackground = customBackground,
             customColor = customColor,
             customMark = customMark,
+            customEnd = if (gradientActive) Color(customEnd or 0xFF000000.toInt()) else null,
+            customAngle = customAngle,
             onCustomBackground = { customBackground = it },
             onCustomMark = { customMark = it },
           )
@@ -180,12 +205,13 @@ object AppIconPreferencesScreen : Screen {
               horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
             ) {
               listOf(
+                "wheel" to R.string.color_picker_wheel,
                 "picker" to R.string.color_picker_field,
                 "sliders" to R.string.color_picker_sliders,
 
               ).forEachIndexed { index, choice ->
                 val selected = customMode == choice.first
-                val shape = connectedShape(index, 2, ConnectedLayout.Horizontal)
+                val shape = connectedShape(index, 3, ConnectedLayout.Horizontal)
                 androidx.compose.material3.Surface(
                   modifier = Modifier.weight(1f).clip(shape).selectable(selected = selected, role = Role.RadioButton) { customMode = choice.first },
                   color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -206,11 +232,34 @@ object AppIconPreferencesScreen : Screen {
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            FillTabs(
+              gradient = customGradient,
+              editingEnd = editingEnd,
+              start = Color(customColor or 0xFF000000.toInt()),
+              end = Color(customEnd or 0xFF000000.toInt()),
+              angle = customAngle,
+              onGradient = {
+                customGradient = it
+                if (!it) editingEnd = false
+              },
+              onEditingEnd = { editingEnd = it },
+              onAngle = { customAngle = it },
+            )
             ExpressiveColorPicker(
-              color = customColor,
-              onColorChange = { customColor = it },
+              color = if (customGradient && editingEnd) customEnd else customColor,
+              onColorChange = {
+                if (customGradient && editingEnd) {
+                  customEnd = it
+                } else {
+                  customColor = it
+                }
+              },
               showAlpha = false,
-              forcedSliders = customMode == "sliders",
+              forcedMode = when (customMode) {
+                "sliders" -> ColorPickerMode.Sliders
+                "picker" -> ColorPickerMode.Field
+                else -> ColorPickerMode.Wheel
+              },
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
               TextButton(onClick = {
@@ -227,7 +276,9 @@ object AppIconPreferencesScreen : Screen {
             ) {
               Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconPreview(nearestIcon.background, customMark, 52.dp,
-                   customColor = Color(customColor or 0xFF000000.toInt()))
+                  customColor = Color(customColor or 0xFF000000.toInt()),
+                  customEnd = if (gradientActive) Color(customEnd or 0xFF000000.toInt()) else null,
+                  customAngle = customAngle)
                 Text(stringResource(R.string.app_icon_custom_requested), style = MaterialTheme.typography.labelSmall)
               }
               Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -259,7 +310,10 @@ object AppIconPreferencesScreen : Screen {
           }
           if (customBackground) {
             TextButton(onClick = {
-              val result = CustomIconShortcut.apply(context, customColor, customMark)
+              val result = CustomIconShortcut.apply(
+                context, customColor, customMark,
+                colorEnd = if (gradientActive) customEnd else null, angle = customAngle,
+              )
               val message = when (result) {
                 CustomIconShortcut.Result.Requested -> R.string.app_icon_shortcut_requested
                 CustomIconShortcut.Result.Updated -> R.string.app_icon_shortcut_updated
@@ -294,6 +348,8 @@ object AppIconPreferencesScreen : Screen {
                   if (chosenCustomColor == null) "preset" else "color",
                   chosenCustomColor ?: customColor,
                   customMark,
+                  colorEnd = if (chosenCustomColor != null && gradientActive) customEnd else null,
+                  angle = customAngle,
                 )
                 (context as? Activity)?.let(LauncherIconManager::refreshTaskIcon)
                 current = target
@@ -335,7 +391,8 @@ private fun IconBuilder(
   customBackground: Boolean,
   customColor: Int,
   customMark: IconMark,
-
+  customEnd: Color?,
+  customAngle: Float,
   onCustomBackground: (Boolean) -> Unit,
   onCustomMark: (IconMark) -> Unit,
 ) {
@@ -374,6 +431,8 @@ private fun IconBuilder(
         background = if (customBackground) nearestIcon.background else pending.background,
         mark = if (customBackground) customMark else pending.mark,
         customColor = if (customBackground) Color(customColor or 0xFF000000.toInt()) else null,
+        customEnd = customEnd,
+        customAngle = customAngle,
         size = 132.dp,
         modifier = Modifier.pointerInput(Unit) {
           var travelled = 0f
@@ -493,6 +552,8 @@ private fun IconBuilder(
                     selected = (if (customBackground) customMark else pending.mark) == mark,
                     enabled = customBackground || icon != null,
                     customColor = if (customBackground) Color(customColor or 0xFF000000.toInt()) else null,
+                    customEnd = customEnd,
+                    customAngle = customAngle,
                     onClick = { if (customBackground) onCustomMark(mark) else icon?.let(onPick) },
                     shape = shape,
                     modifier = Modifier.weight(1f),
@@ -561,6 +622,8 @@ private fun MarkTile(
   shape: Shape,
   modifier: Modifier = Modifier,
   customColor: Color? = null,
+  customEnd: Color? = null,
+  customAngle: Float = 135f,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val reduceMotion = AppMotion.shouldReduceMotion()
@@ -600,7 +663,7 @@ private fun MarkTile(
   ) {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
       Box(Modifier.alpha(if (enabled) 1f else 0.35f)) {
-        IconPreview(background, mark, 44.dp, customColor = customColor)
+        IconPreview(background, mark, 44.dp, customColor = customColor, customEnd = customEnd, customAngle = customAngle)
       }
       androidx.compose.animation.AnimatedVisibility(
         visible = selected,
@@ -639,6 +702,8 @@ private fun IconPreview(
   size: Dp,
   modifier: Modifier = Modifier,
   customColor: Color? = null,
+  customEnd: Color? = null,
+  customAngle: Float = 135f,
 ) {
   val reduceMotion = AppMotion.shouldReduceMotion()
   val fill by animateColorAsState(
@@ -650,7 +715,10 @@ private fun IconPreview(
     modifier = modifier
       .size(size)
       .clip(RoundedCornerShape(size * 0.3f))
-      .background(fill),
+      .then(
+        if (customColor != null && customEnd != null) Modifier.background(gradientBrush(customColor, customEnd, customAngle))
+        else Modifier.background(fill),
+      ),
     contentAlignment = Alignment.Center,
   ) {
     AnimatedContent(
@@ -688,4 +756,97 @@ private fun MarkLayer(mark: IconMark, size: Dp) {
     },
     update = { it.setImageResource(mark.layer) },
   )
+}
+
+/** Same hue-shifted partner colour a fresh gradient starts with, so turning Gradient on already looks good. */
+private fun shiftedHue(argb: Int, degrees: Float): Int {
+  val hsv = FloatArray(3)
+  AndroidColor.colorToHSV(argb, hsv)
+  hsv[0] = (hsv[0] + degrees) % 360f
+  return AndroidColor.HSVToColor(hsv)
+}
+
+/** A linear gradient at [angle] degrees (0 = left to right, 90 = top to bottom) that spans the box edge to edge. */
+private fun gradientBrush(start: Color, end: Color, angle: Float): Brush = object : ShaderBrush() {
+  override fun createShader(size: Size): Shader {
+    val line = CustomIconShortcut.gradientLine(size.width, size.height, angle)
+    return LinearGradientShader(Offset(line[0], line[1]), Offset(line[2], line[3]), listOf(start, end))
+  }
+}
+
+/** Solid | Gradient choice, and for a gradient which stop the picker edits plus the angle. */
+@Composable
+private fun FillTabs(
+  gradient: Boolean,
+  editingEnd: Boolean,
+  start: Color,
+  end: Color,
+  angle: Float,
+  onGradient: (Boolean) -> Unit,
+  onEditingEnd: (Boolean) -> Unit,
+  onAngle: (Float) -> Unit,
+) {
+  Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    ChoiceRow(
+      labels = listOf(stringResource(R.string.app_icon_fill_solid), stringResource(R.string.app_icon_fill_gradient)),
+      selectedIndex = if (gradient) 1 else 0,
+      onSelect = { onGradient(it == 1) },
+    )
+    if (gradient) {
+      ChoiceRow(
+        labels = listOf(stringResource(R.string.app_icon_gradient_start), stringResource(R.string.app_icon_gradient_end)),
+        selectedIndex = if (editingEnd) 1 else 0,
+        onSelect = { onEditingEnd(it == 1) },
+        dots = listOf(start, end),
+      )
+      GradientBar(
+        label = stringResource(R.string.app_icon_gradient_angle),
+        fraction = (angle / 360f).coerceIn(0f, 1f),
+        valueText = "${angle.roundToInt()}\u00B0",
+        brush = Brush.horizontalGradient(listOf(start, end)),
+        enabled = true,
+        onFraction = { onAngle((it * 360f).roundToInt().toFloat()) },
+      )
+    }
+  }
+}
+
+@Composable
+private fun ChoiceRow(
+  labels: List<String>,
+  selectedIndex: Int,
+  onSelect: (Int) -> Unit,
+  dots: List<Color>? = null,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().selectableGroup(),
+    horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+  ) {
+    labels.forEachIndexed { index, label ->
+      val selected = index == selectedIndex
+      val shape = connectedShape(index, labels.size, ConnectedLayout.Horizontal)
+      androidx.compose.material3.Surface(
+        modifier = Modifier.weight(1f).clip(shape).selectable(selected = selected, role = Role.RadioButton) { onSelect(index) },
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = shape,
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          dots?.getOrNull(index)?.let {
+            Box(Modifier.size(16.dp).clip(CircleShape).background(it)
+              .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape))
+          }
+          Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+          )
+        }
+      }
+    }
+  }
 }

@@ -148,6 +148,7 @@ fun SubtitleSettingsColorsCard(
         currentColor,
         attachedToHeader = true,
         enabled = colorEditingEnabled,
+        wheelMaxSize = 200.dp,
         onColorChange = {
           currentColor = it
           currentColorType.preference(preferences).set(it)

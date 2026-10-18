@@ -2649,6 +2649,13 @@
   <string name="pref_nav_home_summary">Browse local folders and files (always available)</string>
   <string name="pref_nav_actions_section">Navigation actions</string>
   <string name="pref_about_playback_libraries">Playback libraries</string>
+    <string name="color_picker_wheel">Wheel</string>
+    <string name="app_icon_fill_solid">Solid</string>
+    <string name="app_icon_fill_gradient">Gradient</string>
+    <string name="app_icon_gradient_start">Start</string>
+    <string name="app_icon_gradient_end">End</string>
+    <string name="app_icon_gradient_angle">Angle</string>
+    <string name="color_picker_brightness">Brightness</string>
     <string name="color_picker_field">Picker</string>
     <string name="color_picker_sliders">Sliders</string>
     <string name="color_picker_field_description">Saturation and brightness. Use Sliders for precise adjustment.</string>
