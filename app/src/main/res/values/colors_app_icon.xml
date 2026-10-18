@@ -23,4 +23,18 @@
     <color name="icon_bg_plum">#FF8A4BA7</color>
     <color name="icon_bg_cocoa">#FF8A6044</color>
     <color name="icon_bg_wallpaper">#FF6A76DB</color>
+    <color name="icon_bg_sand">#FFFFF1C1</color>
+    <color name="icon_bg_slate">#FF37474F</color>
+    <color name="icon_bg_sunset">#FFFF7A2F</color>
+    <color name="icon_bg_sunset_end">#FFD81B60</color>
+    <color name="icon_bg_ocean">#FF00B4DB</color>
+    <color name="icon_bg_ocean_end">#FF0052D4</color>
+    <color name="icon_bg_jungle">#FF11998E</color>
+    <color name="icon_bg_jungle_end">#FF0B5D3B</color>
+    <color name="icon_bg_berry">#FF8E2DE2</color>
+    <color name="icon_bg_berry_end">#FF4A00E0</color>
+    <color name="icon_bg_aurora">#FF00C9A7</color>
+    <color name="icon_bg_aurora_end">#FF845EC2</color>
+    <color name="icon_bg_midnight">#FF0F2027</color>
+    <color name="icon_bg_midnight_end">#FF2C5364</color>
 </resources>

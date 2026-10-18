@@ -146,8 +146,8 @@ object AppIconPreferencesScreen : Screen {
     val nativeMatchColor = if (gradientActive) {
       androidx.core.graphics.ColorUtils.blendARGB(customColor or 0xFF000000.toInt(), customEnd or 0xFF000000.toInt(), 0.5f)
     } else customColor
-    val nearestIcon = remember(context, nativeMatchColor, customMark) {
-      LauncherIcon.closest(context, nativeMatchColor, customMark)
+    val nearestIcon = remember(context, nativeMatchColor, customMark, gradientActive) {
+      LauncherIcon.closest(context, nativeMatchColor, customMark, gradientActive)
     }
     val selectedChoice = if (customBackground) nearestIcon else visibleChoice
     val canApply = (if (customBackground) true else selectedChoice != current) && !pager.isScrollInProgress
@@ -711,13 +711,18 @@ private fun IconPreview(
     if (reduceMotion || customColor != null) snap() else tween(350),
     label = "iconBackground",
   )
+  // Built-in gradient backgrounds run from their start colour to their end colour, as in the launcher icon.
+  val builtInEnd = if (customColor == null) background.colorEnd?.let { colorResource(it) } else null
   Box(
     modifier = modifier
       .size(size)
       .clip(RoundedCornerShape(size * 0.3f))
       .then(
-        if (customColor != null && customEnd != null) Modifier.background(gradientBrush(customColor, customEnd, customAngle))
-        else Modifier.background(fill),
+        when {
+          customColor != null && customEnd != null -> Modifier.background(gradientBrush(customColor, customEnd, customAngle))
+          builtInEnd != null -> Modifier.background(gradientBrush(fill, builtInEnd, 45f))
+          else -> Modifier.background(fill)
+        },
       ),
     contentAlignment = Alignment.Center,
   ) {

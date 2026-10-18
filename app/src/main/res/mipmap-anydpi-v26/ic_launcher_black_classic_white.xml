@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/icon_bg_black"/>
+    <foreground android:drawable="@drawable/ic_launcher_classic_white_foreground"/>
+    <monochrome>
+        <inset android:drawable="@drawable/ic_launcher_monochrome" android:inset="9%" />
+    </monochrome>
+</adaptive-icon>

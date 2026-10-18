@@ -19,11 +19,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import app.gyrolet.mpvrx.R
 
-/** Backdrop of a launcher icon. Each one also needs a color in colors_app_icon.xml. */
+/** Backdrop of a launcher icon. Each one also needs a color in colors_app_icon.xml (gradients add an _end color). */
 internal enum class IconBackground(
   val key: String,
   @ColorRes val color: Int,
   @StringRes val label: Int,
+  @ColorRes val colorEnd: Int? = null,
 ) {
   Black("Black", R.color.icon_bg_black, R.string.app_icon_bg_black),
   White("White", R.color.icon_bg_white, R.string.app_icon_bg_white),
@@ -47,6 +48,14 @@ internal enum class IconBackground(
   Cobalt("Cobalt", R.color.icon_bg_cobalt, R.string.app_icon_bg_cobalt),
   Plum("Plum", R.color.icon_bg_plum, R.string.app_icon_bg_plum),
   Cocoa("Cocoa", R.color.icon_bg_cocoa, R.string.app_icon_bg_cocoa),
+  Sand("Sand", R.color.icon_bg_sand, R.string.app_icon_bg_sand),
+  Slate("Slate", R.color.icon_bg_slate, R.string.app_icon_bg_slate),
+  Sunset("Sunset", R.color.icon_bg_sunset, R.string.app_icon_bg_sunset, colorEnd = R.color.icon_bg_sunset_end),
+  Ocean("Ocean", R.color.icon_bg_ocean, R.string.app_icon_bg_ocean, colorEnd = R.color.icon_bg_ocean_end),
+  Jungle("Jungle", R.color.icon_bg_jungle, R.string.app_icon_bg_jungle, colorEnd = R.color.icon_bg_jungle_end),
+  Berry("Berry", R.color.icon_bg_berry, R.string.app_icon_bg_berry, colorEnd = R.color.icon_bg_berry_end),
+  Aurora("Aurora", R.color.icon_bg_aurora, R.string.app_icon_bg_aurora, colorEnd = R.color.icon_bg_aurora_end),
+  Midnight("Midnight", R.color.icon_bg_midnight, R.string.app_icon_bg_midnight, colorEnd = R.color.icon_bg_midnight_end),
   Wallpaper("Wallpaper", R.color.icon_bg_wallpaper, R.string.app_icon_bg_wallpaper),
 }
 
@@ -61,6 +70,13 @@ internal enum class IconMark(
   White("White", R.drawable.ic_launcher_white_foreground, R.string.app_icon_logo_white),
   Black("Black", R.drawable.ic_launcher_black_foreground, R.string.app_icon_logo_black),
   Classic("Classic", R.drawable.ic_launcher_classic_foreground, R.string.app_icon_logo_classic),
+  Red("Red", R.drawable.ic_launcher_red_foreground, R.string.app_icon_logo_red),
+  Amber("Amber", R.drawable.ic_launcher_amber_foreground, R.string.app_icon_logo_amber),
+  Green("Green", R.drawable.ic_launcher_green_foreground, R.string.app_icon_logo_green),
+  Blue("Blue", R.drawable.ic_launcher_blue_foreground, R.string.app_icon_logo_blue),
+  Pink("Pink", R.drawable.ic_launcher_pink_foreground, R.string.app_icon_logo_pink),
+  ClassicWhite("ClassicWhite", R.drawable.ic_launcher_classic_white_foreground, R.string.app_icon_logo_classic_white),
+  ClassicBlack("ClassicBlack", R.drawable.ic_launcher_classic_black_foreground, R.string.app_icon_logo_classic_black),
 }
 
 /**
@@ -139,6 +155,93 @@ internal class LauncherIcon(
       LauncherIcon(IconBackground.Plum, IconMark.Black, R.mipmap.ic_launcher_plum_black, R.style.Theme_mpvrx_Splash_PlumBlack),
       LauncherIcon(IconBackground.Cocoa, IconMark.White, R.mipmap.ic_launcher_cocoa_white, R.style.Theme_mpvrx_Splash_CocoaWhite),
       LauncherIcon(IconBackground.Cocoa, IconMark.Black, R.mipmap.ic_launcher_cocoa_black, R.style.Theme_mpvrx_Splash_CocoaBlack),
+      LauncherIcon(IconBackground.Black, IconMark.Red, R.mipmap.ic_launcher_black_red, R.style.Theme_mpvrx_Splash_BlackRed),
+      LauncherIcon(IconBackground.Black, IconMark.Amber, R.mipmap.ic_launcher_black_amber, R.style.Theme_mpvrx_Splash_BlackAmber),
+      LauncherIcon(IconBackground.Black, IconMark.Green, R.mipmap.ic_launcher_black_green, R.style.Theme_mpvrx_Splash_BlackGreen),
+      LauncherIcon(IconBackground.Black, IconMark.Blue, R.mipmap.ic_launcher_black_blue, R.style.Theme_mpvrx_Splash_BlackBlue),
+      LauncherIcon(IconBackground.Black, IconMark.Pink, R.mipmap.ic_launcher_black_pink, R.style.Theme_mpvrx_Splash_BlackPink),
+      LauncherIcon(IconBackground.Black, IconMark.ClassicWhite, R.mipmap.ic_launcher_black_classic_white, R.style.Theme_mpvrx_Splash_BlackClassicWhite),
+      LauncherIcon(IconBackground.White, IconMark.Red, R.mipmap.ic_launcher_white_red, R.style.Theme_mpvrx_Splash_WhiteRed),
+      LauncherIcon(IconBackground.White, IconMark.Blue, R.mipmap.ic_launcher_white_blue, R.style.Theme_mpvrx_Splash_WhiteBlue),
+      LauncherIcon(IconBackground.White, IconMark.Pink, R.mipmap.ic_launcher_white_pink, R.style.Theme_mpvrx_Splash_WhitePink),
+      LauncherIcon(IconBackground.White, IconMark.ClassicBlack, R.mipmap.ic_launcher_white_classic_black, R.style.Theme_mpvrx_Splash_WhiteClassicBlack),
+      LauncherIcon(IconBackground.Charcoal, IconMark.Red, R.mipmap.ic_launcher_charcoal_red, R.style.Theme_mpvrx_Splash_CharcoalRed),
+      LauncherIcon(IconBackground.Charcoal, IconMark.Amber, R.mipmap.ic_launcher_charcoal_amber, R.style.Theme_mpvrx_Splash_CharcoalAmber),
+      LauncherIcon(IconBackground.Charcoal, IconMark.Green, R.mipmap.ic_launcher_charcoal_green, R.style.Theme_mpvrx_Splash_CharcoalGreen),
+      LauncherIcon(IconBackground.Charcoal, IconMark.Blue, R.mipmap.ic_launcher_charcoal_blue, R.style.Theme_mpvrx_Splash_CharcoalBlue),
+      LauncherIcon(IconBackground.Charcoal, IconMark.Pink, R.mipmap.ic_launcher_charcoal_pink, R.style.Theme_mpvrx_Splash_CharcoalPink),
+      LauncherIcon(IconBackground.Charcoal, IconMark.ClassicWhite, R.mipmap.ic_launcher_charcoal_classic_white, R.style.Theme_mpvrx_Splash_CharcoalClassicWhite),
+      LauncherIcon(IconBackground.Indigo, IconMark.Gradient, R.mipmap.ic_launcher_indigo_gradient, R.style.Theme_mpvrx_Splash_IndigoGradient),
+      LauncherIcon(IconBackground.Indigo, IconMark.Red, R.mipmap.ic_launcher_indigo_red, R.style.Theme_mpvrx_Splash_IndigoRed),
+      LauncherIcon(IconBackground.Indigo, IconMark.Amber, R.mipmap.ic_launcher_indigo_amber, R.style.Theme_mpvrx_Splash_IndigoAmber),
+      LauncherIcon(IconBackground.Indigo, IconMark.Green, R.mipmap.ic_launcher_indigo_green, R.style.Theme_mpvrx_Splash_IndigoGreen),
+      LauncherIcon(IconBackground.Indigo, IconMark.Blue, R.mipmap.ic_launcher_indigo_blue, R.style.Theme_mpvrx_Splash_IndigoBlue),
+      LauncherIcon(IconBackground.Indigo, IconMark.Pink, R.mipmap.ic_launcher_indigo_pink, R.style.Theme_mpvrx_Splash_IndigoPink),
+      LauncherIcon(IconBackground.Indigo, IconMark.ClassicWhite, R.mipmap.ic_launcher_indigo_classic_white, R.style.Theme_mpvrx_Splash_IndigoClassicWhite),
+      LauncherIcon(IconBackground.Violet, IconMark.Gradient, R.mipmap.ic_launcher_violet_gradient, R.style.Theme_mpvrx_Splash_VioletGradient),
+      LauncherIcon(IconBackground.Violet, IconMark.Red, R.mipmap.ic_launcher_violet_red, R.style.Theme_mpvrx_Splash_VioletRed),
+      LauncherIcon(IconBackground.Violet, IconMark.Amber, R.mipmap.ic_launcher_violet_amber, R.style.Theme_mpvrx_Splash_VioletAmber),
+      LauncherIcon(IconBackground.Violet, IconMark.Green, R.mipmap.ic_launcher_violet_green, R.style.Theme_mpvrx_Splash_VioletGreen),
+      LauncherIcon(IconBackground.Violet, IconMark.Blue, R.mipmap.ic_launcher_violet_blue, R.style.Theme_mpvrx_Splash_VioletBlue),
+      LauncherIcon(IconBackground.Violet, IconMark.Pink, R.mipmap.ic_launcher_violet_pink, R.style.Theme_mpvrx_Splash_VioletPink),
+      LauncherIcon(IconBackground.Violet, IconMark.ClassicWhite, R.mipmap.ic_launcher_violet_classic_white, R.style.Theme_mpvrx_Splash_VioletClassicWhite),
+      LauncherIcon(IconBackground.Lagoon, IconMark.ClassicWhite, R.mipmap.ic_launcher_lagoon_classic_white, R.style.Theme_mpvrx_Splash_LagoonClassicWhite),
+      LauncherIcon(IconBackground.Lagoon, IconMark.ClassicBlack, R.mipmap.ic_launcher_lagoon_classic_black, R.style.Theme_mpvrx_Splash_LagoonClassicBlack),
+      LauncherIcon(IconBackground.Azure, IconMark.Red, R.mipmap.ic_launcher_azure_red, R.style.Theme_mpvrx_Splash_AzureRed),
+      LauncherIcon(IconBackground.Azure, IconMark.Blue, R.mipmap.ic_launcher_azure_blue, R.style.Theme_mpvrx_Splash_AzureBlue),
+      LauncherIcon(IconBackground.Azure, IconMark.ClassicBlack, R.mipmap.ic_launcher_azure_classic_black, R.style.Theme_mpvrx_Splash_AzureClassicBlack),
+      LauncherIcon(IconBackground.Lilac, IconMark.Blue, R.mipmap.ic_launcher_lilac_blue, R.style.Theme_mpvrx_Splash_LilacBlue),
+      LauncherIcon(IconBackground.Lilac, IconMark.ClassicBlack, R.mipmap.ic_launcher_lilac_classic_black, R.style.Theme_mpvrx_Splash_LilacClassicBlack),
+      LauncherIcon(IconBackground.Mint, IconMark.Red, R.mipmap.ic_launcher_mint_red, R.style.Theme_mpvrx_Splash_MintRed),
+      LauncherIcon(IconBackground.Mint, IconMark.Blue, R.mipmap.ic_launcher_mint_blue, R.style.Theme_mpvrx_Splash_MintBlue),
+      LauncherIcon(IconBackground.Mint, IconMark.Pink, R.mipmap.ic_launcher_mint_pink, R.style.Theme_mpvrx_Splash_MintPink),
+      LauncherIcon(IconBackground.Mint, IconMark.ClassicBlack, R.mipmap.ic_launcher_mint_classic_black, R.style.Theme_mpvrx_Splash_MintClassicBlack),
+      LauncherIcon(IconBackground.Ember, IconMark.ClassicWhite, R.mipmap.ic_launcher_ember_classic_white, R.style.Theme_mpvrx_Splash_EmberClassicWhite),
+      LauncherIcon(IconBackground.Ember, IconMark.ClassicBlack, R.mipmap.ic_launcher_ember_classic_black, R.style.Theme_mpvrx_Splash_EmberClassicBlack),
+      LauncherIcon(IconBackground.Crimson, IconMark.Amber, R.mipmap.ic_launcher_crimson_amber, R.style.Theme_mpvrx_Splash_CrimsonAmber),
+      LauncherIcon(IconBackground.Crimson, IconMark.Green, R.mipmap.ic_launcher_crimson_green, R.style.Theme_mpvrx_Splash_CrimsonGreen),
+      LauncherIcon(IconBackground.Crimson, IconMark.ClassicWhite, R.mipmap.ic_launcher_crimson_classic_white, R.style.Theme_mpvrx_Splash_CrimsonClassicWhite),
+      LauncherIcon(IconBackground.Crimson, IconMark.ClassicBlack, R.mipmap.ic_launcher_crimson_classic_black, R.style.Theme_mpvrx_Splash_CrimsonClassicBlack),
+      LauncherIcon(IconBackground.Rose, IconMark.Solid, R.mipmap.ic_launcher_rose_solid, R.style.Theme_mpvrx_Splash_RoseSolid),
+      LauncherIcon(IconBackground.Rose, IconMark.Gradient, R.mipmap.ic_launcher_rose_gradient, R.style.Theme_mpvrx_Splash_RoseGradient),
+      LauncherIcon(IconBackground.Rose, IconMark.Classic, R.mipmap.ic_launcher_rose_classic, R.style.Theme_mpvrx_Splash_RoseClassic),
+      LauncherIcon(IconBackground.Rose, IconMark.Red, R.mipmap.ic_launcher_rose_red, R.style.Theme_mpvrx_Splash_RoseRed),
+      LauncherIcon(IconBackground.Rose, IconMark.Blue, R.mipmap.ic_launcher_rose_blue, R.style.Theme_mpvrx_Splash_RoseBlue),
+      LauncherIcon(IconBackground.Rose, IconMark.ClassicBlack, R.mipmap.ic_launcher_rose_classic_black, R.style.Theme_mpvrx_Splash_RoseClassicBlack),
+      LauncherIcon(IconBackground.Sand, IconMark.Solid, R.mipmap.ic_launcher_sand_solid, R.style.Theme_mpvrx_Splash_SandSolid),
+      LauncherIcon(IconBackground.Sand, IconMark.Gradient, R.mipmap.ic_launcher_sand_gradient, R.style.Theme_mpvrx_Splash_SandGradient),
+      LauncherIcon(IconBackground.Sand, IconMark.Black, R.mipmap.ic_launcher_sand_black, R.style.Theme_mpvrx_Splash_SandBlack),
+      LauncherIcon(IconBackground.Sand, IconMark.Classic, R.mipmap.ic_launcher_sand_classic, R.style.Theme_mpvrx_Splash_SandClassic),
+      LauncherIcon(IconBackground.Sand, IconMark.Red, R.mipmap.ic_launcher_sand_red, R.style.Theme_mpvrx_Splash_SandRed),
+      LauncherIcon(IconBackground.Sand, IconMark.Blue, R.mipmap.ic_launcher_sand_blue, R.style.Theme_mpvrx_Splash_SandBlue),
+      LauncherIcon(IconBackground.Sand, IconMark.Pink, R.mipmap.ic_launcher_sand_pink, R.style.Theme_mpvrx_Splash_SandPink),
+      LauncherIcon(IconBackground.Sand, IconMark.ClassicBlack, R.mipmap.ic_launcher_sand_classic_black, R.style.Theme_mpvrx_Splash_SandClassicBlack),
+      LauncherIcon(IconBackground.Slate, IconMark.White, R.mipmap.ic_launcher_slate_white, R.style.Theme_mpvrx_Splash_SlateWhite),
+      LauncherIcon(IconBackground.Slate, IconMark.Red, R.mipmap.ic_launcher_slate_red, R.style.Theme_mpvrx_Splash_SlateRed),
+      LauncherIcon(IconBackground.Slate, IconMark.Amber, R.mipmap.ic_launcher_slate_amber, R.style.Theme_mpvrx_Splash_SlateAmber),
+      LauncherIcon(IconBackground.Slate, IconMark.Green, R.mipmap.ic_launcher_slate_green, R.style.Theme_mpvrx_Splash_SlateGreen),
+      LauncherIcon(IconBackground.Slate, IconMark.Pink, R.mipmap.ic_launcher_slate_pink, R.style.Theme_mpvrx_Splash_SlatePink),
+      LauncherIcon(IconBackground.Slate, IconMark.ClassicWhite, R.mipmap.ic_launcher_slate_classic_white, R.style.Theme_mpvrx_Splash_SlateClassicWhite),
+      LauncherIcon(IconBackground.Sunset, IconMark.White, R.mipmap.ic_launcher_sunset_white, R.style.Theme_mpvrx_Splash_SunsetWhite),
+      LauncherIcon(IconBackground.Sunset, IconMark.Black, R.mipmap.ic_launcher_sunset_black, R.style.Theme_mpvrx_Splash_SunsetBlack),
+      LauncherIcon(IconBackground.Sunset, IconMark.ClassicWhite, R.mipmap.ic_launcher_sunset_classic_white, R.style.Theme_mpvrx_Splash_SunsetClassicWhite),
+      LauncherIcon(IconBackground.Sunset, IconMark.ClassicBlack, R.mipmap.ic_launcher_sunset_classic_black, R.style.Theme_mpvrx_Splash_SunsetClassicBlack),
+      LauncherIcon(IconBackground.Ocean, IconMark.Black, R.mipmap.ic_launcher_ocean_black, R.style.Theme_mpvrx_Splash_OceanBlack),
+      LauncherIcon(IconBackground.Ocean, IconMark.ClassicBlack, R.mipmap.ic_launcher_ocean_classic_black, R.style.Theme_mpvrx_Splash_OceanClassicBlack),
+      LauncherIcon(IconBackground.Jungle, IconMark.White, R.mipmap.ic_launcher_jungle_white, R.style.Theme_mpvrx_Splash_JungleWhite),
+      LauncherIcon(IconBackground.Jungle, IconMark.Black, R.mipmap.ic_launcher_jungle_black, R.style.Theme_mpvrx_Splash_JungleBlack),
+      LauncherIcon(IconBackground.Jungle, IconMark.ClassicWhite, R.mipmap.ic_launcher_jungle_classic_white, R.style.Theme_mpvrx_Splash_JungleClassicWhite),
+      LauncherIcon(IconBackground.Jungle, IconMark.ClassicBlack, R.mipmap.ic_launcher_jungle_classic_black, R.style.Theme_mpvrx_Splash_JungleClassicBlack),
+      LauncherIcon(IconBackground.Berry, IconMark.White, R.mipmap.ic_launcher_berry_white, R.style.Theme_mpvrx_Splash_BerryWhite),
+      LauncherIcon(IconBackground.Berry, IconMark.Amber, R.mipmap.ic_launcher_berry_amber, R.style.Theme_mpvrx_Splash_BerryAmber),
+      LauncherIcon(IconBackground.Berry, IconMark.Green, R.mipmap.ic_launcher_berry_green, R.style.Theme_mpvrx_Splash_BerryGreen),
+      LauncherIcon(IconBackground.Berry, IconMark.ClassicWhite, R.mipmap.ic_launcher_berry_classic_white, R.style.Theme_mpvrx_Splash_BerryClassicWhite),
+      LauncherIcon(IconBackground.Aurora, IconMark.Black, R.mipmap.ic_launcher_aurora_black, R.style.Theme_mpvrx_Splash_AuroraBlack),
+      LauncherIcon(IconBackground.Aurora, IconMark.ClassicBlack, R.mipmap.ic_launcher_aurora_classic_black, R.style.Theme_mpvrx_Splash_AuroraClassicBlack),
+      LauncherIcon(IconBackground.Midnight, IconMark.White, R.mipmap.ic_launcher_midnight_white, R.style.Theme_mpvrx_Splash_MidnightWhite),
+      LauncherIcon(IconBackground.Midnight, IconMark.Amber, R.mipmap.ic_launcher_midnight_amber, R.style.Theme_mpvrx_Splash_MidnightAmber),
+      LauncherIcon(IconBackground.Midnight, IconMark.Green, R.mipmap.ic_launcher_midnight_green, R.style.Theme_mpvrx_Splash_MidnightGreen),
+      LauncherIcon(IconBackground.Midnight, IconMark.ClassicWhite, R.mipmap.ic_launcher_midnight_classic_white, R.style.Theme_mpvrx_Splash_MidnightClassicWhite),
       LauncherIcon(IconBackground.Wallpaper, IconMark.White, R.mipmap.ic_launcher_wallpaper_white, R.style.Theme_mpvrx_Splash_WallpaperWhite),
       LauncherIcon(IconBackground.Wallpaper, IconMark.Black, R.mipmap.ic_launcher_wallpaper_black, R.style.Theme_mpvrx_Splash_WallpaperBlack),
     )
@@ -158,14 +261,17 @@ internal class LauncherIcon(
       of(background, mark) ?: entries.first { it.background == background }
 
     /** Match free-form picks to a real packaged launcher icon, not a home-screen shortcut. */
-    fun closest(context: Context, color: Int, mark: IconMark): LauncherIcon {
+    fun closest(context: Context, color: Int, mark: IconMark, gradient: Boolean = false): LauncherIcon {
       val requested = DoubleArray(3)
       ColorUtils.colorToLAB(color or 0xFF000000.toInt(), requested)
       val candidate = DoubleArray(3)
       val background = IconBackground.entries.asSequence()
-        .filter { it != IconBackground.Wallpaper }
+        .filter { it != IconBackground.Wallpaper && (gradient || it.colorEnd == null) }
         .minByOrNull { option ->
-          ColorUtils.colorToLAB(ContextCompat.getColor(context, option.color), candidate)
+          val start = ContextCompat.getColor(context, option.color)
+          // A gradient reads as its midpoint tone.
+          val shown = option.colorEnd?.let { ColorUtils.blendARGB(start, ContextCompat.getColor(context, it), 0.5f) } ?: start
+          ColorUtils.colorToLAB(shown, candidate)
           val dl = requested[0] - candidate[0]
           val da = requested[1] - candidate[1]
           val db = requested[2] - candidate[2]
