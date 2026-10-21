@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@lucide/astro": "1.42.0",
-    "blume": "1.6.3",
+    "blume": "1.7.3",
     "simple-icons": "16.30.0"
   }
 }
