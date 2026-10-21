@@ -2779,4 +2779,17 @@
   <string name="pref_thumbnail_generator_auto">تلقائي (الافتراضي)</string>
   <string name="pref_thumbnail_generator_auto_summary">جرّب MediaStore أولاً، ثم استخدم Native إذا لم تتوفر صورة مصغرة أو غلاف أغنية، بما في ذلك المجلدات المخفية. يؤدي تبديل الوضع إلى مسح الصور المصغرة المخزنة مؤقتاً.</string>
   <string name="thumbnail_strategy_auto">MediaStore أولاً، ثم Native عند التعذر</string>
+
+  <string name="update_history_title">التحديثات وسجل الإصدارات</string>
+  <string name="update_choose_version">اختر إصدارًا</string>
+  <string name="update_history_loading">جارٍ تحميل الإصدارات…</string>
+  <string name="update_history_empty">لا توجد إصدارات متوافقة لهذه القناة.</string>
+  <string name="update_history_failed">تعذّر تحميل سجل الإصدارات. تحقق من الاتصال أو حاول لاحقًا.</string>
+  <string name="update_history_more">تحميل إصدارات أقدم</string>
+  <string name="update_commit">التعديل البرمجي</string>
+  <string name="update_download_failed">فشل التنزيل. اضغط على إعادة المحاولة للاستئناف.</string>
+  <string name="update_install_failed">تعذّر فتح برنامج التثبيت. يمكنك المحاولة مجددًا.</string>
+  <string name="update_install_permission">اسمح لهذا التطبيق بتثبيت التحديثات في إعدادات Android، ثم اضغط على تثبيت مجددًا.</string>
+  <string name="update_downgrade_notice">قد يتطلب Android إزالة التطبيق الحالي لتثبيت إصدار أقدم. صدّر إعداداتك أولًا؛ فإزالة التطبيق تحذف بياناته.</string>
+  <string name="update_checking_download">جارٍ التحقق من ملف APK الذي تم تنزيله…</string>
 </resources>

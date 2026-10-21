@@ -2721,4 +2721,17 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_thumbnail_generator_auto">Automático (predeterminado)</string>
   <string name="pref_thumbnail_generator_auto_summary">Primero intenta MediaStore; usa Native si no hay miniatura o portada de la canción, también en carpetas ocultas. Cambiar de modo borra las miniaturas en caché.</string>
   <string name="thumbnail_strategy_auto">Primero MediaStore y después Native como alternativa</string>
+
+  <string name="update_history_title">Actualizaciones e historial de versiones</string>
+  <string name="update_choose_version">Elegir una versión</string>
+  <string name="update_history_loading">Cargando versiones…</string>
+  <string name="update_history_empty">No hay versiones compatibles disponibles en este canal.</string>
+  <string name="update_history_failed">No se pudo cargar el historial. Comprueba la conexión o inténtalo más tarde.</string>
+  <string name="update_history_more">Cargar versiones anteriores</string>
+  <string name="update_commit">Commit</string>
+  <string name="update_download_failed">La descarga falló. Toca Reintentar para continuar.</string>
+  <string name="update_install_failed">No se pudo abrir el instalador. Puedes volver a intentarlo.</string>
+  <string name="update_install_permission">Permite que esta aplicación instale actualizaciones en los ajustes de Android y vuelve a tocar Instalar.</string>
+  <string name="update_downgrade_notice">Android puede requerir desinstalar la aplicación actual para instalar una versión anterior. Exporta primero los ajustes; al desinstalar se borran los datos de la aplicación.</string>
+  <string name="update_checking_download">Comprobando el APK descargado…</string>
 </resources>

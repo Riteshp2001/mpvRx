@@ -113,6 +113,7 @@ import app.gyrolet.mpvrx.utils.permission.PermissionRecovery
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.ui.update.UpdateSheet
+import app.gyrolet.mpvrx.ui.update.UpdateUiState
 import app.gyrolet.mpvrx.ui.update.UpdateViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -628,15 +629,8 @@ open class MainActivity : AppCompatActivity() {
         null
       }
 
-    // These flows are only fallback state for builds where the updater is compiled out. Remember
-    // them once so navigator recompositions do not allocate three new StateFlow instances and
-    // create fresh collectAsState subscriptions.
-    val fallbackUpdateState = remember { MutableStateFlow<UpdateViewModel.UpdateState>(UpdateViewModel.UpdateState.Idle) }
-    val fallbackIsDownloading = remember { MutableStateFlow(false) }
-    val fallbackDownloadProgress = remember { MutableStateFlow(0f) }
-    val updateState by (updateViewModel?.updateState ?: fallbackUpdateState).collectAsState()
-    val isDownloading by (updateViewModel?.isDownloading ?: fallbackIsDownloading).collectAsState()
-    val downloadProgress by (updateViewModel?.downloadProgress ?: fallbackDownloadProgress).collectAsState()
+    val fallbackUpdateState = remember { MutableStateFlow(UpdateUiState()) }
+    val updateState by (updateViewModel?.uiState ?: fallbackUpdateState).collectAsState()
     val liquidGlassEnabled by appearancePreferences.liquidGlassEnabled.collectAsState()
     val legacyNavigationBar by appearancePreferences.legacyNavigationBar.collectAsState()
 
@@ -756,39 +750,21 @@ open class MainActivity : AppCompatActivity() {
         }
       }
 
-      // Display the update sheet when appropriate (only if update feature is enabled)
-      if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null) {
-        when (updateState) {
-          is UpdateViewModel.UpdateState.Available -> {
-            val update = updateState as UpdateViewModel.UpdateState.Available
-            UpdateSheet(
-              release = update.release,
-              asset = update.asset,
-              isDownloading = isDownloading,
-              progress = downloadProgress,
-              isInstallReady = false,
-              currentVersion = currentVersion,
-              onDismiss = { updateViewModel.dismiss() },
-              onAction = { updateViewModel.downloadUpdate(update.release, update.asset) },
-              onIgnore = { updateViewModel.ignoreVersion(update.release.updateKey) },
-            )
-          }
-          is UpdateViewModel.UpdateState.ReadyToInstall -> {
-            val update = updateState as UpdateViewModel.UpdateState.ReadyToInstall
-            UpdateSheet(
-              release = update.release,
-              asset = update.asset,
-              isDownloading = isDownloading,
-              progress = downloadProgress,
-              isInstallReady = true,
-              currentVersion = currentVersion,
-              onDismiss = { updateViewModel.dismiss() },
-              onAction = { updateViewModel.installUpdate(update.release) },
-              onIgnore = { updateViewModel.ignoreVersion(update.release.updateKey) },
-            )
-          }
-          else -> {}
-        }
+      // One call site preserves sheet state across loading, selection, errors and completion.
+      if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null && updateState.visible) {
+        UpdateSheet(
+          state = updateState,
+          currentVersion = currentVersion,
+          onDismiss = updateViewModel::dismiss,
+          onDownload = updateViewModel::downloadUpdate,
+          onInstall = updateViewModel::installUpdate,
+          onIgnore = updateViewModel::ignoreVersion,
+          onChannelChange = updateViewModel::setUpdateChannel,
+          onSelectRelease = updateViewModel::selectRelease,
+          onLoadMore = updateViewModel::loadMoreHistory,
+          onRetryHistory = updateViewModel::retryHistory,
+          onLoadCommit = updateViewModel::loadCommitDetails,
+        )
       }
     }
   }

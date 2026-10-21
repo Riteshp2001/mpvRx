@@ -13,20 +13,25 @@ import android.content.Context
 import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import app.gyrolet.mpvrx.BuildConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.security.MessageDigest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /** Signals that the resuming attempt must be abandoned and retried without a Range header. */
 private object RetryWithoutRangeSignal : IOException("Stored partial is not resumable")
@@ -35,7 +40,69 @@ class UpdateManager(
   private val context: Context,
 ) {
   private val client = OkHttpClient()
-  private val json = Json { ignoreUnknownKeys = true }
+  private val json = Json {
+    ignoreUnknownKeys = true
+    coerceInputValues = true
+  }
+
+  data class HistoryPage(val releases: List<Release>, val nextPage: Int?)
+
+  suspend fun getChannelRelease(channel: AppUpdateChannel): Release? =
+    getLatestRelease(
+      when (channel) {
+        AppUpdateChannel.STABLE -> STABLE_RELEASE_URL
+        AppUpdateChannel.PREVIEW -> PREVIEW_RELEASE_URL
+        AppUpdateChannel.EXPERIMENTAL -> EXPERIMENTAL_RELEASE_URL
+      },
+      allowMissing = true,
+    )?.takeIf { it.belongsTo(channel) && selectUpdateAsset(it) != null }
+
+  /** History intentionally bypasses the newer-version and ignored-version gates. */
+  suspend fun getReleaseHistory(channel: AppUpdateChannel, page: Int): HistoryPage =
+    withContext(Dispatchers.IO) {
+      val request = Request.Builder()
+        .url("$RELEASES_URL?per_page=$HISTORY_PAGE_SIZE&page=$page")
+        .header("Cache-Control", "no-cache")
+        .build()
+      client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) throw IOException("Could not load release history: HTTP ${response.code}")
+        val releases = json.decodeFromString<List<Release>>(response.body.string())
+        HistoryPage(
+          releases = releases.filter { it.belongsTo(channel) && selectUpdateAsset(it) != null },
+          nextPage = if (response.header("Link").orEmpty().contains("rel=\"next\"")) page + 1 else null,
+        )
+      }
+    }
+
+  /** Loaded lazily for visible history rows; CI archives already include title and description. */
+  suspend fun getCommitDetails(release: Release): Release = withContext(Dispatchers.IO) {
+    if (!release.commitMessage.isNullOrBlank()) return@withContext release
+    if (release.name.contains(" · ") && release.displayCommitTitle != null && release.body.isNotBlank()) {
+      return@withContext release.copy(
+        commitTitle = release.body.lineSequence().firstOrNull(),
+        commitMessage = release.body,
+      )
+    }
+    val url = REPOSITORY_URL.toHttpUrl().newBuilder()
+      .addPathSegment("commits").addPathSegment(release.sourceCommit ?: release.tagName).build()
+    client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+      if (!response.isSuccessful) throw IOException("Could not load commit: HTTP ${response.code}")
+      val root = json.parseToJsonElement(response.body.string()).jsonObject
+      val message = root["commit"]?.jsonObject?.get("message")?.jsonPrimitive?.content.orEmpty()
+      release.copy(
+        commitSha = root["sha"]?.jsonPrimitive?.content ?: release.commitSha,
+        commitTitle = message.lineSequence().firstOrNull(),
+        commitMessage = message,
+      )
+    }
+  }
+
+  fun isOlderThanInstalled(release: Release): Boolean =
+    when {
+      release.isExperimental -> (release.experimentalBuildNumber ?: Int.MAX_VALUE) < BuildConfig.GIT_COUNT
+      release.isPreview && release.previewBuildNumber != null -> release.previewBuildNumber!! < BuildConfig.GIT_COUNT
+      else -> isNewerVersion(BuildConfig.VERSION_NAME.substringBefore('-'), release.tagName.removePrefix("v"))
+    }
 
   suspend fun checkForUpdate(
     channel: AppUpdateChannel,
@@ -46,15 +113,7 @@ class UpdateManager(
       return null
     }
 
-    val release =
-      getLatestRelease(
-        when (channel) {
-          AppUpdateChannel.STABLE -> STABLE_RELEASE_URL
-          AppUpdateChannel.PREVIEW -> PREVIEW_RELEASE_URL
-          AppUpdateChannel.EXPERIMENTAL -> EXPERIMENTAL_RELEASE_URL
-        },
-        allowMissing = channel == AppUpdateChannel.EXPERIMENTAL,
-      ) ?: return null
+    val release = getChannelRelease(channel) ?: return null
     if (selectUpdateAsset(release) == null) {
       return null
     }
@@ -246,7 +305,7 @@ class UpdateManager(
     val name =
       asset.expectedSha256?.let { sha -> "${asset.name.removeSuffix(".apk")}-${sha.take(LOCAL_HASH_LENGTH)}.apk" }
         ?: asset.name
-    return File(context.externalCacheDir, name)
+    return File(File(context.externalCacheDir ?: context.cacheDir, "updates"), File(name).name)
   }
 
   /**
@@ -262,6 +321,9 @@ class UpdateManager(
     destination: File,
   ): Flow<Float> =
     flow {
+      if (!destination.parentFile!!.isDirectory && !destination.parentFile!!.mkdirs()) {
+        throw IOException("Could not create the update download directory")
+      }
       val partial = File(destination.absolutePath + PART_SUFFIX)
       pruneOtherDownloads(keep = setOf(destination.name, partial.name))
       try {
@@ -299,6 +361,16 @@ class UpdateManager(
         // 206 means the server honoured our Range. A plain 200 means it ignored it and is sending
         // the whole asset, so the stored partial must be discarded rather than appended to.
         val resuming = response.code == HTTP_PARTIAL_CONTENT
+        if (resuming) {
+          val range = CONTENT_RANGE_REGEX.matchEntire(response.header("Content-Range").orEmpty())
+          if (range == null || range.groupValues[1].toLongOrNull() != alreadyDownloaded) {
+            partial.delete()
+            if (allowResume) throw RetryWithoutRangeSignal
+            throw IOException("Server returned an invalid download range")
+          }
+        } else if (response.code != 200) {
+          throw IOException("Unexpected download response: HTTP ${response.code}")
+        }
         val appending = resuming && alreadyDownloaded > 0L
         if (!appending) partial.delete()
 
@@ -315,6 +387,7 @@ class UpdateManager(
           if (totalBytesRead > 0L) emit(progressOf(totalBytesRead, totalBytes))
 
           while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            currentCoroutineContext().ensureActive()
             outputStream.write(buffer, 0, bytesRead)
             totalBytesRead += bytesRead
             emit(progressOf(totalBytesRead, totalBytes))
@@ -375,7 +448,7 @@ class UpdateManager(
   }
 
   private fun pruneOtherDownloads(keep: Set<String>) {
-    context.externalCacheDir?.listFiles()?.forEach { file ->
+    File(context.externalCacheDir ?: context.cacheDir, "updates").listFiles()?.forEach { file ->
       val isUpdateDownload =
         file.name.startsWith("mpvRx-", ignoreCase = true) &&
           (file.name.endsWith(".apk") || file.name.endsWith(PART_SUFFIX))
@@ -384,20 +457,20 @@ class UpdateManager(
   }
 
   private fun progressOf(downloaded: Long, total: Long?): Float =
-    if (total != null && total > 0L) (downloaded.toFloat() / total.toFloat()) * 100f else -1f
+    if (total != null && total > 0L) ((downloaded.toDouble() / total) * 100).toFloat().coerceIn(0f, 99f) else -1f
 
   /**
    * Progress already banked from a previous session, so the UI can show a resumed download starting
    * from where it stopped instead of snapping back to 0%.
    */
-  suspend fun getResumableProgress(release: Release): Float? {
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return null
-    val asset = selectUpdateAsset(release) ?: return null
+  suspend fun getResumableProgress(release: Release): Float? = withContext(Dispatchers.IO) {
+    if (!BuildConfig.ENABLE_UPDATE_FEATURE) return@withContext null
+    val asset = selectUpdateAsset(release) ?: return@withContext null
     val partial = File(localApkFile(asset).absolutePath + PART_SUFFIX)
-    val downloaded = partial.takeIf { it.isFile }?.takeIf { it.length() > 0L }?.length() ?: return null
-    val total = asset.size.takeIf { it > 0L } ?: resolveAssetLength(asset) ?: return null
-    if (total <= downloaded) return null
-    return progressOf(downloaded, total)
+    val downloaded = partial.takeIf { it.isFile }?.takeIf { it.length() > 0L }?.length() ?: return@withContext null
+    val total = asset.size.takeIf { it > 0L } ?: resolveAssetLength(asset) ?: return@withContext null
+    if (total <= downloaded) return@withContext null
+    progressOf(downloaded, total)
   }
 
   private suspend fun resolveAssetLength(asset: Asset): Long? =
@@ -412,14 +485,20 @@ class UpdateManager(
       }.getOrNull()
     }
 
-  fun getApkFile(release: Release): File? {
+  suspend fun getApkFile(release: Release): File? = withContext(Dispatchers.IO) {
     // Return null if update feature is disabled
     if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return null
+      return@withContext null
     }
 
-    val asset = selectUpdateAsset(release) ?: return null
-    return localApkFile(asset).takeIf { it.isFile }
+    val asset = selectUpdateAsset(release) ?: return@withContext null
+    val file = localApkFile(asset).takeIf { it.isFile } ?: return@withContext null
+    try {
+      verifyDownload(file, asset, resumed = false)
+      file
+    } catch (_: IOException) {
+      null
+    }
   }
 
   fun clearCache() {
@@ -428,12 +507,13 @@ class UpdateManager(
       return
     }
 
-    context.externalCacheDir?.listFiles()?.forEach {
-      if (it.name.endsWith(".apk") || it.name.endsWith(PART_SUFFIX)) it.delete()
-    }
+    pruneOtherDownloads(emptySet())
   }
 
   private companion object {
+    const val REPOSITORY_URL = "https://api.github.com/repos/Riteshp2001/mpvRx"
+    const val RELEASES_URL = "$REPOSITORY_URL/releases"
+    const val HISTORY_PAGE_SIZE = 100
     const val STABLE_RELEASE_URL = "https://api.github.com/repos/Riteshp2001/mpvRx/releases/latest"
     const val PREVIEW_RELEASE_URL = "https://riteshp2001.github.io/mpvRx/latest.json"
     const val EXPERIMENTAL_RELEASE_URL = "https://riteshp2001.github.io/mpvRx/experimental.json"
@@ -443,6 +523,8 @@ class UpdateManager(
     const val HTTP_PARTIAL_CONTENT = 206
     const val HTTP_RANGE_NOT_SATISFIABLE = 416
     val GIT_SHA_REGEX = Regex("[0-9a-fA-F]{7,40}")
+    val CONTENT_RANGE_REGEX = Regex("bytes (\\d+)-(\\d+)/(?:\\d+|\\*)")
     val HEX_DIGITS = "0123456789abcdef".toCharArray()
   }
 }
+

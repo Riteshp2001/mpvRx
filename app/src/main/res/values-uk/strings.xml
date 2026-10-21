@@ -2691,4 +2691,17 @@
   <string name="pref_thumbnail_generator_auto">Авто (за замовчуванням)</string>
   <string name="pref_thumbnail_generator_auto_summary">Спочатку використовується MediaStore; якщо мініатюра або обкладинка пісні недоступна, використовується Native, зокрема у прихованих папках. Зміна режиму очищає кеш мініатюр.</string>
   <string name="thumbnail_strategy_auto">Спочатку MediaStore, потім Native у разі невдачі</string>
+
+  <string name="update_history_title">Оновлення та історія версій</string>
+  <string name="update_choose_version">Вибрати версію</string>
+  <string name="update_history_loading">Завантаження версій…</string>
+  <string name="update_history_empty">Для цього каналу немає сумісних версій.</string>
+  <string name="update_history_failed">Не вдалося завантажити історію версій. Перевірте з’єднання або повторіть спробу пізніше.</string>
+  <string name="update_history_more">Завантажити старіші версії</string>
+  <string name="update_commit">Коміт</string>
+  <string name="update_download_failed">Помилка завантаження. Натисніть «Повторити», щоб продовжити.</string>
+  <string name="update_install_failed">Не вдалося відкрити програму встановлення. Повторіть спробу.</string>
+  <string name="update_install_permission">Дозвольте цій програмі встановлювати оновлення в налаштуваннях Android, а потім знову натисніть «Установити».</string>
+  <string name="update_downgrade_notice">Для встановлення старішої версії Android може вимагати видалення поточної програми. Спочатку експортуйте налаштування: видалення програми стирає її дані.</string>
+  <string name="update_checking_download">Перевірка завантаженого APK…</string>
 </resources>

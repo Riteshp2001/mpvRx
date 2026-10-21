@@ -2721,4 +2721,17 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_thumbnail_generator_auto">Automatisch (Standard)</string>
   <string name="pref_thumbnail_generator_auto_summary">Zuerst MediaStore versuchen; wenn ein Vorschaubild oder Songcover fehlt, Native verwenden, auch in versteckten Ordnern. Ein Moduswechsel leert den Vorschaubild-Cache.</string>
   <string name="thumbnail_strategy_auto">Zuerst MediaStore, dann Native als Ausweichlösung</string>
+
+  <string name="update_history_title">Updates und Versionsverlauf</string>
+  <string name="update_choose_version">Version auswählen</string>
+  <string name="update_history_loading">Versionen werden geladen…</string>
+  <string name="update_history_empty">Für diesen Kanal sind keine kompatiblen Versionen verfügbar.</string>
+  <string name="update_history_failed">Versionsverlauf konnte nicht geladen werden. Verbindung prüfen oder später erneut versuchen.</string>
+  <string name="update_history_more">Ältere Versionen laden</string>
+  <string name="update_commit">Commit</string>
+  <string name="update_download_failed">Download fehlgeschlagen. Zum Fortsetzen auf Erneut versuchen tippen.</string>
+  <string name="update_install_failed">Installationsprogramm konnte nicht geöffnet werden. Bitte erneut versuchen.</string>
+  <string name="update_install_permission">In den Android-Einstellungen die Installation von Updates durch diese App erlauben und erneut auf Installieren tippen.</string>
+  <string name="update_downgrade_notice">Android erfordert möglicherweise die Deinstallation der aktuellen App, um eine ältere Version zu installieren. Zuerst die Einstellungen exportieren; bei der Deinstallation werden App-Daten gelöscht.</string>
+  <string name="update_checking_download">Heruntergeladene APK wird geprüft…</string>
 </resources>

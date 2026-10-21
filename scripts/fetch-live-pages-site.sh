@@ -54,6 +54,8 @@ restore_from_cdn() {
     jq -e '.assets | type == "array"' "$work/$feed" >/dev/null
     cp "$work/$feed" "$dest/$feed"
     while read -r url; do
+      # Archived APKs are already durable GitHub release assets and need no Pages copy.
+      [[ "$url" == "https://github.com/$repo/releases/download/"* ]] && continue
       rel="${url#"$base/"}"
       [[ "$rel" != "$url" ]] || { echo "::error::$feed links outside the site: $url"; return 1; }
       mkdir -p "$dest/$(dirname "$rel")"
@@ -67,6 +69,7 @@ restore_from_cdn() {
 verify_feed() {
   local feed="$1" url size sha rel file
   while IFS=$'\t' read -r url size sha; do
+    [[ "$url" == "https://github.com/$repo/releases/download/"* ]] && continue
     rel="${url#"$base/"}"
     file="$dest/$rel"
     [[ -f "$file" ]] || { echo "::error::$feed lists $rel, which is missing."; return 1; }

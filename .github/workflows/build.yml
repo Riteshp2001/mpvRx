@@ -356,7 +356,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write
       actions: read
       deployments: read
       pages: write
@@ -424,6 +424,8 @@ jobs:
 
           # Pages deploys replace the whole site, so carry over exactly what is live (including the preview feed).
           bash scripts/fetch-live-pages-site.sh site
+          # Preserve the previous rolling build before its Pages APKs are removed.
+          python3 scripts/archive-update-release.py site/experimental.json
 
           # A run that finishes late must not replace a build of a later master commit.
           live_sha=$(jq -r '.commit_sha // empty' site/experimental.json 2>/dev/null || true)
@@ -477,6 +479,8 @@ jobs:
               commit_title:$title,commit_count:$build,run_url:$run,pages_url:($base+"/")}' \
             > site/experimental.json
           jq . site/experimental.json >/dev/null
+          python3 scripts/archive-update-release.py site/experimental.json
+          rm -rf site/experimental
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: Configure GitHub Pages

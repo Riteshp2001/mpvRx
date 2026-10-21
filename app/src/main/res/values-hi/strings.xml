@@ -2625,4 +2625,17 @@
   <string name="pref_thumbnail_generator_auto">ऑटो (डिफ़ॉल्ट)</string>
   <string name="pref_thumbnail_generator_auto_summary">पहले MediaStore आज़माएँ; थंबनेल या गाने का कवर उपलब्ध न होने पर Native का उपयोग करें, छिपे फ़ोल्डरों में भी। मोड बदलने से कैश किए गए थंबनेल साफ़ हो जाते हैं।</string>
   <string name="thumbnail_strategy_auto">पहले MediaStore, फिर विकल्प के रूप में Native</string>
+
+  <string name="update_history_title">अपडेट और संस्करण इतिहास</string>
+  <string name="update_choose_version">संस्करण चुनें</string>
+  <string name="update_history_loading">संस्करण लोड हो रहे हैं…</string>
+  <string name="update_history_empty">इस चैनल के लिए कोई संगत संस्करण उपलब्ध नहीं है।</string>
+  <string name="update_history_failed">संस्करण इतिहास लोड नहीं हुआ। कनेक्शन जाँचें या बाद में फिर कोशिश करें।</string>
+  <string name="update_history_more">पुराने संस्करण लोड करें</string>
+  <string name="update_commit">कमिट</string>
+  <string name="update_download_failed">डाउनलोड विफल हुआ। जारी रखने के लिए फिर कोशिश करें पर टैप करें।</string>
+  <string name="update_install_failed">इंस्टॉलर नहीं खुल सका। आप फिर कोशिश कर सकते हैं।</string>
+  <string name="update_install_permission">Android सेटिंग में इस ऐप को अपडेट इंस्टॉल करने की अनुमति दें, फिर इंस्टॉल करें पर दोबारा टैप करें।</string>
+  <string name="update_downgrade_notice">पुराना संस्करण इंस्टॉल करने के लिए Android मौजूदा ऐप को अनइंस्टॉल करने को कह सकता है। पहले अपनी सेटिंग निर्यात करें; अनइंस्टॉल करने से ऐप का डेटा मिट जाता है।</string>
+  <string name="update_checking_download">डाउनलोड किए गए APK की जाँच हो रही है…</string>
 </resources>

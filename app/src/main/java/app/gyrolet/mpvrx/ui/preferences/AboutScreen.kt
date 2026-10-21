@@ -49,7 +49,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -84,7 +83,6 @@ import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import java.util.Locale
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -117,28 +115,6 @@ object AboutScreen : Screen {
       } else {
         null
       }
-    val updateState by (
-      updateViewModel?.updateState ?: MutableStateFlow(
-        UpdateViewModel.UpdateState.Idle,
-      )
-    ).collectAsState()
-
-    // Show toast when no update is available after manual check (only if update feature is enabled)
-    LaunchedEffect(updateState) {
-      if (BuildConfig.ENABLE_UPDATE_FEATURE &&
-        updateViewModel != null &&
-        updateState is UpdateViewModel.UpdateState.NoUpdate
-      ) {
-        Toast
-          .makeText(
-            context,
-            context.getString(app.gyrolet.mpvrx.R.string.ui_already_using_latest_version),
-            Toast.LENGTH_SHORT,
-          ).show()
-        updateViewModel.dismissNoUpdate()
-      }
-    }
-
     Scaffold(
       topBar = {
         SettingsTopAppBar(

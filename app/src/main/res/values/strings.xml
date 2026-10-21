@@ -2786,4 +2786,17 @@
   <string name="thumbnail_quality_note">The preview is the actual cached image for the current settings. Browser tiles may cache a smaller image than the configured size limit. Opening this tab does not generate a new frame.</string>
   <string name="thumbnail_inspection_failed">Thumbnail information could not be read. Try refreshing.</string>
   <string name="thumbnail_generation_unavailable">The selected generator did not return a thumbnail for this file.</string>
+
+  <string name="update_history_title">Updates &amp; version history</string>
+  <string name="update_choose_version">Choose a version</string>
+  <string name="update_history_loading">Loading versions…</string>
+  <string name="update_history_empty">No compatible versions are available for this channel.</string>
+  <string name="update_history_failed">Could not load version history. Check your connection or try again later.</string>
+  <string name="update_history_more">Load older versions</string>
+  <string name="update_commit">Commit</string>
+  <string name="update_download_failed">Download failed. Tap Retry to resume.</string>
+  <string name="update_install_failed">Could not open the installer. You can try again.</string>
+  <string name="update_install_permission">Allow this app to install updates in Android settings, then tap Install again.</string>
+  <string name="update_downgrade_notice">Android may require uninstalling the current app to install an older version. Export your settings first; uninstalling removes app data.</string>
+  <string name="update_checking_download">Checking downloaded APK…</string>
 </resources>

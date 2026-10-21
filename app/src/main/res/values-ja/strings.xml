@@ -2706,4 +2706,17 @@
   <string name="pref_thumbnail_generator_auto">自動（デフォルト）</string>
   <string name="pref_thumbnail_generator_auto_summary">最初にMediaStoreを試し、サムネイルや曲のカバーを取得できない場合はNativeを使用します。隠しフォルダにも適用されます。モードを切り替えるとキャッシュ済みのサムネイルが消去されます。</string>
   <string name="thumbnail_strategy_auto">最初にMediaStore、取得できない場合はNative</string>
+
+  <string name="update_history_title">更新とバージョン履歴</string>
+  <string name="update_choose_version">バージョンを選択</string>
+  <string name="update_history_loading">バージョンを読み込み中…</string>
+  <string name="update_history_empty">このチャンネルには互換性のあるバージョンがありません。</string>
+  <string name="update_history_failed">バージョン履歴を読み込めませんでした。接続を確認するか、後でもう一度お試しください。</string>
+  <string name="update_history_more">以前のバージョンを読み込む</string>
+  <string name="update_commit">コミット</string>
+  <string name="update_download_failed">ダウンロードに失敗しました。「再試行」をタップすると再開します。</string>
+  <string name="update_install_failed">インストーラーを開けませんでした。もう一度お試しください。</string>
+  <string name="update_install_permission">Android の設定でこのアプリによる更新のインストールを許可し、再度「インストール」をタップしてください。</string>
+  <string name="update_downgrade_notice">以前のバージョンをインストールするには、現在のアプリのアンインストールが必要な場合があります。アンインストールするとアプリのデータが削除されるため、先に設定をエクスポートしてください。</string>
+  <string name="update_checking_download">ダウンロードした APK を確認中…</string>
 </resources>

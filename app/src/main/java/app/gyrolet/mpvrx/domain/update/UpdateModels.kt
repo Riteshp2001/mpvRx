@@ -27,17 +27,24 @@ enum class AppUpdateChannel {
 @Serializable
 data class Release(
   @SerialName("tag_name") val tagName: String,
-  @SerialName("name") val name: String,
-  @SerialName("body") val body: String,
-  @SerialName("published_at") val publishedAt: String,
-  @SerialName("assets") val assets: List<Asset>,
+  @SerialName("name") val name: String = "",
+  @SerialName("body") val body: String = "",
+  @SerialName("published_at") val publishedAt: String = "",
+  @SerialName("assets") val assets: List<Asset> = emptyList(),
   @SerialName("channel") val channel: String? = null,
   @SerialName("commit_count") val commitCount: Int? = null,
   @SerialName("commit_sha") val commitSha: String? = null,
   @SerialName("updated_at") val updatedAt: String? = null,
+  @SerialName("commit_title") val commitTitle: String? = null,
+  @SerialName("commit_message") val commitMessage: String? = null,
+  @SerialName("target_commitish") val targetCommitish: String? = null,
+  @SerialName("prerelease") val prerelease: Boolean = false,
+  @SerialName("draft") val draft: Boolean = false,
 ) {
   val isPreview: Boolean
-    get() = channel.equals("preview", ignoreCase = true) || tagName.startsWith("preview-r")
+    get() =
+      channel.equals("preview", ignoreCase = true) || tagName.startsWith("preview-r", ignoreCase = true) ||
+        tagName.contains("-preview", ignoreCase = true)
 
   val previewBuildNumber: Int?
     get() =
@@ -48,12 +55,15 @@ data class Release(
       }
 
   val isExperimental: Boolean
-    get() = channel.equals("experimental", ignoreCase = true) || tagName.equals("experimental", ignoreCase = true)
+    get() =
+      channel.equals("experimental", ignoreCase = true) || tagName.equals("experimental", ignoreCase = true) ||
+        tagName.startsWith("experimental-r", ignoreCase = true)
 
   val experimentalBuildNumber: Int?
     get() =
       if (isExperimental) {
-        commitCount ?: BUILD_NUMBER_REGEX.find(name)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        commitCount ?: BUILD_NUMBER_REGEX.find(tagName)?.groupValues?.getOrNull(1)?.toIntOrNull()
+          ?: BUILD_NUMBER_REGEX.find(name)?.groupValues?.getOrNull(1)?.toIntOrNull()
       } else {
         null
       }
@@ -70,20 +80,47 @@ data class Release(
   private val ciBuildNumber: Int?
     get() = experimentalBuildNumber ?: previewBuildNumber
 
+  val sourceCommit: String?
+    get() = (commitSha ?: targetCommitish)?.trim()?.takeIf { Regex("[0-9a-fA-F]{7,40}").matches(it) }
+
+  // Archived CI releases carry the commit title in their name and the full message in their notes.
+  val displayCommitTitle: String?
+    get() = commitTitle?.takeIf { it.isNotBlank() }
+      ?: name.substringAfter(" · ", "").takeIf { it.isNotBlank() }
+
+  val displayCommitMessage: String?
+    get() = commitMessage?.takeIf { it.isNotBlank() }
+      ?: body.takeIf { displayCommitTitle != null && it.isNotBlank() }
+
+  fun belongsTo(channel: AppUpdateChannel): Boolean =
+    !draft && when (channel) {
+      AppUpdateChannel.STABLE -> !isPreview && !isExperimental && !prerelease
+      AppUpdateChannel.PREVIEW -> isPreview
+      AppUpdateChannel.EXPERIMENTAL -> isExperimental
+    }
+
   // CI feeds are rolling, and an amended or force-pushed master republishes the same commit count,
   // so the key carries the commit: ignoring one build must not ignore a different build at that count.
   val updateKey: String
     get() {
       val channelName = ciChannelName ?: return tagName
       val buildNumber = ciBuildNumber ?: return tagName
-      val commit = commitSha?.trim()?.take(SHORT_SHA_LENGTH)?.takeIf { it.isNotEmpty() }
+      val commit = sourceCommit?.take(SHORT_SHA_LENGTH)
       return listOfNotNull("$channelName-r$buildNumber", commit).joinToString("-")
+    }
+
+  /** Deduplicate rolling/archived copies, while retaining distinct rebuilds of one commit. */
+  val historyKey: String
+    get() = updateKey + assets.sortedBy { it.name }.joinToString(separator = "|", prefix = "|") {
+      it.expectedSha256 ?: it.downloadUrl
     }
 
   // Old assets stay available during publication. Never select one from a different build.
   val updateAssets: List<Asset>
     get() {
       val channelName = ciChannelName ?: return assets
+      // Older tagged previews predate the r<count> CI naming scheme.
+      if (isPreview && tagName.startsWith("v", ignoreCase = true)) return assets
       val buildNumber = ciBuildNumber ?: return emptyList()
       return assets.filter { it.name.startsWith("mpvRx-$channelName-r$buildNumber-", ignoreCase = true) }
     }
@@ -146,3 +183,4 @@ internal fun String.hasApkAssetToken(token: String): Boolean =
     pattern = "(?:^|-)${Regex.escape(token)}(?:-|\\.apk$)",
     option = RegexOption.IGNORE_CASE,
   ).containsMatchIn(this)
+

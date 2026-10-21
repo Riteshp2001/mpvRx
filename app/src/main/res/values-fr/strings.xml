@@ -2721,4 +2721,17 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_thumbnail_generator_auto">Auto (par défaut)</string>
   <string name="pref_thumbnail_generator_auto_summary">Essayer MediaStore en premier, puis utiliser Native si la miniature ou la pochette est indisponible, y compris dans les dossiers masqués. Changer de mode efface les miniatures en cache.</string>
   <string name="thumbnail_strategy_auto">MediaStore en premier, puis Native en secours</string>
+
+  <string name="update_history_title">Mises à jour et historique des versions</string>
+  <string name="update_choose_version">Choisir une version</string>
+  <string name="update_history_loading">Chargement des versions…</string>
+  <string name="update_history_empty">Aucune version compatible disponible pour ce canal.</string>
+  <string name="update_history_failed">Impossible de charger l’historique. Vérifiez la connexion ou réessayez plus tard.</string>
+  <string name="update_history_more">Charger des versions antérieures</string>
+  <string name="update_commit">Commit</string>
+  <string name="update_download_failed">Échec du téléchargement. Appuyez sur Réessayer pour reprendre.</string>
+  <string name="update_install_failed">Impossible d’ouvrir le programme d’installation. Vous pouvez réessayer.</string>
+  <string name="update_install_permission">Autorisez cette application à installer des mises à jour dans les paramètres Android, puis appuyez à nouveau sur Installer.</string>
+  <string name="update_downgrade_notice">Android peut nécessiter la désinstallation de l’application actuelle pour installer une version antérieure. Exportez d’abord vos paramètres ; la désinstallation efface les données de l’application.</string>
+  <string name="update_checking_download">Vérification de l’APK téléchargé…</string>
 </resources>
