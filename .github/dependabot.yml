@@ -9,6 +9,12 @@ updates:
       time: "04:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 10
+    # Library 1.1.7+ requires compileSdk 37.2, but the app currently uses 37.0.
+    # Remove this exclusion once compileSdk has been updated accordingly.
+    ignore:
+      - dependency-name: "me.zhanghai.android.libarchive:library"
+        versions:
+          - ">= 1.1.7"
     groups:
       gradle-minor-and-patch:
         patterns:
