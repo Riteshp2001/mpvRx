@@ -1,0 +1,5 @@
+/build
+/native/**/*.dll
+/native/**/*.so*
+/native/**/*.dylib
+

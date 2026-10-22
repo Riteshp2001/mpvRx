@@ -53,3 +53,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "mpvRx"
 include(":app")
+include(":shared:core")
+include(":shared:ui")
+include(":desktopApp")

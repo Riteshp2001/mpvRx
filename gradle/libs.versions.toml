@@ -57,6 +57,10 @@ telephoto = "0.19.0"
 haze = "2.0.1"
 kyant = "2.0.1"
 kyant-shapes = "1.2.1"
+composeMultiplatform = "1.12.2"
+composeMultiplatformMaterial3 = "1.12.0-alpha03"
+kotlinxCoroutines = "1.11.0"
+jna = "5.19.1"
 
 [libraries]
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
@@ -145,6 +149,18 @@ haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 kyant-backdrop = { module = "io.github.kyant0:backdrop-android", version.ref = "kyant" }
 kyant-shapes = { module = "io.github.kyant0:shapes-android", version.ref = "kyant-shapes" }
 
+# Kotlin Multiplatform (shared + desktop)
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
+cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMultiplatformMaterial3" }
+cmp-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
+cmp-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
+cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
+composables-material-symbols-rounded-filled = { module = "com.composables:icons-material-symbols-rounded-filled-cmp", version.ref = "materialSymbols" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+
 [bundles]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel"]
 compose-navigation3 = ["androidx-navigation3-runtime", "androidx-navigation3-ui", "androidx-lifecycle-runtime-compose"]
@@ -156,3 +172,6 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 room = { id = "androidx.room", version.ref = "room" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }

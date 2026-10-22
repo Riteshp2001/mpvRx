@@ -67,7 +67,7 @@ function onPath() {
 // The global node_modules dir per npm (handles Homebrew/Windows/volta). Queried on demand.
 function globalRoot() {
   try {
-    const root = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32' }).trim();
+    const root = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32', windowsHide: true }).trim();
     return root || null;
   } catch { return null; /* npm unavailable */ }
 }
@@ -125,12 +125,21 @@ function offerTrail() {
   if (files.length === 0) return;
   const field = (text, key) => {
     const line = text.split('\n').find((l) => l.startsWith(key + ':'));
-    return line ? line.slice(key.length + 1).trim().replace(/^"|"$/g, '') : '';
+    const v = line ? line.slice(key.length + 1).trim() : '';
+    if (/^'.*'$/.test(v)) return v.slice(1, -1).replace(/''/g, "'");
+    if (/^".*"$/.test(v)) { try { return JSON.parse(v); } catch { return v.slice(1, -1); } }
+    return v;
   };
+  const read = (f) => { try { return fs.readFileSync(path.join(learnings, f), 'utf8').slice(0, 4000); } catch { return ''; } };
+  const texts = new Map(files.map((f) => [f, read(f)]));
+  // A learning another one replaces stays as the record, but isn't listed.
+  // `replaces:` holds an id: the file's own `id:`, or l- and the first 6
+  // hex digits of its name's sha1 (learning-fields.ts).
+  const idOf = (f) => field(texts.get(f), 'id').toLowerCase() || 'l-' + require('crypto').createHash('sha1').update(f).digest('hex').slice(0, 6);
+  const replaced = new Set([...texts.values()].map((t) => field(t, 'replaces').toLowerCase()).filter(Boolean));
   const lines = [];
-  for (const f of files.slice(0, 12)) {
-    let text = '';
-    try { text = fs.readFileSync(path.join(learnings, f), 'utf8').slice(0, 4000); } catch { continue; }
+  for (const f of files.filter((f) => texts.get(f) && !replaced.has(idOf(f))).slice(0, 12)) {
+    const text = texts.get(f);
     const author = field(text, 'author');
     lines.push('- ' + (field(text, 'title') || f) + (author ? ' (' + author + ')' : '') + ' · .trail/learnings/' + f);
   }
