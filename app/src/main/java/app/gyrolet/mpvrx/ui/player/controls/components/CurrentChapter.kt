@@ -136,15 +136,13 @@ fun CurrentChapter(
           ),
       shape = AppShapeScale.full,
       color =
-        MaterialTheme.colorScheme.surfaceContainer.copy(
-          alpha = 0.55f,
-        ),
+        playerButtonContainerColor(),
       contentColor = MaterialTheme.colorScheme.onSurface,
       tonalElevation = 0.dp,
       border =
         BorderStroke(
           1.dp,
-          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+          playerButtonBorderColor(),
         ),
     ) {
       chapterContent()

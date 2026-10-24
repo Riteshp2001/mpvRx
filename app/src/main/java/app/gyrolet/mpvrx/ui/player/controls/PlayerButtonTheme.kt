@@ -22,6 +22,28 @@ internal object PlayerButtonAlpha {
   const val DISABLED_CONTENT = 0.38f
   const val GLASS_CONTAINER = 0.32f
   const val SELECTED_GLASS_CONTAINER = 0.22f
+
+  /** The background-opacity setting's default: every surface keeps its designed alpha. */
+  const val DEFAULT_BACKGROUND_LEVEL = CONTAINER
+
+  /**
+   * Maps a surface's designed alpha through the user's background-opacity [level]: the default
+   * level keeps it, 1 makes it fully opaque and 0 fully clear. Surfaces designed fully clear stay
+   * clear, so transparent hit areas never turn into solid blocks.
+   */
+  fun background(
+    designed: Float,
+    level: Float,
+  ): Float {
+    val alpha = designed.coerceIn(0f, 1f)
+    if (alpha == 0f) return 0f
+    val clamped = level.coerceIn(0f, 1f)
+    return if (clamped >= DEFAULT_BACKGROUND_LEVEL) {
+      alpha + (1f - alpha) * ((clamped - DEFAULT_BACKGROUND_LEVEL) / (1f - DEFAULT_BACKGROUND_LEVEL))
+    } else {
+      alpha * (clamped / DEFAULT_BACKGROUND_LEVEL)
+    }
+  }
 }
 
 /**

@@ -59,7 +59,6 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.MIN_PLAYER_BUTTONS_OPACITY
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStyleLivePreview
 import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference
 import app.gyrolet.mpvrx.ui.preferences.components.PlayerButtonChip
@@ -275,7 +274,7 @@ object PlayerControlsPreferencesScreen : Screen {
           item {
             val hidePlayerButtonsBackground by appearancePrefs.hidePlayerButtonsBackground.collectAsState()
             val forceDarkPlayerButtonsBackground by appearancePrefs.forceDarkPlayerButtonsBackground.collectAsState()
-            val playerButtonsOpacity by appearancePrefs.playerButtonsOpacity.collectAsState()
+            val playerButtonsBackgroundOpacity by appearancePrefs.playerButtonsBackgroundOpacity.collectAsState()
             val playerTimeToDisappear by playerPrefs.playerTimeToDisappear.collectAsState()
             val clockFormat by playerPrefs.clockFormat.collectAsState()
             val predefinedTimeValues = listOf(500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000)
@@ -288,16 +287,17 @@ object PlayerControlsPreferencesScreen : Screen {
               ExpressivePreferenceItem(standalone = true) {
                 AppSliderPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_player_buttons_opacity),
-                  value = playerButtonsOpacity,
-                  onValueChange = { appearancePrefs.playerButtonsOpacity.set(it) },
-                  sliderValue = playerButtonsOpacity,
-                  onSliderValueChange = { appearancePrefs.playerButtonsOpacity.set(it) },
-                  valueRange = MIN_PLAYER_BUTTONS_OPACITY..1f,
-                  valueSteps = 15,
+                  value = playerButtonsBackgroundOpacity,
+                  onValueChange = { appearancePrefs.playerButtonsBackgroundOpacity.set(it) },
+                  sliderValue = playerButtonsBackgroundOpacity,
+                  onSliderValueChange = { appearancePrefs.playerButtonsBackgroundOpacity.set(it) },
+                  valueRange = 0f..1f,
+                  // 5% increments, so the 55% default is reachable again.
+                  valueSteps = 19,
                   title = { Text(stringResource(R.string.pref_player_buttons_opacity)) },
                   summary = {
                     Text(
-                      text = "${(playerButtonsOpacity.coerceIn(MIN_PLAYER_BUTTONS_OPACITY, 1f) * 100).roundToInt()}%",
+                      text = "${(playerButtonsBackgroundOpacity.coerceIn(0f, 1f) * 100).roundToInt()}%",
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },

@@ -41,6 +41,7 @@ import app.gyrolet.mpvrx.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
+import app.gyrolet.mpvrx.ui.player.controls.components.asPlayerButtonBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
@@ -130,15 +131,29 @@ fun AdaptiveControlsContainer(
     color.takeUnless { it == Color.Unspecified }
       ?: if (hideBackground) LocalContentColor.current
       else if (liquidGlassEnabled) PlayerLiquidTokens.contentColor else playerButtonContentColor()
+  val backgroundLevel = LocalPlayerButtonsOpacity.current
   val resolvedSurface =
-    surfaceColor.takeUnless { it == Color.Unspecified }
-      ?: if (liquidGlassEnabled) PlayerLiquidTokens.surfaceColor else playerButtonContainerColor()
+    if (liquidGlassEnabled) {
+      // Below the default level the whole glass layer fades instead (glassLayerAlpha).
+      val base = surfaceColor.takeUnless { it == Color.Unspecified } ?: PlayerLiquidTokens.surfaceColor
+      base.copy(
+        alpha =
+          PlayerButtonAlpha.background(
+            base.alpha,
+            maxOf(backgroundLevel, PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL),
+          ),
+      )
+    } else {
+      surfaceColor.takeUnless { it == Color.Unspecified }?.asPlayerButtonBackground()
+        ?: playerButtonContainerColor()
+    }
   val contentTint =
     if (enabled) resolvedTint else resolvedTint.copy(alpha = resolvedTint.alpha * PlayerButtonAlpha.DISABLED_CONTENT)
   val renderLiquidGlass = liquidGlassEnabled && useGlass && !hideBackground
   val buttonShape = if (horizontalPadding != null && horizontalPadding > 0.dp) Capsule() else CircleShape
-  // The opacity setting applies to the button background only; icons and labels stay fully opaque.
-  val backgroundOpacity = LocalPlayerButtonsOpacity.current.coerceIn(0f, 1f)
+  // Above the default level the glass tint thickens toward opaque; below it the whole glass fades.
+  val glassLayerAlpha =
+    (backgroundLevel / PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL).coerceIn(0f, 1f)
   val controlModifier =
     modifier
       // LiquidButton already clips its glass to the capsule. Clipping again here, over the larger
@@ -165,7 +180,7 @@ fun AdaptiveControlsContainer(
         spacing = spacing,
         horizontalPadding = horizontalPadding ?: 8.dp,
         backdrop = backdrop,
-        backgroundAlpha = backgroundOpacity,
+        backgroundAlpha = glassLayerAlpha,
         content = content,
       )
     }
@@ -176,7 +191,7 @@ fun AdaptiveControlsContainer(
         if (hideBackground || !useGlass) {
           Color.Transparent
         } else {
-          resolvedSurface.copy(alpha = resolvedSurface.alpha * backgroundOpacity)
+          resolvedSurface
         },
       contentColor = contentTint,
       tonalElevation = 0.dp,
@@ -185,8 +200,7 @@ fun AdaptiveControlsContainer(
         if (hideBackground || !useGlass) {
           null
         } else {
-          val borderColor = playerButtonBorderColor()
-          BorderStroke(1.dp, borderColor.copy(alpha = borderColor.alpha * backgroundOpacity))
+          BorderStroke(1.dp, playerButtonBorderColor())
         },
       modifier =
         controlModifier

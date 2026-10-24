@@ -6761,10 +6761,21 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val width = sourceIntent.getIntExtra(EXTRA_VIDEO_WIDTH, 0)
     val height = sourceIntent.getIntExtra(EXTRA_VIDEO_HEIGHT, 0)
     // Zero is a valid container rotation, not a reason to probe the file again.
-    val rotation = sourceIntent.getIntExtra(EXTRA_VIDEO_ROTATION, 0)
+    val intentRotation = sourceIntent.getIntExtra(EXTRA_VIDEO_ROTATION, 0)
+    // MediaStore only indexes video rotation from Android 11; older providers report 0 for every file.
+    val rotation =
+      if (intentRotation == 0 && width > 0 && height > 0 && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        localVideoPath(sourceIntent)?.let(ContainerRotationProbe::quarterTurnDegrees) ?: 0
+      } else {
+        intentRotation
+      }
     val initialOrientation = PlayerOrientationPolicy.forSourceGeometry(width, height, rotation) ?: return
     if (requestedOrientation != initialOrientation) requestedOrientation = initialOrientation
   }
+
+  private fun localVideoPath(sourceIntent: Intent): String? =
+    sourceIntent.getStringExtra("local_media_path")?.takeIf { it.isNotBlank() }
+      ?: sourceIntent.data?.takeIf { it.scheme == "file" }?.path
 
   private fun isKnownAudioLaunch(sourceIntent: Intent): Boolean =
     sourceIntent.getBooleanExtra("is_audio", false) ||

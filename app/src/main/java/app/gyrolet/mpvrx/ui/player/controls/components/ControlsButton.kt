@@ -35,7 +35,12 @@ internal val LocalForceDarkPlayerButtonsBackground = staticCompositionLocalOf { 
 internal val LocalHidePlayerButtonsBackground = staticCompositionLocalOf { false }
 
 @Suppress("CompositionLocalAllowlist")
-internal val LocalPlayerButtonsOpacity = staticCompositionLocalOf { 1f }
+internal val LocalPlayerButtonsOpacity = staticCompositionLocalOf { PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL }
+
+/** This color with its alpha mapped through the player button background-opacity setting. */
+@Composable
+internal fun Color.asPlayerButtonBackground(): Color =
+  copy(alpha = PlayerButtonAlpha.background(alpha, LocalPlayerButtonsOpacity.current))
 
 @Composable
 private fun playerButtonColorScheme(
@@ -46,14 +51,14 @@ private fun playerButtonColorScheme(
 
 @Composable
 internal fun playerButtonContainerColor(): Color =
-  playerButtonColorScheme().surfaceContainerHigh.copy(alpha = PlayerButtonAlpha.CONTAINER)
+  playerButtonColorScheme().surfaceContainerHigh.copy(alpha = PlayerButtonAlpha.CONTAINER).asPlayerButtonBackground()
 
 @Composable
 internal fun playerButtonContentColor(): Color = playerButtonColorScheme().onSurface
 
 @Composable
 internal fun playerButtonBorderColor(): Color =
-  playerButtonColorScheme().outlineVariant.copy(alpha = PlayerButtonAlpha.BORDER)
+  playerButtonColorScheme().outlineVariant.copy(alpha = PlayerButtonAlpha.BORDER).asPlayerButtonBackground()
 
 @Composable
 fun ControlsButton(

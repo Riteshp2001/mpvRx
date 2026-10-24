@@ -19,7 +19,13 @@ These notes are written in plain English and focus on what changed for real use.
 
 - **Buttons beside play/pause in landscape:** With play/pause placed below the seekbar, the left and right button groups now sit on either side of it in the same row instead of taking a row of their own. If they do not fit, they scroll sideways and fade out at the edge that has more buttons.
 
-- **Button background opacity:** The player button opacity setting now fades only the button backgrounds, so icons and labels stay fully visible.
+- **Button background opacity:** The setting is now a level for every player button background, including the title, chapter, speed, decoder, zoom, A-B loop and frame-navigation pills, play/pause, custom Lua buttons and the skip chip. The default keeps the usual see-through look, 100% makes all of them fully opaque and 0% fully clear; icons and labels always stay fully visible. Earlier values of the old setting are not carried over.
+
+- **Consistent spacing around the seekbar:** The layout buttons, play/pause row, seekbar, custom Lua buttons and skip chip now share one edge margin and one gap in every layout combination. Nothing above them jumps anymore while buffering, while the volume or brightness slider shows, or while seeking with the controls hidden.
+
+- **Rotated videos open upright on Android 10 and older:** Android only records a video's rotation in its media library from Android 11, so portrait phone recordings briefly opened sideways before turning. The player now reads the rotation straight from MP4, MOV and 3GP files at launch on these devices.
+
+- **mpvlib 1.1.4:** Updated native libraries, including HarfBuzz 15, FreeType 2.15, LittleCMS 2.19 and curl 8.23. The FongMi build also picks up FongMi's latest playback changes.
 
 - **HDR Toys updated:** The bundled hdr-toys shaders now match the latest upstream release, including the reworked Astra tone mapping and Bottosson gamut mapping, shared BT.2390 logic and corrected BT.2446 A processing. The new BT.2446 B, BT.2407 and Annex 5 shaders are bundled too. The linear profile for EXR and HDR images passes its stability options under their current names again, so they take effect.
 

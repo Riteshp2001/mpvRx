@@ -78,12 +78,14 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -102,9 +104,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -161,6 +161,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
+import app.gyrolet.mpvrx.ui.player.controls.components.asPlayerButtonBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.MediaScopesOverlay
 import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
 import app.gyrolet.mpvrx.ui.player.controls.components.MultipleSpeedPlayerUpdate
@@ -405,7 +406,7 @@ fun PlayerControls(
     appearancePreferences.landscapePlaybackControlsPosition.collectAsState()
   val portraitSeekbarPlacement by appearancePreferences.portraitSeekbarPlacement.collectAsState()
   val landscapeSeekbarPlacement by appearancePreferences.landscapeSeekbarPlacement.collectAsState()
-  val playerButtonsOpacity by appearancePreferences.playerButtonsOpacity.collectAsState()
+  val playerButtonsBackgroundOpacity by appearancePreferences.playerButtonsBackgroundOpacity.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val gesturePreferences = koinInject<GesturePreferences>()
   val reduceMotion by playerPreferences.reduceMotion.collectAsState()
@@ -872,7 +873,7 @@ fun PlayerControls(
     LocalPlayerLiquidGlassActive provides enableLiquidGlass,
     LocalForceDarkPlayerButtonsBackground provides forceDarkButtonBackground,
     LocalHidePlayerButtonsBackground provides hideBackground,
-    LocalPlayerButtonsOpacity provides playerButtonsOpacity.coerceIn(MIN_PLAYER_BUTTONS_OPACITY, 1f),
+    LocalPlayerButtonsOpacity provides playerButtonsBackgroundOpacity.coerceIn(0f, 1f),
   ) {
     PlayerControlsContentTheme {
       Box(
@@ -964,17 +965,12 @@ fun PlayerControls(
         LocalLayoutDirection provides LayoutDirection.Ltr,
       ) {
         val density = LocalDensity.current
-        var controlsLayoutHeightPx by remember { mutableStateOf(0) }
-        var landscapeRightButtonsTopPx by remember { mutableStateOf<Int?>(null) }
-        var portraitButtonsTopPx by remember { mutableStateOf<Int?>(null) }
-        var bottomRightControlsTopPx by remember { mutableStateOf<Int?>(null) }
-        var seekbarTopPx by remember { mutableStateOf<Int?>(null) }
+        val bottomHeights = remember(isPortrait) { BottomClusterHeights() }
 
         ConstraintLayout(
           modifier =
             Modifier
               .fillMaxSize()
-              .onSizeChanged { controlsLayoutHeightPx = it.height }
               .drawBehind {
                 if (reduceMotion && transparentOverlay > 0f) {
                   drawRect(FullScreenScrimBrush, alpha = transparentOverlay)
@@ -1006,9 +1002,6 @@ fun PlayerControls(
               SeekbarPlacement.AboveButtons
           // Landscape puts the layout buttons beside play/pause instead of in a row of their own.
           val buttonsBesidePlayback = playbackBelowSeekbar && !isPortrait
-          // Fixed lines, not links to play/pause: that row leaves the layout entirely while buffering,
-          // and anything anchored to it would collapse.
-          val sharedPlaybackRowCenter = createGuidelineFromBottom(spacing.medium + SharedPlaybackRowHeight / 2)
           val sharedPlaybackRowCenterX = createGuidelineFromStart(0.5f)
           val sharedRowSideInset =
             if (buttonsBesidePlayback) {
@@ -1018,12 +1011,13 @@ fun PlayerControls(
             } else {
               0.dp
             }
-          // Bottom-to-top chain; the playback row always sits directly under the seekbar.
+          // Bottom-to-top bands; play/pause always sits directly under the seekbar, and beside play/pause
+          // the layout buttons share its band.
           val bottomStack =
             buildList {
               when {
                 buttonsBesidePlayback -> {
-                  add(BottomSlot.Playback)
+                  add(BottomSlot.Buttons)
                   add(BottomSlot.Seekbar)
                 }
                 seekbarAboveButtons -> {
@@ -1039,38 +1033,58 @@ fun PlayerControls(
               }
             }
 
-          fun refOf(slot: BottomSlot) =
-            when (slot) {
-              BottomSlot.Buttons -> bottomRightControls
-              BottomSlot.Playback -> playerPauseButton
-              BottomSlot.Seekbar -> seekbar
+          fun measured(
+            px: Int,
+            fallback: Dp,
+          ): Dp = if (px == UNMEASURED_HEIGHT) fallback else with(density) { px.toDp() }
+          val buttonsHeight =
+            if (isPortrait) {
+              measured(bottomHeights.rightButtons, BottomClusterFallbackRowHeight)
+            } else {
+              maxOf(
+                measured(bottomHeights.rightButtons, BottomClusterFallbackRowHeight),
+                measured(bottomHeights.leftButtons, BottomClusterFallbackRowHeight),
+              )
             }
-          val topBottomSlot = bottomStack.last()
-          val bottomClusterTopRef = refOf(topBottomSlot)
+
+          fun bandHeight(slot: BottomSlot): Dp =
+            when (slot) {
+              BottomSlot.Buttons -> if (buttonsBesidePlayback) maxOf(buttonsHeight, SharedPlaybackRowHeight) else buttonsHeight
+              BottomSlot.Playback -> SharedPlaybackRowHeight
+              BottomSlot.Seekbar -> measured(bottomHeights.seekbar, BottomClusterFallbackRowHeight)
+            }
+
+          // One edge margin and one gap for every combination. Bands come from remembered heights, so a
+          // layer leaving the layout (buffering, volume/brightness sliders, hidden controls) moves nothing.
+          val clusterEdge = if (isPortrait) spacing.large else spacing.medium
+          val clusterGap = spacing.smaller
+          val bandCenters = HashMap<BottomSlot, Dp>()
+          var nextBandBottom = clusterEdge
+          var bottomClusterTop = clusterEdge
+          for (slot in bottomStack) {
+            val height = bandHeight(slot)
+            bandCenters[slot] = nextBandBottom + height / 2
+            if (height > 0.dp) {
+              bottomClusterTop = nextBandBottom + height
+              nextBandBottom = bottomClusterTop + clusterGap
+            }
+          }
+          val buttonsBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Buttons] ?: clusterEdge)
+          val seekbarBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Seekbar] ?: clusterEdge)
+          val playbackBandCenter =
+            createGuidelineFromBottom(
+              bandCenters[if (buttonsBesidePlayback) BottomSlot.Buttons else BottomSlot.Playback] ?: clusterEdge,
+            )
 
           fun ConstrainScope.linkInBottomStack(slot: BottomSlot) {
-            if (buttonsBesidePlayback) {
-              if (slot == BottomSlot.Seekbar) {
-                bottom.linkTo(sharedPlaybackRowCenter, SharedPlaybackRowHeight / 2 + spacing.small)
-              } else {
-                top.linkTo(sharedPlaybackRowCenter)
-                bottom.linkTo(sharedPlaybackRowCenter)
+            val center =
+              when (slot) {
+                BottomSlot.Buttons -> buttonsBandCenter
+                BottomSlot.Playback -> playbackBandCenter
+                BottomSlot.Seekbar -> seekbarBandCenter
               }
-              return
-            }
-            val index = bottomStack.indexOf(slot)
-            if (index <= 0) {
-              bottom.linkTo(parent.bottom, if (isPortrait) spacing.large else spacing.medium)
-              return
-            }
-            val below = bottomStack[index - 1]
-            val gap =
-              when {
-                slot == BottomSlot.Playback || below == BottomSlot.Playback -> spacing.small
-                isPortrait -> spacing.medium
-                else -> spacing.smaller
-              }
-            bottom.linkTo(refOf(below).top, gap)
+            top.linkTo(center)
+            bottom.linkTo(center)
           }
 
           val volume by viewModel.currentVolume.collectAsState()
@@ -1130,8 +1144,6 @@ fun PlayerControls(
                 end = navBarPadding.calculateRightPadding(LayoutDirection.Ltr),
               )
             } ?: Modifier
-          // The parent already consumes the bottom navigation inset.
-          val skipSegmentChipBottomOffset = if (isPortrait) 104.dp else 88.dp
 
           AnimatedVisibility(
             isBrightnessSliderShown && showBrightnessGestureOverlay,
@@ -1448,42 +1460,16 @@ is PlayerUpdates.FrameInfo -> {
           val showLandscapeLeftCustomButtons = areButtonsVisible && !isPortrait && leftCustomButtons.isNotEmpty()
           val showLandscapeRightCustomButtons = areButtonsVisible && !isPortrait && rightCustomButtons.isNotEmpty()
           val showPortraitCustomButtons = areButtonsVisible && isPortrait && customButtons.isNotEmpty()
-          val customButtonsRowVerticalPadding = 2.dp
-          val skipChipToButtonsSpacing = 4.dp
-          // Portrait keeps its original anchor; landscape follows whichever element tops the cluster.
-          val bottomClusterTopPx =
-            if (!isPortrait && topBottomSlot == BottomSlot.Seekbar) seekbarTopPx else bottomRightControlsTopPx
-          val bottomRightControlsBottomOffset =
-            if (bottomClusterTopPx != null && controlsLayoutHeightPx > 0) {
-              with(density) {
-                (controlsLayoutHeightPx - bottomClusterTopPx).toDp() +
-                  skipChipToButtonsSpacing
-              }
-            } else {
-              skipSegmentChipBottomOffset
-            }
+          // Custom rows carry transparent padding for liquid-glass shadows; offset it so the visible
+          // pills sit one cluster gap above the controls and line up with the layout buttons.
+          val customRowBottomOffset = bottomClusterTop + clusterGap - CustomButtonsRowInsetVertical
+          val customRowEdgeMargin = spacing.large - CustomButtonsRowInsetHorizontal
+          val customRowAboveSkipChip = showLandscapeRightCustomButtons || showPortraitCustomButtons
+          val customRowVisibleHeight =
+            (measured(bottomHeights.rightCustomRow, CustomButtonsRowFallbackHeight) - CustomButtonsRowInsetVertical * 2)
+              .coerceAtLeast(0.dp)
           val skipChipBottomTarget =
-            when {
-              showLandscapeRightCustomButtons &&
-                landscapeRightButtonsTopPx != null &&
-                controlsLayoutHeightPx > 0 -> {
-                with(density) {
-                  (controlsLayoutHeightPx - landscapeRightButtonsTopPx!!).toDp() +
-                    skipChipToButtonsSpacing
-                }
-              }
-
-              showPortraitCustomButtons &&
-                portraitButtonsTopPx != null &&
-                controlsLayoutHeightPx > 0 -> {
-                with(density) {
-                  (controlsLayoutHeightPx - portraitButtonsTopPx!!).toDp() +
-                    skipChipToButtonsSpacing
-                }
-              }
-
-              else -> maxOf(skipSegmentChipBottomOffset, bottomRightControlsBottomOffset)
-            }
+            bottomClusterTop + clusterGap + if (customRowAboveSkipChip) customRowVisibleHeight + clusterGap else 0.dp
           val skipChipBottomOffset by animateDpAsState(
             targetValue = skipChipBottomTarget,
             animationSpec = spring(),
@@ -1496,23 +1482,19 @@ is PlayerUpdates.FrameInfo -> {
             exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { -it },
             modifier =
               navigationStartPaddingModifier.constrainAs(customLeftButtonsRef) {
-                start.linkTo(parent.start, spacing.large)
-                bottom.linkTo(
-                  if (topBottomSlot == BottomSlot.Buttons) bottomLeftControls.top else bottomClusterTopRef.top,
-                  spacing.medium,
-                )
+                start.linkTo(parent.start, customRowEdgeMargin)
+                bottom.linkTo(parent.bottom, customRowBottomOffset)
                 width = Dimension.preferredWrapContent
                 height = Dimension.wrapContent
-              },
+              }.onSizeChanged { bottomHeights.leftCustomRow = it.height },
           ) {
             Row(
               horizontalArrangement = Arrangement.spacedBy(12.dp),
               verticalAlignment = Alignment.CenterVertically,
               modifier =
                 Modifier
-                  .padding(vertical = customButtonsRowVerticalPadding)
                   .horizontalScroll(rememberScrollState())
-                  .padding(horizontal = 8.dp, vertical = 6.dp),
+                  .padding(horizontal = CustomButtonsRowInsetHorizontal, vertical = CustomButtonsRowInsetVertical),
             ) {
               leftCustomButtons.forEach { button ->
                 key(button.id) {
@@ -1540,22 +1522,19 @@ is PlayerUpdates.FrameInfo -> {
             modifier =
               navigationEndPaddingModifier
                 .constrainAs(customRightButtonsRef) {
-                  end.linkTo(parent.end, spacing.large)
-                  bottom.linkTo(bottomClusterTopRef.top, spacing.medium)
+                  end.linkTo(parent.end, customRowEdgeMargin)
+                  bottom.linkTo(parent.bottom, customRowBottomOffset)
                   width = Dimension.preferredWrapContent
                   height = Dimension.wrapContent
-                }.onGloballyPositioned { coordinates ->
-                  landscapeRightButtonsTopPx = coordinates.positionInParent().y.roundToInt()
-                },
+                }.onSizeChanged { bottomHeights.rightCustomRow = it.height },
           ) {
             Row(
               horizontalArrangement = Arrangement.spacedBy(12.dp),
               verticalAlignment = Alignment.CenterVertically,
               modifier =
                 Modifier
-                  .padding(vertical = customButtonsRowVerticalPadding)
                   .horizontalScroll(rememberScrollState(), reverseScrolling = true)
-                  .padding(horizontal = 8.dp, vertical = 6.dp),
+                  .padding(horizontal = CustomButtonsRowInsetHorizontal, vertical = CustomButtonsRowInsetVertical),
             ) {
               rightCustomButtons.forEach { button ->
                 key(button.id) {
@@ -1583,23 +1562,20 @@ is PlayerUpdates.FrameInfo -> {
             modifier =
               navigationHorizontalPaddingModifier
                 .constrainAs(customButtonsPortraitRef) {
-                  start.linkTo(parent.start, spacing.large)
-                  end.linkTo(parent.end, spacing.large)
-                  bottom.linkTo(bottomClusterTopRef.top, spacing.medium)
+                  start.linkTo(parent.start, customRowEdgeMargin)
+                  end.linkTo(parent.end, customRowEdgeMargin)
+                  bottom.linkTo(parent.bottom, customRowBottomOffset)
                   width = Dimension.fillToConstraints
                   height = Dimension.wrapContent
-                }.onGloballyPositioned { coordinates ->
-                  portraitButtonsTopPx = coordinates.positionInParent().y.roundToInt()
-                },
+                }.onSizeChanged { bottomHeights.rightCustomRow = it.height },
           ) {
             Row(
               horizontalArrangement = Arrangement.spacedBy(12.dp),
               verticalAlignment = Alignment.CenterVertically,
               modifier =
                 Modifier
-                  .padding(vertical = customButtonsRowVerticalPadding)
                   .horizontalScroll(rememberScrollState())
-                  .padding(horizontal = 8.dp, vertical = 6.dp),
+                  .padding(horizontal = CustomButtonsRowInsetHorizontal, vertical = CustomButtonsRowInsetVertical),
             ) {
               customButtons.forEach { button ->
                 key(button.id) {
@@ -1684,14 +1660,14 @@ is PlayerUpdates.FrameInfo -> {
                 green = segmentColor.green * 0.30f,
                 blue = segmentColor.blue * 0.30f,
                 alpha = 0.88f,
-              )
+              ).asPlayerButtonBackground()
             val segmentBorderColor =
               Color(
                 red = segmentColor.red * 0.72f,
                 green = segmentColor.green * 0.72f,
                 blue = segmentColor.blue * 0.72f,
                 alpha = 0.96f,
-              )
+              ).asPlayerButtonBackground()
             if (enableLiquidGlass) {
               LiquidPillButton(
                 onClick = {
@@ -1845,7 +1821,7 @@ is PlayerUpdates.FrameInfo -> {
             val interaction = remember { MutableInteractionSource() }
             val buttonShadow = PlaySkipButtonShadowBrush
             // The shadow stands in for the button background, so it follows the background opacity.
-            val buttonShadowAlpha = LocalPlayerButtonsOpacity.current
+            val buttonShadowAlpha = PlayerButtonAlpha.background(1f, LocalPlayerButtonsOpacity.current)
 
             val hasPlaylistControls =
               playlistMode && (playlistItems.size > 1 || viewModel.getPlaylistTotalCount() > 1)
@@ -2033,9 +2009,7 @@ is PlayerUpdates.FrameInfo -> {
                   linkInBottomStack(BottomSlot.Seekbar)
                   start.linkTo(parent.start, spacing.large)
                   end.linkTo(parent.end, spacing.large)
-                }.onGloballyPositioned { coordinates ->
-                  seekbarTopPx = coordinates.positionInParent().y.roundToInt()
-                },
+                }.onSizeChanged { bottomHeights.seekbar = it.height },
           ) {
             val position by PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
             val precisePosition by viewModel.precisePosition.collectAsStateWithLifecycle()
@@ -2266,9 +2240,7 @@ is PlayerUpdates.FrameInfo -> {
                       width = Dimension.fillToConstraints
                     }
                   }
-                }.onGloballyPositioned { coordinates ->
-                  bottomRightControlsTopPx = coordinates.positionInParent().y.roundToInt()
-                },
+                }.onSizeChanged { bottomHeights.rightButtons = it.height },
           ) {
             if (isPortrait) {
               BottomPlayerControlsPortrait(
@@ -2350,7 +2322,7 @@ is PlayerUpdates.FrameInfo -> {
                   } else {
                     end.linkTo(bottomRightControls.start, spacing.small)
                   }
-                },
+                }.onSizeChanged { bottomHeights.leftButtons = it.height },
           ) {
             val rowScrollState = rememberScrollState()
             BottomLeftPlayerControlsLandscape(
@@ -2993,14 +2965,30 @@ private fun OutlinedText(
 
 private enum class BottomSlot { Buttons, Playback, Seekbar }
 
+private const val UNMEASURED_HEIGHT = -1
+
+/** Last measured heights of the bottom-cluster layers, kept while a layer is hidden. */
+@Stable
+private class BottomClusterHeights {
+  var rightButtons by mutableIntStateOf(UNMEASURED_HEIGHT)
+  var leftButtons by mutableIntStateOf(UNMEASURED_HEIGHT)
+  var seekbar by mutableIntStateOf(UNMEASURED_HEIGHT)
+  var leftCustomRow by mutableIntStateOf(UNMEASURED_HEIGHT)
+  var rightCustomRow by mutableIntStateOf(UNMEASURED_HEIGHT)
+}
+
+// Used until a layer is first laid out: one 48dp touch-target row.
+private val BottomClusterFallbackRowHeight = 48.dp
+private val CustomButtonsRowInsetHorizontal = 8.dp
+private val CustomButtonsRowInsetVertical = 8.dp
+private val CustomButtonsRowFallbackHeight = 36.dp + CustomButtonsRowInsetVertical * 2
+
 // Tallest control in the shared landscape playback row: the 64dp play/pause button.
 private val SharedPlaybackRowHeight = 64.dp
 
 // Half the play/pause row: 64dp play/pause, plus 56dp previous/next spaced 24dp in a playlist.
 private fun sharedPlaybackRowHalfWidth(hasPlaylistControls: Boolean): Dp =
   if (hasPlaylistControls) (64.dp + (56.dp + 24.dp) * 2) / 2 else 64.dp / 2
-
-internal const val MIN_PLAYER_BUTTONS_OPACITY = 0.2f
 
 private val FullScreenScrimBrush =
   Brush.verticalGradient(
@@ -3098,9 +3086,9 @@ private fun CustomControlButton(
     val buttonInteractionSource = remember { MutableInteractionSource() }
     Surface(
       shape = CircleShape,
-      color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+      color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f).asPlayerButtonBackground(),
       contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f).asPlayerButtonBackground()),
       modifier =
         Modifier
           .clip(CircleShape)

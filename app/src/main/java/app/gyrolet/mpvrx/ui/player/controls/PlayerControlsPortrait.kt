@@ -277,11 +277,10 @@ fun BottomPlayerControlsPortrait(
           .fillMaxWidth()
           .horizontalScroll(rememberScrollState())
           // Padding after horizontalScroll belongs to scroll content, not its clipping viewport.
+          // Vertical room is only for the liquid-glass shadow; the player places this row with its shared gaps.
           .padding(
-            start = if (enableLiquidGlass) 8.dp else 0.dp,
-            end = if (enableLiquidGlass) 8.dp else 0.dp,
-            top = if (enableLiquidGlass) 6.dp else 0.dp,
-            bottom = MaterialTheme.spacing.medium,
+            horizontal = if (enableLiquidGlass) 8.dp else 0.dp,
+            vertical = if (enableLiquidGlass) 6.dp else 0.dp,
           ),
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium, Alignment.CenterHorizontally),
       verticalAlignment = Alignment.CenterVertically,

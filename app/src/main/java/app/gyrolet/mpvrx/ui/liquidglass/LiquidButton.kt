@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceAtMost
 import androidx.compose.ui.util.lerp
+import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
+import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
@@ -156,10 +158,12 @@ fun LiquidButton(
         tint.isSpecified -> tint
         else -> MaterialTheme.colorScheme.surfaceContainerHigh
       }
+      // Thickens toward opaque above the default background level; fading below it is backgroundAlpha's job.
+      val fillLevel = maxOf(LocalPlayerButtonsOpacity.current, PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL)
       val fill = Brush.verticalGradient(
-        0f to baseColor.copy(alpha = 0.68f),
-        0.45f to baseColor.copy(alpha = 0.42f),
-        1f to baseColor.copy(alpha = 0.58f),
+        0f to baseColor.copy(alpha = PlayerButtonAlpha.background(0.68f, fillLevel)),
+        0.45f to baseColor.copy(alpha = PlayerButtonAlpha.background(0.42f, fillLevel)),
+        1f to baseColor.copy(alpha = PlayerButtonAlpha.background(0.58f, fillLevel)),
       )
       val rim = Brush.linearGradient(
         listOf(

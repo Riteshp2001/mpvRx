@@ -111,7 +111,9 @@ class AppearancePreferences(
     preferenceStore.getEnum("portrait_seekbar_placement", SeekbarPlacement.AboveButtons)
   val landscapeSeekbarPlacement =
     preferenceStore.getEnum("landscape_seekbar_placement", SeekbarPlacement.BelowButtons)
-  val playerButtonsOpacity = preferenceStore.getFloat("player_buttons_opacity", 1f)
+  // Absolute background level: 0.55 keeps each button's designed tint, 1 is opaque, 0 is clear.
+  // A new key, because "player_buttons_opacity" stored a multiplier whose 100% kept buttons translucent.
+  val playerButtonsBackgroundOpacity = preferenceStore.getFloat("player_buttons_background_opacity", 0.55f)
   val showMusicTab = preferenceStore.getBoolean("show_music_tab", true)
   val showProfileTab = preferenceStore.getBoolean("show_profile_tab", true)
   val profileName = preferenceStore.getString("profile_name", "")
