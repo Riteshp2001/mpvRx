@@ -1,0 +1,210 @@
+name: Android Developer Verification
+
+on:
+  # Pushing this branch registers the workflow and reports the signing certificate.
+  push:
+    branches:
+      - ci/android-developer-verification
+  workflow_dispatch:
+    inputs:
+      verification_code:
+        description: Code from Play Console "Sign and upload an APK" (leave empty to only report the signing certificate)
+        required: false
+        type: string
+      expected_sha256:
+        description: Certificate SHA-256 fingerprint shown in the same Play Console dialog
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  certificate:
+    name: Check signing certificate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      build_apk: ${{ steps.validate.outputs.build_apk }}
+      code: ${{ steps.validate.outputs.code }}
+      sha256: ${{ steps.certificate.outputs.sha256 }}
+
+    steps:
+      - name: Validate inputs
+        id: validate
+        shell: bash
+        env:
+          VERIFICATION_CODE: ${{ inputs.verification_code }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+        run: |
+          set -euo pipefail
+          code="$(printf '%s' "$VERIFICATION_CODE" | tr -d '[:space:]')"
+          expected="$(printf '%s' "$EXPECTED_SHA256" | tr -d '[:space:]:' | tr '[:lower:]' '[:upper:]')"
+
+          if [[ -n "$code" && ! "$code" =~ ^[A-Za-z0-9+/=_.-]+$ ]]; then
+            echo "::error::verification_code has unexpected characters; copy it again from Play Console."
+            exit 1
+          fi
+          if [[ -n "$expected" && ! "$expected" =~ ^[0-9A-F]{64}$ ]]; then
+            echo "::error::expected_sha256 must be the 64-hex-digit SHA-256 fingerprint from Play Console."
+            exit 1
+          fi
+          if [[ -n "$code" && -z "$expected" ]]; then
+            echo "::error::expected_sha256 is required to build the verification APK."
+            exit 1
+          fi
+
+          {
+            echo "code=$code"
+            echo "expected_sha256=$expected"
+            echo "build_apk=$([[ -n "$code" ]] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Read signing certificate
+        id: certificate
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          EXPECTED_SHA256: ${{ steps.validate.outputs.expected_sha256 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" ]]; then
+            echo "::error::SIGNING_KEYSTORE, SIGNING_KEY_ALIAS and SIGNING_STORE_PASSWORD secrets are required."
+            exit 1
+          fi
+
+          keystore="$RUNNER_TEMP/release.keystore"
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$keystore"
+          trap 'rm -f "$keystore"' EXIT
+
+          actual="$(keytool -list -v -keystore "$keystore" -alias "$SIGNING_KEY_ALIAS" -storepass:env SIGNING_STORE_PASSWORD \
+            | awk '$1 == "SHA256:" && !found { print $2; found = 1 }' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          if [[ ! "$actual" =~ ^[0-9A-F]{64}$ ]]; then
+            echo "::error::Could not read the SHA-256 fingerprint of the signing key."
+            exit 1
+          fi
+          echo "sha256=$actual" >> "$GITHUB_OUTPUT"
+
+          pretty() { sed 's/../&:/g; s/:$//' <<< "$1"; }
+          {
+            echo "## Signing certificate in GitHub secrets"
+            echo
+            echo "SHA-256: \`$(pretty "$actual")\`"
+            echo
+            if [[ -z "$EXPECTED_SHA256" ]]; then
+              echo "Compare this with the certificate SHA-256 fingerprint shown in Play Console before uploading an APK."
+            elif [[ "$actual" == "$EXPECTED_SHA256" ]]; then
+              echo "Matches the fingerprint from Play Console."
+            else
+              echo "**Does not match** the Play Console fingerprint \`$(pretty "$EXPECTED_SHA256")\`."
+              echo "The key in GitHub secrets cannot produce a valid verification APK for that certificate."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ -n "$EXPECTED_SHA256" && "$actual" != "$EXPECTED_SHA256" ]]; then
+            echo "::error::The signing key SHA-256 does not match the Play Console fingerprint."
+            exit 1
+          fi
+
+  apk:
+    name: Build verification APK
+    needs: certificate
+    if: needs.certificate.outputs.build_apk == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          # BuildConfig.GIT_COUNT relies on the real repository history.
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Add verification code to app assets
+        shell: bash
+        env:
+          VERIFICATION_CODE: ${{ needs.certificate.outputs.code }}
+        run: printf '%s' "$VERIFICATION_CODE" > app/src/main/assets/adi-registration.properties
+
+      - name: Build Play Store release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew assemblePlaystoreRelease --stacktrace --no-daemon --max-workers=2
+
+      - name: Sign and verify APK
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERIFICATION_CODE: ${{ needs.certificate.outputs.code }}
+          EXPECTED_SHA256: ${{ needs.certificate.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          build_tools="$ANDROID_HOME/build-tools/34.0.0"
+          out_dir="app/build/outputs/apk/playstore/release"
+          unsigned="$out_dir/app-playstore-universal-release-unsigned.apk"
+          [[ -f "$unsigned" ]] || unsigned="$out_dir/app-playstore-universal-release.apk"
+          test -f "$unsigned"
+
+          keystore="$RUNNER_TEMP/release.keystore"
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$keystore"
+          trap 'rm -f "$keystore"' EXIT
+
+          mkdir -p verification
+          apk="verification/mpvRx-android-developer-verification.apk"
+          "$build_tools/apksigner" sign \
+            --ks "$keystore" \
+            --ks-key-alias "$SIGNING_KEY_ALIAS" \
+            --ks-pass env:SIGNING_STORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD \
+            --out "$apk" \
+            "$unsigned"
+
+          if [[ "$("$build_tools/aapt2" dump packagename "$apk")" != "app.gyrolet.mpvrx" ]]; then
+            echo "::error::The APK package name is not app.gyrolet.mpvrx."
+            exit 1
+          fi
+          if [[ "$(unzip -p "$apk" assets/adi-registration.properties)" != "$VERIFICATION_CODE" ]]; then
+            echo "::error::assets/adi-registration.properties is missing from the APK or has the wrong code."
+            exit 1
+          fi
+          signers="$("$build_tools/apksigner" verify --print-certs "$apk" \
+            | awk '/^Signer #[0-9]+ certificate SHA-256 digest:/ { print toupper($NF) }')"
+          if [[ "$signers" != "$EXPECTED_SHA256" ]]; then
+            echo "::error::The APK is not signed by exactly the expected certificate."
+            exit 1
+          fi
+
+          {
+            echo "## Verification APK ready"
+            echo
+            echo "Download the \`mpvRx-android-developer-verification\` artifact, extract the ZIP, and upload \`mpvRx-android-developer-verification.apk\` in the Play Console dialog."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verification APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpvRx-android-developer-verification
+          path: verification/mpvRx-android-developer-verification.apk
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
