@@ -10,7 +10,7 @@
 package app.gyrolet.mpvrx.ui.browser.selection
 
 import android.content.Context
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue

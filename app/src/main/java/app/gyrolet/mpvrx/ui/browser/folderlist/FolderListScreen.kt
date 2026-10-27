@@ -12,7 +12,7 @@ package app.gyrolet.mpvrx.ui.browser.folderlist
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -772,11 +772,11 @@ object FolderListScreen : Screen {
                   foldersPreferences.addBlacklistedFolders(paths, scope)
                   selectionManager.clear()
                   viewModel.refresh()
-                  android.widget.Toast
+                  app.gyrolet.mpvrx.ui.components.AppToast
                     .makeText(
                       context,
                       foldersBlacklistedMessage,
-                      android.widget.Toast.LENGTH_SHORT,
+                      app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
                     ).show()
                 }
               },
@@ -1297,11 +1297,11 @@ object FolderListScreen : Screen {
             coroutineScope.launch {
               val ok = viewModel.renameFolder(folder, newName)
               if (!ok) {
-                android.widget.Toast
+                app.gyrolet.mpvrx.ui.components.AppToast
                   .makeText(
                     context,
                     context.getString(app.gyrolet.mpvrx.R.string.ui_rename_failed),
-                    android.widget.Toast.LENGTH_SHORT,
+                    app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
                   ).show()
               }
               selectionManager.clear()
@@ -1342,18 +1342,18 @@ object FolderListScreen : Screen {
                 restoreSelectedFolderAfterFailure(selectedFolder)
               }
               if (result.deleted > 0) {
-                android.widget.Toast
+                app.gyrolet.mpvrx.ui.components.AppToast
                   .makeText(
                     context,
                     context.getString(app.gyrolet.mpvrx.R.string.ui_deleted_successfully),
-                    android.widget.Toast.LENGTH_SHORT,
+                    app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
                   ).show()
               } else if (result.failed > 0) {
-                android.widget.Toast
+                app.gyrolet.mpvrx.ui.components.AppToast
                   .makeText(
                     context,
                     context.getString(app.gyrolet.mpvrx.R.string.ui_failed_to_delete),
-                    android.widget.Toast.LENGTH_SHORT,
+                    app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
                   ).show()
               }
             } catch (cancellation: CancellationException) {
@@ -1363,14 +1363,14 @@ object FolderListScreen : Screen {
             } catch (error: Exception) {
               viewModel.finishFolderDeletion(foldersToDelete, foldersToDelete)
               restoreSelectedFolderAfterFailure(selectedFolder)
-              android.widget.Toast
+              app.gyrolet.mpvrx.ui.components.AppToast
                 .makeText(
                   context,
                   context.getString(
                     R.string.toast_failed_to_delete_reason,
                     error.message ?: context.getString(R.string.generic_unknown_error),
                   ),
-                  android.widget.Toast.LENGTH_SHORT,
+                  app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
                 ).show()
             } finally {
               viewModel.refresh()

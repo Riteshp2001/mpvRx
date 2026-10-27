@@ -5,7 +5,7 @@
 package app.gyrolet.mpvrx.ui.browser.components
 
 import android.content.Context
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity

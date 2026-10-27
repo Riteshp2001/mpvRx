@@ -9,7 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border

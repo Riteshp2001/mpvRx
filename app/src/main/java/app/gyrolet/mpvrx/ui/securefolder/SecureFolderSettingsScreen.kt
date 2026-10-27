@@ -12,7 +12,7 @@ package app.gyrolet.mpvrx.ui.securefolder
 import app.gyrolet.mpvrx.ui.preferences.DevicePreference
 import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

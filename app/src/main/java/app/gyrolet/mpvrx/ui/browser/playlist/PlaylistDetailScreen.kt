@@ -11,7 +11,7 @@ package app.gyrolet.mpvrx.ui.browser.playlist
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring

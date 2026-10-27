@@ -10,7 +10,7 @@
 package app.gyrolet.mpvrx.ui.browser.recentlyplayed
 
 import android.content.Intent
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts

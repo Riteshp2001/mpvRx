@@ -30,7 +30,7 @@ import android.util.Log
 import android.util.LruCache
 import android.view.inputmethod.InputMethodManager
 import android.webkit.MimeTypeMap
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.documentfile.provider.DocumentFile

@@ -131,7 +131,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import android.content.ActivityNotFoundException
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt

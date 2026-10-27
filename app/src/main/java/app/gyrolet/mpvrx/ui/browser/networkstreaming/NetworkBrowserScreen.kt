@@ -59,7 +59,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.repository.PlaylistItemInput
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository

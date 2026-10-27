@@ -15,7 +15,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.TransactionTooLargeException
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import java.nio.charset.StandardCharsets
 
 object SafeClipboard {

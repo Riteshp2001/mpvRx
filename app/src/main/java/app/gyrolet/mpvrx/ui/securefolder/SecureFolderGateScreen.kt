@@ -9,7 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.securefolder
 
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable

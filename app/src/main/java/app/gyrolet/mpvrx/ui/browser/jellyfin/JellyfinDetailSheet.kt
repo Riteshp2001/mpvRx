@@ -107,7 +107,7 @@ import app.gyrolet.mpvrx.ui.browser.music.SharedMusicTrackListItem
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import android.content.ActivityNotFoundException
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

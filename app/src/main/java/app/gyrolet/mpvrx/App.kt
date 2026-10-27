@@ -38,7 +38,7 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SettingsRestoreGuard
 import app.gyrolet.mpvrx.remote.TvInputDispatcher
 import app.gyrolet.mpvrx.remote.TvRemoteServer
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.presentation.crash.CrashMonitor
 import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.repository.NetworkRepository

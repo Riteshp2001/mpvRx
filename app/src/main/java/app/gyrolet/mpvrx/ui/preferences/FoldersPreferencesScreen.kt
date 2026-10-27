@@ -181,10 +181,10 @@ object FoldersPreferencesScreen : Screen {
           } finally {
             libraryTaskRunning = false
           }
-        android.widget.Toast.makeText(
+        app.gyrolet.mpvrx.ui.components.AppToast.makeText(
           context,
           if (succeeded) doneMessage else R.string.pref_library_action_failed,
-          android.widget.Toast.LENGTH_SHORT,
+          app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
         ).show()
       }
     }
@@ -255,10 +255,10 @@ object FoldersPreferencesScreen : Screen {
             preferences.includeNoMediaFolders.set(true)
             onScanPreferenceChanged()
           } else {
-            android.widget.Toast.makeText(
+            app.gyrolet.mpvrx.ui.components.AppToast.makeText(
               context,
               R.string.pref_playstore_hidden_grant_failed,
-              android.widget.Toast.LENGTH_LONG,
+              app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
             ).show()
           }
         }

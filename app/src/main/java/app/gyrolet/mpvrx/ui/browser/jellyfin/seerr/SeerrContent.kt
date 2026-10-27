@@ -10,7 +10,7 @@
 package app.gyrolet.mpvrx.ui.browser.jellyfin.seerr
 
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

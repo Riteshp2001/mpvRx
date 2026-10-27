@@ -11,7 +11,7 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -1158,23 +1158,23 @@ object SubtitlesPreferencesScreen : Screen {
                             val folder = resolveSubtitleStorageDirectory(context, uri.toString())
                             folder?.listFiles()?.forEach { it.delete() }
                             withContext(Dispatchers.Main) {
-                              android.widget.Toast
+                              app.gyrolet.mpvrx.ui.components.AppToast
                                 .makeText(
                                   context,
                                   R.string.toast_subtitles_cleared,
-                                  android.widget.Toast.LENGTH_SHORT,
+                                  app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
                                 ).show()
                             }
                           }.onFailure { e ->
                             withContext(Dispatchers.Main) {
-                              android.widget.Toast
+                              app.gyrolet.mpvrx.ui.components.AppToast
                                 .makeText(
                                   context,
                                   context.getString(
                                     R.string.pref_subtitle_search_error,
                                     e.message ?: context.getString(R.string.generic_unknown_error),
                                   ),
-                                  android.widget.Toast.LENGTH_SHORT,
+                                  app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
                                 ).show()
                             }
                           }

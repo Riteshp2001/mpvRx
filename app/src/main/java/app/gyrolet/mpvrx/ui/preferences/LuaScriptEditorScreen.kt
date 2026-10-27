@@ -10,7 +10,7 @@
 package app.gyrolet.mpvrx.ui.preferences
 
 import android.content.Intent
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

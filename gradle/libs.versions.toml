@@ -58,6 +58,7 @@ libarchiveAndroid = "1.1.6"
 ktlint = "14.2.0"
 telephoto = "0.19.0"
 haze = "2.0.1"
+sonner = "0.4.0"
 kyant = "2.0.1"
 kyant-shapes = "1.2.1"
 
@@ -149,6 +150,7 @@ libtorrent4j-android-x8664 = { module = "org.libtorrent4j:libtorrent4j-android-x
 libarchive-android = { module = "me.zhanghai.android.libarchive:library", version.ref = "libarchiveAndroid" }
 telephoto-zoomable = { module = "me.saket.telephoto:zoomable", version.ref = "telephoto" }
 haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
+sonner = { module = "io.github.dokar3:sonner", version.ref = "sonner" }
 kyant-backdrop = { module = "io.github.kyant0:backdrop-android", version.ref = "kyant" }
 kyant-shapes = { module = "io.github.kyant0:shapes-android", version.ref = "kyant-shapes" }
 

@@ -10,7 +10,8 @@
 package app.gyrolet.mpvrx.ui.preferences
 
 import android.app.Activity
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.components.AppToastType
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -709,16 +710,18 @@ object AppearancePreferencesScreen : Screen {
                   onValueChange = { selected ->
                     if (!changingThumbnailGenerator && selected != thumbnailGenerator) {
                       changingThumbnailGenerator = true
+                      val progressToast = Toast.loading(context, context.getString(R.string.toast_updating_thumbnail_generator))
                       scope.launch {
                         try {
                           thumbnailRepository.setThumbnailGenerator(selected)
                           app.gyrolet.mpvrx.ui.player.MediaPlayerWidget.clearArtworkCache()
                           app.gyrolet.mpvrx.ui.player.MediaPlayerWidget.requestUpdate(context)
-                          Toast.makeText(context, thumbnailCacheClearedMessage, Toast.LENGTH_SHORT).show()
+                          progressToast.update(thumbnailCacheClearedMessage, AppToastType.Success)
                         } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                          progressToast.cancel()
                           throw cancelled
                         } catch (error: Exception) {
-                          Toast.makeText(context, context.getString(R.string.pref_thumbnail_cache_clear_failed, error.message ?: "Unknown error"), Toast.LENGTH_LONG).show()
+                          progressToast.update(context.getString(R.string.pref_thumbnail_cache_clear_failed, error.message ?: "Unknown error"), AppToastType.Error)
                         } finally {
                           changingThumbnailGenerator = false
                         }

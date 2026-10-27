@@ -453,6 +453,7 @@
   <string name="pref_advanced_clear_fonts_cache">Clear cached fonts</string>
   <string name="pref_advanced_cleared_fonts_cache">Cleared cached fonts</string>
   <string name="pref_thumbnail_cache_cleared">Thumbnail cache cleared</string>
+  <string name="toast_updating_thumbnail_generator">Updating thumbnails</string>
   <string name="pref_thumbnail_cache_clear_failed">Failed to clear thumbnail cache: %1$s</string>
   <string name="pref_advanced_enable_recently_played_title">Recently Played</string>
   <string name="pref_advanced_enable_recently_played_summary">Track and display recently played videos and playlists</string>

@@ -506,12 +506,12 @@ object NetworkStreamingScreen : Screen {
                   } else {
                     when (linkDownloadCoordinator.enqueue(playableSource, entry.fileName)) {
                       app.gyrolet.mpvrx.domain.download.LinkDownloadCoordinator.Route.UNSUPPORTED ->
-                        android.widget.Toast
-                          .makeText(context, R.string.downloads_location_invalid, android.widget.Toast.LENGTH_SHORT)
+                        app.gyrolet.mpvrx.ui.components.AppToast
+                          .makeText(context, R.string.downloads_location_invalid, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
                           .show()
                       else ->
-                        android.widget.Toast
-                          .makeText(context, R.string.downloads_started, android.widget.Toast.LENGTH_SHORT)
+                        app.gyrolet.mpvrx.ui.components.AppToast
+                          .makeText(context, R.string.downloads_started, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
                           .show()
                     }
                   }

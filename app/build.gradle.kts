@@ -432,6 +432,7 @@ dependencies {
   implementation(libs.androidx.biometric)
   implementation(libs.telephoto.zoomable)
   implementation(libs.haze.blur)
+  implementation(libs.sonner)
   implementation(libs.kyant.backdrop)
   implementation(libs.kyant.shapes)
 

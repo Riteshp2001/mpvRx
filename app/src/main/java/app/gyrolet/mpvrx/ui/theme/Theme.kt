@@ -388,7 +388,9 @@ fun MpvrxTheme(
         motionScheme = MotionScheme.expressive(),
         content = {
           ProvideTvFocusRipple {
-            app.gyrolet.mpvrx.ui.utils.ProvideAppHaptics(content)
+            app.gyrolet.mpvrx.ui.utils.ProvideAppHaptics {
+              app.gyrolet.mpvrx.ui.components.AppToastHost(content)
+            }
           }
         },
       )

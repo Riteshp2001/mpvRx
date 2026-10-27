@@ -651,8 +651,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
                     foldersPreferences.addBlacklistedFolders(paths, app.gyrolet.mpvrx.preferences.BlacklistScope.VIDEO_ONLY)
                     selectionManager.clear()
                     viewModel.refresh()
-                    android.widget.Toast
-                      .makeText(context, foldersBlacklistedMessage, android.widget.Toast.LENGTH_SHORT)
+                    app.gyrolet.mpvrx.ui.components.AppToast
+                      .makeText(context, foldersBlacklistedMessage, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
                       .show()
                   }
                 }

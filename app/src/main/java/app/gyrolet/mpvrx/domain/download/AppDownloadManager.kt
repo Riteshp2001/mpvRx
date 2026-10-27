@@ -13,7 +13,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.dao.DownloadItemDao
 import app.gyrolet.mpvrx.database.entities.DownloadItemEntity

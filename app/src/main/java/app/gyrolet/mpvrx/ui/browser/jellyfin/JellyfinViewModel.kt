@@ -1594,8 +1594,8 @@ class JellyfinViewModel(
 
   private suspend fun showDownloadToast(message: String) {
     withContext(Dispatchers.Main) {
-      android.widget.Toast
-        .makeText(getApplication(), message, android.widget.Toast.LENGTH_SHORT)
+      app.gyrolet.mpvrx.ui.components.AppToast
+        .makeText(getApplication(), message, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
         .show()
     }
   }

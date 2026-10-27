@@ -9,7 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.browser.components
 
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -25,7 +25,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -107,6 +106,7 @@ private fun SeasonalTitleIcon(event: SeasonalEvent, modifier: Modifier = Modifie
   IconButton(
     onClick = {
       toast.setText(greeting)
+      toast.withIcon(event.icon)
       toast.show()
     },
     modifier = modifier.size(32.dp).browserTopBarFocus().semantics { contentDescription = greeting },
@@ -425,14 +425,11 @@ private fun NormalTopBar(
               color = MaterialTheme.colorScheme.primary.onWallpaper(),
               maxLines = 1,
               overflow = TextOverflow.Ellipsis,
-              modifier = titleModifier.padding(top = if (seasonalEvent != null && onBackClick == null) 16.dp else 0.dp),
+              modifier = titleModifier,
             )
-            if (seasonalEvent != null && onBackClick == null) {
-              SeasonalTitleIcon(
-                event = seasonalEvent,
-                modifier = Modifier.align(Alignment.TopEnd).offset(x = (-8).dp),
-              )
-            }
+          }
+          if (seasonalEvent != null && onBackClick == null) {
+            SeasonalTitleIcon(event = seasonalEvent, modifier = Modifier.padding(start = 4.dp))
           }
           if (titleTrailing != null) {
             titleTrailing()

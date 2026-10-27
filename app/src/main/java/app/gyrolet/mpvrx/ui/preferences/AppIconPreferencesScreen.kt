@@ -4,7 +4,7 @@ package app.gyrolet.mpvrx.ui.preferences
 import android.os.Build
 import android.app.Activity
 import android.widget.ImageView
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring

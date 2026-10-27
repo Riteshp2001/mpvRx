@@ -270,11 +270,11 @@ data class WallpaperEditorScreen(
                         preferences.customWallpaperUseColors.set(true)
                       } else {
                         preferences.customWallpaperUseColors.set(false)
-                        android.widget.Toast
+                        app.gyrolet.mpvrx.ui.components.AppToast
                           .makeText(
                             context,
                             R.string.pref_appearance_custom_wallpaper_colors_failed,
-                            android.widget.Toast.LENGTH_LONG,
+                            app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
                           )
                           .show()
                       }
@@ -289,8 +289,8 @@ data class WallpaperEditorScreen(
                   } catch (error: CancellationException) {
                     throw error
                   } catch (_: Exception) {
-                    android.widget.Toast
-                      .makeText(context, R.string.wallpaper_save_failed, android.widget.Toast.LENGTH_LONG)
+                    app.gyrolet.mpvrx.ui.components.AppToast
+                      .makeText(context, R.string.wallpaper_save_failed, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG)
                       .show()
                   } finally {
                     isSaving = false
