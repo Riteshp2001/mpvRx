@@ -19,7 +19,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,12 +49,10 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.LeftSideOvalShape
@@ -91,7 +88,6 @@ fun DoubleTapToSeekOvals(
   val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
   val seekAreaFraction = (doubleTapSeekAreaWidth / 100f).coerceIn(0.01f, 0.5f)
-  val feedbackAreaFraction = seekAreaFraction.coerceAtLeast(0.28f)
   // Reset active waves when feedback/motion settings change, without replaying the last tap.
   val waves = remember(showOvals, reducedMotion) { mutableStateListOf<SeekRippleRequest>() }
   LaunchedEffect(rippleRequest) {
@@ -109,33 +105,14 @@ fun DoubleTapToSeekOvals(
     if (amount == 0 || reducedMotion) {
       labelScale.snapTo(1f)
     } else {
-      labelScale.snapTo(1.035f)
-      labelScale.animateTo(1f, tween(200, easing = LinearOutSlowInEasing))
+      labelScale.snapTo(1.06f)
+      labelScale.animateTo(1f, tween(220, easing = LinearOutSlowInEasing))
     }
   }
   val displayedAmount = if (amount != 0) amount else lastNonZeroAmount
   val isForward = displayedAmount > 0
 
   Box(modifier.fillMaxSize()) {
-    AnimatedVisibility(
-      visible = amount != 0 && showOvals,
-      modifier = Modifier
-        .align(if (isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
-        .fillMaxHeight()
-        .fillMaxWidth(seekAreaFraction),
-      enter = fadeIn(tween(if (reducedMotion) 0 else 90)),
-      exit = fadeOut(tween(if (reducedMotion) 0 else 220)),
-    ) {
-      Box(
-        Modifier.fillMaxSize()
-          .clip(if (isForward) RightSideOvalShape else LeftSideOvalShape)
-          .drawWithCache {
-            val colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.075f))
-            val veil = Brush.horizontalGradient(if (isForward) colors else colors.reversed())
-            onDrawBehind { drawRect(veil) }
-          },
-      )
-    }
     // Wave lifetime is independent of the accumulated seek amount and its reset timer.
     // Switching sides leaves each existing wave on its original side until it fades out.
     waves.forEach { wave ->
@@ -157,38 +134,39 @@ fun DoubleTapToSeekOvals(
       modifier = Modifier
         .align(if (isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
         .fillMaxHeight()
-        .fillMaxWidth(feedbackAreaFraction),
+        .fillMaxWidth(seekAreaFraction),
       enter = fadeIn(tween(if (reducedMotion) 0 else 70)),
       exit = fadeOut(tween(if (reducedMotion) 0 else 160)),
     ) {
       Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-          Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             modifier = Modifier.graphicsLayer {
               scaleX = labelScale.value
               scaleY = labelScale.value
             },
           ) {
-            if (showSeekIcon) {
-              SeekChevron(isForward, amount, rippleRequest, reducedMotion)
+            if (showSeekIcon && !isForward) {
+              SeekChevron(false, amount, rippleRequest, reducedMotion)
             }
             if (showSeekTime) {
-              val seconds = abs(displayedAmount)
-              val seekText = pluralStringResource(R.plurals.seconds, seconds, seconds)
+              val seekText = "${if (isForward) "+" else "−"} ${abs(displayedAmount)}"
               Text(
                 text = seekText,
                 color = Color.White,
                 style = MaterialTheme.typography.headlineSmall.copy(
-                  fontSize = 18.sp,
+                  fontSize = 22.sp,
                   fontWeight = FontWeight.Bold,
                   fontFeatureSettings = "tnum",
                   shadow = Shadow(Color.Black.copy(alpha = 0.7f), Offset(0f, 1f), 6f),
                 ),
-                maxLines = 1,
                 modifier = Modifier.stableNumericWidth(seekText),
               )
+            }
+            if (showSeekIcon && isForward) {
+              SeekChevron(true, amount, rippleRequest, reducedMotion)
             }
           }
         }
@@ -211,7 +189,7 @@ private fun SeekRippleWave(
       // A short, stationary touch cue; no expanding halo, bouncing label or moving chevrons.
       delay(160)
     } else {
-      progress.animateTo(1f, tween(520, easing = LinearEasing))
+      progress.animateTo(1f, tween(460, easing = LinearEasing))
     }
     currentOnFinished()
   }
@@ -230,10 +208,10 @@ private fun SeekRippleWave(
         // bitmap capture or backdrop sampling is needed for this translucent touch feedback.
         val brush =
           Brush.radialGradient(
-            0f to Color.White.copy(alpha = 0.24f),
-            0.60f to Color.White.copy(alpha = 0.20f),
-            0.84f to Color.White.copy(alpha = 0.11f),
-            0.96f to Color.White.copy(alpha = 0.025f),
+            0f to Color.White.copy(alpha = 0.20f),
+            0.65f to Color.White.copy(alpha = 0.18f),
+            0.86f to Color.White.copy(alpha = 0.10f),
+            0.96f to Color.Black.copy(alpha = 0.035f),
             1f to Color.Transparent,
             center = Offset.Zero,
             radius = 1f,
@@ -244,7 +222,7 @@ private fun SeekRippleWave(
           val radius =
             if (reducedMotion) staticRadius else startRadius + (maxRadius - startRadius) * expansion
           val fadeIn = (p / 0.09f).coerceIn(0f, 1f)
-          val fadeOut = 1f - FastOutSlowInEasing.transform(((p - 0.34f) / 0.66f).coerceIn(0f, 1f))
+          val fadeOut = 1f - FastOutSlowInEasing.transform(((p - 0.28f) / 0.72f).coerceIn(0f, 1f))
           val opacity = if (reducedMotion) 0.7f else fadeIn * fadeOut
           withTransform({
             translate(origin.x, origin.y)
@@ -270,24 +248,24 @@ private fun SeekChevron(
       progress.snapTo(1f)
     } else {
       progress.snapTo(0f)
-      progress.animateTo(1f, tween(360, easing = LinearEasing))
+      progress.animateTo(1f, tween(240, easing = LinearOutSlowInEasing))
     }
   }
-  Row(
-    modifier = Modifier.graphicsLayer { scaleX = if (isForward) 1f else -1f },
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(0.dp),
-  ) {
-    repeat(3) { index ->
+  Box(Modifier.size(48.dp).graphicsLayer { scaleX = if (isForward) 1f else -1f }) {
+    Icon(
+      imageVector = Icons.RoundedFilled.KeyboardArrowRight,
+      contentDescription = null,
+      tint = Color.White,
+      modifier = Modifier.fillMaxSize(),
+    )
+    if (!reducedMotion) {
       Icon(
-        imageVector = Icons.RoundedFilled.PlayArrow,
+        imageVector = Icons.RoundedFilled.KeyboardArrowRight,
         contentDescription = null,
         tint = Color.White,
-        modifier = Modifier.size(22.dp).graphicsLayer {
-          val phase = progress.value
-          val highlight = (1f - abs(phase * 3.4f - index - 0.7f)).coerceIn(0f, 1f)
-          alpha = if (reducedMotion || phase >= 1f) 1f else 0.3f + 0.7f * highlight
-          translationX = if (reducedMotion) 0f else -4.dp.toPx() * (1f - phase)
+        modifier = Modifier.fillMaxSize().graphicsLayer {
+          alpha = (1f - progress.value) * 0.65f
+          translationX = -14.dp.toPx() * (1f - progress.value)
         },
       )
     }
