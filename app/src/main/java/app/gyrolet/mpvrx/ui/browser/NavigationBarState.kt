@@ -71,7 +71,8 @@ object NavigationBarState {
   var navbarWidth: Dp by mutableStateOf(320.dp)
 
   val floatingBarSpacing: Dp = 12.dp
-  internal val connectedDockSpacing: Dp = 0.dp
+  internal val connectedDockSpacing: Dp = 2.dp
+  internal val connectedDockCorner: Dp = 4.dp
   internal val navigationPillMaxWidth: Dp = 400.dp
   internal val navigationPillMaxMargin: Dp = 58.dp
   internal val miniPlayerMinWidth: Dp = 320.dp
@@ -199,6 +200,7 @@ object NavigationBarState {
 
 @Composable
 internal fun rememberMiniPlayerShape(): RoundedCornerShape {
-  val joiningCorner = 20.dp * (1f - NavigationBarState.dockProgress)
+  val joiningCorner = 20.dp * (1f - NavigationBarState.dockProgress) +
+    NavigationBarState.connectedDockCorner * NavigationBarState.dockProgress
   return AppShapeScale.largeIncreased.copy(bottomStart = CornerSize(joiningCorner), bottomEnd = CornerSize(joiningCorner))
 }

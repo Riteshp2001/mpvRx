@@ -1046,7 +1046,7 @@ internal fun ExpressivePillNavigationBar(
   )
   val dockProgress = NavigationBarState.dockProgress
   val standaloneCorner = (48.dp + labelHeight * labelFraction) / 2f
-  val joiningCorner = standaloneCorner * (1f - dockProgress)
+  val joiningCorner = standaloneCorner * (1f - dockProgress) + NavigationBarState.connectedDockCorner * dockProgress
   val outsideCorner = standaloneCorner * (1f - dockProgress) + 20.dp * dockProgress
   val navigationShape = if (dockProgress <= 0f) CircleShape else RoundedCornerShape(
     topStart = joiningCorner,
