@@ -657,14 +657,13 @@ class MPVView(
   }
 
   /**
-   * A paused mpv does not render onto a new or resized Surface by itself, leaving a black or
-   * stretched buffer. A zero-distance exact seek re-renders the current frame (as REX Player does).
+   * Repaint the retained video output onto a replacement presentation window while paused.
    */
   private fun redrawPausedFrame() {
     if (isExiting || !isSurfaceReady) return
     val state = PlaybackSession.state.value
     if (!state.paused || state.phase != PlaybackPhase.READY || !PlaybackSession.isSurfaceAttachedTo(this)) return
-    PlaybackSession.command("seek", "0", "relative+exact")
+    PlaybackSession.redrawVideoFrame()
   }
 
   override fun onRenderSurfaceAvailable(surface: Surface, width: Int, height: Int) {

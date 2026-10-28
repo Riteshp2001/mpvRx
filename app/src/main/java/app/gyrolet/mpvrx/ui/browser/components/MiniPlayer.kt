@@ -910,7 +910,7 @@ private class MiniPlayerSurfaceView(context: Context) : SurfaceView(context), Su
         if (playbackActive && MediaPlaybackService.isForegroundActive() && PlaybackSession.isRendererReadyFor(this)) {
           hideSubtitles()
           if (PlaybackSession.getPropertyBoolean("pause") == true) {
-            PlaybackSession.command("seek", "0", "relative+exact")
+            PlaybackSession.redrawVideoFrame()
           }
         }
       },
