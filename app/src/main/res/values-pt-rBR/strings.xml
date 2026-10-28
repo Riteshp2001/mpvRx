@@ -2857,4 +2857,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="player_layout_preset_title">Layout de reprodução</string>
   <string name="player_layout_preview_hint">Apenas prévia. Alterações salvas na hora.</string>
   <string name="player_layout_shared_landscape_hint">Compartilhado por todas as áreas em paisagem.</string>
+  <string name="pref_ignore_audio_focus_title">Ignorar o foco de áudio</string>
+  <string name="pref_ignore_audio_focus_summary">Continuar reproduzindo áudio e vídeo com outros apps sem pausar nem reduzir o volume</string>
 </resources>

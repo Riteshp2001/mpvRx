@@ -606,6 +606,7 @@ class PlayerActivity :
    */
   private val audioFocusChangeListener =
     AudioManager.OnAudioFocusChangeListener { focusChange ->
+      if (audioPreferences.ignoreAudioFocus.get()) return@OnAudioFocusChangeListener
       PlaybackActivityOwner.runIfOwner(playbackOwnerToken, Unit) {
         when (focusChange) {
           AudioManager.AUDIOFOCUS_LOSS -> {
@@ -964,6 +965,19 @@ class PlayerActivity :
     lifecycleScope.launch {
       playerPreferences.keepScreenOnWhenPaused.changes().drop(1).collect {
         updateKeepScreenOn()
+      }
+    }
+
+    lifecycleScope.launch {
+      audioPreferences.ignoreAudioFocus.changes().distinctUntilChanged().collect { ignore ->
+        if (!mpvInitialized || !ownsPlaybackSession()) return@collect
+        if (ignore) {
+          abandonAudioFocus()
+        } else if (MediaPlaybackService.activityForeground && !isBackgroundPlaybackSessionActive &&
+          PlaybackSession.getPropertyBoolean("pause") == false && !requestAudioFocus()
+        ) {
+          PlaybackSession.setPropertyBoolean("pause", true)
+        }
       }
     }
 
@@ -1684,6 +1698,11 @@ class PlayerActivity :
    * @return true if audio focus was granted immediately, false otherwise
    */
   override fun requestAudioFocus(): Boolean {
+    if (audioPreferences.ignoreAudioFocus.get()) {
+      // Release any previous request as well, so other apps keep their focus while we mix.
+      abandonAudioFocus()
+      return true
+    }
     if (holdsAudioFocus) return true
     if (audioFocusRequestActive) {
       playbackDelayedForAudioFocus = true

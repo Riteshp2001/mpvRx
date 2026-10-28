@@ -501,6 +501,21 @@ object AudioPreferencesScreen : Screen {
               )
 
               PreferenceDivider()
+              val ignoreAudioFocus by preferences.ignoreAudioFocus.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_ignore_audio_focus_title),
+                value = ignoreAudioFocus,
+                onValueChange = preferences.ignoreAudioFocus::set,
+                title = { Text(stringResource(R.string.pref_ignore_audio_focus_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_ignore_audio_focus_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
               val audioBackgroundPlayback by preferences.audioBackgroundPlayback.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_background_playback_title),

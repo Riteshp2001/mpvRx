@@ -1157,6 +1157,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_ignore_audio_focus_title,
+          summaryRes = R.string.pref_ignore_audio_focus_summary,
+          keywords = listOf("audio", "focus", "ignore", "mix", "simultaneous", "音频焦点", "同时播放"),
+          category = "Audio",
+          screen = AudioPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_audio_background_playback_title,
           summaryRes = R.string.pref_audio_background_playback_summary,
           keywords = listOf("background", "playback", "audio", "service", "music"),
