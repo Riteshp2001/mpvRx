@@ -32,6 +32,7 @@ class AmbientModeManager(
 ) {
   companion object {
     private const val TAG = "AmbientModeManager"
+    private const val GOLDEN_ANGLE = 2.399963229728653
 
     private fun glslFloat(value: Double): String {
       val normalized = if (abs(value) < 0.0000005) 0.0 else value
@@ -42,9 +43,30 @@ class AmbientModeManager(
       return if (formatted.contains('.')) formatted else "$formatted.0"
     }
 
+    private fun generateTapTable(count: Int, maxRadius: Double): String {
+      val taps = (0 until count).joinToString(",\n") { i ->
+        val r = kotlin.math.sqrt((i.toDouble() + 0.5) / count.toDouble()) * maxRadius
+        val theta = (i.toDouble() + 0.5) * GOLDEN_ANGLE
+        val x = kotlin.math.cos(theta) * r
+        val y = kotlin.math.sin(theta) * r
+        "    vec2(${glslFloat(x)}, ${glslFloat(y)})"
+      }
+      return "const vec2 YT2_TAPS[$count] = vec2[$count](\n$taps\n);"
+    }
+
+    private val DEFAULT_YT2_TAP_TABLE: String by lazy {
+      generateTapTable(20, 0.16)
+    }
+
     /**
-     * Builds the YouTube-style ambient GLSL shader imported from mpvEx.
-     * Samples random areas from entire video with temporal stability and debanding.
+     * Builds an ultra-efficient YouTube-style ambient GLSL shader with dynamic per-side color sampling.
+     *
+     * Features:
+     * - Dynamic separate color changing for each edge/side (matching Glow mode's spatial reactivity).
+     * - Precomputed 20-tap golden spiral kernel (0 hash/trig computations in fragment shader).
+     * - Distance culling early-exit for bar fragments beyond visible fade reach.
+     * - High-speed Interleaved Gradient Noise (IGN) debanding dither.
+     * - Temporal stability and YouTube-style saturation/exponential falloff.
      */
     fun buildAmbientShader(
       sx: Double,
@@ -60,68 +82,86 @@ class AmbientModeManager(
       val glslSy = glslFloat(sy)
       val glslCx = glslFloat(cx)
       val glslCy = glslFloat(cy)
+      val glslAspectScaleRatio = glslFloat(if (abs(sy) > 0.00001) sx / sy else 1.0)
       val glslSatBoost = glslFloat(satBoost.toDouble())
       val glslIntensity = glslFloat(intensity.toDouble())
       val glslFadeCurve = glslFloat(fadeCurve.toDouble())
+      val glslInvSamples = glslFloat(1.0 / samples.toDouble().coerceAtLeast(1.0))
+
+      val tapTable = if (samples == 20) DEFAULT_YT2_TAP_TABLE else generateTapTable(samples, 0.16)
 
       return """
 //!HOOK OUTPUT
 //!BIND HOOKED
-//!DESC YouTube-Style Ambient Mode
+//!DESC YouTube-Style Ambient Mode (Dynamic & High Efficiency)
 
-#define SCALE_X    $glslSx
-#define SCALE_Y    $glslSy
-#define CENTER_X   $glslCx
-#define CENTER_Y   $glslCy
+#define SCALE_X             $glslSx
+#define SCALE_Y             $glslSy
+#define CENTER_X            $glslCx
+#define CENTER_Y            $glslCy
+#define ASPECT_SCALE_RATIO  $glslAspectScaleRatio
 
-// Simple hash function for pseudo-random sampling
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+// Fast Interleaved Gradient Noise for debanding (avoids expensive sin() on mobile GPUs)
+highp float ign(highp vec2 p) {
+    highp vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+    return fract(magic.z * fract(dot(p, magic.xy)));
 }
 
-vec4 hook() {
-    vec2 uv = HOOKED_pos;
-    vec2 video_uv = (uv - vec2(CENTER_X, CENTER_Y)) * vec2(SCALE_X, SCALE_Y) + 0.5;
+// Precomputed golden-spiral sample offsets
+$tapTable
 
-    // Return video pixel if inside video bounds
+vec4 hook() {
+    highp vec2 uv = HOOKED_pos;
+    highp vec2 video_uv = (uv - vec2(CENTER_X, CENTER_Y)) * vec2(SCALE_X, SCALE_Y) + 0.5;
+
+    highp vec2 half_texel = vec2(0.5) / HOOKED_size;
+    highp vec2 safe_min = half_texel;
+    highp vec2 safe_max = vec2(1.0) - half_texel;
+
+    // Return video pixel immediately if inside video bounds
     if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
         video_uv.y >= 0.0 && video_uv.y <= 1.0) {
-        return HOOKED_tex(video_uv);
+        return HOOKED_tex(clamp(video_uv, safe_min, safe_max));
     }
 
-    // Ambient region - sample random areas from entire video
-    // Use fixed seed for temporal stability (color doesn't flicker)
-    vec3 avg_color = vec3(0.0);
-    int samples = $samples;
-    float base_seed = 42.0; // Fixed seed for stability
-    
-    // Sample random positions across the entire video
-    for (int i = 0; i < samples; i++) {
-        float seed = base_seed + float(i) * 0.618034;
-        float x = hash(vec2(seed, 0.123));
-        float y = hash(vec2(seed, 0.456));
-        
-        vec2 sample_pos = vec2(x, y);
+    // Distance from the nearest video edge
+    highp vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
+    highp float dist = length(video_uv - edge_uv);
+
+    // Early out: if beyond visual fade reach (fade < 0.0025, invisible in 8-bit color), skip all texture samples
+    if (dist >= 2.4) {
+        return vec4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    // Dynamic edge origin: sample from the video border closest to this fragment.
+    // Inset slightly (8%) towards center so we sample actual video content rather than boundary artifacts.
+    highp vec2 sample_origin = mix(edge_uv, vec2(0.5), 0.08);
+
+    // Aspect ratio correction keeps the sampling footprint circular on screen
+    highp float aspect_x = (HOOKED_size.y / HOOKED_size.x) * ASPECT_SCALE_RATIO;
+
+    // Accumulate samples across the precomputed golden spiral
+    mediump vec3 avg_color = vec3(0.0);
+    for (int i = 0; i < $samples; i++) {
+        highp vec2 tap_offset = vec2(YT2_TAPS[i].x * aspect_x, YT2_TAPS[i].y);
+        highp vec2 sample_pos = clamp(sample_origin + tap_offset, safe_min, safe_max);
         avg_color += HOOKED_tex(sample_pos).rgb;
     }
-    
-    avg_color /= float(samples);
+    avg_color *= $glslInvSamples;
 
-    // Boost saturation slightly for more vibrant glow
-    float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
-    avg_color = mix(vec3(luma), avg_color, $glslSatBoost); // Saturation boost
+    // Boost saturation slightly for vibrant glow (YouTube ambient style)
+    mediump float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
+    avg_color = mix(vec3(luma), avg_color, $glslSatBoost);
 
-    // Brightness for visible glow
+    // Scale brightness
     avg_color *= $glslIntensity;
 
-    // Smooth fade based on distance from video edge
-    vec2 edge_uv = clamp(video_uv, 0.0, 1.0);
-    float dist = length(video_uv - edge_uv);
-    float fade = exp(-dist * $glslFadeCurve);
+    // Smooth exponential fade based on distance from video edge
+    highp float fade = exp(-dist * $glslFadeCurve);
     avg_color *= fade;
 
-    // Debanding: add subtle dither noise to eliminate color banding
-    float dither = hash(uv * 1000.0) * 0.004 - 0.002; // ±0.002 range
+    // Debanding: subtle screen-space dither noise to eliminate color banding
+    highp float dither = (ign(uv * HOOKED_size) - 0.5) * 0.004;
     avg_color = clamp(avg_color + dither, 0.0, 1.0);
 
     return vec4(avg_color, 1.0);
