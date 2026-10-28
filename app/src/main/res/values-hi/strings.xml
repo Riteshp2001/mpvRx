@@ -2761,4 +2761,6 @@
   <string name="player_layout_preset_title">प्लेबैक लेआउट</string>
   <string name="player_layout_preview_hint">सिर्फ़ नमूना। बदलाव तुरंत सहेजे जाते हैं।</string>
   <string name="player_layout_shared_landscape_hint">लैंडस्केप की सभी जगहों पर लागू होता है।</string>
+  <string name="pref_ignore_audio_focus_title">ऑडियो फ़ोकस को अनदेखा करें</string>
+  <string name="pref_ignore_audio_focus_summary">दूसरे ऐप्लिकेशन के साथ ऑडियो और वीडियो चलाते रहें, बिना रुके या आवाज़ कम किए</string>
 </resources>

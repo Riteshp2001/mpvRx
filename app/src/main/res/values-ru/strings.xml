@@ -2889,4 +2889,6 @@
   <string name="player_layout_preset_title">Расположение управления</string>
   <string name="player_layout_preview_hint">Только пример. Изменения сохраняются сразу.</string>
   <string name="player_layout_shared_landscape_hint">Общее для всех зон в альбомном режиме.</string>
+  <string name="pref_ignore_audio_focus_title">Игнорировать аудиофокус</string>
+  <string name="pref_ignore_audio_focus_summary">Продолжать воспроизведение аудио и видео вместе с другими приложениями без паузы и снижения громкости</string>
 </resources>

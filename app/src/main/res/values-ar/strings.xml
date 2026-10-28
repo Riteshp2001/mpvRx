@@ -2919,4 +2919,6 @@
   <string name="player_layout_preset_title">تخطيط التشغيل</string>
   <string name="player_layout_preview_hint">معاينة فقط. تُحفظ التغييرات فورًا.</string>
   <string name="player_layout_shared_landscape_hint">مشترك بين جميع مناطق الوضع الأفقي.</string>
+  <string name="pref_ignore_audio_focus_title">تجاهل التركيز الصوتي</string>
+  <string name="pref_ignore_audio_focus_summary">متابعة تشغيل الصوت والفيديو مع التطبيقات الأخرى دون إيقاف مؤقت أو خفض مستوى الصوت</string>
 </resources>

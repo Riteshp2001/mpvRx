@@ -364,7 +364,9 @@ class MediaPlaybackService :
     }
   private val audioFocusChangeListener =
     AudioManager.OnAudioFocusChangeListener { change ->
-      if (mpvAccessReleased || handingBackToActivity) return@OnAudioFocusChangeListener
+      if (mpvAccessReleased || handingBackToActivity || audioPreferences.ignoreAudioFocus.get()) {
+        return@OnAudioFocusChangeListener
+      }
       when (change) {
         AudioManager.AUDIOFOCUS_LOSS -> {
           resumeAfterFocusGain = false
@@ -400,8 +402,9 @@ class MediaPlaybackService :
         context: Context?,
         intent: Intent?,
       ) {
-        if (!mpvAccessReleased && !handingBackToActivity &&
-          intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY && ownsAudioFocus
+        // Headphone disconnection still pauses detached playback when focus handling is disabled.
+        if (canHandleDetachedTransport() &&
+          intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY
         ) {
           PlaybackSession.setPropertyBoolean("pause", true)
         }
@@ -482,6 +485,19 @@ class MediaPlaybackService :
     serviceScope.launch {
       // Includes pause, EOF, error, stop and native shutdown; no periodic wake-up timer.
       PlaybackSession.state.collect { updatePlaybackWakeLock() }
+    }
+
+    serviceScope.launch {
+      audioPreferences.ignoreAudioFocus.changes().distinctUntilChanged().collect { ignore ->
+        if (mpvAccessReleased) return@collect
+        if (ignore) {
+          abandonAudioOwnership()
+        } else if (canHandleDetachedTransport() &&
+          PlaybackSession.getPropertyBoolean("pause") == false && !takeAudioOwnership()
+        ) {
+          PlaybackSession.setPropertyBoolean("pause", true)
+        }
+      }
     }
 
     serviceScope.launch {
@@ -793,6 +809,10 @@ class MediaPlaybackService :
   }
 
   fun takeAudioOwnership(): Boolean {
+    if (audioPreferences.ignoreAudioFocus.get()) {
+      abandonAudioOwnership()
+      return true
+    }
     // During a foreground handoff, returning true means "ownership is intentionally not needed".
     // Do not request focus and bounce it back to PlayerActivity; that focus ping-pong is exactly
     // what can turn a notification tap into an unexpected pause.

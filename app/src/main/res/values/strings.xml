@@ -619,6 +619,8 @@
     <item quantity="other">%1$d seconds</item>
   </plurals>
   <!-- Background Playback -->
+  <string name="pref_ignore_audio_focus_title">Ignore audio focus</string>
+  <string name="pref_ignore_audio_focus_summary">Keep audio and video playing alongside other apps without pausing or lowering volume</string>
   <string name="pref_audio_background_playback_title">Audio Player Background Playback</string>
   <string name="pref_audio_background_playback_summary">Keep audio playing when leaving the audio player or turning off screen</string>
   <string name="pref_audio_mini_player_track_switching_title">Switch songs in mini player</string>

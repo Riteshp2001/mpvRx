@@ -500,6 +500,8 @@
     <item quantity="other">%1$d 秒</item>
   </plurals>
   <!-- Background Playback -->
+  <string name="pref_ignore_audio_focus_title">忽略音频焦点</string>
+  <string name="pref_ignore_audio_focus_summary">允许音频和视频与其他应用同时播放，不因音频焦点变化暂停或降低音量</string>
   <string name="pref_audio_background_playback_title">后台播放（音频播放器）</string>
   <string name="pref_audio_background_playback_summary">在离开音频播放器或关闭屏幕时保持音频播放</string>
   <string name="pref_audio_mini_player_track_switching_title">在迷你播放器中切歌</string>

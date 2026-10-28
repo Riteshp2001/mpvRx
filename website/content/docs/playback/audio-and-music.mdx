@@ -13,6 +13,18 @@ Use the track selector to choose embedded audio streams. Audio delay can correct
 Volume above 100% applies digital gain and may clip. Lower the boost when distortion appears.
 :::
 
+## Audio focus
+
+**Audio settings → Ignore audio focus** lets audio and video keep playing alongside
+other apps without pausing or ducking in response to Android audio focus changes.
+It is off by default and can also be found through settings search.
+
+Changing this setting takes effect during foreground and background playback.
+Enabling it releases any existing audio focus request. Disabling it resumes normal
+focus handling; playback may pause if focus cannot be acquired. Headphone
+disconnection still pauses playback. Other apps and the system may apply their own
+audio policies, so this option cannot guarantee that every app will mix audio.
+
 ## Music library
 
 The Music tab can use local storage, Jellyfin, or Navidrome as its source. Local browsing includes:

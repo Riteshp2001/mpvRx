@@ -2857,4 +2857,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="player_layout_preset_title">Wiedergabelayout</string>
   <string name="player_layout_preview_hint">Nur Vorschau. Änderungen werden sofort gespeichert.</string>
   <string name="player_layout_shared_landscape_hint">Gilt für alle Bereiche im Querformat.</string>
+  <string name="pref_ignore_audio_focus_title">Audiofokus ignorieren</string>
+  <string name="pref_ignore_audio_focus_summary">Audio und Video zusammen mit anderen Apps weiter abspielen, ohne zu pausieren oder die Lautstärke zu senken</string>
 </resources>

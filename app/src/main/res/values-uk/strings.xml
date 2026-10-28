@@ -2829,4 +2829,6 @@
   <string name="player_layout_preset_title">Розташування керування</string>
   <string name="player_layout_preview_hint">Лише приклад. Зміни зберігаються одразу.</string>
   <string name="player_layout_shared_landscape_hint">Спільне для всіх зон альбомного режиму.</string>
+  <string name="pref_ignore_audio_focus_title">Ігнорувати аудіофокус</string>
+  <string name="pref_ignore_audio_focus_summary">Продовжувати відтворення аудіо й відео разом з іншими програмами без паузи та зниження гучності</string>
 </resources>
