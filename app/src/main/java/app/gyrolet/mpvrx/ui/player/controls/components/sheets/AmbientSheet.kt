@@ -95,7 +95,7 @@ fun AmbientSheet(
         AmbientStyle.Cinema -> matchesFxPreset(FxAmbientPresets.cinemaFast, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
         AmbientStyle.Echo -> matchesFxPreset(FxAmbientPresets.echoFast, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
         AmbientStyle.Mirror -> matchesFxPreset(FxAmbientPresets.mirrorFast, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
-        AmbientStyle.YouTube -> false
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> false
       }
     }
   val isBalanced =
@@ -108,7 +108,7 @@ fun AmbientSheet(
         AmbientStyle.Cinema -> matchesFxPreset(FxAmbientPresets.cinemaBalanced, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
         AmbientStyle.Echo -> matchesFxPreset(FxAmbientPresets.echoBalanced, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
         AmbientStyle.Mirror -> matchesFxPreset(FxAmbientPresets.mirrorBalanced, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
-        AmbientStyle.YouTube -> false
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> false
       }
     }
   val isHQ =
@@ -121,7 +121,7 @@ fun AmbientSheet(
         AmbientStyle.Cinema -> matchesFxPreset(FxAmbientPresets.cinemaHighQuality, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
         AmbientStyle.Echo -> matchesFxPreset(FxAmbientPresets.echoHighQuality, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
         AmbientStyle.Mirror -> matchesFxPreset(FxAmbientPresets.mirrorHighQuality, blurSamples, maxRadius, glowIntensity, satBoost, vignetteStrength, warmth, fadeCurve, opacity)
-        AmbientStyle.YouTube -> false
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> false
       }
     }
   PlayerSheet(
@@ -184,7 +184,7 @@ fun AmbientSheet(
         )
       }
 
-      if (ambientStyle != AmbientStyle.YouTube) {
+      if (ambientStyle != AmbientStyle.YouTube && ambientStyle != AmbientStyle.YouTube2) {
       // ── Quality Presets ──────────────────────────────────────────────
       Row(
         modifier =
@@ -254,7 +254,7 @@ fun AmbientSheet(
             AmbientStyle.Cinema -> 32
             AmbientStyle.Echo -> 15
             AmbientStyle.Mirror -> 9
-            AmbientStyle.YouTube -> 32
+            AmbientStyle.YouTube, AmbientStyle.YouTube2 -> 32
           }
           SliderItem(
             label = "Blur Samples",
@@ -480,7 +480,7 @@ fun AmbientSheet(
       Spacer(modifier = Modifier.height(8.dp))
       } else {
         Text(
-          text = stringResource(R.string.ambient_youtube_auto_hint),
+          text = stringResource(if (ambientStyle == AmbientStyle.YouTube2) R.string.ambient_youtube_2_auto_hint else R.string.ambient_youtube_auto_hint),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = MaterialTheme.spacing.large, vertical = 8.dp),

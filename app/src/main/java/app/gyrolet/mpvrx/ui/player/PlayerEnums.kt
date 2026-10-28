@@ -113,6 +113,9 @@ enum class AmbientStyle(
   /** Soft blurred projection of the whole frame, like YouTube's Ambient Mode. */
   YouTube(R.string.ambient_style_youtube),
 
+  /** GPU shader-based YouTube ambient mode imported from mpvEx. */
+  YouTube2(R.string.ambient_style_youtube_2),
+
   // ── Fx ambient modes (ported from fx_ambient GLSL package) ──────────────────
   // These modes run as mpv OUTPUT hook shaders with user-adjustable parameters.
 

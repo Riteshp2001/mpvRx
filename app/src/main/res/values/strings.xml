@@ -1235,6 +1235,7 @@
   <string name="ui_view_options">View Options</string>
   <string name="ambient_glow">Glow</string>
   <string name="ambient_style_youtube">YouTube</string>
+  <string name="ambient_style_youtube_2">YouTube 2</string>
   <string name="ambient_color">Color</string>
   <string name="ambient_edge_blend">Edge blend</string>
   <string name="ambient_compositing">Compositing</string>
@@ -1246,6 +1247,7 @@
   <string name="lua_no_mpv_folder">No MPV folder selected</string>
   <string name="lua_no_scripts_found">No scripts found</string>
   <string name="ambient_youtube_auto_hint">YouTube mode is fully automatic — the bars are lit by a soft blurred projection of the current frame, just like YouTube’s Ambient Mode.</string>
+  <string name="ambient_youtube_2_auto_hint">YouTube 2 mode is fully automatic — the bars are illuminated using a GPU shader imported from mpvEx that samples video pixels to produce a smooth, stable ambient glow.</string>
   <string name="ambient_cinema">Cinema</string>
   <string name="ambient_echo">Echo</string>
   <string name="ambient_mirror">Mirror</string>

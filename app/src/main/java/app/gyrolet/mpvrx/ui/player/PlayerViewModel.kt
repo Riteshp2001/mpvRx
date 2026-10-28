@@ -2258,6 +2258,7 @@ fun restartFromBeginning() {
    * @Volatile: written on renderPrepDispatcher, read/nulled on main thread.
    */
   @Volatile private var lastCompiledFxSpec: FxAmbientShaderSpec? = null
+  @Volatile private var lastCompiledStyle: AmbientStyle? = null
 
   /**
    * Latest device thermal headroom reading ([0f] = at thermal limit, [1f] = cool).
@@ -2486,6 +2487,7 @@ fun restartFromBeginning() {
               // next scheduled ambient update.
               lastCompiledSpec = null
               lastCompiledFxSpec = null
+        lastCompiledStyle = null
               scheduleAmbientUpdate()
             }
             Log.d(TAG, "Thermal headroom updated: %.2f".format(newHeadroom))
@@ -7611,7 +7613,7 @@ fun restartFromBeginning() {
         _ambientFadeCurve.value = playerPreferences.ambientMirrorFadeCurve.get()
         _ambientOpacity.value = playerPreferences.ambientMirrorOpacity.get()
       }
-      AmbientStyle.YouTube -> Unit
+      AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
     }
   }
 
@@ -7627,13 +7629,14 @@ fun restartFromBeginning() {
         appContext.getString(R.string.ambient_style_update, appContext.getString(style.titleRes)),
       )
     when (style) {
-      AmbientStyle.Glow, AmbientStyle.Ambilight, AmbientStyle.Cinema, AmbientStyle.Echo, AmbientStyle.Mirror -> {
+      AmbientStyle.Glow, AmbientStyle.Ambilight, AmbientStyle.Cinema, AmbientStyle.Echo, AmbientStyle.Mirror, AmbientStyle.YouTube2 -> {
         // Any shader-based mode: invalidate scale and spec caches so a fresh shader is compiled
         // for the new mode. Both lastCompiledSpec and lastCompiledFxSpec are cleared so
         // switching between Glow and Fx modes (or between Fx modes) never hits a stale shader cache.
         lastAmbientGeometry = null
         lastCompiledSpec = null
         lastCompiledFxSpec = null
+        lastCompiledStyle = null
         scheduleAmbientUpdate(0)
       }
       AmbientStyle.YouTube -> disableAmbientShader()
@@ -7657,6 +7660,7 @@ fun restartFromBeginning() {
       ambientShaderFile = null
       lastCompiledSpec = null
       lastCompiledFxSpec = null
+        lastCompiledStyle = null
       lastAmbientGeometry = null
     }
   }
@@ -7709,7 +7713,7 @@ fun restartFromBeginning() {
         playerPreferences.ambientYouTubeEdgeBlend.set(clamped)
       }
       // Fx modes have fixed internal blending — edge-blend slider is hidden in the UI.
-      AmbientStyle.Ambilight, AmbientStyle.Cinema, AmbientStyle.Echo, AmbientStyle.Mirror -> Unit
+      AmbientStyle.Ambilight, AmbientStyle.Cinema, AmbientStyle.Echo, AmbientStyle.Mirror, AmbientStyle.YouTube2 -> Unit
     }
   }
 
@@ -7735,7 +7739,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaBlurSamples.set(blurSamples)
         AmbientStyle.Echo -> playerPreferences.ambientEchoBlurSamples.set(blurSamples)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorBlurSamples.set(blurSamples)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7747,7 +7751,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaSpread.set(maxRadius)
         AmbientStyle.Echo -> playerPreferences.ambientEchoSpread.set(maxRadius)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorSpread.set(maxRadius)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7759,7 +7763,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaIntensity.set(glowIntensity)
         AmbientStyle.Echo -> playerPreferences.ambientEchoIntensity.set(glowIntensity)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorIntensity.set(glowIntensity)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7771,7 +7775,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaSatBoost.set(satBoost)
         AmbientStyle.Echo -> playerPreferences.ambientEchoSatBoost.set(satBoost)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorSatBoost.set(satBoost)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7783,7 +7787,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaVignette.set(vignetteStrength)
         AmbientStyle.Echo -> playerPreferences.ambientEchoVignette.set(vignetteStrength)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorVignette.set(vignetteStrength)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7795,7 +7799,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaWarmth.set(warmth)
         AmbientStyle.Echo -> playerPreferences.ambientEchoWarmth.set(warmth)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorWarmth.set(warmth)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7807,7 +7811,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaFadeCurve.set(fadeCurve)
         AmbientStyle.Echo -> playerPreferences.ambientEchoFadeCurve.set(fadeCurve)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorFadeCurve.set(fadeCurve)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7819,7 +7823,7 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> playerPreferences.ambientCinemaOpacity.set(opacity)
         AmbientStyle.Echo -> playerPreferences.ambientEchoOpacity.set(opacity)
         AmbientStyle.Mirror -> playerPreferences.ambientMirrorOpacity.set(opacity)
-        AmbientStyle.YouTube -> Unit
+        AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
       }
       changed = true
     }
@@ -7908,7 +7912,7 @@ fun restartFromBeginning() {
           opacity = preset.opacity,
         )
       }
-      AmbientStyle.YouTube -> Unit
+      AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
     }
   }
 
@@ -7980,7 +7984,7 @@ fun restartFromBeginning() {
           opacity = preset.opacity,
         )
       }
-      AmbientStyle.YouTube -> Unit
+      AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
     }
   }
 
@@ -8052,7 +8056,7 @@ fun restartFromBeginning() {
           opacity = preset.opacity,
         )
       }
-      AmbientStyle.YouTube -> Unit
+      AmbientStyle.YouTube, AmbientStyle.YouTube2 -> Unit
     }
   }
 
@@ -8130,7 +8134,7 @@ fun restartFromBeginning() {
           edgeBlend = _ambientGlowEdgeBlend.value,
         )
       } else null
-      val fxSpec = if (currentStyle != AmbientStyle.Glow && currentStyle != AmbientStyle.YouTube) {
+      val fxSpec = if (currentStyle != AmbientStyle.Glow && currentStyle != AmbientStyle.YouTube && currentStyle != AmbientStyle.YouTube2) {
         FxAmbientShaderSpec(
           style = currentStyle,
           scaleX = geometry.picture.scaleX,
@@ -8147,9 +8151,10 @@ fun restartFromBeginning() {
           opacity = _ambientOpacity.value,
         )
       } else null
-      if (glowSpec == null && fxSpec == null) return
+      if (glowSpec == null && fxSpec == null && currentStyle != AmbientStyle.YouTube2) return
       val shaderIsCurrent = synchronized(ambientRenderLock) {
         geometry == lastAmbientGeometry && glowSpec == lastCompiledSpec && fxSpec == lastCompiledFxSpec &&
+          (currentStyle != AmbientStyle.YouTube2 || lastCompiledStyle == currentStyle) &&
           ambientShaderFile?.exists() == true && PlaybackSession.isAmbientShaderActive
       }
       if (shaderIsCurrent) return
@@ -8159,6 +8164,12 @@ fun restartFromBeginning() {
         AmbientStyle.Cinema -> FxAmbientShaderBuilder.buildCinema(appContext, checkNotNull(fxSpec))
         AmbientStyle.Echo -> FxAmbientShaderBuilder.buildEcho(appContext, checkNotNull(fxSpec))
         AmbientStyle.Mirror -> FxAmbientShaderBuilder.buildMirror(appContext, checkNotNull(fxSpec))
+        AmbientStyle.YouTube2 -> AmbientModeManager.buildAmbientShader(
+          sx = geometry.picture.scaleX,
+          sy = geometry.picture.scaleY,
+          cx = geometry.picture.centerX,
+          cy = geometry.picture.centerY,
+        )
         AmbientStyle.YouTube -> return
       }
       val newFile = File.createTempFile("ambient_", ".glsl", appContext.cacheDir)
@@ -8177,6 +8188,7 @@ fun restartFromBeginning() {
             lastAmbientGeometry = geometry
             lastCompiledSpec = glowSpec
             lastCompiledFxSpec = fxSpec
+            lastCompiledStyle = currentStyle
             previous?.delete()
           }
         }
