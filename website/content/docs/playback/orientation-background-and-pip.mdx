@@ -24,6 +24,15 @@ Per-video orientation memory can restore a media-specific choice the next time t
 
 Background playback keeps the active queue alive when you return to browser screens or leave the foreground. Audio and video share one persistent playback session, so changing tabs should not create a second queue.
 
+When background playback has no visible video surface, mpvRx stops video decoding
+and rendering while keeping audio playback running. Returning to the player restores
+the selected video track after the new surface is ready. A visible mini-player or
+PiP window continues to show video. Paused playback stays paused across these handoffs.
+
+Restoring video may require reading data around a keyframe. Slow or non-seekable
+network streams can still buffer during recovery; disabling video decoding does not
+necessarily stop video data from being read from a shared audio/video container.
+
 Android may require notification permission for transport controls. Aggressive vendor battery optimization can still stop long-running background work; exempt mpvRx only when the device actually interrupts playback.
 
 ## Picture-in-picture

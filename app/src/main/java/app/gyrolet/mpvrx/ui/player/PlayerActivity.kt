@@ -617,7 +617,8 @@ class PlayerActivity :
             restoreDuckedAudioVolume()
             // Ignore the loss caused by handing off playback to the detached
             // MediaPlaybackService so minimizing into the Mini Player does not pause.
-            val handoff = isFinishing || isDestroyed || MediaPlaybackService.isActivityHandoffInProgress()
+            val handoff = isFinishing || isDestroyed || isBackgroundPlaybackSessionActive ||
+              MediaPlaybackService.isActivityHandoffInProgress()
             if (!handoff) {
               // Focus callbacks must not use the ordinary pause action: it abandons focus and can
               // erase the resume intent while Android is still dispatching a transient focus cycle.
@@ -627,7 +628,8 @@ class PlayerActivity :
 
           AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
             holdsAudioFocus = false
-            val handoff = isFinishing || isDestroyed || MediaPlaybackService.isActivityHandoffInProgress()
+            val handoff = isFinishing || isDestroyed || isBackgroundPlaybackSessionActive ||
+              MediaPlaybackService.isActivityHandoffInProgress()
             if (!handoff) {
               val wasPlaying = PlaybackSession.getPropertyBoolean("pause") == false
               // Android can dispatch the same transient loss more than once during a call. Once a
@@ -2344,7 +2346,7 @@ class PlayerActivity :
       ) {
         if (startBackgroundPlayback(allowUserPrompt = false) == BackgroundPlaybackStartResult.Started) {
           isBackgroundPlaybackSessionActive = true
-          if (externalDisplayManager?.isActive != true) disableVideoForBackground()
+          if (externalDisplayManager?.isActive != true) markPlaybackInBackground()
         } else {
           rememberResumeAfterUnlockBeforeForcedPause()
           viewModel.pause()
@@ -2358,7 +2360,7 @@ class PlayerActivity :
       } else if (!isBackgroundPlaybackSessionActive && (isUserFinishing || isFinishing)) {
         viewModel.pause()
       } else if (isBackgroundPlaybackSessionActive && !isInBackgroundPlayback) {
-        if (externalDisplayManager?.isActive != true) disableVideoForBackground()
+        if (externalDisplayManager?.isActive != true) markPlaybackInBackground()
       }
     }.onFailure { e ->
       Log.e(TAG, "Error during onStop", e)
@@ -2377,6 +2379,10 @@ class PlayerActivity :
       runCatching { player.releaseSurface() }
         .onFailure { Log.e(TAG, "Could not release stopped playback surface", it) }
     }
+
+    // A service retained during a foreground visit does not receive onStartCommand again.
+    // Give it focus ownership on every departure, including ordinary Home/Recents navigation.
+    if (isBackgroundPlaybackSessionActive) MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
 
     super.onStop()
   }
@@ -7750,7 +7756,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
   private fun finishIntoBackgroundPlayback() {
     isBackgroundPlaybackSessionActive = true
     pendingBackNavigationBackgroundTransition = false
-    disableVideoForBackground()
+    markPlaybackInBackground()
     if (returnToBrowserAfterMinimize && isTaskRoot) {
       startActivity(
         Intent(this, app.gyrolet.mpvrx.MainActivity::class.java)
@@ -8928,15 +8934,13 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
   }
 
   /**
-   * Keep the selected track while Android's Surface/VO is suspended. Setting vid=no here
-   * dropped the track required for a paused foreground return after a long background stay.
+   * Publish background ownership on Home too, so the service can take audio focus in onStartCommand.
    */
-  private fun disableVideoForBackground() {
+  private fun markPlaybackInBackground() {
     if (!isReady || fileName.isBlank()) return
-    if (isMiniPlayerEnabled() && !isDeviceScreenOffOrLocked()) return
     PlaybackSession.markBackground()
     isInBackgroundPlayback = true
-    Log.d(TAG, "Background playback keeps selected video track for renderer restoration")
+    Log.d(TAG, "Background playback preserves the audio timeline while detached video is suspended")
   }
 
   /**
