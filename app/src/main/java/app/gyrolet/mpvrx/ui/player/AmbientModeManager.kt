@@ -46,8 +46,8 @@ class AmbientModeManager(
      * Builds an ultra-clean, high-efficiency YouTube-style ambient GLSL shader.
      *
      * Features:
-     * - Spatially-fixed 4-quadrant sampling (16 fetches total): completely eliminates overlapping /
-     *   crossing streak lines while providing smooth, continuous dynamic color changing for both sides.
+     * - Spatially-fixed 4-quadrant sampling (8 fetches total, 2 per quadrant): completely eliminates
+     *   overlapping / crossing streak lines while providing smooth, continuous dynamic color changing for both sides.
      * - All calculations use highp precision (zero 16-bit mediump quantization artifacts).
      * - Early distance culling (dist >= 2.4 skips all texture fetches).
      * - Screen-space Interleaved Gradient Noise (IGN) debanding.
@@ -58,7 +58,7 @@ class AmbientModeManager(
       sy: Double,
       cx: Double = 0.5,
       cy: Double = 0.5,
-      samples: Int = 16,
+      samples: Int = 8,
       satBoost: Float = 1.3f,
       intensity: Float = 0.30f,
       fadeCurve: Float = 2.5f,
@@ -110,27 +110,19 @@ vec4 hook() {
         return vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    // 16 total texture fetches across the 4 corners/quadrants.
-    // Fixed spatial coordinates guarantee ZERO crossing streak lines or tap artifacts.
-    highp vec3 col_tl = (HOOKED_tex(vec2(0.12, 0.18)).rgb +
-                         HOOKED_tex(vec2(0.25, 0.15)).rgb +
-                         HOOKED_tex(vec2(0.15, 0.30)).rgb +
-                         HOOKED_tex(vec2(0.30, 0.30)).rgb) * 0.25;
+    // 8 total texture fetches across the 4 corners/quadrants (2 taps each).
+    // Inset 18%-28% to avoid hardcoded black borders and corner channel watermarks.
+    highp vec3 col_tl = (HOOKED_tex(vec2(0.18, 0.20)).rgb +
+                         HOOKED_tex(vec2(0.28, 0.28)).rgb) * 0.5;
 
-    highp vec3 col_tr = (HOOKED_tex(vec2(0.88, 0.18)).rgb +
-                         HOOKED_tex(vec2(0.75, 0.15)).rgb +
-                         HOOKED_tex(vec2(0.85, 0.30)).rgb +
-                         HOOKED_tex(vec2(0.70, 0.30)).rgb) * 0.25;
+    highp vec3 col_tr = (HOOKED_tex(vec2(0.82, 0.20)).rgb +
+                         HOOKED_tex(vec2(0.72, 0.28)).rgb) * 0.5;
 
-    highp vec3 col_bl = (HOOKED_tex(vec2(0.12, 0.82)).rgb +
-                         HOOKED_tex(vec2(0.25, 0.85)).rgb +
-                         HOOKED_tex(vec2(0.15, 0.70)).rgb +
-                         HOOKED_tex(vec2(0.30, 0.70)).rgb) * 0.25;
+    highp vec3 col_bl = (HOOKED_tex(vec2(0.18, 0.80)).rgb +
+                         HOOKED_tex(vec2(0.28, 0.72)).rgb) * 0.5;
 
-    highp vec3 col_br = (HOOKED_tex(vec2(0.88, 0.82)).rgb +
-                         HOOKED_tex(vec2(0.75, 0.85)).rgb +
-                         HOOKED_tex(vec2(0.85, 0.70)).rgb +
-                         HOOKED_tex(vec2(0.70, 0.70)).rgb) * 0.25;
+    highp vec3 col_br = (HOOKED_tex(vec2(0.82, 0.80)).rgb +
+                         HOOKED_tex(vec2(0.72, 0.72)).rgb) * 0.5;
 
     // Smoothstep bilinear interpolation: both sides have separate dynamic colors with silky-smooth gradient
     highp vec2 s = smoothstep(0.0, 1.0, edge_uv);
