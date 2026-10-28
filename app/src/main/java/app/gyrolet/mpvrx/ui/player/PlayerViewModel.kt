@@ -8169,7 +8169,7 @@ fun restartFromBeginning() {
           sy = geometry.picture.scaleY,
           cx = geometry.picture.centerX,
           cy = geometry.picture.centerY,
-          samples = ThermalMonitor.clampAmbientSampleBudget(20, thermalHeadroom),
+          samples = 16,
         )
         AmbientStyle.YouTube -> return
       }

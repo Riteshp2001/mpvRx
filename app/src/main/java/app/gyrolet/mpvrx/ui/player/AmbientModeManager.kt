@@ -32,7 +32,6 @@ class AmbientModeManager(
 ) {
   companion object {
     private const val TAG = "AmbientModeManager"
-    private const val GOLDEN_ANGLE = 2.399963229728653
 
     private fun glslFloat(value: Double): String {
       val normalized = if (abs(value) < 0.0000005) 0.0 else value
@@ -43,37 +42,23 @@ class AmbientModeManager(
       return if (formatted.contains('.')) formatted else "$formatted.0"
     }
 
-    private fun generateTapTable(count: Int, maxRadius: Double): String {
-      val taps = (0 until count).joinToString(",\n") { i ->
-        val r = kotlin.math.sqrt((i.toDouble() + 0.5) / count.toDouble()) * maxRadius
-        val theta = (i.toDouble() + 0.5) * GOLDEN_ANGLE
-        val x = kotlin.math.cos(theta) * r
-        val y = kotlin.math.sin(theta) * r
-        "    vec2(${glslFloat(x)}, ${glslFloat(y)})"
-      }
-      return "const vec2 YT2_TAPS[$count] = vec2[$count](\n$taps\n);"
-    }
-
-    private val DEFAULT_YT2_TAP_TABLE: String by lazy {
-      generateTapTable(20, 0.16)
-    }
-
     /**
-     * Builds an ultra-efficient YouTube-style ambient GLSL shader with dynamic per-side color sampling.
+     * Builds an ultra-clean, high-efficiency YouTube-style ambient GLSL shader.
      *
      * Features:
-     * - Dynamic separate color changing for each edge/side (matching Glow mode's spatial reactivity).
-     * - Precomputed 20-tap golden spiral kernel (0 hash/trig computations in fragment shader).
-     * - Distance culling early-exit for bar fragments beyond visible fade reach.
-     * - High-speed Interleaved Gradient Noise (IGN) debanding dither.
-     * - Temporal stability and YouTube-style saturation/exponential falloff.
+     * - Spatially-fixed 4-quadrant sampling (16 fetches total): completely eliminates overlapping /
+     *   crossing streak lines while providing smooth, continuous dynamic color changing for both sides.
+     * - All calculations use highp precision (zero 16-bit mediump quantization artifacts).
+     * - Early distance culling (dist >= 2.4 skips all texture fetches).
+     * - Screen-space Interleaved Gradient Noise (IGN) debanding.
+     * - True YouTube ambient aesthetics: 30% saturation boost, 30% intensity, exponential fade.
      */
     fun buildAmbientShader(
       sx: Double,
       sy: Double,
       cx: Double = 0.5,
       cy: Double = 0.5,
-      samples: Int = 20,
+      samples: Int = 16,
       satBoost: Float = 1.3f,
       intensity: Float = 0.30f,
       fadeCurve: Float = 2.5f,
@@ -82,33 +67,25 @@ class AmbientModeManager(
       val glslSy = glslFloat(sy)
       val glslCx = glslFloat(cx)
       val glslCy = glslFloat(cy)
-      val glslAspectScaleRatio = glslFloat(if (abs(sy) > 0.00001) sx / sy else 1.0)
       val glslSatBoost = glslFloat(satBoost.toDouble())
       val glslIntensity = glslFloat(intensity.toDouble())
       val glslFadeCurve = glslFloat(fadeCurve.toDouble())
-      val glslInvSamples = glslFloat(1.0 / samples.toDouble().coerceAtLeast(1.0))
-
-      val tapTable = if (samples == 20) DEFAULT_YT2_TAP_TABLE else generateTapTable(samples, 0.16)
 
       return """
 //!HOOK OUTPUT
 //!BIND HOOKED
-//!DESC YouTube-Style Ambient Mode (Dynamic & High Efficiency)
+//!DESC YouTube-Style Ambient Mode (Smooth Dynamic Bilinear Field)
 
-#define SCALE_X             $glslSx
-#define SCALE_Y             $glslSy
-#define CENTER_X            $glslCx
-#define CENTER_Y            $glslCy
-#define ASPECT_SCALE_RATIO  $glslAspectScaleRatio
+#define SCALE_X    $glslSx
+#define SCALE_Y    $glslSy
+#define CENTER_X   $glslCx
+#define CENTER_Y   $glslCy
 
-// Fast Interleaved Gradient Noise for debanding (avoids expensive sin() on mobile GPUs)
+// Fast screen-space Interleaved Gradient Noise for 8-bit panel debanding
 highp float ign(highp vec2 p) {
     highp vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
     return fract(magic.z * fract(dot(p, magic.xy)));
 }
-
-// Precomputed golden-spiral sample offsets
-$tapTable
 
 vec4 hook() {
     highp vec2 uv = HOOKED_pos;
@@ -133,24 +110,36 @@ vec4 hook() {
         return vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    // Dynamic edge origin: sample from the video border closest to this fragment.
-    // Inset slightly (8%) towards center so we sample actual video content rather than boundary artifacts.
-    highp vec2 sample_origin = mix(edge_uv, vec2(0.5), 0.08);
+    // 16 total texture fetches across the 4 corners/quadrants.
+    // Fixed spatial coordinates guarantee ZERO crossing streak lines or tap artifacts.
+    highp vec3 col_tl = (HOOKED_tex(vec2(0.12, 0.18)).rgb +
+                         HOOKED_tex(vec2(0.25, 0.15)).rgb +
+                         HOOKED_tex(vec2(0.15, 0.30)).rgb +
+                         HOOKED_tex(vec2(0.30, 0.30)).rgb) * 0.25;
 
-    // Aspect ratio correction keeps the sampling footprint circular on screen
-    highp float aspect_x = (HOOKED_size.y / HOOKED_size.x) * ASPECT_SCALE_RATIO;
+    highp vec3 col_tr = (HOOKED_tex(vec2(0.88, 0.18)).rgb +
+                         HOOKED_tex(vec2(0.75, 0.15)).rgb +
+                         HOOKED_tex(vec2(0.85, 0.30)).rgb +
+                         HOOKED_tex(vec2(0.70, 0.30)).rgb) * 0.25;
 
-    // Accumulate samples across the precomputed golden spiral
-    mediump vec3 avg_color = vec3(0.0);
-    for (int i = 0; i < $samples; i++) {
-        highp vec2 tap_offset = vec2(YT2_TAPS[i].x * aspect_x, YT2_TAPS[i].y);
-        highp vec2 sample_pos = clamp(sample_origin + tap_offset, safe_min, safe_max);
-        avg_color += HOOKED_tex(sample_pos).rgb;
-    }
-    avg_color *= $glslInvSamples;
+    highp vec3 col_bl = (HOOKED_tex(vec2(0.12, 0.82)).rgb +
+                         HOOKED_tex(vec2(0.25, 0.85)).rgb +
+                         HOOKED_tex(vec2(0.15, 0.70)).rgb +
+                         HOOKED_tex(vec2(0.30, 0.70)).rgb) * 0.25;
+
+    highp vec3 col_br = (HOOKED_tex(vec2(0.88, 0.82)).rgb +
+                         HOOKED_tex(vec2(0.75, 0.85)).rgb +
+                         HOOKED_tex(vec2(0.85, 0.70)).rgb +
+                         HOOKED_tex(vec2(0.70, 0.70)).rgb) * 0.25;
+
+    // Smoothstep bilinear interpolation: both sides have separate dynamic colors with silky-smooth gradient
+    highp vec2 s = smoothstep(0.0, 1.0, edge_uv);
+    highp vec3 col_top = mix(col_tl, col_tr, s.x);
+    highp vec3 col_bot = mix(col_bl, col_br, s.x);
+    highp vec3 avg_color = mix(col_top, col_bot, s.y);
 
     // Boost saturation slightly for vibrant glow (YouTube ambient style)
-    mediump float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
+    highp float luma = dot(avg_color, vec3(0.2126, 0.7152, 0.0722));
     avg_color = mix(vec3(luma), avg_color, $glslSatBoost);
 
     // Scale brightness
@@ -160,7 +149,7 @@ vec4 hook() {
     highp float fade = exp(-dist * $glslFadeCurve);
     avg_color *= fade;
 
-    // Debanding: subtle screen-space dither noise to eliminate color banding
+    // Debanding: high-precision screen-space dither noise to eliminate color banding
     highp float dither = (ign(uv * HOOKED_size) - 0.5) * 0.004;
     avg_color = clamp(avg_color + dither, 0.0, 1.0);
 
