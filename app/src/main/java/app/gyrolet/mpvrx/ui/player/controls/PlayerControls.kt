@@ -494,7 +494,8 @@ fun PlayerControls(
     } else {
       Modifier
     }
-  var wasPlayerAlreadyPaused by remember { mutableStateOf(false) }
+  // Null until repeated seekbar updates start a scrub; a single tap never pauses playback.
+  var seekbarScrubWasPaused by remember { mutableStateOf<Boolean?>(null) }
   val mpvSeeking by PlaybackSession.propBoolean["seeking"].collectAsStateWithLifecycle()
   val isPlayerSeeking = isSeeking || (mpvSeeking ?: false)
   // mpv can remain "seeking" until its cache refills. Only active scrubbing suppresses the spinner;
@@ -2177,22 +2178,28 @@ fun PlayerControls(
               duration = seekbarDuration,
               remaining = effectiveRemaining,
               onValueChange = {
-                if (!isSeeking) {
-                  // First drag frame - pause playback
-                  wasPlayerAlreadyPaused = paused ?: false
-                  if (!wasPlayerAlreadyPaused) {
-                    viewModel.pause()
+                // Seeker emits one value and then finishes for a tap. Defer decoder preview
+                // and pausing until another value arrives, so a tap commits only one seek.
+                if (isSeeking) {
+                  if (seekbarScrubWasPaused == null) {
+                    val alreadyPaused = paused ?: false
+                    seekbarScrubWasPaused = alreadyPaused
+                    if (!alreadyPaused) {
+                      viewModel.pause()
+                    }
                   }
+                  // Stream scrubbing previews the UI only; local files may preview decoder frames.
+                  viewModel.seekPreviewTo(it)
                 }
                 isSeeking = true
                 resetControlsTimestamp = System.currentTimeMillis()
-                // Stream scrubbing previews the UI only; local files may preview decoder frames.
-                viewModel.seekPreviewTo(it)
               },
               onValueChangeFinished = { targetPosition ->
+                val resumePlayback = seekbarScrubWasPaused == false
+                seekbarScrubWasPaused = null
                 isSeeking = false
                 resetControlsTimestamp = System.currentTimeMillis()
-                viewModel.seekFromScrub(targetPosition, resumePlayback = !wasPlayerAlreadyPaused)
+                viewModel.seekFromScrub(targetPosition, resumePlayback = resumePlayback)
                 viewModel.showControls()
               },
               timersInverted = Pair(false, invertDuration),
