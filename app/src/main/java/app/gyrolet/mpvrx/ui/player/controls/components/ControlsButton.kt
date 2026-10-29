@@ -32,8 +32,9 @@ import app.gyrolet.mpvrx.ui.theme.spacing
 @Suppress("CompositionLocalAllowlist")
 internal val LocalForceDarkPlayerButtonsBackground = staticCompositionLocalOf { false }
 
+/** Drawer tiles supply their own surface; their embedded controls remain borderless. */
 @Suppress("CompositionLocalAllowlist")
-internal val LocalHidePlayerButtonsBackground = staticCompositionLocalOf { false }
+internal val LocalBorderlessPlayerControls = staticCompositionLocalOf { false }
 
 @Suppress("CompositionLocalAllowlist")
 internal val LocalPlayerButtonsOpacity = staticCompositionLocalOf { PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL }
@@ -46,7 +47,7 @@ internal fun Color.asPlayerButtonBackground(): Color =
 @Composable
 private fun playerButtonColorScheme(
   forceDark: Boolean =
-    LocalForceDarkPlayerButtonsBackground.current && !LocalHidePlayerButtonsBackground.current,
+    LocalForceDarkPlayerButtonsBackground.current && !LocalBorderlessPlayerControls.current,
 ): ColorScheme =
   if (forceDark) LocalDarkAppColorScheme.current ?: MaterialTheme.colorScheme else MaterialTheme.colorScheme
 
@@ -78,10 +79,10 @@ fun ControlsButton(
     icon = icon,
     onLongClick = onLongClick,
     title = title,
-    color = color ?: if (LocalHidePlayerButtonsBackground.current) LocalContentColor.current else playerButtonContentColor(),
+    color = color ?: if (LocalBorderlessPlayerControls.current) LocalContentColor.current else playerButtonContentColor(),
     enabled = enabled,
     onLongClickLabel = onLongClickLabel,
-    hideBackground = LocalHidePlayerButtonsBackground.current,
+    borderless = LocalBorderlessPlayerControls.current,
     useGlass = true,
     buttonSize = PlayerLiquidTokens.ButtonSize,
   )
@@ -99,7 +100,7 @@ fun ControlsGroup(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement =
       androidx.compose.foundation.layout.Arrangement
-        .spacedBy(if (LocalHidePlayerButtonsBackground.current) 0.dp else spacing.extraSmall),
+        .spacedBy(if (LocalBorderlessPlayerControls.current) 0.dp else spacing.extraSmall),
     content = content,
   )
 }

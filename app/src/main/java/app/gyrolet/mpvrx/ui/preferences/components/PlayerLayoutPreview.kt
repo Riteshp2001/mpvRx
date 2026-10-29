@@ -82,7 +82,6 @@ internal fun PlayerLayoutPreview(
   modifier: Modifier = Modifier,
 ) {
   val appearance = koinInject<AppearancePreferences>()
-  val hideBackground by appearance.hidePlayerButtonsBackground.collectAsState()
   val forceDark by appearance.forceDarkPlayerButtonsBackground.collectAsState()
   val opacity by appearance.playerButtonsBackgroundOpacity.collectAsState()
   val seekbarStyle by appearance.seekbarStyle.collectAsState()
@@ -121,11 +120,11 @@ internal fun PlayerLayoutPreview(
               LocalForceDarkPlayerButtonsBackground provides forceDark,
               LocalPlayerButtonsOpacity provides opacity,
             ) {
-              PlayerButtonTheme(hideBackground) {
+              PlayerButtonTheme {
                 PlayerControlsContentTheme {
                   PreviewScene(
                     region, topRightButtons, bottomRightButtons, bottomLeftButtons, portraitBottomButtons,
-                    preset, playlist, hideBackground, glassEnabled, seekbarStyle, wavy, sceneWidth,
+                    preset, playlist, glassEnabled, seekbarStyle, wavy, sceneWidth,
                   )
                 }
               }
@@ -155,7 +154,6 @@ private fun PreviewScene(
   portraitBottomButtons: List<PlayerButton>,
   preset: VideoControlsLayoutPreset,
   playlist: Boolean,
-  hideBackground: Boolean,
   glassEnabled: Boolean,
   seekbarStyle: SeekbarStyle,
   wavy: Boolean,
@@ -166,7 +164,7 @@ private fun PreviewScene(
     if (region.isPortrait) portraitBottomButtons.isNotEmpty()
     else bottomRightButtons.isNotEmpty() || bottomLeftButtons.isNotEmpty()
   val geometry = resolvePlaybackControlsGeometry(
-    sceneWidth, preset.playbackPosition, playlist, hasActions, hideBackground, spacing,
+    sceneWidth, preset.playbackPosition, playlist, hasActions, spacing,
   )
   val layout = resolveBottomControlsLayout(
     preset.seekbarPlacement, preset.playbackPosition, hasActions, geometry.canShareRow,
@@ -185,7 +183,7 @@ private fun PreviewScene(
           Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(spacing.small),
         ) {
-          PreviewIcon(Icons.RoundedFilled.ArrowBack, 48.dp, hideBackground)
+          PreviewIcon(Icons.RoundedFilled.ArrowBack, 48.dp)
           Text(
             stringResource(R.string.ui_video_title), color = Color.White,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
@@ -193,18 +191,18 @@ private fun PreviewScene(
         }
         if (!region.isPortrait) {
           PreviewButtons(
-            topRightButtons, region == ControlRegion.TOP_RIGHT, hideBackground,
+            topRightButtons, region == ControlRegion.TOP_RIGHT,
             Modifier.weight(1f), endAligned = true,
           )
         }
       }
       if (!layout.buttonsBesidePlayback) {
-        PreviewPlayback(playlist, geometry, hideBackground, Modifier.align(Alignment.Center))
+        PreviewPlayback(playlist, geometry, Modifier.align(Alignment.Center))
       }
       Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
           .padding(horizontal = spacing.large, vertical = if (region.isPortrait) spacing.large else spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(if (hideBackground) 0.dp else spacing.extraSmall),
+        verticalArrangement = Arrangement.spacedBy(spacing.extraSmall),
       ) {
         layout.bottomToTop.asReversed().forEach { slot ->
           when (slot) {
@@ -218,8 +216,8 @@ private fun PreviewScene(
               } else bottomRightButtons
               val actionGap = when {
                 region.isPortrait && layout.buttonsBesidePlayback -> spacing.extraSmall
-                region.isPortrait -> if (hideBackground) spacing.extraSmall else spacing.medium
-                else -> if (hideBackground) 0.dp else spacing.extraSmall
+                region.isPortrait -> spacing.medium
+                else -> spacing.extraSmall
               }
               Row(
                 Modifier.fillMaxWidth().heightIn(min = if (layout.buttonsBesidePlayback) geometry.playPauseSize else 48.dp),
@@ -229,14 +227,14 @@ private fun PreviewScene(
                 if (layout.buttonsBesidePlayback || left.isNotEmpty()) {
                   PreviewButtons(
                     left, region == ControlRegion.BOTTOM_LEFT || region == ControlRegion.PORTRAIT_BOTTOM,
-                    hideBackground, Modifier.weight(1f), buttonGap = actionGap,
+                    Modifier.weight(1f), buttonGap = actionGap,
                   )
                 }
-                if (layout.buttonsBesidePlayback) PreviewPlayback(playlist, geometry, hideBackground)
+                if (layout.buttonsBesidePlayback) PreviewPlayback(playlist, geometry)
                 if (layout.buttonsBesidePlayback || right.isNotEmpty()) {
                   PreviewButtons(
                     right, region == ControlRegion.BOTTOM_RIGHT || region == ControlRegion.PORTRAIT_BOTTOM,
-                    hideBackground, Modifier.weight(1f), endAligned = !region.isPortrait || layout.buttonsBesidePlayback,
+                    Modifier.weight(1f), endAligned = !region.isPortrait || layout.buttonsBesidePlayback,
                     centered = region.isPortrait && !layout.buttonsBesidePlayback,
                     buttonGap = actionGap,
                   )
@@ -255,11 +253,10 @@ private fun PreviewScene(
 private fun PreviewButtons(
   buttons: List<PlayerButton>,
   highlighted: Boolean,
-  hideBackground: Boolean,
   modifier: Modifier,
   endAligned: Boolean = false,
   centered: Boolean = false,
-  buttonGap: Dp = if (hideBackground) 0.dp else MaterialTheme.spacing.extraSmall,
+  buttonGap: Dp = MaterialTheme.spacing.extraSmall,
 ) {
   val shape = MaterialTheme.shapes.medium
   Box(
@@ -281,7 +278,7 @@ private fun PreviewButtons(
       buttons.forEach { button ->
         AdaptiveControlsContainer(
           onClick = {}, isInteractive = false, buttonSize = 48.dp,
-          color = if (hideBackground) Color.White else Color.Unspecified,
+          color = Color.Unspecified,
           horizontalPadding = if (button == PlayerButton.VIDEO_TITLE || button == PlayerButton.CURRENT_CHAPTER) 12.dp else 0.dp,
           modifier = if (button == PlayerButton.VIDEO_TITLE || button == PlayerButton.CURRENT_CHAPTER) Modifier else Modifier.size(48.dp),
         ) {
@@ -304,24 +301,23 @@ private fun PreviewButtons(
 private fun PreviewPlayback(
   playlist: Boolean,
   geometry: PlaybackControlsGeometry,
-  hideBackground: Boolean,
   modifier: Modifier = Modifier,
 ) {
   Row(
     modifier, verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(geometry.buttonGap),
   ) {
-    if (playlist) PreviewIcon(Icons.RoundedFilled.SkipPrevious, geometry.skipButtonSize, hideBackground)
-    PreviewIcon(Icons.RoundedFilled.PlayArrow, geometry.playPauseSize, hideBackground)
-    if (playlist) PreviewIcon(Icons.RoundedFilled.SkipNext, geometry.skipButtonSize, hideBackground)
+    if (playlist) PreviewIcon(Icons.RoundedFilled.SkipPrevious, geometry.skipButtonSize)
+    PreviewIcon(Icons.RoundedFilled.PlayArrow, geometry.playPauseSize)
+    if (playlist) PreviewIcon(Icons.RoundedFilled.SkipNext, geometry.skipButtonSize)
   }
 }
 
 @Composable
-private fun PreviewIcon(icon: AppIcon, size: Dp, hideBackground: Boolean) {
+private fun PreviewIcon(icon: AppIcon, size: Dp) {
   AdaptiveControlsContainer(
     onClick = {}, isInteractive = false, modifier = Modifier.size(size),
-    color = if (hideBackground) Color.White else Color.Unspecified,
+    color = Color.Unspecified,
     buttonSize = size, horizontalPadding = 0.dp,
   ) {
     Icon(icon, null, Modifier.size(size / 2))

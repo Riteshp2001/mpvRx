@@ -56,10 +56,8 @@
   <string name="pref_appearance_ui_scale_restart_now">Redémarrer maintenant</string>
   <string name="pref_appearance_unlimited_name_lines_title">Afficher les noms complets</string>
   <string name="pref_appearance_unlimited_name_lines_summary">Afficher les noms complets des dossiers et vidéos sans troncature</string>
-  <string name="pref_appearance_hide_player_buttons_background_title">Masquer l’arrière-plan des boutons du lecteur</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Fond des boutons toujours sombre</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Garder les arrière-plans des boutons du lecteur sombres avec les thèmes clair, sombre et automatique</string>
-  <string name="pref_appearance_hide_player_buttons_background_summary">Masquer l’arrière-plan de tous les boutons de contrôle du lecteur</string>
   <string name="pref_appearance_category_file_browser">Explorateur de fichiers</string>
   <string name="pref_appearance_category_thumbnails">Miniatures</string>
   <string name="pref_appearance_category_navigation">Navigation</string>

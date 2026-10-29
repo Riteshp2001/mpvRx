@@ -15,7 +15,6 @@ import app.gyrolet.mpvrx.ui.player.declaredMediaKind
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingState
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentSpeed
-
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.database.ContentObserver
 import android.media.AudioManager
@@ -145,7 +144,6 @@ import app.gyrolet.mpvrx.preferences.preference.minusAssign
 import app.gyrolet.mpvrx.preferences.preference.plusAssign
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.icons.LocalIconShadow
 import app.gyrolet.mpvrx.ui.player.Decoder.Companion.getDecoderFromValue
 import app.gyrolet.mpvrx.ui.player.InAppMusicSheetState
 import app.gyrolet.mpvrx.ui.player.Panels
@@ -165,7 +163,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.AnimatedPlayPauseIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.BrightnessSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
-import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.player.controls.components.asPlayerButtonBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.MediaScopesOverlay
@@ -185,7 +182,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -393,7 +389,6 @@ fun PlayerControls(
   val aiPreferences = koinInject<AiPreferences>()
   val aiEnabled by aiPreferences.enabled.collectAsState()
   val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
-  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
   val liquidGlassPreference by appearancePreferences.liquidGlassEnabled.collectAsState()
   val liquidGlassInHdr by appearancePreferences.liquidGlassInHdr.collectAsState()
   val hdrOutputPreference by koinInject<DecoderPreferences>().hdrScreenOutput.collectAsState()
@@ -802,7 +797,6 @@ fun PlayerControls(
       LocalPlayerHdrOutputEnabled provides isHdrOutputEnabled,
       LocalPlayerLiquidGlassActive provides enableLiquidGlass,
       LocalForceDarkPlayerButtonsBackground provides forceDarkButtonBackground,
-      LocalHidePlayerButtonsBackground provides hideBackground,
     ) {
       PlayerControlsContentTheme {
         Box(
@@ -980,7 +974,6 @@ fun PlayerControls(
     LocalPlayerHdrOutputEnabled provides isHdrOutputEnabled,
     LocalPlayerLiquidGlassActive provides enableLiquidGlass,
     LocalForceDarkPlayerButtonsBackground provides forceDarkButtonBackground,
-    LocalHidePlayerButtonsBackground provides hideBackground,
     LocalPlayerButtonsOpacity provides playerButtonsBackgroundOpacity.coerceIn(0f, 1f),
   ) {
     PlayerControlsContentTheme {
@@ -1074,8 +1067,6 @@ fun PlayerControls(
           LocalPlayerButtonsClickEvent provides { resetControlsTimestamp = System.currentTimeMillis() },
           LocalKyantPlayerBackdrop provides playerKyantBackdrop,
           LocalForceDarkPlayerButtonsBackground provides forceDarkButtonBackground,
-          LocalHidePlayerButtonsBackground provides hideBackground,
-          LocalIconShadow provides hideBackground,
           LocalContentColor provides MaterialTheme.colorScheme.onSurface,
         ) {
       CompositionLocalProvider(
@@ -1136,7 +1127,6 @@ fun PlayerControls(
             playbackPosition = playbackPosition,
             hasPlaylistControls = hasPlaylistControls,
             hasActions = hasBottomActions,
-            hideBackground = hideBackground,
             spacing = spacing,
             horizontalInsets = safeHorizontalInsets,
           )
@@ -1188,7 +1178,7 @@ fun PlayerControls(
           // Keep the seekbar close to its controls. Bands come from remembered heights, so a
           // layer leaving the layout (buffering, volume/brightness sliders, hidden controls) moves nothing.
           val clusterEdge = if (isPortrait) spacing.large else spacing.medium
-          val clusterGap = if (hideBackground) 0.dp else spacing.extraSmall
+          val clusterGap = spacing.extraSmall
           val customButtonsGap = spacing.smaller * 2
           val bandCenters = HashMap<BottomSlot, Dp>()
           var nextBandBottom = clusterEdge
@@ -1789,12 +1779,12 @@ fun PlayerControls(
                   }
                 },
           ) {
-            PlayerButtonTheme(hideBackground) {
+            PlayerButtonTheme {
               ControlsButton(
                 icon = Icons.RoundedFilled.LockOpen,
                 onClick = viewModel::unlockControls,
                 title = stringResource(R.string.ui_unlock_controls),
-                color = if (hideBackground) controlColor else playerButtonContentColor(),
+                color = playerButtonContentColor(),
                 modifier = Modifier.size(48.dp),
               )
             }
@@ -1998,12 +1988,11 @@ fun PlayerControls(
                       .tvFocusHighlight(CircleShape, enabled = viewModel.hasPrevious()),
                   color =
                     if (viewModel.hasPrevious()) {
-                      if (hideBackground) controlColor else playerButtonContentColor()
+                      playerButtonContentColor()
                     } else {
-                      (if (hideBackground) controlColor else playerButtonContentColor()).copy(alpha = 0.38f)
+                      playerButtonContentColor().copy(alpha = 0.38f)
                     },
                   isInteractive = viewModel.hasPrevious(),
-                  hideBackground = hideBackground,
                   buttonSize = skipButtonSize,
                   horizontalPadding = 0.dp,
                 ) {
@@ -2031,8 +2020,7 @@ fun PlayerControls(
                       .size(playPauseSize)
                       .tvInitialFocus(tvPlayFocusRequester)
                       .tvFocusHighlight(CircleShape),
-                  color = if (hideBackground) controlColor else playerButtonContentColor(),
-                  hideBackground = hideBackground,
+                  color = playerButtonContentColor(),
                   buttonSize = playPauseSize,
                   horizontalPadding = 0.dp,
                 ) {
@@ -2059,12 +2047,11 @@ fun PlayerControls(
                       .tvFocusHighlight(CircleShape, enabled = viewModel.hasNext()),
                   color =
                     if (viewModel.hasNext()) {
-                      if (hideBackground) controlColor else playerButtonContentColor()
+                      playerButtonContentColor()
                     } else {
-                      (if (hideBackground) controlColor else playerButtonContentColor()).copy(alpha = 0.38f)
+                      playerButtonContentColor().copy(alpha = 0.38f)
                     },
                   isInteractive = viewModel.hasNext(),
-                  hideBackground = hideBackground,
                   buttonSize = skipButtonSize,
                   horizontalPadding = 0.dp,
                 ) {
@@ -2093,8 +2080,7 @@ fun PlayerControls(
                     .size(playPauseSize)
                     .tvInitialFocus(tvPlayFocusRequester)
                     .tvFocusHighlight(CircleShape),
-                color = if (hideBackground) controlColor else playerButtonContentColor(),
-                hideBackground = hideBackground,
+                color = playerButtonContentColor(),
                 buttonSize = playPauseSize,
                 horizontalPadding = 0.dp,
               ) {
@@ -2260,7 +2246,6 @@ fun PlayerControls(
             if (isPortrait) {
               TopPlayerControlsPortrait(
                 mediaTitle = mediaTitle,
-                hideBackground = hideBackground,
                 onBackPress = onBackPress,
                 onOpenSheet = onOpenSheet,
                 viewModel = viewModel,
@@ -2274,7 +2259,6 @@ fun PlayerControls(
             } else {
               TopLeftPlayerControlsLandscape(
                 mediaTitle = mediaTitle,
-                hideBackground = hideBackground,
                 onBackPress = onBackPress,
                 onOpenSheet = onOpenSheet,
                 viewModel = viewModel,
@@ -2323,7 +2307,6 @@ fun PlayerControls(
               currentZoom = currentZoom,
               aspect = aspect,
               mediaTitle = mediaTitle,
-              hideBackground = hideBackground,
               decoder = decoder,
               playbackSpeed = playbackSpeed ?: 1f,
               onBackPress = onBackPress,
@@ -2379,7 +2362,6 @@ fun PlayerControls(
                 currentZoom = currentZoom,
                 aspect = aspect,
                 mediaTitle = mediaTitle,
-                hideBackground = hideBackground,
                 decoder = decoder,
                 playbackSpeed = playbackSpeed ?: 1f,
                 onBackPress = onBackPress,
@@ -2393,7 +2375,7 @@ fun PlayerControls(
                     Arrangement.spacedBy(spacing.extraSmall, Alignment.End)
                   } else {
                     Arrangement.spacedBy(
-                      if (hideBackground) spacing.extraSmall else spacing.medium,
+                      spacing.medium,
                       Alignment.CenterHorizontally,
                     )
                   },
@@ -2409,7 +2391,6 @@ fun PlayerControls(
                 currentZoom = currentZoom,
                 aspect = aspect,
                 mediaTitle = mediaTitle,
-                hideBackground = hideBackground,
                 decoder = decoder,
                 playbackSpeed = playbackSpeed ?: 1f,
                 onBackPress = onBackPress,
@@ -2420,7 +2401,7 @@ fun PlayerControls(
                 // Beside play/pause the group keeps its buttons at the screen edge and scrolls toward the centre.
                 modifier = Modifier.fillMaxWidth().fadingHorizontalScroll(rowScrollState, reverseScrolling = true),
                 horizontalArrangement =
-                  Arrangement.spacedBy(if (hideBackground) 0.dp else spacing.extraSmall, Alignment.End),
+                  Arrangement.spacedBy(spacing.extraSmall, Alignment.End),
               )
             }
           }
@@ -2464,7 +2445,6 @@ fun PlayerControls(
                 currentZoom = currentZoom,
                 aspect = aspect,
                 mediaTitle = mediaTitle,
-                hideBackground = hideBackground,
                 decoder = decoder,
                 playbackSpeed = playbackSpeed ?: 1f,
                 onBackPress = onBackPress,
@@ -2484,7 +2464,6 @@ fun PlayerControls(
                 currentZoom = currentZoom,
                 aspect = aspect,
                 mediaTitle = mediaTitle,
-                hideBackground = hideBackground,
                 decoder = decoder,
                 playbackSpeed = playbackSpeed ?: 1f,
                 onBackPress = onBackPress,
@@ -2589,7 +2568,7 @@ fun PlayerControls(
       }
 
     if (showControlsDrawer) {
-      PlayerButtonTheme(hideBackground = false) {
+      PlayerButtonTheme {
         PlayerControlDrawer(
           buttons = playerDrawerButtons,
           activeButtons = activePlayerDrawerButtons,
@@ -2611,7 +2590,7 @@ fun PlayerControls(
               currentZoom = currentZoom,
               aspect = aspect,
               mediaTitle = mediaTitle,
-              hideBackground = true,
+              borderless = true,
               decoder = decoder,
               playbackSpeed = playbackSpeed ?: 1f,
               onBackPress = onBackPress,

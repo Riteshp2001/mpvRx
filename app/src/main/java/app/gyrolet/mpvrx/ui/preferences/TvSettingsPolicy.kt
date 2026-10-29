@@ -45,7 +45,6 @@ internal object TvSettingsPolicy {
     R.string.ui_landscape_seekbar_position,
     R.string.ui_portrait_seekbar_position,
     R.string.pref_player_buttons_opacity,
-    R.string.pref_appearance_hide_player_buttons_background_title,
     R.string.pref_appearance_force_dark_player_buttons_background_title,
     R.string.pref_app_icon_title,
     R.string.pref_nav_actions_section,

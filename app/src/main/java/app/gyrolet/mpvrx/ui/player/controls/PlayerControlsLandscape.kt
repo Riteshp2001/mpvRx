@@ -34,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,7 +52,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
-import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
 import org.koin.compose.koinInject
@@ -61,7 +59,6 @@ import org.koin.compose.koinInject
 @Composable
 fun TopLeftPlayerControlsLandscape(
   mediaTitle: String?,
-  hideBackground: Boolean,
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   viewModel: PlayerViewModel,
@@ -72,7 +69,7 @@ fun TopLeftPlayerControlsLandscape(
   translationStatus: String = "",
   translatingTrackName: String = "",
 ) {
-  PlayerButtonTheme(hideBackground) {
+  PlayerButtonTheme {
     val playlistModeEnabled = viewModel.hasPlaylistSupport()
     val clickEvent = LocalPlayerButtonsClickEvent.current
     val enableLiquidGlass = liquidGlassActive()
@@ -82,12 +79,12 @@ fun TopLeftPlayerControlsLandscape(
     ) {
       Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(if (hideBackground) 0.dp else MaterialTheme.spacing.extraSmall),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       ) {
         ControlsButton(
           icon = Icons.RoundedFilled.ArrowBack,
           onClick = onBackPress,
-          color = if (hideBackground) controlColor else playerButtonContentColor(),
+          color = playerButtonContentColor(),
           modifier = Modifier.size(48.dp),
         )
 
@@ -140,21 +137,11 @@ fun TopLeftPlayerControlsLandscape(
             ) {
               Surface(
                 shape = CircleShape,
-                color =
-                  if (hideBackground) {
-                    Color.Transparent
-                  } else {
-                    playerButtonContainerColor()
-                  },
-                contentColor = if (hideBackground) controlColor else playerButtonContentColor(),
+                color = playerButtonContainerColor(),
+                contentColor = playerButtonContentColor(),
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
-                border =
-                  if (hideBackground) {
-                    null
-                  } else {
-                    BorderStroke(1.dp, playerButtonBorderColor())
-                  },
+                border = BorderStroke(1.dp, playerButtonBorderColor()),
               ) {
                 Row(
                   verticalAlignment = Alignment.CenterVertically,
@@ -268,7 +255,6 @@ fun TopRightPlayerControlsLandscape(
   currentZoom: Float,
   aspect: VideoAspect,
   mediaTitle: String?,
-  hideBackground: Boolean,
   decoder: app.gyrolet.mpvrx.ui.player.Decoder,
   playbackSpeed: Float,
   onBackPress: () -> Unit,
@@ -277,10 +263,10 @@ fun TopRightPlayerControlsLandscape(
   viewModel: PlayerViewModel,
   activity: PlayerActivity,
 ) {
-  PlayerButtonTheme(hideBackground) {
+  PlayerButtonTheme {
     Row(
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(if (hideBackground) 0.dp else MaterialTheme.spacing.extraSmall),
+      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
       buttons.forEach { button ->
         RenderPlayerButton(
@@ -292,7 +278,6 @@ fun TopRightPlayerControlsLandscape(
           currentZoom = currentZoom,
           aspect = aspect,
           mediaTitle = mediaTitle,
-          hideBackground = hideBackground,
           decoder = decoder,
           playbackSpeed = playbackSpeed,
           onBackPress = onBackPress,
@@ -317,7 +302,6 @@ fun BottomRightPlayerControlsLandscape(
   currentZoom: Float,
   aspect: VideoAspect,
   mediaTitle: String?,
-  hideBackground: Boolean,
   decoder: app.gyrolet.mpvrx.ui.player.Decoder,
   playbackSpeed: Float,
   onBackPress: () -> Unit,
@@ -327,9 +311,9 @@ fun BottomRightPlayerControlsLandscape(
   activity: PlayerActivity,
   modifier: Modifier = Modifier,
   horizontalArrangement: Arrangement.Horizontal =
-    Arrangement.spacedBy(if (hideBackground) 0.dp else MaterialTheme.spacing.extraSmall),
+    Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
 ) {
-  PlayerButtonTheme(hideBackground) {
+  PlayerButtonTheme {
     Row(
       modifier = modifier,
       verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +329,6 @@ fun BottomRightPlayerControlsLandscape(
           currentZoom = currentZoom,
           aspect = aspect,
           mediaTitle = mediaTitle,
-          hideBackground = hideBackground,
           decoder = decoder,
           playbackSpeed = playbackSpeed,
           onBackPress = onBackPress,
@@ -377,7 +360,6 @@ fun BottomLeftPlayerControlsLandscape(
   currentZoom: Float,
   aspect: VideoAspect,
   mediaTitle: String?,
-  hideBackground: Boolean,
   decoder: app.gyrolet.mpvrx.ui.player.Decoder,
   playbackSpeed: Float,
   onBackPress: () -> Unit,
@@ -387,11 +369,11 @@ fun BottomLeftPlayerControlsLandscape(
   activity: PlayerActivity,
   modifier: Modifier = Modifier,
 ) {
-  PlayerButtonTheme(hideBackground) {
+  PlayerButtonTheme {
     Row(
       modifier = modifier,
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(if (hideBackground) 0.dp else MaterialTheme.spacing.extraSmall),
+      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
       buttons.forEach { button ->
         RenderPlayerButton(
@@ -403,7 +385,6 @@ fun BottomLeftPlayerControlsLandscape(
           currentZoom = currentZoom,
           aspect = aspect,
           mediaTitle = mediaTitle,
-          hideBackground = hideBackground,
           decoder = decoder,
           playbackSpeed = playbackSpeed,
           onBackPress = onBackPress,

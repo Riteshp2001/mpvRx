@@ -67,7 +67,7 @@ import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.getPlayerButtonLabel
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
+import app.gyrolet.mpvrx.ui.player.controls.components.LocalBorderlessPlayerControls
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.DraggablePanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.DraggablePanelHeader
@@ -287,7 +287,7 @@ private fun PlayerControlPanel(
     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
   ) {
     CompositionLocalProvider(
-      LocalHidePlayerButtonsBackground provides true,
+      LocalBorderlessPlayerControls provides true,
       LocalPlayerButtonsClickEvent provides {
         onDismissRequest()
         parentClickEventCurrent()

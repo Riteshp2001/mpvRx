@@ -72,17 +72,16 @@ internal fun resolvePlaybackControlsGeometry(
   playbackPosition: PlaybackControlsPosition,
   hasPlaylistControls: Boolean,
   hasActions: Boolean,
-  hideBackground: Boolean,
   spacing: Spacing,
   horizontalInsets: Dp = 0.dp,
 ): PlaybackControlsGeometry {
   val compact = width < 360.dp || (playbackPosition != PlaybackControlsPosition.Center && width < 480.dp)
   val playPauseSize = if (compact) 56.dp else 68.dp
   val skipButtonSize = if (compact) 48.dp else 60.dp
-  val buttonGap = if (compact) 4.dp else if (hideBackground) spacing.small else spacing.large
+  val buttonGap = if (compact) 4.dp else spacing.large
   val rowHalfWidth =
     (playPauseSize + if (hasPlaylistControls) (skipButtonSize + buttonGap) * 2 else 0.dp) / 2
-  val sideGap = if (compact || hideBackground) spacing.smaller else spacing.medium
+  val sideGap = if (compact) spacing.smaller else spacing.medium
   val minimumWidth =
     rowHalfWidth * 2 + spacing.large * 2 + horizontalInsets +
       if (hasActions) 96.dp + sideGap * 2 else 0.dp

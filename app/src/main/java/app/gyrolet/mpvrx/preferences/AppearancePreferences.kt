@@ -104,7 +104,6 @@ class AppearancePreferences(
   val googleFontRevision = preferenceStore.getInt("google_font_revision", 0)
   val appUiScale = preferenceStore.getFloat("app_ui_scale", 0.95f)
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
-  val hidePlayerButtonsBackground = preferenceStore.getBoolean("hide_player_buttons_background", false)
   val forceDarkPlayerButtonsBackground = preferenceStore.getBoolean("force_dark_player_buttons_background", false)
   val showUnplayedOldVideoLabel = preferenceStore.getBoolean("show_unplayed_old_video_label", true)
   val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)

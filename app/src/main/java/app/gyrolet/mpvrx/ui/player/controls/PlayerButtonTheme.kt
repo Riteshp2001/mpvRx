@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import app.gyrolet.mpvrx.ui.icons.LocalIconShadow
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
-import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
+import app.gyrolet.mpvrx.ui.player.controls.components.LocalBorderlessPlayerControls
 import app.gyrolet.mpvrx.ui.theme.LocalDarkAppColorScheme
 
 internal object PlayerButtonAlpha {
@@ -48,7 +48,7 @@ internal object PlayerButtonAlpha {
 }
 
 /**
- * Carries the background visibility choice through every player-button implementation.
+ * Resets player buttons to their standard surface styling outside drawer tiles.
  *
  * Color overrides are deliberately not applied to this complete subtree: top-player groups also
  * contain status text and the audio player contains artwork, lyrics and sheets. Re-theming that
@@ -56,12 +56,11 @@ internal object PlayerButtonAlpha {
  */
 @Composable
 internal fun PlayerButtonTheme(
-  hideBackground: Boolean,
   content: @Composable () -> Unit,
 ) {
   CompositionLocalProvider(
-    LocalHidePlayerButtonsBackground provides hideBackground,
-    LocalIconShadow provides hideBackground,
+    LocalBorderlessPlayerControls provides false,
+    LocalIconShadow provides false,
     content = content,
   )
 }
@@ -70,7 +69,7 @@ internal fun PlayerButtonTheme(
 @Composable
 internal fun PlayerControlsContentTheme(content: @Composable () -> Unit) {
   val useDarkPalette =
-    LocalForceDarkPlayerButtonsBackground.current && !LocalHidePlayerButtonsBackground.current
+    LocalForceDarkPlayerButtonsBackground.current && !LocalBorderlessPlayerControls.current
   val darkColors = LocalDarkAppColorScheme.current
   if (!useDarkPalette || darkColors == null) {
     content()

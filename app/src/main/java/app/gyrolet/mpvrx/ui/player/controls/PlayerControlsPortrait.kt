@@ -32,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,7 +51,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ControlsGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
-import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
 import org.koin.compose.koinInject
@@ -60,7 +58,6 @@ import org.koin.compose.koinInject
 @Composable
 fun TopPlayerControlsPortrait(
   mediaTitle: String?,
-  hideBackground: Boolean,
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   viewModel: PlayerViewModel,
@@ -71,7 +68,7 @@ fun TopPlayerControlsPortrait(
   translationStatus: String = "",
   translatingTrackName: String = "",
 ) {
-  PlayerButtonTheme(hideBackground) {
+  PlayerButtonTheme {
     val playlistModeEnabled = viewModel.hasPlaylistSupport()
     val clickEvent = LocalPlayerButtonsClickEvent.current
 
@@ -88,7 +85,7 @@ fun TopPlayerControlsPortrait(
           ControlsButton(
             icon = Icons.RoundedFilled.ArrowBack,
             onClick = onBackPress,
-            color = if (hideBackground) controlColor else playerButtonContentColor(),
+            color = playerButtonContentColor(),
             modifier = Modifier.size(48.dp),
           )
 
@@ -134,24 +131,14 @@ fun TopPlayerControlsPortrait(
 
               Surface(
                 shape = CircleShape,
-                color =
-                  if (hideBackground) {
-                    Color.Transparent
-                  } else {
-                    playerButtonContainerColor()
-                  },
-                contentColor = if (hideBackground) controlColor else playerButtonContentColor(),
+                color = playerButtonContainerColor(),
+                contentColor = playerButtonContentColor(),
                 onClick = {
                   clickEvent()
                   onOpenSheet(Sheets.Playlist)
                 },
                 enabled = playlistModeEnabled,
-                border =
-                  if (hideBackground) {
-                    null
-                  } else {
-                    BorderStroke(1.dp, playerButtonBorderColor())
-                  },
+                border = BorderStroke(1.dp, playerButtonBorderColor()),
                 modifier = Modifier.height(45.dp),
               ) {
                 Row(
@@ -260,7 +247,6 @@ fun BottomPlayerControlsPortrait(
   currentZoom: Float,
   aspect: VideoAspect,
   mediaTitle: String?,
-  hideBackground: Boolean,
   decoder: app.gyrolet.mpvrx.ui.player.Decoder,
   playbackSpeed: Float,
   onBackPress: () -> Unit,
@@ -271,11 +257,11 @@ fun BottomPlayerControlsPortrait(
   alignToEnd: Boolean = false,
   horizontalArrangement: Arrangement.Horizontal =
     Arrangement.spacedBy(
-      if (hideBackground) MaterialTheme.spacing.extraSmall else MaterialTheme.spacing.medium,
+      MaterialTheme.spacing.medium,
       Alignment.CenterHorizontally,
     ),
 ) {
-  PlayerButtonTheme(hideBackground) {
+  PlayerButtonTheme {
     val enableLiquidGlass = liquidGlassActive()
     Row(
       modifier =
@@ -285,8 +271,8 @@ fun BottomPlayerControlsPortrait(
           // Padding after horizontalScroll belongs to scroll content, not its clipping viewport.
           // Vertical room is only for the liquid-glass shadow; the player places this row with its shared gaps.
           .padding(
-            horizontal = if (enableLiquidGlass && !hideBackground) 8.dp else 0.dp,
-            vertical = if (enableLiquidGlass && !hideBackground) 6.dp else 0.dp,
+            horizontal = if (enableLiquidGlass) 8.dp else 0.dp,
+            vertical = if (enableLiquidGlass) 6.dp else 0.dp,
           ),
       horizontalArrangement = horizontalArrangement,
       verticalAlignment = Alignment.CenterVertically,
@@ -301,7 +287,6 @@ fun BottomPlayerControlsPortrait(
           currentZoom = currentZoom,
           aspect = aspect,
           mediaTitle = mediaTitle,
-          hideBackground = hideBackground,
           onBackPress = onBackPress,
           onOpenSheet = onOpenSheet,
           onOpenPanel = onOpenPanel,

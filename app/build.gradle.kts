@@ -52,7 +52,7 @@ val sideloadDistributions = setOf("standard", "noVulkan", "fongmi")
 // AGP cannot build an app bundle while ABI splits produce multiple APKs (issuetracker 402800800).
 val isBundleBuild =
   gradle.startParameter.taskNames.any { it.substringAfterLast(':').startsWith("bundle") }
-val releaseVersionCode = 302
+val releaseVersionCode = 303
 val versionCodeBandSize = 10_000
 val stableVersionCode = releaseVersionCode * versionCodeBandSize + (versionCodeBandSize - 1)
 val previewVersionCode =
@@ -91,7 +91,7 @@ android {
     // Stable occupies the top of its version band. Preview uses the next band's commit-count
     // offset, so Stable -> Preview -> newer Preview -> next Stable is always an Android upgrade.
     versionCode = stableVersionCode
-    versionName = "3.0.2"
+    versionName = "3.0.2.1"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -287,9 +287,8 @@ androidComponents {
         dimension == "distribution" && flavor in universalOnlyDistributions
       }
 
-    // Reserve suffix 6 for the Play Store stable build. This gives the compatibility
-    // fix a fresh 3.0.2 version code (30299996) after the already-uploaded 30299990
-    // and 30299995 bundles, without changing version codes for other distributions.
+    // Play Console requires a fresh code for each uploaded commit. Both the APK and AAB
+    // use the same history-derived code; rebuilding a commit keeps its identity stable.
     val isPlayStoreRelease =
       variant.buildType == "release" &&
         !isExperimentalBuild &&
@@ -313,8 +312,24 @@ androidComponents {
         } else {
           output.versionCode.orNull ?: stableVersionCode
         }
-      val variantSuffix = if (isPlayStoreRelease) 6 else (abiCodes[abi] ?: 0)
-      output.versionCode.set(channelVersionCode * 10 + variantSuffix)
+      if (isPlayStoreRelease) {
+        output.versionCode.set(providers.provider {
+          check(runCommand("git rev-parse --is-shallow-repository") == "false") {
+            "Play Store release builds require full Git history (fetch-depth: 0)."
+          }
+          val commitCount = getCommitCount().toIntOrNull()
+          check(commitCount != null && commitCount > 0) {
+            "Cannot determine the Play Store version code without a Git commit count."
+          }
+          val playStoreVersionCode = stableVersionCode.toLong() * 10 + commitCount
+          check(playStoreVersionCode <= 2_100_000_000L) {
+            "Play Store version code exceeds Google Play's limit."
+          }
+          playStoreVersionCode.toInt()
+        })
+      } else {
+        output.versionCode.set(channelVersionCode * 10 + (abiCodes[abi] ?: 0))
+      }
     }
   }
 }

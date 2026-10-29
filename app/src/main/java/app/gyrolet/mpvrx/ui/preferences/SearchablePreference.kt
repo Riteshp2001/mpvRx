@@ -299,15 +299,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_appearance_hide_player_buttons_background_title,
-          summaryRes = R.string.pref_appearance_hide_player_buttons_background_summary,
-          keywords = listOf("hide", "background", "buttons", "transparent", "player"),
-          category = "Appearance",
-          screen = PlayerControlsPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_appearance_force_dark_player_buttons_background_title,
           summaryRes = R.string.pref_appearance_force_dark_player_buttons_background_summary,
           keywords = listOf("dark", "black", "background", "buttons", "player", "light theme"),

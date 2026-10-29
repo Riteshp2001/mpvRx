@@ -56,10 +56,8 @@
   <string name="pref_appearance_ui_scale_restart_now">立即重启</string>
   <string name="pref_appearance_unlimited_name_lines_title">显示完整名称</string>
   <string name="pref_appearance_unlimited_name_lines_summary">完整显示文件夹和视频名称，不截断</string>
-  <string name="pref_appearance_hide_player_buttons_background_title">隐藏播放器按钮背景</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">始终使用深色播放器按钮背景</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">在浅色、深色和自动主题下始终保持播放器控制按钮为深色背景</string>
-  <string name="pref_appearance_hide_player_buttons_background_summary">隐藏所有播放器控制按钮的背景</string>
   <string name="pref_appearance_category_file_browser">文件浏览器</string>
   <string name="pref_appearance_category_thumbnails">缩略图</string>
   <string name="pref_appearance_category_navigation">导航</string>

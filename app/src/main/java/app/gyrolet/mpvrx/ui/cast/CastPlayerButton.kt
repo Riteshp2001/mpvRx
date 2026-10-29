@@ -30,10 +30,10 @@ import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsButton
 import com.google.android.gms.cast.framework.CastButtonFactory
 import androidx.compose.ui.graphics.Color as ComposeColor
 
-/** Uses the SDK button for Cast behavior while drawing the shared player button, background setting included. */
+/** Uses the SDK button for Cast behavior while drawing the shared player button, including its drawer tile styling. */
 @Composable
 fun CastPlayerButton(
-  hideBackground: Boolean,
+  borderless: Boolean,
   buttonSize: Dp,
   onInvoked: () -> Unit = {},
   contentColor: ComposeColor? = null,
@@ -50,7 +50,7 @@ fun CastPlayerButton(
       title = castContentDescription,
       color = contentColor,
       buttonSize = buttonSize,
-      hideBackground = hideBackground,
+      borderless = borderless,
     )
     AndroidView(
       factory = { context ->

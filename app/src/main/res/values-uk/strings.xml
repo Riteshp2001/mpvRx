@@ -65,8 +65,6 @@
   <string name="pref_appearance_ui_scale_restart_now">Перезапустити зараз</string>
   <string name="pref_appearance_unlimited_name_lines_title">Показувати повні назви</string>
   <string name="pref_appearance_unlimited_name_lines_summary">Показувати повні назви папок і відео без скорочення</string>
-  <string name="pref_appearance_hide_player_buttons_background_title">Приховати фон кнопок програвача</string>
-  <string name="pref_appearance_hide_player_buttons_background_summary">Приховати фон усіх кнопок керування програвачем</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Завжди темний фон кнопок плеєра</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Зберігати темний фон кнопок керування плеєром у світлій, темній та автоматичній темах</string>
   <string name="pref_appearance_category_file_browser">Файловий менеджер</string>

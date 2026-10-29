@@ -56,10 +56,8 @@
   <string name="pref_appearance_ui_scale_restart_now">今すぐ再起動</string>
   <string name="pref_appearance_unlimited_name_lines_title">名前をすべて表示</string>
   <string name="pref_appearance_unlimited_name_lines_summary">フォルダー名と動画名を省略せずにすべて表示します</string>
-  <string name="pref_appearance_hide_player_buttons_background_title">プレーヤーボタンの背景を非表示</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">プレーヤーボタンの背景を常に暗くする</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">ライト、ダーク、自動の各テーマでプレーヤー操作ボタンの背景を暗く保ちます</string>
-  <string name="pref_appearance_hide_player_buttons_background_summary">プレーヤーのすべての操作ボタンの背景を非表示にします</string>
   <string name="pref_appearance_category_file_browser">ファイルブラウザー</string>
   <string name="pref_appearance_category_thumbnails">サムネイル</string>
   <string name="pref_appearance_category_navigation">ナビゲーション</string>

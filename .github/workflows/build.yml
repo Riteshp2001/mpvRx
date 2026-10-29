@@ -63,7 +63,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          # BuildConfig.GIT_COUNT and preview build identities rely on the real repository history.
+          # Play Store version codes, BuildConfig.GIT_COUNT and preview identities need full history.
           fetch-depth: 0
 
       - name: Generate build metadata

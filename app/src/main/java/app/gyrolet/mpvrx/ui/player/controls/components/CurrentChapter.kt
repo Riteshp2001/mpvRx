@@ -56,9 +56,9 @@ fun CurrentChapter(
   onClick: () -> Unit = {},
   onLongClick: () -> Unit = {},
 ) {
-  val hideBackground = LocalHidePlayerButtonsBackground.current
-  val enableLiquidGlass = liquidGlassActive() && !hideBackground
-  val chapterContentColor = if (hideBackground) controlColor else playerButtonContentColor()
+  val borderless = LocalBorderlessPlayerControls.current
+  val enableLiquidGlass = liquidGlassActive() && !borderless
+  val chapterContentColor = if (borderless) controlColor else playerButtonContentColor()
 
   val chapterContent: @Composable () -> Unit = {
     AnimatedContent(
@@ -89,7 +89,7 @@ fun CurrentChapter(
           style = MaterialTheme.typography.bodyMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
-          color = if (hideBackground) chapterContentColor else MaterialTheme.colorScheme.primary,
+          color = if (borderless) chapterContentColor else MaterialTheme.colorScheme.primary,
         )
         currentChapter.name.let {
           Text(
@@ -138,10 +138,10 @@ fun CurrentChapter(
             onLongClickLabel = stringResource(R.string.audiobook_add_bookmark),
           ),
       shape = AppShapeScale.full,
-      color = if (hideBackground) Color.Transparent else playerButtonContainerColor(),
+      color = if (borderless) Color.Transparent else playerButtonContainerColor(),
       contentColor = chapterContentColor,
       tonalElevation = 0.dp,
-      border = if (hideBackground) null else BorderStroke(1.dp, playerButtonBorderColor()),
+      border = if (borderless) null else BorderStroke(1.dp, playerButtonBorderColor()),
     ) {
       chapterContent()
     }

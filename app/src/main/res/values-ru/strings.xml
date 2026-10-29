@@ -56,10 +56,8 @@
   <string name="pref_appearance_ui_scale_restart_now">Перезапустить сейчас</string>
   <string name="pref_appearance_unlimited_name_lines_title">Показывать полные названия</string>
   <string name="pref_appearance_unlimited_name_lines_summary">Показывать полные названия папок и видео без сокращения</string>
-  <string name="pref_appearance_hide_player_buttons_background_title">Скрыть фон кнопок проигрывателя</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Всегда тёмный фон кнопок</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Сохранять тёмный фон кнопок управления плеером в светлой, тёмной и автоматической темах</string>
-  <string name="pref_appearance_hide_player_buttons_background_summary">Скрыть фон всех кнопок управления проигрывателем</string>
   <string name="pref_appearance_category_file_browser">Файловый браузер</string>
   <string name="pref_appearance_category_thumbnails">Миниатюры</string>
   <string name="pref_appearance_category_navigation">Навигация</string>

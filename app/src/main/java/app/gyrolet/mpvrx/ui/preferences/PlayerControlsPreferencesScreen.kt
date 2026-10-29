@@ -291,7 +291,6 @@ object PlayerControlsPreferencesScreen : Screen {
           }
 
           item {
-            val hidePlayerButtonsBackground by appearancePrefs.hidePlayerButtonsBackground.collectAsState()
             val forceDarkPlayerButtonsBackground by appearancePrefs.forceDarkPlayerButtonsBackground.collectAsState()
             val playerButtonsBackgroundOpacity by appearancePrefs.playerButtonsBackgroundOpacity.collectAsState()
             val storedPlayerTimeToDisappear by playerPrefs.playerTimeToDisappear.collectAsState()
@@ -327,26 +326,6 @@ object PlayerControlsPreferencesScreen : Screen {
                     },
                   )
                 }
-
-                PreferenceDivider()
-
-                SwitchPreference(
-                  groupIndex = 0,
-                  groupSize = 1,
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_hide_player_buttons_background_title),
-                  value = hidePlayerButtonsBackground,
-                  onValueChange = { appearancePrefs.hidePlayerButtonsBackground.set(it) },
-                  title = {
-                    Text(
-                      text = stringResource(id = R.string.pref_appearance_hide_player_buttons_background_title),
-                    )
-                  },
-                  summary = {
-                    Text(
-                      text = stringResource(id = R.string.pref_appearance_hide_player_buttons_background_summary),
-                    )
-                  },
-                )
 
                 PreferenceDivider()
 

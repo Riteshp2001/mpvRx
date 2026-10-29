@@ -111,7 +111,6 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_layout_bottom_right_controls, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_layout_bottom_left_controls, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_layout_portrait_bottom_controls, itemIndex = 3),
-        SettingsSearchListAnchor(titleRes = R.string.pref_appearance_hide_player_buttons_background_title, itemIndex = 7),
         SettingsSearchListAnchor(
           titleRes = R.string.pref_appearance_force_dark_player_buttons_background_title,
           itemIndex = 7,

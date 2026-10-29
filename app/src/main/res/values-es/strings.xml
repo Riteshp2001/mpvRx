@@ -56,10 +56,8 @@
   <string name="pref_appearance_ui_scale_restart_now">Reiniciar ahora</string>
   <string name="pref_appearance_unlimited_name_lines_title">Mostrar nombres completos</string>
   <string name="pref_appearance_unlimited_name_lines_summary">Mostrar los nombres completos de carpetas y vídeos sin recortarlos</string>
-  <string name="pref_appearance_hide_player_buttons_background_title">Ocultar el fondo de los botones del reproductor</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Fondo de botones siempre oscuro</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Mantener oscuros los fondos de los botones del reproductor en los temas claro, oscuro y automático</string>
-  <string name="pref_appearance_hide_player_buttons_background_summary">Ocultar el fondo de todos los botones de control del reproductor</string>
   <string name="pref_appearance_category_file_browser">Explorador de archivos</string>
   <string name="pref_appearance_category_thumbnails">Miniaturas</string>
   <string name="pref_appearance_category_navigation">Navegación</string>
