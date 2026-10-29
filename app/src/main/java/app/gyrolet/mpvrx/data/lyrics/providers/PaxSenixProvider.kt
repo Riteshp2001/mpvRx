@@ -22,6 +22,7 @@ import kotlinx.serialization.json.longOrNull
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.util.concurrent.atomic.AtomicReference
+import java.util.Base64
 import kotlin.math.abs
 
 /**
@@ -53,11 +54,11 @@ internal object PaxSenixApi {
   suspend fun appleLyrics(query: LyricsFetchQuery): Lyrics? {
     val id = searchPublicAppleTrackId(query) ?: return null
     val url = buildUrl("$PUBLIC_PROXY/apple-music/lyrics", "id" to id, "ttml" to "true") ?: return null
-    val body = lyricsGet(url) ?: return null
+    val body = lyricsGet(url, patient = true) ?: return null
     return parseResponse(body)
   }
 
-  /** Spotify timings where a key is configured, otherwise the generic route. */
+  /** Spotify timings with an authenticated generic fallback. */
   suspend fun spotifyLyrics(query: LyricsFetchQuery): Lyrics? {
     if (apiKey.isBlank()) return null
     for (ref in query.candidates()) {
@@ -66,7 +67,7 @@ internal object PaxSenixApi {
     return genericLyrics(query)
   }
 
-  /** Musixmatch timings where a key is configured, otherwise the generic route. */
+  /** Musixmatch timings with an authenticated generic fallback. */
   suspend fun musixmatchLyrics(query: LyricsFetchQuery): Lyrics? {
     if (apiKey.isBlank()) return null
     for (ref in query.candidates()) {
@@ -87,7 +88,7 @@ internal object PaxSenixApi {
     for (ref in query.candidates()) {
       val url = apiUrl("lyrics/lrcget").addQueryParameter("q", "${ref.title} ${ref.artist}").build()
       val body = apiBody(url) ?: continue
-      parseLrcGet(body, query)?.let { return it }
+      parseLrcGet(body, query.copy(refs = listOf(ref)))?.let { return it }
     }
     return null
   }
@@ -111,7 +112,8 @@ internal object PaxSenixApi {
     return documents
       .mapNotNull { document ->
         val lyrics = parseResponse(document.toString()) ?: return@mapNotNull null
-        val metadataScore = (document as? JsonObject)?.candidateScore(query) ?: 0
+        val metadataScore = (document as? JsonObject)?.candidateScore(query) ?: return@mapNotNull null
+        if (metadataScore < MINIMUM_MATCH_SCORE) return@mapNotNull null
         Scored(lyrics, metadataScore, durationDistance(lyrics, query.durationMs))
       }.maxWithOrNull(
         compareBy<Scored> { it.metadataScore }
@@ -142,11 +144,13 @@ internal object PaxSenixApi {
         artist = details.firstString(ARTIST_KEYS) ?: details.artistNames().orEmpty(),
         durationMs = details.firstLong(DURATION_KEYS).toDurationMs(),
       )
+    if (!candidate.matches(ref, query.durationMs)) return 0
     return candidate.score(ref.title, ref.artist, query.durationMs.toLong())
   }
 
   private suspend fun searchPublicAppleTrackId(query: LyricsFetchQuery): String? {
-    val token = appleToken() ?: return null
+    var token = appleToken() ?: return null
+    var refreshed = false
     for (ref in query.candidates()) {
       val url =
         buildUrl(
@@ -156,19 +160,29 @@ internal object PaxSenixApi {
           "limit" to "10",
           "l" to "en-US",
         ) ?: return null
-      val root =
-        lyricsGetAuthorized(url, token)
-          ?.let { runCatching { lyricsJson.parseToJsonElement(it) }.getOrNull() }
-          ?: continue
-      bestCandidate(root, query)?.id?.let { return it }
+      var body = lyricsGetAuthorized(url, token)
+      if (body == null && !refreshed) {
+        refreshed = true
+        cachedAppleToken.compareAndSet(token, null)
+        token = appleToken() ?: return null
+        body = lyricsGetAuthorized(url, token)
+      }
+      val root = body?.let { runCatching { lyricsJson.parseToJsonElement(it) }.getOrNull() } ?: continue
+      bestCandidate(root, query.copy(refs = listOf(ref)))?.id?.let { return it }
     }
     return null
   }
 
   private suspend fun appleToken(): String? =
-    cachedAppleToken.get() ?: tokenMutex.withLock {
-      cachedAppleToken.get() ?: scrapeAppleToken()?.also(cachedAppleToken::set)
+    cachedAppleToken.get()?.takeIf(::isTokenFresh) ?: tokenMutex.withLock {
+      cachedAppleToken.get()?.takeIf(::isTokenFresh) ?: scrapeAppleToken()?.also(cachedAppleToken::set)
     }
+
+  private fun isTokenFresh(token: String): Boolean = runCatching {
+    val payload = String(Base64.getUrlDecoder().decode(token.split('.')[1]), Charsets.UTF_8)
+    val expiry = (lyricsJson.parseToJsonElement(payload) as? JsonObject)?.long("exp") ?: return@runCatching false
+    expiry > System.currentTimeMillis() / 1000 + 60
+  }.getOrDefault(false)
 
   private suspend fun scrapeAppleToken(): String? {
     val page = lyricsGet("https://music.apple.com/us/new") ?: return null
@@ -185,7 +199,7 @@ internal object PaxSenixApi {
     val url = apiUrl(path).addQueryParameter("q", "${ref.title} ${ref.artist}").build()
     val body = apiBody(url) ?: return null
     val root = runCatching { lyricsJson.parseToJsonElement(body) }.getOrNull() ?: return null
-    val id = bestCandidate(root, query)?.id ?: return null
+    val id = bestCandidate(root, query.copy(refs = listOf(ref)))?.id ?: return null
     val lyricsUrl = apiUrl("lyrics/spotify").addQueryParameter("id", id).build()
     return apiBody(lyricsUrl)?.let(::parseResponse)
   }
@@ -197,11 +211,15 @@ internal object PaxSenixApi {
     val candidates = buildList { root.collectCandidates(this) }
     val ref = query.primary
     return candidates
+      .filter { it.matches(ref, query.durationMs) }
       .map { it to it.score(ref.title, ref.artist, query.durationMs.toLong()) }
       .maxByOrNull { it.second }
       ?.takeIf { it.second >= MINIMUM_MATCH_SCORE }
       ?.first
   }
+
+  private fun Candidate.matches(ref: TrackRef, durationMs: Int): Boolean =
+    LyricsTrackMatcher.matches(ref, title, artist, durationMs / 1000, this.durationMs / 1000.0)
 
   private fun parseResponse(raw: String): Lyrics? = parseTimedApple(raw) ?: parseProviderText(raw)
 
@@ -337,7 +355,9 @@ internal object PaxSenixApi {
   private fun apiUrl(path: String): HttpUrl.Builder = "$API/$path".toHttpUrl().newBuilder()
 
   private suspend fun apiBody(url: HttpUrl): String? =
-    apiKey.takeIf(String::isNotBlank)?.let { lyricsGetBearer(url.toString(), it) }
+    apiKey.takeIf(String::isNotBlank)?.let {
+      lyricsGet(url.toString(), mapOf("Authorization" to "Bearer $it"), patient = true)
+    }
 
   private data class Candidate(
     val id: String,

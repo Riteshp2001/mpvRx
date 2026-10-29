@@ -2843,4 +2843,6 @@
   <string name="player_layout_shared_landscape_hint">横向き画面のすべての操作領域で共通です。</string>
   <string name="pref_ignore_audio_focus_title">オーディオフォーカスを無視</string>
   <string name="pref_ignore_audio_focus_summary">他のアプリと同時に音声や動画を再生し、一時停止や音量の低下を防ぎます</string>
+  <string name="pref_audio_spatial_title">空間オーディオ</string>
+  <string name="pref_audio_spatial_summary">ステレオ音源の音場を広げ、より臨場感のあるサウンドにします</string>
 </resources>

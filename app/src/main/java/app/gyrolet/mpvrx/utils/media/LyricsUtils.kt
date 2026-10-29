@@ -177,6 +177,7 @@ object LyricsUtils {
         time = wordTimeMs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
         word = word,
         startsNewWord = true,
+        estimated = true,
       )
     }
   }

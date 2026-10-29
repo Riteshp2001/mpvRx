@@ -105,23 +105,26 @@ internal object LyricsPlusProvider : LyricsProviderClient {
   }
 
   private fun parse(response: Response): Lyrics? {
+    if (response.type.equals("None", ignoreCase = true)) {
+      return lyricsFromPlain(response.lyrics.orEmpty().mapNotNull { it.text }.joinToString("\n"))
+    }
     val sung =
       response.lyrics.orEmpty().mapNotNull { line ->
         val start = line.time?.inMs() ?: return@mapNotNull null
-        val words = mergeSyllables(line.syllabus.orEmpty())
+        val words = if (response.type.equals("Line", ignoreCase = true)) emptyList() else mergeSyllables(line.syllabus.orEmpty())
         val built =
           when {
             words.isNotEmpty() ->
               SyncedLine(
                 time = minOf(start, words.first().time),
-                line = words.joinToString(" ") { it.word },
+                line = line.text?.takeIf { it.isNotBlank() } ?: words.joinToString(" ") { it.word },
                 words = words,
               )
             // Some sources are only line-synced; still worth showing.
             !line.text.isNullOrBlank() -> SyncedLine(time = start, line = line.text.trim())
             else -> null
           }
-        built?.let { it to (start + (line.duration ?: 0L).inMs()) }
+        built?.let { it to (start.toLong() + (line.duration ?: 0L).coerceAtLeast(0)).inMs() }
       }
 
     val lines =
@@ -144,18 +147,24 @@ internal object LyricsPlusProvider : LyricsProviderClient {
     val current = StringBuilder()
     var start = 0
 
-    syllables.forEach { syllable ->
-      val text = syllable.text ?: return@forEach
-      if (text.isBlank()) return@forEach
-      val time = syllable.time?.inMs() ?: return@forEach
-      if (current.isEmpty()) start = time
-      current.append(text.trim())
-      if (text.last().isWhitespace()) {
+    fun flush() {
+      if (current.isNotEmpty()) {
         words += SyncedWord(time = start, word = current.toString(), startsNewWord = true)
         current.setLength(0)
       }
     }
-    if (current.isNotEmpty()) words += SyncedWord(time = start, word = current.toString(), startsNewWord = true)
+
+    syllables.forEach { syllable ->
+      val text = syllable.text ?: return@forEach
+      if (text.isEmpty()) return@forEach
+      if (text.first().isWhitespace()) flush()
+      if (text.isBlank()) return@forEach
+      val time = syllable.time?.inMs() ?: return@forEach
+      if (current.isEmpty()) start = time
+      current.append(text.trim())
+      if (text.last().isWhitespace()) flush()
+    }
+    flush()
     return words
   }
 

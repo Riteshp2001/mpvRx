@@ -35,6 +35,7 @@ class AudioPreferences(
   val audioBackgroundPlayback = preferenceStore.getBoolean("audio_player_background_playback", true)
   val miniPlayerTrackSwitching = preferenceStore.getBoolean("audio_mini_player_track_switching", false)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
+  val spatialAudio = preferenceStore.getBoolean("audio_spatial_audio", false)
   val drcEnabled = preferenceStore.getBoolean("audio_drc_enabled", false)
   val equalizerEnabled = preferenceStore.getBoolean("audio_equalizer_enabled", false)
   val equalizerMode = preferenceStore.getString("audio_equalizer_mode", "DYNAMIC")

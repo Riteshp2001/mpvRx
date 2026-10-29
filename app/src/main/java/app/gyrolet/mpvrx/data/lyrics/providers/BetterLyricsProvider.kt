@@ -11,13 +11,11 @@ import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
  * Word-timed lyrics from BetterLyrics — the backend behind the YouTube Music
  * browser extension of the same name.
  *
- * One key-less call keyed on title, artist and duration, answering with Apple
- * Music's own TTML. That combination is why it sits near the front of the
- * order: no track-id lookup, no token to scrape, no login, and the timing is
- * per-syllable.
+ * One call keyed on title, artist, album and duration, answering with Apple
+ * Music TTML with per-syllable timing when it is available.
  *
- * The endpoint used here is the extension's original host; the project's newer
- * API puts the same route behind a challenge a native client cannot answer.
+ * The current public API serves cached TTML without a key. Uncached TTML may
+ * require authorization; the QQ route does not. Failures leave other providers usable.
  */
 internal class BetterLyricsProvider(
   override val id: LyricsProvider,
@@ -33,15 +31,16 @@ internal class BetterLyricsProvider(
           "a" to ref.artist,
           "d" to seconds,
           "al" to query.album,
+          "videoId" to query.videoId,
         ) ?: return null
-      val body = lyricsGet(url) ?: continue
+      val body = lyricsGet(url, patient = true) ?: continue
       parseProviderText(body)?.let { return it }
     }
     return null
   }
 
   companion object {
-    const val APPLE = "https://lyrics-api.boidu.dev/getLyrics"
-    const val PORTATO = "https://lyrics-api.boidu.dev/qq/getLyrics"
+    const val APPLE = "https://api.betterlyrics.org/getLyrics"
+    const val PORTATO = "https://api.betterlyrics.org/qq/getLyrics"
   }
 }

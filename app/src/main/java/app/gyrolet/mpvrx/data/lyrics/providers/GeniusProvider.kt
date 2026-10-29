@@ -133,7 +133,9 @@ internal object GeniusProvider : LyricsProviderClient {
         val artistMatches =
           normArtist.isNotBlank() &&
             (artist == normArtist || artist.contains(normArtist) || normArtist.contains(artist))
-        if (!titleMatches && !artistMatches) return@mapNotNull null
+        if (title.isBlank() || !titleMatches || (normArtist.isNotBlank() && (artist.isBlank() || !artistMatches))) {
+          return@mapNotNull null
+        }
 
         var score = 0
         score +=

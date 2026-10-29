@@ -117,7 +117,8 @@ private fun extractText(element: JsonElement): String? =
       }
     is JsonArray -> element.mapNotNull(::extractText).joinToString("\n").takeIf { it.isNotBlank() }
     is JsonObject -> {
-      if (element["isError"]?.toString() == "true" || element["ok"]?.toString() == "false") {
+      if (element["isError"]?.toString() == "true" || element["ok"]?.toString() == "false" ||
+        element["success"]?.toString() == "false") {
         null
       } else {
         CONTENT_KEYS
@@ -174,13 +175,13 @@ internal fun decodeEntities(text: String): String {
     .replace(Regex("&#x([0-9a-fA-F]+);")) { match ->
       match.groupValues[1]
         .toIntOrNull(16)
-        ?.toChar()
-        ?.toString() ?: match.value
+        ?.takeIf { Character.isValidCodePoint(it) && it !in 0xD800..0xDFFF }
+        ?.let { String(Character.toChars(it)) } ?: match.value
     }.replace(Regex("""&#(\d+);""")) { match ->
       match.groupValues[1]
         .toIntOrNull()
-        ?.toChar()
-        ?.toString() ?: match.value
+        ?.takeIf { Character.isValidCodePoint(it) && it !in 0xD800..0xDFFF }
+        ?.let { String(Character.toChars(it)) } ?: match.value
     }.replace("&apos;", "'")
     .replace("&quot;", "\"")
     .replace("&nbsp;", " ")
@@ -195,13 +196,13 @@ private val CONTENT_KEYS =
   listOf(
     "ttml",
     "ttmlContent",
+    "richSyncLyrics",
+    "syncedLyrics",
     "lyrics",
     "lrc",
     "content",
     "text",
     "plainLyrics",
-    "syncedLyrics",
-    "richSyncLyrics",
     "line",
     "lines",
     "lyric",
@@ -212,7 +213,7 @@ private val CONTENT_KEYS =
 
 /**
  * QQ/QRC and NetEase YRC: `[startMs,durationMs]line` carrying a
- * `(startMs,durationMs)` range in front of each word.
+ * `(startMs,durationMs)` range after each QRC word or before each YRC word.
  */
 internal object KaraokeLrc {
   private val LINE = Regex("""^\[(\d{1,8}),(\d{1,8})](.*)$""")
@@ -246,7 +247,7 @@ internal object KaraokeLrc {
           SUFFIX_WORD
             .findAll(body)
             .mapNotNull { word ->
-              timedWord(word.groupValues[1], word.groupValues[3])
+              timedWord(word.groupValues[1], word.groupValues[2])
             }.toList()
         val words =
           if (prefixed.sumOf { it.word.length } >= suffixed.sumOf { it.word.length }) {

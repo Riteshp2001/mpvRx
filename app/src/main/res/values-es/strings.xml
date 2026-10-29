@@ -2859,4 +2859,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="player_layout_shared_landscape_hint">Se aplica a todas las zonas horizontales.</string>
   <string name="pref_ignore_audio_focus_title">Ignorar el foco de audio</string>
   <string name="pref_ignore_audio_focus_summary">Seguir reproduciendo audio y vídeo junto con otras aplicaciones sin pausar ni bajar el volumen</string>
+  <string name="pref_audio_spatial_title">Audio espacial</string>
+  <string name="pref_audio_spatial_summary">Amplía las pistas estéreo para una experiencia más envolvente</string>
 </resources>

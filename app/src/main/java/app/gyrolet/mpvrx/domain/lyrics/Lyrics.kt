@@ -19,7 +19,11 @@ data class Lyrics(
   val areFromRemote: Boolean = false,
   val sourceType: LyricsSourceType = LyricsSourceType.ONLINE,
 ) {
-  fun isValid(): Boolean = !synced.isNullOrEmpty() || !plain.isNullOrEmpty()
+  fun isValid(): Boolean = synced.orEmpty().any { it.line.isNotBlank() } || plain.orEmpty().any { it.isNotBlank() }
+
+  fun hasWordTiming(): Boolean = synced.orEmpty().any { line ->
+    line.words.orEmpty().any { !it.estimated } || line.background?.words.orEmpty().any { !it.estimated }
+  }
 }
 
 @Serializable
@@ -42,4 +46,6 @@ data class SyncedWord(
   val time: Int,
   val word: String,
   val startsNewWord: Boolean = true,
+  /** Display-only interpolation must not outrank timestamps supplied by a provider. */
+  val estimated: Boolean = false,
 )

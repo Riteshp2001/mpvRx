@@ -485,6 +485,22 @@ object AudioPreferencesScreen : Screen {
               )
 
               PreferenceDivider()
+              val spatialAudio by preferences.spatialAudio.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_spatial_title),
+                value = spatialAudio,
+                enabled = "af" !in configOwnedOptions,
+                onValueChange = { preferences.spatialAudio.set(it) },
+                title = { Text(stringResource(R.string.pref_audio_spatial_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_audio_spatial_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
               val drcEnabled by preferences.drcEnabled.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_drc_title),

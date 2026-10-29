@@ -5,6 +5,9 @@
 package app.gyrolet.mpvrx.data.lyrics
 
 import android.util.Log
+import app.gyrolet.mpvrx.data.lyrics.providers.LYRICS_AGENT
+import app.gyrolet.mpvrx.data.lyrics.providers.recordLyricsFailure
+import app.gyrolet.mpvrx.data.lyrics.providers.readLyricsResponse
 import app.gyrolet.mpvrx.network.awaitResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -15,11 +18,13 @@ import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 @Serializable
 data class LrcLibResponse(
   val id: Int = 0,
   val name: String = "",
+  val trackName: String = "",
   val artistName: String = "",
   val albumName: String = "",
   val duration: Double = 0.0,
@@ -28,8 +33,13 @@ data class LrcLibResponse(
 )
 
 class LrcLibApiService(
-  private val okHttpClient: OkHttpClient,
+  okHttpClient: OkHttpClient,
 ) {
+  private val client = okHttpClient.newBuilder()
+    .callTimeout(6, TimeUnit.SECONDS)
+    .connectTimeout(3, TimeUnit.SECONDS)
+    .readTimeout(6, TimeUnit.SECONDS)
+    .build()
   private val json = Json {
     ignoreUnknownKeys = true
     isLenient = true
@@ -56,19 +66,19 @@ class LrcLibApiService(
 
       val request = Request.Builder()
         .url(urlBuilder.build())
-        .header("User-Agent", "mpvRx Music Player/1.0")
+        .header("User-Agent", LYRICS_AGENT)
         .get()
         .build()
 
-      okHttpClient.newCall(request).awaitResponse().use { response ->
-        if (!response.isSuccessful) return@withContext null
-        val bodyString = response.body.string()
+      client.newCall(request).awaitResponse().use { response ->
+        val bodyString = readLyricsResponse(response) ?: return@withContext null
         json.decodeFromString<LrcLibResponse>(bodyString)
       }
     } catch (cancellation: CancellationException) {
       throw cancellation
     } catch (e: Exception) {
-      Log.w("LrcLibApiService", "Error fetching lyrics from get endpoint: ${e.message}")
+      recordLyricsFailure()
+      Log.w("LrcLibApiService", "get failed: ${e.javaClass.simpleName}")
       null
     }
   }
@@ -98,19 +108,19 @@ class LrcLibApiService(
 
       val request = Request.Builder()
         .url(urlBuilder.build())
-        .header("User-Agent", "mpvRx Music Player/1.0")
+        .header("User-Agent", LYRICS_AGENT)
         .get()
         .build()
 
-      okHttpClient.newCall(request).awaitResponse().use { response ->
-        if (!response.isSuccessful) return@withContext emptyList()
-        val bodyString = response.body.string()
+      client.newCall(request).awaitResponse().use { response ->
+        val bodyString = readLyricsResponse(response) ?: return@withContext emptyList()
         json.decodeFromString<List<LrcLibResponse>>(bodyString)
       }
     } catch (cancellation: CancellationException) {
       throw cancellation
     } catch (e: Exception) {
-      Log.w("LrcLibApiService", "Error searching lyrics from search endpoint: ${e.message}")
+      recordLyricsFailure()
+      Log.w("LrcLibApiService", "search failed: ${e.javaClass.simpleName}")
       emptyList()
     }
   }

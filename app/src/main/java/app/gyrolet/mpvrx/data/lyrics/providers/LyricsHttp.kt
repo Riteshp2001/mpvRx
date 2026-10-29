@@ -4,16 +4,33 @@
 
 package app.gyrolet.mpvrx.data.lyrics.providers
 
+import android.util.Log
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.network.SharedHttpClient
 import app.gyrolet.mpvrx.network.awaitResponse
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+
+/** Shared by a provider's child requests, including its mirror race. */
+internal class LyricsRequestStatus : AbstractCoroutineContextElement(Key) {
+  companion object Key : CoroutineContext.Key<LyricsRequestStatus>
+  val failed = AtomicBoolean(false)
+}
+
+internal suspend fun recordLyricsFailure() {
+  currentCoroutineContext()[LyricsRequestStatus]?.failed?.set(true)
+}
 
 /**
  * Shared plumbing for the lyrics providers.
@@ -29,7 +46,7 @@ internal val lyricsJson =
     isLenient = true
   }
 
-internal const val LYRICS_AGENT = "mpvRx Music Player/1.0"
+internal val LYRICS_AGENT = "mpvRx/${BuildConfig.VERSION_NAME} (https://github.com/Riteshp2001/mpvRx)"
 
 private const val TIMEOUT_SECONDS = 6L
 
@@ -56,7 +73,8 @@ private val patientClient: OkHttpClient by lazy {
 internal suspend fun lyricsGet(
   url: String,
   headers: Map<String, String> = emptyMap(),
-): String? = lyricsCall(url, headers)
+  patient: Boolean = false,
+): String? = lyricsCall(url, headers, patient)
 
 /** Body of a GET carrying an Apple-style bearer token and browser origin. */
 internal suspend fun lyricsGetAuthorized(
@@ -121,21 +139,54 @@ private suspend fun execute(
   client: OkHttpClient,
   request: Request,
 ): String? =
-  client.newCall(request).awaitResponse().use { response ->
-    if (response.isSuccessful) response.body.string().takeIf { it.isNotBlank() } else null
+  client.newCall(request).awaitResponse().use { response -> readLyricsResponse(response) }
+
+internal suspend fun readLyricsResponse(response: Response): String? {
+  val request = response.request
+  return if (!response.isSuccessful) {
+    // A catalogue miss is different from an outage, rejected key or rate limit.
+    if (response.code != 404) recordLyricsFailure()
+    Log.d("LyricsHttp", "${request.url.host}: HTTP ${response.code}")
+    null
+  } else {
+    // Bound decompressed responses as well as declared Content-Length.
+    val body = response.body
+    val source = body.source()
+    if (body.contentLength() > MAX_BODY_BYTES || source.request(MAX_BODY_BYTES + 1)) {
+      recordLyricsFailure()
+      Log.w("LyricsHttp", "${request.url.host}: response exceeds lyrics size limit")
+      null
+    } else {
+      val text = body.string().takeIf { it.isNotBlank() }
+      if (text != null && text.trimStart().startsWith("<") &&
+        (text.contains("<title>Site Unavailable</title>", ignoreCase = true) ||
+          text.contains("<title>Just a moment...", ignoreCase = true))) {
+        recordLyricsFailure()
+        Log.w("LyricsHttp", "${request.url.host}: access page instead of content")
+        null
+      } else {
+        text
+      }
+    }
   }
+}
+
+private const val MAX_BODY_BYTES = 8L * 1024 * 1024
 
 /**
  * A miss is null, not a crash — but a cancelled lookup is a cancelled lookup and
  * must keep travelling up, or a race that has already been won would be revived
  * by the loser it just cancelled.
  */
-private inline fun runCatchingQuiet(block: () -> String?): String? =
+private suspend inline fun runCatchingQuiet(block: () -> String?): String? =
   try {
     block()
   } catch (cancellation: CancellationException) {
     throw cancellation
-  } catch (_: Exception) {
+  } catch (error: Exception) {
+    recordLyricsFailure()
+    // Exception messages can contain signed URLs, tokens and query text.
+    Log.w("LyricsHttp", "Lyrics request failed: ${error.javaClass.simpleName}")
     null
   }
 

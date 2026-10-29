@@ -32,13 +32,12 @@ internal class LrcLibProvider(
     for (ref in query.candidates()) {
       if (attempts >= MAX_ATTEMPTS) break
 
-      if (duration > 0 && ref.artist.isNotBlank() && attempts < MAX_ATTEMPTS) {
+      if (duration > 0 && ref.artist.isNotBlank() && !query.album.isNullOrBlank() && attempts < MAX_ATTEMPTS) {
         attempts++
         val exact =
-          api.getLyrics(trackName = ref.title, artistName = ref.artist, duration = duration)
-            ?: api.getLyrics(trackName = ref.title, artistName = ref.artist)
+          api.getLyrics(trackName = ref.title, artistName = ref.artist, albumName = query.album, duration = duration)
         val verified = exact?.takeIf {
-          LyricsTrackMatcher.matches(ref, it.name, it.artistName, duration, it.duration)
+          LyricsTrackMatcher.matches(ref, it.trackName.ifBlank { it.name }, it.artistName, duration, it.duration)
         }
         synced(verified?.syncedLyrics)?.let { return it }
         if (plainFallback == null) plainFallback = plain(verified?.plainLyrics)
@@ -97,7 +96,9 @@ internal class LrcLibProvider(
     ref: TrackRef,
     seconds: Int,
   ): String? {
-    val matched = hits.filter { LyricsTrackMatcher.matches(ref, it.name, it.artistName, seconds, it.duration) }
+    val matched = hits.filter {
+      LyricsTrackMatcher.matches(ref, it.trackName.ifBlank { it.name }, it.artistName, seconds, it.duration)
+    }
     val syncedHits = matched.filter { !it.syncedLyrics.isNullOrBlank() }
     val ordered = syncedHits.ifEmpty { matched.filter { !it.plainLyrics.isNullOrBlank() } }
     if (ordered.isEmpty()) return null

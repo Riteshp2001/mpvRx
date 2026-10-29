@@ -13,6 +13,7 @@ import android.content.Context
 import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.network.awaitResponse
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -145,7 +146,7 @@ class UpdateManager(
   private suspend fun getLatestRelease(url: String, allowMissing: Boolean = false): Release? =
     withContext(Dispatchers.IO) {
       val request = Request.Builder().url(url).header("Cache-Control", "no-cache").build()
-      client.newCall(request).execute().use { response ->
+      client.newCall(request).awaitResponse().use { response ->
         // The channel becomes available after the first successful signed CI publication.
         if (allowMissing && response.code == 404) return@withContext null
         if (!response.isSuccessful) throw IOException("Unexpected code $response")
@@ -306,7 +307,7 @@ class UpdateManager(
           .apply { if (alreadyDownloaded > 0L) header("Range", "bytes=$alreadyDownloaded-") }
           .build()
 
-      client.newCall(request).execute().use { response ->
+      client.newCall(request).awaitResponse().use { response ->
         if (response.code == HTTP_RANGE_NOT_SATISFIABLE && allowResume) {
           partial.delete()
           throw RetryWithoutRangeSignal

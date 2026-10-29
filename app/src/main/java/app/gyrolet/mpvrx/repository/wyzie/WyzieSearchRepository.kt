@@ -398,6 +398,9 @@ class WyzieSearchRepository(
   ): Result<List<WyzieSubtitle>> =
     withContext(Dispatchers.IO) {
       try {
+        if (preferences.wyzieApiKey.get().isBlank()) {
+          throw IOException("Wyzie requires an API key. Add your key in subtitle settings.")
+        }
         var searchId = tmdbId?.toString() ?: query
         if (tmdbId == null && !query.startsWith("tt", ignoreCase = true) && !query.all { it.isDigit() }) {
           val tmdbResults = tmdbSearch(query)
@@ -524,7 +527,7 @@ class WyzieSearchRepository(
       } catch (cancellation: CancellationException) {
         throw cancellation
       } catch (e: Exception) {
-        Log.e("WyzieSearchRepository", "Search failed: ${e.message}", e)
+        Log.e("WyzieSearchRepository", "Search failed: ${e.javaClass.simpleName}")
         Result.failure(e)
       }
     }
@@ -581,7 +584,7 @@ class WyzieSearchRepository(
             ?.joinToString(",") { encode(it) }
             ?.let { append("&encoding=$it") }
 
-          // Source parameter: 'all' means all sources; otherwise comma-separated list (e.g., source=opensubtitles,subf2m)
+          // Omitting source selects only Charlie; send all explicitly when requested.
           if (source != "all") {
             source
               .split(",")
@@ -589,6 +592,8 @@ class WyzieSearchRepository(
               .filter { it.isNotBlank() }
               .joinToString(",") { encode(it) }
               .let { append("&source=$it") }
+          } else {
+            append("&source=all")
           }
 
           release
@@ -636,7 +641,8 @@ class WyzieSearchRepository(
         if (response.code == 400 && responseBodyString.contains("season and episode", ignoreCase = true)) {
           throw IOException("Please select both a Season and an Episode.")
         }
-        val errorMsg = "Search failed: HTTP ${response.code} for URL: $url | Body: $responseBodyString"
+        // The query URL contains the user's API key. Keep it out of UI errors and logs.
+        val errorMsg = "Search failed: HTTP ${response.code}"
         Log.e("WyzieSearchRepository", errorMsg)
         throw IOException(errorMsg)
       }
@@ -654,8 +660,8 @@ class WyzieSearchRepository(
           }
         }
       } catch (e: Exception) {
-        Log.e("WyzieSearchRepository", "Failed to parse response: $responseBodyString", e)
-        emptyList()
+        Log.e("WyzieSearchRepository", "Invalid subtitle search response: ${e.javaClass.simpleName}")
+        throw IOException("Subtitle provider returned an invalid response")
       }
     }
   }
@@ -770,7 +776,9 @@ class WyzieSearchRepository(
     }
 
   private suspend fun tmdbSearch(query: String): List<WyzieTmdbResult> {
-    val url = "$baseUrl/api/tmdb/search?q=${URLEncoder.encode(query, "UTF-8")}"
+    val apiKey = preferences.wyzieApiKey.get().trim()
+    val url = "$baseUrl/api/tmdb/search?q=${URLEncoder.encode(query, "UTF-8")}" +
+      if (apiKey.isNotBlank()) "&key=${URLEncoder.encode(apiKey, "UTF-8")}" else ""
     try {
       val request =
         Request
@@ -788,7 +796,7 @@ class WyzieSearchRepository(
     } catch (cancellation: CancellationException) {
       throw cancellation
     } catch (e: Exception) {
-      Log.w("WyzieSearchRepository", "TMDB search failed: ${e.message}")
+      Log.w("WyzieSearchRepository", "TMDB search failed: ${e.javaClass.simpleName}")
       throw IOException("TMDB search failed", e)
     }
   }

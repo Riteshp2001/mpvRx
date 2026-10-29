@@ -636,7 +636,9 @@ internal class MpvRxSubtitleHubApiSources(
     sourceName: String,
     providerHost: String,
   ) {
-    val host = url.toHttpUrlOrNull()?.host ?: throw IllegalStateException("Invalid $sourceName download URL")
+    val parsed = url.toHttpUrlOrNull() ?: throw IllegalStateException("Invalid $sourceName download URL")
+    if (!parsed.isHttps) throw IllegalStateException("$sourceName authenticated downloads require HTTPS")
+    val host = parsed.host
     if (host != providerHost && !host.endsWith(".$providerHost")) {
       throw IllegalStateException("Refusing to send the $sourceName API key to another host")
     }

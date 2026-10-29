@@ -1148,6 +1148,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_audio_spatial_title,
+          summaryRes = R.string.pref_audio_spatial_summary,
+          keywords = listOf("spatial", "stereo", "wide", "immersive", "music", "audio"),
+          category = "Audio",
+          screen = AudioPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_audio_volume_normalization_title,
           summaryRes = R.string.pref_audio_volume_normalization_summary,
           keywords = listOf("volume", "normalization", "loudness", "audio", "sound"),

@@ -87,6 +87,7 @@ private val liveAudioSettings = setOf(
   R.string.pref_audio_pitch_correction_title,
   R.string.pref_audio_volume_normalization_title,
   R.string.pref_audio_drc_title,
+  R.string.pref_audio_spatial_title,
   R.string.pref_audio_channels,
   R.string.pref_audio_volume_boost_cap,
 )
@@ -123,6 +124,7 @@ private val settingNativeOptions = mapOf(
   R.string.pref_audio_pitch_correction_title to setOf("audio-pitch-correction"),
   R.string.pref_audio_volume_normalization_title to setOf("af"),
   R.string.pref_audio_drc_title to setOf("af"),
+  R.string.pref_audio_spatial_title to setOf("af"),
   R.string.pref_audio_channels to setOf("af", "audio-channels"),
   R.string.pref_audio_volume_boost_cap to setOf("volume-max"),
   R.string.pref_player_use_precise_seeking to setOf("hr-seek", "hr-seek-framedrop"),

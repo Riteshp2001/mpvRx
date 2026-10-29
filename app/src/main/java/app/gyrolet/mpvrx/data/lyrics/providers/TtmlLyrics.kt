@@ -47,6 +47,9 @@ internal object TtmlLyrics {
 
   fun parse(ttml: String): List<SyncedLine>? =
     runCatching {
+      val content = unescapeTtml(ttml)
+      // Android parsers do not all implement the optional hardening features below.
+      require(!content.contains("<!DOCTYPE", ignoreCase = true) && !content.contains("<!ENTITY", ignoreCase = true))
       val factory =
         DocumentBuilderFactory.newInstance().apply {
           // The document declares four namespaces and attributes are addressed by
@@ -62,7 +65,10 @@ internal object TtmlLyrics {
           harden(XMLConstants.FEATURE_SECURE_PROCESSING)
           runCatching { isExpandEntityReferences = false }
         }
-      val document = factory.newDocumentBuilder().parse(InputSource(StringReader(unescapeTtml(ttml))))
+      val builder = factory.newDocumentBuilder().apply {
+        setEntityResolver { _, _ -> InputSource(StringReader("")) }
+      }
+      val document = builder.parse(InputSource(StringReader(content)))
       val paragraphs = document.getElementsByTagName("p")
       val lines = ArrayList<TimedLine>(paragraphs.length)
       for (i in 0 until paragraphs.length) {

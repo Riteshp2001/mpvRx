@@ -11,7 +11,7 @@ import kotlin.math.abs
 /** Reject fuzzy catalogue matches belonging to a different song, edit or artist. */
 internal object LyricsTrackMatcher {
   private const val MAX_DURATION_DIFFERENCE_SECONDS = 12.0
-  private val BRACKETS = Regex("""\([^)]*\)|\[[^]]*]|\{[^}]*}""")
+  private val BRACKETS = Regex("""\([^)]*\)|\[[^\]]*\]|\{[^}]*\}""")
   private val TRAILING_FEAT = Regex("""\s+(?:feat\.?|ft\.?|featuring)\s+.+$""", RegexOption.IGNORE_CASE)
   private val DASH = Regex("""\s+[-–—]\s+""")
   private val MARKS = Regex("""\p{Mn}+""")

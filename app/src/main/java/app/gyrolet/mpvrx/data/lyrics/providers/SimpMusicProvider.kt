@@ -43,8 +43,9 @@ internal object SimpMusicProvider : LyricsProviderClient {
     val track =
       response.data
         .orEmpty()
-        .filter { seconds <= 0 || abs((it.duration ?: 0) - seconds) <= DURATION_TOLERANCE_SECONDS }
-        .minByOrNull { abs((it.duration ?: 0) - seconds) }
+        .filter { seconds <= 0 || it.duration == null || it.duration <= 0 ||
+          abs(it.duration - seconds) <= DURATION_TOLERANCE_SECONDS }
+        .minByOrNull { it.duration?.takeIf { duration -> duration > 0 }?.let { duration -> abs(duration - seconds) } ?: Int.MAX_VALUE }
         ?: return null
 
     // Word timing first; a line-synced answer from here is no better than
@@ -52,6 +53,7 @@ internal object SimpMusicProvider : LyricsProviderClient {
     val rich = track.richSyncLyrics?.takeIf { it.isNotBlank() }?.let { parseLrcText(decodeEntities(it)) }
     if (rich != null && !rich.synced.isNullOrEmpty()) return rich
     return track.syncedLyrics?.takeIf { it.isNotBlank() }?.let { parseLrcText(decodeEntities(it)) }
+      ?: track.plainLyrics?.takeIf { it.isNotBlank() }?.let { lyricsFromPlain(decodeEntities(it)) }
   }
 
   internal val YOUTUBE_ID = Regex("""[A-Za-z0-9_-]{11}""")

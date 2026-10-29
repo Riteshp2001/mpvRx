@@ -21,6 +21,14 @@ internal class LyricsProviderCache(private val directory: File) {
   private val json = Json { ignoreUnknownKeys = true }
 
   @Synchronized
+  fun remove(mediaPath: String) {
+    val key = trackKey(mediaPath)
+    LyricsProvider.entries.forEach { provider ->
+      AtomicFile(File(directory, "${key}_${provider.name}.json")).delete()
+    }
+  }
+
+  @Synchronized
   fun read(mediaPath: String): Map<LyricsProvider, Lyrics> {
     if (mediaPath.isBlank()) return emptyMap()
     val trackKey = trackKey(mediaPath)

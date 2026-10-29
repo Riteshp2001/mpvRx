@@ -23,17 +23,17 @@ enum class LyricsProvider(
 ) {
   LRC_RED(
     label = "lrc.red",
-    detail = "Apple Music timings filed by recording, syllable by syllable",
+    detail = "Apple Music TTML matched by recording ID or title and artist",
     wordSynced = true,
   ),
   BINI_LYRICS(
     label = "BiniLyrics",
-    detail = "Apple Music timings, matched against the recording itself",
+    detail = "Apple Music TTML matched by metadata or ISRC",
     wordSynced = true,
   ),
   BETTER_LYRICS(
     label = "BetterLyrics",
-    detail = "Apple Music timings, word by word",
+    detail = "Cached Apple Music timings; uncached songs may require authorization",
     wordSynced = true,
   ),
   BETTER_LYRICS_PORTATO(
@@ -48,27 +48,27 @@ enum class LyricsProvider(
   ),
   PAXSENIX_SPOTIFY(
     label = "PaxSenix: Spotify",
-    detail = "Spotify lyrics with a PaxSenix fallback; API key required",
+    detail = "Spotify lyrics through PaxSenix; your PaxSenix API key is required",
     wordSynced = false,
   ),
   PAXSENIX_MUSIXMATCH(
     label = "PaxSenix: Musixmatch",
-    detail = "Musixmatch timings with a PaxSenix fallback; API key required",
+    detail = "Musixmatch lyrics through PaxSenix; your PaxSenix API key is required",
     wordSynced = true,
   ),
   LYRICS_PLUS(
     label = "LyricsPlus",
-    detail = "Syllable by syllable, served from community mirrors",
+    detail = "Word, line or plain lyrics from community mirrors; availability varies",
     wordSynced = true,
   ),
   SIMP_MUSIC(
     label = "SimpMusic",
-    detail = "Matched on the playing video, so never the wrong edit",
+    detail = "Community lyrics linked to the playing YouTube video; availability varies by region",
     wordSynced = true,
   ),
   UNISON(
     label = "Unison",
-    detail = "Listener-contributed, so it carries what nobody licensed",
+    detail = "Community-submitted TTML, LRC and plain lyrics",
     wordSynced = true,
   ),
   YOUTUBE_TRANSCRIPT(
@@ -93,17 +93,17 @@ enum class LyricsProvider(
   ),
   LRCLIB(
     label = "LRCLIB",
-    detail = "Whole lines only, and usually up",
+    detail = "Public lyrics database with synced and plain-text results",
     wordSynced = false,
   ),
   MUSIXMATCH(
     label = "Musixmatch",
-    detail = "Word timing from the largest catalogue there is",
-    wordSynced = false,
+    detail = "Word timing with a line-synced fallback; web service availability varies",
+    wordSynced = true,
   ),
   GENIUS(
     label = "Genius",
-    detail = "Plain text last resort, huge web catalogue",
+    detail = "Plain-text lyrics from Genius pages when timed sources are unavailable",
     wordSynced = false,
   ),
   ;

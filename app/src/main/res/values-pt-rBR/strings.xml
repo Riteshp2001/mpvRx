@@ -2859,4 +2859,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="player_layout_shared_landscape_hint">Compartilhado por todas as áreas em paisagem.</string>
   <string name="pref_ignore_audio_focus_title">Ignorar o foco de áudio</string>
   <string name="pref_ignore_audio_focus_summary">Continuar reproduzindo áudio e vídeo com outros apps sem pausar nem reduzir o volume</string>
+  <string name="pref_audio_spatial_title">Áudio espacial</string>
+  <string name="pref_audio_spatial_summary">Amplia as faixas estéreo para uma experiência mais imersiva</string>
 </resources>

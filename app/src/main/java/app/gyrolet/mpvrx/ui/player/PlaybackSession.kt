@@ -22,6 +22,7 @@ import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
@@ -41,6 +42,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -123,6 +126,11 @@ class PlaybackProperty<T> internal constructor(
 @Suppress("TooManyFunctions")
 object PlaybackSession : MPVLib.EventObserver {
   private const val TAG = "PlaybackSession"
+  private const val SPATIAL_AUDIO_LABEL = "mpvrx-spatial"
+  // Increase side/mid ratio without adding peak gain: each row's absolute weights sum to 1.
+  private const val SPATIAL_AUDIO_FILTER =
+    "@mpvrx-spatial:lavfi=[pan=stereo|c0=0.85*c0-0.15*c1|c1=0.85*c1-0.15*c0]"
+  private var spatialAudioObserverStarted = false
   private val nativeEvents = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
   private var nativeObserver: NativeEventObserver? = null
 
@@ -474,6 +482,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           reobserveTrackedProperties()
           observeProperties()
           initialized = true
+          observeProperty("audio-params", MPVLib.MpvFormat.MPV_FORMAT_NODE)
+          observeProperty("audio-out-params", MPVLib.MpvFormat.MPV_FORMAT_NODE)
+          startSpatialAudioObserverLocked()
           activeCoreConfigurationKey = coreConfigurationKey
           activeUserScriptsKey = userScriptsKey
           updateState { it.copy(phase = PlaybackPhase.IDLE, paused = true, error = null) }
@@ -1304,6 +1315,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           error = null,
         )
       }
+      applySpatialAudioLocked()
       publishTimelinePropertiesLocked()
       propBoolean.emit("pause", desiredPaused)
       refreshBufferingState()
@@ -1729,6 +1741,43 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     override fun string(property: String): String? = runCatching { MPVLib.getPropertyString(property) }.getOrNull()
   }
 
+  /** The session owns this filter so toggles and track changes also work without a player screen. */
+  private fun startSpatialAudioObserverLocked() {
+    if (spatialAudioObserverStarted) return
+    spatialAudioObserverStarted = true
+    nativeEvents.launch {
+      combine(audioPreferences.spatialAudio.changes(), audioPreferences.audioChannels.changes()) { _, _ -> }
+        .collect { nativeLock.withLock { applySpatialAudioLocked() } }
+    }
+  }
+
+  private fun shouldApplySpatialAudioLocked(): Boolean {
+    if (!nativeCoreReady || !audioPreferences.spatialAudio.get() ||
+      audioPreferences.audioChannels.get() == AudioChannels.Mono ||
+      MpvConfigOverridePolicy.isOwnedByMpvConf("af")
+    ) return false
+    val current = _state.value
+    if (current.currentItem == null || loadedGeneration != current.generation ||
+      current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    ) return false
+    if (MPVLib.getPropertyInt("audio-params/channel-count") != 2) return false
+    if (MPVLib.getPropertyString("audio-channels") == "mono") return false
+    // Encoded passthrough must reach the receiver unchanged.
+    return MPVLib.getPropertyString("audio-params/format")?.startsWith("spdif") != true &&
+      MPVLib.getPropertyString("audio-out-params/format")?.startsWith("spdif") != true
+  }
+
+  private fun applySpatialAudioLocked() {
+    if (!nativeCoreReady || MpvConfigOverridePolicy.isOwnedByMpvConf("af")) return
+    runCatching {
+      val enabled = shouldApplySpatialAudioLocked()
+      val filters = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
+      val present = filters.any { (it["label"] as? JsonPrimitive)?.content == SPATIAL_AUDIO_LABEL }
+      if (enabled && !present) MPVLib.command("af", "add", SPATIAL_AUDIO_FILTER)
+      if (!enabled && present) MPVLib.command("af", "remove", "@$SPATIAL_AUDIO_LABEL")
+    }.onFailure { Log.w(TAG, "Unable to update spatial audio", it) }
+  }
+
   fun setPropertyString(
     property: String,
     value: String,
@@ -1765,7 +1814,13 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       }
       // A preference update can race with a shader install. Enforce the composition boundary
       // under the same native lock, rather than trusting a blend value calculated before it.
-      MPVLib.setPropertyString(property, if (property == "blend-subtitles" && isAmbientShaderActive) "no" else value)
+      val effectiveValue = when {
+        property == "blend-subtitles" && isAmbientShaderActive -> "no"
+        property == "af" && shouldApplySpatialAudioLocked() && !value.contains("@$SPATIAL_AUDIO_LABEL:") ->
+          listOf(value, SPATIAL_AUDIO_FILTER).filter { it.isNotBlank() }.joinToString(",")
+        else -> value
+      }
+      MPVLib.setPropertyString(property, effectiveValue)
       when (property) {
         "user-agent" -> appliedUserAgent = value
         "http-header-fields" -> appliedHttpHeaderFields = value
@@ -1835,6 +1890,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     propLong.emit(property, null)
     propInt.emit(property, null)
     propNode.emit(property, null)
+    if (property == "audio-params" || property == "audio-out-params") applySpatialAudioLocked()
     if (property in BUFFERING_STATUS_PROPERTIES) refreshBufferingState()
     observerSnapshot().forEach { observer -> runCatching { observer.eventProperty(property) } }
   }
@@ -1892,6 +1948,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     value: MPVNode,
   ) {
     propNode.emit(property, value)
+    if (property == "audio-params" || property == "audio-out-params") applySpatialAudioLocked()
     observerSnapshot().forEach { observer -> runCatching { observer.eventProperty(property, value) } }
   }
 
@@ -1909,6 +1966,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             // attributed to the latest requested generation.
             if (_state.value.phase != PlaybackPhase.STOPPING) {
               updateState { it.copy(phase = PlaybackPhase.LOADING, activeGeneration = it.generation) }
+              applySpatialAudioLocked()
             }
             if (supersededStopGeneration != 0L && _state.value.generation > supersededStopGeneration) {
               // libmpv normally delivers the old STOP END_FILE before START_FILE for the replacement.
@@ -1968,6 +2026,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             propBoolean.emit("pause", appliedPaused)
             restoreSuspendedVideoTrackLocked()
             applyDeferredVideoSelectionLocked()
+            applySpatialAudioLocked()
             refreshBufferingState()
             true
           }
@@ -1981,6 +2040,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
               propBoolean.emit("pause", desiredPaused)
             }
             pendingEofSeekGeneration = null
+            applySpatialAudioLocked()
             scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_RESTORE_DELAY_MS)
             if (_state.value.phase != PlaybackPhase.STOPPING) {
               schedulePlaybackTransitionAudioGuardRestoreLocked(PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS)

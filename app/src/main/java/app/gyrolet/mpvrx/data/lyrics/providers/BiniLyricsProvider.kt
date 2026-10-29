@@ -45,7 +45,8 @@ internal object BiniLyricsProvider : LyricsProviderClient {
   private suspend fun identify(query: LyricsFetchQuery): Hit? {
     val isrc = query.isrc?.takeIf { it.isNotBlank() }
     if (isrc != null) {
-      return load(buildUrl(BASE, "isrc" to isrc)).firstOrNull()
+      load(buildUrl(BASE, "isrc" to isrc)).firstOrNull { it.isrc.equals(isrc, ignoreCase = true) }
+        ?.let { return it }
     }
     for (ref in query.candidates()) {
       val seconds = (query.durationMs / 1000).takeIf { it > 0 }?.toString()
@@ -58,7 +59,7 @@ internal object BiniLyricsProvider : LyricsProviderClient {
           "duration" to seconds,
         ) ?: continue
       load(url).firstOrNull { hit ->
-        LyricsTrackMatcher.matches(ref, hit.trackName, hit.artistName, query.durationMs / 1000, hit.duration?.toDouble() ?: 0.0)
+        LyricsTrackMatcher.matches(ref, hit.trackName, hit.artistName, query.durationMs / 1000, hit.duration ?: 0.0)
       }?.let { return it }
     }
     return null
@@ -90,7 +91,7 @@ internal object BiniLyricsProvider : LyricsProviderClient {
     @SerialName("track_name") val trackName: String? = null,
     @SerialName("artist_name") val artistName: String? = null,
     @SerialName("album_name") val albumName: String? = null,
-    val duration: Int? = null,
+    val duration: Double? = null,
     val isrc: String? = null,
     @SerialName("timing_type") val timingType: String? = null,
     val lyricsUrl: String? = null,

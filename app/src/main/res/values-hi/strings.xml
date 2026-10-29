@@ -2763,4 +2763,6 @@
   <string name="player_layout_shared_landscape_hint">लैंडस्केप की सभी जगहों पर लागू होता है।</string>
   <string name="pref_ignore_audio_focus_title">ऑडियो फ़ोकस को अनदेखा करें</string>
   <string name="pref_ignore_audio_focus_summary">दूसरे ऐप्लिकेशन के साथ ऑडियो और वीडियो चलाते रहें, बिना रुके या आवाज़ कम किए</string>
+  <string name="pref_audio_spatial_title">स्थानिक ऑडियो</string>
+  <string name="pref_audio_spatial_summary">ज़्यादा इमर्सिव अनुभव के लिए स्टीरियो ट्रैक का ध्वनि विस्तार बढ़ाता है</string>
 </resources>

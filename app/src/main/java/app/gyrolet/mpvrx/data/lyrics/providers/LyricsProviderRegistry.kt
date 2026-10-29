@@ -4,11 +4,13 @@
 
 package app.gyrolet.mpvrx.data.lyrics.providers
 
+import android.util.Log
 import app.gyrolet.mpvrx.data.lyrics.LrcLibApiService
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 
 /** What one provider said about one track. */
 sealed interface ProviderOutcome {
@@ -63,15 +65,22 @@ internal class LyricsProviderRegistry(
   ): ProviderOutcome {
     if (provider !in LyricsProvider.available) return ProviderOutcome.Missing
     val client = clients[provider] ?: return ProviderOutcome.Missing
-    return withTimeoutOrNull(budgetFor(provider)) {
-      try {
-        client.fetch(query)?.let(ProviderOutcome::Found) ?: ProviderOutcome.Missing
-      } catch (error: CancellationException) {
-        throw error
-      } catch (error: Throwable) {
-        ProviderOutcome.Failed
+    val status = LyricsRequestStatus()
+    val outcome = withTimeoutOrNull(budgetFor(provider)) {
+      withContext(status) {
+        try {
+          client.fetch(query)?.takeIf { it.isValid() }?.let(ProviderOutcome::Found)
+            ?: if (status.failed.get()) ProviderOutcome.Failed else ProviderOutcome.Missing
+        } catch (error: CancellationException) {
+          throw error
+        } catch (error: Throwable) {
+          Log.w("LyricsProviders", "${provider.name}: ${error.javaClass.simpleName}")
+          ProviderOutcome.Failed
+        }
       }
     } ?: ProviderOutcome.Failed
+    Log.d("LyricsProviders", "${provider.name}: ${outcome.javaClass.simpleName}")
+    return outcome
   }
 
   /**
@@ -84,6 +93,8 @@ internal class LyricsProviderRegistry(
    */
   private fun budgetFor(provider: LyricsProvider): Long =
     when (provider) {
+      LyricsProvider.BETTER_LYRICS,
+      LyricsProvider.BETTER_LYRICS_PORTATO,
       LyricsProvider.PAXSENIX,
       LyricsProvider.PAXSENIX_SPOTIFY,
       LyricsProvider.PAXSENIX_MUSIXMATCH,

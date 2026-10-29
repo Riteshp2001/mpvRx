@@ -2831,4 +2831,6 @@
   <string name="player_layout_shared_landscape_hint">Спільне для всіх зон альбомного режиму.</string>
   <string name="pref_ignore_audio_focus_title">Ігнорувати аудіофокус</string>
   <string name="pref_ignore_audio_focus_summary">Продовжувати відтворення аудіо й відео разом з іншими програмами без паузи та зниження гучності</string>
+  <string name="pref_audio_spatial_title">Просторовий звук</string>
+  <string name="pref_audio_spatial_summary">Розширює стереозвучання для глибшого занурення</string>
 </resources>

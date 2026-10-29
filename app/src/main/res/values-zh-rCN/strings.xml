@@ -2841,4 +2841,6 @@
   <string name="player_layout_preset_title">播放布局</string>
   <string name="player_layout_preview_hint">仅供预览，更改会立即保存。</string>
   <string name="player_layout_shared_landscape_hint">所有横屏操作区域共用此布局。</string>
+  <string name="pref_audio_spatial_title">空间音频</string>
+  <string name="pref_audio_spatial_summary">拓宽立体声音场，带来更沉浸的听觉体验</string>
 </resources>

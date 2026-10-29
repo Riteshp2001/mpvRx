@@ -11,6 +11,7 @@ import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
 import app.gyrolet.mpvrx.domain.lyrics.SyncedLine
 import app.gyrolet.mpvrx.domain.lyrics.SyncedWord
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
@@ -79,7 +80,9 @@ internal object MusixmatchProvider : LyricsProviderClient {
   private suspend fun bestTrack(
     ref: TrackRef,
     seconds: Int,
-  ): Track? = searchTrack(ref.title, ref.artist)?.maxByOrNull { score(it, ref.title, ref.artist, seconds) }
+  ): Track? = searchTrack(ref.title, ref.artist)
+    ?.filter { LyricsTrackMatcher.matches(ref, it.trackName, it.artistName, seconds, it.trackLength?.toDouble() ?: 0.0) }
+    ?.maxByOrNull { score(it, ref.title, ref.artist, seconds) }
 
   private fun score(
     track: Track,
@@ -308,7 +311,10 @@ internal object MusixmatchProvider : LyricsProviderClient {
       String(Base64.getDecoder().decode(encoded.reversed()), Charsets.UTF_8)
         .takeIf { it.isNotBlank() }
         ?: error("empty signing key")
-    }.getOrElse { FALLBACK_SIGNING_SECRET }.also(cachedSecret::set)
+    }.getOrElse { error ->
+      if (error is CancellationException) throw error
+      FALLBACK_SIGNING_SECRET
+    }.also(cachedSecret::set)
 
   /** Signs `<url><UTC yyyyMMdd>` with HMAC-SHA256, matching the web client. */
   private fun sign(

@@ -2859,4 +2859,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="player_layout_shared_landscape_hint">Commun à toutes les zones en paysage.</string>
   <string name="pref_ignore_audio_focus_title">Ignorer le focus audio</string>
   <string name="pref_ignore_audio_focus_summary">Continuer à lire les contenus audio et vidéo avec les autres applications sans pause ni baisse du volume</string>
+  <string name="pref_audio_spatial_title">Audio spatial</string>
+  <string name="pref_audio_spatial_summary">Élargit les pistes stéréo pour une expérience plus immersive</string>
 </resources>

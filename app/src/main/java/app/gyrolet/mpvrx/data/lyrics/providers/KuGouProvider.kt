@@ -13,7 +13,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.Base64
 import kotlin.math.abs
-import kotlin.math.min
 
 /**
  * Line-synced lyrics from KuGou's public mobile endpoints — a Chinese
@@ -33,11 +32,11 @@ internal object KuGouProvider : LyricsProviderClient {
   override suspend fun fetch(query: LyricsFetchQuery): Lyrics? {
     val seconds = query.durationMs / 1000
     for (ref in query.candidates()) {
-      val keyword = keyword(ref, query.album)
+      val keyword = keyword(ref)
       val candidate =
-        searchSongs(keyword, seconds)
-          ?.firstNotNullOfOrNull { hash -> searchLyrics(hash = hash).orEmpty().firstOrNull() }
-          ?: searchLyrics(keyword = keyword, seconds = seconds).orEmpty().firstOrNull()
+        searchSongs(ref, seconds)
+          ?.firstNotNullOfOrNull { hash -> searchLyrics(hash = hash).orEmpty().firstOrNull { it.matches(ref, seconds) } }
+          ?: searchLyrics(keyword = keyword, seconds = seconds).orEmpty().firstOrNull { it.matches(ref, seconds) }
           ?: continue
 
       val lrc = download(candidate.id, candidate.accesskey) ?: continue
@@ -53,7 +52,7 @@ internal object KuGouProvider : LyricsProviderClient {
    * ordered closest match first.
    */
   private suspend fun searchSongs(
-    keyword: String,
+    ref: TrackRef,
     seconds: Int,
   ): List<String>? {
     val url =
@@ -63,7 +62,7 @@ internal object KuGouProvider : LyricsProviderClient {
         "plat" to "0",
         "pagesize" to "8",
         "showtype" to "0",
-        "keyword" to keyword,
+        "keyword" to keyword(ref),
       ) ?: return null
     val body = lyricsGet(url) ?: return null
     val response = runCatching { lyricsJson.decodeFromString<SearchSongResponse>(body) }.getOrNull()
@@ -71,10 +70,16 @@ internal object KuGouProvider : LyricsProviderClient {
       ?.data
       ?.info
       .orEmpty()
-      .filter { seconds <= 0 || abs(it.duration - seconds) <= DURATION_TOLERANCE_SECONDS }
+      .filter {
+        LyricsTrackMatcher.matches(ref, it.songname, it.singername, seconds, it.duration.toDouble()) &&
+          (seconds <= 0 || it.duration <= 0 || abs(it.duration - seconds) <= DURATION_TOLERANCE_SECONDS)
+      }
       .sortedBy { abs(it.duration - seconds) }
       .map { it.hash }
   }
+
+  private fun Candidate.matches(ref: TrackRef, seconds: Int): Boolean =
+    LyricsTrackMatcher.matches(ref, song, singer, seconds, (duration ?: 0.0) / 1000.0)
 
   private suspend fun searchLyrics(
     hash: String? = null,
@@ -120,40 +125,20 @@ internal object KuGouProvider : LyricsProviderClient {
     return decoded.stripCredits()
   }
 
-  private fun keyword(
-    ref: TrackRef,
-    album: String?,
-  ): String =
-    buildString {
-      append(ref.title.stripParenthetical())
-      append(" - ")
-      append(ref.artist.stripParenthetical())
-      if (!album.isNullOrBlank()) append(' ').append(album)
-    }
-
-  private fun String.stripParenthetical(): String = replace(Regex("""[(（].*?[)）]"""), "").trim().ifBlank { this }
+  private fun keyword(ref: TrackRef): String = listOf(ref.title, ref.artist).filter { it.isNotBlank() }.joinToString(" - ")
 
   /**
-   * Lyric files open and close with uncredited lines — songwriter, composer,
-   * arranger — that carry a real timestamp and would otherwise be sung as the
-   * first and last lines of the song. Cut the same way the source client does:
-   * from either end, up to the first line matching "label: value", and only
-   * within the first and last 30 lines so a lyric that happens to contain a
-   * colon deep in the song is left alone.
+   * Remove only recognized credit lines. A colon in sung text must not delete
+   * the surrounding verse, and whole-second LRC timestamps are valid too.
    */
   private fun String.stripCredits(): String {
-    val lines = lineSequence().filter { STAMPED.matches(it) }.toList()
-    if (lines.isEmpty()) return ""
-    val headLimit = min(30, lines.lastIndex)
-    val headCut = (headLimit downTo 0).firstOrNull { CREDIT.matches(lines[it]) }?.let { it + 1 } ?: 0
-    val body = lines.drop(headCut)
-    val tailLimit = min(30, body.lastIndex)
-    val tailCut = (0..tailLimit).firstOrNull { CREDIT.matches(body[body.lastIndex - it]) }?.let { it + 1 } ?: 0
-    return body.dropLast(tailCut).joinToString("\n")
+    return lineSequence().map { it.trim() }.filterNot { CREDIT.matches(it) }.joinToString("\n")
   }
 
-  private val STAMPED = Regex("""\[\d{2}:\d{2}\.\d{2,3}].*""")
-  private val CREDIT = Regex(""".+][^\[]+[:：].+""")
+  private val CREDIT = Regex(
+    """^(?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\])+\s*(?:作词|作曲|编曲|词|曲|词曲|制作人|词作者|曲作者|lyricist|composer|arranger|lyrics by|composed by)\s*[:：].*$""",
+    RegexOption.IGNORE_CASE,
+  )
 
   @Serializable
   private data class SearchSongResponse(
@@ -168,6 +153,8 @@ internal object KuGouProvider : LyricsProviderClient {
     data class Info(
       val hash: String,
       val duration: Int = -1,
+      val songname: String? = null,
+      val singername: String? = null,
     )
   }
 
@@ -180,6 +167,9 @@ internal object KuGouProvider : LyricsProviderClient {
   private data class Candidate(
     val id: String,
     @SerialName("accesskey") val accesskey: String,
+    val song: String? = null,
+    val singer: String? = null,
+    val duration: Double? = null,
   )
 
   @Serializable
