@@ -1,0 +1,38 @@
+name: Windows desktop build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [kmp-cross-platform]
+    paths:
+      - "desktop/**"
+      - "shared/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - ".github/workflows/desktop-windows.yml"
+
+jobs:
+  compile-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile desktop app
+        run: ./gradlew :desktop:compileKotlin --stacktrace
+      - name: Package Windows distributable
+        run: ./gradlew :desktop:createDistributable --stacktrace
+      - name: Package Windows MSI
+        run: ./gradlew :desktop:packageMsi --stacktrace
+      - name: Upload Windows MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpvrx-windows-preview
+          path: desktop/build/compose/binaries/main/msi/*.msi
+          if-no-files-found: error
+          retention-days: 14
