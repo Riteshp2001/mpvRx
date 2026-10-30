@@ -754,7 +754,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_config_cache_cleared_toast">Cache de configuração limpo</string>
   <string name="pref_thumbnail_cache_confirm_title">Limpar cache de miniaturas?</string>
   <string name="pref_thumbnail_cache_confirm_subtitle">Isso excluirá as miniaturas em cache do armazenamento e da memória.</string>
-  <string name="pref_section_logging">Registro</string>
+  <string name="pref_section_logging">Registros, diagnóstico e privacidade</string>
   <string name="pref_export_failed_toast">Falha na exportação: %1$s</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -2859,13 +2859,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_ignore_audio_focus_summary">Continuar reproduzindo áudio e vídeo com outros apps sem pausar nem reduzir o volume</string>
   <string name="pref_audio_spatial_title">Áudio espacial</string>
   <string name="pref_audio_spatial_summary">Amplia as faixas estéreo para uma experiência mais imersiva</string>
-  <string name="pref_section_measure">Diagnóstico e privacidade</string>
   <string name="pref_measure_enabled_title">Compartilhar diagnósticos com Measure</string>
   <string name="pref_measure_enabled_summary">Permita o envio de falhas, ANRs, métricas de desempenho e atividade da sessão ao Measure. Desativado por padrão.</string>
   <string name="pref_measure_not_configured">Diagnóstico indisponível: esta compilação não tem chave da API Measure.</string>
-  <string name="pref_measure_test_title">Provocar falha de teste</string>
-  <string name="pref_measure_test_summary">Feche o mpvRx intencionalmente para verificar o envio. Depois, abra o app novamente.</string>
-  <string name="pref_measure_test_confirm_title">Provocar uma falha no mpvRx?</string>
-  <string name="pref_measure_test_confirm_message">Isso fará o aplicativo falhar intencionalmente. Use apenas para verificar o Measure.</string>
-  <string name="pref_measure_test_confirm_action">Provocar falha</string>
 </resources>

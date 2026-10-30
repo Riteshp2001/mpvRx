@@ -754,7 +754,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_config_cache_cleared_toast">Konfigurationscache gelöscht</string>
   <string name="pref_thumbnail_cache_confirm_title">Vorschaubild-Cache leeren?</string>
   <string name="pref_thumbnail_cache_confirm_subtitle">Dadurch werden zwischengespeicherte Vorschaubilder aus Speicher und Arbeitsspeicher gelöscht.</string>
-  <string name="pref_section_logging">Protokollierung</string>
+  <string name="pref_section_logging">Protokolle, Diagnose &amp; Datenschutz</string>
   <string name="pref_export_failed_toast">Export fehlgeschlagen: %1$s</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -2859,13 +2859,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_ignore_audio_focus_summary">Audio und Video zusammen mit anderen Apps weiter abspielen, ohne zu pausieren oder die Lautstärke zu senken</string>
   <string name="pref_audio_spatial_title">Räumliches Audio</string>
   <string name="pref_audio_spatial_summary">Verbreitert Stereospuren für ein immersiveres Klangerlebnis</string>
-  <string name="pref_section_measure">Diagnose und Datenschutz</string>
   <string name="pref_measure_enabled_title">Diagnosedaten mit Measure teilen</string>
   <string name="pref_measure_enabled_summary">Optional Abstürze, ANRs, Leistungsdaten und Sitzungsaktivitäten an Measure senden. Standardmäßig deaktiviert.</string>
   <string name="pref_measure_not_configured">Diagnose nicht verfügbar: Dieser Build hat keinen Measure-API-Schlüssel.</string>
-  <string name="pref_measure_test_title">Testabsturz auslösen</string>
-  <string name="pref_measure_test_summary">mpvRx absichtlich beenden, um die Meldung zu prüfen. Danach erneut öffnen.</string>
-  <string name="pref_measure_test_confirm_title">mpvRx zu Testzwecken abstürzen lassen?</string>
-  <string name="pref_measure_test_confirm_message">Die App stürzt absichtlich ab. Nur zum Prüfen des Crash-Reports in Measure verwenden.</string>
-  <string name="pref_measure_test_confirm_action">App abstürzen lassen</string>
 </resources>

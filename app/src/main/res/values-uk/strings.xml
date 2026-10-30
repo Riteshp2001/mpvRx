@@ -837,7 +837,7 @@
   <string name="pref_config_cache_cleared_toast">Кеш налаштувань очищено</string>
   <string name="pref_thumbnail_cache_confirm_title">Очистити кеш ескізів?</string>
   <string name="pref_thumbnail_cache_confirm_subtitle">Це видалить збережені мініатюри зі сховища та оперативної пам\'яті.</string>
-  <string name="pref_section_logging">Журналювання</string>
+  <string name="pref_section_logging">Журнали, діагностика та конфіденційність</string>
   <string name="pref_export_failed_toast">Помилка експорту: %1$s</string>
   <string name="pref_ai_features_section">Функції ШІ</string>
   <string name="pref_ai_enabled_title">Увімкнути функції ШІ</string>
@@ -2831,13 +2831,7 @@
   <string name="pref_ignore_audio_focus_summary">Продовжувати відтворення аудіо й відео разом з іншими програмами без паузи та зниження гучності</string>
   <string name="pref_audio_spatial_title">Просторовий звук</string>
   <string name="pref_audio_spatial_summary">Розширює стереозвучання для глибшого занурення</string>
-  <string name="pref_section_measure">Діагностика та конфіденційність</string>
   <string name="pref_measure_enabled_title">Надсилати діагностику до Measure</string>
   <string name="pref_measure_enabled_summary">Дозволити надсилання збоїв, ANR, показників продуктивності та дій сеансу до Measure. Типово вимкнено.</string>
   <string name="pref_measure_not_configured">Діагностика недоступна: у збірці немає ключа API Measure.</string>
-  <string name="pref_measure_test_title">Спричинити тестовий збій</string>
-  <string name="pref_measure_test_summary">Навмисно закрити mpvRx для перевірки звітів. Після цього відкрийте застосунок знову.</string>
-  <string name="pref_measure_test_confirm_title">Спричинити збій mpvRx для перевірки?</string>
-  <string name="pref_measure_test_confirm_message">Застосунок навмисно завершиться з помилкою. Використовуйте лише для перевірки Measure.</string>
-  <string name="pref_measure_test_confirm_action">Спричинити збій</string>
 </resources>

@@ -754,7 +754,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_config_cache_cleared_toast">Cache de configuration effacé</string>
   <string name="pref_thumbnail_cache_confirm_title">Effacer le cache des miniatures ?</string>
   <string name="pref_thumbnail_cache_confirm_subtitle">Les miniatures en cache seront supprimées du stockage et de la mémoire.</string>
-  <string name="pref_section_logging">Journalisation</string>
+  <string name="pref_section_logging">Journalisation, diagnostics et confidentialité</string>
   <string name="pref_export_failed_toast">Échec de l’exportation : %1$s</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -2859,13 +2859,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_ignore_audio_focus_summary">Continuer à lire les contenus audio et vidéo avec les autres applications sans pause ni baisse du volume</string>
   <string name="pref_audio_spatial_title">Audio spatial</string>
   <string name="pref_audio_spatial_summary">Élargit les pistes stéréo pour une expérience plus immersive</string>
-  <string name="pref_section_measure">Diagnostic et confidentialité</string>
   <string name="pref_measure_enabled_title">Partager les diagnostics avec Measure</string>
   <string name="pref_measure_enabled_summary">Autoriser l\'envoi des plantages, ANR, mesures de performance et activités de session à Measure. Désactivé par défaut.</string>
   <string name="pref_measure_not_configured">Diagnostics indisponibles : cette version ne contient pas de clé Measure.</string>
-  <string name="pref_measure_test_title">Déclencher un plantage test</string>
-  <string name="pref_measure_test_summary">Fermer volontairement mpvRx pour vérifier le signalement. Rouvrez ensuite l\'application.</string>
-  <string name="pref_measure_test_confirm_title">Faire planter mpvRx pour un test ?</string>
-  <string name="pref_measure_test_confirm_message">L\'application va planter volontairement. À utiliser uniquement pour vérifier le signalement dans Measure.</string>
-  <string name="pref_measure_test_confirm_action">Faire planter</string>
 </resources>

@@ -12,8 +12,6 @@ package app.gyrolet.mpvrx.ui.preferences
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.utils.telemetry.MeasureTelemetry
 import android.os.Build
@@ -147,7 +145,6 @@ object AdvancedPreferencesScreen : Screen {
     var importStats by remember { mutableStateOf<SettingsManager.ImportStats?>(null) }
     var exportStats by remember { mutableStateOf<SettingsManager.ExportStats?>(null) }
     var pendingAppLanguage by remember { mutableStateOf<AppLanguage?>(null) }
-    var showMeasureTestCrashDialog by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val currentAppLanguage =
       remember(configuration) {
@@ -282,30 +279,6 @@ object AdvancedPreferencesScreen : Screen {
         confirmButton = {
           TextButton(onClick = { showExportDialog = false }) {
             Text(stringResource(R.string.generic_ok))
-          }
-        },
-      )
-    }
-
-    if (showMeasureTestCrashDialog) {
-      AlertDialog(
-        onDismissRequest = { showMeasureTestCrashDialog = false },
-        title = { Text(stringResource(R.string.pref_measure_test_confirm_title)) },
-        text = { Text(stringResource(R.string.pref_measure_test_confirm_message)) },
-        confirmButton = {
-          TextButton(onClick = {
-            showMeasureTestCrashDialog = false
-            // Never crash automatically; allow the SDK's handler to register before the test.
-            Handler(Looper.getMainLooper()).postDelayed({
-              if (MeasureTelemetry.isEnabled(context)) {
-                throw IllegalStateException("mpvRx Measure test crash from Advanced Settings")
-              }
-            }, 2_000L)
-          }) { Text(stringResource(R.string.pref_measure_test_confirm_action)) }
-        },
-        dismissButton = {
-          TextButton(onClick = { showMeasureTestCrashDialog = false }) {
-            Text(stringResource(R.string.generic_cancel))
           }
         },
       )
@@ -751,50 +724,6 @@ object AdvancedPreferencesScreen : Screen {
             }
           }
 
-          // Explicit third-party diagnostic consent, separate from local debug logging.
-          item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_measure))
-          }
-          item {
-            val measureEnabled by preferences.measureEnabled.collectAsState()
-            PreferenceCard {
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_measure_enabled_title),
-                value = measureEnabled && BuildConfig.MEASURE_CONFIGURED,
-                enabled = BuildConfig.MEASURE_CONFIGURED,
-                onValueChange = { enabled ->
-                  if (MeasureTelemetry.setEnabled(enabled)) preferences.measureEnabled.set(enabled)
-                },
-                title = { Text(stringResource(R.string.pref_measure_enabled_title)) },
-                summary = {
-                  Text(
-                    stringResource(
-                      if (BuildConfig.MEASURE_CONFIGURED) R.string.pref_measure_enabled_summary
-                      else R.string.pref_measure_not_configured
-                    ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-              if (measureEnabled && BuildConfig.MEASURE_CONFIGURED) {
-                PreferenceDivider()
-                ExpressivePreferenceItem {
-                  Preference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_measure_test_title),
-                    title = { Text(stringResource(R.string.pref_measure_test_title)) },
-                    summary = {
-                      Text(
-                        stringResource(R.string.pref_measure_test_summary),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                    onClick = { showMeasureTestCrashDialog = true },
-                  )
-                }
-              }
-            }
-          }
-
           // Data & Cache Section
           item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_data_cache))
@@ -1128,7 +1057,7 @@ object AdvancedPreferencesScreen : Screen {
             }
           }
 
-          // Logging Section
+          // Logging, diagnostics & privacy Section
           item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_logging))
           }
@@ -1138,6 +1067,29 @@ object AdvancedPreferencesScreen : Screen {
               val activity = LocalActivity.current!!
               val verboseLogging by preferences.verboseLogging.collectAsState()
               val debugLogSizeMb by preferences.debugLogSizeMb.collectAsState()
+
+              val measureEnabled by preferences.measureEnabled.collectAsState()
+
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_measure_enabled_title),
+                value = measureEnabled && BuildConfig.MEASURE_CONFIGURED,
+                enabled = BuildConfig.MEASURE_CONFIGURED,
+                onValueChange = { enabled ->
+                  if (MeasureTelemetry.setEnabled(enabled)) preferences.measureEnabled.set(enabled)
+                },
+                title = { Text(stringResource(R.string.pref_measure_enabled_title)) },
+                summary = {
+                  Text(
+                    stringResource(
+                      if (BuildConfig.MEASURE_CONFIGURED) R.string.pref_measure_enabled_summary
+                      else R.string.pref_measure_not_configured,
+                    ),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_verbose_logging_title),

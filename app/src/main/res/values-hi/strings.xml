@@ -697,7 +697,7 @@
   <string name="pref_config_cache_cleared_toast">कॉन्फिग कैश साफ हो गया</string>
   <string name="pref_thumbnail_cache_confirm_title">थंबनेल कैश साफ करें?</string>
   <string name="pref_thumbnail_cache_confirm_subtitle">इससे स्टोरेज और मेमोरी से कैश किए गए थंबनेल डिलीट हो जाएंगे।</string>
-  <string name="pref_section_logging">लॉगिंग</string>
+  <string name="pref_section_logging">लॉगिंग, निदान और गोपनीयता</string>
   <string name="pref_export_failed_toast">एक्सपोर्ट नाकाम: %1$s</string>
   <string name="pref_ai_features_section">AI फीचर</string>
   <string name="pref_ai_enabled_title">AI फीचर सक्षम करें</string>
@@ -2763,13 +2763,7 @@
   <string name="pref_ignore_audio_focus_summary">दूसरे ऐप्लिकेशन के साथ ऑडियो और वीडियो चलाते रहें, बिना रुके या आवाज़ कम किए</string>
   <string name="pref_audio_spatial_title">स्थानिक ऑडियो</string>
   <string name="pref_audio_spatial_summary">ज़्यादा इमर्सिव अनुभव के लिए स्टीरियो ट्रैक का ध्वनि विस्तार बढ़ाता है</string>
-  <string name="pref_section_measure">निदान और गोपनीयता</string>
   <string name="pref_measure_enabled_title">Measure के साथ निदान साझा करें</string>
   <string name="pref_measure_enabled_summary">क्रैश, ANR, प्रदर्शन आँकड़े और सत्र गतिविधि Measure को भेजने के लिए सहमति दें। डिफ़ॉल्ट रूप से बंद।</string>
   <string name="pref_measure_not_configured">निदान उपलब्ध नहीं: इस बिल्ड में Measure API कुंजी नहीं है।</string>
-  <string name="pref_measure_test_title">टेस्ट क्रैश चलाएँ</string>
-  <string name="pref_measure_test_summary">रिपोर्टिंग जाँचने के लिए mpvRx जानबूझकर बंद करें। फिर ऐप खोलें।</string>
-  <string name="pref_measure_test_confirm_title">परीक्षण के लिए mpvRx क्रैश करें?</string>
-  <string name="pref_measure_test_confirm_message">इससे ऐप जानबूझकर क्रैश होगा। केवल Measure की रिपोर्टिंग जाँचने के लिए उपयोग करें।</string>
-  <string name="pref_measure_test_confirm_action">ऐप क्रैश करें</string>
 </resources>

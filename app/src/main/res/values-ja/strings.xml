@@ -754,7 +754,7 @@
   <string name="pref_config_cache_cleared_toast">設定キャッシュを消去しました</string>
   <string name="pref_thumbnail_cache_confirm_title">サムネイルキャッシュを消去しますか？</string>
   <string name="pref_thumbnail_cache_confirm_subtitle">ストレージとメモリからキャッシュ済みサムネイルが削除されます。</string>
-  <string name="pref_section_logging">ログ</string>
+  <string name="pref_section_logging">ログ・診断・プライバシー</string>
   <string name="pref_export_failed_toast">エクスポートに失敗しました：%1$s</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -2843,13 +2843,7 @@
   <string name="pref_ignore_audio_focus_summary">他のアプリと同時に音声や動画を再生し、一時停止や音量の低下を防ぎます</string>
   <string name="pref_audio_spatial_title">空間オーディオ</string>
   <string name="pref_audio_spatial_summary">ステレオ音源の音場を広げ、より臨場感のあるサウンドにします</string>
-  <string name="pref_section_measure">診断とプライバシー</string>
   <string name="pref_measure_enabled_title">Measure に診断情報を送信</string>
   <string name="pref_measure_enabled_summary">クラッシュ、ANR、パフォーマンス指標、セッション操作を Measure に送信します。初期設定はオフです。</string>
   <string name="pref_measure_not_configured">診断を利用できません。このビルドに Measure API キーがありません。</string>
-  <string name="pref_measure_test_title">テストクラッシュを実行</string>
-  <string name="pref_measure_test_summary">報告を確認するために mpvRx を意図的に終了します。その後アプリを再起動してください。</string>
-  <string name="pref_measure_test_confirm_title">テストのため mpvRx をクラッシュさせますか？</string>
-  <string name="pref_measure_test_confirm_message">アプリが意図的にクラッシュします。Measure への報告を確認するときだけ使用してください。</string>
-  <string name="pref_measure_test_confirm_action">クラッシュさせる</string>
 </resources>

@@ -982,7 +982,7 @@
   <string name="pref_config_cache_cleared_toast">Config cache cleared</string>
   <string name="pref_thumbnail_cache_confirm_title">Clear thumbnail cache?</string>
   <string name="pref_thumbnail_cache_confirm_subtitle">This will delete cached thumbnails from storage and memory.</string>
-  <string name="pref_section_logging">Logging</string>
+  <string name="pref_section_logging">Logging, diagnostics &amp; privacy</string>
   <string name="pref_export_failed_toast">Export failed: %1$s</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
@@ -2995,13 +2995,7 @@
   <string name="clip_quick_length">Quick length</string>
   <string name="clip_length_seconds">%1$ds</string>
   <string name="clip_crop_reset">Use full frame</string>
-  <string name="pref_section_measure">Diagnostics &amp; privacy</string>
   <string name="pref_measure_enabled_title">Share diagnostics with Measure</string>
   <string name="pref_measure_enabled_summary">Opt in to send crashes, ANRs, performance metrics and session activity to Measure. Disabled by default.</string>
   <string name="pref_measure_not_configured">Diagnostics unavailable: this build has no Measure API key.</string>
-  <string name="pref_measure_test_title">Trigger test crash</string>
-  <string name="pref_measure_test_summary">Intentionally close mpvRx to verify reporting. Reopen the app afterward.</string>
-  <string name="pref_measure_test_confirm_title">Crash mpvRx for testing?</string>
-  <string name="pref_measure_test_confirm_message">This deliberately crashes the app. Only use it to check that Measure receives a crash report.</string>
-  <string name="pref_measure_test_confirm_action">Crash app</string>
 </resources>
