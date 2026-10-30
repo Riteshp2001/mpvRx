@@ -1836,6 +1836,16 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   fun grabThumbnail(dimension: Int): Bitmap? = withCore(null) { MPVLib.grabThumbnail(dimension) }
 
+  internal fun thumbnailRequestHeaders(): Map<String, String> = withCore(emptyMap()) {
+    val headers = PlaybackHttpHeaders.fromHeaderFields(
+      MPVLib.getPropertyNode("http-header-fields")?.toObject<List<String>>(Json).orEmpty(),
+    )
+    PlaybackHttpHeaders.withDefault(
+      PlaybackHttpHeaders.withDefault(headers, "User-Agent", MPVLib.getPropertyString("user-agent")),
+      "Referer", MPVLib.getPropertyString("referrer"),
+    )
+  }
+
   fun grabThumbnailFast(
     path: String,
     position: Double = 0.0,

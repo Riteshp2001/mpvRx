@@ -2998,4 +2998,9 @@
   <string name="pref_measure_enabled_title">Share diagnostics with Measure</string>
   <string name="pref_measure_enabled_summary">Opt in to send crashes, ANRs, performance metrics and session activity to Measure. Disabled by default.</string>
   <string name="pref_measure_not_configured">Diagnostics unavailable: this build has no Measure API key.</string>
+  <string name="seek_preview_unavailable">Preview unavailable</string>
+  <string name="seek_preview_cached_time">Cached %1$s</string>
+  <string name="pref_seek_preview_style">Seek preview style</string>
+  <string name="seek_preview_style_fullscreen">Full-screen</string>
+  <string name="seek_preview_style_windowed">Windowed</string>
 </resources>

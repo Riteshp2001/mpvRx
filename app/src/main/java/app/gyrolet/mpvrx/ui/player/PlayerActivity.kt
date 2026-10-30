@@ -7227,7 +7227,12 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     event: KeyEvent?,
   ): Boolean {
     if (!mpvInitialized) return super.onKeyUp(keyCode, event)
-    if (isTelevision && consumedTvRemoteKeys.remove(keyCode)) return true
+    if (isTelevision && consumedTvRemoteKeys.remove(keyCode)) {
+      if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+        viewModel.finishTvSeek(cancelled = event?.isCanceled == true)
+      }
+      return true
+    }
     if (isTelevision && TvPlayerRemotePolicy.isNavigationKey(keyCode)) {
       return super.onKeyUp(keyCode, event)
     }

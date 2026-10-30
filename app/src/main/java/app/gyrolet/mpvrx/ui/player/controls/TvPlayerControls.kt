@@ -12,6 +12,8 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import androidx.compose.ui.focus.onFocusChanged
+import app.gyrolet.mpvrx.ui.player.controls.components.WindowedSeekPreview
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -173,6 +175,15 @@ internal fun TvPlayerControls(
           false
         },
   ) {
+    WindowedSeekPreview(
+      viewModel = viewModel,
+      durationSeconds = durationSeconds,
+      isPortrait = false,
+      modifier = Modifier
+        .align(Alignment.BottomCenter)
+        .padding(horizontal = TvPlayerDefaults.HorizontalPadding)
+        .padding(bottom = TvPlayerDefaults.VerticalPadding + 160.dp),
+    )
     AnimatedVisibility(
       visible = controlsShown,
       enter = fadeIn(tween(TvPlayerDefaults.FadeInMillis)),
@@ -238,8 +249,9 @@ internal fun TvPlayerControls(
             showBufferedRange = showBufferedRange,
             onSeekBy = { seconds ->
               markInteraction()
-              viewModel.seekBy(seconds)
+              viewModel.seekFromTvSeekbar(seconds)
             },
+            onSeekFinished = viewModel::finishTvSeek,
             onTogglePlayback = {
               markInteraction()
               viewModel.pauseUnpause()
@@ -400,6 +412,7 @@ private fun TvSeekBar(
   chapterStarts: List<Float>,
   showBufferedRange: Boolean,
   onSeekBy: (Int) -> Unit,
+  onSeekFinished: (Boolean) -> Unit,
   onTogglePlayback: () -> Unit,
   onHideControls: () -> Unit,
   playFocusRequester: FocusRequester,
@@ -431,7 +444,12 @@ private fun TvSeekBar(
         .height(TvPlayerDefaults.SeekBarHitHeight)
         .semantics { contentDescription = description }
         .focusProperties { down = playFocusRequester }
+        .onFocusChanged { if (!it.isFocused) onSeekFinished(true) }
         .onKeyEvent { event ->
+          if (event.type == KeyEventType.KeyUp && (event.key == Key.DirectionLeft || event.key == Key.DirectionRight)) {
+            onSeekFinished(event.nativeKeyEvent.isCanceled)
+            return@onKeyEvent true
+          }
           if (event.type != KeyEventType.KeyDown) {
             return@onKeyEvent event.key == Key.DirectionLeft ||
               event.key == Key.DirectionRight ||

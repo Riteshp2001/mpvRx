@@ -48,6 +48,7 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BackgroundPlaybackBehavior
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.SeekPreviewStyle
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.player.NotificationStyle
@@ -541,6 +542,21 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_player_seeking_title)) }
           item {
             PreferenceCard {
+              val seekPreviewStyle by preferences.seekPreviewStyle.collectAsState()
+              ExpressivePreferenceItem {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_seek_preview_style),
+                  value = seekPreviewStyle,
+                  onValueChange = preferences.seekPreviewStyle::set,
+                  values = SeekPreviewStyle.entries,
+                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                  title = { Text(stringResource(R.string.pref_seek_preview_style)) },
+                  summary = { Text(stringResource(seekPreviewStyle.titleRes), color = MaterialTheme.colorScheme.outline) },
+                )
+              }
+
+              PreferenceDivider()
+
               DevicePreference(R.string.show_splash_ovals_on_double_tap_to_seek) {
                 val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
                 SwitchPreference(

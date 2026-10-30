@@ -1408,6 +1408,9 @@ fun GestureHandler(
             var initialVideoPosition = 0f
             var pendingSeekPosition: Float? = null
             var wasPlayerAlreadyPaused = false
+            var windowedPreviewStarted = false
+            var seekGestureCompleted = false
+            val seekGestureGeneration = PlaybackSession.state.value.generation
             // Use the sensitivity preference instead of hardcoded value
             val seekSensitivity = horizontalSwipeSensitivity
 
@@ -1415,6 +1418,12 @@ fun GestureHandler(
               do {
                 val event = awaitPointerEvent()
                 val pointerCount = event.changes.count { it.pressed }
+                if (PlaybackSession.state.value.generation != seekGestureGeneration ||
+                  (windowedPreviewStarted && viewModel.seekThumbnailFrame.value.targetMs == null)
+                ) {
+                  hasStartedSeeking = false
+                  break
+                }
 
                 if (pointerCount == 1) {
                   event.changes.forEach { change ->
@@ -1498,8 +1507,10 @@ fun GestureHandler(
                         val clampedPosition = targetPosition.coerceAtMost(maxDuration)
                         pendingSeekPosition = clampedPosition
 
-                        // Stream targets update feedback only; local decoder previews stay bounded.
-                        viewModel.seekPreviewTo(clampedPosition)
+                        windowedPreviewStarted = viewModel.previewWindowedSeekTo(clampedPosition, wasPlayerAlreadyPaused)
+                        if (!windowedPreviewStarted) {
+                          viewModel.seekPreviewTo(clampedPosition)
+                        }
 
                         // Format and display time position updates
                         val currentPos = clampedPosition.toInt()
@@ -1528,6 +1539,7 @@ fun GestureHandler(
                   // Multi-finger detected, cancel horizontal seek
                   if (hasStartedSeeking) {
                     hasStartedSeeking = false
+                    viewModel.cancelWindowedSeekPreview(resumePlayback = false)
                     // Clean up seeking state without showing controls
                     if (gestureType == "horizontal_seek" && !wasPlayerAlreadyPaused) {
                       viewModel.unpause()
@@ -1539,12 +1551,20 @@ fun GestureHandler(
                   break
                 }
               } while (event.changes.any { it.pressed })
+              seekGestureCompleted = true
             } finally {
               if (gestureType == "subtitle_dialog_seek") viewModel.setSubtitleGestureHighlight(false)
+              if (windowedPreviewStarted && (!seekGestureCompleted || !hasStartedSeeking)) {
+                viewModel.cancelWindowedSeekPreview(
+                  resumePlayback = PlaybackSession.state.value.generation == seekGestureGeneration,
+                )
+              }
             }
 
             // Apply the final seek when gesture ends
-            if (hasStartedSeeking) {
+            if (hasStartedSeeking && PlaybackSession.state.value.generation == seekGestureGeneration &&
+              (!windowedPreviewStarted || viewModel.seekThumbnailFrame.value.targetMs != null)
+            ) {
               pendingSeekPosition?.let {
                 if (gestureType == "horizontal_seek") {
                   viewModel.seekFromScrub(it, resumePlayback = !wasPlayerAlreadyPaused)

@@ -2846,4 +2846,9 @@
   <string name="pref_measure_enabled_title">Measure に診断情報を送信</string>
   <string name="pref_measure_enabled_summary">クラッシュ、ANR、パフォーマンス指標、セッション操作を Measure に送信します。初期設定はオフです。</string>
   <string name="pref_measure_not_configured">診断を利用できません。このビルドに Measure API キーがありません。</string>
+  <string name="seek_preview_unavailable">プレビューを表示できません</string>
+  <string name="seek_preview_cached_time">キャッシュ: %1$s</string>
+  <string name="pref_seek_preview_style">シークプレビューのスタイル</string>
+  <string name="seek_preview_style_fullscreen">全画面</string>
+  <string name="seek_preview_style_windowed">ウィンドウ</string>
 </resources>

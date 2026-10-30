@@ -481,6 +481,8 @@ Thank you to the player projects, music apps, libraries, and individual contribu
 | [Music & media apps](CITATION.md#music--media-apps) | PixelPlayer, Gramophone, AFinity, Chora, BitChord |
 | [Video processing & streaming](CITATION.md#video-processing--streaming) | hdr-toys, anacrolix/torrent |
 
+Windowed seeking previews adapt the floating-window presentation and playback-first caching approach from [Cb541/mpvRx-windowed-seeking-previews](https://github.com/Cb541/mpvRx-windowed-seeking-previews/tree/61963c8208df6c28bc63ae54021e5c0204ac9a97) (AGPL-3.0-or-later).
+
 > Special thanks to [SunnyVishnu3](https://github.com/SunnyVishnu3) for the `yt-dlp` native integration and SDK 29+ bypass logic.
 
 [Full acknowledgments & citation information](CITATION.md) · [All contributors](https://github.com/Riteshp2001/mpvRx/graphs/contributors)

@@ -19,6 +19,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -57,6 +60,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
@@ -129,6 +133,7 @@ import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -325,6 +330,8 @@ internal fun SeekbarWithTimers(
   externalScrubbing: Boolean = false,
   onValueChange: (Float) -> Unit,
   onValueChangeFinished: (Float) -> Unit,
+  onInteractionStarted: () -> Unit = {},
+  onInteractionCancelled: () -> Unit = {},
   timersInverted: Pair<Boolean, Boolean>,
   positionTimerOnClick: () -> Unit,
   durationTimerOnCLick: () -> Unit,
@@ -340,6 +347,7 @@ internal fun SeekbarWithTimers(
   loopStart: Float? = null,
   loopEnd: Float? = null,
   bufferDuration: Float? = null,
+  cachedPreviewTimesMs: List<Long> = emptyList(),
   isPortrait: Boolean = false,
   applyHorizontalPadding: Boolean = true,
   timerTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -404,10 +412,13 @@ internal fun SeekbarWithTimers(
         loopStart = loopStart,
         loopEnd = loopEnd,
         bufferDuration = bufferDuration,
+        cachedPreviewTimesMs = cachedPreviewTimesMs,
         onUserInteractionChange = { isUserInteracting = it },
         onUserPositionChange = { userPosition = it },
         onValueChange = onValueChange,
         onValueChangeFinished = onValueChangeFinished,
+        onInteractionStarted = onInteractionStarted,
+        onInteractionCancelled = onInteractionCancelled,
         scope = scope,
         animatedPosition = animatedPosition,
         modifier = Modifier.fillMaxWidth().height(if (showWavyVisualizer) 64.dp else 44.dp),
@@ -478,10 +489,13 @@ internal fun SeekbarWithTimers(
         loopStart = loopStart,
         loopEnd = loopEnd,
         bufferDuration = bufferDuration,
+        cachedPreviewTimesMs = cachedPreviewTimesMs,
         onUserInteractionChange = { isUserInteracting = it },
         onUserPositionChange = { userPosition = it },
         onValueChange = onValueChange,
         onValueChangeFinished = onValueChangeFinished,
+        onInteractionStarted = onInteractionStarted,
+        onInteractionCancelled = onInteractionCancelled,
         scope = scope,
         animatedPosition = animatedPosition,
         modifier = Modifier.weight(1f).height(if (showWavyVisualizer) 64.dp else 48.dp),
@@ -520,10 +534,13 @@ private fun SeekbarContent(
   loopStart: Float?,
   loopEnd: Float?,
   bufferDuration: Float?,
+  cachedPreviewTimesMs: List<Long> = emptyList(),
   onUserInteractionChange: (Boolean) -> Unit,
   onUserPositionChange: (Float) -> Unit,
   onValueChange: (Float) -> Unit,
   onValueChangeFinished: (Float) -> Unit,
+  onInteractionStarted: () -> Unit = {},
+  onInteractionCancelled: () -> Unit = {},
   scope: kotlinx.coroutines.CoroutineScope,
   animatedPosition: Animatable<Float, *>,
   interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
@@ -533,6 +550,24 @@ private fun SeekbarContent(
   val touchAreaHeight = if (isPortrait) 64.dp else 52.dp
   val seekerState = rememberSeekerState()
   val seekerInteractionSource = interactionSource
+  val currentOnStart by rememberUpdatedState(onInteractionStarted)
+  val currentOnCancel by rememberUpdatedState(onInteractionCancelled)
+  val currentOnInteractionChange by rememberUpdatedState(onUserInteractionChange)
+  LaunchedEffect(seekerInteractionSource) {
+    var dragging = false
+    seekerInteractionSource.interactions.collect { interaction ->
+      if (interaction is PressInteraction.Press || interaction is DragInteraction.Start) {
+        if (interaction is DragInteraction.Start) dragging = true
+        currentOnStart()
+      } else if (interaction is DragInteraction.Stop) {
+        dragging = false
+      } else if (interaction is DragInteraction.Cancel || (interaction is PressInteraction.Cancel && !dragging)) {
+        dragging = false
+        currentOnInteractionChange(false)
+        currentOnCancel()
+      }
+    }
+  }
   val isSeekerPressed by seekerInteractionSource.collectIsPressedAsState()
   val isSeekerDragged by seekerInteractionSource.collectIsDraggedAsState()
   val isVisuallyInteracting = isUserInteracting || isSeekerPressed || isSeekerDragged
@@ -638,6 +673,7 @@ private fun SeekbarContent(
             Key.DirectionLeft, Key.DirectionRight -> {
               if (event.type == KeyEventType.KeyDown) {
                 val repeats = event.nativeKeyEvent.repeatCount
+                if (!isDpadScrubbing) onInteractionStarted()
                 val step = if (repeats > 0) dpadBigStep else dpadStep
                 val dir = if (event.key == Key.DirectionLeft) -1f else 1f
                 isDpadScrubbing = true
@@ -646,13 +682,20 @@ private fun SeekbarContent(
                 onUserPositionChange(dpadSeekPosition)
                 onValueChange(dpadSeekPosition)
               } else {
-                onValueChangeFinished(dpadSeekPosition)
+                if (event.nativeKeyEvent.isCanceled) onInteractionCancelled() else onValueChangeFinished(dpadSeekPosition)
                 onUserInteractionChange(false)
                 isDpadScrubbing = false
               }
               true
             }
             else -> false
+          }
+        }
+        .onFocusChanged {
+          if (!it.isFocused && isDpadScrubbing) {
+            isDpadScrubbing = false
+            onUserInteractionChange(false)
+            onInteractionCancelled()
           }
         }
     } else {
@@ -810,6 +853,24 @@ private fun SeekbarContent(
         }
       }
 
+      if (safeDuration > 0f && cachedPreviewTimesMs.isNotEmpty()) {
+        val minimumGap = 3.5.dp.toPx()
+        var previousX = -minimumGap
+        cachedPreviewTimesMs.forEach { timeMs ->
+          val fraction = timeMs / (safeDuration.toDouble() * 1_000.0)
+          val markerX = (fraction * size.width).toFloat()
+          if (fraction in 0.0..1.0 && markerX - previousX >= minimumGap) {
+            drawLine(
+              color = Color.White.copy(alpha = 0.8f),
+              start = Offset(markerX, 0f),
+              end = Offset(markerX, size.height),
+              strokeWidth = 1.5.dp.toPx(),
+              cap = StrokeCap.Round,
+            )
+            previousX = markerX
+          }
+        }
+      }
     }
 
     val activeClip = clipRange.takeIf { showClipRange }

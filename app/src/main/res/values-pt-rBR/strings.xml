@@ -2862,4 +2862,9 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_measure_enabled_title">Compartilhar diagnósticos com Measure</string>
   <string name="pref_measure_enabled_summary">Permita o envio de falhas, ANRs, métricas de desempenho e atividade da sessão ao Measure. Desativado por padrão.</string>
   <string name="pref_measure_not_configured">Diagnóstico indisponível: esta compilação não tem chave da API Measure.</string>
+  <string name="seek_preview_unavailable">Prévia indisponível</string>
+  <string name="seek_preview_cached_time">Em cache: %1$s</string>
+  <string name="pref_seek_preview_style">Estilo da prévia de busca</string>
+  <string name="seek_preview_style_fullscreen">Tela cheia</string>
+  <string name="seek_preview_style_windowed">Em janela</string>
 </resources>

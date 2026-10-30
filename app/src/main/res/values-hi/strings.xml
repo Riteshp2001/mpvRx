@@ -2766,4 +2766,9 @@
   <string name="pref_measure_enabled_title">Measure के साथ निदान साझा करें</string>
   <string name="pref_measure_enabled_summary">क्रैश, ANR, प्रदर्शन आँकड़े और सत्र गतिविधि Measure को भेजने के लिए सहमति दें। डिफ़ॉल्ट रूप से बंद।</string>
   <string name="pref_measure_not_configured">निदान उपलब्ध नहीं: इस बिल्ड में Measure API कुंजी नहीं है।</string>
+  <string name="seek_preview_unavailable">पूर्वावलोकन उपलब्ध नहीं है</string>
+  <string name="seek_preview_cached_time">कैश: %1$s</string>
+  <string name="pref_seek_preview_style">सीकिंग पूर्वावलोकन शैली</string>
+  <string name="seek_preview_style_fullscreen">पूर्ण स्क्रीन</string>
+  <string name="seek_preview_style_windowed">विंडो में</string>
 </resources>

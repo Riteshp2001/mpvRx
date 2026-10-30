@@ -421,6 +421,14 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_seek_preview_style,
+          keywords = listOf("seek", "preview", "thumbnail", "full screen", "fullscreen", "windowed", "scrubbing"),
+          category = "Player",
+          screen = PlayerPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.show_time_on_double_tap_to_seek,
           keywords = listOf("time", "double tap", "seek", "overlay", "timestamp"),
           category = "Player",

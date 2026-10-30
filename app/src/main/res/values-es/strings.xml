@@ -2862,4 +2862,9 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_measure_enabled_title">Compartir diagnósticos con Measure</string>
   <string name="pref_measure_enabled_summary">Activa el envío de fallos, ANR, métricas de rendimiento y actividad de sesión a Measure. Desactivado por defecto.</string>
   <string name="pref_measure_not_configured">Diagnósticos no disponibles: esta compilación no tiene clave de Measure.</string>
+  <string name="seek_preview_unavailable">Vista previa no disponible</string>
+  <string name="seek_preview_cached_time">En caché: %1$s</string>
+  <string name="pref_seek_preview_style">Estilo de vista previa al desplazarse</string>
+  <string name="seek_preview_style_fullscreen">Pantalla completa</string>
+  <string name="seek_preview_style_windowed">En ventana</string>
 </resources>

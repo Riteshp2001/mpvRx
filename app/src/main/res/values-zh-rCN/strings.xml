@@ -2844,4 +2844,9 @@
   <string name="pref_measure_enabled_title">与 Measure 共享诊断信息</string>
   <string name="pref_measure_enabled_summary">选择向 Measure 发送崩溃、ANR、性能指标和会话活动。默认关闭。</string>
   <string name="pref_measure_not_configured">诊断不可用：此版本未配置 Measure API 密钥。</string>
+  <string name="seek_preview_unavailable">预览不可用</string>
+  <string name="seek_preview_cached_time">已缓存 %1$s</string>
+  <string name="pref_seek_preview_style">定位预览样式</string>
+  <string name="seek_preview_style_fullscreen">全屏</string>
+  <string name="seek_preview_style_windowed">窗口</string>
 </resources>

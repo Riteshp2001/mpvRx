@@ -2924,4 +2924,9 @@
   <string name="pref_measure_enabled_title">مشاركة بيانات التشخيص مع Measure</string>
   <string name="pref_measure_enabled_summary">اشترك لإرسال الأعطال وعدم الاستجابة ومقاييس الأداء ونشاط الجلسة إلى Measure. معطل افتراضيًا.</string>
   <string name="pref_measure_not_configured">التشخيص غير متاح: لا يحتوي هذا الإصدار على مفتاح Measure.</string>
+  <string name="seek_preview_unavailable">المعاينة غير متاحة</string>
+  <string name="seek_preview_cached_time">مخزّن مؤقتًا: %1$s</string>
+  <string name="pref_seek_preview_style">نمط معاينة التقديم</string>
+  <string name="seek_preview_style_fullscreen">ملء الشاشة</string>
+  <string name="seek_preview_style_windowed">في نافذة</string>
 </resources>

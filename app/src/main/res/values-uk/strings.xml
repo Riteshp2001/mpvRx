@@ -2834,4 +2834,9 @@
   <string name="pref_measure_enabled_title">Надсилати діагностику до Measure</string>
   <string name="pref_measure_enabled_summary">Дозволити надсилання збоїв, ANR, показників продуктивності та дій сеансу до Measure. Типово вимкнено.</string>
   <string name="pref_measure_not_configured">Діагностика недоступна: у збірці немає ключа API Measure.</string>
+  <string name="seek_preview_unavailable">Попередній перегляд недоступний</string>
+  <string name="seek_preview_cached_time">У кеші: %1$s</string>
+  <string name="pref_seek_preview_style">Стиль попереднього перегляду під час перемотування</string>
+  <string name="seek_preview_style_fullscreen">На весь екран</string>
+  <string name="seek_preview_style_windowed">У вікні</string>
 </resources>

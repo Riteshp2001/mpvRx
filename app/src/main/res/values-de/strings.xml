@@ -2862,4 +2862,9 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_measure_enabled_title">Diagnosedaten mit Measure teilen</string>
   <string name="pref_measure_enabled_summary">Optional Abstürze, ANRs, Leistungsdaten und Sitzungsaktivitäten an Measure senden. Standardmäßig deaktiviert.</string>
   <string name="pref_measure_not_configured">Diagnose nicht verfügbar: Dieser Build hat keinen Measure-API-Schlüssel.</string>
+  <string name="seek_preview_unavailable">Vorschau nicht verfügbar</string>
+  <string name="seek_preview_cached_time">Cache: %1$s</string>
+  <string name="pref_seek_preview_style">Vorschaustil beim Spulen</string>
+  <string name="seek_preview_style_fullscreen">Vollbild</string>
+  <string name="seek_preview_style_windowed">Fenster</string>
 </resources>

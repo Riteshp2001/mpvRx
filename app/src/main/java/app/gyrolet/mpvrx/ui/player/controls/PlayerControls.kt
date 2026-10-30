@@ -9,6 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import app.gyrolet.mpvrx.ui.player.controls.components.WindowedSeekPreview
 import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.declaredMediaKind
@@ -420,6 +421,7 @@ fun PlayerControls(
   val showControlsDrawer by playerPreferences.showControlsDrawer.collectAsState()
   var seekRippleRequest by remember { mutableStateOf<SeekRippleRequest?>(null) }
   val controlsShown by viewModel.controlsShown.collectAsState()
+  val windowedSeekActive by viewModel.isWindowedSeekPreviewActive.collectAsStateWithLifecycle()
   val controlsInteractionEpoch by viewModel.controlsInteractionEpoch.collectAsState()
   val tvPlayFocusRequester = rememberTvInitialFocusRequester(enabled = controlsShown)
   val overlaysFollowVideoZoom by playerPreferences.overlaysFollowVideoZoom.collectAsState()
@@ -471,7 +473,7 @@ fun PlayerControls(
       } == true
   val bufferingState =
     rememberBufferingState(
-      enabled = showLoadingCircle && !isSeeking,
+      enabled = showLoadingCircle && !isSeeking && !windowedSeekActive,
       sessionState = playbackSessionState,
       openingNetworkStream = openingNetworkStream,
     )
@@ -491,6 +493,9 @@ fun PlayerControls(
     }
   // Null until repeated seekbar updates start a scrub; a single tap never pauses playback.
   var seekbarScrubWasPaused by remember { mutableStateOf<Boolean?>(null) }
+  var seekbarWindowedPreviewStarted by remember { mutableStateOf(false) }
+  var seekbarInteractionCancelled by remember { mutableStateOf(false) }
+  var seekbarInteractionGeneration by remember { mutableStateOf(playbackSessionState.generation) }
   val mpvSeeking by PlaybackSession.propBoolean["seeking"].collectAsStateWithLifecycle()
   val isPlayerSeeking = isSeeking || (mpvSeeking ?: false)
   // mpv can remain "seeking" until its cache refills. Only active scrubbing suppresses the spinner;
@@ -697,6 +702,7 @@ fun PlayerControls(
     controlsInteractionEpoch,
     isPlayingForAutoHide,
     isSeeking,
+    windowedSeekActive,
     resetControlsTimestamp,
     areControlsLocked,
     isAudioOnly,
@@ -707,6 +713,7 @@ fun PlayerControls(
       controlsShown &&
       isPlayingForAutoHide &&
       !isSeeking &&
+      !windowedSeekActive &&
       !isPlayerDrawerShown
     ) {
       // Use 2 second delay when controls are locked, otherwise use user preference
@@ -1380,7 +1387,7 @@ fun PlayerControls(
               is PlayerUpdates.ResumedFrom -> showResumeIndicatorOverlay
               is PlayerUpdates.ResumeAvailable -> true
               is PlayerUpdates.StartedAfresh -> showResumeIndicatorOverlay
-              is PlayerUpdates.HorizontalSeek -> showActionFeedbackOverlay
+              is PlayerUpdates.HorizontalSeek -> showActionFeedbackOverlay && !windowedSeekActive
               is PlayerUpdates.FrameInfo -> true // Groups 3/4 — not in scope
               is PlayerUpdates.None -> false
             }
@@ -2096,6 +2103,24 @@ fun PlayerControls(
             }
           }
 
+          WindowedSeekPreview(
+            viewModel = viewModel,
+            durationSeconds = seekbarDuration,
+            isPortrait = isPortrait,
+            onCancel = {
+              seekbarInteractionCancelled = true
+              isSeeking = false
+              seekbarScrubWasPaused = null
+            },
+            modifier = Modifier.constrainAs(createRef()) {
+              start.linkTo(parent.start, spacing.large + if (isPortrait) spacing.large else 62.dp)
+              end.linkTo(parent.end, spacing.large + if (isPortrait) spacing.large else 62.dp)
+              width = Dimension.fillToConstraints
+              if (seekbarVisible) bottom.linkTo(seekbar.top, 8.dp)
+              else bottom.linkTo(parent.bottom, 80.dp)
+            },
+          )
+
           AnimatedVisibility(
             visible =
               seekbarVisible,
@@ -2133,6 +2158,7 @@ fun PlayerControls(
                 if (showChapterIndicators) chapters.toImmutableList() else persistentListOf()
               }
             val skipSegmentsImmutable = remember(skipSegments) { skipSegments.toImmutableList() }
+            val cachedPreviewTimes by viewModel.seekThumbnailTimes.collectAsStateWithLifecycle()
 
             // mpv republishes the cache endpoint several times per second during playback. Reading
             // it at the top of PlayerControls re-ran the whole controls tree (and re-solved its
@@ -2164,6 +2190,11 @@ fun PlayerControls(
               duration = seekbarDuration,
               remaining = effectiveRemaining,
               onValueChange = {
+                if (seekbarInteractionCancelled || seekbarInteractionGeneration != PlaybackSession.state.value.generation ||
+                  (seekbarWindowedPreviewStarted && viewModel.seekThumbnailFrame.value.targetMs == null)
+                ) {
+                  return@SeekbarWithTimers
+                }
                 // Seeker emits one value and then finishes for a tap. Defer decoder preview
                 // and pausing until another value arrives, so a tap commits only one seek.
                 if (isSeeking) {
@@ -2174,19 +2205,38 @@ fun PlayerControls(
                       viewModel.pause()
                     }
                   }
-                  // Stream scrubbing previews the UI only; local files may preview decoder frames.
-                  viewModel.seekPreviewTo(it)
+                  seekbarWindowedPreviewStarted = viewModel.previewWindowedSeekTo(it, seekbarScrubWasPaused ?: true)
+                  if (!seekbarWindowedPreviewStarted) viewModel.seekPreviewTo(it)
                 }
                 isSeeking = true
                 resetControlsTimestamp = System.currentTimeMillis()
               },
               onValueChangeFinished = { targetPosition ->
+                val cancelled = seekbarInteractionCancelled || seekbarInteractionGeneration != PlaybackSession.state.value.generation ||
+                  (seekbarWindowedPreviewStarted && viewModel.seekThumbnailFrame.value.targetMs == null)
+                seekbarWindowedPreviewStarted = false
                 val resumePlayback = seekbarScrubWasPaused == false
                 seekbarScrubWasPaused = null
                 isSeeking = false
                 resetControlsTimestamp = System.currentTimeMillis()
-                viewModel.seekFromScrub(targetPosition, resumePlayback = resumePlayback)
+                if (!cancelled) viewModel.seekFromScrub(targetPosition, resumePlayback = resumePlayback)
                 viewModel.showControls()
+              },
+              onInteractionStarted = {
+                if (!isSeeking) {
+                  seekbarWindowedPreviewStarted = false
+                  seekbarScrubWasPaused = null
+                }
+                seekbarInteractionCancelled = false
+                seekbarInteractionGeneration = PlaybackSession.state.value.generation
+              },
+              onInteractionCancelled = {
+                seekbarInteractionCancelled = true
+                val restoreLegacyPlayback = !seekbarWindowedPreviewStarted && seekbarScrubWasPaused == false
+                viewModel.cancelWindowedSeekPreview()
+                if (restoreLegacyPlayback) viewModel.unpause()
+                seekbarScrubWasPaused = null
+                isSeeking = false
               },
               timersInverted = Pair(false, invertDuration),
               durationTimerOnCLick = {
@@ -2203,6 +2253,7 @@ fun PlayerControls(
               loopStart = abLoopA?.toFloat(),
               loopEnd = abLoopB?.toFloat(),
               bufferDuration = stableDemuxerCacheTime.takeIf { showBufferedRange && it > 0f },
+              cachedPreviewTimesMs = cachedPreviewTimes,
               isPortrait = isPortrait,
             )
           }

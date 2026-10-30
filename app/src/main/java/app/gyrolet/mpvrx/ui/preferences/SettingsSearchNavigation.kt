@@ -134,6 +134,7 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_background_playback_behavior, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced_notification_style, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.show_splash_ovals_on_double_tap_to_seek, itemIndex = 3),
+        SettingsSearchListAnchor(titleRes = R.string.pref_seek_preview_style, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.show_time_on_double_tap_to_seek, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_player_use_precise_seeking, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_player_custom_skip_duration_title, itemIndex = 3),

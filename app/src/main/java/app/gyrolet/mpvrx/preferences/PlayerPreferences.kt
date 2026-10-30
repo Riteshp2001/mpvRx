@@ -9,6 +9,7 @@
 
 package app.gyrolet.mpvrx.preferences
 
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.DependentBooleanPreference
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
@@ -50,6 +51,11 @@ enum class PlayerClockFormat(
   TWENTY_FOUR_HOUR("24 hour"),
 }
 
+enum class SeekPreviewStyle(val titleRes: Int) {
+  FullScreen(R.string.seek_preview_style_fullscreen),
+  Windowed(R.string.seek_preview_style_windowed),
+}
+
 class PlayerPreferences(
   preferenceStore: PreferenceStore,
 ) {
@@ -60,6 +66,7 @@ class PlayerPreferences(
   val holdForMultipleSpeed = preferenceStore.getFloat("hold_for_multiple_speed", 2f)
   val showDoubleTapOvals = preferenceStore.getBoolean("show_double_tap_ovals", true)
   val showSeekTimeWhileSeeking = preferenceStore.getBoolean("show_seek_time_while_seeking", true)
+  val seekPreviewStyle = preferenceStore.getEnum("seek_preview_style", SeekPreviewStyle.FullScreen)
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
 
   val showBufferedRange = preferenceStore.getBoolean("show_buffered_range", true)

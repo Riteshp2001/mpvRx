@@ -9,6 +9,10 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+import app.gyrolet.mpvrx.domain.seekpreview.SeekPreviewFrame
+import app.gyrolet.mpvrx.domain.seekpreview.SeekPreviewPolicy
+import app.gyrolet.mpvrx.domain.seekpreview.SeekPreviewStore
+import app.gyrolet.mpvrx.preferences.SeekPreviewStyle
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -2344,6 +2348,14 @@ fun restartFromBeginning() {
 
   init {
     syncAmbientParamsForStyle(_ambientStyle.value)
+    viewModelScope.launch {
+      playerPreferences.seekPreviewStyle.changes().collect { style ->
+        if (style != SeekPreviewStyle.Windowed && (seekThumbnailTarget != null || seekThumbnailStore != null)) {
+          cancelWindowedSeekPreview()
+          releaseSeekThumbnailStore()
+        }
+      }
+    }
     // Clean up any stale ambient shader files left in cacheDir from previous abnormal exits
     appContext.cacheDir.listFiles { _, name -> name.startsWith("ambient_") && name.endsWith(".glsl") }
       ?.forEach { runCatching { it.delete() } }
@@ -2355,6 +2367,7 @@ fun restartFromBeginning() {
         .distinctUntilChanged()
         .drop(1)
         .collectLatest {
+          releaseSeekThumbnailStore()
           lyricsLoadJob?.cancel()
           lyricsTranslateJob?.cancel()
           lastLyricsLoadRequest = null
@@ -3433,6 +3446,20 @@ fun restartFromBeginning() {
   private val seekPreviewLock = Any()
   private var pendingSeekPreviewPosition: Float? = null
   private var seekPreviewIsFrame = false
+  private val _seekThumbnailFrame = MutableStateFlow(SeekPreviewFrame())
+  internal val seekThumbnailFrame = _seekThumbnailFrame.asStateFlow()
+  internal val isWindowedSeekPreviewActive = _seekThumbnailFrame
+    .map { it.targetMs != null }
+    .distinctUntilChanged()
+    .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+  private val _seekThumbnailTimes = MutableStateFlow<List<Long>>(emptyList())
+  internal val seekThumbnailTimes = _seekThumbnailTimes.asStateFlow()
+  private var seekThumbnailTarget: Float? = null
+  private var seekThumbnailWasPaused: Boolean? = null
+  private var seekThumbnailGeneration = -1L
+  private var seekThumbnailStore: SeekPreviewStore? = null
+  private var seekThumbnailInitJob: Job? = null
+  private var seekThumbnailCollectionJob: Job? = null
 
   // Move the thumb immediately while a native seek runs. The poller resumes when an exact
   // target lands or the bounded hold expires, allowing fast keyframe seeks to settle too.
@@ -3448,6 +3475,7 @@ fun restartFromBeginning() {
   }
 
   private fun shouldHoldOptimisticPosition(reportedPosition: Float): Boolean {
+    if (seekThumbnailTarget != null && PlaybackSession.isCurrentGeneration(seekThumbnailGeneration)) return true
     val now = android.os.SystemClock.elapsedRealtime()
     if (now >= seekFeedbackHoldUntilElapsed) return false
     if (kotlin.math.abs(reportedPosition - seekFeedbackTargetPosition) <= seekFeedbackTolerance()) {
@@ -5184,6 +5212,8 @@ fun restartFromBeginning() {
    * Cancels UI-originated native work before PlayerActivity releases its Surface.
    */
   fun prepareForPlayerTeardown() {
+    cancelWindowedSeekPreview(resumePlayback = false)
+    releaseSeekThumbnailStore()
     cancelSeekPreview()
     cancelFrameSeek()
     seekCommitJob?.cancel()
@@ -5212,6 +5242,112 @@ fun restartFromBeginning() {
 
   // ==================== Seeking ====================
 
+  internal fun previewWindowedSeekTo(position: Float, wasPaused: Boolean): Boolean {
+    if (playerPreferences.seekPreviewStyle.get() != SeekPreviewStyle.Windowed) return false
+    if (isAudioOnly.value) return false
+    val durationSeconds = _preciseDuration.value.takeIf { it > 0f } ?: duration?.toFloat() ?: return false
+    val targetMs = SeekPreviewPolicy.targetTimeMs(position, durationSeconds) ?: return false
+    val session = PlaybackSession.state.value
+    if (session.currentItem == null || session.phase != PlaybackPhase.READY) return false
+    if (seekThumbnailGeneration != session.generation) releaseSeekThumbnailStore()
+    if (seekThumbnailWasPaused == null) {
+      seekThumbnailWasPaused = wasPaused
+      seekThumbnailGeneration = session.generation
+    }
+    cancelSeekPreview()
+    seekThumbnailTarget = position
+    previewAbsoluteSeekPositionOptimistically(position.toDouble())
+    val store = seekThumbnailStore
+    if (store != null) {
+      store.request(targetMs)
+      return true
+    }
+    _seekThumbnailFrame.value = SeekPreviewFrame(targetMs = targetMs, loading = true)
+    if (seekThumbnailInitJob?.isActive == true) return true
+    val sourceHint = host?.currentThumbnailSource()
+    seekThumbnailInitJob = viewModelScope.launch {
+      val resolvedSource = withContext(Dispatchers.IO) {
+        val source = sequenceOf(
+          sourceHint,
+          PlaybackSession.getPropertyString("stream-open-filename"),
+          session.currentItem.playableUri,
+          session.currentItem.originalUri,
+        ).filterNotNull().firstOrNull { candidate ->
+          candidate.isNotBlank() && Uri.parse(candidate).scheme?.lowercase() in setOf(null, "file", "content", "http", "https")
+        } ?: return@withContext null
+        if (!PlaybackSession.isCurrentGeneration(session.generation)) return@withContext null
+        source to PlaybackSession.thumbnailRequestHeaders()
+      }
+      if (!PlaybackSession.isCurrentGeneration(session.generation) || seekThumbnailTarget == null) {
+        return@launch
+      }
+      if (resolvedSource == null) {
+        _seekThumbnailFrame.update { it.copy(loading = false) }
+        return@launch
+      }
+      val created = SeekPreviewStore(
+        context = appContext,
+        source = resolvedSource.first,
+        headers = resolvedSource.second,
+        identity = "${session.currentItem.stableId}|${resolvedSource.first}|$durationSeconds",
+        durationMs = (durationSeconds.toDouble() * 1_000.0).toLong(),
+        isCurrent = { PlaybackSession.isCurrentGeneration(session.generation) },
+        playbackNeedsPriority = {
+          PlaybackSession.state.value.isBuffering || PlaybackSession.propBoolean["seeking"].value == true
+        },
+      )
+      seekThumbnailStore = created
+      seekThumbnailCollectionJob = launch {
+        launch { created.cachedTimes.collect { _seekThumbnailTimes.value = it } }
+        created.frame.collect { frame ->
+          if (seekThumbnailStore === created && seekThumbnailTarget != null && frame.targetMs != null) {
+            _seekThumbnailFrame.value = frame
+          }
+        }
+      }
+      seekThumbnailTarget?.let { target -> created.request(SeekPreviewPolicy.targetTimeMs(target, durationSeconds)) }
+    }
+    return true
+  }
+
+  internal fun cancelWindowedSeekPreview(resumePlayback: Boolean = true) {
+    val wasPaused = seekThumbnailWasPaused
+    val generation = seekThumbnailGeneration
+    dismissSeekThumbnail()
+    if (wasPaused == null || !PlaybackSession.isCurrentGeneration(generation)) return
+    seekFeedbackHoldUntilElapsed = 0L
+    PlaybackSession.propDouble["time-pos"].value?.takeIf { it.isFinite() }?.let { _precisePosition.value = it.toFloat() }
+    if (resumePlayback && !wasPaused) {
+      viewModelScope.launch(playbackStateDispatcher) {
+        if (!PlaybackSession.isCurrentGeneration(generation)) return@launch
+        val granted = withContext(Dispatchers.Main) { host?.requestAudioFocus() ?: false }
+        if (granted && PlaybackSession.setPausedForGeneration(generation, false)) {
+          syncplayManager.updatePlayerState(precisePosition.value.toDouble(), false, doSeek = false)
+        }
+      }
+    }
+    playerUpdate.update { if (it is PlayerUpdates.HorizontalSeek) PlayerUpdates.None else it }
+  }
+
+  private fun dismissSeekThumbnail() {
+    seekThumbnailTarget = null
+    seekThumbnailWasPaused = null
+    seekThumbnailStore?.request(null)
+    _seekThumbnailFrame.value = SeekPreviewFrame()
+  }
+
+  private fun releaseSeekThumbnailStore() {
+    dismissSeekThumbnail()
+    seekThumbnailInitJob?.cancel()
+    seekThumbnailInitJob = null
+    seekThumbnailCollectionJob?.cancel()
+    seekThumbnailCollectionJob = null
+    seekThumbnailStore?.close()
+    seekThumbnailStore = null
+    seekThumbnailGeneration = -1L
+    _seekThumbnailTimes.value = emptyList()
+  }
+
   fun seekBy(offset: Int) {
     cancelFrameSeek()
     coalesceSeek(offset)
@@ -5219,7 +5355,22 @@ fun restartFromBeginning() {
   }
 
   /** TV scrubbing never consults the phone's touch/double-tap mappings or saved duration. */
+  private fun previewTvSeek(offset: Int): Boolean {
+    val startingPreview = seekThumbnailTarget == null
+    val wasPaused = seekThumbnailWasPaused ?: PlaybackSession.state.value.paused
+    if (previewWindowedSeekTo((_precisePosition.value + offset).coerceAtLeast(0f), wasPaused)) {
+      if (startingPreview && !wasPaused) pause()
+      return true
+    }
+    return false
+  }
+
+  internal fun seekFromTvSeekbar(offset: Int) {
+    if (!previewTvSeek(offset)) seekBy(offset)
+  }
+
   fun seekFromTvRemote(offset: Int) {
+    if (previewTvSeek(offset)) return
     tvSeekFeedbackJob?.cancel()
     _seekState.update { state ->
       val sameDirection = state.isForwards == (offset > 0)
@@ -5232,6 +5383,11 @@ fun restartFromBeginning() {
       _seekState.value = SeekState()
     }
     seekBy(offset)
+  }
+
+  internal fun finishTvSeek(cancelled: Boolean = false) {
+    val target = seekThumbnailTarget ?: return
+    if (cancelled) cancelWindowedSeekPreview() else seekFromScrub(target)
   }
 
   /**
@@ -5317,7 +5473,9 @@ fun restartFromBeginning() {
       Log.w(TAG, "Ignoring a non-finite scrub target")
       return
     }
-    commitSeek(position.toInt(), "absolute", resumePlayback)
+    val shouldResume = resumePlayback || seekThumbnailWasPaused == false
+    dismissSeekThumbnail()
+    commitSeek(position.toInt(), "absolute", shouldResume)
   }
 
   private fun commitSeek(position: Int, seekMode: String, resumePlayback: Boolean = false) {
@@ -8548,6 +8706,7 @@ fun restartFromBeginning() {
   }
 
   override fun onCleared() {
+    releaseSeekThumbnailStore()
     if (hostedInBrowser) {
       // The core, its shaders, subtitle styling and Syncplay bindings belong to the playback owner.
       runCatching { metadataCache.evictAll() }
