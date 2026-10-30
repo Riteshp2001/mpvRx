@@ -100,11 +100,6 @@ object MediaInfoOps {
     uri: Uri,
     fileName: String,
   ): Result<String> =
-  suspend fun generateTextOutput(
-    context: Context,
-    uri: Uri,
-    fileName: String,
-  ): Result<String> =
     withContext(Dispatchers.IO) {
       if (!Process.is64Bit()) {
         return@withContext runCatching {
@@ -641,12 +636,6 @@ object MediaInfoOps {
             retriever.release()
           }
         } ?: 0
-      }.getOrDefault(0)
-    }
-} finally {
-          mi.Close()
-          pfd.close()
-        }
       }.getOrDefault(0)
     }
 }
