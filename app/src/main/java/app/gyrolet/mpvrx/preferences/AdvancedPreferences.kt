@@ -19,6 +19,7 @@ class AdvancedPreferences(
 ) {
   companion object {
     const val AUTO_BACKUP_ENABLED_KEY = "auto_backup_enabled"
+    const val MEASURE_ENABLED_KEY = "measure_diagnostics_opt_in"
     // Kept only to ignore backups created by the short-lived separate-folder implementation.
     const val AUTO_BACKUP_FOLDER_URI_KEY = "auto_backup_folder_uri"
     /**
@@ -38,6 +39,9 @@ class AdvancedPreferences(
   val debugLogSizeMb = preferenceStore.getInt("debug_log_size_mb", 3)
 
   val autoBackupEnabled = preferenceStore.getBoolean(AUTO_BACKUP_ENABLED_KEY, false)
+
+  /** This is deliberately false for every fresh install; only a user can grant consent. */
+  val measureEnabled = preferenceStore.getBoolean(MEASURE_ENABLED_KEY, false)
 
   val enabledStatisticsPage = preferenceStore.getInt("enabled_stats_page", 0)
 

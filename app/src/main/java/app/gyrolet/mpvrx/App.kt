@@ -36,6 +36,7 @@ import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SettingsRestoreGuard
+import app.gyrolet.mpvrx.utils.telemetry.MeasureTelemetry
 import app.gyrolet.mpvrx.remote.TvInputDispatcher
 import app.gyrolet.mpvrx.remote.TvRemoteServer
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
@@ -163,6 +164,8 @@ class App :
         app.gyrolet.mpvrx.di.DownloadModule,
       )
     }
+    // Third-party diagnostics require consent; disabled users do not start collection.
+    MeasureTelemetry.initialize(this, getKoin().get<AdvancedPreferences>().measureEnabled.get())
     if (!BuildConfig.MPV_SUPPORTS_VULKAN) {
       getKoin().get<DecoderPreferences>().useVulkan.set(false)
     }

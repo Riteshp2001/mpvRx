@@ -2859,4 +2859,13 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_ignore_audio_focus_summary">Seguir reproduciendo audio y vídeo junto con otras aplicaciones sin pausar ni bajar el volumen</string>
   <string name="pref_audio_spatial_title">Audio espacial</string>
   <string name="pref_audio_spatial_summary">Amplía las pistas estéreo para una experiencia más envolvente</string>
+  <string name="pref_section_measure">Diagnóstico y privacidad</string>
+  <string name="pref_measure_enabled_title">Compartir diagnósticos con Measure</string>
+  <string name="pref_measure_enabled_summary">Activa el envío de fallos, ANR, métricas de rendimiento y actividad de sesión a Measure. Desactivado por defecto.</string>
+  <string name="pref_measure_not_configured">Diagnósticos no disponibles: esta compilación no tiene clave de Measure.</string>
+  <string name="pref_measure_test_title">Provocar fallo de prueba</string>
+  <string name="pref_measure_test_summary">Cerrar mpvRx intencionalmente para comprobar el informe. Ábrelo de nuevo después.</string>
+  <string name="pref_measure_test_confirm_title">¿Provocar un fallo de mpvRx?</string>
+  <string name="pref_measure_test_confirm_message">Esto cerrará la aplicación con un fallo intencional. Úsalo solo para comprobar Measure.</string>
+  <string name="pref_measure_test_confirm_action">Provocar fallo</string>
 </resources>

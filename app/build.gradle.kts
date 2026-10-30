@@ -67,6 +67,14 @@ plugins {
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
   alias(libs.plugins.ktlint)
+  id("sh.measure.android.gradle") version "0.14.0" apply false
+}
+
+// Supply the ingestion key through a local Gradle property or the CI secret.
+val measureApiKey =
+  providers.gradleProperty("measureApiKey").orElse(providers.environmentVariable("MEASURE_API_KEY")).getOrElse("")
+if (measureApiKey.isNotBlank()) {
+  apply(plugin = "sh.measure.android.gradle")
 }
 
 androidComponents {
@@ -84,6 +92,8 @@ android {
   ndkVersion = "27.3.13750724"
 
   defaultConfig {
+    manifestPlaceholders["measureApiKey"] = measureApiKey
+    buildConfigField("boolean", "MEASURE_CONFIGURED", measureApiKey.isNotBlank().toString())
     applicationId = "app.gyrolet.mpvrx"
     minSdk = 26
     targetSdk = 36
@@ -360,6 +370,7 @@ baselineProfile {
 }
 
 dependencies {
+  implementation("sh.measure:measure-android:0.22.0")
   baselineProfile(project(":baselineprofile"))
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.ext.junit)

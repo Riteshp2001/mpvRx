@@ -54,6 +54,7 @@ jobs:
             abis: ''
             package: aab
     env:
+      MEASURE_API_KEY: ${{ secrets.MEASURE_API_KEY }}
       DISTRIBUTION: ${{ matrix.distribution.id }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
       APK_DIR: ${{ matrix.distribution.dir }}

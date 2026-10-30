@@ -2921,4 +2921,13 @@
   <string name="pref_ignore_audio_focus_summary">متابعة تشغيل الصوت والفيديو مع التطبيقات الأخرى دون إيقاف مؤقت أو خفض مستوى الصوت</string>
   <string name="pref_audio_spatial_title">الصوت المكاني</string>
   <string name="pref_audio_spatial_summary">يوسّع نطاق المسارات الستيريو لتجربة صوتية أكثر غمراً</string>
+  <string name="pref_section_measure">التشخيص والخصوصية</string>
+  <string name="pref_measure_enabled_title">مشاركة بيانات التشخيص مع Measure</string>
+  <string name="pref_measure_enabled_summary">اشترك لإرسال الأعطال وعدم الاستجابة ومقاييس الأداء ونشاط الجلسة إلى Measure. معطل افتراضيًا.</string>
+  <string name="pref_measure_not_configured">التشخيص غير متاح: لا يحتوي هذا الإصدار على مفتاح Measure.</string>
+  <string name="pref_measure_test_title">تشغيل تعطل تجريبي</string>
+  <string name="pref_measure_test_summary">إغلاق mpvRx عمدًا لاختبار الإبلاغ. افتح التطبيق مجددًا بعد ذلك.</string>
+  <string name="pref_measure_test_confirm_title">هل تريد تعطيل mpvRx للاختبار؟</string>
+  <string name="pref_measure_test_confirm_message">سيؤدي ذلك إلى تعطل التطبيق عمدًا. استخدمه فقط للتحقق من وصول التقرير إلى Measure.</string>
+  <string name="pref_measure_test_confirm_action">تعطيل التطبيق</string>
 </resources>

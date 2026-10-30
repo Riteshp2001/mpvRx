@@ -2831,4 +2831,13 @@
   <string name="pref_ignore_audio_focus_summary">Продовжувати відтворення аудіо й відео разом з іншими програмами без паузи та зниження гучності</string>
   <string name="pref_audio_spatial_title">Просторовий звук</string>
   <string name="pref_audio_spatial_summary">Розширює стереозвучання для глибшого занурення</string>
+  <string name="pref_section_measure">Діагностика та конфіденційність</string>
+  <string name="pref_measure_enabled_title">Надсилати діагностику до Measure</string>
+  <string name="pref_measure_enabled_summary">Дозволити надсилання збоїв, ANR, показників продуктивності та дій сеансу до Measure. Типово вимкнено.</string>
+  <string name="pref_measure_not_configured">Діагностика недоступна: у збірці немає ключа API Measure.</string>
+  <string name="pref_measure_test_title">Спричинити тестовий збій</string>
+  <string name="pref_measure_test_summary">Навмисно закрити mpvRx для перевірки звітів. Після цього відкрийте застосунок знову.</string>
+  <string name="pref_measure_test_confirm_title">Спричинити збій mpvRx для перевірки?</string>
+  <string name="pref_measure_test_confirm_message">Застосунок навмисно завершиться з помилкою. Використовуйте лише для перевірки Measure.</string>
+  <string name="pref_measure_test_confirm_action">Спричинити збій</string>
 </resources>

@@ -2859,4 +2859,13 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_ignore_audio_focus_summary">Continuer à lire les contenus audio et vidéo avec les autres applications sans pause ni baisse du volume</string>
   <string name="pref_audio_spatial_title">Audio spatial</string>
   <string name="pref_audio_spatial_summary">Élargit les pistes stéréo pour une expérience plus immersive</string>
+  <string name="pref_section_measure">Diagnostic et confidentialité</string>
+  <string name="pref_measure_enabled_title">Partager les diagnostics avec Measure</string>
+  <string name="pref_measure_enabled_summary">Autoriser l\'envoi des plantages, ANR, mesures de performance et activités de session à Measure. Désactivé par défaut.</string>
+  <string name="pref_measure_not_configured">Diagnostics indisponibles : cette version ne contient pas de clé Measure.</string>
+  <string name="pref_measure_test_title">Déclencher un plantage test</string>
+  <string name="pref_measure_test_summary">Fermer volontairement mpvRx pour vérifier le signalement. Rouvrez ensuite l\'application.</string>
+  <string name="pref_measure_test_confirm_title">Faire planter mpvRx pour un test ?</string>
+  <string name="pref_measure_test_confirm_message">L\'application va planter volontairement. À utiliser uniquement pour vérifier le signalement dans Measure.</string>
+  <string name="pref_measure_test_confirm_action">Faire planter</string>
 </resources>

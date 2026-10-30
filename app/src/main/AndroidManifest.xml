@@ -63,6 +63,9 @@
         android:hardwareAccelerated="true"
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="35">
+        <!-- Manifest placeholder is supplied from MEASURE_API_KEY at build time. -->
+        <meta-data android:name="sh.measure.android.API_KEY" android:value="${measureApiKey}" />
+        <meta-data android:name="sh.measure.android.API_URL" android:value="https://ingest.measure.sh" />
         <!-- Initialize WorkManager on demand, outside the startup rendering path. -->
         <provider
             android:name="androidx.startup.InitializationProvider"

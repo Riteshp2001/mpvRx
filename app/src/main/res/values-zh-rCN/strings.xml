@@ -2841,4 +2841,13 @@
   <string name="player_layout_shared_landscape_hint">所有横屏操作区域共用此布局。</string>
   <string name="pref_audio_spatial_title">空间音频</string>
   <string name="pref_audio_spatial_summary">拓宽立体声音场，带来更沉浸的听觉体验</string>
+  <string name="pref_section_measure">诊断与隐私</string>
+  <string name="pref_measure_enabled_title">与 Measure 共享诊断信息</string>
+  <string name="pref_measure_enabled_summary">选择向 Measure 发送崩溃、ANR、性能指标和会话活动。默认关闭。</string>
+  <string name="pref_measure_not_configured">诊断不可用：此版本未配置 Measure API 密钥。</string>
+  <string name="pref_measure_test_title">触发测试崩溃</string>
+  <string name="pref_measure_test_summary">有意关闭 mpvRx 以验证报告功能。之后请重新打开应用。</string>
+  <string name="pref_measure_test_confirm_title">要让 mpvRx 测试崩溃吗？</string>
+  <string name="pref_measure_test_confirm_message">这将使应用有意崩溃。仅用于验证 Measure 是否收到崩溃报告。</string>
+  <string name="pref_measure_test_confirm_action">使应用崩溃</string>
 </resources>

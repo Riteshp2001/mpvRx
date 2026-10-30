@@ -2891,4 +2891,13 @@
   <string name="pref_ignore_audio_focus_summary">Продолжать воспроизведение аудио и видео вместе с другими приложениями без паузы и снижения громкости</string>
   <string name="pref_audio_spatial_title">Пространственный звук</string>
   <string name="pref_audio_spatial_summary">Расширяет стереозвучание для более полного погружения</string>
+  <string name="pref_section_measure">Диагностика и конфиденциальность</string>
+  <string name="pref_measure_enabled_title">Отправлять диагностику в Measure</string>
+  <string name="pref_measure_enabled_summary">Разрешить отправку сбоев, ANR, показателей производительности и действий сеанса в Measure. По умолчанию отключено.</string>
+  <string name="pref_measure_not_configured">Диагностика недоступна: в сборке нет ключа API Measure.</string>
+  <string name="pref_measure_test_title">Вызвать тестовый сбой</string>
+  <string name="pref_measure_test_summary">Принудительно закрыть mpvRx для проверки отчетов. Затем снова откройте приложение.</string>
+  <string name="pref_measure_test_confirm_title">Вызвать сбой mpvRx для проверки?</string>
+  <string name="pref_measure_test_confirm_message">Приложение намеренно завершится с ошибкой. Используйте только для проверки Measure.</string>
+  <string name="pref_measure_test_confirm_action">Вызвать сбой</string>
 </resources>

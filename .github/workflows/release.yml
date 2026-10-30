@@ -46,6 +46,7 @@ jobs:
         id: tag
         shell: bash
         env:
+      MEASURE_API_KEY: ${{ secrets.MEASURE_API_KEY }}
           INPUT_TAG: ${{ inputs.tag_name }}
           PUSH_MESSAGE: ${{ github.event.head_commit.message }}
         run: |

@@ -44,6 +44,7 @@ jobs:
         id: activity
         shell: bash
         env:
+      MEASURE_API_KEY: ${{ secrets.MEASURE_API_KEY }}
           EVENT_NAME: ${{ github.event_name }}
           PREVIEW_MANIFEST_URL: https://riteshp2001.github.io/mpvRx/latest.json
         run: |

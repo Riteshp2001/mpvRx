@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import app.gyrolet.mpvrx.preferences.SettingsRestoreGuard
+import app.gyrolet.mpvrx.utils.telemetry.MeasureTelemetry
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
@@ -55,8 +56,12 @@ class GlobalExceptionHandler(
     } catch (error: Throwable) {
       runCatching { Log.e(TAG, "Unable to open crash recovery", error) }
       // The platform handler records the crash and normally ends the process itself.
-      fallback?.let { runCatching { it.uncaughtException(t, e) } }
+      if (!MeasureTelemetry.isEnabled(context)) fallback?.let { runCatching { it.uncaughtException(t, e) } }
     } finally {
+      // mpvRx retains its recovery screen; Measure also receives opted-in fatal crashes.
+      if (MeasureTelemetry.isEnabled(context)) {
+        fallback?.let { runCatching { it.uncaughtException(t, e) } }
+      }
       exitProcess(10)
     }
   }
