@@ -1988,15 +1988,6 @@ private fun SearchResultsContent(
   }
 }
 
-/**
- * Searches for folders and videos matching the query
- * Returns FileSystemItem results containing matching folders and videos
- */
-
-object SearchManager {
-  val engine = MediaSearchEngine
-}
-
 /** Indexes the folders already on screen, so hidden (dot/.nomedia) folders stay searchable. */
 private suspend fun buildSearchIndex(
   context: Context,
@@ -2013,7 +2004,7 @@ private suspend fun buildSearchIndex(
             includeAudioOverride = if (audioOnly) true else null,
           )
     }
-  SearchManager.engine.buildIndex(folders, videosByFolder)
+  MediaSearchEngine.buildIndex(folders, videosByFolder)
 }
 
 private suspend fun searchFoldersAndVideos(
@@ -2025,7 +2016,7 @@ private suspend fun searchFoldersAndVideos(
     Log.d("FolderListScreen", "Searching for: $query")
 
     // Get all search matches from the optimized engine
-    val matches = SearchManager.engine.search(query, limit = 50)
+    val matches = MediaSearchEngine.search(query, limit = 50)
 
     for (item in matches) {
       when (item) {

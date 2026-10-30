@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
 object PlaybackPerformanceTrace : MPVLib.EventObserver {
   private const val TAG = "PlaybackPerf"
   private const val TRACE_PREFIX = "mpvRx:"
-  private val sectionStartsNs = ConcurrentHashMap<String, Long>()
+  private val sectionStartsNs by lazy { ConcurrentHashMap<String, Long>() }
 
   fun mark(
     name: String,
@@ -42,15 +42,17 @@ object PlaybackPerformanceTrace : MPVLib.EventObserver {
   }
 
   fun begin(name: String) {
-    sectionStartsNs[name] = SystemClock.elapsedRealtimeNanos()
     Trace.beginSection(TRACE_PREFIX + name)
-    if (BuildConfig.DEBUG) Log.d(TAG, "BEGIN $name")
+    if (BuildConfig.DEBUG) {
+      sectionStartsNs[name] = SystemClock.elapsedRealtimeNanos()
+      Log.d(TAG, "BEGIN $name")
+    }
   }
 
   fun end(name: String) {
     Trace.endSection()
-    val startedAt = sectionStartsNs.remove(name)
     if (BuildConfig.DEBUG) {
+      val startedAt = sectionStartsNs.remove(name)
       val durationMs = startedAt?.let { (SystemClock.elapsedRealtimeNanos() - it) / 1_000_000.0 }
       Log.d(TAG, if (durationMs == null) "END $name" else "END $name durationMs=$durationMs")
     }

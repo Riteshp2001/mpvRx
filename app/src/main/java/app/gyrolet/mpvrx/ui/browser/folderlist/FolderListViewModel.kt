@@ -99,8 +99,6 @@ class FolderListViewModel(
   private val _scanStatus = MutableStateFlow<String?>(null)
   val scanStatus: StateFlow<String?> = _scanStatus.asStateFlow()
 
-  private val _isEnriching = MutableStateFlow(false)
-  val isEnriching: StateFlow<Boolean> = _isEnriching.asStateFlow()
 
   // Track the current scan job to prevent concurrent scans
   private var currentScanJob: Job? = null
@@ -696,7 +694,6 @@ class FolderListViewModel(
             listingReady.complete(Unit)
             if (isActive) {
               _isLoading.value = false
-              _isEnriching.value = false
               _scanStatus.value = null
             }
           }
@@ -835,7 +832,6 @@ class FolderListViewModel(
 
           val finalFolders = if (needsDurationEnrichment) {
             if (!silent) {
-              _isEnriching.value = true
               _scanStatus.value = "Processing metadata..."
             }
             val enrichedFolders =
@@ -861,7 +857,6 @@ class FolderListViewModel(
           }
 
           if (MetadataRetrieval.isFolderMetadataNeeded(browserPreferences)) {
-            _isEnriching.value = false
             _scanStatus.value = null
             enrichDeferredFolderDurations(finalFolders, hiddenFolderKeys)
           }
@@ -876,7 +871,6 @@ class FolderListViewModel(
           listingReady.complete(Unit)
           if (isActive) {
             _isLoading.value = false
-            _isEnriching.value = false
             _scanStatus.value = null
           }
         }

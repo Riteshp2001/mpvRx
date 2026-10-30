@@ -807,8 +807,6 @@ object MainScreen : Screen, TvEdgeToEdgeScreen {
                   } else {
                     MusicLibraryContent(
                       musicViewModel = musicLibraryViewModel,
-                      jellyfinViewModel = jellyfinViewModel,
-                      navidromeViewModel = navidromeViewModel,
                     )
                   }
                 }

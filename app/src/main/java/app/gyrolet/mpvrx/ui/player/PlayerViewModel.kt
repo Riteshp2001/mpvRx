@@ -230,7 +230,6 @@ class PlayerViewModel(
   private val anime4kManager: Anime4KManager by inject()
   private val hdrToysManager: HdrToysManager by inject()
   private val json: Json by inject()
-  private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
   private val playbackBookmarkDao: app.gyrolet.mpvrx.database.dao.PlaybackBookmarkDao by inject()
   private val aiService: app.gyrolet.mpvrx.repository.ai.AiService by inject()
   private val subtitleGenerationService: SubtitleGenerationService by inject()
@@ -1053,7 +1052,6 @@ class PlayerViewModel(
   }
 
   // Audio player UI state
-  val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
   // The style and artwork/visualizer display choice are persisted via audioPreferences.
   val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.showAudioVisualizer.get())
   private val restoredEqualizerBands = audioPreferences.equalizerBands.get()
@@ -2260,11 +2258,11 @@ fun restartFromBeginning() {
   @Volatile private var lastCompiledFxSpec: FxAmbientShaderSpec? = null
 
   /**
-   * Latest device thermal headroom reading ([0f] = at thermal limit, [1f] = cool).
+   * Latest fraction of the thermal envelope in use (1f = severe-throttling threshold).
    * Sampled every 10 s by the thermal-monitor coroutine and used to cap the ambient
    * shader sample budget before the SoC enters hard throttling.
    */
-  @Volatile private var thermalHeadroom: Float = 1.0f
+  @Volatile private var thermalHeadroom: Float = 0.0f
 
   private val _isAmbientBatterySaver = MutableStateFlow(playerPreferences.ambientBatterySaver.get())
   val isAmbientBatterySaver: StateFlow<Boolean> = _isAmbientBatterySaver.asStateFlow()
@@ -2473,17 +2471,17 @@ fun restartFromBeginning() {
     }
 
     // ── Thermal monitor ────────────────────────────────────────────────────────
-    // Sample Android's PowerManager.getThermalHeadroom() every 10 s during active
-    // playback.  When thermal margin shrinks the ambient shader sample budget is
-    // capped automatically, preventing the device from entering hard CPU/GPU throttling
-    // which would otherwise manifest as dropped frames and accelerated battery drain.
+    // Sample only while ambient is active. Recompile when a budget boundary is crossed;
+    // small changes within one tier must not rebuild shaders or hide a threshold crossing.
     viewModelScope.launch(playbackStateDispatcher) {
       while (isActive) {
-        if (_isMpvCoreReady.value && paused == false) {
+        if (_isMpvCoreReady.value && paused == false && _isAmbientEnabled.value) {
           val newHeadroom = ThermalMonitor.getHeadroom(appContext)
-          if (kotlin.math.abs(newHeadroom - thermalHeadroom) > 0.08f) {
+          if (newHeadroom != thermalHeadroom) {
+            val oldBudget = ThermalMonitor.clampAmbientSampleBudget(_ambientBlurSamples.value, thermalHeadroom)
+            val newBudget = ThermalMonitor.clampAmbientSampleBudget(_ambientBlurSamples.value, newHeadroom)
             thermalHeadroom = newHeadroom
-            if (_isAmbientEnabled.value) {
+            if (newBudget != oldBudget) {
               // Invalidate both spec caches so the new budget cap is applied on the
               // next scheduled ambient update.
               lastCompiledSpec = null
@@ -3525,8 +3523,6 @@ fun restartFromBeginning() {
       "http", "https", "ftp", "ftps", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh",
       "srt", "rist", "udp", "tcp", NetworkPlaybackUri.SCHEME, XtreamPlaybackUri.SCHEME,
     )
-    val MPV_ONLY_PSEUDO_PROTOCOLS =
-      setOf("fd", "fdclose", "edl", "memory", "null", "av", "lavf", "archive", "slice", "mf", "hex", "bd", "dvd", "dvb")
     const val PLAYLIST_METADATA_PREFETCH_RADIUS = 40
     const val PLAYLIST_METADATA_PREFETCH_LIMIT = 120
     const val PLAYLIST_NETWORK_METADATA_PREFETCH_RADIUS = 3

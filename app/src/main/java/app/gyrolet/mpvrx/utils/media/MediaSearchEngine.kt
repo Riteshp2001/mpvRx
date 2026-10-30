@@ -27,9 +27,13 @@ private data class FolderIndex(
 )
 
 object MediaSearchEngine {
-  // Maps file/folder paths to their pre-processed index data
-  private val videoMap = HashMap<String, VideoIndex>()
-  private val folderMap = HashMap<String, FolderIndex>()
+  private data class Index(
+    val videos: List<VideoIndex> = emptyList(),
+    val folders: List<FolderIndex> = emptyList(),
+  )
+
+  // Publish a complete immutable snapshot; a search must never iterate maps being rebuilt.
+  @Volatile private var index = Index()
 
   // -------------------------
   // INDEXING
@@ -43,30 +47,31 @@ object MediaSearchEngine {
     folders: List<VideoFolder>,
     videosByFolder: Map<String, List<Video>>,
   ) {
-    videoMap.clear()
-    folderMap.clear()
+    val videoMap = HashMap<String, VideoIndex>()
+    val folderMap = HashMap<String, FolderIndex>()
 
     for (folder in folders) {
-      val searchableText = "${folder.name} ${folder.path}"
+      val searchableText = "${folder.name} ${folder.path}".lowercase()
       folderMap[folder.path] =
         FolderIndex(
           folder = folder,
-          nameLower = searchableText.lowercase(),
+          nameLower = searchableText,
           tokens = tokenize(searchableText),
         )
 
       // Optimization: Skip folders with no videos to save memory and loop time
       val videos = videosByFolder[folder.bucketId] ?: continue
       for (video in videos) {
-        val vName = video.displayName
+        val vName = video.displayName.lowercase()
         videoMap[video.path] =
           VideoIndex(
             video = video,
-            nameLower = vName.lowercase(),
+            nameLower = vName,
             tokens = tokenize(vName),
           )
       }
     }
+    index = Index(videoMap.values.toList(), folderMap.values.toList())
   }
 
   // -------------------------
@@ -82,30 +87,26 @@ object MediaSearchEngine {
     query: String,
     limit: Int = 50,
   ): List<Any> {
-    if (query.isBlank()) return emptyList()
+    if (query.isBlank() || limit <= 0) return emptyList()
 
     val q = query.trim().lowercase()
     val qTokens = tokenize(q)
 
-    // Optimization: Pre-allocate ArrayList capacity to avoid internal array resizing
-    val results = ArrayList<Pair<Any, Int>>(videoMap.size + folderMap.size)
+    val snapshot = index
+    val results = ArrayList<Pair<Any, Int>>(minOf(limit, 50))
 
-    for (folder in folderMap.values) {
+    for (folder in snapshot.folders) {
       val score = score(folder.nameLower, folder.tokens, q, qTokens)
       if (score > 0) results.add(folder.folder to score)
     }
 
-    for (video in videoMap.values) {
+    for (video in snapshot.videos) {
       val score = score(video.nameLower, video.tokens, q, qTokens)
       if (score > 0) results.add(video.video to score)
     }
 
-    // Optimization: Filter out non-matches BEFORE sorting to drastically reduce sort time
-    return results
-      .filter { it.second > 0 }
-      .sortedByDescending { it.second }
-      .take(limit)
-      .map { it.first }
+    results.sortByDescending { it.second }
+    return results.take(limit).map { it.first }
   }
 
   /** Searches a supplied video collection using the same fuzzy scoring as global search. */
@@ -114,18 +115,18 @@ object MediaSearchEngine {
     videos: List<Video>,
     limit: Int = 50,
   ): List<Video> {
-    if (query.isBlank()) return emptyList()
+    if (query.isBlank() || limit <= 0) return emptyList()
 
     val q = query.trim().lowercase()
     val qTokens = tokenize(q)
-    return videos
-      .map { video ->
-        val name = video.displayName.lowercase()
-        video to score(name, tokenize(name), q, qTokens)
-      }.filter { it.second > 0 }
-      .sortedByDescending { it.second }
-      .take(limit)
-      .map { it.first }
+    val results = ArrayList<Pair<Video, Int>>(minOf(limit, 50))
+    for (video in videos) {
+      val name = video.displayName.lowercase()
+      val score = score(name, tokenize(name), q, qTokens)
+      if (score > 0) results.add(video to score)
+    }
+    results.sortByDescending { it.second }
+    return results.take(limit).map { it.first }
   }
 
   // -------------------------
@@ -191,7 +192,7 @@ object MediaSearchEngine {
    * Optimization: split() with vararg chars is significantly faster than Regex.
    */
   private fun tokenize(text: String): List<String> =
-    text.lowercase().split(' ', '_', '-', '.', '/').filter { it.isNotEmpty() }
+    text.split(' ', '_', '-', '.', '/').filter { it.isNotEmpty() }
 
   /**
    * Checks if the query characters appear in the text in the exact same order,

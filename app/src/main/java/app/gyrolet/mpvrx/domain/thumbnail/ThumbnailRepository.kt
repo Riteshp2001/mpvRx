@@ -68,6 +68,7 @@ import kotlin.math.roundToInt
 private const val NETWORK_THUMBNAIL_FAILURE_RETRY_MS = 30_000L
 private const val LOCAL_THUMBNAIL_FAILURE_RETRY_MS = 60_000L
 private const val AUDIO_ARTWORK_SMALL_TIER_PX = 256
+private const val IDENTITY_CACHE_TTL_MS = 30_000L
 
 private val LOWER_HEX_DIGITS = "0123456789abcdef".toCharArray()
 
@@ -108,7 +109,10 @@ class ThumbnailRepository(
   private val _cacheRevision = MutableStateFlow(0L)
   val cacheRevision = _cacheRevision.asStateFlow()
   private val ongoingOperations = ConcurrentHashMap<String, Deferred<Bitmap?>>()
-  private val diskVideoBaseKeyCache = ConcurrentHashMap<String, String>()
+  private data class CachedIdentity<T>(val value: T, val savedAtMs: Long = SystemClock.elapsedRealtime()) {
+    fun isFresh(): Boolean = SystemClock.elapsedRealtime() - savedAtMs < IDENTITY_CACHE_TTL_MS
+  }
+  private val diskVideoBaseKeyCache = LruCache<String, CachedIdentity<String>>(2048)
   // Lets composition reuse keys already computed on worker threads.
   private val resolvedThumbnailKeys = LruCache<String, String>(4096)
   private data class ResolvedMetadata(
@@ -116,7 +120,7 @@ class ThumbnailRepository(
     val dateModified: Long,
     val duration: Long,
   )
-  private val localMetadataCache = ConcurrentHashMap<String, ResolvedMetadata>()
+  private val localMetadataCache = LruCache<String, CachedIdentity<ResolvedMetadata>>(2048)
   private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val maxConcurrentFolders = 3
 
@@ -133,6 +137,7 @@ class ThumbnailRepository(
 
   @Volatile private var workLimits: WorkLimits? = null
 
+  @Synchronized
   private fun currentWorkLimits(): WorkLimits {
     val wanted = effectiveThumbnailParallelism(browserPreferences.thumbnailParallelism.get(), automaticParallelism)
     workLimits?.takeIf { it.parallelism == wanted }?.let { return it }
@@ -151,7 +156,7 @@ class ThumbnailRepository(
   private val folderJobs = ConcurrentHashMap<String, Job>()
 
   // Throttle transient failures while still allowing remote files to recover during this process.
-  private val networkThumbnailFailedAt = ConcurrentHashMap<String, Long>()
+  private val networkThumbnailFailedAt = LruCache<String, Long>(256)
   // Bounded, versioned negative cache: a broken local file must not be decoded on every scroll.
   private val localThumbnailFailedAt = LruCache<String, Long>(256)
 
@@ -168,6 +173,9 @@ class ThumbnailRepository(
   ): Bitmap? =
     withContext(Dispatchers.IO) {
       val (revision, generator) = diskCacheLock.read { cacheRevision.value to browserPreferences.thumbnailGenerator.get() }
+      // Refresh sidecar identity on a worker before consulting the bitmap cache. Composition
+      // only peeks at already-resolved keys and never stats artwork files.
+      diskVideoBaseKey(video)
       val key = thumbnailKey(video, widthPx, heightPx, generator)
       val operationKey = "$key|revision:$revision"
 
@@ -275,6 +283,7 @@ class ThumbnailRepository(
         }
 
         // Recheck after acquiring a permit: another request may have populated memory meanwhile.
+        diskVideoBaseKey(video)
         val key = thumbnailKey(video, widthPx, heightPx, generator)
         synchronized(memoryCache) {
           memoryCache.get(key)
@@ -345,7 +354,7 @@ class ThumbnailRepository(
       val diskKeys =
         identities.flatMap { identity -> artworkTiers.map { tier -> diskCacheKey(identity, generator, tier) } }.toMutableList()
       if (network) diskKeys += networkThumbnailDiskKey(networkThumbnailIdentity(video.path, null))
-      val bases = identities.map { "${videoBaseKey(it)}|" }
+      val bases = identities.map { "${diskVideoBaseKey(it)}|" }
       val suffix = "|${thumbnailModeKey()}|${thumbnailQualityKey()}" + thumbnailGeneratorCacheKey(video, generator)
       val memoryBitmap = synchronized(memoryCache) {
         memoryCache.snapshot().entries.firstOrNull { (key, bitmap) ->
@@ -393,10 +402,7 @@ class ThumbnailRepository(
       return null
     }
 
-    val key = thumbnailKey(video, widthPx, heightPx)
-    return synchronized(memoryCache) {
-      memoryCache.get(key)
-    }
+    return peekThumbnailFromMemory(video, widthPx, heightPx)
   }
 
   /** Publish the new generator only after the old cache has been removed. */
@@ -414,10 +420,10 @@ class ThumbnailRepository(
     ongoingOperations.clear()
     // Cancelled native work can still hold its old permit until its decoder returns.
     workLimits = null
-    diskVideoBaseKeyCache.clear()
+    diskVideoBaseKeyCache.evictAll()
     resolvedThumbnailKeys.evictAll()
-    localMetadataCache.clear()
-    networkThumbnailFailedAt.clear()
+    localMetadataCache.evictAll()
+    networkThumbnailFailedAt.evictAll()
     synchronized(localThumbnailFailedAt) { localThumbnailFailedAt.evictAll() }
 
     synchronized(memoryCache) {
@@ -543,7 +549,7 @@ class ThumbnailRepository(
     height: Int,
     generator: ThumbnailGenerator = browserPreferences.thumbnailGenerator.get(),
   ): String =
-    ("${videoBaseKey(video)}|$width|$height|${thumbnailModeKey()}|${thumbnailQualityKey()}" +
+    ("${memoryVideoBaseKey(video)}|$width|$height|${thumbnailModeKey()}|${thumbnailQualityKey()}" +
       thumbnailGeneratorCacheKey(video, generator)).also { key ->
       resolvedThumbnailKeys.put(peekIdentity(video, width, height, generator), key)
     }
@@ -656,7 +662,8 @@ class ThumbnailRepository(
       return ResolvedMetadata(video.size, video.dateModified, video.duration)
     }
 
-    localMetadataCache[source]?.let { return it }
+    val cacheKey = "$source|${video.size}|${video.dateModified}|${video.duration}"
+    localMetadataCache.get(cacheKey)?.takeIf { it.isFresh() }?.let { return it.value }
 
     var size = video.size
     var dateModified = video.dateModified
@@ -706,7 +713,7 @@ class ThumbnailRepository(
     }
 
     val resolved = ResolvedMetadata(size, dateModified, duration)
-    localMetadataCache[source] = resolved
+    localMetadataCache.put(cacheKey, CachedIdentity(resolved))
     return resolved
   }
 
@@ -732,11 +739,16 @@ class ThumbnailRepository(
     return "$source|${meta.size}|${meta.dateModified}|${meta.duration}"
   }
 
+  private fun memoryVideoBaseKey(video: Video): String {
+    val baseKey = videoBaseKey(video)
+    return diskVideoBaseKeyCache.get(baseKey)?.value ?: baseKey
+  }
+
   /** Sidecar artwork probing is disk I/O, so keep it out of keys evaluated during composition. */
   private fun diskVideoBaseKey(video: Video): String {
     val baseKey = videoBaseKey(video)
     if (isNetworkUrl(video.path)) return baseKey
-    diskVideoBaseKeyCache[baseKey]?.let { return it }
+    diskVideoBaseKeyCache.get(baseKey)?.takeIf { it.isFresh() }?.let { return it.value }
 
     val canonicalPath = canonicalLocalPath(video)
     val artworkSignature =
@@ -748,7 +760,8 @@ class ThumbnailRepository(
         ?.let { artwork -> "|art:${artwork.name}:${artwork.length()}:${artwork.lastModified()}" }
         .orEmpty()
     val resolvedKey = "$baseKey$artworkSignature"
-    return diskVideoBaseKeyCache.putIfAbsent(baseKey, resolvedKey) ?: resolvedKey
+    diskVideoBaseKeyCache.put(baseKey, CachedIdentity(resolvedKey))
+    return resolvedKey
   }
 
   private suspend fun generateLocalThumbnail(
@@ -1348,7 +1361,7 @@ class ThumbnailRepository(
 
           if (bitmap == null) {
             android.util.Log.w("ThumbnailRepository", "All strategies failed for network stream $path")
-            networkThumbnailFailedAt[identity] = SystemClock.elapsedRealtime()
+            networkThumbnailFailedAt.put(identity, SystemClock.elapsedRealtime())
             return@async null
           }
 
@@ -1447,7 +1460,7 @@ class ThumbnailRepository(
 
     if (bitmap == null) {
       android.util.Log.w("ThumbnailRepository", "All strategies failed for network path $path")
-      networkThumbnailFailedAt[identity] = SystemClock.elapsedRealtime()
+      networkThumbnailFailedAt.put(identity, SystemClock.elapsedRealtime())
       return null
     }
 
@@ -1542,10 +1555,12 @@ class ThumbnailRepository(
     "video-thumb-v3|$identity|network|${thumbnailModeKey()}|${thumbnailQualityKey()}"
 
   private fun hasRecentNetworkThumbnailFailure(identity: String): Boolean {
-    val failedAt = networkThumbnailFailedAt[identity] ?: return false
-    if (SystemClock.elapsedRealtime() - failedAt < NETWORK_THUMBNAIL_FAILURE_RETRY_MS) return true
-    networkThumbnailFailedAt.remove(identity, failedAt)
-    return false
+    return synchronized(networkThumbnailFailedAt) {
+      val failedAt = networkThumbnailFailedAt.get(identity) ?: return@synchronized false
+      if (SystemClock.elapsedRealtime() - failedAt < NETWORK_THUMBNAIL_FAILURE_RETRY_MS) return@synchronized true
+      networkThumbnailFailedAt.remove(identity)
+      false
+    }
   }
 
   private fun folderSignature(

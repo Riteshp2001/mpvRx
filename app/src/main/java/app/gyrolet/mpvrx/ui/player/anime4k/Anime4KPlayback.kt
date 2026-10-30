@@ -58,19 +58,19 @@ internal fun selectRuntimeStableAnime4K(
   // ── Proactive thermal guard (API 30+) ────────────────────────────────────
   // Check the device's thermal headroom *before* inspecting frame-drop counters.
   // Frame drops are a lagging indicator — by the time 45 frames are dropped the
-  // SoC may already be throttling.  Catching low headroom early avoids the
+  // SoC may already be throttling.  Catching rising thermal-envelope use early avoids the
   // thermal runaway that causes battery drain and stutter.
   if (context != null) {
     val headroom = ThermalMonitor.getHeadroom(context)
     if (ThermalMonitor.shouldThrottleAnime4K(headroom)) {
       Log.i(
         "Anime4KPlayback",
-        "Thermal headroom low (%.2f) — preemptively downgrading Anime4K to C/Fast".format(headroom),
+        "Thermal pressure high (%.2f) — preemptively downgrading Anime4K to C/Fast".format(headroom),
       )
       return Anime4KSelection(
         mode = Anime4KManager.Mode.C,
         quality = Anime4KManager.Quality.FAST,
-        reason = "Thermal headroom low (headroom=%.2f); preemptive downgrade to C/Fast".format(headroom),
+        reason = "Thermal pressure high (headroom=%.2f); preemptive downgrade to C/Fast".format(headroom),
       )
     }
   }

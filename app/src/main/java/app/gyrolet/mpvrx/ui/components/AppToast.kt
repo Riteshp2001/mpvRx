@@ -12,8 +12,6 @@ import android.widget.Toast as NativeToast
 
 enum class AppToastType { Normal, Success, Info, Warning, Error, Loading }
 
-data class AppToastAction(val label: String, val onClick: () -> Unit)
-
 sealed interface AppToastIcon {
   data class Symbol(val value: AppIcon) : AppToastIcon
   data class Emoji(val value: String) : AppToastIcon
@@ -25,7 +23,6 @@ internal data class AppToastMessage(
   val duration: Int,
   val type: AppToastType,
   val icon: AppToastIcon?,
-  val action: AppToastAction?,
 )
 
 class AppToast private constructor(
@@ -39,7 +36,6 @@ class AppToast private constructor(
   @Volatile var duration: Int = duration
   @Volatile private var type: AppToastType = AppToastType.Normal
   @Volatile private var icon: AppToastIcon? = null
-  @Volatile private var action: AppToastAction? = null
   private var nativeToast: NativeToast? = null
 
   fun setText(text: CharSequence?) {
@@ -56,10 +52,6 @@ class AppToast private constructor(
 
   fun withIcon(emoji: String): AppToast = apply { icon = AppToastIcon.Emoji(emoji) }
 
-  fun withAction(label: String, onClick: () -> Unit): AppToast = apply {
-    action = AppToastAction(label, onClick)
-  }
-
   fun update(text: CharSequence, type: AppToastType) {
     setText(text)
     withType(type)
@@ -74,7 +66,7 @@ class AppToast private constructor(
       if (text.isBlank()) return@post
       nativeToast?.cancel()
       nativeToast = null
-      if (!AppToastRouter.show(AppToastMessage(id, text, duration, type, icon, action))) {
+      if (!AppToastRouter.show(AppToastMessage(id, text, duration, type, icon))) {
         nativeToast = NativeToast.makeText(context, text, duration).also { it.show() }
       }
     }

@@ -88,9 +88,6 @@ class BrowserPreferences(
   val playlistView = BrowserPageViewPreferences(preferenceStore, "playlist_library", folderDefaults = true)
   val playlistItemView =
     BrowserPageViewPreferences(preferenceStore, "playlist_item", thumbnailsByDefault = !television)
-  val showPlaylistLocation = preferenceStore.getBoolean("show_playlist_location", true)
-  val showPlaylistCategory = preferenceStore.getBoolean("show_playlist_category", true)
-  val showPlaylistStreamDetails = preferenceStore.getBoolean("show_playlist_stream_details", true)
 
   // Music view mode and sorting preferences
   val musicViewMode = preferenceStore.getEnum("music_view_mode", MusicViewMode.GRID)
@@ -177,9 +174,6 @@ class BrowserPreferences(
   val includeImagesInBrowser = preferenceStore.getBoolean("include_images_in_browser", false)
   val minimumAudioDurationSeconds = preferenceStore.getInt("minimum_audio_duration_seconds", 0)
   val mediaLibraryType = preferenceStore.getEnum("media_library_type", MediaLibraryType.Video)
-
-  // Set by onboarding when the user opts into the quick tour; cleared once the tour ran.
-  val demoTutorialPending = preferenceStore.getBoolean("demo_tutorial_pending", false)
 
   // True once the user finished (or skipped through) the first-run permission flow.
   val onboardingCompleted = preferenceStore.getBoolean(ONBOARDING_COMPLETED_KEY, false)

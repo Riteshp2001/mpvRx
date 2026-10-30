@@ -4,10 +4,8 @@
 
 package app.gyrolet.mpvrx.ui.browser.music
 
-import android.app.Application
 import android.net.Uri
 import android.text.format.DateUtils
-import app.gyrolet.mpvrx.ui.browser.jellyfin.JellyfinViewModel
 import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
@@ -203,23 +201,11 @@ private fun MusicSong.toVideo(): Video {
 fun MusicLibraryContent(
   modifier: Modifier = Modifier,
   musicViewModel: MusicLibraryViewModel = viewModel(),
-  jellyfinViewModel: JellyfinViewModel? = null,
-  navidromeViewModel: app.gyrolet.mpvrx.ui.browser.navidrome.NavidromeViewModel? = null,
 ) {
   val context = LocalContext.current
   val backStack = LocalBackStack.current
   val scope = rememberCoroutineScope()
   val navigationHaptics = app.gyrolet.mpvrx.ui.utils.rememberAppHaptics()
-
-  val jfViewModel: JellyfinViewModel =
-    jellyfinViewModel
-      ?: viewModel(factory = JellyfinViewModel.factory(context.applicationContext as Application))
-  val jellyfinUiState by jfViewModel.uiState.collectAsStateWithLifecycle()
-  val hasJellyfinMusicLibrary = jellyfinUiState.hasMusicLibrary
-
-  val navidromeRepository = koinInject<app.gyrolet.mpvrx.repository.NavidromeRepository>()
-  val navidromeServers by navidromeRepository.allServers.collectAsState(initial = emptyList())
-  val hasNavidromeServer = navidromeServers.isNotEmpty()
 
   val selectedTab by musicViewModel.selectedTab.collectAsState()
   val searchQuery by musicViewModel.searchQuery.collectAsState()

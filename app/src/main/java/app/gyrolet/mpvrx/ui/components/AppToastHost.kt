@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -183,7 +182,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
           if (message != null) {
             androidx.compose.runtime.key(message.id) {
               SwipeDismissibleToast(onDismiss = { toaster.dismiss(toast.id) }) {
-                AppToastContent(message, haze, reducedMotion, onDismiss = { toaster.dismiss(toast.id) })
+                AppToastContent(message, haze, reducedMotion)
               }
             }
           }
@@ -194,7 +193,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun AppToastContent(message: AppToastMessage, haze: HazeState, reducedMotion: Boolean, onDismiss: () -> Unit) {
+private fun AppToastContent(message: AppToastMessage, haze: HazeState, reducedMotion: Boolean) {
   val colors = MaterialTheme.colorScheme
   val tone = when (message.type) {
     AppToastType.Success, AppToastType.Loading -> colors.primary
@@ -252,10 +251,5 @@ private fun AppToastContent(message: AppToastMessage, haze: HazeState, reducedMo
       overflow = TextOverflow.Ellipsis,
       modifier = Modifier.weight(1f).padding(vertical = 6.dp),
     )
-    message.action?.let { action ->
-      TextButton(onClick = { onDismiss(); action.onClick() }, modifier = Modifier.widthIn(max = 112.dp)) {
-        Text(action.label, color = tone, maxLines = 1, overflow = TextOverflow.Ellipsis)
-      }
-    }
   }
 }

@@ -21,12 +21,12 @@ import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepository
 import app.gyrolet.mpvrx.domain.framecapture.SnapshotImageLoader
 import app.gyrolet.mpvrx.domain.framecapture.VideoAvailability
 import app.gyrolet.mpvrx.domain.framecapture.VideoSource
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -83,12 +83,46 @@ class SnapshotDetailViewModel(
   private val _sources = MutableStateFlow<Map<Long, VideoSource>>(emptyMap())
   val sources: StateFlow<Map<Long, VideoSource>> = _sources.asStateFlow()
 
-  private val inFlight = mutableSetOf<Long>()
-  private val sourceInFlight = mutableSetOf<Long>()
+  private val imageJobs = mutableMapOf<Long, Job>()
+  private val sourceJobs = mutableMapOf<Long, Job>()
+  private var viewerOpen = false
+  private var sessionGeneration = 0L
+
+  fun onViewerOpened() {
+    viewerOpen = true
+    setCurrentIndex(initialIndex)
+  }
+
+  fun onViewerClosed() {
+    viewerOpen = false
+    sessionGeneration++
+    imageJobs.values.forEach { it.cancel() }
+    sourceJobs.values.forEach { it.cancel() }
+    imageJobs.clear()
+    sourceJobs.clear()
+    _images.value = emptyMap()
+    _sources.value = emptyMap()
+    _rotations.value = emptyMap()
+  }
+
+  override fun onCleared() {
+    onViewerClosed()
+    super.onCleared()
+  }
 
   fun setCurrentIndex(index: Int) {
-    _currentIndex.value = index.coerceIn(0, captures.lastIndex.coerceAtLeast(0))
-    preloadNeighbors()
+    val visible = visibleCaptures()
+    _currentIndex.value = index.coerceIn(0, visible.lastIndex.coerceAtLeast(0))
+    if (!viewerOpen) return
+    val window = imageWindow()
+    imageJobs.keys.toList().filterNot(window::contains).forEach { imageJobs.remove(it)?.cancel() }
+    sourceJobs.keys.toList().filterNot(window::contains).forEach { sourceJobs.remove(it)?.cancel() }
+    _images.value = _images.value.filterKeys(window::contains)
+    _sources.value = _sources.value.filterKeys(window::contains)
+    visible.filter { it.id in window }.forEach {
+      loadImage(it)
+      loadSource(it)
+    }
   }
 
   fun rotate(item: SnapshotDetailItem) {
@@ -96,40 +130,48 @@ class SnapshotDetailViewModel(
   }
 
   fun loadSource(item: SnapshotDetailItem) {
-    if (_sources.value.containsKey(item.id) || !sourceInFlight.add(item.id)) return
-    viewModelScope.launch {
-      try {
-        val source = repository.videoSource(item.toDomain())
+    if (!viewerOpen || item.id !in imageWindow() ||
+      _sources.value.containsKey(item.id) || sourceJobs[item.id]?.isActive == true
+    ) return
+    val generation = sessionGeneration
+    val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
+      val source = repository.videoSource(item.toDomain())
+      if (viewerOpen && generation == sessionGeneration && item.id in imageWindow()) {
         _sources.value = _sources.value + (item.id to source)
-      } finally {
-        sourceInFlight.remove(item.id)
       }
     }
+    sourceJobs[item.id] = job
+    job.start()
   }
 
   fun loadImage(item: SnapshotDetailItem) {
-    if (_images.value.containsKey(item.id) || !inFlight.add(item.id)) return
-    viewModelScope.launch {
-      try {
-        val bitmap =
-          withContext(Dispatchers.IO) {
-            SnapshotImageLoader.load(
-              context = getApplication(),
-              imageUri = item.imageUri,
-              imagePath = item.imagePath,
-              targetMaxPx = SnapshotImageLoader.VIEWER_MAX_PX,
-            )
-          }
-        if (bitmap != null) _images.value = _images.value + (item.id to bitmap)
-      } finally {
-        inFlight.remove(item.id)
+    if (!viewerOpen || item.id !in imageWindow() ||
+      _images.value.containsKey(item.id) || imageJobs[item.id]?.isActive == true
+    ) return
+    val generation = sessionGeneration
+    val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
+      // The loader already dispatches decoding to IO.
+      val bitmap = SnapshotImageLoader.load(
+        context = getApplication(),
+        imageUri = item.imageUri,
+        imagePath = item.imagePath,
+        targetMaxPx = SnapshotImageLoader.VIEWER_MAX_PX,
+      )
+      if (bitmap != null && viewerOpen && generation == sessionGeneration && item.id in imageWindow()) {
+        _images.value = _images.value + (item.id to bitmap)
       }
     }
+    imageJobs[item.id] = job
+    job.start()
   }
 
-  private fun preloadNeighbors() {
+  private fun visibleCaptures(): List<SnapshotDetailItem> = captures.filterNot { it.id in _deletedIds.value }
+
+  /** Keep only the current page and its neighbours; never pin every decoded snapshot. */
+  private fun imageWindow(): Set<Long> {
+    val visible = visibleCaptures()
     val index = _currentIndex.value
-    listOfNotNull(captures.getOrNull(index - 1), captures.getOrNull(index + 1)).forEach(::loadImage)
+    return (index - 1..index + 1).mapNotNull { visible.getOrNull(it)?.id }.toSet()
   }
 
   suspend fun isImageAvailable(item: SnapshotDetailItem): Boolean =
@@ -141,7 +183,8 @@ class SnapshotDetailViewModel(
   suspend fun delete(item: SnapshotDetailItem) {
     repository.delete(item.id)
     _deletedIds.value = _deletedIds.value + item.id
-    _images.value = _images.value - item.id
+    _rotations.value = _rotations.value - item.id
+    setCurrentIndex(_currentIndex.value)
   }
 
   companion object {

@@ -38,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -98,6 +99,11 @@ data class SnapshotDetailScreen(
           ),
       )
 
+    DisposableEffect(viewModel) {
+      viewModel.onViewerOpened()
+      onDispose { viewModel.onViewerClosed() }
+    }
+
     val currentIndex by viewModel.currentIndex.collectAsState()
     val images by viewModel.images.collectAsState()
     val deletedIds by viewModel.deletedIds.collectAsState()
@@ -120,7 +126,11 @@ data class SnapshotDetailScreen(
       rememberPagerState(initialPage = initialIndex.coerceIn(0, visibleItems.lastIndex)) {
         visibleItems.size
       }
-    LaunchedEffect(pagerState.currentPage) { viewModel.setCurrentIndex(pagerState.currentPage) }
+    LaunchedEffect(pagerState.currentPage, visibleItems) {
+      val page = pagerState.currentPage.coerceIn(0, visibleItems.lastIndex)
+      viewModel.setCurrentIndex(page)
+      if (page != pagerState.currentPage) pagerState.scrollToPage(page)
+    }
 
     // §6: a snapshot whose gallery file the user deleted should say so and offer to drop the record,
     // rather than showing a broken image forever.
