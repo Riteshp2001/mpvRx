@@ -56,6 +56,10 @@ class NetworkStreamingProxy private constructor() :
     private const val PROXY_OPERATION_TIMEOUT_SECONDS = 75L
     private const val RANGE_CHUNK_BYTES = 8L * 1024 * 1024
     private const val RANGE_CHUNK_CACHE_BYTES = 48L * 1024 * 1024
+    // Disc ISO files need many small, unpredictable sector reads. Avoid filling multi-megabyte
+    // chunks for each probe and limit the resident cache on memory-constrained devices.
+    private const val ISO_RANGE_CHUNK_BYTES = 1L * 1024 * 1024
+    private const val ISO_RANGE_CHUNK_CACHE_BYTES = 16L * 1024 * 1024
     private const val RANGE_CHUNK_READ_TIMEOUT_MS = 45_000L
     private const val CHUNK_TRANSFER_BUFFER_BYTES = 64 * 1024
     private const val RANGE_CONTIGUITY_BYTES = 16L * 1024 * 1024
@@ -95,7 +99,9 @@ class NetworkStreamingProxy private constructor() :
     val knownSizes = ConcurrentHashMap<NetworkPath, Long>().apply {
       if (fileSize >= 0L) put(primaryPath, fileSize)
     }
-    val chunkCache = RangeChunkCache(maxResidentBytes = RANGE_CHUNK_CACHE_BYTES)
+    val isDiscImage = primaryPath.value.endsWith(".iso", ignoreCase = true)
+    val rangeChunkBytes = if (isDiscImage) ISO_RANGE_CHUNK_BYTES else RANGE_CHUNK_BYTES
+    val chunkCache = RangeChunkCache(maxResidentBytes = if (isDiscImage) ISO_RANGE_CHUNK_CACHE_BYTES else RANGE_CHUNK_CACHE_BYTES)
     val clientMutex = Mutex()
 
     private class RangeCluster(
@@ -248,8 +254,12 @@ class NetworkStreamingProxy private constructor() :
     if (fileSize < 0L) return upstreamFailure(headOnly)
     val range = HttpByteRange.parse(rangeHeader, fileSize) ?: return rangeNotSatisfiable(fileSize)
     val mimeType = mimeTypeFor(streamInfo, path)
-    val isPrimaryOpenRange = range.openEnded && path == streamInfo.primaryPath
-    val isSeek = !headOnly && isPrimaryOpenRange && streamInfo.noteRangeStart(range.start)
+    // ISO readers issue short, bounded byte ranges for sector probes, not only open-ended
+    // ranges. Cache those probes as well; keep legacy behavior for ordinary media/HLS.
+    val isCacheablePrimaryRange =
+      path == streamInfo.primaryPath && (range.openEnded || streamInfo.isDiscImage)
+    val isSeek = !headOnly && !streamInfo.isDiscImage && isCacheablePrimaryRange &&
+      streamInfo.noteRangeStart(range.start)
     if (isSeek) {
       // A scrub jumps far away from every recent request; drop fills for the positions that were
       // already abandoned so the new target (or the final release position) fills first.
@@ -261,7 +271,7 @@ class NetworkStreamingProxy private constructor() :
         HeadResponse(Response.Status.PARTIAL_CONTENT, mimeType, range.length)
       } else {
         val inputStream =
-          if (isPrimaryOpenRange) {
+          if (isCacheablePrimaryRange) {
             // mpv alternates between distant video and audio regions in non-interleaved files.
             // Serve the opening chunk from a resident copy so those repeated random reads do not
             // each pay the store's per-request latency.
@@ -353,7 +363,7 @@ class NetworkStreamingProxy private constructor() :
   ) : InputStream() {
     private var position = start
     private val initialPosition = start
-    private val initialChunkIndex = start / RANGE_CHUNK_BYTES
+    private val initialChunkIndex = start / streamInfo.rangeChunkBytes
     private var upstream: InputStream? = null
     private var upstreamPosition = -1L
     private var closed = false
@@ -374,7 +384,7 @@ class NetworkStreamingProxy private constructor() :
       if (closed || position > endInclusive) return -1
 
       val maxRead = minOf(len.toLong(), endInclusive - position + 1L).toInt()
-      val index = position / RANGE_CHUNK_BYTES
+      val index = position / streamInfo.rangeChunkBytes
       // Only the chunk the response starts in is filled on demand. Later chunks are served from
       // prefetch when resident; otherwise the response streams directly from upstream so
       // sequential playback never waits on a fill.
@@ -421,13 +431,13 @@ class NetworkStreamingProxy private constructor() :
     private fun obtainChunk(index: Long, start: Long): RangeChunkCache.Chunk? {
       if (start >= fileSize) return null
       // Keep fixed bin keys, but fill from the requested byte, not up to 8 MiB before it.
-      val offsetInBin = start % RANGE_CHUNK_BYTES
+      val offsetInBin = start % streamInfo.rangeChunkBytes
       return runCatching {
         streamInfo.chunkCache.obtain(
           path,
           index,
           start,
-          minOf(RANGE_CHUNK_BYTES - offsetInBin, fileSize - start).toInt(),
+          minOf(streamInfo.rangeChunkBytes - offsetInBin, fileSize - start).toInt(),
           proxyScope,
         ) { chunk, context -> fillChunk(streamInfo, path, chunk, context) }
       }.getOrNull()
@@ -460,14 +470,14 @@ class NetworkStreamingProxy private constructor() :
     }
 
     private fun prefetchChunk(index: Long) {
-      val start = index * RANGE_CHUNK_BYTES
+      val start = index * streamInfo.rangeChunkBytes
       if (start >= fileSize) return
       streamInfo.chunkCache.prefetch(
         proxyScope,
         path,
         index,
         start,
-        minOf(RANGE_CHUNK_BYTES, fileSize - start).toInt(),
+        minOf(streamInfo.rangeChunkBytes, fileSize - start).toInt(),
       ) { chunk, context -> fillChunk(streamInfo, path, chunk, context) }
     }
   }

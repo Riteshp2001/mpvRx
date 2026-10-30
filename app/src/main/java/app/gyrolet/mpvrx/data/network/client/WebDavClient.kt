@@ -385,8 +385,15 @@ class WebDavClient(
       }
     val bodyLength = response.body.contentLength()
 
-    // Some DAV servers ignore Range and reply 200 with the full body. Consuming up to the offset
-    // keeps seeking functional there; slow for deep seeks, but strictly better than failing.
+    // An ISO is a random-access disc image; sequentially discarding gigabytes to seek on a
+    // WebDAV server that ignores Range is both unusably slow and can exhaust memory/threads.
+    // Require byte-range support for nonzero disc offsets instead of reading the whole ISO.
+    if (response.code == 200 && offset > 0L && path.value.endsWith(".iso", ignoreCase = true)) {
+      response.close()
+      throw IOException("WebDAV ISO playback requires server support for HTTP byte ranges")
+    }
+
+    // Other formats preserve the historical fallback for servers that ignore Range.
     if (response.code == 200 && (bodyLength < 0L || bodyLength >= offset)) {
       try {
         skipExactly(response.body.byteStream(), offset)

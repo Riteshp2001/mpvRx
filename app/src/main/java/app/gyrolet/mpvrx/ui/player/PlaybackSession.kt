@@ -996,9 +996,13 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
-  fun hasNext(): Boolean = nativeLock.withLock { PlaybackQueueReducer.hasNext(_queue.value) }
+  // These are UI/MediaSession read-only queries. StateFlow publishes an immutable, coherent
+  // snapshot of the queue; the reducer only examines that snapshot. Taking nativeLock here
+  // can ANR the main thread during a slow network/disc open (see #928).
+  // Mutations and queue selection remain serialized under nativeLock.
+  fun hasNext(): Boolean = PlaybackQueueReducer.hasNext(_queue.value)
 
-  fun hasPrevious(): Boolean = nativeLock.withLock { PlaybackQueueReducer.hasPrevious(_queue.value) }
+  fun hasPrevious(): Boolean = PlaybackQueueReducer.hasPrevious(_queue.value)
 
   fun selectNext(): PlaybackItem? =
     nativeLock.withLock {

@@ -7333,8 +7333,11 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       if (state != PlaybackState.STATE_STOPPED && state != PlaybackState.STATE_NONE && state != PlaybackState.STATE_ERROR) {
         actions = PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_STOP or PlaybackState.ACTION_SEEK_TO
         actions = actions or if (isPlaying) PlaybackState.ACTION_PAUSE else PlaybackState.ACTION_PLAY
-        if (PlaybackSession.hasPrevious()) actions = actions or PlaybackState.ACTION_SKIP_TO_PREVIOUS
-        if (PlaybackSession.hasNext()) actions = actions or PlaybackState.ACTION_SKIP_TO_NEXT
+        // Read the same immutable queue snapshot for both capabilities. Never block a
+        // MediaSession callback on the native mpv lock while a slow ISO is opening.
+        val queueSnapshot = PlaybackSession.queue.value
+        if (PlaybackQueueReducer.hasPrevious(queueSnapshot)) actions = actions or PlaybackState.ACTION_SKIP_TO_PREVIOUS
+        if (PlaybackQueueReducer.hasNext(queueSnapshot)) actions = actions or PlaybackState.ACTION_SKIP_TO_NEXT
       }
       mediaSession.setPlaybackState(
         playbackStateBuilder
