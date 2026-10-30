@@ -174,8 +174,8 @@ class VideoMetadataCacheRepository(
 
       result
         .onSuccess { metadata ->
-          // Save to cache
-          dao.insertMetadata(
+          // Do not persist failed/incomplete probes as permanent cache hits.
+          if (metadata.durationMs > 0L) dao.insertMetadata(
             VideoMetadataEntity(
               path = path,
               size = size,
@@ -271,7 +271,7 @@ class VideoMetadataCacheRepository(
                     val result = MediaInfoOps.extractBasicMetadata(context, uri, displayName)
                     result
                       .onSuccess { metadata ->
-                        synchronized(extractedMetadata) {
+                        if (metadata.durationMs > 0L) synchronized(extractedMetadata) {
                           extractedMetadata.add(
                             VideoMetadataEntity(
                               path = path,
