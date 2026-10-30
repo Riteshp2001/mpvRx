@@ -44,7 +44,6 @@ jobs:
         id: activity
         shell: bash
         env:
-      MEASURE_API_KEY: ${{ secrets.MEASURE_API_KEY }}
           EVENT_NAME: ${{ github.event_name }}
           PREVIEW_MANIFEST_URL: https://riteshp2001.github.io/mpvRx/latest.json
         run: |
@@ -145,6 +144,7 @@ jobs:
             abis: universal
             asset: no-vulkan
     env:
+      MEASURE_API_KEY: ${{ secrets.MEASURE_API_KEY }}
       COMMIT_COUNT: ${{ needs.check.outputs.commit_count }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
       APK_DIR: ${{ matrix.distribution.dir }}
