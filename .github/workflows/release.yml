@@ -1,0 +1,389 @@
+name: Make release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - app/build.gradle.kts
+      - CHANGELOG.md
+      - .github/workflows/release.yml
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Tag to release (for example v3.0.1)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mpvrx-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Resolve release tag
+    if: >-
+      github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') ||
+      startsWith(github.event.head_commit.message, 'chore(release): v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version_tag: ${{ steps.tag.outputs.version_tag }}
+      source_sha: ${{ steps.tag.outputs.source_sha }}
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate release tag
+        id: tag
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag_name }}
+          PUSH_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version_tag="${GITHUB_REF#refs/tags/}"
+          elif [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            subject="${PUSH_MESSAGE%%$'\n'*}"
+            if [[ ! "$subject" =~ ^chore\(release\):\ (v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              echo "Release pushes must use the subject: chore(release): vX.Y.Z"
+              exit 1
+            fi
+            version_tag="${BASH_REMATCH[1]}"
+          else
+            version_tag="$INPUT_TAG"
+          fi
+
+          if [[ ! "$version_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid stable release tag: $version_tag"
+            exit 1
+          fi
+          source_sha="$GITHUB_SHA"
+          if git rev-parse --verify --quiet "refs/tags/${version_tag}^{commit}" > /dev/null; then
+            source_sha="$(git rev-parse "refs/tags/${version_tag}^{commit}")"
+            if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" != refs/tags/* && "$source_sha" != "$GITHUB_SHA" ]]; then
+              echo "The release tag already points to another commit; refusing to replace it."
+              exit 1
+            fi
+          fi
+
+          # Validate the exact source that all build and publish jobs will check out.
+          git show "${source_sha}:app/build.gradle.kts" > release-build.gradle.kts
+          git show "${source_sha}:CHANGELOG.md" > release-changelog.md
+          VERSION_TAG="$version_tag" python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ['VERSION_TAG'].removeprefix('v')
+          build = Path('release-build.gradle.kts').read_text(encoding='utf-8')
+          actual = re.search(r'\bversionName\s*=\s*"([^"]+)"', build)
+          if actual is None or actual.group(1) != version:
+              raise SystemExit('Release tag does not match the app version')
+          changelog = Path('release-changelog.md').read_text(encoding='utf-8')
+          if not re.search(rf'^##\s+{re.escape(version)}(?:\s|$)', changelog, re.MULTILINE):
+              raise SystemExit('Release version is missing from CHANGELOG.md')
+          PY
+          echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.distribution.name }} release ${{ matrix.distribution.package == 'aab' && 'bundle' || 'APKs' }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution:
+          - id: standard
+            name: Standard
+            gradle: Standard
+            dir: standard
+            abis: universal arm64-v8a armeabi-v7a x86 x86_64
+            asset: ''
+            package: apk
+          - id: fongmi
+            name: FongMi
+            gradle: Fongmi
+            dir: fongmi
+            abis: universal
+            asset: fongmi
+            package: apk
+          - id: no_vulkan
+            name: No Vulkan
+            gradle: NoVulkan
+            dir: noVulkan
+            abis: universal
+            asset: no-vulkan
+            package: apk
+          - id: playstore
+            name: Play Store
+            gradle: Playstore
+            dir: playstore
+            abis: universal
+            asset: playstore
+            package: apk
+          - id: playstore_bundle
+            name: Play Store
+            gradle: Playstore
+            dir: playstore
+            abis: ''
+            asset: playstore
+            package: aab
+    env:
+      VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
+      GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
+      APK_DIR: ${{ matrix.distribution.dir }}
+      APK_ABIS: ${{ matrix.distribution.abis }}
+      ASSET_NAME: ${{ matrix.distribution.asset }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build release APKs
+        if: ${{ matrix.distribution.package == 'apk' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew "assemble${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
+
+      - name: Build release bundle
+        if: ${{ matrix.distribution.package == 'aab' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew "bundle${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
+
+      - name: Sign and stage release bundle
+        if: ${{ matrix.distribution.package == 'aab' }}
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo "Stable releases require all signing secrets."
+            exit 1
+          fi
+
+          bundle="app/build/outputs/bundle/${APK_DIR}Release/app-${APK_DIR}-release.aab"
+          test -f "$bundle"
+
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          # App bundles are signed with jarsigner; apksigner only handles APKs.
+          jarsigner \
+            -keystore release.keystore \
+            -storepass "$SIGNING_STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            "$bundle" \
+            "$SIGNING_KEY_ALIAS"
+          jarsigner -verify "$bundle"
+
+          mkdir -p release-assets
+          cp "$bundle" "release-assets/mpvRx-${ASSET_NAME}-${VERSION_TAG}.aab"
+
+      - name: Sign and stage release APKs
+        if: ${{ matrix.distribution.package == 'apk' }}
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+
+          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo "Stable releases require all signing secrets."
+            exit 1
+          fi
+          test -x "$apksigner"
+
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          # AGP only appends "-unsigned" when the variant has no signing config, so accept
+          # either name and always re-sign with the release key.
+          sign_apk() {
+            local dir="$1"
+            local base="$2"
+            local label="$3"
+            local signed="$dir/$base.apk"
+            local unsigned="$dir/$base-unsigned.apk"
+            local source=""
+
+            if [[ -f "$unsigned" ]]; then
+              source="$unsigned"
+            elif [[ -f "$signed" ]]; then
+              source="$signed"
+            else
+              echo "Missing expected $label APK: $unsigned (or $signed)"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            local staged="$dir/$base-signing.apk"
+            rm -f "$staged"
+            "$apksigner" sign \
+              --ks release.keystore \
+              --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --out "$staged" \
+              "$source"
+            "$apksigner" verify --verbose "$staged"
+            rm -f "$unsigned"
+            mv -f "$staged" "$signed"
+          }
+
+          out_dir="app/build/outputs/apk/${APK_DIR}/release"
+          test -d "$out_dir"
+          mkdir -p release-assets
+
+          for abi in $APK_ABIS; do
+            base="app-${APK_DIR}-${abi}-release"
+            sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} release"
+            cp "$out_dir/$base.apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
+          done
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ matrix.distribution.id }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    name: Publish GitHub release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.source_sha }}
+
+      - name: Download release assets
+        uses: actions/download-artifact@v7
+        with:
+          pattern: release-assets-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Verify assets and compute checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > checksums.txt
+          variants=(universal arm64-v8a armeabi-v7a x86 x86_64 fongmi no-vulkan playstore)
+          for variant in "${variants[@]}"; do
+            asset="release-assets/mpvRx-${variant}-${VERSION_TAG}.apk"
+            if [[ ! -f "$asset" ]]; then
+              echo "Missing expected release asset: $asset"
+              find release-assets -type f -name '*.apk' -print || true
+              exit 1
+            fi
+            sha256sum "$asset" | tee -a checksums.txt
+          done
+
+          bundle="release-assets/mpvRx-playstore-${VERSION_TAG}.aab"
+          if [[ ! -f "$bundle" ]]; then
+            echo "Missing expected Play Store bundle: $bundle"
+            exit 1
+          fi
+          sha256sum "$bundle" | tee -a checksums.txt
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ['VERSION_TAG'].removeprefix('v')
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8').splitlines()
+          section = []
+          in_latest = False
+          for line in changelog:
+              if line.startswith('## '):
+                  if in_latest:
+                      break
+                  in_latest = re.match(rf'^##\s+{re.escape(version)}(?:\s|$)', line) is not None
+              if in_latest:
+                  section.append(line)
+
+          latest = '\n'.join(section).strip()
+          if not latest:
+              raise SystemExit(f'Could not find changelog section for {version}')
+          variant_guide = """
+          ### APK variants
+
+          All variants contain the same mpvRx app version, with their native backends built from [mpvlib Android](https://github.com/Riteshp2001/mpvlibAndroid). Choose the package that best matches your device:
+
+          - **Standard** (`mpvRx-<architecture>-<version>.apk`): Recommended for most devices. Available as Universal and architecture-specific APKs with the standard Vulkan-capable playback backend.
+          - **FongMi** (`mpvRx-fongmi-<version>.apk`): Universal package using the FongMi native profile for Vulkan, direct MediaCodec, and Dolby Vision playback.
+          - **Non-Vulkan** (`mpvRx-no-vulkan-<version>.apk`): Universal OpenGL-only package for devices without compatible Vulkan support or with unstable legacy GPU drivers.
+          - **Play Store** (`mpvRx-playstore-<version>.apk`): Universal APK of the Google Play build, which leaves out features Google Play does not allow, such as yt-dlp, torrent streaming, and in-app updates. `mpvRx-playstore-<version>.aab` is the same build as an app bundle for Play Console upload.
+          """.strip()
+          Path('release-notes.md').write_text(
+              latest + '\n\n---\n' + variant_guide + '\n\n### SHA-256 checksums\n\n```text\n',
+              encoding='utf-8',
+          )
+          PY
+          cat checksums.txt >> release-notes.md
+          printf '%s\n' '```' >> release-notes.md
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.version_tag }}
+          target_commitish: ${{ needs.prepare.outputs.source_sha }}
+          name: mpvRx ${{ needs.prepare.outputs.version_tag }}
+          body_path: release-notes.md
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/*.apk
+            release-assets/*.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

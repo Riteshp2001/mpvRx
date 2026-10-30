@@ -1,0 +1,495 @@
+name: CI/CD Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.distribution.name }} ${{ matrix.distribution.package == 'aab' && 'bundle' || 'APKs' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution:
+          - id: standard
+            name: Standard
+            gradle: Standard
+            dir: standard
+            abis: universal arm64-v8a armeabi-v7a x86 x86_64
+            package: apk
+          - id: fongmi
+            name: FongMi
+            gradle: Fongmi
+            dir: fongmi
+            abis: universal
+            package: apk
+          - id: no_vulkan
+            name: No Vulkan
+            gradle: NoVulkan
+            dir: noVulkan
+            abis: universal
+            package: apk
+          - id: playstore
+            name: Play Store
+            gradle: Playstore
+            dir: playstore
+            abis: universal
+            package: apk
+          - id: playstore_bundle
+            name: Play Store
+            gradle: Playstore
+            dir: playstore
+            abis: ''
+            package: aab
+    env:
+      DISTRIBUTION: ${{ matrix.distribution.id }}
+      GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
+      APK_DIR: ${{ matrix.distribution.dir }}
+      APK_ABIS: ${{ matrix.distribution.abis }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          # BuildConfig.GIT_COUNT and preview build identities rely on the real repository history.
+          fetch-depth: 0
+
+      - name: Generate build metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="$(git rev-parse --short HEAD)"
+          echo "SHORT_SHA=$short_sha" >> "$GITHUB_ENV"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "COMMIT_COUNT=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build release APKs
+        if: ${{ matrix.distribution.package == 'apk' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          extra_args=()
+          if [[ "$DISTRIBUTION" != "playstore" ]]; then
+            extra_args+=(-PexperimentalBuild=true)
+          fi
+          ./gradlew "assemble${GRADLE_FLAVOR}Release" "${extra_args[@]}" --stacktrace --no-daemon --max-workers=2
+
+      - name: Build release bundle
+        if: ${{ matrix.distribution.package == 'aab' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew "bundle${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
+
+      - name: Sign bundle when signing secrets are available
+        if: ${{ matrix.distribution.package == 'aab' }}
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          bundle="app/build/outputs/bundle/${APK_DIR}Release/app-${APK_DIR}-release.aab"
+          test -f "$bundle"
+
+          if [[ -z "$SIGNING_KEYSTORE" ]]; then
+            echo "SIGNING_KEYSTORE is unavailable (expected for untrusted fork PRs); keeping the CI bundle unsigned."
+            exit 0
+          fi
+
+          if [[ -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo "SIGNING_KEYSTORE exists but one or more required signing secrets are missing."
+            exit 1
+          fi
+
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          # App bundles are signed with jarsigner; apksigner only handles APKs.
+          jarsigner \
+            -keystore release.keystore \
+            -storepass "$SIGNING_STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            "$bundle" \
+            "$SIGNING_KEY_ALIAS"
+          jarsigner -verify "$bundle"
+
+      - name: Sign APKs when signing secrets are available
+        if: ${{ matrix.distribution.package == 'apk' }}
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+
+          test -x "$apksigner"
+
+          if [[ -z "$SIGNING_KEYSTORE" ]]; then
+            echo "SIGNING_KEYSTORE is unavailable (expected for untrusted fork PRs); keeping CI APKs unsigned."
+            exit 0
+          fi
+
+          if [[ -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo "SIGNING_KEYSTORE exists but one or more required signing secrets are missing."
+            exit 1
+          fi
+
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          # AGP only appends "-unsigned" when the variant has no signing config, so accept
+          # either name and always re-sign with the release key.
+          sign_apk() {
+            local dir="$1"
+            local base="$2"
+            local label="$3"
+            local signed="$dir/$base.apk"
+            local unsigned="$dir/$base-unsigned.apk"
+            local source=""
+
+            if [[ -f "$unsigned" ]]; then
+              source="$unsigned"
+            elif [[ -f "$signed" ]]; then
+              source="$signed"
+            else
+              echo "Missing expected $label APK: $unsigned (or $signed)"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            local staged="$dir/$base-signing.apk"
+            rm -f "$staged"
+            "$apksigner" sign \
+              --ks release.keystore \
+              --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --out "$staged" \
+              "$source"
+            "$apksigner" verify --verbose "$staged"
+            rm -f "$unsigned"
+            mv -f "$staged" "$signed"
+          }
+
+          out_dir="app/build/outputs/apk/${APK_DIR}/release"
+          test -d "$out_dir"
+          for abi in $APK_ABIS; do
+            sign_apk "$out_dir" "app-${APK_DIR}-${abi}-release" "${APK_DIR} ${abi} release"
+          done
+
+      - name: Verify expected flavor outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$DISTRIBUTION" in
+            standard)
+              release_dir="app/build/outputs/apk/standard/release"
+              architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
+              for abi in "${architectures[@]}"; do
+                if ! compgen -G "$release_dir/app-standard-${abi}-release*.apk" >/dev/null; then
+                  echo "No standard release APK found for $abi"
+                  exit 1
+                fi
+              done
+              ;;
+            fongmi)
+              release_dir="app/build/outputs/apk/fongmi/release"
+              if ! compgen -G "$release_dir/app-fongmi-universal-release*.apk" >/dev/null; then
+                echo "No universal release APK found for fongmi"
+                exit 1
+              fi
+              if find "$release_dir" -maxdepth 1 -type f -name "app-fongmi-*-release*.apk" ! -name "app-fongmi-universal-release*.apk" | grep -q .; then
+                echo "fongmi produced an unexpected ABI-specific APK"
+                find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print
+                exit 1
+              fi
+              ;;
+            no_vulkan)
+              release_dir="app/build/outputs/apk/noVulkan/release"
+              if ! compgen -G "$release_dir/app-noVulkan-universal-release*.apk" >/dev/null; then
+                echo "No universal non-Vulkan release APK found"
+                exit 1
+              fi
+              if find "$release_dir" -maxdepth 1 -type f -name "app-noVulkan-*-release*.apk" ! -name "app-noVulkan-universal-release*.apk" | grep -q .; then
+                echo "The non-Vulkan flavor produced an unexpected ABI-specific APK"
+                find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print
+                exit 1
+              fi
+              ;;
+            playstore)
+              release_dir="app/build/outputs/apk/playstore/release"
+              if ! compgen -G "$release_dir/app-playstore-universal-release*.apk" >/dev/null; then
+                echo "No universal Play Store release APK found"
+                exit 1
+              fi
+              if find "$release_dir" -maxdepth 1 -type f -name "app-playstore-*-release*.apk" ! -name "app-playstore-universal-release*.apk" | grep -q .; then
+                echo "The Play Store flavor produced an unexpected ABI-specific APK"
+                find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print
+                exit 1
+              fi
+              ;;
+          esac
+
+      - name: Upload arm64-v8a APK
+        if: ${{ matrix.distribution.id == 'standard' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-arm64-v8a-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/release/app-standard-arm64-v8a-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload armeabi-v7a APK
+        if: ${{ matrix.distribution.id == 'standard' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-armeabi-v7a-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/release/app-standard-armeabi-v7a-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload universal APK
+        if: ${{ matrix.distribution.id == 'standard' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-universal-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/release/app-standard-universal-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload x86 APK
+        if: ${{ matrix.distribution.id == 'standard' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-x86-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/release/app-standard-x86-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload x86_64 APK
+        if: ${{ matrix.distribution.id == 'standard' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-standard-x86_64-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/standard/release/app-standard-x86_64-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload Fongmi universal APK
+        if: ${{ matrix.distribution.id == 'fongmi' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-fongmi-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/fongmi/release/app-fongmi-universal-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload non-Vulkan universal APK
+        if: ${{ matrix.distribution.id == 'no_vulkan' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-no-vulkan-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/noVulkan/release/app-noVulkan-universal-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload Play Store universal APK
+        if: ${{ matrix.distribution.id == 'playstore' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-playstore-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/apk/playstore/release/app-playstore-universal-release*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload Play Store bundle
+        if: ${{ matrix.distribution.id == 'playstore_bundle' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-playstore-bundle-release-${{ steps.metadata.outputs.short_sha }}
+          path: app/build/outputs/bundle/playstoreRelease/app-playstore-release.aab
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  publish-experimental:
+    name: Publish experimental updates
+    needs: build
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: mpvrx-pages
+      cancel-in-progress: false
+
+    steps:
+      - name: Check signing availability
+        id: signing
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [[ -n "$SIGNING_KEYSTORE" && -n "$SIGNING_KEY_ALIAS" && -n "$SIGNING_STORE_PASSWORD" && -n "$KEY_PASSWORD" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Signing secrets unavailable; keeping experimental APKs as Actions artifacts only."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout experimental source
+        if: steps.signing.outputs.publish == 'true'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download signed CI APKs
+        if: steps.signing.outputs.publish == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          pattern: app-*-release-*
+          merge-multiple: true
+          path: ci-apks
+
+      - name: Stage experimental feed on GitHub Pages
+        id: stage
+        if: steps.signing.outputs.publish == 'true'
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          SITE_BASE_URL: https://riteshp2001.github.io/mpvRx
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$SITE_BASE_URL"
+          build=$(git rev-list --count HEAD)
+          published_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # Experimental tracks the master tip. An amended or force-pushed commit is replaced by the
+          # run for the new tip, even when that tip has the same or a lower commit count.
+          git fetch --no-tags --quiet origin "+refs/heads/master:refs/remotes/origin/master"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "$GITHUB_SHA is no longer on master; the run for the current tip publishes instead."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Pages deploys replace the whole site, so carry over exactly what is live (including the preview feed).
+          bash scripts/fetch-live-pages-site.sh site
+
+          # A run that finishes late must not replace a build of a later master commit.
+          live_sha=$(jq -r '.commit_sha // empty' site/experimental.json 2>/dev/null || true)
+          if [[ -n "$live_sha" && "$live_sha" != "$GITHUB_SHA" ]] &&
+            git cat-file -e "${live_sha}^{commit}" 2>/dev/null &&
+            git merge-base --is-ancestor "$live_sha" origin/master &&
+            git merge-base --is-ancestor "$GITHUB_SHA" "$live_sha"; then
+            echo "Experimental build of later master commit ${live_sha:0:7} is already published; leaving it in place."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          rm -rf site/experimental site/experimental.json
+          mkdir -p site/experimental
+          cp fastlane/metadata/android/preview-site/index.html site/index.html
+          cp fastlane/metadata/android/en-US/images/icon.png site/icon.png
+          cp fastlane/metadata/android/preview-site/site.webmanifest site/site.webmanifest
+          touch site/.nojekyll
+
+          declare -A sources=(
+            [universal]=app-standard-universal-release.apk
+            [arm64-v8a]=app-standard-arm64-v8a-release.apk
+            [armeabi-v7a]=app-standard-armeabi-v7a-release.apk
+            [x86]=app-standard-x86-release.apk
+            [x86_64]=app-standard-x86_64-release.apk
+            [fongmi]=app-fongmi-universal-release.apk
+            [no-vulkan]=app-noVulkan-universal-release.apk
+          )
+          : > assets.jsonl
+          for variant in "${!sources[@]}"; do
+            src=$(find ci-apks -name "${sources[$variant]}")
+            [[ $(wc -l <<<"$src") -eq 1 && -n "$src" ]] || { echo "Expected one APK for $variant"; exit 1; }
+            dest="site/experimental/mpvRx-experimental-r${build}-${variant}.apk"
+            cp "$src" "$dest"
+            size=$(stat -c %s "$dest")
+            sha=$(sha256sum "$dest" | cut -d' ' -f1)
+            name=$(basename "$dest")
+            jq -n --arg abi "$variant" --arg name "$name" --arg url "$base/experimental/$name" \
+              --argjson size "$size" --arg sha "$sha" \
+              '{abi:$abi,name:$name,browser_download_url:$url,size:$size,content_type:"application/vnd.android.package-archive",sha256:$sha}' \
+              >> assets.jsonl
+          done
+
+          jq -n --slurpfile assets assets.jsonl --argjson build "$build" \
+            --arg sha "$GITHUB_SHA" --arg at "$published_at" --arg base "$base" \
+            --arg run "https://github.com/${GH_REPO}/actions/runs/${GITHUB_RUN_ID}" \
+            --arg title "$(git log -1 --format=%s)" \
+            '{tag_name:"experimental",name:"mpvRx Experimental r\($build)",
+              body:"Experimental CI build r\($build). These builds may be unstable.\nCommit: \($title)\nSource: \($sha[0:7])",
+              published_at:$at,assets:$assets,channel:"experimental",commit_sha:$sha,
+              commit_title:$title,commit_count:$build,run_url:$run,pages_url:($base+"/")}' \
+            > site/experimental.json
+          jq . site/experimental.json >/dev/null
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Configure GitHub Pages
+        if: steps.signing.outputs.publish == 'true' && steps.stage.outputs.skip == 'false'
+        uses: actions/configure-pages@v6
+
+      - name: Upload GitHub Pages artifact
+        if: steps.signing.outputs.publish == 'true' && steps.stage.outputs.skip == 'false'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        if: steps.signing.outputs.publish == 'true' && steps.stage.outputs.skip == 'false'
+        uses: actions/deploy-pages@v5

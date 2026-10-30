@@ -1,0 +1,245 @@
+name: Make Pre Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+-preview.[0-9]+'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mpvrx-pre-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Resolve pre-release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version_tag: ${{ steps.tag.outputs.version_tag }}
+
+    steps:
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_tag="${GITHUB_REF#refs/tags/}"
+          if [[ ! "$version_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]; then
+            echo "Invalid tagged preview version: $version_tag"
+            exit 1
+          fi
+          echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.distribution.name }} preview APKs
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution:
+          - id: standard
+            name: Standard
+            gradle: Standard
+            dir: standard
+            abis: universal arm64-v8a armeabi-v7a x86 x86_64
+            asset: ''
+          - id: fongmi
+            name: FongMi
+            gradle: Fongmi
+            dir: fongmi
+            abis: universal
+            asset: fongmi
+          - id: no_vulkan
+            name: No Vulkan
+            gradle: NoVulkan
+            dir: noVulkan
+            abis: universal
+            asset: no-vulkan
+    env:
+      VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
+      GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
+      APK_DIR: ${{ matrix.distribution.dir }}
+      APK_ABIS: ${{ matrix.distribution.abis }}
+      ASSET_NAME: ${{ matrix.distribution.asset }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build preview APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew "assemble${GRADLE_FLAVOR}Preview" --stacktrace --no-daemon --max-workers=2
+
+      - name: Sign and stage preview APKs
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+
+          if [[ -z "$SIGNING_KEYSTORE" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo "Tagged preview releases require all signing secrets."
+            exit 1
+          fi
+          test -x "$apksigner"
+
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > release.keystore
+          trap 'rm -f release.keystore' EXIT
+
+          # AGP only appends "-unsigned" when the variant has no signing config, so accept
+          # either name and always re-sign with the release key.
+          sign_apk() {
+            local dir="$1"
+            local base="$2"
+            local label="$3"
+            local signed="$dir/$base.apk"
+            local unsigned="$dir/$base-unsigned.apk"
+            local source=""
+
+            if [[ -f "$unsigned" ]]; then
+              source="$unsigned"
+            elif [[ -f "$signed" ]]; then
+              source="$signed"
+            else
+              echo "Missing expected $label APK: $unsigned (or $signed)"
+              find app/build/outputs/apk -type f -name '*.apk' -print || true
+              exit 1
+            fi
+
+            local staged="$dir/$base-signing.apk"
+            rm -f "$staged"
+            "$apksigner" sign \
+              --ks release.keystore \
+              --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --out "$staged" \
+              "$source"
+            "$apksigner" verify --verbose "$staged"
+            rm -f "$unsigned"
+            mv -f "$staged" "$signed"
+          }
+
+          out_dir="app/build/outputs/apk/${APK_DIR}/preview"
+          test -d "$out_dir"
+          mkdir -p preview
+
+          for abi in $APK_ABIS; do
+            base="app-${APK_DIR}-${abi}-preview"
+            sign_apk "$out_dir" "$base" "${APK_DIR} ${abi} preview"
+            cp "$out_dir/$base.apk" "preview/mpvRx-preview-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
+          done
+
+      - name: Upload pre-release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: pre-release-assets-${{ matrix.distribution.id }}
+          path: preview/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    name: Publish GitHub pre-release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download pre-release assets
+        uses: actions/download-artifact@v7
+        with:
+          pattern: pre-release-assets-*
+          merge-multiple: true
+          path: preview
+
+      - name: Verify assets and compute checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > checksums.txt
+          variants=(universal arm64-v8a armeabi-v7a x86 x86_64 fongmi no-vulkan)
+          for variant in "${variants[@]}"; do
+            asset="preview/mpvRx-preview-${variant}-${VERSION_TAG}.apk"
+            if [[ ! -f "$asset" ]]; then
+              echo "Missing expected pre-release asset: $asset"
+              find preview -type f -name '*.apk' -print || true
+              exit 1
+            fi
+            sha256sum "$asset" | tee -a checksums.txt
+          done
+
+      - name: Prepare pre-release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8').splitlines()
+          section = []
+          in_latest = False
+          for line in changelog:
+              if line.startswith('## '):
+                  if in_latest:
+                      break
+                  in_latest = True
+              if in_latest:
+                  section.append(line)
+
+          latest = '\n'.join(section).strip()
+          if not latest:
+              raise SystemExit('Could not find latest changelog section')
+          Path('pre-release-notes.md').write_text(latest + '\n\n---\n### SHA-256 checksums\n\n```text\n', encoding='utf-8')
+          PY
+          cat checksums.txt >> pre-release-notes.md
+          printf '%s\n' '```' >> pre-release-notes.md
+
+      - name: Create GitHub pre-release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.VERSION_TAG }}
+          name: mpvRx ${{ env.VERSION_TAG }}
+          body_path: pre-release-notes.md
+          generate_release_notes: true
+          draft: false
+          prerelease: true
+          fail_on_unmatched_files: true
+          files: |
+            preview/mpvRx-preview-universal-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-arm64-v8a-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-armeabi-v7a-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-x86-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-x86_64-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-fongmi-${{ env.VERSION_TAG }}.apk
+            preview/mpvRx-preview-no-vulkan-${{ env.VERSION_TAG }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
