@@ -10,7 +10,11 @@
 package app.gyrolet.mpvrx.utils.media
 
 import android.content.Context
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
+import android.os.Process
+import android.util.Log
 import android.net.Uri
 import android.util.LruCache
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +28,7 @@ object MediaInfoOps {
   // MediaInfo extraction behind one process-wide bounded cache so those paths do not repeatedly
   // parse the same container during a session. The persistent repository can still provide the
   // cross-process cache; this layer catches direct callers that previously bypassed it.
+  private const val TAG = "MediaInfoOps"
   private const val BASIC_METADATA_CACHE_ENTRIES = 512
   private val basicMetadataCache = LruCache<String, VideoMetadata>(BASIC_METADATA_CACHE_ENTRIES)
   private val videoCodecCache = LruCache<String, VideoCodecDescriptor>(BASIC_METADATA_CACHE_ENTRIES)
@@ -50,6 +55,13 @@ object MediaInfoOps {
     fileName: String,
   ): Result<MediaInfoData> =
     withContext(Dispatchers.IO) {
+      // The bundled 32-bit MediaInfo AAC/MP4 parser can SIGSEGV on untrusted files.
+      // Use Android framework probing on 32-bit instead of entering libmediainfo.so.
+      if (!Process.is64Bit()) {
+        return@withContext runCatching {
+          platformProbe(context, uri)?.toMediaInfoData(fileName) ?: MediaInfoData.empty()
+        }
+      }
       runCatching {
         val contentResolver = context.contentResolver
         val pfd =
@@ -88,7 +100,18 @@ object MediaInfoOps {
     uri: Uri,
     fileName: String,
   ): Result<String> =
+  suspend fun generateTextOutput(
+    context: Context,
+    uri: Uri,
+    fileName: String,
+  ): Result<String> =
     withContext(Dispatchers.IO) {
+      if (!Process.is64Bit()) {
+        return@withContext runCatching {
+          val info = platformProbe(context, uri)?.toMediaInfoData(fileName) ?: MediaInfoData.empty()
+          formatPlatformMediaInfo(info, fileName)
+        }
+      }
       runCatching {
         val contentResolver = context.contentResolver
         val pfd =
@@ -325,13 +348,9 @@ object MediaInfoOps {
   )
 
   /**
-   * Quickly extract just size, duration, resolution, and framerate metadata from a video file
-   * Uses MediaInfo library which is faster and more reliable than MediaMetadataRetriever.
-   *
-   * @param context Android context
-   * @param uri URI of the video file
-   * @param fileName Name of the file (needed for MediaInfo to detect format correctly)
-   * @return Result containing VideoMetadata with size in bytes, duration in milliseconds, resolution, and fps
+   * Background library enrichment must never pass untrusted files to MediaInfoLib.
+   * Its AAC/MPEG-4 native finalizer has caused SIGSEGV on 32-bit devices.
+   * MediaExtractor / MediaMetadataRetriever provide the fields needed by browser chips.
    */
   suspend fun extractBasicMetadata(
     context: Context,
@@ -345,126 +364,18 @@ object MediaInfoOps {
         basicMetadataCache.get(cacheKey)
       }?.let { cached -> return@withContext Result.success(cached) }
 
-      val result =
-        runCatching {
-          val contentResolver = context.contentResolver
-          val pfd =
-            contentResolver.openFileDescriptor(uri, "r")
-              ?: return@runCatching VideoMetadata(0L, 0L, 0, 0, 0f, false)
-
-          // MediaInfo's JNI OpenFd closes the detached FD. Read statSize while the
-          // ParcelFileDescriptor still owns it; accessing it after detach causes EBADF.
-          val descriptorSize = pfd.statSize
-          val fd = pfd.detachFd()
-          val mi = MediaInfo()
-
-          try {
-            mi.Open(fd, fileName)
-
-            // Extract file size in bytes
-            val fileSizeStr = mi.getInfo(MediaInfo.Stream.General, 0, "FileSize")
-            val fileSize = fileSizeStr.toLongOrNull() ?: 0L
-
-            // Extract duration in milliseconds - handle both integer and decimal formats
-            val durationStr = mi.getInfo(MediaInfo.Stream.General, 0, "Duration")
-            val duration = durationStr.toDoubleOrNull()?.toLong() ?: 0L
-
-            // Extract video resolution (width and height)
-            val widthStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Width")
-            val width = widthStr.toIntOrNull() ?: 0
-
-            val heightStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Height")
-            val height = heightStr.toIntOrNull() ?: 0
-
-            // Extract framerate (fps)
-            val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
-            val fps = fpsStr.toFloatOrNull() ?: 0f
-
-            val videoCodec =
-              VideoCodecSupportInspector.descriptor(
-                format = mi.getInfo(MediaInfo.Stream.Video, 0, "Format"),
-                codecId = mi.getInfo(MediaInfo.Stream.Video, 0, "CodecID"),
-              )
-
-            val textCount = mi.Count_Get(MediaInfo.Stream.Text)
-            val hasEmbeddedSubtitles = textCount > 0
-
-            val subtitleCodec =
-              if (hasEmbeddedSubtitles) {
-                val codecs = mutableSetOf<String>()
-                for (i in 0 until textCount) {
-                  val codecId = mi.getInfo(MediaInfo.Stream.Text, i, "CodecID")
-
-                  val normalizedCodec =
-                    when {
-                      codecId.contains("PGS", ignoreCase = true) -> "PGS"
-                      codecId.contains("ASS", ignoreCase = true) -> "ASS"
-                      codecId.contains("SSA", ignoreCase = true) -> "SSA"
-                      codecId.contains("SRT", ignoreCase = true) -> "SRT"
-                      codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
-                      codecId.contains("VOBSUB", ignoreCase = true) -> "DVD"
-                      codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
-                      codecId.contains("UTF8", ignoreCase = true) -> "SRT"
-                      codecId.contains("HDMV", ignoreCase = true) -> "PGS"
-                      codecId.contains("DVB", ignoreCase = true) -> "DVB"
-                      codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
-                      codecId.isNotEmpty() -> {
-                        codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
-                      }
-                      else -> ""
-                    }
-
-                  if (normalizedCodec.isNotEmpty()) {
-                    codecs.add(normalizedCodec)
-                  }
-                }
-                codecs.joinToString(" ")
-              } else {
-                ""
-              }
-
-            val retrieverFallback =
-              if (duration <= 0L || width <= 0 || height <= 0 || fps <= 0f) {
-                extractRetrieverMetadata(context, uri)
-              } else {
-                null
-              }
-
-            VideoMetadata(
-              sizeBytes =
-                fileSize.takeIf { it > 0L }
-                  ?: retrieverFallback?.sizeBytes
-                  ?: descriptorSize.takeIf { it > 0L }
-                  ?: 0L,
-              durationMs = duration.takeIf { it > 0L } ?: retrieverFallback?.durationMs ?: 0L,
-              width = width.takeIf { it > 0 } ?: retrieverFallback?.width ?: 0,
-              height = height.takeIf { it > 0 } ?: retrieverFallback?.height ?: 0,
-              fps = fps.takeIf { it > 0f } ?: retrieverFallback?.fps ?: 0f,
-              hasEmbeddedSubtitles = hasEmbeddedSubtitles,
-              subtitleCodec = subtitleCodec,
-              videoCodec = videoCodec.label,
-              videoCodecMimeType = videoCodec.mimeType,
+      val result = runCatching {
+        platformProbe(context, uri)?.metadata
+          ?: VideoMetadata(0L, 0L, 0, 0, 0f, false)
+      }
+      result.getOrNull()?.takeIf { it.durationMs > 0L }?.let { metadata ->
+        synchronized(basicMetadataCache) { basicMetadataCache.put(cacheKey, metadata) }
+        if (metadata.videoCodec.isNotBlank()) {
+          synchronized(videoCodecCache) {
+            videoCodecCache.put(
+              cacheKey,
+              VideoCodecDescriptor(metadata.videoCodec, metadata.videoCodecMimeType),
             )
-          } finally {
-            mi.Close()
-            pfd.close()
-          }
-        }
-
-      result.getOrNull()?.let { metadata ->
-        // Do not make an incomplete duration sticky, even if the provider returned a file size.
-        // Versioned callers can reuse successful durations without serving an older document.
-        if (metadata.durationMs > 0L) {
-          synchronized(basicMetadataCache) {
-            basicMetadataCache.put(cacheKey, metadata)
-          }
-          if (metadata.videoCodec.isNotBlank()) {
-            synchronized(videoCodecCache) {
-              videoCodecCache.put(
-                cacheKey,
-                VideoCodecDescriptor(metadata.videoCodec, metadata.videoCodecMimeType),
-              )
-            }
           }
         }
       }
@@ -483,62 +394,217 @@ object MediaInfoOps {
         videoCodecCache.get(cacheKey)
       }?.let { return@withContext it }
 
-      val descriptor =
-        runCatching {
-          val pfd = context.contentResolver.openFileDescriptor(uri, "r")
-            ?: return@runCatching VideoCodecDescriptor("UNKNOWN", "")
-          val fd = pfd.detachFd()
-          val mediaInfo = MediaInfo()
-          try {
-            mediaInfo.Open(fd, fileName)
-            VideoCodecSupportInspector.descriptor(
-              format = mediaInfo.getInfo(MediaInfo.Stream.Video, 0, "Format"),
-              codecId = mediaInfo.getInfo(MediaInfo.Stream.Video, 0, "CodecID"),
-            )
-          } finally {
-            mediaInfo.Close()
-            pfd.close()
-          }
-        }.getOrDefault(VideoCodecDescriptor("UNKNOWN", ""))
-
-      synchronized(videoCodecCache) {
-        videoCodecCache.put(cacheKey, descriptor)
+      val metadata = runCatching { platformProbe(context, uri)?.metadata }.getOrNull()
+      val codec = metadata?.let {
+        VideoCodecDescriptor(it.videoCodec.ifBlank { "UNKNOWN" }, it.videoCodecMimeType)
+      } ?: VideoCodecDescriptor("UNKNOWN", "")
+      if (codec.mimeType.isNotBlank()) {
+        synchronized(videoCodecCache) { videoCodecCache.put(cacheKey, codec) }
       }
-      descriptor
+      codec
     }
 
-  private fun extractRetrieverMetadata(
-    context: Context,
-    uri: Uri,
-  ): VideoMetadata? =
-    runCatching {
+  private data class PlatformProbe(
+    val metadata: VideoMetadata,
+    val videoStreams: List<VideoStreamInfo>,
+    val audioStreams: List<AudioStreamInfo>,
+    val textStreams: List<TextStreamInfo>,
+    val format: String,
+    val rotation: Int,
+  ) {
+    fun toMediaInfoData(fileName: String): MediaInfoData =
+      MediaInfoData(
+        general = GeneralInfo(
+          completeName = fileName,
+          format = format,
+          fileSize = metadata.sizeBytes.takeIf { it > 0L }?.toString().orEmpty(),
+          duration = metadata.durationMs.takeIf { it > 0L }?.let { "${it} ms" }.orEmpty(),
+        ),
+        videoStreams = videoStreams,
+        audioStreams = audioStreams,
+        textStreams = textStreams,
+      )
+  }
+
+  private fun MediaFormat.numberValue(key: String): Number? =
+    runCatching { getInteger(key) }.getOrNull()
+      ?: runCatching { getLong(key) }.getOrNull()
+      ?: runCatching { getFloat(key) }.getOrNull()
+
+  private fun MediaFormat.textValue(key: String): String =
+    runCatching { getString(key) }.getOrNull().orEmpty()
+
+  private fun subtitleLabel(mime: String): String =
+    when {
+      mime.contains("pgs") || mime.contains("hdmv") -> "PGS"
+      mime.contains("subrip") || mime.contains("srt") -> "SRT"
+      mime.contains("ass") || mime.contains("ssa") -> "ASS"
+      mime.contains("vtt") -> "VTT"
+      mime.contains("tx3g") || mime.contains("quicktime-text") -> "TX3G"
+      mime.contains("vobsub") -> "DVD"
+      mime.contains("dvb") -> "DVB"
+      mime.contains("cea-608") -> "CEA-608"
+      mime.contains("cea-708") -> "CEA-708"
+      mime.contains("ttml") -> "TTML"
+      mime.contains("subtitle") || mime.contains("subtitles") || mime.startsWith("text/") -> "TEXT"
+      else -> ""
+    }
+
+  private fun platformProbe(context: Context, uri: Uri): PlatformProbe? {
+    // Keep the descriptor owned by ParcelFileDescriptor. Never detach/close a raw
+    // FD in multiple native libraries; each framework parser borrows it here.
+    val descriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return null
+    descriptor.use { pfd ->
+      val fd = pfd.fileDescriptor
+      var durationMs = 0L
+      var width = 0
+      var height = 0
+      var fps = 0f
+      var rotation = 0
+      var mediaMime = ""
+      val videoStreams = mutableListOf<VideoStreamInfo>()
+      val audioStreams = mutableListOf<AudioStreamInfo>()
+      val textStreams = mutableListOf<TextStreamInfo>()
+      var videoCodec = VideoCodecDescriptor("", "")
+
       val retriever = MediaMetadataRetriever()
       try {
-        retriever.setDataSource(context, uri)
-        VideoMetadata(
-          sizeBytes = 0L,
-          durationMs =
-            retriever
-              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-              ?.toLongOrNull() ?: 0L,
-          width =
-            retriever
-              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-              ?.toIntOrNull() ?: 0,
-          height =
-            retriever
-              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-              ?.toIntOrNull() ?: 0,
-          fps =
-            retriever
-              .extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
-              ?.toFloatOrNull() ?: 0f,
-          hasEmbeddedSubtitles = false,
-        )
+        retriever.setDataSource(fd)
+        durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+          ?.toLongOrNull() ?: 0L
+        width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+          ?.toIntOrNull() ?: 0
+        height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+          ?.toIntOrNull() ?: 0
+        fps = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+          ?.toFloatOrNull() ?: 0f
+        rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+          ?.toIntOrNull() ?: 0
+        mediaMime = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE).orEmpty()
+      } catch (e: Exception) {
+        Log.w(TAG, "Framework retriever could not read ${uri.lastPathSegment}", e)
       } finally {
         retriever.release()
       }
-    }.getOrNull()
+
+      val extractor = MediaExtractor()
+      try {
+        extractor.setDataSource(fd)
+        for (index in 0 until extractor.trackCount) {
+          val track = extractor.getTrackFormat(index)
+          val mime = track.textValue(MediaFormat.KEY_MIME).lowercase()
+          val streamDuration = track.numberValue(MediaFormat.KEY_DURATION)
+            ?.toLong()?.takeIf { it > 0L }?.div(1000L) ?: 0L
+          if (durationMs <= 0L && streamDuration > durationMs) durationMs = streamDuration
+          when {
+            mime.startsWith("video/") -> {
+              val trackWidth = track.numberValue(MediaFormat.KEY_WIDTH)?.toInt() ?: 0
+              val trackHeight = track.numberValue(MediaFormat.KEY_HEIGHT)?.toInt() ?: 0
+              val trackFps = track.numberValue(MediaFormat.KEY_FRAME_RATE)?.toFloat() ?: 0f
+              if (width <= 0) width = trackWidth
+              if (height <= 0) height = trackHeight
+              if (fps <= 0f) fps = trackFps
+              if (videoCodec.mimeType.isBlank()) {
+                videoCodec = if (mime == "video/dolby-vision") {
+                  VideoCodecDescriptor("DOLBY VISION", mime)
+                } else {
+                  VideoCodecSupportInspector.descriptor(mime, mime)
+                }
+              }
+              videoStreams += VideoStreamInfo(
+                streamIndex = videoStreams.size,
+                format = videoCodec.label,
+                codecId = mime,
+                width = trackWidth.takeIf { it > 0 }?.toString().orEmpty(),
+                height = trackHeight.takeIf { it > 0 }?.toString().orEmpty(),
+                frameRate = trackFps.takeIf { it > 0f }?.toString().orEmpty(),
+                duration = streamDuration.takeIf { it > 0L }?.let { "${it} ms" }.orEmpty(),
+              )
+            }
+            mime.startsWith("audio/") -> {
+              audioStreams += AudioStreamInfo(
+                streamIndex = audioStreams.size,
+                format = mime.substringAfter('/').uppercase(),
+                codecId = mime,
+                duration = streamDuration.takeIf { it > 0L }?.let { "${it} ms" }.orEmpty(),
+                channels = track.numberValue(MediaFormat.KEY_CHANNEL_COUNT)?.toString().orEmpty(),
+                samplingRate = track.numberValue(MediaFormat.KEY_SAMPLE_RATE)?.toString().orEmpty(),
+                bitRate = track.numberValue(MediaFormat.KEY_BIT_RATE)?.toString().orEmpty(),
+                language = track.textValue(MediaFormat.KEY_LANGUAGE),
+              )
+            }
+            else -> {
+              val subtitle = subtitleLabel(mime)
+              if (subtitle.isNotBlank()) {
+                textStreams += TextStreamInfo(
+                  streamIndex = textStreams.size,
+                  format = subtitle,
+                  codecId = mime,
+                  language = track.textValue(MediaFormat.KEY_LANGUAGE),
+                )
+              }
+            }
+          }
+        }
+      } catch (e: Exception) {
+        // Missing tracks should not crash a library scan; keep retriever results.
+        Log.w(TAG, "Framework extractor could not read ${uri.lastPathSegment}", e)
+      } finally {
+        extractor.release()
+      }
+
+      val subtitleCodecs = textStreams.map { it.format }.distinct().joinToString(" ")
+      return PlatformProbe(
+        metadata = VideoMetadata(
+          sizeBytes = pfd.statSize.takeIf { it > 0L } ?: 0L,
+          durationMs = durationMs,
+          width = width,
+          height = height,
+          fps = fps,
+          hasEmbeddedSubtitles = textStreams.isNotEmpty(),
+          subtitleCodec = subtitleCodecs,
+          videoCodec = videoCodec.label,
+          videoCodecMimeType = videoCodec.mimeType,
+        ),
+        videoStreams = videoStreams,
+        audioStreams = audioStreams,
+        textStreams = textStreams,
+        format = mediaMime,
+        rotation = rotation,
+      )
+    }
+  }
+
+  private fun formatPlatformMediaInfo(info: MediaInfoData, fileName: String): String =
+    buildString {
+      appendLine("MEDIA INFO - $fileName")
+      appendLine("General")
+      appendLine("Complete name : ${info.general.completeName}")
+      appendLine("Format : ${info.general.format}")
+      appendLine("File size : ${info.general.fileSize}")
+      appendLine("Duration : ${info.general.duration}")
+      info.videoStreams.forEach { stream ->
+        appendLine("Video")
+        appendLine("Format : ${stream.format}")
+        appendLine("Codec ID : ${stream.codecId}")
+        appendLine("Width : ${stream.width}")
+        appendLine("Height : ${stream.height}")
+        appendLine("Frame rate : ${stream.frameRate}")
+      }
+      info.audioStreams.forEach { stream ->
+        appendLine("Audio")
+        appendLine("Format : ${stream.format}")
+        appendLine("Codec ID : ${stream.codecId}")
+        appendLine("Channels : ${stream.channels}")
+        appendLine("Sampling rate : ${stream.samplingRate}")
+      }
+      info.textStreams.forEach { stream ->
+        appendLine("Text")
+        appendLine("Format : ${stream.format}")
+        appendLine("Codec ID : ${stream.codecId}")
+        appendLine("Language : ${stream.language}")
+      }
+    }
 
   /**
    * Data class to hold basic video metadata (size, duration, resolution, and framerate)
@@ -556,7 +622,7 @@ object MediaInfoOps {
   )
 
   /**
-   * Extract rotation (in degrees) from the video stream. Returns 0 if not specified or on error.
+   * Rotation only needs the Android retriever; do not open native MediaInfo for it.
    */
   suspend fun getRotation(
     context: Context,
@@ -565,15 +631,19 @@ object MediaInfoOps {
   ): Int =
     withContext(Dispatchers.IO) {
       runCatching {
-        val contentResolver = context.contentResolver
-        val pfd = contentResolver.openFileDescriptor(uri, "r") ?: return@runCatching 0
-        val fd = pfd.detachFd()
-        val mi = MediaInfo()
-        try {
-          mi.Open(fd, fileName)
-          val rotationStr = mi.Get(MediaInfo.Stream.Video, 0, "Rotation")
-          rotationStr.toFloatOrNull()?.toInt() ?: 0
-        } finally {
+        context.contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
+          val retriever = MediaMetadataRetriever()
+          try {
+            retriever.setDataSource(descriptor.fileDescriptor)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+              ?.toFloatOrNull()?.toInt() ?: 0
+          } finally {
+            retriever.release()
+          }
+        } ?: 0
+      }.getOrDefault(0)
+    }
+} finally {
           mi.Close()
           pfd.close()
         }
