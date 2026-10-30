@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -53,6 +55,8 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -149,53 +153,45 @@ fun FilePickerDialog(
       selectedPath?.let { File(it) }
     }
 
-  // Get folders and allowed files
-  val (folders, files) =
-    remember(selectedPath, matchToName, allowedExtensions, query) {
-      if (showStorageRoot) {
-        Pair(emptyList<File>(), emptyList<File>())
-      } else {
-        val allFiles = runCatching { currentDir?.listFiles() }.getOrNull() ?: emptyArray()
-        val extensions = allowedExtensions.map { it.trim().removePrefix(".") }.filter(String::isNotBlank)
-        val normalizedQuery = query.trim()
-
-        // Use NaturalOrderComparator for better sorting (e.g., Ep 2 < Ep 10)
-        val dirs =
-          allFiles.filter {
-            it.isDirectory && (normalizedQuery.isEmpty() || it.name.contains(normalizedQuery, ignoreCase = true))
-          }.sortedWith { f1, f2 ->
-            app.gyrolet.mpvrx.utils.sort.SortUtils.NaturalOrderComparator.DEFAULT
-              .compare(f1.name, f2.name)
+  // One deduplicated snapshot supplies both keys and rows. Classify each path once and
+  // namespace its key so it cannot collide with a file, folder or volume row.
+  // Keep directory reads and file-type checks off the main thread while video is playing.
+  val listing by produceState<FilePickerListing?>(null, selectedPath, matchToName, allowedExtensions) {
+    val path = selectedPath
+    value = withContext(Dispatchers.IO) {
+      val extensions = allowedExtensions.map { it.trim().removePrefix(".").lowercase() }
+        .filter(String::isNotBlank).toSet()
+      val entries = runCatching { path?.let { File(it).listFiles() } }.getOrNull().orEmpty()
+        .distinctBy { it.absolutePath }
+        .mapNotNull { file ->
+          when {
+            file.isDirectory -> FilePickerEntry(file, isDirectory = true)
+            file.isFile && (extensions.isEmpty() || file.extension.lowercase() in extensions) ->
+              FilePickerEntry(file, isDirectory = false)
+            else -> null
           }
-
-        val filteredFiles =
-          allFiles.filter { file ->
-            file.isFile &&
-              (extensions.isEmpty() || extensions.any { extension ->
-                file.extension.equals(extension, ignoreCase = true)
-              }) &&
-              (normalizedQuery.isEmpty() || file.name.contains(normalizedQuery, ignoreCase = true))
+        }
+        .sortedWith { first, second ->
+          val group = second.isDirectory.compareTo(first.isDirectory)
+          val firstMatches = !first.isDirectory && matchToName != null && first.file.name.contains(matchToName, ignoreCase = true)
+          val secondMatches = !second.isDirectory && matchToName != null && second.file.name.contains(matchToName, ignoreCase = true)
+          when {
+            group != 0 -> group
+            firstMatches != secondMatches -> if (firstMatches) -1 else 1
+            else -> app.gyrolet.mpvrx.utils.sort.SortUtils.NaturalOrderComparator.DEFAULT
+              .compare(first.file.name, second.file.name)
           }
-
-        // Final sorted files: matches first (alphabetical), then others (alphabetical)
-        val finalSortedFiles =
-          filteredFiles.sortedWith { f1, f2 ->
-            val m1 = matchToName != null && f1.name.contains(matchToName, ignoreCase = true)
-            val m2 = matchToName != null && f2.name.contains(matchToName, ignoreCase = true)
-
-            if (m1 && !m2) {
-              -1
-            } else if (!m1 && m2) {
-              1
-            } else {
-              app.gyrolet.mpvrx.utils.sort.SortUtils.NaturalOrderComparator.DEFAULT
-                .compare(f1.name, f2.name)
-            }
-          }
-
-        Pair(dirs, finalSortedFiles)
-      }
+        }
+      FilePickerListing(path, entries)
     }
+  }
+  val currentListing = listing?.takeIf { it.path == selectedPath }
+  val entries = remember(currentListing, query) {
+    val normalizedQuery = query.trim()
+    currentListing?.entries.orEmpty().filter {
+      normalizedQuery.isEmpty() || it.file.name.contains(normalizedQuery, ignoreCase = true)
+    }
+  }
 
   AppPickerSheet(
     onDismissRequest = onDismiss,
@@ -243,7 +239,7 @@ fun FilePickerDialog(
         verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         if (showStorageRoot) {
-          items(storageVolumes, key = { StorageVolumeUtils.getVolumePath(it) ?: it.toString() }) { volume ->
+          items(storageVolumes, key = { "volume:${StorageVolumeUtils.getVolumePath(it) ?: it.toString()}" }) { volume ->
             val volumePath = StorageVolumeUtils.getVolumePath(volume)
             if (volumePath != null) {
               StorageVolumeItem(
@@ -265,19 +261,18 @@ fun FilePickerDialog(
             }
           }
         } else {
-          items(folders, key = { it.absolutePath }) { folder ->
-            FolderItem(
-              folder = folder,
-              onClick = { selectedPath = folder.absolutePath },
-            )
+          items(entries, key = { it.key }, contentType = { it.isDirectory }) { entry ->
+            if (entry.isDirectory) {
+              FolderItem(folder = entry.file, onClick = { selectedPath = entry.file.absolutePath })
+            } else {
+              FileItem(file = entry.file, onClick = { onFileSelected(entry.file.absolutePath) })
+            }
           }
-          items(files, key = { it.absolutePath }) { file ->
-            FileItem(
-              file = file,
-              onClick = { onFileSelected(file.absolutePath) },
-            )
-          }
-          if (folders.isEmpty() && files.isEmpty()) {
+          if (currentListing == null) {
+            item(key = "loading") {
+              CircularProgressIndicator(modifier = Modifier.padding(16.dp).size(24.dp))
+            }
+          } else if (entries.isEmpty()) {
             item {
               Text(
                 androidx.compose.ui.res.stringResource(
@@ -489,3 +484,9 @@ private fun NavigationButtons(
     )
   }
 }
+
+private data class FilePickerEntry(val file: File, val isDirectory: Boolean) {
+  val key: String = "${if (isDirectory) "folder" else "file"}:${file.absolutePath}"
+}
+
+private data class FilePickerListing(val path: String?, val entries: List<FilePickerEntry>)

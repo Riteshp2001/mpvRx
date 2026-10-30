@@ -820,7 +820,7 @@ object StorageVolumeUtils {
       storageManager.storageVolumes.filter { volume ->
         volume.state == Environment.MEDIA_MOUNTED ||
           (getVolumePath(volume)?.let { path -> File(path).exists() } == true)
-      }
+      }.distinctBy { getVolumePath(it) ?: it.uuid ?: it.toString() }
     } catch (e: Exception) {
       Log.e(TAG, "Error getting storage volumes", e)
       emptyList()
