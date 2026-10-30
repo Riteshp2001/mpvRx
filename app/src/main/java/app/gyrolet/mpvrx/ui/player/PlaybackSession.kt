@@ -560,8 +560,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         try {
           // Waking a suspended process/driver can take longer than a second. Readiness has one
           // owner here; a separate View timer must not give up before this job finishes.
-          repeat(300) {
-            delay(16)
+          repeat(300) { attempt ->
+            // A ready native window should take the direct attach/load path. Yield only after
+            // an unsuccessful check; retain bounded retries for slow drivers and handoffs.
+            if (attempt > 0) delay(16)
             val ready = nativeLock.withLock {
               if (token != surfaceAttachmentToken || attachedSurfaceOwner !== owner ||
                 !_state.value.surfaceAttached || !surface.isValid ||
@@ -2744,3 +2746,4 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 }
+

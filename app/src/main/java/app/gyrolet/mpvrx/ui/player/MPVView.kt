@@ -78,7 +78,9 @@ class MPVView(
   var isExiting = false
   private var lastRequestedFrameRate = Float.NaN
   var forceOpenGlFallback = false
-  private var renderCallbacksEnabled = true
+  // Android may create the Surface while the core is still initializing on IO. Do not let its
+  // main-thread callbacks wait on the native lock; attachSessionSurface enables them afterwards.
+  private var renderCallbacksEnabled = false
   private var surfaceRecovery: Runnable? = null
   private var pausedFrameRedraw: Runnable? = null
   private val surfaceReadiness = MutableStateFlow(false)
@@ -651,6 +653,7 @@ class MPVView(
     width: Int,
     height: Int,
   ) {
+    if (!renderCallbacksEnabled || isExiting) return
     if (!PlaybackSession.resizeSurface(width, height, owner = this)) ensureSurfaceAttached()
     applyFrameRate()
     redrawPausedFrame()
@@ -712,7 +715,7 @@ class MPVView(
     surfaceAttachmentGeneration++
     isSurfaceReady = false
     lastRequestedFrameRate = Float.NaN
-    PlaybackSession.unbindSurface(this)
+    if (renderCallbacksEnabled) PlaybackSession.unbindSurface(this)
   }
 
   /**
@@ -1068,3 +1071,4 @@ class MPVView(
     )
   }
 }
+

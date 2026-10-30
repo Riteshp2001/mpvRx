@@ -163,7 +163,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import okhttp3.OkHttpClient
@@ -728,30 +727,24 @@ class PlayerActivity :
     releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
     startMpvCorePreparation()
     setContentView(binding.root)
-    setupSystemBarsAutoHide()
     setupPipHelper()
 
-    if (intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER) {
-      // Draw the held mini-player pose while preparation runs, without blocking the UI thread.
-      if (animateSheet) setupPlayerControls(ready = false)
-      // Back may arrive before the live session is attached; it must still return to the mini
-      // player instead of falling through to the platform's Activity close animation.
-      setupBackPressHandler()
-      playerCreationJob = lifecycleScope.launch {
-        val initError = awaitMpvCorePreparation()
-        lifecycle.withStarted {
-          if (isFinishing || isDestroyed || !ownsPlaybackSession()) return@withStarted
-          if (initError == null && reusingPlaybackSessionOnLaunch) {
-            MediaPlaybackService.prepareForActivityHandoff()
-          }
-          completePlayerCreation(initError)
-          if (!mpvInitialized || isFinishing) return@withStarted
-          onPlaybackStarted()
-          if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) onPlaybackResumed()
+    // Let Android create/draw the Surface while assets and libmpv initialize. A blocking join
+    // here serializes those independent jobs, even though preparation itself runs on IO.
+    if (animateSheet) setupPlayerControls(ready = false)
+    setupBackPressHandler()
+    playerCreationJob = lifecycleScope.launch {
+      val initError = awaitMpvCorePreparation()
+      lifecycle.withStarted {
+        if (isFinishing || isDestroyed || !ownsPlaybackSession()) return@withStarted
+        if (initError == null && reusingPlaybackSessionOnLaunch) {
+          MediaPlaybackService.prepareForActivityHandoff()
         }
+        completePlayerCreation(initError)
+        if (!mpvInitialized || isFinishing) return@withStarted
+        onPlaybackStarted()
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) onPlaybackResumed()
       }
-    } else {
-      completePlayerCreation(runBlocking { awaitMpvCorePreparation() })
     }
   }
 
@@ -777,6 +770,9 @@ class PlayerActivity :
     viewModel.attachHost(this)
     viewModelHostAttached = true
     viewModel.onMpvCoreInitialized()
+    // Insets and system-bar collectors read the ViewModel, which registers native properties.
+    // Install them only after core initialization, including on a fully asynchronous cold open.
+    setupSystemBarsAutoHide()
     // Audio focus and video transforms must be ready before loadfile can begin. The remaining UI,
     // media-session and notification plumbing is initialized after the load has been dispatched.
     setupAudio()
@@ -1604,7 +1600,7 @@ class PlayerActivity :
     pipHelper = MPVPipHelper(
       activity = this,
       mpvView = player,
-      isAudioPlayer = { viewModel.isAudioOnly.value || isCurrentMediaKnownAudio() },
+      isAudioPlayer = { (viewModelHostAttached && viewModel.isAudioOnly.value) || isCurrentMediaKnownAudio() },
       isVideoLoaded = { isReady },
     )
   }
@@ -1761,6 +1757,7 @@ class PlayerActivity :
 
   override fun onUserLeaveHint() {
     super.onUserLeaveHint()
+    if (!mpvInitialized) return
     // Enter PiP when Home sends the Activity away. A failed request is intentionally left to
     // onStop(), which can still perform the configured background-playback fallback.
     if (shouldEnterPipOnNavigation()) {
@@ -1779,6 +1776,7 @@ class PlayerActivity :
 
   override fun onWindowFocusChanged(hasFocus: Boolean) {
     super.onWindowFocusChanged(hasFocus)
+    if (!mpvInitialized) return
     if (hasFocus && !isInPictureInPictureMode) completePipExpansion()
     if (!hasFocus) {
       cancelSystemBarsAutoHide()
@@ -1795,7 +1793,7 @@ class PlayerActivity :
   }
 
   override fun onSaveInstanceState(outState: Bundle) {
-    if (scriptRuntimeRestartPending || !ownsPlaybackSession()) {
+    if (!mpvInitialized || scriptRuntimeRestartPending || !ownsPlaybackSession()) {
       super.onSaveInstanceState(outState)
       return
     }
@@ -3037,18 +3035,30 @@ class PlayerActivity :
   }
 
   private fun prepareUserMpvAssetsForStartup() {
+    synchronized(USER_MPV_ASSET_LOCK) {
+      prepareUserMpvAssetsForStartupLocked()
+    }
+  }
+
+  private fun prepareUserMpvAssetsForStartupLocked() {
     ensureConfigCacheForStartup()
+    // Remove stale/unselected entry points (including old generated custom-button files) before
+    // validating the inventory. Generated scripts now live outside mpv's autoload directory.
+    removeDisabledCachedScripts()
     val syncPreferences = getSharedPreferences(MPV_ASSET_SYNC_PREFERENCES, MODE_PRIVATE)
     val currentSelection = currentUserMpvAssetSelection()
     val storedSelection = syncPreferences.getString(USER_MPV_ASSET_SELECTION, null)
     val cacheReady = hasLaunchReadyUserMpvAssetCache()
+    val expectedScripts =
+      if (storedSelection == currentSelection) syncPreferences.getStringSet(USER_MPV_ASSET_SCRIPTS, null) else null
+    val scriptsReady = cachedScriptsMatchSelection(expectedScripts)
     val canAdoptExistingCache =
       storedSelection == null &&
         cacheReady &&
         cachedConfigsMatchPreferences() &&
-        cachedScriptsMatchSelection()
+        scriptsReady
 
-    if (cacheReady && cachedScriptsMatchSelection() && (storedSelection == currentSelection || canAdoptExistingCache)) {
+    if (cacheReady && scriptsReady && (storedSelection == currentSelection || canAdoptExistingCache)) {
       if (canAdoptExistingCache) rememberUserMpvAssetSelection(syncPreferences)
       Log.d(TAG, "Using cached MPV user assets for startup")
       return
@@ -3104,24 +3114,23 @@ class PlayerActivity :
   ): Boolean =
     runCatching { File(filesDir, fileName).readText() == preferenceContent }.getOrDefault(false)
 
-  private fun cachedScriptsMatchSelection(): Boolean {
-    val cachedScripts =
-      File(filesDir, "scripts")
-        .listFiles()
-        ?.asSequence()
-        ?.filter { file -> file.isFile && file.extension.lowercase() in setOf("lua", "js") }
-        ?.map(File::getName)
-        ?.toSet()
-        .orEmpty()
+  private fun cachedScriptsMatchSelection(syncedScripts: Set<String>? = null): Boolean {
+    val cachedScripts = MpvScriptAssets.userScriptNames(filesDir)
     return if (advancedPreferences.enableLuaScripts.get()) {
-      cachedScripts == advancedPreferences.selectedLuaScripts.get()
+      val selectedScripts = advancedPreferences.selectedLuaScripts.get()
+      // A selected file may be absent from the provider. Remember a successful sync's actual
+      // inventory so that absence does not force the same SAF scan on every subsequent open.
+      cachedScripts == (syncedScripts ?: selectedScripts) && cachedScripts.all { it in selectedScripts }
     } else {
       cachedScripts.isEmpty()
     }
   }
 
   private fun rememberUserMpvAssetSelection(syncPreferences: android.content.SharedPreferences) {
-    syncPreferences.edit().putString(USER_MPV_ASSET_SELECTION, currentUserMpvAssetSelection()).apply()
+    syncPreferences.edit()
+      .putString(USER_MPV_ASSET_SELECTION, currentUserMpvAssetSelection())
+      .putStringSet(USER_MPV_ASSET_SCRIPTS, MpvScriptAssets.userScriptNames(filesDir))
+      .apply()
   }
 
   private fun initializePlayerWithRendererFallback(): String? {
@@ -3276,14 +3285,14 @@ class PlayerActivity :
       return 0
     }
 
-    clearDirectoryContents(internalModulesDir)
-
     var copiedCount = 0
+    val expectedDirectories = mutableSetOf<String>()
 
     if (scriptsSubdir != null) {
       listTreeFilesSafely(scriptsSubdir).forEach { document ->
         val name = document.name?.takeIf { isSafeDocumentFileName(it) } ?: return@forEach
         if (!document.isDirectory) return@forEach
+        expectedDirectories += name
 
         copiedCount +=
           syncRecursiveDocumentDirectory(
@@ -3292,17 +3301,10 @@ class PlayerActivity :
             includeFile = { true },
             deleteMissing = true,
           )
-
-        copiedCount +=
-          syncRecursiveDocumentDirectory(
-            sourceDir = document,
-            destinationDir = File(internalModulesDir, name),
-            includeFile = { fileName -> fileName.endsWith(".lua", ignoreCase = true) },
-            deleteMissing = true,
-          )
       }
     }
 
+    copiedCount += MpvScriptAssets.syncLuaModules(internalScriptsDir, internalModulesDir, expectedDirectories)
     return copiedCount
   }
 
@@ -4447,6 +4449,7 @@ class PlayerActivity :
    */
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
+    if (!mpvInitialized) return
     updateOrientationForWindow()
     viewModel.onOrientationChanged()
     binding.root.post(::updateVideoAmbientPlayerBounds)
@@ -4457,6 +4460,7 @@ class PlayerActivity :
 
   override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration) {
     super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
+    if (!mpvInitialized) return
     updateOrientationForWindow()
   }
 
@@ -6603,6 +6607,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     newConfig: Configuration,
   ) {
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+    if (!mpvInitialized) return
 
     isAmbientPipMode = isInPictureInPictureMode
     viewModel.setAmbientPipActive(isInPictureInPictureMode)
@@ -6977,6 +6982,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     keyCode: Int,
     event: KeyEvent?,
   ): Boolean {
+    if (!mpvInitialized) return super.onKeyDown(keyCode, event)
     val isTrackSheetOpen =
       viewModel.sheetShown.value == Sheets.SubtitleTracks ||
         viewModel.sheetShown.value == Sheets.AudioTracks
@@ -7220,6 +7226,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     keyCode: Int,
     event: KeyEvent?,
   ): Boolean {
+    if (!mpvInitialized) return super.onKeyUp(keyCode, event)
     if (isTelevision && consumedTvRemoteKeys.remove(keyCode)) return true
     if (isTelevision && TvPlayerRemotePolicy.isNavigationKey(keyCode)) {
       return super.onKeyUp(keyCode, event)
@@ -9018,6 +9025,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     private const val LOCKED_CONTROLS_DOUBLE_BACK_TIMEOUT_MS = 2_000L
     private const val MPV_ASSET_SYNC_PREFERENCES = "mpv_asset_sync"
     private const val USER_MPV_ASSET_SELECTION = "user_mpv_asset_selection_v1"
+    private const val USER_MPV_ASSET_SCRIPTS = "user_mpv_asset_scripts_v1"
     private val deferredUserMpvAssetRefreshStarted = AtomicBoolean(false)
     private const val VIDEO_SESSION_INTENT_REQUEST_CODE = 1200
     private const val AUDIO_SESSION_INTENT_REQUEST_CODE = 1201
@@ -9052,3 +9060,4 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
 
 /** Progress of the player shrinking itself into the mini player before it finishes. */
 private enum class SheetCollapse { NONE, RUNNING, ARRIVED }
+

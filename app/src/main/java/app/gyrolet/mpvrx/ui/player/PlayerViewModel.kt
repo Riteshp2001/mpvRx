@@ -2315,6 +2315,8 @@ fun restartFromBeginning() {
 
   @Volatile
   private var customButtonsScriptPaths: Map<CustomButtonScriptLanguage, String> = emptyMap()
+  @Volatile
+  private var customButtonsScriptVersions: Map<CustomButtonScriptLanguage, String> = emptyMap()
   private val legacyCustomButtonsLoadedFlagProperty = "user-data/mpvrx/custombuttons_loaded"
   private val legacyCustomButtonsVersionProperty = "user-data/mpvrx/custombuttons_version"
   private val customButtonScriptTargets =
@@ -3128,7 +3130,8 @@ fun restartFromBeginning() {
           _customButtons.value = buttons
 
           val generatedPaths = mutableMapOf<CustomButtonScriptLanguage, String>()
-          val scriptsDir = File(appContext.filesDir, "scripts")
+          val generatedVersions = mutableMapOf<CustomButtonScriptLanguage, String>()
+          val scriptsDir = MpvScriptAssets.generatedDirectory(appContext.filesDir)
           if (!scriptsDir.exists()) scriptsDir.mkdirs()
 
           scriptBodies.forEach { (language, bodyBuilder) ->
@@ -3140,11 +3143,13 @@ fun restartFromBeginning() {
             val scriptContent = buildCustomButtonsScript(rawScriptContent, scriptVersion, target)
 
             val file = File(scriptsDir, target.fileName)
-            file.writeText(scriptContent)
+            if (!file.isFile || file.readText() != scriptContent) file.writeText(scriptContent)
             generatedPaths[language] = file.absolutePath
+            generatedVersions[language] = scriptVersion
           }
 
           customButtonsScriptPaths = generatedPaths.toMap()
+          customButtonsScriptVersions = generatedVersions.toMap()
           deleteCustomButtonsScriptFiles(activePaths = generatedPaths.values.toSet())
           withContext(Dispatchers.Main) {
             customButtonScriptTargets
@@ -3237,6 +3242,12 @@ fun restartFromBeginning() {
     file: File,
     target: CustomButtonScriptTarget,
   ): Boolean {
+    // Reopening a window against the same core must not spawn another script instance. The
+    // version flags belong to that core, so a rebuilt core still loads the generated file.
+    val version = customButtonsScriptVersions[target.language]
+    if (version != null && isCustomButtonsScriptLoaded(target) &&
+      PlaybackSession.getPropertyString(target.versionProperty) == version
+    ) return true
     runCatching { PlaybackSession.setPropertyString(target.loadedFlagProperty, "0") }
 
     return runCatching {
@@ -3265,7 +3276,7 @@ fun restartFromBeginning() {
   private fun deleteCustomButtonsScriptFiles(activePaths: Set<String> = emptySet()) {
     runCatching {
       val activeNames = activePaths.map { File(it).name }.toSet()
-      val scriptsDir = File(appContext.filesDir, "scripts")
+      val scriptsDir = MpvScriptAssets.generatedDirectory(appContext.filesDir)
       customButtonScriptTargets.forEach { target ->
         val file = File(scriptsDir, target.fileName)
         if (file.exists() && file.name !in activeNames) {
@@ -8603,3 +8614,4 @@ private fun String.md5(): String {
   val digest = MessageDigest.getInstance("MD5").digest(toByteArray())
   return digest.joinToString("") { byte -> "%02x".format(byte) }
 }
+
