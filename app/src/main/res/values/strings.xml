@@ -2994,4 +2994,13 @@
   <string name="pref_measure_enabled_title">Share diagnostics with Measure</string>
   <string name="pref_measure_enabled_summary">Opt in to send crashes, ANRs, performance metrics and session activity to Measure. Disabled by default.</string>
   <string name="pref_measure_not_configured">Diagnostics unavailable: this build has no Measure API key.</string>
+  <string name="player_overflow_title">More player controls</string>
+  <string name="pref_layout_portrait_playback_position">Portrait playback controls</string>
+  <string name="pref_layout_landscape_playback_position">Landscape playback controls</string>
+  <string name="pref_layout_playback_center">Center of screen</string>
+  <string name="pref_layout_playback_above_seekbar">Above seekbar</string>
+  <string name="pref_layout_playback_below_seekbar">Below seekbar</string>
+  <string name="pref_persistent_status_progress_line">Thin playback progress line</string>
+  <string name="pref_action_open_page">Open page</string>
+  <string name="pref_action_open_dialog">Open dialog</string>
 </resources>

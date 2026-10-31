@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +46,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.PlaybackControlsPlacement
 import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SeekbarStyle
@@ -57,11 +62,15 @@ import app.gyrolet.mpvrx.ui.player.controls.BottomSlot
 import app.gyrolet.mpvrx.ui.player.controls.PlaybackControlsGeometry
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonTheme
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControlsContentTheme
+import app.gyrolet.mpvrx.ui.player.controls.PlayerControlOverflowPanel
+import app.gyrolet.mpvrx.ui.player.controls.PlayerOverflowStartInset
+import app.gyrolet.mpvrx.ui.player.controls.resolvePlayerControlPlacement
 import app.gyrolet.mpvrx.ui.player.controls.VideoControlsLayoutPreset
 import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStylePreview
+import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
 import app.gyrolet.mpvrx.ui.player.controls.resolveBottomControlsLayout
 import app.gyrolet.mpvrx.ui.player.controls.resolvePlaybackControlsGeometry
 import app.gyrolet.mpvrx.ui.preferences.ControlRegion
@@ -86,6 +95,9 @@ internal fun PlayerLayoutPreview(
   val opacity by appearance.playerButtonsBackgroundOpacity.collectAsState()
   val seekbarStyle by appearance.seekbarStyle.collectAsState()
   val glassEnabled by appearance.liquidGlassEnabled.collectAsState()
+  val playbackPreference =
+    if (region.isPortrait) appearance.portraitPlaybackControlsPlacement else appearance.landscapePlaybackControlsPlacement
+  val playbackControlsPlacement by playbackPreference.collectAsState()
   val wavy by koinInject<PlayerPreferences>().useWavySeekbar.collectAsState()
   val title = stringResource(region.titleRes)
   val configuration = LocalConfiguration.current
@@ -124,7 +136,7 @@ internal fun PlayerLayoutPreview(
                 PlayerControlsContentTheme {
                   PreviewScene(
                     region, topRightButtons, bottomRightButtons, bottomLeftButtons, portraitBottomButtons,
-                    preset, playlist, glassEnabled, seekbarStyle, wavy, sceneWidth,
+                    preset, playbackControlsPlacement, playlist, glassEnabled, seekbarStyle, wavy, sceneWidth,
                   )
                 }
               }
@@ -153,6 +165,7 @@ private fun PreviewScene(
   bottomLeftButtons: List<PlayerButton>,
   portraitBottomButtons: List<PlayerButton>,
   preset: VideoControlsLayoutPreset,
+  playbackControlsPlacement: PlaybackControlsPlacement,
   playlist: Boolean,
   glassEnabled: Boolean,
   seekbarStyle: SeekbarStyle,
@@ -160,39 +173,76 @@ private fun PreviewScene(
   sceneWidth: Dp,
 ) {
   val spacing = MaterialTheme.spacing
+  val placement = resolvePlayerControlPlacement(
+    isPortrait = region.isPortrait,
+    topRight = topRightButtons,
+    bottomRight = bottomRightButtons,
+    bottomLeft = bottomLeftButtons,
+    portraitBottom = portraitBottomButtons,
+    availableWidth = (sceneWidth - spacing.large * 2).coerceAtLeast(0.dp),
+    landscapeGap = spacing.extraSmall,
+    portraitHorizontalInset = if (glassEnabled) 8.dp else 0.dp,
+  )
+  var overflowExpanded by rememberSaveable(region) { mutableStateOf(false) }
+  val reducedMotion by koinInject<PlayerPreferences>().reduceMotion.collectAsState()
   val hasActions =
-    if (region.isPortrait) portraitBottomButtons.isNotEmpty()
-    else bottomRightButtons.isNotEmpty() || bottomLeftButtons.isNotEmpty()
-  val geometry = resolvePlaybackControlsGeometry(sceneWidth, spacing)
-  val layout = resolveBottomControlsLayout(preset.seekbarPlacement, hasActions)
+    if (region.isPortrait) placement.portraitBottom.isNotEmpty()
+    else placement.bottomRight.isNotEmpty() || placement.bottomLeft.isNotEmpty()
+  val geometry = resolvePlaybackControlsGeometry((sceneWidth - spacing.large * 2).coerceAtLeast(0.dp), spacing)
+  val layout = resolveBottomControlsLayout(preset.seekbarPlacement, hasActions, playbackControlsPlacement)
   val backdrop = rememberLiquidGlassBackdrop()
   val background = Brush.linearGradient(listOf(Color(0xFF112333), Color(0xFF27434A), Color(0xFF10131D)))
   Box(Modifier.fillMaxSize()) {
     Box(Modifier.fillMaxSize().captureLiquidGlassBackdrop(backdrop, glassEnabled).background(background))
     CompositionLocalProvider(LocalKyantPlayerBackdrop provides backdrop.takeIf { glassEnabled }) {
-      Row(
-        Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = spacing.large, vertical = spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.small),
+      Column(
+        Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(
+          start = spacing.large - PlayerOverflowStartInset,
+          end = spacing.large,
+          top = spacing.small,
+          bottom = spacing.small,
+        ),
+        verticalArrangement = Arrangement.spacedBy(spacing.extraSmall),
       ) {
         Row(
-          Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
+          Modifier.fillMaxWidth().padding(start = PlayerOverflowStartInset),
+          verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(spacing.small),
         ) {
-          PreviewIcon(Icons.RoundedFilled.ArrowBack, 48.dp)
-          Text(
-            stringResource(R.string.ui_video_title), color = Color.White,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-          )
+          Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            PreviewIcon(Icons.RoundedFilled.ArrowBack, 48.dp)
+            Text(
+              stringResource(R.string.ui_video_title), color = Color.White,
+              maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+            )
+          }
+          if (!region.isPortrait) {
+            PreviewButtons(
+              placement.topRight, region == ControlRegion.TOP_RIGHT,
+              Modifier.width(48.dp * placement.topRight.size + spacing.extraSmall * (placement.topRight.size - 1).coerceAtLeast(0)),
+              endAligned = true,
+            )
+          }
         }
-        if (!region.isPortrait) {
-          PreviewButtons(
-            topRightButtons, region == ControlRegion.TOP_RIGHT,
-            Modifier.weight(1f), endAligned = true,
-          )
+        if (placement.overflow.isNotEmpty()) {
+          PlayerControlOverflowPanel(
+            buttons = placement.overflow,
+            expanded = overflowExpanded,
+            onExpandedChange = { overflowExpanded = it },
+            onInteractionChanged = {},
+            reducedMotion = reducedMotion,
+            modifier = Modifier.fillMaxWidth(),
+          ) { button -> PreviewActionButton(button) }
         }
       }
-      PreviewPlayback(playlist, geometry, Modifier.align(Alignment.Center))
+      if (playbackControlsPlacement == PlaybackControlsPlacement.Center) {
+        PreviewPlayback(
+          playlist, geometry,
+          if (region.isPortrait) Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = spacing.large)
+          else Modifier.align(Alignment.Center),
+          evenlySpaced = region.isPortrait,
+        )
+      }
       Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
           .padding(horizontal = spacing.large, vertical = if (region.isPortrait) spacing.large else spacing.medium),
@@ -201,19 +251,26 @@ private fun PreviewScene(
         layout.bottomToTop.asReversed().forEach { slot ->
           when (slot) {
             BottomSlot.Seekbar -> SeekbarStylePreview(seekbarStyle, useWavySeekbar = wavy)
+            BottomSlot.Playback -> PreviewPlayback(
+              playlist, geometry,
+              Modifier.fillMaxWidth().padding(vertical = if (glassEnabled) 8.dp else 0.dp),
+              evenlySpaced = region.isPortrait,
+            )
             BottomSlot.Buttons -> {
-              val left = if (region.isPortrait) emptyList() else bottomLeftButtons
-              val right = if (region.isPortrait) portraitBottomButtons else bottomRightButtons
+              val left = if (region.isPortrait) emptyList() else placement.bottomLeft
+              val right = if (region.isPortrait) placement.portraitBottom else placement.bottomRight
               val actionGap = if (region.isPortrait) spacing.medium else spacing.extraSmall
+              val actionShadowRoom = if (region.isPortrait) { if (glassEnabled) 6.dp else 0.dp } else 8.dp
               Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(spacing.smaller),
+                horizontalArrangement = Arrangement.spacedBy(spacing.smaller * 2),
               ) {
                 if (left.isNotEmpty()) {
                   PreviewButtons(
                     left, region == ControlRegion.BOTTOM_LEFT,
                     Modifier.weight(1f), buttonGap = actionGap,
+                    shadowRoom = actionShadowRoom,
                   )
                 }
                 if (right.isNotEmpty()) {
@@ -222,6 +279,8 @@ private fun PreviewScene(
                     Modifier.weight(1f), endAligned = !region.isPortrait,
                     centered = region.isPortrait,
                     buttonGap = actionGap,
+                    horizontalInset = if (region.isPortrait && glassEnabled) 8.dp else 0.dp,
+                    shadowRoom = actionShadowRoom,
                   )
                 }
               }
@@ -241,10 +300,12 @@ private fun PreviewButtons(
   endAligned: Boolean = false,
   centered: Boolean = false,
   buttonGap: Dp = MaterialTheme.spacing.extraSmall,
+  horizontalInset: Dp = 0.dp,
+  shadowRoom: Dp = 0.dp,
 ) {
   val shape = MaterialTheme.shapes.medium
   Box(
-    modifier.heightIn(min = 48.dp)
+    modifier.heightIn(min = 48.dp).padding(horizontal = horizontalInset, vertical = shadowRoom)
       .then(
         if (highlighted) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), shape)
           .border(2.dp, MaterialTheme.colorScheme.primary, shape)
@@ -254,30 +315,28 @@ private fun PreviewButtons(
     Row(
       Modifier.fillMaxWidth().horizontalScroll(rememberScrollState(), reverseScrolling = endAligned),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(
-        buttonGap,
-        if (endAligned) Alignment.End else if (centered) Alignment.CenterHorizontally else Alignment.Start,
-      ),
+      horizontalArrangement =
+        if (centered) Arrangement.SpaceEvenly
+        else Arrangement.spacedBy(buttonGap, if (endAligned) Alignment.End else Alignment.Start),
     ) {
       buttons.forEach { button ->
-        AdaptiveControlsContainer(
-          onClick = {}, isInteractive = false, buttonSize = 48.dp,
-          color = Color.Unspecified,
-          horizontalPadding = if (button == PlayerButton.VIDEO_TITLE || button == PlayerButton.CURRENT_CHAPTER) 12.dp else 0.dp,
-          modifier = if (button == PlayerButton.VIDEO_TITLE || button == PlayerButton.CURRENT_CHAPTER) Modifier else Modifier.size(48.dp),
-        ) {
-          when (button) {
-            PlayerButton.VIDEO_TITLE -> Text(stringResource(R.string.ui_video_title), maxLines = 1)
-            PlayerButton.CURRENT_CHAPTER -> Text(stringResource(R.string.ui_1_06_chapter_1), maxLines = 1)
-            PlayerButton.AB_LOOP -> AbLoopIcon(Modifier.size(30.dp))
-            else -> Icon(
-              button.icon, null,
-              Modifier.size(24.dp).then(if (button == PlayerButton.VERTICAL_FLIP) Modifier.rotate(90f) else Modifier),
-            )
-          }
-        }
+        PreviewActionButton(button)
       }
     }
+  }
+}
+
+@Composable
+private fun PreviewActionButton(button: PlayerButton) {
+  AdaptiveControlsContainer(
+    onClick = {}, isInteractive = false, buttonSize = 48.dp,
+    color = Color.Unspecified, horizontalPadding = 0.dp, modifier = Modifier.size(48.dp),
+  ) {
+    if (button == PlayerButton.AB_LOOP) AbLoopIcon(Modifier.size(30.dp))
+    else Icon(
+      button.icon, null,
+      Modifier.size(24.dp).then(if (button == PlayerButton.VERTICAL_FLIP) Modifier.rotate(90f) else Modifier),
+    )
   }
 }
 
@@ -286,10 +345,13 @@ private fun PreviewPlayback(
   playlist: Boolean,
   geometry: PlaybackControlsGeometry,
   modifier: Modifier = Modifier,
+  evenlySpaced: Boolean = false,
 ) {
   Row(
-    modifier, verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(geometry.buttonGap),
+    modifier.fadingHorizontalScroll(rememberScrollState(), shadowRoom = 0.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement =
+      if (evenlySpaced) Arrangement.SpaceEvenly else Arrangement.spacedBy(geometry.buttonGap, Alignment.CenterHorizontally),
   ) {
     if (playlist) PreviewIcon(Icons.RoundedFilled.SkipPrevious, geometry.skipButtonSize)
     PreviewIcon(Icons.RoundedFilled.PlayArrow, geometry.playPauseSize)

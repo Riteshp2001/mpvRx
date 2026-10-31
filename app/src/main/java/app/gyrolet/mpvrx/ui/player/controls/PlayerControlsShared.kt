@@ -350,43 +350,27 @@ fun RenderPlayerButton(
           }
         }
       } else {
-        if (enableLiquidGlass) {
-          LiquidIconButton(
-            icon = Icons.RoundedFilled.Speed,
-            onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-            tint = if (configOwned) disabledColor else if (borderless) controlColor else MaterialTheme.colorScheme.onSurface,
-            size = buttonSize,
-          )
-        } else {
-          ControlsButton(
-            icon = Icons.RoundedFilled.Speed,
-            onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-            color = if (borderless) controlColor else MaterialTheme.colorScheme.onSurface,
-            enabled = !configOwned,
-            modifier = Modifier.size(buttonSize),
-          )
-        }
+        ControlsButton(
+          icon = Icons.RoundedFilled.Speed,
+          onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+          title = stringResource(R.string.btn_label_speed),
+          color = if (isSpeedNonOne) MaterialTheme.colorScheme.primary else if (borderless) controlColor else MaterialTheme.colorScheme.onSurface,
+          enabled = !configOwned,
+          modifier = Modifier.size(buttonSize),
+        )
       }
     }
 
     PlayerButton.DECODER -> {
       val configOwned = isAnyMpvOptionOwnedByConfig(MpvConfigControlledFeatures.HARDWARE_DECODER)
       if (compact) {
-        if (enableLiquidGlass) {
-          LiquidIconButton(
-            icon = Icons.RoundedFilled.DeveloperBoard,
-            onClick = { onOpenSheet(Sheets.Decoders) },
-            tint = if (configOwned) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else if (borderless) controlColor else MaterialTheme.colorScheme.onSurface,
-            size = buttonSize,
-          )
-        } else {
-          ControlsButton(
-            icon = Icons.RoundedFilled.DeveloperBoard,
-            onClick = { onOpenSheet(Sheets.Decoders) },
-            enabled = !configOwned,
-            modifier = Modifier.size(buttonSize),
-          )
-        }
+        ControlsButton(
+          icon = Icons.RoundedFilled.DeveloperBoard,
+          onClick = { onOpenSheet(Sheets.Decoders) },
+          title = stringResource(R.string.btn_label_decoder),
+          enabled = !configOwned,
+          modifier = Modifier.size(buttonSize),
+        )
       } else {
         if (enableLiquidGlass) {
           LiquidPillButton(
@@ -835,30 +819,18 @@ fun RenderPlayerButton(
           }
         }
       } else {
-        if (enableLiquidGlass) {
-          LiquidIconButton(
-            icon = Icons.RoundedFilled.ZoomIn,
-            onClick = {
-              clickEvent()
-              onOpenSheet(Sheets.VideoZoom)
-            },
-            onLongClick = { viewModel.resetVideoZoom() },
-            tint = if (borderless) controlColor else MaterialTheme.colorScheme.onSurface,
-            size = buttonSize,
-          )
-        } else {
-          ControlsButton(
-            Icons.RoundedFilled.ZoomIn,
-            onClick = {
-              clickEvent()
-              onOpenSheet(Sheets.VideoZoom)
-            },
-            onLongClick = { viewModel.resetVideoZoom() },
-            color = if (borderless) controlColor else MaterialTheme.colorScheme.onSurface,
-            enabled = geometryControlsAvailable,
-            modifier = Modifier.size(buttonSize),
-          )
-        }
+        ControlsButton(
+          Icons.RoundedFilled.ZoomIn,
+          onClick = {
+            clickEvent()
+            onOpenSheet(Sheets.VideoZoom)
+          },
+          title = stringResource(R.string.btn_label_zoom),
+          onLongClick = { viewModel.resetVideoZoom() },
+          color = if (borderless) controlColor else MaterialTheme.colorScheme.onSurface,
+          enabled = geometryControlsAvailable,
+          modifier = Modifier.size(buttonSize),
+        )
       }
     }
 

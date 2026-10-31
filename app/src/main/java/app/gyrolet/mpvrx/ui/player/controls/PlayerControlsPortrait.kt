@@ -240,7 +240,6 @@ fun TopPlayerControlsPortrait(
 @Composable
 fun BottomPlayerControlsPortrait(
   buttons: List<PlayerButton>,
-  showVideoQualitySelector: Boolean,
   chapters: List<Segment>,
   currentChapter: Int?,
   isSpeedNonOne: Boolean,
@@ -255,11 +254,7 @@ fun BottomPlayerControlsPortrait(
   viewModel: PlayerViewModel,
   activity: PlayerActivity,
   alignToEnd: Boolean = false,
-  horizontalArrangement: Arrangement.Horizontal =
-    Arrangement.spacedBy(
-      MaterialTheme.spacing.medium,
-      Alignment.CenterHorizontally,
-    ),
+  horizontalArrangement: Arrangement.Horizontal = Arrangement.SpaceEvenly,
 ) {
   PlayerButtonTheme {
     val enableLiquidGlass = liquidGlassActive()
@@ -295,14 +290,7 @@ fun BottomPlayerControlsPortrait(
           decoder = decoder,
           playbackSpeed = playbackSpeed,
           buttonSize = 48.dp,
-        )
-      }
-      if (showVideoQualitySelector) {
-        ControlsButton(
-          icon = Icons.RoundedFilled.Hd,
-          onClick = { onOpenSheet(Sheets.VideoQuality) },
-          title = stringResource(R.string.player_video_quality_button),
-          modifier = Modifier.size(48.dp),
+          compact = true,
         )
       }
     }

@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.preferences
 
 import android.content.Context
 import android.os.Build
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -33,6 +34,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.Preference
 import app.gyrolet.mpvrx.preferences.preference.getEnum
@@ -113,6 +115,10 @@ class AppearancePreferences(
     preferenceStore.getEnum("portrait_seekbar_placement", SeekbarPlacement.AboveButtons)
   val landscapeSeekbarPlacement =
     preferenceStore.getEnum("landscape_seekbar_placement", SeekbarPlacement.BelowButtons)
+  val portraitPlaybackControlsPlacement =
+    preferenceStore.getEnum("portrait_playback_controls_placement", PlaybackControlsPlacement.Center)
+  val landscapePlaybackControlsPlacement =
+    preferenceStore.getEnum("landscape_playback_controls_placement", PlaybackControlsPlacement.Center)
   // Absolute background level: 0.55 keeps each button's designed tint, 1 is opaque, 0 is clear.
   // A new key, because "player_buttons_opacity" stored a multiplier whose 100% kept buttons translucent.
   val playerButtonsBackgroundOpacity = preferenceStore.getFloat("player_buttons_background_opacity", 0.55f)
@@ -268,6 +274,12 @@ class AppearancePreferences(
 enum class SeekbarPlacement {
   AboveButtons,
   BelowButtons,
+}
+
+enum class PlaybackControlsPlacement(@StringRes val titleRes: Int) {
+  Center(R.string.pref_layout_playback_center),
+  AboveSeekbar(R.string.pref_layout_playback_above_seekbar),
+  BelowSeekbar(R.string.pref_layout_playback_below_seekbar),
 }
 
 @Composable

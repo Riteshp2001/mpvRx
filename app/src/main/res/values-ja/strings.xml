@@ -2842,4 +2842,10 @@
   <string name="pref_measure_enabled_title">Measure に診断情報を送信</string>
   <string name="pref_measure_enabled_summary">クラッシュ、ANR、パフォーマンス指標、セッション操作を Measure に送信します。初期設定はオフです。</string>
   <string name="pref_measure_not_configured">診断を利用できません。このビルドに Measure API キーがありません。</string>
+  <string name="player_overflow_title">その他のプレーヤー操作</string>
+  <string name="pref_layout_portrait_playback_position">縦向きの再生コントロール</string>
+  <string name="pref_layout_landscape_playback_position">横向きの再生コントロール</string>
+  <string name="pref_layout_playback_center">画面中央</string>
+  <string name="pref_layout_playback_above_seekbar">シークバーの上</string>
+  <string name="pref_layout_playback_below_seekbar">シークバーの下</string>
 </resources>

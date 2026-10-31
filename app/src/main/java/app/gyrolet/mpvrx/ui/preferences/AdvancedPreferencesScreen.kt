@@ -84,6 +84,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
+import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
 import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
 import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 import org.koin.compose.koinInject
@@ -787,6 +788,7 @@ object AdvancedPreferencesScreen : Screen {
                   }
                 },
                 onClick = { isConfirmDialogShown = true },
+                action = PreferenceAction.Dialog,
               )
               }
 
@@ -964,6 +966,7 @@ object AdvancedPreferencesScreen : Screen {
                   }
                 },
                 onClick = { isClearThumbsConfirmShown = true },
+                action = PreferenceAction.Dialog,
               )
               }
 

@@ -20,10 +20,12 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,6 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -82,10 +89,11 @@ internal fun PersistentStatusHud(
   val preferFinishTime by preferences.persistentStatusPreferFinishTime.collectAsState()
   val showSpeed by preferences.persistentStatusShowSpeed.collectAsState()
   val microBattery by preferences.persistentStatusMicroBattery.collectAsState()
+  val showProgressLine by preferences.persistentStatusProgressLine.collectAsState()
   val clockFormat by preferences.clockFormat.collectAsState()
   val television = isTelevision()
   val slots = listOf(left, center, right)
-  val needsProgress = !television || PersistentStatusSlot.PlaybackProgress in slots
+  val needsProgress = showProgressLine || !television || PersistentStatusSlot.PlaybackProgress in slots
   val playbackPosition = if (needsProgress) viewModel.precisePosition.collectAsState().value else 0f
   val battery = if (television) 0 else rememberHudBatteryLevel()
   val needsClock = !television || PersistentStatusSlot.CurrentTime in slots || (needsProgress && preferFinishTime)
@@ -118,6 +126,37 @@ internal fun PersistentStatusHud(
         )
         .padding(vertical = 8.dp),
     )
+    if (showProgressLine) {
+      PersistentPlaybackProgressLine(
+        positionSeconds = playbackPosition,
+        durationSeconds = durationSeconds,
+        modifier = Modifier.align(Alignment.BottomCenter),
+      )
+    }
+  }
+}
+
+@Composable
+internal fun PersistentPlaybackProgressLine(
+  positionSeconds: Float,
+  durationSeconds: Float,
+  modifier: Modifier = Modifier,
+) {
+  val validDuration = durationSeconds.isFinite() && durationSeconds > 0f
+  val progress =
+    if (validDuration && positionSeconds.isFinite()) (positionSeconds / durationSeconds).coerceIn(0f, 1f)
+    else 0f
+  val color = MaterialTheme.colorScheme.primary
+  val label = stringResource(R.string.pref_persistent_status_progress)
+  Canvas(
+    modifier.fillMaxWidth().height(2.dp).semantics {
+      contentDescription = label
+      progressBarRangeInfo =
+        if (validDuration) ProgressBarRangeInfo(progress, 0f..1f) else ProgressBarRangeInfo.Indeterminate
+    },
+  ) {
+    drawRect(Color.White.copy(alpha = 0.2f))
+    drawRect(color, size = Size(size.width * progress, size.height))
   }
 }
 

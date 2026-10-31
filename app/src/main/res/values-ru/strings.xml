@@ -2890,4 +2890,10 @@
   <string name="pref_measure_enabled_title">Отправлять диагностику в Measure</string>
   <string name="pref_measure_enabled_summary">Разрешить отправку сбоев, ANR, показателей производительности и действий сеанса в Measure. По умолчанию отключено.</string>
   <string name="pref_measure_not_configured">Диагностика недоступна: в сборке нет ключа API Measure.</string>
+  <string name="player_overflow_title">Дополнительные элементы управления</string>
+  <string name="pref_layout_portrait_playback_position">Элементы управления в портретном режиме</string>
+  <string name="pref_layout_landscape_playback_position">Элементы управления в альбомном режиме</string>
+  <string name="pref_layout_playback_center">По центру экрана</string>
+  <string name="pref_layout_playback_above_seekbar">Над шкалой воспроизведения</string>
+  <string name="pref_layout_playback_below_seekbar">Под шкалой воспроизведения</string>
 </resources>

@@ -2858,4 +2858,10 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_measure_enabled_title">Compartilhar diagnósticos com Measure</string>
   <string name="pref_measure_enabled_summary">Permita o envio de falhas, ANRs, métricas de desempenho e atividade da sessão ao Measure. Desativado por padrão.</string>
   <string name="pref_measure_not_configured">Diagnóstico indisponível: esta compilação não tem chave da API Measure.</string>
+  <string name="player_overflow_title">Mais controles do player</string>
+  <string name="pref_layout_portrait_playback_position">Controles de reprodução em modo retrato</string>
+  <string name="pref_layout_landscape_playback_position">Controles de reprodução em modo paisagem</string>
+  <string name="pref_layout_playback_center">Centro da tela</string>
+  <string name="pref_layout_playback_above_seekbar">Acima da barra de progresso</string>
+  <string name="pref_layout_playback_below_seekbar">Abaixo da barra de progresso</string>
 </resources>

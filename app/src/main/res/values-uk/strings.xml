@@ -2830,4 +2830,10 @@
   <string name="pref_measure_enabled_title">Надсилати діагностику до Measure</string>
   <string name="pref_measure_enabled_summary">Дозволити надсилання збоїв, ANR, показників продуктивності та дій сеансу до Measure. Типово вимкнено.</string>
   <string name="pref_measure_not_configured">Діагностика недоступна: у збірці немає ключа API Measure.</string>
+  <string name="player_overflow_title">Додаткові елементи керування</string>
+  <string name="pref_layout_portrait_playback_position">Керування відтворенням у портретному режимі</string>
+  <string name="pref_layout_landscape_playback_position">Керування відтворенням в альбомному режимі</string>
+  <string name="pref_layout_playback_center">У центрі екрана</string>
+  <string name="pref_layout_playback_above_seekbar">Над шкалою відтворення</string>
+  <string name="pref_layout_playback_below_seekbar">Під шкалою відтворення</string>
 </resources>

@@ -2920,4 +2920,10 @@
   <string name="pref_measure_enabled_title">مشاركة بيانات التشخيص مع Measure</string>
   <string name="pref_measure_enabled_summary">اشترك لإرسال الأعطال وعدم الاستجابة ومقاييس الأداء ونشاط الجلسة إلى Measure. معطل افتراضيًا.</string>
   <string name="pref_measure_not_configured">التشخيص غير متاح: لا يحتوي هذا الإصدار على مفتاح Measure.</string>
+  <string name="player_overflow_title">المزيد من عناصر التحكم</string>
+  <string name="pref_layout_portrait_playback_position">عناصر التحكم في التشغيل العمودي</string>
+  <string name="pref_layout_landscape_playback_position">عناصر التحكم في التشغيل الأفقي</string>
+  <string name="pref_layout_playback_center">وسط الشاشة</string>
+  <string name="pref_layout_playback_above_seekbar">فوق شريط التقدم</string>
+  <string name="pref_layout_playback_below_seekbar">تحت شريط التقدم</string>
 </resources>

@@ -2762,4 +2762,10 @@
   <string name="pref_measure_enabled_title">Measure के साथ निदान साझा करें</string>
   <string name="pref_measure_enabled_summary">क्रैश, ANR, प्रदर्शन आँकड़े और सत्र गतिविधि Measure को भेजने के लिए सहमति दें। डिफ़ॉल्ट रूप से बंद।</string>
   <string name="pref_measure_not_configured">निदान उपलब्ध नहीं: इस बिल्ड में Measure API कुंजी नहीं है।</string>
+  <string name="player_overflow_title">प्लेयर के और नियंत्रण</string>
+  <string name="pref_layout_portrait_playback_position">पोर्ट्रेट प्लेबैक नियंत्रण</string>
+  <string name="pref_layout_landscape_playback_position">लैंडस्केप प्लेबैक नियंत्रण</string>
+  <string name="pref_layout_playback_center">स्क्रीन के बीच में</string>
+  <string name="pref_layout_playback_above_seekbar">सीकबार के ऊपर</string>
+  <string name="pref_layout_playback_below_seekbar">सीकबार के नीचे</string>
 </resources>

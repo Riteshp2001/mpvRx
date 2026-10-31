@@ -95,6 +95,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -136,6 +137,7 @@ import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.PlayerButton
+import app.gyrolet.mpvrx.preferences.PlaybackControlsPlacement
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.allPlayerButtons
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -404,6 +406,8 @@ fun PlayerControls(
   val forceDarkButtonBackground by appearancePreferences.forceDarkPlayerButtonsBackground.collectAsState()
   val portraitSeekbarPlacement by appearancePreferences.portraitSeekbarPlacement.collectAsState()
   val landscapeSeekbarPlacement by appearancePreferences.landscapeSeekbarPlacement.collectAsState()
+  val portraitPlaybackControlsPlacement by appearancePreferences.portraitPlaybackControlsPlacement.collectAsState()
+  val landscapePlaybackControlsPlacement by appearancePreferences.landscapePlaybackControlsPlacement.collectAsState()
   val playerButtonsBackgroundOpacity by appearancePreferences.playerButtonsBackgroundOpacity.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val gesturePreferences = koinInject<GesturePreferences>()
@@ -628,18 +632,46 @@ fun PlayerControls(
       else -> true
     }
   }
-  val topRightButtons = visibleLayoutButtons(configuredTopRightButtons, false)
-  val bottomRightButtons = visibleLayoutButtons(configuredBottomRightButtons, false)
-  val bottomLeftButtons = visibleLayoutButtons(configuredBottomLeftButtons, false)
-  val portraitBottomButtons = visibleLayoutButtons(configuredPortraitBottomButtons, true)
-  val landscapeHasConfiguredQualityButton =
-    remember(topRightButtons, bottomRightButtons, bottomLeftButtons) {
-      PlayerButton.VIDEO_QUALITY in topRightButtons ||
-        PlayerButton.VIDEO_QUALITY in bottomRightButtons ||
-        PlayerButton.VIDEO_QUALITY in bottomLeftButtons
+  val layoutDensity = LocalDensity.current
+  val layoutWidth =
+    if (playerBounds.width > 0) with(layoutDensity) { playerBounds.width.toDp() } else configuration.screenWidthDp.dp
+  val horizontalInsets =
+    when {
+      safeAreaWindow -> WindowInsets.safeDrawing
+      showSystemNavigationBar -> WindowInsets.navigationBars
+      else -> null
     }
-  val portraitHasConfiguredQualityButton = PlayerButton.VIDEO_QUALITY in portraitBottomButtons
-    val playerDrawerButtons =
+  val insetWidth = with(layoutDensity) {
+    ((horizontalInsets?.getLeft(layoutDensity, LayoutDirection.Ltr) ?: 0) +
+      (horizontalInsets?.getRight(layoutDensity, LayoutDirection.Ltr) ?: 0)).toDp()
+  }
+  val visibleTopRight = visibleLayoutButtons(configuredTopRightButtons, false)
+  val visibleBottomRight = visibleLayoutButtons(configuredBottomRightButtons, false)
+  val visibleBottomLeft = visibleLayoutButtons(configuredBottomLeftButtons, false)
+  val visiblePortraitBottom = visibleLayoutButtons(configuredPortraitBottomButtons, true)
+  val availableControlsWidth = (layoutWidth - insetWidth - spacing.large * 2).coerceAtLeast(0.dp)
+  val buttonPlacement = remember(
+    isPortrait, layoutWidth, insetWidth, spacing, showVideoQualitySelector, enableLiquidGlass,
+    visibleTopRight, visibleBottomRight, visibleBottomLeft, visiblePortraitBottom,
+  ) {
+    resolvePlayerControlPlacement(
+      isPortrait = isPortrait,
+      topRight = visibleTopRight,
+      bottomRight = visibleBottomRight,
+      bottomLeft = visibleBottomLeft,
+      portraitBottom = visiblePortraitBottom,
+      availableWidth = availableControlsWidth,
+      landscapeGap = spacing.extraSmall,
+      portraitHorizontalInset = if (enableLiquidGlass) 8.dp else 0.dp,
+      showVideoQualitySelector = showVideoQualitySelector,
+    )
+  }
+  val topRightButtons = buttonPlacement.topRight
+  val bottomRightButtons = buttonPlacement.bottomRight
+  val bottomLeftButtons = buttonPlacement.bottomLeft
+  val portraitBottomButtons = buttonPlacement.portraitBottom
+  val overflowButtons = buttonPlacement.overflow
+  val playerDrawerButtons =
     remember(
       showVideoQualitySelector,
       chapters,
@@ -658,6 +690,8 @@ fun PlayerControls(
 
   var showUnlockOnLeft by remember { mutableStateOf(true) }
   var isPlayerDrawerShown by remember { mutableStateOf(false) }
+  var isOverflowExpanded by rememberSaveable(isPortrait, currentQueueItem?.originalUri) { mutableStateOf(false) }
+  var isOverflowInteracting by remember { mutableStateOf(false) }
   LaunchedEffect(showControlsDrawer, areControlsLocked) {
     if (areControlsLocked || !showControlsDrawer) {
       val wasOpen = isPlayerDrawerShown
@@ -684,6 +718,16 @@ fun PlayerControls(
   val areSlidersShown =
     (isBrightnessSliderShown && showBrightnessGestureOverlay) ||
       (isVolumeSliderShown && showVolumeGestureOverlay)
+  LaunchedEffect(controlsShown, areControlsLocked, areSlidersShown, isPlayerDrawerShown, overflowButtons.isEmpty()) {
+    if (!controlsShown || areControlsLocked || areSlidersShown || isPlayerDrawerShown || overflowButtons.isEmpty()) {
+      isOverflowExpanded = false
+      isOverflowInteracting = false
+    }
+  }
+  BackHandler(enabled = isOverflowExpanded && controlsShown && !areControlsLocked) {
+    isOverflowExpanded = false
+    resetControlsTimestamp = System.currentTimeMillis()
+  }
   val gestureSeekUpdate by viewModel.playerUpdate.collectAsState()
   // Swipe-seek pauses playback internally; the auto-hide timer should still run through it.
   val isPlayingForAutoHide = paused == false || gestureSeekUpdate is PlayerUpdates.HorizontalSeek
@@ -697,13 +741,15 @@ fun PlayerControls(
     areControlsLocked,
     isAudioOnly,
     isPlayerDrawerShown,
+    isOverflowInteracting,
   ) {
     if (!isTelevision &&
       !isAudioOnly &&
       controlsShown &&
       isPlayingForAutoHide &&
       !isSeeking &&
-      !isPlayerDrawerShown
+      !isPlayerDrawerShown &&
+      !isOverflowInteracting
     ) {
       // Use 2 second delay when controls are locked, otherwise use user preference
       val delayTime = if (areControlsLocked) 2000L else playerTimeToDisappear.toLong()
@@ -1087,6 +1133,8 @@ fun PlayerControls(
               .then(navigationBarBottomInsetModifier),
           ) {
           val (topLeftControls, topRightControls) = createRefs()
+          val overflowControls = createRef()
+          val titleBarBottom = createBottomBarrier(topLeftControls, topRightControls)
           val (volumeSlider, brightnessSlider) = createRefs()
           val unlockControlsButton = createRef()
           val (bottomRightControls, bottomLeftControls) = createRefs()
@@ -1098,18 +1146,17 @@ fun PlayerControls(
           val (customLeftButtonsRef, customRightButtonsRef) = createRefs()
           val customButtonsPortraitRef = createRef()
 
-          val automaticQualityButton =
-            showVideoQualitySelector &&
-              !(if (isPortrait) portraitHasConfiguredQualityButton else landscapeHasConfiguredQualityButton)
           val hasBottomActions =
-            automaticQualityButton ||
-              (if (isPortrait) {
-                portraitBottomButtons.isNotEmpty()
-              } else {
-                bottomLeftButtons.isNotEmpty() || bottomRightButtons.isNotEmpty()
-              })
-          val controlsWidth =
-            if (playerBounds.width > 0) with(density) { playerBounds.width.toDp() } else configuration.screenWidthDp.dp
+            if (isPortrait) {
+              portraitBottomButtons.isNotEmpty()
+            } else {
+              bottomLeftButtons.isNotEmpty() || bottomRightButtons.isNotEmpty()
+            }
+          val controlsWidth = availableControlsWidth
+          val hasPlaylistControls =
+            playlistMode && (playlistItems.size > 1 || viewModel.getPlaylistTotalCount() > 1)
+          val playbackControlsPlacement =
+            if (isPortrait) portraitPlaybackControlsPlacement else landscapePlaybackControlsPlacement
           val playbackGeometry = resolvePlaybackControlsGeometry(
             width = controlsWidth,
             spacing = spacing,
@@ -1117,14 +1164,18 @@ fun PlayerControls(
           val playPauseSize = playbackGeometry.playPauseSize
           val skipButtonSize = playbackGeometry.skipButtonSize
           val playbackButtonGap = playbackGeometry.buttonGap
+          val playbackShadowRoom = if (enableLiquidGlass) 8.dp else 0.dp
+          val fullWidthPlaybackRow = hasPlaylistControls &&
+            (isPortrait || playPauseSize + skipButtonSize * 2 + playbackButtonGap * 2 > controlsWidth)
           val bottomLayout =
             resolveBottomControlsLayout(
               seekbarPlacement = if (isPortrait) portraitSeekbarPlacement else landscapeSeekbarPlacement,
               hasButtons = hasBottomActions,
+              playbackControlsPlacement = playbackControlsPlacement,
             )
           val hasLeftButtons = !isPortrait && bottomLeftButtons.isNotEmpty()
           val hasRightButtons =
-            automaticQualityButton || (if (isPortrait) portraitBottomButtons.isNotEmpty() else bottomRightButtons.isNotEmpty())
+            if (isPortrait) portraitBottomButtons.isNotEmpty() else bottomRightButtons.isNotEmpty()
           val sharedPlaybackRowCenterX = createGuidelineFromStart(0.5f)
           val bottomStack = bottomLayout.bottomToTop
 
@@ -1142,6 +1193,7 @@ fun PlayerControls(
             when (slot) {
               BottomSlot.Buttons -> buttonsHeight
               BottomSlot.Seekbar -> measured(bottomHeights.seekbar, BottomClusterFallbackRowHeight)
+              BottomSlot.Playback -> measured(bottomHeights.playback, playPauseSize + playbackShadowRoom * 2)
             }
 
           // Keep the seekbar close to its controls. Bands come from remembered heights, so a
@@ -1162,11 +1214,13 @@ fun PlayerControls(
           }
           val buttonsBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Buttons] ?: clusterEdge)
           val seekbarBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Seekbar] ?: clusterEdge)
+          val playbackBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Playback] ?: clusterEdge)
           fun ConstrainScope.linkInBottomStack(slot: BottomSlot) {
             val center =
               when (slot) {
                 BottomSlot.Buttons -> buttonsBandCenter
                 BottomSlot.Seekbar -> seekbarBandCenter
+                BottomSlot.Playback -> playbackBandCenter
               }
             top.linkTo(center)
             bottom.linkTo(center)
@@ -1352,6 +1406,8 @@ fun PlayerControls(
           val videoZoom by viewModel.videoZoom.collectAsState()
 
           val areButtonsVisible = controlsShown && !areControlsLocked && !areSlidersShown
+          val showOverflowControls = areButtonsVisible && overflowButtons.isNotEmpty()
+          val playerUpdateBelowControls = showOverflowControls || (isPortrait && controlsShown && !areControlsLocked)
           val seekbarVisible = (controlsShown || if (isHorizontalSeekActive) showSeekbarDuringHorizontalSeeking else seekBarShown) &&
             !areControlsLocked && !areSlidersShown
           val leftCustomButtons = remember(customButtons) { customButtons.filter { it.isLeft } }
@@ -1420,17 +1476,17 @@ fun PlayerControls(
             modifier =
               Modifier
                 .then(
-                  if (showSystemStatusBar && (!isPortrait || !controlsShown || areControlsLocked)) {
+                  if (showSystemStatusBar && !playerUpdateBelowControls) {
                     Modifier.windowInsetsPadding(WindowInsets.statusBars)
                   } else {
                     Modifier
                   },
                 ).constrainAs(playerUpdates) {
                   linkTo(parent.start, parent.end)
-                  if (isPortrait && controlsShown && !areControlsLocked) {
-                    top.linkTo(topLeftControls.bottom, spacing.medium)
-                  } else {
-                    top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
+                  when {
+                    showOverflowControls -> top.linkTo(overflowControls.bottom, spacing.medium)
+                    playerUpdateBelowControls -> top.linkTo(topLeftControls.bottom, spacing.medium)
+                    else -> top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
                   }
                 },
           ) {
@@ -1919,19 +1975,25 @@ fun PlayerControls(
             enter = buildControlsEnterV(controlsAnimStyle, reduceMotion, enterMs) { 0 },
             exit = buildControlsExitV(controlsAnimStyle, reduceMotion, exitMs) { 0 },
             modifier =
-              Modifier.constrainAs(playerPauseButton) {
-                start.linkTo(parent.absoluteLeft)
-                end.linkTo(parent.absoluteRight)
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-              },
+              navigationHorizontalPaddingModifier.constrainAs(playerPauseButton) {
+                start.linkTo(parent.start, spacing.large)
+                end.linkTo(parent.end, spacing.large)
+                if (playbackControlsPlacement == PlaybackControlsPlacement.Center) {
+                  top.linkTo(parent.top)
+                  bottom.linkTo(parent.bottom)
+                } else {
+                  linkInBottomStack(BottomSlot.Playback)
+                }
+                if (fullWidthPlaybackRow) width = Dimension.fillToConstraints
+              }.onSizeChanged { bottomHeights.playback = it.height }
+                .padding(vertical = playbackShadowRoom),
           ) {
-            val hasPlaylistControls =
-              playlistMode && (playlistItems.size > 1 || viewModel.getPlaylistTotalCount() > 1)
-
             if (hasPlaylistControls) {
               androidx.compose.foundation.layout.Row(
-                horizontalArrangement = Arrangement.spacedBy(playbackButtonGap),
+                modifier = (if (fullWidthPlaybackRow) Modifier.fillMaxWidth() else Modifier)
+                  .fadingHorizontalScroll(rememberScrollState(), shadowRoom = 0.dp),
+                horizontalArrangement =
+                  if (isPortrait) Arrangement.SpaceEvenly else Arrangement.spacedBy(playbackButtonGap),
                 verticalAlignment = Alignment.CenterVertically,
               ) {
                 AdaptiveControlsContainer(
@@ -2277,6 +2339,54 @@ fun PlayerControls(
           }
 
           AnimatedVisibility(
+            visible = showOverflowControls,
+            enter = buildControlsEnterV(controlsAnimStyle, reduceMotion, enterMs) { -it / 2 },
+            exit = buildControlsExitV(controlsAnimStyle, reduceMotion, exitMs) { -it / 2 },
+            modifier = navigationHorizontalPaddingModifier
+              .constrainAs(overflowControls) {
+                top.linkTo(titleBarBottom, spacing.extraSmall)
+                start.linkTo(parent.start, spacing.large - PlayerOverflowStartInset)
+                end.linkTo(parent.end, spacing.large)
+                width = Dimension.fillToConstraints
+              }.zIndex(2f),
+          ) {
+            PlayerControlOverflowPanel(
+              buttons = overflowButtons,
+              expanded = isOverflowExpanded,
+              onExpandedChange = {
+                isOverflowExpanded = it
+                resetControlsTimestamp = System.currentTimeMillis()
+              },
+              onInteractionChanged = {
+                isOverflowInteracting = it
+                resetControlsTimestamp = System.currentTimeMillis()
+              },
+              reducedMotion = reduceMotion,
+              modifier = Modifier.fillMaxWidth(),
+            ) { button ->
+              RenderPlayerButton(
+                button = button,
+                chapters = chapters,
+                currentChapter = currentChapter,
+                isPortrait = isPortrait,
+                isSpeedNonOne = isSpeedNonOne,
+                currentZoom = currentZoom,
+                aspect = aspect,
+                mediaTitle = mediaTitle,
+                decoder = decoder,
+                playbackSpeed = playbackSpeed ?: 1f,
+                onBackPress = onBackPress,
+                onOpenSheet = onOpenSheet,
+                onOpenPanel = onOpenPanel,
+                viewModel = viewModel,
+                activity = playerActivity,
+                buttonSize = PlayerControlButtonSize,
+                compact = true,
+              )
+            }
+          }
+
+          AnimatedVisibility(
             visible = hasRightButtons && controlsShown && !areControlsLocked && !areSlidersShown,
             enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
             exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
@@ -2306,7 +2416,6 @@ fun PlayerControls(
             if (isPortrait) {
               BottomPlayerControlsPortrait(
                 buttons = portraitBottomButtons,
-                showVideoQualitySelector = automaticQualityButton,
                 chapters = chapters,
                 currentChapter = currentChapter,
                 isSpeedNonOne = isSpeedNonOne,
@@ -2321,13 +2430,12 @@ fun PlayerControls(
                 viewModel = viewModel,
                 activity = playerActivity,
                 alignToEnd = false,
-                horizontalArrangement = Arrangement.spacedBy(spacing.medium, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.SpaceEvenly,
               )
             } else {
               val rowScrollState = rememberScrollState()
               BottomRightPlayerControlsLandscape(
                 buttons = bottomRightButtons,
-                showVideoQualitySelector = automaticQualityButton,
                 chapters = chapters,
                 currentChapter = currentChapter,
                 isSpeedNonOne = isSpeedNonOne,
@@ -3020,6 +3128,7 @@ private class BottomClusterHeights {
   var rightButtons by mutableIntStateOf(UNMEASURED_HEIGHT)
   var leftButtons by mutableIntStateOf(UNMEASURED_HEIGHT)
   var seekbar by mutableIntStateOf(UNMEASURED_HEIGHT)
+  var playback by mutableIntStateOf(UNMEASURED_HEIGHT)
   var leftCustomRow by mutableIntStateOf(UNMEASURED_HEIGHT)
   var rightCustomRow by mutableIntStateOf(UNMEASURED_HEIGHT)
 }

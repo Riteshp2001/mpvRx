@@ -2858,4 +2858,10 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_measure_enabled_title">Diagnosedaten mit Measure teilen</string>
   <string name="pref_measure_enabled_summary">Optional Abstürze, ANRs, Leistungsdaten und Sitzungsaktivitäten an Measure senden. Standardmäßig deaktiviert.</string>
   <string name="pref_measure_not_configured">Diagnose nicht verfügbar: Dieser Build hat keinen Measure-API-Schlüssel.</string>
+  <string name="player_overflow_title">Weitere Wiedergabesteuerung</string>
+  <string name="pref_layout_portrait_playback_position">Wiedergabesteuerung im Hochformat</string>
+  <string name="pref_layout_landscape_playback_position">Wiedergabesteuerung im Querformat</string>
+  <string name="pref_layout_playback_center">Bildschirmmitte</string>
+  <string name="pref_layout_playback_above_seekbar">Über der Fortschrittsleiste</string>
+  <string name="pref_layout_playback_below_seekbar">Unter der Fortschrittsleiste</string>
 </resources>

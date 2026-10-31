@@ -2858,4 +2858,10 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_measure_enabled_title">Partager les diagnostics avec Measure</string>
   <string name="pref_measure_enabled_summary">Autoriser l\'envoi des plantages, ANR, mesures de performance et activités de session à Measure. Désactivé par défaut.</string>
   <string name="pref_measure_not_configured">Diagnostics indisponibles : cette version ne contient pas de clé Measure.</string>
+  <string name="player_overflow_title">Autres commandes du lecteur</string>
+  <string name="pref_layout_portrait_playback_position">Commandes de lecture en mode portrait</string>
+  <string name="pref_layout_landscape_playback_position">Commandes de lecture en mode paysage</string>
+  <string name="pref_layout_playback_center">Centre de l\'écran</string>
+  <string name="pref_layout_playback_above_seekbar">Au-dessus de la barre de progression</string>
+  <string name="pref_layout_playback_below_seekbar">Sous la barre de progression</string>
 </resources>

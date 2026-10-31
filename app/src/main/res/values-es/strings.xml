@@ -2858,4 +2858,10 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_measure_enabled_title">Compartir diagnósticos con Measure</string>
   <string name="pref_measure_enabled_summary">Activa el envío de fallos, ANR, métricas de rendimiento y actividad de sesión a Measure. Desactivado por defecto.</string>
   <string name="pref_measure_not_configured">Diagnósticos no disponibles: esta compilación no tiene clave de Measure.</string>
+  <string name="player_overflow_title">Más controles del reproductor</string>
+  <string name="pref_layout_portrait_playback_position">Controles de reproducción en vertical</string>
+  <string name="pref_layout_landscape_playback_position">Controles de reproducción en horizontal</string>
+  <string name="pref_layout_playback_center">Centro de la pantalla</string>
+  <string name="pref_layout_playback_above_seekbar">Encima de la barra de progreso</string>
+  <string name="pref_layout_playback_below_seekbar">Debajo de la barra de progreso</string>
 </resources>

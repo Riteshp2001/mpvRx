@@ -5,10 +5,11 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.PlaybackControlsPlacement
 import app.gyrolet.mpvrx.preferences.SeekbarPlacement
 import app.gyrolet.mpvrx.ui.theme.Spacing
 
-internal enum class BottomSlot { Buttons, Seekbar }
+internal enum class BottomSlot { Buttons, Seekbar, Playback }
 
 internal enum class VideoControlsLayoutPreset(
   @StringRes val titleRes: Int,
@@ -47,15 +48,18 @@ internal fun resolvePlaybackControlsGeometry(
   )
 }
 
-/** Play/pause stays centred on the video; only the action row and seekbar change order. */
+/** Playback controls stay beside the seekbar without changing the action-row preset. */
 internal fun resolveBottomControlsLayout(
   seekbarPlacement: SeekbarPlacement,
   hasButtons: Boolean = true,
+  playbackControlsPlacement: PlaybackControlsPlacement = PlaybackControlsPlacement.Center,
 ): BottomControlsLayout =
   BottomControlsLayout(
     bottomToTop = buildList {
       if (hasButtons && seekbarPlacement == SeekbarPlacement.AboveButtons) add(BottomSlot.Buttons)
+      if (playbackControlsPlacement == PlaybackControlsPlacement.BelowSeekbar) add(BottomSlot.Playback)
       add(BottomSlot.Seekbar)
+      if (playbackControlsPlacement == PlaybackControlsPlacement.AboveSeekbar) add(BottomSlot.Playback)
       if (hasButtons && seekbarPlacement == SeekbarPlacement.BelowButtons) add(BottomSlot.Buttons)
     },
   )
