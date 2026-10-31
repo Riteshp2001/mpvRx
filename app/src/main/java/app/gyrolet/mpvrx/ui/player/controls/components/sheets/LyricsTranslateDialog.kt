@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,7 @@ import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSearchField
+import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
 import org.koin.compose.koinInject
@@ -72,10 +74,13 @@ fun LyricsTranslateDialog(
     }
   }
 
+  // Opt into the shared PlayerSheet so the translate picker gets the same liquid glass
+  // material as the other player sheets when liquid glass is turned on.
   AppPickerSheet(
     onDismissRequest = onDismiss,
     title = stringResource(R.string.lyrics_translate_title),
     scrollContent = false,
+    usePlayerSheet = true,
     actions = {
       TextButton(onClick = onDismiss) {
         Text(stringResource(R.string.ui_done), fontWeight = FontWeight.Bold)
@@ -114,7 +119,12 @@ fun LyricsTranslateDialog(
               viewModel.showOriginalLyrics()
               onDismiss()
             },
-          color = if (!state.isTranslationActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+          color =
+            if (LocalPlayerGlassSurfaceActive.current) {
+              playerSheetSelectionColor(!state.isTranslationActive)
+            } else {
+              if (!state.isTranslationActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            },
           shape = RoundedCornerShape(12.dp),
         ) {
           Row(
@@ -131,7 +141,7 @@ fun LyricsTranslateDialog(
                 text = stringResource(R.string.lyrics_translation_off),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = if (!state.isTranslationActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                color = if (!state.isTranslationActive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
               )
               Text(
                 text = stringResource(R.string.lyrics_translation_off_summary),
@@ -209,6 +219,7 @@ fun LyricsTranslateDialog(
           ) {
             items(filteredLanguages, key = { it.code }) { lang ->
             val isSelected = state.isTranslationActive && state.targetLanguage.equals(lang.code, ignoreCase = true)
+            val frosted = LocalPlayerGlassSurfaceActive.current
             Row(
               modifier = Modifier
                 .fillMaxWidth()
@@ -219,8 +230,11 @@ fun LyricsTranslateDialog(
                   onDismiss()
                 }
                 .background(
-                  if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                  else MaterialTheme.colorScheme.surface,
+                  when {
+                    frosted -> playerSheetSelectionColor(isSelected)
+                    isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    else -> Color.Transparent
+                  },
                 )
                 .padding(horizontal = 10.dp, vertical = 10.dp),
               verticalAlignment = Alignment.CenterVertically,
@@ -236,7 +250,7 @@ fun LyricsTranslateDialog(
                   style = MaterialTheme.typography.bodyMedium,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                   fontFamily = fontFamilyForText(lang.displayName),
-                  color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                  color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
                 )
                 if (lang.isRomanization) {
                   Text(
