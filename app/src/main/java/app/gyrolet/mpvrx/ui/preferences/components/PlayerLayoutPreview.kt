@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.PlaybackControlsPlacement
 import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SeekbarStyle
@@ -62,6 +63,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStylePreview
+import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
 import app.gyrolet.mpvrx.ui.player.controls.resolveBottomControlsLayout
 import app.gyrolet.mpvrx.ui.player.controls.resolvePlaybackControlsGeometry
 import app.gyrolet.mpvrx.ui.preferences.ControlRegion
@@ -86,6 +88,9 @@ internal fun PlayerLayoutPreview(
   val opacity by appearance.playerButtonsBackgroundOpacity.collectAsState()
   val seekbarStyle by appearance.seekbarStyle.collectAsState()
   val glassEnabled by appearance.liquidGlassEnabled.collectAsState()
+  val playbackPreference =
+    if (region.isPortrait) appearance.portraitPlaybackControlsPlacement else appearance.landscapePlaybackControlsPlacement
+  val playbackControlsPlacement by playbackPreference.collectAsState()
   val wavy by koinInject<PlayerPreferences>().useWavySeekbar.collectAsState()
   val title = stringResource(region.titleRes)
   val configuration = LocalConfiguration.current
@@ -124,7 +129,7 @@ internal fun PlayerLayoutPreview(
                 PlayerControlsContentTheme {
                   PreviewScene(
                     region, topRightButtons, bottomRightButtons, bottomLeftButtons, portraitBottomButtons,
-                    preset, playlist, glassEnabled, seekbarStyle, wavy, sceneWidth,
+                    preset, playbackControlsPlacement, playlist, glassEnabled, seekbarStyle, wavy, sceneWidth,
                   )
                 }
               }
@@ -153,6 +158,7 @@ private fun PreviewScene(
   bottomLeftButtons: List<PlayerButton>,
   portraitBottomButtons: List<PlayerButton>,
   preset: VideoControlsLayoutPreset,
+  playbackControlsPlacement: PlaybackControlsPlacement,
   playlist: Boolean,
   glassEnabled: Boolean,
   seekbarStyle: SeekbarStyle,
@@ -163,12 +169,8 @@ private fun PreviewScene(
   val hasActions =
     if (region.isPortrait) portraitBottomButtons.isNotEmpty()
     else bottomRightButtons.isNotEmpty() || bottomLeftButtons.isNotEmpty()
-  val geometry = resolvePlaybackControlsGeometry(
-    sceneWidth, preset.playbackPosition, playlist, hasActions, spacing,
-  )
-  val layout = resolveBottomControlsLayout(
-    preset.seekbarPlacement, preset.playbackPosition, hasActions, geometry.canShareRow,
-  )
+  val geometry = resolvePlaybackControlsGeometry(sceneWidth, spacing)
+  val layout = resolveBottomControlsLayout(preset.seekbarPlacement, hasActions, playbackControlsPlacement)
   val backdrop = rememberLiquidGlassBackdrop()
   val background = Brush.linearGradient(listOf(Color(0xFF112333), Color(0xFF27434A), Color(0xFF10131D)))
   Box(Modifier.fillMaxSize()) {
@@ -196,8 +198,13 @@ private fun PreviewScene(
           )
         }
       }
-      if (!layout.buttonsBesidePlayback) {
-        PreviewPlayback(playlist, geometry, Modifier.align(Alignment.Center))
+      if (playbackControlsPlacement == PlaybackControlsPlacement.Center) {
+        PreviewPlayback(
+          playlist, geometry,
+          if (region.isPortrait) Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = spacing.large)
+          else Modifier.align(Alignment.Center),
+          evenlySpaced = region.isPortrait,
+        )
       }
       Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
@@ -207,41 +214,36 @@ private fun PreviewScene(
         layout.bottomToTop.asReversed().forEach { slot ->
           when (slot) {
             BottomSlot.Seekbar -> SeekbarStylePreview(seekbarStyle, useWavySeekbar = wavy)
+            BottomSlot.Playback -> PreviewPlayback(
+              playlist, geometry,
+              Modifier.fillMaxWidth().padding(vertical = if (glassEnabled) 8.dp else 0.dp),
+              evenlySpaced = region.isPortrait,
+            )
             BottomSlot.Buttons -> {
-              val left = if (region.isPortrait) {
-                if (layout.buttonsBesidePlayback) portraitBottomButtons.take(portraitBottomButtons.size / 2) else emptyList()
-              } else bottomLeftButtons
-              val right = if (region.isPortrait) {
-                if (layout.buttonsBesidePlayback) portraitBottomButtons.drop(portraitBottomButtons.size / 2) else portraitBottomButtons
-              } else bottomRightButtons
-              val actionGap = when {
-                region.isPortrait && layout.buttonsBesidePlayback -> spacing.extraSmall
-                region.isPortrait -> spacing.medium
-                else -> spacing.extraSmall
-              }
+              val left = if (region.isPortrait) emptyList() else bottomLeftButtons
+              val right = if (region.isPortrait) portraitBottomButtons else bottomRightButtons
+              val actionGap = if (region.isPortrait) spacing.medium else spacing.extraSmall
               Row(
-                Modifier.fillMaxWidth().heightIn(min = if (layout.buttonsBesidePlayback) geometry.playPauseSize else 48.dp),
+                Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (layout.buttonsBesidePlayback) geometry.sideGap else spacing.smaller),
+                horizontalArrangement = Arrangement.spacedBy(spacing.smaller),
               ) {
-                if (layout.buttonsBesidePlayback || left.isNotEmpty()) {
+                if (left.isNotEmpty()) {
                   PreviewButtons(
-                    left, region == ControlRegion.BOTTOM_LEFT || region == ControlRegion.PORTRAIT_BOTTOM,
+                    left, region == ControlRegion.BOTTOM_LEFT,
                     Modifier.weight(1f), buttonGap = actionGap,
                   )
                 }
-                if (layout.buttonsBesidePlayback) PreviewPlayback(playlist, geometry)
-                if (layout.buttonsBesidePlayback || right.isNotEmpty()) {
+                if (right.isNotEmpty()) {
                   PreviewButtons(
                     right, region == ControlRegion.BOTTOM_RIGHT || region == ControlRegion.PORTRAIT_BOTTOM,
-                    Modifier.weight(1f), endAligned = !region.isPortrait || layout.buttonsBesidePlayback,
-                    centered = region.isPortrait && !layout.buttonsBesidePlayback,
+                    Modifier.weight(1f), endAligned = !region.isPortrait,
+                    centered = region.isPortrait,
                     buttonGap = actionGap,
                   )
                 }
               }
             }
-            BottomSlot.Playback -> Unit
           }
         }
       }
@@ -302,10 +304,13 @@ private fun PreviewPlayback(
   playlist: Boolean,
   geometry: PlaybackControlsGeometry,
   modifier: Modifier = Modifier,
+  evenlySpaced: Boolean = false,
 ) {
   Row(
-    modifier, verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(geometry.buttonGap),
+    modifier.fadingHorizontalScroll(rememberScrollState(), shadowRoom = 0.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement =
+      if (evenlySpaced) Arrangement.SpaceEvenly else Arrangement.spacedBy(geometry.buttonGap, Alignment.CenterHorizontally),
   ) {
     if (playlist) PreviewIcon(Icons.RoundedFilled.SkipPrevious, geometry.skipButtonSize)
     PreviewIcon(Icons.RoundedFilled.PlayArrow, geometry.playPauseSize)

@@ -83,7 +83,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
-import me.zhanghai.compose.preference.Preference
+import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
+import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
 import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
@@ -451,6 +452,7 @@ object AppearancePreferencesScreen : Screen {
                       )
                     },
                     onClick = { isAppFontSheetOpen = true },
+                    action = PreferenceAction.Dialog,
                   )
                   }
 
@@ -841,6 +843,7 @@ object AppearancePreferencesScreen : Screen {
                     )
                   },
                   onClick = { isThumbnailParallelismDialogOpen = true },
+                  action = PreferenceAction.Dialog,
                   enabled = showVideoThumbnails,
                 )
               }

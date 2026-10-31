@@ -418,8 +418,8 @@ private fun SettingsPanelHome(
 
 private fun SearchablePreference.favoriteKey(): String {
   val presetTarget = (targetRes ?: titleRes) in setOf(
-    R.string.ui_landscape_seekbar_position, R.string.ui_landscape_playback_buttons,
-    R.string.ui_portrait_seekbar_position, R.string.ui_portrait_playback_buttons,
+    R.string.ui_landscape_seekbar_position,
+    R.string.ui_portrait_seekbar_position,
   )
   // Keep existing pins when these settings move from the parent page into the region editors.
   val owner = if (screen is ControlLayoutEditorScreen && presetTarget) PlayerControlsPreferencesScreen else screen

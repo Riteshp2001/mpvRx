@@ -39,6 +39,7 @@ fun AppTextFieldPreference(
       draft = TextFieldValue(value)
       editing = true
     },
+    action = PreferenceAction.Dialog,
   )
   if (editing && enabled && availability.enabled) {
     AppAlertDialog(
