@@ -1596,14 +1596,12 @@ object SearchablePreferences {
         screen = ControlLayoutEditorScreen(ControlRegion.BOTTOM_RIGHT),
         anchorItemIndex = 0,
         SearchEntrySpec(R.string.ui_landscape_seekbar_position, listOf("landscape", "seekbar", "position", "above", "below", "buttons")),
-        SearchEntrySpec(R.string.ui_landscape_playback_buttons, listOf("landscape", "playback", "play", "pause", "next", "previous", "position", "center")),
       )
       addSearchEntries(
         category = "Appearance",
         screen = ControlLayoutEditorScreen(ControlRegion.PORTRAIT_BOTTOM),
         anchorItemIndex = 0,
         SearchEntrySpec(R.string.ui_portrait_seekbar_position, listOf("portrait", "seekbar", "position", "above", "below", "buttons")),
-        SearchEntrySpec(R.string.ui_portrait_playback_buttons, listOf("portrait", "playback", "buttons", "position")),
       )
       addSearchEntries(
         category = "Appearance",
